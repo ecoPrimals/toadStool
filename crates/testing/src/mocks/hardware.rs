@@ -12,27 +12,49 @@ use serde::{Deserialize, Serialize};
 /// fields without requiring actual GPU hardware.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockGpuAdapter {
+    /// GPU model name (e.g. "AMD Radeon RX 6950 XT")
     pub name: String,
+    /// Driver name (e.g. "radv", "nvidia")
     pub driver: String,
+    /// Driver version string
     pub driver_info: String,
+    /// PCI vendor ID
     pub vendor_id: u32,
+    /// PCI device ID
     pub device_id: u32,
+    /// Graphics API backend (e.g. "Vulkan")
     pub backend: String,
+    /// Device type (e.g. "DiscreteGpu", "Cpu")
     pub device_type: String,
+    /// Max workgroups per dimension
     pub max_compute_workgroups_per_dimension: u32,
+    /// Max workgroup size X
     pub max_compute_workgroup_size_x: u32,
+    /// Max workgroup size Y
     pub max_compute_workgroup_size_y: u32,
+    /// Max workgroup size Z
     pub max_compute_workgroup_size_z: u32,
+    /// Max buffer allocation size in bytes
     pub max_buffer_size: u64,
+    /// Whether f64 shader ops are supported
     pub supports_shader_f64: bool,
+    /// Whether f64 compute is unreliable on this device
     pub f64_compute_unreliable: bool,
+    /// Whether f64 shared memory is reliable
     pub f64_shared_memory_reliable: bool,
+    /// Whether f64 has zero-value precision risks
     pub f64_zeros_risk: bool,
+    /// Minimum subgroup size
     pub min_subgroup_size: u32,
+    /// Maximum subgroup size
     pub max_subgroup_size: u32,
+    /// Safe allocation limit in bytes
     pub safe_allocation_limit: u64,
+    /// VRAM size in bytes
     pub vram_bytes: u64,
+    /// PCIe generation
     pub pcie_gen: u32,
+    /// PCIe lane width
     pub pcie_width: u32,
 }
 
@@ -179,11 +201,17 @@ impl MockGpuAdapter {
 /// Mock NPU (Akida AKD1000) backend for headless CI.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MockNpuBackend {
+    /// NPU device model name
     pub device_name: String,
+    /// PCI slot identifier
     pub pci_slot: String,
+    /// Number of neural processing elements
     pub num_npes: u32,
+    /// Firmware version string
     pub firmware_version: String,
+    /// Power draw in watts
     pub power_watts: f64,
+    /// Temperature in Celsius
     pub temperature_celsius: f64,
 }
 
@@ -226,7 +254,9 @@ pub struct MockNpuInferenceResult {
 /// Mock hardware fleet for comprehensive testing.
 #[derive(Debug, Clone)]
 pub struct MockHardwareFleet {
+    /// Mock GPU adapters in the fleet
     pub gpus: Vec<MockGpuAdapter>,
+    /// Mock NPU backends in the fleet
     pub npus: Vec<MockNpuBackend>,
 }
 

@@ -26,6 +26,7 @@ use crate::config::{AnalyticsConfig, WebhookConfig};
 use crate::engine::AnalyticsEngine;
 use crate::types::{Alert, AnalyticsDataPoint, Dashboard, TrendAnalysis, TrendDirection};
 
+/// In-memory analytics engine with statistical analysis and prediction.
 pub struct IntelligentAnalyticsEngine {
     config: AnalyticsConfig,
     data_buffer: Arc<RwLock<VecDeque<AnalyticsDataPoint>>>,
@@ -34,6 +35,7 @@ pub struct IntelligentAnalyticsEngine {
 }
 
 impl IntelligentAnalyticsEngine {
+    /// Create a new analytics engine with the given config.
     #[expect(
         clippy::unused_async,
         reason = "API designed for async; future persistence will require await"
@@ -56,6 +58,7 @@ impl IntelligentAnalyticsEngine {
         Ok(engine)
     }
 
+    /// Start background processing (collection and alert evaluation).
     #[expect(
         clippy::unused_async,
         reason = "spawned tasks use await; outer fn must stay async for API consistency"

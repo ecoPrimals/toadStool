@@ -33,9 +33,11 @@ pub enum MonitoringType {
     Performance,
     /// Process monitoring
     Process,
-    /// Custom monitoring
+    /// Custom monitoring type.
     Custom {
+        /// Monitoring type name.
         name: String,
+        /// Configuration parameters.
         parameters: HashMap<String, String>,
     },
 }
@@ -53,8 +55,11 @@ pub enum AdministrationType {
     SystemConfiguration,
     /// Backup and restore
     BackupRestore,
-    /// Custom administration
-    Custom { name: String },
+    /// Custom administration type.
+    Custom {
+        /// Administration type name.
+        name: String,
+    },
 }
 
 /// Legacy job priorities (for backward compatibility with legacy systems)

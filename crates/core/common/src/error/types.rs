@@ -74,37 +74,61 @@ pub enum ExecutionError {
     /// Runtime engine failed to execute workload
     #[error("Runtime '{runtime}' failed for workload '{workload_id}': {reason}")]
     RuntimeFailure {
+        /// Name of the runtime engine that failed
         runtime: String,
+        /// Identifier of the workload that failed
         workload_id: String,
+        /// Human-readable failure reason from the runtime
         reason: String,
     },
 
     /// Workload execution failed
     #[error("Workload '{workload_id}' failed: {reason}")]
-    WorkloadFailure { workload_id: String, reason: String },
+    WorkloadFailure {
+        /// Identifier of the workload that failed
+        workload_id: String,
+        /// Human-readable failure reason
+        reason: String,
+    },
 
     /// Operation timed out
     #[error("Timeout after {duration:?} for operation '{operation}'")]
     Timeout {
+        /// Duration that elapsed before the timeout
         duration: Duration,
+        /// Name or description of the operation that timed out
         operation: String,
     },
 
     /// Resources exhausted during execution
     #[error("Resource '{resource}' exhausted during execution")]
-    ResourceExhaustion { resource: String },
+    ResourceExhaustion {
+        /// Type of resource that was exhausted (e.g. memory, GPU)
+        resource: String,
+    },
 
     /// Unsupported workload type
     #[error("Workload type '{workload_type}' is not supported on this platform")]
-    UnsupportedWorkloadType { workload_type: String },
+    UnsupportedWorkloadType {
+        /// The workload type that is not supported
+        workload_type: String,
+    },
 
     /// Runtime engine not available
     #[error("Runtime engine '{engine}' is not available: {reason}")]
-    EngineUnavailable { engine: String, reason: String },
+    EngineUnavailable {
+        /// Name of the runtime engine that is unavailable
+        engine: String,
+        /// Reason the engine cannot be used
+        reason: String,
+    },
 
     /// Invalid execution request
     #[error("Invalid execution request: {reason}")]
-    InvalidRequest { reason: String },
+    InvalidRequest {
+        /// Description of why the request is invalid
+        reason: String,
+    },
 }
 
 /// Errors related to configuration
@@ -112,38 +136,60 @@ pub enum ExecutionError {
 pub enum ConfigError {
     /// Configuration file not found
     #[error("Configuration file not found: {path}")]
-    NotFound { path: String },
+    NotFound {
+        /// Path to the configuration file that was not found
+        path: String,
+    },
 
     /// Configuration parsing failed
     #[error("Failed to parse configuration: {reason}")]
-    ParseError { reason: String },
+    ParseError {
+        /// Description of the parse failure
+        reason: String,
+    },
 
     /// Configuration validation failed
     #[error("Configuration validation failed: {reason}")]
-    ValidationError { reason: String },
+    ValidationError {
+        /// Description of the validation failure
+        reason: String,
+    },
 
     /// Missing required configuration field
     #[error("Missing required configuration field: {field}")]
-    MissingField { field: String },
+    MissingField {
+        /// Name of the required field that is missing
+        field: String,
+    },
 
     /// Invalid configuration value
     #[error("Invalid value for '{field}': {value} ({reason})")]
     InvalidValue {
+        /// Name of the configuration field
         field: String,
+        /// The invalid value that was provided
         value: String,
+        /// Explanation of why the value is invalid
         reason: String,
     },
 
     /// Configuration loading failed
     #[error("Failed to load configuration from '{config_source}': {reason}")]
     LoadError {
+        /// Source from which configuration was being loaded (file path, URL, etc.)
         config_source: String,
+        /// Description of the load failure
         reason: String,
     },
 
     /// Environment variable error
     #[error("Environment variable '{name}' error: {reason}")]
-    EnvVarError { name: String, reason: String },
+    EnvVarError {
+        /// Name of the environment variable
+        name: String,
+        /// Description of the error (missing, invalid format, etc.)
+        reason: String,
+    },
 }
 
 /// Errors related to resource management
@@ -151,35 +197,61 @@ pub enum ConfigError {
 pub enum ResourceError {
     /// Resource allocation failed
     #[error("Failed to allocate {resource}: {reason}")]
-    AllocationFailure { resource: String, reason: String },
+    AllocationFailure {
+        /// Type of resource that failed to allocate
+        resource: String,
+        /// Description of the allocation failure
+        reason: String,
+    },
 
     /// Resource limit exceeded
     #[error("Resource limit exceeded for '{resource}': requested {requested}, limit {limit}")]
     LimitExceeded {
+        /// Type of resource whose limit was exceeded
         resource: String,
+        /// Amount that was requested
         requested: String,
+        /// Configured limit that was exceeded
         limit: String,
     },
 
     /// Resource not found
     #[error("Resource '{resource}' with id '{id}' not found")]
-    NotFound { resource: String, id: String },
+    NotFound {
+        /// Type of resource that was not found
+        resource: String,
+        /// Identifier of the resource
+        id: String,
+    },
 
     /// Resource monitoring error
     #[error("Failed to monitor resource '{resource}': {reason}")]
-    MonitoringError { resource: String, reason: String },
+    MonitoringError {
+        /// Type of resource that could not be monitored
+        resource: String,
+        /// Description of the monitoring failure
+        reason: String,
+    },
 
     /// Insufficient resources
     #[error("Insufficient {resource} available: need {needed}, have {available}")]
     Insufficient {
+        /// Type of resource that is insufficient
         resource: String,
+        /// Amount required
         needed: String,
+        /// Amount currently available
         available: String,
     },
 
     /// Resource cleanup failed
     #[error("Failed to cleanup resource '{resource}': {reason}")]
-    CleanupError { resource: String, reason: String },
+    CleanupError {
+        /// Type of resource that failed to cleanup
+        resource: String,
+        /// Description of the cleanup failure
+        reason: String,
+    },
 }
 
 /// Errors related to ecosystem integration
@@ -187,31 +259,59 @@ pub enum ResourceError {
 pub enum IntegrationError {
     /// Service unavailable
     #[error("Service '{service}' is unavailable: {reason}")]
-    ServiceUnavailable { service: String, reason: String },
+    ServiceUnavailable {
+        /// Name or identifier of the unavailable service
+        service: String,
+        /// Reason the service is unavailable
+        reason: String,
+    },
 
     /// Service connection failed
     #[error("Failed to connect to service '{service}': {reason}")]
-    ConnectionFailed { service: String, reason: String },
+    ConnectionFailed {
+        /// Name or identifier of the service
+        service: String,
+        /// Description of the connection failure
+        reason: String,
+    },
 
     /// Service authentication failed
     #[error("Authentication failed for service '{service}': {reason}")]
-    AuthenticationFailed { service: String, reason: String },
+    AuthenticationFailed {
+        /// Name or identifier of the service
+        service: String,
+        /// Description of the authentication failure
+        reason: String,
+    },
 
     /// Service operation failed
     #[error("Operation '{operation}' failed on service '{service}': {reason}")]
     OperationFailed {
+        /// Name or identifier of the service
         service: String,
+        /// Name of the operation that failed
         operation: String,
+        /// Description of the operation failure
         reason: String,
     },
 
     /// Service discovery failed
     #[error("Failed to discover service '{service}': {reason}")]
-    DiscoveryFailed { service: String, reason: String },
+    DiscoveryFailed {
+        /// Name or identifier of the service that could not be discovered
+        service: String,
+        /// Description of the discovery failure
+        reason: String,
+    },
 
     /// Invalid service response
     #[error("Invalid response from service '{service}': {reason}")]
-    InvalidResponse { service: String, reason: String },
+    InvalidResponse {
+        /// Name or identifier of the service
+        service: String,
+        /// Description of why the response is invalid
+        reason: String,
+    },
 }
 
 /// Errors related to security
@@ -219,31 +319,58 @@ pub enum IntegrationError {
 pub enum SecurityError {
     /// Permission denied
     #[error("Permission denied for '{operation}': {reason}")]
-    PermissionDenied { operation: String, reason: String },
+    PermissionDenied {
+        /// Operation that was denied
+        operation: String,
+        /// Reason for the denial
+        reason: String,
+    },
 
     /// Authentication failed
     #[error("Authentication failed: {reason}")]
-    AuthenticationFailed { reason: String },
+    AuthenticationFailed {
+        /// Description of the authentication failure
+        reason: String,
+    },
 
     /// Authorization failed
     #[error("Authorization failed for '{resource}': {reason}")]
-    AuthorizationFailed { resource: String, reason: String },
+    AuthorizationFailed {
+        /// Resource or action that was not authorized
+        resource: String,
+        /// Reason for the authorization failure
+        reason: String,
+    },
 
     /// Security policy violation
     #[error("Security policy '{policy}' violated: {reason}")]
-    PolicyViolation { policy: String, reason: String },
+    PolicyViolation {
+        /// Name or identifier of the policy that was violated
+        policy: String,
+        /// Description of the violation
+        reason: String,
+    },
 
     /// Sandbox violation
     #[error("Sandbox violation: {reason}")]
-    SandboxViolation { reason: String },
+    SandboxViolation {
+        /// Description of the sandbox violation
+        reason: String,
+    },
 
     /// Invalid credentials
     #[error("Invalid credentials: {reason}")]
-    InvalidCredentials { reason: String },
+    InvalidCredentials {
+        /// Description of why the credentials are invalid
+        reason: String,
+    },
 
     /// Token error
     #[error("Token error: {reason}")]
-    TokenError { reason: String },
+    TokenError {
+        /// Description of the token error (expired, malformed, etc.)
+        reason: String,
+    },
 }
 
 /// Errors related to networking
@@ -251,34 +378,60 @@ pub enum SecurityError {
 pub enum NetworkError {
     /// Connection failed
     #[error("Connection to '{endpoint}' failed: {reason}")]
-    ConnectionFailed { endpoint: String, reason: String },
+    ConnectionFailed {
+        /// Network endpoint that could not be reached
+        endpoint: String,
+        /// Description of the connection failure
+        reason: String,
+    },
 
     /// Connection timeout
     #[error("Connection to '{endpoint}' timed out after {duration:?}")]
     Timeout {
+        /// Network endpoint that timed out
         endpoint: String,
+        /// Duration that elapsed before timeout
         duration: Duration,
     },
 
     /// Network I/O error
     #[error("Network I/O error: {reason}")]
-    IoError { reason: String },
+    IoError {
+        /// Description of the I/O failure
+        reason: String,
+    },
 
     /// DNS resolution failed
     #[error("DNS resolution failed for '{hostname}': {reason}")]
-    DnsError { hostname: String, reason: String },
+    DnsError {
+        /// Hostname that could not be resolved
+        hostname: String,
+        /// Description of the resolution failure
+        reason: String,
+    },
 
     /// Invalid endpoint
     #[error("Invalid endpoint '{endpoint}': {reason}")]
-    InvalidEndpoint { endpoint: String, reason: String },
+    InvalidEndpoint {
+        /// The invalid endpoint string
+        endpoint: String,
+        /// Description of why the endpoint is invalid
+        reason: String,
+    },
 
     /// Protocol error
     #[error("Protocol error: {reason}")]
-    ProtocolError { reason: String },
+    ProtocolError {
+        /// Description of the protocol violation or error
+        reason: String,
+    },
 
     /// TLS/SSL error
     #[error("TLS/SSL error: {reason}")]
-    TlsError { reason: String },
+    TlsError {
+        /// Description of the TLS/SSL handshake or certificate error
+        reason: String,
+    },
 }
 
 /// Errors related to system operations
@@ -286,31 +439,56 @@ pub enum NetworkError {
 pub enum SystemError {
     /// I/O error
     #[error("I/O error: {reason}")]
-    Io { reason: String },
+    Io {
+        /// Description of the I/O failure
+        reason: String,
+    },
 
     /// File system error
     #[error("File system error on '{path}': {reason}")]
-    FileSystem { path: String, reason: String },
+    FileSystem {
+        /// Path where the file system error occurred
+        path: String,
+        /// Description of the file system failure
+        reason: String,
+    },
 
     /// Platform error
     #[error("Platform error: {reason}")]
-    Platform { reason: String },
+    Platform {
+        /// Description of the platform-specific failure
+        reason: String,
+    },
 
     /// Process error
     #[error("Process error: {reason}")]
-    Process { reason: String },
+    Process {
+        /// Description of the process failure (spawn, signal, etc.)
+        reason: String,
+    },
 
     /// Serialization error
     #[error("Serialization error: {reason}")]
-    Serialization { reason: String },
+    Serialization {
+        /// Description of the serialization/deserialization failure
+        reason: String,
+    },
 
     /// Not supported on this platform
     #[error("'{feature}' is not supported on this platform: {reason}")]
-    NotSupported { feature: String, reason: String },
+    NotSupported {
+        /// Name of the feature that is not supported
+        feature: String,
+        /// Reason it is not supported (e.g. missing hardware)
+        reason: String,
+    },
 
     /// Internal error
     #[error("Internal error: {reason}")]
-    Internal { reason: String },
+    Internal {
+        /// Description of the internal error (bugs, invariants violated)
+        reason: String,
+    },
 }
 
 // ============================================================================

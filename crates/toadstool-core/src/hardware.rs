@@ -12,8 +12,12 @@ use tracing::{info, warn};
 /// Typed errors for hardware operations
 #[derive(Debug, thiserror::Error)]
 pub enum HardwareError {
+    /// NPU device was not found at the given address.
     #[error("NPU device not found: {address}")]
-    NpuNotFound { address: String },
+    NpuNotFound {
+        /// PCIe address that was looked up (e.g. `0000:01:00.0`).
+        address: String,
+    },
 }
 
 /// Hardware types that ToadStool can discover and manage

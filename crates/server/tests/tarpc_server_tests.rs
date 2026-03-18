@@ -40,8 +40,8 @@ impl WorkloadExecutor for FailingExecutor {
 
 fn sample_submission(workload_id: &str) -> WorkloadSubmission {
     WorkloadSubmission {
-        workload_id: workload_id.to_string(),
-        workload_type: "cpu_compute".to_string(),
+        workload_id: Arc::from(workload_id),
+        workload_type: Arc::from("cpu_compute"),
         data: vec![1, 2, 3].into(),
         metadata: std::collections::HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -101,7 +101,7 @@ async fn test_submit_workload_success() {
         .await
         .expect("Submit should succeed");
 
-    assert_eq!(result.workload_id, "work-001");
+    assert_eq!(result.workload_id.as_ref(), "work-001");
     assert!(matches!(result.status, WorkloadStatus::Completed));
     assert!(result.data.is_some());
 }
@@ -139,7 +139,7 @@ async fn test_query_status_found() {
         .await
         .expect("Query should find workload");
 
-    assert_eq!(result.workload_id, "work-query");
+    assert_eq!(result.workload_id.as_ref(), "work-query");
 }
 
 #[tokio::test]

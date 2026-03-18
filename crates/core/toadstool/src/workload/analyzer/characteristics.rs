@@ -6,11 +6,17 @@ use std::fmt;
 /// Workload analysis result containing characteristics
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkloadCharacteristics {
+    /// FLOP intensity classification.
     pub compute_intensity: ComputeIntensity,
+    /// Memory footprint classification.
     pub memory_requirement: MemoryRequirement,
+    /// Parallelism / scalability classification.
     pub parallelism_level: ParallelismLevel,
+    /// GPU speedup potential.
     pub gpu_advantage: GpuAdvantage,
+    /// Whether CPU execution is viable.
     pub cpu_viable: bool,
+    /// Estimated FLOPs if known.
     pub estimated_flops: Option<u64>,
 }
 
@@ -27,13 +33,20 @@ impl Default for WorkloadCharacteristics {
     }
 }
 
+/// Compute intensity (FLOP) classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ComputeIntensity {
+    /// &lt;1 GFLOP.
     Minimal,
+    /// 1–10 GFLOP.
     Low,
+    /// 10–100 GFLOP.
     Medium,
+    /// 100 GFLOP–1 TFLOP.
     High,
+    /// 1–10 TFLOP.
     VeryHigh,
+    /// &gt;10 TFLOP.
     Extreme,
 }
 
@@ -50,12 +63,18 @@ impl fmt::Display for ComputeIntensity {
     }
 }
 
+/// Memory footprint classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MemoryRequirement {
+    /// &lt;100 MB.
     Tiny,
+    /// 100 MB–1 GB.
     Small,
+    /// 1–10 GB.
     Medium,
+    /// 10–100 GB.
     Large,
+    /// &gt;100 GB.
     Huge,
 }
 
@@ -71,12 +90,18 @@ impl fmt::Display for MemoryRequirement {
     }
 }
 
+/// Parallelism / scalability classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ParallelismLevel {
+    /// Single-threaded.
     Sequential,
+    /// &lt;10x speedup.
     Low,
+    /// 10–100x speedup.
     Medium,
+    /// 100–1000x speedup.
     High,
+    /// &gt;1000x speedup.
     VeryHigh,
 }
 
@@ -92,13 +117,20 @@ impl fmt::Display for ParallelismLevel {
     }
 }
 
+/// GPU speedup potential classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GpuAdvantage {
+    /// &lt;2x speedup.
     Minimal,
+    /// 2–5x speedup.
     Moderate,
+    /// 5–10x speedup.
     Significant,
+    /// 10–100x speedup.
     High,
+    /// 100–1000x speedup.
     VeryHigh,
+    /// &gt;1000x; GPU required.
     Critical,
 }
 

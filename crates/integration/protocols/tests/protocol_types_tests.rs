@@ -2,6 +2,7 @@
 //! Comprehensive tests for protocol integration types
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_integration_protocols::types::*;
 use uuid::Uuid;
@@ -227,9 +228,9 @@ fn test_health_status_clone() {
 fn test_protocol_message_creation() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "request".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("request"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({"action": "ping"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -240,8 +241,8 @@ fn test_protocol_message_creation() {
         priority: MessagePriority::Normal,
     };
 
-    assert_eq!(message.message_type, "request");
-    assert_eq!(message.source, "service-a");
+    assert_eq!(&*message.message_type, "request");
+    assert_eq!(&*message.source, "service-a");
 }
 
 #[test]
@@ -249,15 +250,15 @@ fn test_protocol_message_with_correlation() {
     let correlation = Uuid::new_v4();
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "response".to_string(),
-        source: "service-b".to_string(),
-        destination: Some("service-a".to_string()),
+        message_type: Arc::from("response"),
+        source: Arc::from("service-b"),
+        destination: Some(Arc::from("service-a")),
         payload: serde_json::json!({"result": "pong"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: Some(correlation),
-        reply_to: Some("service-a".to_string()),
+        reply_to: Some(Arc::from("service-a")),
         ttl: Some(Duration::from_secs(60)),
         priority: MessagePriority::High,
     };
@@ -270,8 +271,8 @@ fn test_protocol_message_with_correlation() {
 fn test_protocol_message_with_ttl() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "notification".to_string(),
-        source: "service-c".to_string(),
+        message_type: Arc::from("notification"),
+        source: Arc::from("service-c"),
         destination: None,
         payload: serde_json::json!({"event": "update"}),
         headers: HashMap::new(),
@@ -355,7 +356,7 @@ fn test_service_info_creation() {
         capabilities: vec!["http".to_string(), "websocket".to_string()],
     };
 
-    assert_eq!(service.name, "API Gateway");
+    assert_eq!(&*service.name, "API Gateway");
     assert_eq!(service.capabilities.len(), 2);
 }
 
@@ -456,8 +457,8 @@ fn test_all_health_statuses() {
 fn test_message_serialization() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "test-source".to_string(),
+        message_type: Arc::from("test"),
+        source: Arc::from("test-source"),
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
@@ -472,5 +473,5 @@ fn test_message_serialization() {
     let json = serde_json::to_string(&message).expect("Failed to serialize");
     let deserialized: ProtocolMessage = serde_json::from_str(&json).expect("Failed to deserialize");
 
-    assert_eq!(message.message_type, deserialized.message_type);
+    assert_eq!(&*message.message_type, &*deserialized.message_type);
 }

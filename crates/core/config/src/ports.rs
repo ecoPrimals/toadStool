@@ -72,21 +72,27 @@ pub mod capability_fallback {
     note = "Use capability_fallback::* or runtime capability discovery."
 )]
 pub mod discovery_fallback {
+    /// Coordination capability discovery port (legacy).
     #[deprecated(note = "Use capability_fallback::COORDINATION")]
     pub const DEFAULT_SONGBIRD_DISCOVERY_PORT: u16 = super::capability_fallback::COORDINATION;
 
+    /// Security capability discovery port (legacy).
     #[deprecated(note = "Use capability_fallback::SECURITY")]
     pub const DEFAULT_BEARDOG_DISCOVERY_PORT: u16 = super::capability_fallback::SECURITY;
 
+    /// Storage capability discovery port (legacy).
     #[deprecated(note = "Use capability_fallback::STORAGE")]
     pub const DEFAULT_NESTGATE_DISCOVERY_PORT: u16 = super::capability_fallback::STORAGE;
 
+    /// Platform capability discovery port (legacy).
     #[deprecated(note = "Use capability_fallback::PLATFORM")]
     pub const DEFAULT_SQUIRREL_DISCOVERY_PORT: u16 = super::capability_fallback::PLATFORM;
 
+    /// Ecosystem discovery port (legacy).
     #[deprecated(note = "Use capability_fallback::ECOSYSTEM")]
     pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = super::capability_fallback::ECOSYSTEM;
 
+    /// Ecosystem primary port (legacy).
     #[deprecated(note = "Use capability_fallback::ECOSYSTEM_PRIMARY")]
     pub const DEFAULT_BIOMEOS_PRIMARY_PORT: u16 = super::capability_fallback::ECOSYSTEM_PRIMARY;
 }
@@ -99,18 +105,23 @@ pub mod discovery_fallback {
     note = "Use capability_fallback::* or runtime capability discovery."
 )]
 pub mod fallback {
+    /// Coordination capability port (legacy).
     #[deprecated(note = "Use capability_fallback::COORDINATION")]
     pub const SONGBIRD: u16 = super::capability_fallback::COORDINATION;
 
+    /// Platform capability port (legacy).
     #[deprecated(note = "Use capability_fallback::PLATFORM")]
     pub const SQUIRREL: u16 = super::capability_fallback::PLATFORM;
 
+    /// Security capability port (legacy).
     #[deprecated(note = "Use capability_fallback::SECURITY")]
     pub const BEARDOG: u16 = super::capability_fallback::SECURITY;
 
+    /// Storage capability port (legacy).
     #[deprecated(note = "Use capability_fallback::STORAGE")]
     pub const NESTGATE: u16 = super::capability_fallback::STORAGE;
 
+    /// Ecosystem capability port (legacy).
     #[deprecated(note = "Use capability_fallback::ECOSYSTEM")]
     pub const BIOMEOS: u16 = super::capability_fallback::ECOSYSTEM;
 }
@@ -157,12 +168,14 @@ pub mod test {
 
 /// Port range allocation
 pub mod ranges {
-    /// ToadStool service range (0 = OS-assigned; explicit range for env override)
+    /// Start of ToadStool service port range (0 = OS-assigned).
     pub const TOADSTOOL_START: u16 = 0;
+    /// End of valid port range.
     pub const TOADSTOOL_END: u16 = 65_535;
 
-    /// Test port range: 50000-65535
+    /// Start of test port range (avoids production ports).
     pub const TEST_START: u16 = 50_000;
+    /// End of test port range.
     pub const TEST_END: u16 = 65_535;
 }
 
@@ -265,12 +278,13 @@ pub fn get_primal_port(primal: &str, fallback_port: u16) -> u16 {
     get_port_with_env(fallback_port, &format!("{primal}_PORT"))
 }
 
-/// Resolve port by trying capability env var first, then legacy primal env var, then fallback.
+/// Resolve port by trying capability env vars first, then fallback.
 ///
 /// Resolution order:
 /// 1. `TOADSTOOL_{CAPABILITY}_PORT` (e.g. `TOADSTOOL_SECURITY_PORT`)
-/// 2. `{LEGACY_NAME}_PORT` (e.g. `BEARDOG_PORT`) — backward compatibility
-/// 3. `fallback_port` — hardcoded default from `capability_fallback::*`
+/// 2. `{CAPABILITY}_PORT` (capability-based, e.g. `COORDINATION_PORT`)
+/// 3. `{LEGACY_NAME}_PORT` (primal name, deprecated — e.g. `SONGBIRD_PORT`)
+/// 4. `fallback_port` — hardcoded default from `capability_fallback::*`
 #[must_use]
 pub fn resolve_capability_or_legacy_port(
     capability: &str,
@@ -278,6 +292,11 @@ pub fn resolve_capability_or_legacy_port(
     fallback_port: u16,
 ) -> u16 {
     if let Ok(v) = std::env::var(format!("TOADSTOOL_{capability}_PORT")) {
+        if let Ok(p) = v.parse::<u16>() {
+            return p;
+        }
+    }
+    if let Ok(v) = std::env::var(format!("{capability}_PORT")) {
         if let Ok(p) = v.parse::<u16>() {
             return p;
         }

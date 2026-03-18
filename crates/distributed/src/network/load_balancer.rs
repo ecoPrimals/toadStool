@@ -10,16 +10,21 @@ pub struct NetworkLoadBalancer {
     node_health: Arc<tokio::sync::RwLock<HashMap<String, NodeHealth>>>,
 }
 
-/// Node health information
+/// Health snapshot for a load-balanced node.
 #[derive(Debug, Clone)]
 pub struct NodeHealth {
+    /// Whether the node is accepting traffic.
     pub healthy: bool,
+    /// CPU utilization fraction (0.0–1.0).
     pub cpu_usage: f64,
+    /// Memory utilization fraction (0.0–1.0).
     pub memory_usage: f64,
+    /// Last observed response time in milliseconds.
     pub response_time_ms: u64,
 }
 
 impl NetworkLoadBalancer {
+    /// Creates a load balancer with round-robin strategy.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -74,29 +79,38 @@ pub struct FaultToleranceManager {
     retries: Arc<RetryManager>,
 }
 
-/// Circuit breaker for fault tolerance
+/// Circuit breaker for a single target (tracks failures, opens on threshold).
 #[derive(Debug, Clone)]
 pub struct CircuitBreaker {
+    /// Current state (closed/open/half-open).
     pub state: CircuitBreakerState,
+    /// Consecutive failure count.
     pub failure_count: u32,
+    /// Timestamp of last failure for backoff.
     pub last_failure_time: Option<std::time::Instant>,
 }
 
-/// Circuit breaker state
+/// Circuit breaker state for fault isolation.
 #[derive(Debug, Clone)]
 pub enum CircuitBreakerState {
+    /// Normal operation; requests flow through.
     Closed,
+    /// Failures exceeded threshold; requests fail fast.
     Open,
+    /// Probing to see if target recovered.
     HalfOpen,
 }
 
-/// Retry manager
+/// Retry policy for transient failures.
 pub struct RetryManager {
+    /// Maximum retry attempts before giving up.
     pub max_retries: u32,
+    /// Backoff strategy (exponential, linear, etc.).
     pub backoff_strategy: BackoffStrategy,
 }
 
 impl FaultToleranceManager {
+    /// Creates a fault tolerance manager with default circuit breakers and retries.
     #[must_use]
     pub fn new() -> Self {
         const DEFAULT_BACKOFF_BASE_MS: u64 = 1_000;

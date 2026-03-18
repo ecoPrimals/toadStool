@@ -25,12 +25,14 @@ pub struct TestBarrier {
 }
 
 impl TestBarrier {
+    /// Create a barrier that waits for n participants
     pub fn new(n: usize) -> Self {
         Self {
             barrier: Arc::new(Barrier::new(n)),
         }
     }
 
+    /// Wait until all n participants have arrived
     pub async fn wait(&self) {
         self.barrier.wait().await;
     }
@@ -43,20 +45,24 @@ pub struct TestNotify {
 }
 
 impl TestNotify {
+    /// Create a new notification primitive
     pub fn new() -> Self {
         Self {
             notify: Arc::new(Notify::new()),
         }
     }
 
+    /// Wake one waiting task
     pub fn notify_one(&self) {
         self.notify.notify_one();
     }
 
+    /// Wake all waiting tasks
     pub fn notify_waiters(&self) {
         self.notify.notify_waiters();
     }
 
+    /// Wait for a notification
     pub async fn notified(&self) {
         self.notify.notified().await;
     }
@@ -83,6 +89,7 @@ pub struct TestChannel<T> {
 }
 
 impl<T> TestChannel<T> {
+    /// Create a channel with the given buffer size
     pub fn new(buffer: usize) -> Self {
         let (tx, rx) = mpsc::channel(buffer);
         Self {
@@ -91,14 +98,17 @@ impl<T> TestChannel<T> {
         }
     }
 
+    /// Get a clone of the sender
     pub fn sender(&self) -> mpsc::Sender<T> {
         self.tx.clone()
     }
 
+    /// Receive the next message (None if channel closed)
     pub async fn recv(&self) -> Option<T> {
         self.rx.lock().await.recv().await
     }
 
+    /// Receive with timeout (Err if elapsed)
     pub async fn recv_timeout(
         &self,
         duration: Duration,
@@ -122,12 +132,14 @@ pub struct TestState<T> {
 }
 
 impl<T> TestState<T> {
+    /// Create shared state with initial value
     pub fn new(initial: T) -> Self {
         Self {
             state: Arc::new(RwLock::new(initial)),
         }
     }
 
+    /// Read state with a closure (read lock)
     pub async fn read<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&T) -> R + Send,
@@ -137,6 +149,7 @@ impl<T> TestState<T> {
         f(&guard)
     }
 
+    /// Write state with a closure (write lock)
     pub async fn write<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&mut T) -> R + Send,
@@ -146,6 +159,7 @@ impl<T> TestState<T> {
         f(&mut guard)
     }
 
+    /// Read state with timeout
     pub async fn read_timeout<F, R>(
         &self,
         duration: Duration,
@@ -159,6 +173,7 @@ impl<T> TestState<T> {
         Ok(f(&guard))
     }
 
+    /// Write state with timeout
     pub async fn write_timeout<F, R>(
         &self,
         duration: Duration,
@@ -256,8 +271,10 @@ where
     Ok(())
 }
 
+/// Error from wait_for_condition / wait_for_async_condition
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WaitError {
+    /// Condition did not become true within the timeout
     Timeout,
 }
 

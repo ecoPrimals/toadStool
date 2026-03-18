@@ -12,56 +12,87 @@
 
 /// Federation capability strings
 pub mod capabilities {
+    /// Universal compute capability
     pub const UNIVERSAL_COMPUTE: &str = "universal-compute";
+    /// WASM execution capability
     pub const WASM_EXECUTION: &str = "wasm-execution";
+    /// Container runtime capability
     pub const CONTAINER_RUNTIME: &str = "container-runtime";
+    /// Substrate detection capability
     pub const SUBSTRATE_DETECTION: &str = "substrate-detection";
+    /// Workload migration capability
     pub const WORKLOAD_MIGRATION: &str = "workload-migration";
+    /// Federation capability
     pub const FEDERATION: &str = "federation";
+    /// GPU acceleration capability
     pub const GPU_ACCELERATION: &str = "gpu-acceleration";
+    /// Distributed storage capability
     pub const DISTRIBUTED_STORAGE: &str = "distributed-storage";
 }
 
 /// Federation protocol versions
 pub mod protocol {
+    /// Protocol version 1.0
     pub const VERSION_1_0: &str = "1.0";
+    /// Protocol version 1.1
     pub const VERSION_1_1: &str = "1.1";
+    /// Protocol version 2.0
     pub const VERSION_2_0: &str = "2.0";
 }
 
 /// Migration type strings
 pub mod migration_types {
+    /// Live migration (no downtime)
     pub const LIVE: &str = "live";
+    /// Cold migration (stop, move, start)
     pub const COLD: &str = "cold";
+    /// Hot migration (replication-based)
     pub const HOT: &str = "hot";
+    /// Clone migration (copy to new target)
     pub const CLONE: &str = "clone";
 }
 
 /// Migration status messages
 pub mod migration_status {
+    /// Migration is being prepared
     pub const PREPARING: &str = "preparing";
+    /// Migration in progress
     pub const IN_PROGRESS: &str = "in_progress";
+    /// Migration completed
     pub const COMPLETED: &str = "completed";
+    /// Migration failed
     pub const FAILED: &str = "failed";
+    /// Verifying migrated workload
     pub const VERIFYING: &str = "verifying";
 }
 
 /// Federation modes
 pub mod federation_modes {
+    /// Peer-to-peer federation
     pub const PEER_TO_PEER: &str = "peer-to-peer";
+    /// Client-server federation
     pub const CLIENT_SERVER: &str = "client-server";
+    /// Mesh federation
     pub const MESH: &str = "mesh";
+    /// Hierarchical federation
     pub const HIERARCHICAL: &str = "hierarchical";
 }
 
 /// Platform identifiers
 pub mod platforms {
+    /// Docker container platform
     pub const DOCKER: &str = "docker";
+    /// Podman container platform
     pub const PODMAN: &str = "podman";
+    /// Kubernetes orchestration platform
     pub const KUBERNETES: &str = "kubernetes";
+    /// WebAssembly runtime
     pub const WASM: &str = "wasm";
+    /// Native process execution
     pub const NATIVE: &str = "native";
+    /// Systemd service
     pub const SYSTEMD: &str = "systemd";
+    /// BiomeOS platform
     pub const BIOME_OS: &str = "biomeos";
 }
 
@@ -109,9 +140,13 @@ pub mod paths {
 
 /// Trust levels
 pub mod trust_levels {
+    /// Trusted source
     pub const TRUSTED: &str = "trusted";
+    /// Untrusted source
     pub const UNTRUSTED: &str = "untrusted";
+    /// Cryptographically verified
     pub const VERIFIED: &str = "verified";
+    /// Sovereign (full verification)
     pub const SOVEREIGN: &str = "sovereign";
 }
 

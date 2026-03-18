@@ -14,21 +14,28 @@ use tracing::{info, warn};
 
 use crate::ToadStoolConfig;
 
-/// Configuration error type
+/// Configuration error type for runtime config operations.
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    /// Invalid configuration value or structure.
     #[error("Invalid configuration: {0}")]
     Invalid(String),
+    /// Required configuration field is missing.
     #[error("Missing required field: {0}")]
     MissingField(String),
+    /// File I/O error.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    /// TOML parse error.
     #[error("TOML parse error: {0}")]
     Toml(#[from] toml::de::Error),
+    /// JSON parse error.
     #[error("JSON parse error: {0}")]
     Json(#[from] serde_json::Error),
+    /// Socket address parse error.
     #[error("Address parse error: {0}")]
     AddrParse(#[from] std::net::AddrParseError),
+    /// Environment variable error.
     #[error("Environment error: {0}")]
     Env(String),
 }

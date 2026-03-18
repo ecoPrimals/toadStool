@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for protocol configuration types
 
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::config::*;
@@ -23,7 +24,7 @@ fn test_protocol_config_default() {
 #[test]
 fn test_protocol_config_custom_service_id() {
     let config = ProtocolConfig {
-        service_id: "my-service".to_string(),
+        service_id: Arc::from("my-service"),
         default_format: MessageFormat::MessagePack,
         supported_transports: vec![TransportType::TRpc],
         auth_config: None,
@@ -34,7 +35,7 @@ fn test_protocol_config_custom_service_id() {
         health_config: HealthConfig::default(),
     };
 
-    assert_eq!(config.service_id, "my-service");
+    assert_eq!(&*config.service_id, "my-service");
     assert_eq!(config.default_format, MessageFormat::MessagePack);
 }
 
@@ -43,7 +44,7 @@ fn test_protocol_config_with_auth() {
     let auth_config = ServiceAuthConfig::bearer("token123");
 
     let config = ProtocolConfig {
-        service_id: "secure-service".to_string(),
+        service_id: Arc::from("secure-service"),
         default_format: MessageFormat::Json,
         supported_transports: vec![TransportType::Http],
         auth_config: Some(auth_config),
@@ -60,7 +61,7 @@ fn test_protocol_config_with_auth() {
 #[test]
 fn test_protocol_config_multiple_transports() {
     let config = ProtocolConfig {
-        service_id: "multi-transport".to_string(),
+        service_id: Arc::from("multi-transport"),
         default_format: MessageFormat::Json,
         supported_transports: vec![
             TransportType::Http,
@@ -84,7 +85,7 @@ fn test_protocol_config_clone() {
     let config = ProtocolConfig::default();
     let cloned = config.clone();
 
-    assert_eq!(config.service_id, cloned.service_id);
+    assert_eq!(&*config.service_id, &*cloned.service_id);
     assert_eq!(config.default_format, cloned.default_format);
 }
 

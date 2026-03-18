@@ -28,151 +28,94 @@ use toadstool_server::unibin::{
 
 #[tokio::test]
 async fn create_executor_standalone_with_empty_string() {
-    let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "") };
-
-    let result = create_executor("empty-family").await;
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-
-    // Empty string => distributed mode (may fail if Songbird unavailable)
-    match &result {
-        Ok(_) => {}
-        Err(e) => assert!(!e.to_string().is_empty()),
-    }
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some(""), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(create_executor("empty-family"));
+        match &result {
+            Ok(_) => {}
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+    });
 }
 
 #[tokio::test]
 async fn create_executor_standalone_with_false() {
-    let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "false") };
-
-    let result = create_executor("false-family").await;
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-
-    match &result {
-        Ok(_) => {}
-        Err(e) => assert!(!e.to_string().is_empty()),
-    }
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some("false"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(create_executor("false-family"));
+        match &result {
+            Ok(_) => {}
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+    });
 }
 
 #[tokio::test]
 async fn create_executor_includes_family_id_in_instance_id() {
-    let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "1") };
-
-    let result = create_executor("my-unique-family-123").await;
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-
-    assert!(result.is_ok());
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(create_executor("my-unique-family-123"));
+        assert!(result.is_ok());
+    });
 }
 
 #[tokio::test]
 async fn create_executor_distributed_with_songbird_endpoint() {
-    let old_standalone = std::env::var("TOADSTOOL_STANDALONE").ok();
-    let old_songbird = std::env::var("SONGBIRD_ENDPOINT").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::set_var("TOADSTOOL_STANDALONE", "0");
-        std::env::set_var("SONGBIRD_ENDPOINT", "unix:///tmp/songbird.sock");
-    }
-
-    let result = create_executor("songbird-family").await;
-
-    if let Some(v) = old_standalone {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-    if let Some(v) = old_songbird {
-        unsafe { std::env::set_var("SONGBIRD_ENDPOINT", v) };
-    } else {
-        unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
-    }
-
-    match &result {
-        Ok(_) => {}
-        Err(e) => assert!(!e.to_string().is_empty()),
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_STANDALONE", Some("0")),
+            ("SONGBIRD_ENDPOINT", Some("unix:///tmp/songbird.sock")),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("songbird-family"));
+            match &result {
+                Ok(_) => {}
+                Err(e) => assert!(!e.to_string().is_empty()),
+            }
+        },
+    );
 }
 
 #[tokio::test]
 async fn create_executor_distributed_with_coordination_endpoint() {
-    let old_standalone = std::env::var("TOADSTOOL_STANDALONE").ok();
-    let old_songbird = std::env::var("SONGBIRD_ENDPOINT").ok();
-    let old_coord = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::set_var("TOADSTOOL_STANDALONE", "0");
-        std::env::remove_var("SONGBIRD_ENDPOINT");
-        std::env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", "unix:///tmp/coord.sock");
-    }
-
-    let result = create_executor("coord-family").await;
-
-    if let Some(v) = old_standalone {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-    if let Some(v) = old_songbird {
-        unsafe { std::env::set_var("SONGBIRD_ENDPOINT", v) };
-    } else {
-        unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
-    }
-    if let Some(v) = old_coord {
-        unsafe { std::env::set_var("TOADSTOOL_COORDINATION_ENDPOINT", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_COORDINATION_ENDPOINT") };
-    }
-
-    match &result {
-        Ok(_) => {}
-        Err(e) => assert!(!e.to_string().is_empty()),
-    }
+    temp_env::with_vars_unset(["SONGBIRD_ENDPOINT"], || {
+        temp_env::with_vars(
+            [
+                ("TOADSTOOL_STANDALONE", Some("0")),
+                (
+                    "TOADSTOOL_COORDINATION_ENDPOINT",
+                    Some("unix:///tmp/coord.sock"),
+                ),
+            ],
+            || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                let result = rt.block_on(create_executor("coord-family"));
+                match &result {
+                    Ok(_) => {}
+                    Err(e) => assert!(!e.to_string().is_empty()),
+                }
+            },
+        );
+    });
 }
 
 #[tokio::test]
 async fn create_executor_distributed_with_auth_token() {
-    let old_standalone = std::env::var("TOADSTOOL_STANDALONE").ok();
-    let old_token = std::env::var("SONGBIRD_AUTH_TOKEN").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::set_var("TOADSTOOL_STANDALONE", "0");
-        std::env::set_var("SONGBIRD_AUTH_TOKEN", "test-secret-token");
-    }
-
-    let result = create_executor("auth-family").await;
-
-    if let Some(v) = old_standalone {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-    if let Some(v) = old_token {
-        unsafe { std::env::set_var("SONGBIRD_AUTH_TOKEN", v) };
-    } else {
-        unsafe { std::env::remove_var("SONGBIRD_AUTH_TOKEN") };
-    }
-
-    match &result {
-        Ok(_) => {}
-        Err(e) => assert!(!e.to_string().is_empty()),
-    }
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_STANDALONE", Some("0")),
+            ("SONGBIRD_AUTH_TOKEN", Some("test-secret-token")),
+        ],
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("auth-family"));
+            match &result {
+                Ok(_) => {}
+                Err(e) => assert!(!e.to_string().is_empty()),
+            }
+        },
+    );
 }
 
 // ============================================================================
@@ -317,61 +260,34 @@ fn exit_codes_constants() {
 
 #[test]
 fn resolve_family_id_from_env() {
-    let old = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", "test-family") };
-
-    let family_id = toadstool_server::unibin::resolve_family_id(None);
-    assert_eq!(family_id, "test-family");
-
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_FAMILY_ID") };
-    }
+    temp_env::with_var("TOADSTOOL_FAMILY_ID", Some("test-family"), || {
+        let family_id = toadstool_server::unibin::resolve_family_id(None);
+        assert_eq!(family_id, "test-family");
+    });
 }
 
 #[test]
 fn resolve_family_id_override_takes_precedence() {
-    let old_family = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", "env-family") };
-
-    let family_id =
-        toadstool_server::unibin::resolve_family_id(Some("override-family".to_string()));
-    assert_eq!(family_id, "override-family");
-
-    if let Some(v) = old_family {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_FAMILY_ID") };
-    }
+    temp_env::with_var("TOADSTOOL_FAMILY_ID", Some("env-family"), || {
+        let family_id =
+            toadstool_server::unibin::resolve_family_id(Some("override-family".to_string()));
+        assert_eq!(family_id, "override-family");
+    });
 }
 
 #[test]
 fn resolve_family_id_fallback_to_default() {
-    let old1 = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    let old2 = std::env::var("TOADSTOOL_FAMILY").ok();
-    let old3 = std::env::var("BIOMEOS_FAMILY_ID").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::remove_var("TOADSTOOL_FAMILY_ID");
-        std::env::remove_var("TOADSTOOL_FAMILY");
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
-    }
-
-    let family_id = toadstool_server::unibin::resolve_family_id(None);
-    assert_eq!(family_id, "default");
-
-    if let Some(v) = old1 {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", v) };
-    }
-    if let Some(v) = old2 {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY", v) };
-    }
-    if let Some(v) = old3 {
-        unsafe { std::env::set_var("BIOMEOS_FAMILY_ID", v) };
-    }
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_FAMILY_ID",
+            "TOADSTOOL_FAMILY",
+            "BIOMEOS_FAMILY_ID",
+        ],
+        || {
+            let family_id = toadstool_server::unibin::resolve_family_id(None);
+            assert_eq!(family_id, "default");
+        },
+    );
 }
 
 #[test]
@@ -382,18 +298,10 @@ fn resolve_node_id_returns_string() {
 
 #[test]
 fn resolve_node_id_from_env() {
-    let old = std::env::var("TOADSTOOL_NODE_ID").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_NODE_ID", "node-42") };
-
-    let node_id = toadstool_server::unibin::resolve_node_id();
-    assert_eq!(node_id, "node-42");
-
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_NODE_ID", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_NODE_ID") };
-    }
+    temp_env::with_var("TOADSTOOL_NODE_ID", Some("node-42"), || {
+        let node_id = toadstool_server::unibin::resolve_node_id();
+        assert_eq!(node_id, "node-42");
+    });
 }
 
 #[test]
@@ -526,16 +434,11 @@ fn is_platform_constraint_str_protocol_substring() {
 
 #[tokio::test]
 async fn create_executor_family_id_in_instance() {
-    let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "1") };
-    let exec_result = create_executor("family-xyz").await;
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-    assert!(exec_result.is_ok());
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let exec_result = rt.block_on(create_executor("family-xyz"));
+        assert!(exec_result.is_ok());
+    });
 }
 
 #[tokio::test]

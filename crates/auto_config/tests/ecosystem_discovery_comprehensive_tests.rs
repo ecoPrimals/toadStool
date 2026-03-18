@@ -672,29 +672,22 @@ fn test_service_pattern_clone() {
 }
 
 /// Test `discover_services` with `TOADSTOOL_SKIP_DISCOVERY` env (fast mode)
-#[tokio::test]
-async fn test_discover_services_skip_discovery_env() {
-    let old = std::env::var("TOADSTOOL_SKIP_DISCOVERY").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
+#[test]
+fn test_discover_services_skip_discovery_env() {
+    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let mut discoverer = EcosystemDiscoverer::new();
+        let result = rt.block_on(discoverer.discover_services());
 
-    let mut discoverer = EcosystemDiscoverer::new();
-    let result = discoverer.discover_services().await;
-
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_SKIP_DISCOVERY") };
-    }
-
-    assert!(result.is_ok());
-    let services = result.unwrap();
-    assert!(
-        services
-            .discovery_summary
-            .discovery_methods_used
-            .contains(&"fast_mode".to_string())
-    );
+        assert!(result.is_ok());
+        let services = result.unwrap();
+        assert!(
+            services
+                .discovery_summary
+                .discovery_methods_used
+                .contains(&"fast_mode".to_string())
+        );
+    });
 }
 
 /// Test `find_pattern_by_capability` returns correct pattern

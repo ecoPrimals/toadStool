@@ -8,12 +8,16 @@ use crate::ToadStoolResult;
 
 use super::HardwareDetector;
 
-/// Memory information and configuration
+/// Memory information and configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryInfo {
+    /// Total RAM in GB.
     pub total_gb: f64,
+    /// Available RAM in GB.
     pub available_gb: f64,
+    /// Memory type (e.g. DDR4, DDR5).
     pub memory_type: String,
+    /// Memory frequency in MHz.
     pub frequency_mhz: u32,
 }
 

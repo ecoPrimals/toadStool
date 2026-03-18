@@ -8,27 +8,36 @@ use crate::ToadStoolResult;
 
 use super::HardwareDetector;
 
-/// Network information and capabilities
+/// Network information and capabilities.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkInfo {
+    /// Detected network interfaces.
     pub interfaces: Vec<NetworkInterface>,
 }
 
-/// Network interface information
+/// Network interface information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkInterface {
+    /// Interface name (e.g. eth0).
     pub name: String,
+    /// Interface type.
     pub interface_type: NetworkInterfaceType,
+    /// Link speed in Mbps.
     pub speed_mbps: u32,
+    /// Whether the interface is wireless.
     pub is_wireless: bool,
 }
 
-/// Network interface type
+/// Network interface type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NetworkInterfaceType {
+    /// Wired Ethernet.
     Ethernet,
+    /// Wireless WiFi.
     WiFi,
+    /// Loopback interface.
     Loopback,
+    /// Unknown interface type.
     Unknown,
 }
 

@@ -1,15 +1,15 @@
-# Status -- March 18, 2026 (S158b Scope + Deep Debt Execution)
+# Status -- March 18, 2026 (S159 Deep Audit & Execution)
 
 ## Quality Gates
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| `cargo build --all-features` | PASS | Clean build — edition 2024, MSRV 1.85 |
+| `cargo build --all-features` | PASS | Clean build — edition 2024, MSRV 1.85, 58 crates |
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
-| `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 errors, 0 warnings across all 56 crates** (S158: pedantic fixes complete) |
-| `cargo doc --all-features --no-deps` | PASS | 0 warnings |
-| `cargo test --all-features` | PASS | **21,156+ tests, 0 failures**. S158: SIGSEGV in `self_identity_expanded_tests` fixed (GPU detection cached via `OnceLock`). Known: 1 flaky env-race `resolve_family_id_biomeos_fallback` (passes in isolation). |
-| `cargo llvm-cov` | **~83% line** | 182K lines instrumented. Target 90% (unchanged). |
+| `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 errors, 0 warnings across all 58 crates** (S159: 694+ missing_docs filled) |
+| `cargo doc --all-features --no-deps` | PASS | 0 warnings (S159: HTML tag escapes fixed) |
+| `cargo test --workspace` | PASS | **11,956+ tests (default features), 0 failures**. S159: nested-runtime anti-patterns fixed, temp_env migration complete. |
+| `cargo llvm-cov` | **~85% line** | ~182K lines instrumented. Target 90%. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | License compliance | PASS | **AGPL-3.0-or-later**: all Cargo.toml have `license.workspace = true` + all .rs files have SPDX headers |
 | Production panics | PASS | **0 production panic!()** |
@@ -24,7 +24,7 @@
 | Rust edition | **2024** (S157: upgraded from 2021) |
 | MSRV | **1.85.0** (S157: upgraded from 1.82.0) |
 | `.rs` files | **1,896** files, **565,323** lines |
-| Workspace members | **56 crates** |
+| Workspace members | **58 crates** |
 | Clippy lints | **pedantic + nursery** — both enabled at workspace level (S157) |
 | `unsafe` blocks | **~70+** (all SAFETY-documented; hardware-justified only) |
 | `#![forbid(unsafe_code)]` | **29 crates forbid, ~10 deny** (S158: +9 upgraded from deny) |

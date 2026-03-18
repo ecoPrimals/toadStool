@@ -71,16 +71,27 @@ pub fn discover_via_smi() -> Result<Vec<NvidiaSmiSensors>> {
 /// Sensor readings from nvidia-smi.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct NvidiaSmiSensors {
+    /// GPU product name (e.g. "NVIDIA `GeForce` RTX 3090").
     pub name: String,
+    /// PCI BDF address (e.g. "00000000:41:00.0").
     pub bdf: String,
+    /// NVIDIA driver version string.
     pub driver_version: String,
+    /// GPU temperature in degrees Celsius.
     pub temp_c: Option<f64>,
+    /// Current power draw in watts.
     pub power_w: Option<f64>,
+    /// Power limit in watts.
     pub power_limit_w: Option<f64>,
+    /// Graphics clock in `MHz`.
     pub clock_mhz: Option<u64>,
+    /// Memory clock in `MHz`.
     pub mem_clock_mhz: Option<u64>,
+    /// Fan speed as percentage (0–100).
     pub fan_pct: Option<u64>,
+    /// VRAM used in `MiB`.
     pub mem_used_mib: Option<u64>,
+    /// Total VRAM in `MiB`.
     pub mem_total_mib: Option<u64>,
 }
 

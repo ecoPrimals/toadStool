@@ -33,8 +33,11 @@ pub enum BindingState {
 /// Result of a bind/unbind operation.
 #[derive(Debug, serde::Serialize)]
 pub struct BindResult {
+    /// PCI BDF address of the device.
     pub bdf: String,
+    /// Binding state before the operation.
     pub previous: BindingState,
+    /// Binding state after the operation.
     pub current: BindingState,
 }
 

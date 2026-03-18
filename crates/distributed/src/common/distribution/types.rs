@@ -15,21 +15,32 @@ pub enum DistributionStrategy {
     Single,
     /// Distribute equally across all available nodes/providers
     Equal,
-    /// Distribute based on weighted allocation (weights can be percentages 0.0-1.0 or absolute values)
-    Weighted { weights: HashMap<String, f64> },
+    /// Distribute based on weighted allocation.
+    Weighted {
+        /// Target ID to weight mapping.
+        weights: HashMap<String, f64>,
+    },
     /// Optimize for cost (cheapest nodes/providers first)
     CostOptimized,
     /// Optimize for performance (fastest nodes/providers first)
     PerformanceOptimized,
     /// Optimize for latency (closest nodes/providers first)
     LatencyOptimized,
-    /// Regional affinity (prefer specific regions)
-    RegionalAffinity { preferred_regions: Vec<String> },
-    /// Replicate across multiple nodes for redundancy
-    Replicated { replication_factor: u32 },
-    /// Burst to additional resources when primary is saturated
+    /// Regional affinity (prefer specific regions).
+    RegionalAffinity {
+        /// Preferred region IDs.
+        preferred_regions: Vec<String>,
+    },
+    /// Replicate across multiple nodes for redundancy.
+    Replicated {
+        /// Replication factor.
+        replication_factor: u32,
+    },
+    /// Burst to additional resources when primary is saturated.
     Burst {
+        /// Primary target ID.
         primary_target: String,
+        /// Burst target IDs.
         burst_targets: Vec<String>,
     },
 }

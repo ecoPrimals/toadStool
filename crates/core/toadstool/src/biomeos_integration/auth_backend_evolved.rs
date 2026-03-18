@@ -18,43 +18,59 @@ use tokio::sync::RwLock;
 /// Errors for authentication backend
 #[derive(Debug, thiserror::Error)]
 pub enum AuthBackendError {
+    /// No security provider discovered
     #[error("Security provider not found")]
     NoSecurityProvider,
 
+    /// Token request RPC failed
     #[error("Token request failed: {0}")]
     TokenRequestFailed(String),
 
+    /// Token validation failed
     #[error("Token validation failed: {0}")]
     ValidationFailed(String),
 
+    /// Token refresh failed
     #[error("Token refresh failed: {0}")]
     RefreshFailed(String),
 
+    /// Capability discovery or RPC error
     #[error("Capability error: {0}")]
     Capability(#[from] CapabilityError),
 
+    /// JSON serialization error
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 }
 
+/// Result type for auth backend operations
 pub type Result<T> = std::result::Result<T, AuthBackendError>;
 
 /// Token structure (compatible with JWT)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Token {
+    /// JWT or bearer token string
     pub token: String,
+    /// Token type (e.g. Bearer)
     pub token_type: String,
+    /// Validity in seconds
     pub expires_in: u64,
+    /// Token issuer
     pub issuer: String,
+    /// Intended audiences
     pub audience: Vec<String>,
 }
 
 /// Token request parameters
 #[derive(Debug, Serialize)]
 pub struct TokenRequest {
+    /// Subject (user/service) requesting token
     pub subject: String,
+    /// Intended audiences
     pub audience: Vec<String>,
+    /// Requested scopes
     pub scopes: Vec<String>,
+    /// Optional custom expiry in seconds
     pub expires_in: Option<u64>,
 }
 

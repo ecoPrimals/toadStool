@@ -46,6 +46,7 @@ pub struct MonitoringSystem {
 }
 
 impl MonitoringSystem {
+    /// Create and initialize a new monitoring system
     pub async fn new(config: MonitoringConfig) -> Result<Self> {
         info!("📊 Initializing ToadStool Monitoring System");
 
@@ -64,6 +65,7 @@ impl MonitoringSystem {
         Ok(system)
     }
 
+    /// Start a monitoring session for the given target
     pub async fn start_monitoring(
         &self,
         target: MonitoringTarget,
@@ -99,6 +101,7 @@ impl MonitoringSystem {
         Ok(session_id)
     }
 
+    /// Stop a monitoring session
     pub async fn stop_monitoring(&self, session_id: Uuid) -> Result<()> {
         info!("⏹️  Stopping monitoring session: {}", session_id);
 
@@ -113,6 +116,7 @@ impl MonitoringSystem {
         Ok(())
     }
 
+    /// Collect and return current dashboard data
     pub async fn get_dashboard_data(&self) -> Result<DashboardData> {
         let timestamp = std::time::SystemTime::now();
 
@@ -137,6 +141,7 @@ impl MonitoringSystem {
         })
     }
 
+    /// Query metrics for a time range
     pub async fn query_metrics(
         &self,
         metric_name: String,
@@ -160,11 +165,13 @@ impl MonitoringSystem {
         )
     }
 
+    /// Get statistical summary for a metric
     pub async fn get_metric_stats(&self, metric_name: &str) -> Result<Option<MetricStats>> {
         let metrics_store = self.metrics_store.read().await;
         Ok(metrics_store.stats.get(metric_name).cloned())
     }
 
+    /// Add an alert rule to the monitoring system
     pub async fn add_alert_rule(&self, rule: AlertRule) -> Result<()> {
         info!("🚨 Adding alert rule: {}", rule.name);
 
@@ -176,6 +183,7 @@ impl MonitoringSystem {
         Ok(())
     }
 
+    /// Export metrics in Prometheus text format
     pub async fn export_prometheus(&self) -> Result<String> {
         let metrics_store = self.metrics_store.read().await;
         Ok(display::format_prometheus(&metrics_store.series))

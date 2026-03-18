@@ -44,15 +44,25 @@ pub enum UniversalJobType {
     /// Local execution
     Local,
     /// Remote `ToadStool` execution
-    RemoteToadStool { endpoint: String },
+    RemoteToadStool {
+        /// Remote endpoint URL.
+        endpoint: String,
+    },
     /// Ecosystem tool execution
-    EcosystemTool { tool_name: String, endpoint: String },
+    EcosystemTool {
+        /// Tool name.
+        tool_name: String,
+        /// Tool endpoint URL.
+        endpoint: String,
+    },
     /// Recursive `ToadStool` hosting
     RecursiveHosting {
+        /// Hosting config for child instance.
         toadstool_config: ToadStoolHostingConfig,
     },
     /// OS-layer compatibility execution
     OSLayerCompatibility {
+        /// Compatibility mode.
         compatibility_mode: CompatibilityMode,
     },
 
@@ -115,18 +125,28 @@ pub enum ExecutionTarget {
     Local,
     /// Execute on specific `ToadStool` instance
     ToadStool {
+        /// Instance ID.
         instance_id: String,
+        /// Instance endpoint URL.
         endpoint: String,
     },
     /// Execute on ecosystem service
     EcosystemService {
+        /// Service name.
         service_name: String,
+        /// Service endpoint URL.
         endpoint: String,
     },
     /// Execute on best available resource
-    BestAvailable { constraints: ResourceConstraints },
+    BestAvailable {
+        /// Placement constraints.
+        constraints: ResourceConstraints,
+    },
     /// Execute with load balancing
-    LoadBalanced { strategy: LoadBalancingStrategy },
+    LoadBalanced {
+        /// Load balancing strategy.
+        strategy: LoadBalancingStrategy,
+    },
 }
 
 // JobPriority is now imported from toadstool core (canonical definition in universal.rs)
@@ -151,13 +171,18 @@ pub struct DependencyGraph {
     reverse_graph: HashMap<Uuid, Vec<Uuid>>,
 }
 
-/// Job metadata for tracking and analytics
+/// Job metadata for tracking and analytics.
 #[derive(Debug, Clone)]
 pub struct JobMetadata {
+    /// Job identifier.
     pub job_id: Uuid,
+    /// Job type for scheduling decisions.
     pub job_type: UniversalJobType,
+    /// Creation timestamp.
     pub created_at: SystemTime,
+    /// Priority for queue ordering.
     pub priority: JobPriority,
+    /// Estimated duration for scheduling (optional).
     pub estimated_duration: Option<Duration>,
 }
 
@@ -169,42 +194,62 @@ pub struct ResourceRequirementIndex {
     gpu_jobs: Vec<Uuid>,
 }
 
-/// Load balancing strategies
+/// Load balancing strategies for distributed job routing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LoadBalancingStrategy {
+    /// Rotate through nodes in order.
     RoundRobin,
+    /// Prefer node with fewest active connections.
     LeastConnections,
-    WeightedRoundRobin { weights: HashMap<String, u32> },
+    /// Round-robin with per-node weights.
+    WeightedRoundRobin {
+        /// Node ID to weight mapping.
+        weights: HashMap<String, u32>,
+    },
+    /// Select based on CPU/memory availability.
     ResourceAware,
+    /// Select based on observed latency.
     LatencyBased,
 }
 
-/// Compatibility mode for execution
+/// Compatibility mode for cross-platform execution.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum CompatibilityMode {
+    /// Native execution on host OS.
     Native,
+    /// Containerized execution.
     Container,
+    /// Emulated execution (e.g. QEMU).
     Emulated,
+    /// Hybrid native + emulated.
     Hybrid,
+    /// Linux compatibility layer.
     LinuxCompat,
+    /// Windows compatibility layer.
     WindowsCompat,
+    /// macOS compatibility layer.
     MacOSCompat,
+    /// Container compatibility layer.
     ContainerCompat,
-    LegacyCompat { system_type: String },
+    /// Legacy system compatibility.
+    LegacyCompat {
+        /// Legacy system type identifier.
+        system_type: String,
+    },
 }
 
-/// Configuration for `ToadStool` hosting
+/// Configuration for `ToadStool` hosting.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ToadStoolHostingConfig {
-    /// Enable hosting
+    /// Enable hosting.
     pub enabled: bool,
-    /// Hosting mode
+    /// Hosting mode (standalone, child, etc.).
     pub mode: String,
-    /// Resource limits
+    /// Resource limits (key-value).
     pub resource_limits: HashMap<String, u64>,
-    /// Security settings
+    /// Security settings (key-value).
     pub security_settings: HashMap<String, String>,
-    /// Resource allocation
+    /// Resource allocation for the instance.
     pub resource_allocation: Option<crate::types::resources::ResourceAllocation>,
 }
 
@@ -243,6 +288,7 @@ impl Default for UniversalJobQueue {
 }
 
 impl UniversalJobQueue {
+    /// Creates an empty job queue with default dependency graph and resource index.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -253,6 +299,7 @@ impl UniversalJobQueue {
         }
     }
 
+    /// Adds a job to the queue, resolving dependencies and resource index.
     pub async fn add_job(&mut self, job: UniversalJob) -> ToadStoolResult<()> {
         let job_id = job.job_id;
         let dependencies = job.dependencies.clone();
@@ -269,6 +316,7 @@ impl UniversalJobQueue {
         Ok(())
     }
 
+    /// Returns the total number of jobs in all priority queues.
     #[must_use]
     pub fn total_jobs(&self) -> usize {
         self.priority_queues
@@ -285,6 +333,7 @@ impl Default for DependencyGraph {
 }
 
 impl DependencyGraph {
+    /// Creates an empty dependency graph.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -293,6 +342,7 @@ impl DependencyGraph {
         }
     }
 
+    /// Adds a job and its dependencies to the graph.
     pub fn add_job(&mut self, job_id: Uuid, dependencies: Vec<Uuid>) -> ToadStoolResult<()> {
         self.graph.insert(job_id, dependencies.clone());
 
@@ -305,6 +355,7 @@ impl DependencyGraph {
 }
 
 impl JobMetadata {
+    /// Builds metadata from a universal job.
     #[must_use]
     pub fn from_job(job: &UniversalJob) -> Self {
         Self {
@@ -324,6 +375,7 @@ impl Default for ResourceRequirementIndex {
 }
 
 impl ResourceRequirementIndex {
+    /// Creates an empty resource requirement index.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -333,6 +385,7 @@ impl ResourceRequirementIndex {
         }
     }
 
+    /// Indexes a job by its resource requirements for matching.
     pub fn add_job(
         &mut self,
         job_id: Uuid,

@@ -151,7 +151,10 @@ impl IntrusionDetectionSystem {
 /// Activity types for intrusion detection
 #[derive(Debug, Clone)]
 pub enum ActivityType {
+    /// Normal request.
     Request,
+    /// Failed authentication or authorization attempt.
     FailedAttempt,
+    /// Suspicious pattern (rate, sequence, etc.).
     SuspiciousPattern,
 }

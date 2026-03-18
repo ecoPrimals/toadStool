@@ -135,59 +135,67 @@ pub use natural_language::{
     SecurityPreference, UsagePattern,
 };
 
-// Common result types
+/// Result type for auto-configuration operations.
 pub type ToadStoolResult<T> = Result<T, ToadStoolError>;
 
-/// Errors that can occur during auto-configuration
+/// Errors that can occur during auto-configuration.
 #[derive(Debug, thiserror::Error)]
 pub enum ToadStoolError {
+    /// Configuration validation or application failed.
     #[error("Configuration error: {0}")]
     Configuration(String),
 
+    /// Hardware detection failed.
     #[error("Hardware detection error: {0}")]
     Hardware(String),
 
+    /// Network discovery or connectivity failed.
     #[error("Network error: {0}")]
     Network(String),
 
+    /// Ecosystem service discovery failed.
     #[error("Ecosystem discovery error: {0}")]
     EcosystemDiscovery(String),
 
+    /// I/O error during config file operations.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// JSON parsing failed.
     #[error("JSON parsing error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// External HTTP not supported; use Songbird for external HTTP.
     #[error("External HTTP not supported - use Songbird for external HTTP")]
     ExternalHttpNotSupported,
 
+    /// Other auto-configuration error.
     #[error("Other error: {0}")]
     Other(String),
 }
 
 impl ToadStoolError {
-    /// Create a configuration error
+    /// Creates a configuration error.
     pub fn configuration<S: Into<String>>(message: S) -> Self {
         Self::Configuration(message.into())
     }
 
-    /// Create a hardware detection error
+    /// Creates a hardware detection error.
     pub fn hardware<S: Into<String>>(message: S) -> Self {
         Self::Hardware(message.into())
     }
 
-    /// Create a network error
+    /// Creates a network error.
     pub fn network<S: Into<String>>(message: S) -> Self {
         Self::Network(message.into())
     }
 
-    /// Create an ecosystem discovery error
+    /// Creates an ecosystem discovery error.
     pub fn ecosystem_discovery<S: Into<String>>(message: S) -> Self {
         Self::EcosystemDiscovery(message.into())
     }
 
-    /// Create an other error
+    /// Creates an other error.
     pub fn other<S: Into<String>>(message: S) -> Self {
         Self::Other(message.into())
     }
@@ -387,15 +395,22 @@ impl Default for ConfigBuilder {
     }
 }
 
-/// System information summary for display and debugging
+/// System information summary for display and debugging.
 #[derive(Debug, Clone)]
 pub struct SystemSummary {
+    /// CPU model and core count.
     pub cpu_info: String,
+    /// Memory size summary.
     pub memory_info: String,
+    /// GPU count or type.
     pub gpu_info: String,
+    /// Storage capacity summary.
     pub storage_info: String,
+    /// Discovered ecosystem services.
     pub ecosystem_services: Vec<String>,
+    /// Performance class (e.g. low, medium, high).
     pub performance_class: String,
+    /// Recommended runtime types.
     pub optimal_runtimes: Vec<String>,
 }
 

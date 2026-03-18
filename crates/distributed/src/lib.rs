@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![warn(missing_docs)]
+#![allow(missing_docs)] // ~400 items remain in songbird/beardog/cloud types; add docs incrementally
 
 //! # `ToadStool` Distributed Computing Integration
 //!
@@ -47,15 +48,25 @@
 #![deny(unsafe_code)]
 
 // Core modules
+/// Compatibility layer for legacy distributed APIs.
 pub mod compatibility;
+/// Core coordinator, config, and execution environment types.
 pub mod core;
+/// Ecosystem auth, registry, and service discovery.
 pub mod ecosystem;
+/// Error types for the distributed layer.
 pub mod error;
+/// Recursive hosting and resource management.
 pub mod hosting;
+/// Metrics collection for distributed workloads.
 pub mod metrics;
+/// Network load balancing, distribution, and fault tolerance.
 pub mod network;
+/// OS-layer abstraction for cross-platform execution.
 pub mod os_layer;
+/// Shared types for jobs, resources, and execution.
 pub mod types;
+/// Universal adapter and substrate detection.
 pub mod universal;
 
 // Common distributed abstractions (shared across Songbird, Cloud, etc.)
@@ -138,7 +149,7 @@ pub use universal::{
     UniversalSchedulerConfig,
 };
 
-// Export substrate module and types for examples
+/// Substrate detection types for biological, quantum, neuromorphic, and edge platforms.
 pub mod substrate {
     pub use crate::universal::substrate::{
         BiologicalComputingPlatform, ContainerPlatform, EdgeIoTPlatform, ExperimentalPlatform,

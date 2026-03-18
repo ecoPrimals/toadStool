@@ -183,6 +183,7 @@ impl EndpointSource for FallbackSource {
 pub struct MDNSSource;
 
 impl MDNSSource {
+    /// Create a new mDNS discovery source.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -343,7 +344,7 @@ impl ConfigFileSource {
         }
     }
 
-    /// Create with default config path
+    /// Create with default config path (`config/toadstool.toml`).
     #[must_use]
     pub fn default_path() -> Self {
         Self::new("config/toadstool.toml")
@@ -465,40 +466,37 @@ pub fn development_sources() -> Vec<std::sync::Arc<dyn EndpointSource>> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
-
     use super::*;
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_environment_source() {
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT", "http://test:9999") };
-
-        let source = EnvironmentSource::default();
-        let result = source.resolve("test_capability").await.unwrap();
-
-        assert_eq!(result, Some("http://test:9999".to_string()));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("TOADSTOOL_TEST_CAPABILITY_ENDPOINT") };
+    #[test]
+    fn test_environment_source() {
+        temp_env::with_var(
+            "TOADSTOOL_TEST_CAPABILITY_ENDPOINT",
+            Some("http://test:9999"),
+            || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let source = EnvironmentSource::default();
+                    let result = source.resolve("test_capability").await.unwrap();
+                    assert_eq!(result, Some("http://test:9999".to_string()));
+                });
+            },
+        );
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_fallback_source() {
-        // EVOLVED: FallbackSource now requires environment variables
-        // Set env var for test
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("SONGBIRD_URL", "http://test-songbird:8081") };
-        let source = FallbackSource::new();
-        let result = source.resolve("ai_processing").await.unwrap();
-
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains("8081"));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("SONGBIRD_URL") };
+    #[test]
+    fn test_fallback_source() {
+        temp_env::with_var("SONGBIRD_URL", Some("http://test-songbird:8081"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = FallbackSource::new();
+                let result = source.resolve("ai_processing").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.starts_with("http://"));
+                assert!(endpoint.contains("8081"));
+            });
+        });
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -546,29 +544,28 @@ mod tests {
         assert_eq!(source.env_var_name("storage"), "TEST_STORAGE_ENDPOINT");
     }
 
-    #[tokio::test]
-    async fn test_environment_source_no_env() {
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("TOADSTOOL_NONEXISTENT_ENDPOINT") };
-
-        let source = EnvironmentSource::default();
-        let result = source.resolve("nonexistent").await.unwrap();
-
-        assert_eq!(result, None);
+    #[test]
+    fn test_environment_source_no_env() {
+        temp_env::with_var_unset("TOADSTOOL_NONEXISTENT_ENDPOINT", || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = EnvironmentSource::default();
+                let result = source.resolve("nonexistent").await.unwrap();
+                assert_eq!(result, None);
+            });
+        });
     }
 
-    #[tokio::test]
-    async fn test_environment_source_custom_prefix() {
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("MYAPP_SERVICE_ENDPOINT", "http://custom:7777") };
-
-        let source = EnvironmentSource::new("MYAPP_");
-        let result = source.resolve("service").await.unwrap();
-
-        assert_eq!(result, Some("http://custom:7777".to_string()));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("MYAPP_SERVICE_ENDPOINT") };
+    #[test]
+    fn test_environment_source_custom_prefix() {
+        temp_env::with_var("MYAPP_SERVICE_ENDPOINT", Some("http://custom:7777"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = EnvironmentSource::new("MYAPP_");
+                let result = source.resolve("service").await.unwrap();
+                assert_eq!(result, Some("http://custom:7777".to_string()));
+            });
+        });
     }
 
     #[test]
@@ -586,69 +583,61 @@ mod tests {
         assert!(source.fallbacks.is_empty() || !source.fallbacks.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_fallback_source_authentication() {
-        // EVOLVED: FallbackSource requires env var
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("AUTHENTICATION_URL", "http://auth:9090") };
-        let source = FallbackSource::new();
-        let result = source.resolve("authentication").await.unwrap();
-
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains("9090"));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("AUTHENTICATION_URL") };
+    #[test]
+    fn test_fallback_source_authentication() {
+        temp_env::with_var("AUTHENTICATION_URL", Some("http://auth:9090"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = FallbackSource::new();
+                let result = source.resolve("authentication").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.starts_with("http://"));
+                assert!(endpoint.contains("9090"));
+            });
+        });
     }
 
-    #[tokio::test]
-    async fn test_fallback_source_persistent_storage() {
-        // EVOLVED: FallbackSource requires env var
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("STORAGE_URL", "http://storage:5432") };
-        let source = FallbackSource::new();
-        let result = source.resolve("persistent_storage").await.unwrap();
-
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.contains("5432"));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("STORAGE_URL") };
+    #[test]
+    fn test_fallback_source_persistent_storage() {
+        temp_env::with_var("STORAGE_URL", Some("http://storage:5432"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = FallbackSource::new();
+                let result = source.resolve("persistent_storage").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.contains("5432"));
+            });
+        });
     }
 
-    #[tokio::test]
-    async fn test_fallback_source_nlp() {
-        // EVOLVED: FallbackSource requires env var
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("NLP_URL", "http://nlp:7777") };
-        let source = FallbackSource::new();
-        let result = source.resolve("natural_language_processing").await.unwrap();
-
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.contains("7777"));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("NLP_URL") };
+    #[test]
+    fn test_fallback_source_nlp() {
+        temp_env::with_var("NLP_URL", Some("http://nlp:7777"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = FallbackSource::new();
+                let result = source.resolve("natural_language_processing").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.contains("7777"));
+            });
+        });
     }
 
-    #[tokio::test]
-    async fn test_fallback_source_orchestration() {
-        // EVOLVED: FallbackSource requires env var
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::set_var("BEARDOG_URL", "http://beardog:8082") };
-        let source = FallbackSource::new();
-        let result = source.resolve("service_orchestration").await.unwrap();
-
-        assert!(result.is_some());
-        let endpoint = result.unwrap();
-        assert!(endpoint.starts_with("http://"));
-
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { env::remove_var("BEARDOG_URL") };
+    #[test]
+    fn test_fallback_source_orchestration() {
+        temp_env::with_var("BEARDOG_URL", Some("http://beardog:8082"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let source = FallbackSource::new();
+                let result = source.resolve("service_orchestration").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.starts_with("http://"));
+            });
+        });
     }
 
     #[tokio::test]

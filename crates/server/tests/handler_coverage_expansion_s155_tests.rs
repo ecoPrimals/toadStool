@@ -554,7 +554,7 @@ async fn shader_compile_status_with_compile_id() {
 async fn ollama_inference_missing_model() {
     let handler = test_handler();
     let params = serde_json::json!({ "prompt": "hello" });
-    let request = mk_request("ollama.inference", Some(params), 1);
+    let request = mk_request("inference.execute", Some(params), 1);
     let response = handler.handle_request(&request).await;
 
     assert!(response.result.is_none());
@@ -567,7 +567,7 @@ async fn ollama_inference_missing_model() {
 async fn ollama_inference_missing_prompt() {
     let handler = test_handler();
     let params = serde_json::json!({ "model": "llama2" });
-    let request = mk_request("ollama.inference", Some(params), 1);
+    let request = mk_request("inference.execute", Some(params), 1);
     let response = handler.handle_request(&request).await;
 
     assert!(response.result.is_none());
@@ -584,7 +584,7 @@ async fn ollama_inference_with_extra_params() {
         "prompt": "test",
         "params": { "temperature": 0.7 }
     });
-    let request = mk_request("ollama.inference", Some(params), 1);
+    let request = mk_request("inference.execute", Some(params), 1);
     let response = handler.handle_request(&request).await;
 
     assert!(response.result.is_some() || response.error.is_some());
@@ -593,7 +593,7 @@ async fn ollama_inference_with_extra_params() {
 #[tokio::test]
 async fn ollama_load_missing_model() {
     let handler = test_handler();
-    let request = mk_request("ollama.load", None, 1);
+    let request = mk_request("inference.load_model", None, 1);
     let response = handler.handle_request(&request).await;
 
     assert!(response.result.is_none());
@@ -604,7 +604,7 @@ async fn ollama_load_missing_model() {
 #[tokio::test]
 async fn ollama_unload_missing_model() {
     let handler = test_handler();
-    let request = mk_request("ollama.unload", None, 1);
+    let request = mk_request("inference.unload_model", None, 1);
     let response = handler.handle_request(&request).await;
 
     assert!(response.result.is_none());
@@ -615,7 +615,7 @@ async fn ollama_unload_missing_model() {
 #[tokio::test]
 async fn ollama_list_models_returns_structure() {
     let handler = test_handler();
-    let request = mk_request("ollama.list_models", None, 1);
+    let request = mk_request("inference.list_models", None, 1);
     let response = handler.handle_request(&request).await;
 
     assert!(response.result.is_some() || response.error.is_some());

@@ -38,19 +38,41 @@ impl Default for CommunicationSettings {
 /// Connection types for legacy systems
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConnectionType {
-    /// Direct serial connection
-    DirectSerial { port: String, baud_rate: u32 },
-    /// Telnet connection
-    Telnet { host: String, port: u16 },
-    /// SSH connection
-    SSH { host: String, port: u16 },
-    /// IBM 3270 terminal emulation
-    IBM3270 { host: String, port: u16 },
-    /// Local emulation
+    /// Direct serial connection.
+    DirectSerial {
+        /// Serial port path (e.g. /dev/ttyUSB0).
+        port: String,
+        /// Baud rate for serial communication.
+        baud_rate: u32,
+    },
+    /// Telnet connection.
+    Telnet {
+        /// Host address.
+        host: String,
+        /// Port number.
+        port: u16,
+    },
+    /// SSH connection.
+    SSH {
+        /// Host address.
+        host: String,
+        /// Port number.
+        port: u16,
+    },
+    /// IBM 3270 terminal emulation.
+    IBM3270 {
+        /// Host address.
+        host: String,
+        /// Port number.
+        port: u16,
+    },
+    /// Local emulation (no network).
     LocalEmulation,
-    /// Custom connection
+    /// Custom connection type.
     Custom {
+        /// Connection type name.
         name: String,
+        /// Additional parameters.
         parameters: HashMap<String, String>,
     },
 }
@@ -81,8 +103,11 @@ pub enum AuthenticationType {
     PublicKey,
     /// Certificate
     Certificate,
-    /// Custom authentication
-    Custom { name: String },
+    /// Custom authentication provider.
+    Custom {
+        /// Provider name.
+        name: String,
+    },
 }
 
 /// Connection settings for mainframes
@@ -111,8 +136,11 @@ pub enum MainframeConnectionType {
     SFTP,
     /// HTTP/HTTPS
     HTTP,
-    /// Custom connection
-    Custom { name: String },
+    /// Custom connection type.
+    Custom {
+        /// Connection type name.
+        name: String,
+    },
 }
 
 /// Programming interface for embedded systems
@@ -139,6 +167,9 @@ pub enum ProgrammingInterfaceType {
     Parallel,
     /// Serial programmer
     Serial,
-    /// Custom interface
-    Custom { name: String },
+    /// Custom programming interface.
+    Custom {
+        /// Interface name.
+        name: String,
+    },
 }

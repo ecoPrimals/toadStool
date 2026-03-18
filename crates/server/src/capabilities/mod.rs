@@ -66,11 +66,17 @@ pub struct PrimalCapabilities {
 /// System resources (self-knowledge)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemResources {
+    /// Number of CPU cores.
     pub cpu_cores: usize,
+    /// Total memory in bytes.
     pub total_memory_bytes: u64,
+    /// Available memory in bytes.
     pub available_memory_bytes: u64,
+    /// List of GPU devices.
     pub gpu_devices: Vec<GpuDevice>,
+    /// System architecture (e.g. x86_64).
     pub architecture: String,
+    /// Operating system (e.g. linux).
     pub os: String,
 }
 
@@ -80,10 +86,15 @@ pub struct SystemResources {
 /// DRM sysfs and enable coralReef's `GpuContext::from_descriptor(vendor, arch, driver)`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuDevice {
+    /// Device index.
     pub device_id: usize,
+    /// GPU model name.
     pub name: String,
-    pub vendor: String, // "nvidia", "amd", "intel", "apple"
+    /// Vendor (e.g. nvidia, amd, intel, apple).
+    pub vendor: String,
+    /// VRAM in bytes.
     pub memory_bytes: u64,
+    /// Compute capability string (e.g. CUDA sm_86).
     pub compute_capability: Option<String>,
     /// DRM render node path, e.g. `/dev/dri/renderD128`
     #[serde(skip_serializing_if = "Option::is_none")]

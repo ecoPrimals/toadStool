@@ -12,18 +12,26 @@ use tracing::{error, info, warn};
 /// Circuit breaker states
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CircuitState {
+    /// Normal operation; requests pass through.
     Closed,
+    /// Failures exceeded threshold; requests rejected.
     Open,
+    /// Testing recovery; limited requests allowed.
     HalfOpen,
 }
 
 /// Circuit breaker configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CircuitBreakerConfig {
+    /// Failures before opening circuit.
     pub failure_threshold: u32,
+    /// Successes in half-open before closing.
     pub success_threshold: u32,
+    /// Time before open→half-open transition.
     pub timeout: Duration,
+    /// Rolling window for failure counting.
     pub rolling_window: Duration,
+    /// Max concurrent requests in half-open.
     pub half_open_max_requests: u32,
 }
 
@@ -53,17 +61,32 @@ pub struct CircuitBreaker {
 /// Circuit breaker error types
 #[derive(Debug, thiserror::Error)]
 pub enum CircuitBreakerError {
+    /// Circuit is open; requests rejected.
     #[error("Circuit breaker is open for service: {service}")]
-    CircuitOpen { service: String },
+    CircuitOpen {
+        /// Service name.
+        service: String,
+    },
 
+    /// Half-open limit exceeded.
     #[error("Half-open limit exceeded for service: {service}")]
-    HalfOpenLimitExceeded { service: String },
+    HalfOpenLimitExceeded {
+        /// Service name.
+        service: String,
+    },
 
+    /// Underlying service failure.
     #[error("Service failure for {service}: {error}")]
-    ServiceFailure { service: String, error: String },
+    ServiceFailure {
+        /// Service name.
+        service: String,
+        /// Error message.
+        error: String,
+    },
 }
 
 impl CircuitBreaker {
+    /// Creates a new circuit breaker for the given service.
     #[must_use]
     pub fn new(service_name: impl Into<String>, config: CircuitBreakerConfig) -> Self {
         #[allow(clippy::cast_possible_truncation)]
@@ -79,6 +102,7 @@ impl CircuitBreaker {
         }
     }
 
+    /// Executes an operation through the circuit breaker.
     pub async fn execute<F, T, E>(&self, operation: F) -> Result<T, CircuitBreakerError>
     where
         F: std::future::Future<Output = Result<T, E>>,
@@ -213,10 +237,12 @@ impl CircuitBreaker {
         *self.last_failure_time.write().await = Some(Instant::now());
     }
 
+    /// Returns the current circuit state.
     pub async fn get_state(&self) -> CircuitState {
         self.state.read().await.clone()
     }
 
+    /// Returns the current failure count in the window.
     pub async fn get_failure_count(&self) -> u32 {
         *self.failure_count.read().await
     }

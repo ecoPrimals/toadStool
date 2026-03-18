@@ -5,6 +5,7 @@
 //! including `ProtocolMessage`, `ServiceInfo`, `ServiceEndpoint`, and their operations.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 // Removed unused import: ServiceAuthConfig
 use toadstool_integration_protocols::types::*;
@@ -18,9 +19,9 @@ use uuid::Uuid;
 fn test_protocol_message_creation() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "request".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("request"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({"action": "test"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -31,9 +32,9 @@ fn test_protocol_message_creation() {
         priority: MessagePriority::Normal,
     };
 
-    assert_eq!(message.message_type, "request");
-    assert_eq!(message.source, "service-a");
-    assert_eq!(message.destination, Some("service-b".to_string()));
+    assert_eq!(&*message.message_type, "request");
+    assert_eq!(&*message.source, "service-a");
+    assert_eq!(message.destination.as_deref(), Some("service-b"));
 }
 
 #[test]
@@ -44,9 +45,9 @@ fn test_protocol_message_with_headers() {
 
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "request".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("request"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({}),
         headers: headers.clone(),
         timestamp: std::time::SystemTime::now(),
@@ -69,30 +70,30 @@ fn test_protocol_message_with_correlation_id() {
     let correlation_id = Uuid::new_v4();
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "response".to_string(),
-        source: "service-b".to_string(),
-        destination: Some("service-a".to_string()),
+        message_type: Arc::from("response"),
+        source: Arc::from("service-b"),
+        destination: Some(Arc::from("service-a")),
         payload: serde_json::json!({"result": "ok"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: Some(correlation_id),
-        reply_to: Some("service-a".to_string()),
+        reply_to: Some(Arc::from("service-a")),
         ttl: None,
         priority: MessagePriority::Normal,
     };
 
     assert_eq!(message.correlation_id, Some(correlation_id));
-    assert_eq!(message.reply_to, Some("service-a".to_string()));
+    assert_eq!(message.reply_to.as_deref(), Some("service-a"));
 }
 
 #[test]
 fn test_protocol_message_with_ttl() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "request".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("request"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -110,8 +111,8 @@ fn test_protocol_message_with_ttl() {
 fn test_protocol_message_with_priority() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "alert".to_string(),
-        source: "service-a".to_string(),
+        message_type: Arc::from("alert"),
+        source: Arc::from("service-a"),
         destination: None,
         payload: serde_json::json!({"alert": "critical"}),
         headers: HashMap::new(),
@@ -130,8 +131,8 @@ fn test_protocol_message_with_priority() {
 fn test_protocol_message_broadcast() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "broadcast".to_string(),
-        source: "service-a".to_string(),
+        message_type: Arc::from("broadcast"),
+        source: Arc::from("service-a"),
         destination: None, // No specific destination = broadcast
         payload: serde_json::json!({"announcement": "test"}),
         headers: HashMap::new(),
@@ -150,9 +151,9 @@ fn test_protocol_message_broadcast() {
 fn test_protocol_message_serialization() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("test"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({"key": "value"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -168,16 +169,16 @@ fn test_protocol_message_serialization() {
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
     assert_eq!(message.id, deserialized.id);
-    assert_eq!(message.message_type, deserialized.message_type);
+    assert_eq!(&*message.message_type, &*deserialized.message_type);
 }
 
 #[test]
 fn test_protocol_message_clone() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("test"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -190,7 +191,7 @@ fn test_protocol_message_clone() {
 
     let cloned = message.clone();
     assert_eq!(message.id, cloned.id);
-    assert_eq!(message.message_type, cloned.message_type);
+    assert_eq!(&*message.message_type, &*cloned.message_type);
 }
 
 // ============================================================================
@@ -210,8 +211,8 @@ fn test_service_info_creation() {
         capabilities: vec![],
     };
 
-    assert_eq!(service.id, "service-123");
-    assert_eq!(service.name, "test-service");
+    assert_eq!(&*service.id, "service-123");
+    assert_eq!(&*service.name, "test-service");
     assert_eq!(service.version, "1.0.0");
 }
 
@@ -320,8 +321,8 @@ fn test_service_info_serialization() {
     let deserialized: ServiceInfo =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
-    assert_eq!(service.id, deserialized.id);
-    assert_eq!(service.name, deserialized.name);
+    assert_eq!(&*service.id, &*deserialized.id);
+    assert_eq!(&*service.name, &*deserialized.name);
 }
 
 #[test]
@@ -338,8 +339,8 @@ fn test_service_info_clone() {
     };
 
     let cloned = service.clone();
-    assert_eq!(service.id, cloned.id);
-    assert_eq!(service.name, cloned.name);
+    assert_eq!(&*service.id, &*cloned.id);
+    assert_eq!(&*service.name, &*cloned.name);
 }
 
 // ============================================================================
@@ -520,9 +521,9 @@ fn test_message_with_service_info() {
 
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "service_info".to_string(),
-        source: "discovery".to_string(),
-        destination: Some("client".to_string()),
+        message_type: Arc::from("service_info"),
+        source: Arc::from("discovery"),
+        destination: Some(Arc::from("client")),
         payload: serde_json::to_value(&service).expect("Failed to serialize service"),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -536,7 +537,7 @@ fn test_message_with_service_info() {
     // Verify service can be embedded in message payload
     let service_from_message: ServiceInfo =
         serde_json::from_value(message.payload).expect("Failed to deserialize service");
-    assert_eq!(service_from_message.id, service.id);
+    assert_eq!(&*service_from_message.id, &*service.id);
 }
 
 // ============================================================================

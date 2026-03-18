@@ -129,8 +129,8 @@ fn test_service_info_construction() {
         last_seen: std::time::SystemTime::now(),
         capabilities: vec!["cap1".to_string()],
     };
-    assert_eq!(service.id, "svc-1");
-    assert_eq!(service.name, "test-service");
+    assert_eq!(&*service.id, "svc-1");
+    assert_eq!(&*service.name, "test-service");
     assert_eq!(service.capabilities.len(), 1);
 }
 

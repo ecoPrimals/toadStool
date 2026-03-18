@@ -216,22 +216,32 @@ impl FractalRuntime {
 #[derive(Debug, Clone)]
 pub enum BarracudaIntegration {
     /// Direct GPU access (bare metal, GPU passthrough)
-    Direct { note: String },
+    Direct {
+        /// Human-readable note about access mode.
+        note: String,
+    },
 
     /// GPU via host OS (middleware layer)
     ViaHost {
+        /// Human-readable note about access mode.
         note: String,
+        /// Host OS name if known.
         host_os: Option<String>,
     },
 
     /// GPU via cloud APIs (cloud layer)
     ViaCloud {
+        /// Human-readable note about access mode.
         note: String,
+        /// Cloud provider if known.
         provider: Option<String>,
     },
 
     /// No GPU access (CPU fallback)
-    None { note: String },
+    None {
+        /// Human-readable note about fallback.
+        note: String,
+    },
 }
 
 impl BarracudaIntegration {

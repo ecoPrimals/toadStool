@@ -12,163 +12,258 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum LanguageRuntime {
-    // Systems languages
+    /// Rust systems language runtime.
     Rust {
+        /// Rust version (e.g. 1.75).
         version: String,
+        /// Target triple (e.g. x86_64-unknown-linux-gnu).
         target_triple: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// C language runtime.
     C {
+        /// Compiler (e.g. gcc, clang).
         compiler: String,
+        /// C standard (e.g. c17).
         standard: String,
+        /// Optimization flags.
         optimizations: Vec<String>,
     },
+    /// C++ language runtime.
     Cpp {
+        /// Compiler (e.g. g++, clang++).
         compiler: String,
+        /// C++ standard (e.g. c++20).
         standard: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Go language runtime.
     Go {
+        /// Go version.
         version: String,
+        /// GOOS (e.g. linux).
         goos: String,
+        /// GOARCH (e.g. amd64).
         goarch: String,
     },
+    /// Zig language runtime.
     Zig {
+        /// Zig version.
         version: String,
+        /// Target architecture.
         target: String,
+        /// Build mode (Debug, ReleaseSafe, etc.).
         mode: String,
     },
-
-    // Memory-managed languages
+    /// Java memory-managed runtime.
     Java {
+        /// Java version.
         version: String,
+        /// JVM (e.g. openjdk, graalvm).
         vm: String,
+        /// Garbage collector (e.g. g1, zgc).
         gc: String,
     },
+    /// C# runtime.
     CSharp {
+        /// .NET version.
         version: String,
+        /// Runtime (e.g. dotnet).
         runtime: String,
+        /// Framework (e.g. net8.0).
         framework: String,
     },
+    /// Python interpreter runtime.
     Python {
+        /// Python version.
         version: String,
+        /// Implementation (cpython, pypy, etc.).
         implementation: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// JavaScript/Node runtime.
     JavaScript {
+        /// Engine (v8, spidermonkey, etc.).
         engine: String,
+        /// Version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Ruby interpreter.
     Ruby {
+        /// Ruby version.
         version: String,
+        /// Implementation (mri, jruby, etc.).
         implementation: String,
     },
+    /// Kotlin JVM language.
     Kotlin {
+        /// Kotlin version.
         version: String,
+        /// Target (jvm, js, native).
         target: String,
     },
+    /// Scala JVM language.
     Scala {
+        /// Scala version.
         version: String,
+        /// Platform (jvm, js, native).
         platform: String,
     },
-
-    // Functional languages
+    /// Haskell functional language.
     Haskell {
+        /// Compiler (ghc, etc.).
         compiler: String,
+        /// Version.
         version: String,
+        /// Language extensions.
         extensions: Vec<String>,
     },
+    /// OCaml functional language.
     OCaml {
+        /// OCaml version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Erlang/OTP runtime.
     Erlang {
+        /// Erlang version.
         version: String,
+        /// OTP version.
         otp_version: String,
     },
+    /// Elixir on BEAM.
     Elixir {
+        /// Elixir version.
         version: String,
+        /// OTP version.
         otp_version: String,
     },
+    /// F# functional language.
     FSharp {
+        /// F# version.
         version: String,
+        /// .NET runtime.
         runtime: String,
     },
+    /// Lisp dialect.
     Lisp {
+        /// Dialect (common-lisp, scheme, etc.).
         dialect: String,
+        /// Implementation (sbcl, racket, etc.).
         implementation: String,
     },
-
-    // Scripting languages
+    /// Bash shell scripting.
     Bash {
+        /// Bash version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// PowerShell scripting.
     PowerShell {
+        /// PowerShell version.
         version: String,
+        /// Platform (core, windows).
         platform: String,
     },
+    /// Lua scripting language.
     Lua {
+        /// Lua version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Perl scripting.
     Perl {
+        /// Perl version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    // Domain-specific languages
+    /// R statistical language.
     R {
+        /// R version.
         version: String,
+        /// Installed packages.
         packages: Vec<String>,
     },
+    /// MATLAB numerical computing.
     Matlab {
+        /// MATLAB version.
         version: String,
+        /// Installed toolboxes.
         toolboxes: Vec<String>,
     },
+    /// Mathematica symbolic computing.
     Mathematica {
+        /// Mathematica version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Julia scientific computing.
     Julia {
+        /// Julia version.
         version: String,
+        /// Installed packages.
         packages: Vec<String>,
     },
-
-    // Emerging languages
+    /// Mojo AI language.
     Mojo {
+        /// Mojo version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Carbon experimental C++ successor.
     Carbon {
+        /// Carbon version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Gleam functional language.
     Gleam {
+        /// Gleam version.
         version: String,
+        /// Target (erlang, javascript).
         target: String,
     },
+    /// Crystal compiled Ruby-like language.
     Crystal {
+        /// Crystal version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    // Assembly languages
+    /// Assembly language.
     Assembly {
+        /// Target architecture.
         architecture: String,
+        /// Assembler (nasm, gas, etc.).
         assembler: String,
+        /// Output format (elf, mach-o, etc.).
         format: String,
     },
-
-    // Esoteric languages
+    /// Brainfuck esoteric language.
     Brainfuck {
+        /// Interpreter identifier.
         interpreter: String,
     },
+    /// Whitespace esoteric language.
     Whitespace {
+        /// Interpreter identifier.
         interpreter: String,
     },
+    /// Shakespeare esoteric language.
     Shakespeare {
+        /// Interpreter identifier.
         interpreter: String,
     },
 }

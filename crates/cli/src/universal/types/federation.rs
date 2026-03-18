@@ -21,17 +21,24 @@ use uuid::Uuid;
 /// - Automatic cleanup when no longer needed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationPeer {
+    /// Unique peer ID
     pub peer_id: Uuid,
+    /// Network endpoint (host:port)
     pub endpoint: SocketAddr,
+    /// Capabilities this peer offers
     #[serde(serialize_with = "serialize_arc_vec")]
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub capabilities: Vec<Arc<str>>,
+    /// Resources shared with this peer
     #[serde(serialize_with = "serialize_arc_vec")]
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub shared_resources: Vec<Arc<str>>,
+    /// Connection status
     pub status: FederationStatus,
+    /// Last heartbeat timestamp
     #[serde(with = "toadstool_common::system_time_serde")]
     pub last_heartbeat: std::time::SystemTime,
+    /// Trust level of this peer
     pub trust_level: TrustLevel,
 }
 
@@ -59,20 +66,30 @@ where
 /// Federation connection status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FederationStatus {
+    /// Establishing connection
     Connecting,
+    /// Connected
     Connected,
+    /// Syncing state
     Syncing,
+    /// Ready for workload dispatch
     Ready,
+    /// Disconnected
     Disconnected,
+    /// Error with message
     Error(String),
 }
 
 /// Trust level for federation peers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TrustLevel {
+    /// Trust level unknown
     Unknown,
+    /// Untrusted peer
     Untrusted,
+    /// Cryptographically verified
     Verified,
+    /// Sovereign (full verification)
     Sovereign,
 }
 
@@ -81,16 +98,21 @@ pub enum TrustLevel {
 /// **Zero-Copy**: Uses `Arc<str>` for all string fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationRequest {
+    /// Target peer ID
     pub peer_id: Uuid,
+    /// Federation mode (peer-to-peer, mesh, etc.)
     #[serde(serialize_with = "serialize_arc_str")]
     #[serde(deserialize_with = "deserialize_arc_str")]
     pub mode: Arc<str>,
+    /// Capabilities to offer
     #[serde(serialize_with = "serialize_arc_vec")]
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub capabilities: Vec<Arc<str>>,
+    /// Resources to share
     #[serde(serialize_with = "serialize_arc_vec")]
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub shared_resources: Vec<Arc<str>>,
+    /// Protocol version
     #[serde(serialize_with = "serialize_arc_str")]
     #[serde(deserialize_with = "deserialize_arc_str")]
     pub protocol_version: Arc<str>,
@@ -226,13 +248,17 @@ mod tests {
 /// Clone operations are cheap (just rc increments).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationResponse {
+    /// Responding peer ID
     pub peer_id: Uuid,
+    /// Protocol version supported
     #[serde(serialize_with = "serialize_arc_str")]
     #[serde(deserialize_with = "deserialize_arc_str")]
     pub protocol_version: Arc<str>,
+    /// Capabilities the peer accepts
     #[serde(serialize_with = "serialize_arc_vec")]
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub capabilities: Vec<Arc<str>>,
+    /// Resources accepted for sharing
     #[serde(serialize_with = "serialize_arc_vec")]
     #[serde(deserialize_with = "deserialize_arc_vec")]
     pub accepted_resources: Vec<Arc<str>>,

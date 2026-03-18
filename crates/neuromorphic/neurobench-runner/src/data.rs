@@ -61,8 +61,11 @@ pub struct Dataset {
 /// Dataset split type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DatasetSplit {
+    /// Training partition for model fitting.
     Train,
+    /// Validation partition for hyperparameter tuning.
     Validation,
+    /// Test partition for final evaluation.
     #[default]
     Test,
 }

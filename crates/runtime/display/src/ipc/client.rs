@@ -35,6 +35,11 @@ use super::types::{DisplayCapabilitiesInfo, JsonRpcRequest, JsonRpcResponse};
 use crate::window::{CreateWindowRequest, WindowId, WindowInfo};
 use crate::{DisplayError, Result};
 use std::net::SocketAddr;
+
+/// Default TCP address for display IPC fallback (tests and TCP mode).
+/// Used when Unix socket discovery fails; tests use this for mock endpoints.
+#[allow(dead_code)] // Used in #[cfg(test)] modules
+const DEFAULT_IPC_TCP_ADDR: &str = "127.0.0.1:12345";
 use std::path::PathBuf;
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::{TcpStream, UnixStream};
@@ -512,7 +517,7 @@ mod tests {
     #[test]
     fn test_ipc_endpoint_tcp_variant() {
         use std::net::SocketAddr;
-        let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let addr: SocketAddr = DEFAULT_IPC_TCP_ADDR.parse().unwrap();
         let ep = IpcEndpoint::TcpLocal(addr);
         let s = format!("{ep:?}");
         assert!(s.contains("TcpLocal") || s.contains("127"));
@@ -607,7 +612,7 @@ mod tests {
     fn test_endpoint_string_tcp() {
         use std::net::SocketAddr;
         let (client_half, _server_half) = tokio::io::duplex(1024);
-        let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let addr: SocketAddr = DEFAULT_IPC_TCP_ADDR.parse().unwrap();
         let ep = IpcEndpoint::TcpLocal(addr);
         let client = DisplayClient::new_for_test(client_half, ep);
         let s = client.endpoint_string();

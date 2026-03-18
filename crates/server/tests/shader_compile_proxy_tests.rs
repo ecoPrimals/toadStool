@@ -163,7 +163,7 @@ async fn test_shader_compile_capabilities_supported_archs_empty_without_coralree
 #[tokio::test]
 async fn test_provenance_method_returns_data() {
     let handler = test_handler();
-    let request = mk_request("toadstool.provenance", None);
+    let request = mk_request("provenance.query", None);
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none(), "Provenance should succeed");
     let result = response.result.expect("result present");
@@ -176,7 +176,7 @@ async fn test_provenance_method_returns_data() {
 #[tokio::test]
 async fn test_provenance_via_semantic_resolution() {
     let handler = test_handler();
-    let request = mk_request("toadstool.provenance", None);
+    let request = mk_request("provenance.query", None);
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none());
     let result = response.result.expect("result present");

@@ -112,6 +112,9 @@ pub enum PeripheralType {
     USB,
     /// Ethernet
     Ethernet,
-    /// Custom peripheral
-    Custom { name: String },
+    /// Custom peripheral type.
+    Custom {
+        /// Peripheral type name.
+        name: String,
+    },
 }

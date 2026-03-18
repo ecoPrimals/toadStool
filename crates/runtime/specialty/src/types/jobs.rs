@@ -42,220 +42,303 @@ pub struct LegacyJob {
     pub timeout: Duration,
 }
 
-/// Target format for compiled code
+/// Target format for compiled code.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TargetFormat {
+    /// Standalone executable.
     Executable,
+    /// Object file (.o).
     ObjectFile,
+    /// Static or dynamic library.
     Library,
+    /// Mainframe load module.
     LoadModule,
 }
 
-/// Terminal type for interactive sessions
+/// Terminal type for interactive sessions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TerminalType {
+    /// DEC VT100.
     VT100,
+    /// DEC VT220.
     VT220,
+    /// IBM 3270 block mode.
     IBM3270,
+    /// ANSI escape sequences.
     ANSI,
+    /// Dumb terminal (line-oriented).
     Dumb,
 }
 
-/// Transfer type for file transfers
+/// Transfer direction for file transfers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TransferType {
+    /// Upload to legacy system.
     Upload,
+    /// Download from legacy system.
     Download,
+    /// Bidirectional sync.
     Bidirectional,
 }
 
-/// Monitoring type for system monitoring
+/// System metric to monitor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MonitoringType {
+    /// CPU utilization.
     CPUUsage,
+    /// Memory usage.
     MemoryUsage,
+    /// I/O activity.
     IOActivity,
+    /// Network traffic.
     NetworkActivity,
+    /// Running process list.
     ProcessList,
 }
 
-/// Administration type for system administration
+/// System administration task type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AdministrationType {
+    /// User account management.
     UserManagement,
+    /// System configuration changes.
     SystemConfiguration,
+    /// Security policy settings.
     SecuritySettings,
+    /// Performance tuning.
     PerformanceTuning,
 }
 
-/// Paper tape format
+/// Paper tape or card deck encoding format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PaperTapeFormat {
+    /// ASCII 7-bit.
     ASCII,
+    /// Raw binary.
     Binary,
+    /// EBCDIC mainframe encoding.
     EBCDIC,
 }
 
-/// ROM format
+/// ROM/EPROM image format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ROMFormat {
+    /// Raw binary.
     Raw,
+    /// Intel HEX.
     IntelHex,
+    /// Motorola S-record.
     MotorolaS,
 }
 
-/// Optimization level for compilation
+/// Optimization level for compilation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OptimizationLevel {
+    /// No optimization.
     None,
+    /// Basic optimizations.
     Basic,
+    /// Aggressive optimizations.
     Aggressive,
+    /// Optimize for size.
     Size,
+    /// Optimize for speed.
     Speed,
 }
 
-/// Types of legacy jobs
+/// Types of legacy jobs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LegacyJobType {
-    /// Compile legacy source code
+    /// Compile legacy source code.
     Compilation {
+        /// Source language.
         language: LegacyLanguage,
+        /// Desired output format.
         target_format: TargetFormat,
     },
-    /// Execute pre-compiled program
+    /// Execute pre-compiled program.
     Execution {
+        /// Program binary format.
         program_format: ProgramFormat,
+        /// Command-line arguments.
         arguments: Vec<String>,
     },
-    /// Interactive session
+    /// Interactive terminal session.
     InteractiveSession {
+        /// Terminal emulation type.
         terminal_type: TerminalType,
+        /// Session configuration.
         session_config: SessionConfig,
     },
-    /// File transfer
+    /// File transfer to/from legacy system.
     FileTransfer {
+        /// Transfer direction.
         transfer_type: TransferType,
+        /// Source path.
         source_path: PathBuf,
+        /// Destination path.
         destination_path: PathBuf,
     },
-    /// System monitoring
+    /// System monitoring job.
     SystemMonitoring {
+        /// Metric to monitor.
         monitoring_type: MonitoringType,
+        /// Monitoring duration.
         duration: Duration,
     },
-    /// System administration
+    /// System administration task.
     SystemAdministration {
+        /// Administration category.
         admin_type: AdministrationType,
+        /// Commands to execute.
         commands: Vec<String>,
     },
 }
 
-/// Legacy programming languages
+/// Legacy programming languages supported for compilation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LegacyLanguage {
+    /// COBOL.
     COBOL,
+    /// FORTRAN 77.
     #[serde(rename = "FORTRAN_77")]
     Fortran77,
+    /// FORTRAN IV.
     #[serde(rename = "FORTRAN_IV")]
     FortranIv,
+    /// Pascal.
     PASCAL,
+    /// PL/I.
     #[serde(rename = "PL_I")]
     PlI,
+    /// RPG (Report Program Generator).
     RPG,
+    /// BASIC.
     BASIC,
+    /// 6502 assembly.
     #[serde(rename = "Assembly_6502")]
     Assembly6502,
+    /// Z80 assembly.
     #[serde(rename = "Assembly_Z80")]
     AssemblyZ80,
+    /// 8080 assembly.
     #[serde(rename = "Assembly_8080")]
     Assembly8080,
+    /// 8086 assembly.
     #[serde(rename = "Assembly_8086")]
     Assembly8086,
+    /// 68000 assembly.
     #[serde(rename = "Assembly_68000")]
     Assembly68000,
+    /// PDP-11 assembly.
     #[serde(rename = "Assembly_PDP11")]
     AssemblyPdp11,
+    /// IBM System/360 assembly.
     #[serde(rename = "Assembly_System360")]
     AssemblySystem360,
+    /// K&R C.
     #[serde(rename = "C_K_R")]
     Ckr,
+    /// JCL (Job Control Language).
     JCL,
+    /// REXX scripting.
     REXX,
+    /// CLIST (Command List).
     CLIST,
+    /// DCL (Digital Command Language).
     DCL,
+    /// Bourne shell.
     #[serde(rename = "Shell_Bourne")]
     ShellBourne,
+    /// C shell.
     #[serde(rename = "Shell_Csh")]
     ShellCsh,
+    /// PLC ladder logic.
     #[serde(rename = "Ladder_Logic")]
     LadderLogic,
+    /// IEC 61131-3 Structured Text.
     #[serde(rename = "Structured_Text")]
     StructuredText,
+    /// IEC 61131-3 Function Block.
     #[serde(rename = "Function_Block")]
     FunctionBlock,
+    /// IEC 61131-3 Instruction List.
     #[serde(rename = "Instruction_List")]
     InstructionList,
 }
 
-/// Source code or program for legacy job
+/// Source code or program input for a legacy job.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LegacyJobSource {
-    /// Source code text
+    /// Inline source code.
     SourceCode {
+        /// Programming language.
         language: LegacyLanguage,
+        /// Source text.
         code: String,
     },
-    /// Source file path
+    /// Source file on disk.
     SourceFile {
+        /// Programming language.
         language: LegacyLanguage,
+        /// Path to source file.
         file_path: PathBuf,
     },
-    /// Binary program
+    /// Pre-built binary program.
     BinaryProgram {
+        /// Binary format.
         format: ProgramFormat,
+        /// Raw program bytes.
         data: Vec<u8>,
     },
-    /// JCL (Job Control Language) for mainframes
+    /// JCL for mainframe jobs.
     JCL {
+        /// JCL text.
         jcl_text: String,
+        /// Dataset name to content mapping.
         datasets: HashMap<String, Vec<u8>>,
     },
-    /// Paper tape or card deck
+    /// Paper tape or card deck input.
     PaperTape {
+        /// Encoding format.
         format: PaperTapeFormat,
+        /// Raw tape/card data.
         data: Vec<u8>,
     },
-    /// ROM/EPROM image
+    /// ROM/EPROM image.
     ROMImage {
+        /// Image format.
         format: ROMFormat,
+        /// Image bytes.
         data: Vec<u8>,
+        /// Load address for the image.
         load_address: u32,
     },
 }
 
-/// Program formats for legacy systems
+/// Executable/binary formats for legacy systems.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProgramFormat {
-    /// Intel HEX format
+    /// Intel HEX format.
     IntelHex,
-    /// Motorola S-record
+    /// Motorola S-record.
     MotorolaS,
-    /// Binary executable
+    /// Raw binary executable.
     Binary,
-    /// CP/M COM file
+    /// CP/M COM file.
     #[serde(rename = "CPM_COM")]
     CpmCom,
-    /// DOS EXE file
+    /// DOS EXE file.
     #[serde(rename = "DOS_EXE")]
     DosExe,
-    /// VAX executable
+    /// VAX executable.
     #[serde(rename = "VAX_EXE")]
     VaxExe,
-    /// IBM load module
+    /// IBM mainframe load module.
     #[serde(rename = "IBM_LoadModule")]
     IbmLoadModule,
-    /// Paper tape binary
+    /// Paper tape binary format.
     PaperTapeBinary,
-    /// ROM/EPROM image
+    /// ROM/EPROM image.
     ROMImage,
 }

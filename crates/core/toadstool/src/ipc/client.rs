@@ -31,9 +31,12 @@ use tokio::io::{AsyncRead, AsyncWrite};
 /// **Deep Debt**: Agnostic wrapper over all transport types
 #[derive(Debug)]
 pub enum IpcStream {
+    /// Filesystem Unix socket stream.
     Unix(tokio::net::UnixStream),
+    /// Abstract Unix socket stream (Linux/Android).
     #[cfg(target_os = "linux")]
     Abstract(tokio::net::UnixStream),
+    /// TCP stream (cross-device fallback).
     Tcp(tokio::net::TcpStream),
 }
 

@@ -5,100 +5,83 @@
 
 use toadstool::discovery::{OrchestrationClient, discover_orchestration};
 
-#[tokio::test]
-async fn test_discover_orchestration_with_env_var() {
-    // Set environment variable
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://localhost:8082") };
+#[test]
+fn test_discover_orchestration_with_env_var() {
+    temp_env::with_var("SONGBIRD_ENDPOINT", Some("http://localhost:8082"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(discover_orchestration());
 
-    let result = discover_orchestration().await;
-
-    // Should either succeed or fail gracefully
-    match result {
-        Ok(endpoint) => {
-            assert!(!endpoint.is_empty());
-            assert!(endpoint.contains("http"));
+        match result {
+            Ok(endpoint) => {
+                assert!(!endpoint.is_empty());
+                assert!(endpoint.contains("http"));
+            }
+            Err(e) => {
+                assert!(e.to_string().contains("discover") || e.to_string().contains("endpoint"));
+            }
         }
-        Err(e) => {
-            // Expected when service not actually running
-            assert!(e.to_string().contains("discover") || e.to_string().contains("endpoint"));
-        }
-    }
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+    });
 }
 
-#[tokio::test]
-async fn test_discover_orchestration_without_env() {
-    // Ensure no environment variable
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+#[test]
+fn test_discover_orchestration_without_env() {
+    temp_env::with_var_unset("SONGBIRD_ENDPOINT", || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(discover_orchestration());
 
-    let result = discover_orchestration().await;
-
-    // Should try discovery methods
-    match result {
-        Ok(_) => {
-            // Found via mDNS or other discovery
+        match result {
+            Ok(_) => {}
+            Err(e) => {
+                assert!(!e.to_string().is_empty());
+            }
         }
-        Err(e) => {
-            // Expected when no orchestration service available
-            assert!(!e.to_string().is_empty());
-        }
-    }
+    });
 }
 
 #[tokio::test]
 async fn test_orchestration_client_creation() {
     let client = OrchestrationClient::new();
-
-    // Client should be created successfully
     assert!(std::mem::size_of_val(&client) > 0);
 }
 
-#[tokio::test]
-async fn test_orchestration_client_service_discovery() {
+#[test]
+fn test_orchestration_client_service_discovery() {
     let client = OrchestrationClient::new();
-
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://test-service:8082") };
-
-    let result = client.discover_service_discovery().await;
-
-    if let Ok(endpoint) = result {
-        assert!(endpoint.contains("http"));
-    } else {
-        // Expected when service not running
-    }
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+    temp_env::with_var(
+        "SONGBIRD_ENDPOINT",
+        Some("http://test-service:8082"),
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(client.discover_service_discovery());
+            if let Ok(endpoint) = result {
+                assert!(endpoint.contains("http"));
+            }
+        },
+    );
 }
 
-#[tokio::test]
-async fn test_orchestration_client_load_balancing() {
+#[test]
+fn test_orchestration_client_load_balancing() {
     let client = OrchestrationClient::new();
-
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://load-balancer:8082") };
-
-    let result = client.discover_load_balancing().await;
-
-    if let Ok(endpoint) = result {
-        assert!(endpoint.contains("http"));
-    } else {
-        // Expected when service not running
-    }
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+    temp_env::with_var(
+        "SONGBIRD_ENDPOINT",
+        Some("http://load-balancer:8082"),
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(client.discover_load_balancing());
+            if let Ok(endpoint) = result {
+                assert!(endpoint.contains("http"));
+            }
+        },
+    );
 }
 
 #[tokio::test]
 async fn test_orchestration_client_any_capability() {
     let client = OrchestrationClient::new();
-
     let result = client.discover_any_orchestration().await;
-
-    // Should attempt discovery
     match result {
-        Ok(_) | Err(_) => {
-            // Either succeeds or fails gracefully
-        }
+        Ok(_) | Err(_) => {}
     }
 }
 
@@ -112,12 +95,11 @@ async fn test_concurrent_discovery_calls() {
 
     for i in 0..20 {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let endpoint = format!("http://service-{i}:8082");
         let handle = tokio::spawn(async move {
             let _permit = permit;
-
-            unsafe { std::env::set_var("SONGBIRD_ENDPOINT", format!("http://service-{i}:8082")) };
             let _ = discover_orchestration().await;
-            unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+            drop(endpoint);
         });
         handles.push(handle);
     }
@@ -127,124 +109,102 @@ async fn test_concurrent_discovery_calls() {
     }
 }
 
-#[tokio::test]
-async fn test_discovery_error_handling() {
-    // Test with invalid endpoint
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "invalid://not-a-real-url") };
+#[test]
+fn test_discovery_error_handling() {
+    temp_env::with_var(
+        "SONGBIRD_ENDPOINT",
+        Some("invalid://not-a-real-url"),
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(discover_orchestration());
 
-    let result = discover_orchestration().await;
-
-    // Should handle invalid URL gracefully
-    match result {
-        Ok(_) => {
-            // Unexpected but not necessarily wrong
-        }
-        Err(e) => {
-            // Expected error
-            assert!(!e.to_string().is_empty());
-        }
-    }
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+            match result {
+                Ok(_) => {}
+                Err(e) => {
+                    assert!(!e.to_string().is_empty());
+                }
+            }
+        },
+    );
 }
 
 #[test]
 fn test_orchestration_client_size() {
     use std::mem;
-
     let size = mem::size_of::<OrchestrationClient>();
-
-    // Should be reasonably sized (not storing large data)
     assert!(size < 1024, "Client size too large: {size} bytes");
 }
 
-#[tokio::test]
-async fn test_discovery_with_multiple_endpoints() {
-    // Test fallback behavior with multiple endpoints
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://primary:8082") };
-
+#[test]
+fn test_discovery_with_multiple_endpoints() {
     let client = OrchestrationClient::new();
+    temp_env::with_var("SONGBIRD_ENDPOINT", Some("http://primary:8082"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let service_result = rt.block_on(client.discover_service_discovery());
+        let load_result = rt.block_on(client.discover_load_balancing());
+        let any_result = rt.block_on(client.discover_any_orchestration());
 
-    // Try multiple discovery methods
-    let service_result = client.discover_service_discovery().await;
-    let load_result = client.discover_load_balancing().await;
-    let any_result = client.discover_any_orchestration().await;
+        let attempted_count = [
+            service_result.is_ok() || service_result.is_err(),
+            load_result.is_ok() || load_result.is_err(),
+            any_result.is_ok() || any_result.is_err(),
+        ]
+        .iter()
+        .filter(|&&x| x)
+        .count();
 
-    // At least one should attempt discovery
-    let attempted_count = [
-        service_result.is_ok() || service_result.is_err(),
-        load_result.is_ok() || load_result.is_err(),
-        any_result.is_ok() || any_result.is_err(),
-    ]
-    .iter()
-    .filter(|&&x| x)
-    .count();
-
-    assert_eq!(attempted_count, 3);
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+        assert_eq!(attempted_count, 3);
+    });
 }
 
-#[tokio::test]
-async fn test_discovery_timeout_behavior() {
-    use tokio::time::{Duration, timeout};
+#[test]
+fn test_discovery_timeout_behavior() {
+    temp_env::with_var(
+        "SONGBIRD_ENDPOINT",
+        Some("http://slow-service:8082"),
+        || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(async {
+                tokio::time::timeout(std::time::Duration::from_secs(5), discover_orchestration())
+                    .await
+            });
 
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://slow-service:8082") };
-
-    let result = timeout(Duration::from_secs(5), discover_orchestration()).await;
-
-    match result {
-        Ok(inner_result) => {
-            // Discovery completed within timeout
-            match inner_result {
-                Ok(_) | Err(_) => {
-                    // Either succeeds or fails, but doesn't hang
+            match result {
+                Ok(inner_result) => match inner_result {
+                    Ok(_) | Err(_) => {}
+                },
+                Err(e) => {
+                    panic!("Discovery timed out - should fail faster: {e}");
                 }
             }
-        }
-        Err(e) => {
-            panic!("Discovery timed out - should fail faster: {e}");
-        }
-    }
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+        },
+    );
 }
 
-#[tokio::test]
-async fn test_discovery_with_empty_endpoint() {
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "") };
+#[test]
+fn test_discovery_with_empty_endpoint() {
+    temp_env::with_var("SONGBIRD_ENDPOINT", Some(""), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(discover_orchestration());
 
-    let result = discover_orchestration().await;
-
-    // Should handle empty endpoint gracefully
-    match result {
-        Ok(_) => {
-            // Falls back to other discovery methods
+        match result {
+            Ok(_) => {}
+            Err(e) => {
+                assert!(!e.to_string().is_empty());
+            }
         }
-        Err(e) => {
-            // Expected error for invalid configuration
-            assert!(!e.to_string().is_empty());
-        }
-    }
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+    });
 }
 
-#[tokio::test]
-async fn test_orchestration_client_reuse() {
-    // Test that client can be reused multiple times
+#[test]
+fn test_orchestration_client_reuse() {
     let client = OrchestrationClient::new();
-
-    unsafe { std::env::set_var("SONGBIRD_ENDPOINT", "http://reusable:8082") };
-
-    // Make multiple calls
-    for _ in 0..5 {
-        let _ = client.discover_any_orchestration().await;
-    }
-
-    // Client should still be usable
-    let final_result = client.discover_service_discovery().await;
-    assert!(final_result.is_ok() || final_result.is_err());
-
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+    temp_env::with_var("SONGBIRD_ENDPOINT", Some("http://reusable:8082"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        for _ in 0..5 {
+            let _ = rt.block_on(client.discover_any_orchestration());
+        }
+        let final_result = rt.block_on(client.discover_service_discovery());
+        assert!(final_result.is_ok() || final_result.is_err());
+    });
 }

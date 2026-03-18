@@ -12,20 +12,34 @@ use std::fmt;
 #[non_exhaustive]
 pub enum CudaSource {
     /// CUDA C++ source code
-    CudaCpp { source: String, entry_point: String },
+    CudaCpp {
+        /// Source code string.
+        source: String,
+        /// Kernel entry point name.
+        entry_point: String,
+    },
 
     /// PTX (NVIDIA's assembly-like IR)
-    Ptx { source: String, entry_point: String },
+    Ptx {
+        /// PTX source string.
+        source: String,
+        /// Kernel entry point name.
+        entry_point: String,
+    },
 
     /// Compiled CUDA binary (cubin)
     CuBin {
+        /// Binary blob.
         binary: Vec<u8>,
+        /// Kernel entry point name.
         entry_point: String,
     },
 
     /// Path to CUDA source file
     File {
+        /// Path to source file.
         path: std::path::PathBuf,
+        /// Kernel entry point name.
         entry_point: String,
     },
 }

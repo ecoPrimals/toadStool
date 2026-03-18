@@ -53,10 +53,10 @@ from application to bare metal.
 | Test coverage | Target 90%, current ~83% | 🔄 D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
-### Key Numbers (S158)
+### Key Numbers (S159)
 
-- **56 workspace crates**, 1,896 `.rs` files, 565,323 lines
-- **21,156+ tests** (0 failures)
+- **58 workspace crates**, 1,896 `.rs` files, 565,323 lines
+- **11,956+ tests** (default features, 0 failures)
 - **96+ JSON-RPC methods** (`domain.operation` semantic naming)
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
 - **VFIO interface** — BAR0, DMA, power management (nvpmu)

@@ -243,7 +243,33 @@ impl SemanticMethodRegistry {
         // PROVENANCE DOMAIN - Cross-spring evolution tracking
         // ═══════════════════════════════════════════════════════════
 
-        add_mapping("toadstool.provenance", "toadstool_provenance");
+        add_mapping("toadstool.provenance", "toadstool_provenance"); // deprecated: primal name as domain
+        add_mapping("provenance.get", "toadstool_provenance");
+        add_mapping("provenance.query", "toadstool_provenance"); // canonical
+
+        // ═══════════════════════════════════════════════════════════
+        // INFERENCE DOMAIN - Model inference (capability, not product)
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("ollama.list_models", "ollama_list_models"); // deprecated: product name as domain
+        add_mapping("inference.list_models", "ollama_list_models"); // canonical
+        add_mapping("ollama.inference", "ollama_inference"); // deprecated
+        add_mapping("inference.execute", "ollama_inference"); // canonical
+        add_mapping("ollama.load", "ollama_load"); // deprecated
+        add_mapping("inference.load_model", "ollama_load"); // canonical
+        add_mapping("ollama.unload", "ollama_unload"); // deprecated
+        add_mapping("inference.unload_model", "ollama_unload"); // canonical
+
+        // ═══════════════════════════════════════════════════════════
+        // GPU DOMAIN - Query operations (verb form per naming standard)
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping("gpu.info", "gpu_info"); // deprecated: noun → verb
+        add_mapping("gpu.query_info", "gpu_info"); // canonical
+        add_mapping("gpu.memory", "gpu_memory"); // deprecated: noun → verb
+        add_mapping("gpu.query_memory", "gpu_memory"); // canonical
+        add_mapping("gpu.telemetry", "gpu_telemetry"); // deprecated: noun → verb
+        add_mapping("gpu.query_telemetry", "gpu_telemetry"); // canonical
 
         Self { aliases, reverse }
     }

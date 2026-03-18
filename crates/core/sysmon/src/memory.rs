@@ -6,10 +6,15 @@ use crate::error::{Result, SysmonError};
 /// System memory information (all values in bytes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MemoryInfo {
+    /// Total physical RAM.
     pub total: u64,
+    /// Memory available for new allocations (includes reclaimable).
     pub available: u64,
+    /// Memory in use (total − available).
     pub used: u64,
+    /// Total swap space.
     pub swap_total: u64,
+    /// Free swap space.
     pub swap_free: u64,
 }
 

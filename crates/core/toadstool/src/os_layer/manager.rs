@@ -113,6 +113,7 @@ impl PlatformInfo {
 pub use super::compat::CompatibilityLayer;
 
 impl OSLayerManager {
+    /// Creates a new OS layer manager with the given config.
     #[must_use]
     pub fn new(config: OSLayerConfig) -> Self {
         Self {

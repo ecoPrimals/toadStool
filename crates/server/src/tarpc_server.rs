@@ -27,8 +27,8 @@ pub struct ToadStoolTarpcServer {
     start_time: Instant,
     /// Service version (`Arc<str>` avoids allocation on spawn-per-connection clone)
     version: Arc<str>,
-    /// Active workloads
-    workloads: Arc<RwLock<std::collections::HashMap<String, WorkloadResult>>>,
+    /// Active workloads (Arc<str> key = zero-copy clone for entry/insert)
+    workloads: Arc<RwLock<std::collections::HashMap<Arc<str>, WorkloadResult>>>,
     /// Workload executor (real implementation, not mock)
     executor: Arc<dyn WorkloadExecutor + Send + Sync>,
     /// Error count for monitoring
@@ -280,7 +280,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         _context: Context,
         submission: WorkloadSubmission,
     ) -> Result<WorkloadResult, String> {
-        info!("Submitting workload: {}", submission.workload_id);
+        info!("Submitting workload: {}", submission.workload_id.as_ref());
 
         // Execute via real executor (not mock)
         let result = self.executor.execute(submission).await.inspect_err(|_| {
@@ -288,11 +288,12 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         })?;
 
         // Store result
-        // ✅ OPTIMIZED: Use Entry API, use result.workload_id (avoids cloning full submission)
+        // ✅ OPTIMIZED: Use Entry API; Arc::clone(workload_id) and result.clone() are cheap
+        // (Bytes clone = refcount bump, Arc<str> clone = refcount bump)
         {
             let mut workloads = self.workloads.write().await;
             workloads
-                .entry(result.workload_id.clone())
+                .entry(Arc::clone(&result.workload_id))
                 .or_insert_with(|| result.clone());
         }
 
@@ -305,7 +306,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
         workload_id: String,
     ) -> Result<WorkloadResult, String> {
         let workloads = self.workloads.read().await;
-        workloads.get(&workload_id).cloned().ok_or_else(|| {
+        workloads.get(workload_id.as_str()).cloned().ok_or_else(|| {
             self.error_count.fetch_add(1, Ordering::Relaxed);
             format!("Workload not found: {workload_id}")
         })
@@ -318,7 +319,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
 
         // Update status
         let mut workloads = self.workloads.write().await;
-        if let Some(result) = workloads.get_mut(&workload_id) {
+        if let Some(result) = workloads.get_mut(workload_id.as_str()) {
             result.status = WorkloadStatus::Cancelled;
         }
 
@@ -384,6 +385,7 @@ pub struct StandaloneExecutor {
 }
 
 impl StandaloneExecutor {
+    /// Creates a new standalone executor with system-queried capabilities.
     pub fn new() -> Self {
         // Query real system resources (self-knowledge)
         let cpu_cores = std::thread::available_parallelism()
@@ -469,7 +471,8 @@ impl WorkloadExecutor for StandaloneExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
         info!(
             "Executing workload: {} (type: {})",
-            submission.workload_id, submission.workload_type
+            submission.workload_id.as_ref(),
+            submission.workload_type.as_ref()
         );
 
         // ═══════════════════════════════════════════════════════════════════════════
@@ -531,7 +534,7 @@ impl WorkloadExecutor for StandaloneExecutor {
                 execution_duration_secs: execution_duration,
                 cpu_cores_used: cores_used.max(1),
                 memory_used_bytes: u64::try_from(submission.data.len()).unwrap_or(u64::MAX),
-                gpu_memory_used_bytes: if submission.workload_type == "gpu_compute" {
+                gpu_memory_used_bytes: if submission.workload_type.as_ref() == "gpu_compute" {
                     Some(u64::try_from(submission.data.len()).unwrap_or(u64::MAX))
                 } else {
                     None

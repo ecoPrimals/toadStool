@@ -27,12 +27,18 @@ pub use tokens::{
 /// Configuration for authentication manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthManagerConfig {
+    /// BearDog crypto service endpoint (legacy; prefer capability discovery).
     #[serde(default)]
     pub beardog_endpoint: String,
+    /// Interval between token refresh attempts.
     pub token_refresh_interval: Duration,
+    /// Whether to validate token signatures.
     pub signature_validation: bool,
+    /// Allowed timestamp skew for token validation.
     pub timestamp_window: Duration,
+    /// Whether to enforce replay protection.
     pub replay_protection: bool,
+    /// Base64-encoded 32-byte Ed25519 signing key seed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signing_key_seed: Option<String>,
     /// Primals this node is allowed to request tokens for.
@@ -91,6 +97,7 @@ pub struct AuthenticationManager {
 }
 
 impl AuthenticationManager {
+    /// Creates a new auth manager with config and backend.
     #[must_use]
     pub fn new(config: AuthManagerConfig, backend: Arc<dyn AuthBackend>) -> Self {
         Self {
@@ -101,6 +108,8 @@ impl AuthenticationManager {
         }
     }
 
+    /// Discover auth manager via capability lookup or env fallbacks.
+    ///
     /// # Errors
     ///
     /// Returns an error if capability discovery fails or no crypto provider can be configured.
@@ -108,6 +117,8 @@ impl AuthenticationManager {
         Self::discover_with_config(AuthManagerConfig::default()).await
     }
 
+    /// Discover auth manager with custom config via capability lookup or env fallbacks.
+    ///
     /// # Errors
     ///
     /// Returns an error if capability discovery fails or no crypto provider can be configured.
@@ -155,6 +166,7 @@ impl AuthenticationManager {
         })
     }
 
+    /// Creates auth manager with BearDog backend (deprecated).
     #[must_use]
     #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover()")]
     #[allow(deprecated)]
@@ -168,6 +180,7 @@ impl AuthenticationManager {
         }
     }
 
+    /// Creates auth manager with in-memory backend (no crypto).
     #[must_use]
     pub fn with_inmemory(config: AuthManagerConfig) -> Self {
         let backend = crate::biomeos_integration::InMemoryAuthBackend::new();
@@ -210,6 +223,8 @@ impl AuthenticationManager {
         self.backend.request_token(&token_request).await
     }
 
+    /// Sign a token propagation request for the target primal.
+    ///
     /// # Errors
     ///
     /// Returns an error if signing fails (e.g., invalid key configuration).
@@ -234,6 +249,8 @@ impl AuthenticationManager {
         self.sign_payload(&payload)
     }
 
+    /// Sign a verification request payload for the given primal.
+    ///
     /// # Errors
     ///
     /// Returns an error if signing fails (e.g., invalid key configuration).
@@ -306,6 +323,7 @@ impl AuthenticationManager {
         }
     }
 
+    /// Returns the public key for signature verification, if a signing key is configured.
     #[must_use]
     pub fn get_public_key(&self) -> Option<String> {
         use base64::{Engine as _, engine::general_purpose};
@@ -345,6 +363,7 @@ impl AuthenticationManager {
         Ok(())
     }
 
+    /// Stops the background token refresh task.
     pub fn stop_token_refresh(&mut self) {
         if let Some(task) = self.refresh_task.take() {
             task.abort();

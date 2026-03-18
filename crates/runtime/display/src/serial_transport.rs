@@ -119,13 +119,17 @@ mod inner {
 pub use inner::{SerialTransport, discover_serial_transports};
 
 #[cfg(not(feature = "serial-transport"))]
-pub use stub::discover_serial_transports;
+pub use feature_disabled::discover_serial_transports;
 
 #[cfg(not(feature = "serial-transport"))]
-mod stub {
+mod feature_disabled {
     use toadstool_core::TransportInfo;
 
-    /// Stub when `serial-transport` feature is disabled.
+    /// Discover serial transports when `serial-transport` feature is disabled.
+    ///
+    /// Returns an empty list — no serial ports are discoverable without the
+    /// `serial-transport` dependency. This is the correct production behavior
+    /// when the feature is not enabled.
     #[must_use]
     pub const fn discover_serial_transports() -> Vec<TransportInfo> {
         Vec::new()

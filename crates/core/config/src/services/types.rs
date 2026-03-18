@@ -4,21 +4,26 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Service registry error types
+/// Service registry error types.
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
+    /// Service not found in registry.
     #[error("Service not found: {0}")]
     NotFound(String),
 
+    /// Service name already registered.
     #[error("Service already registered: {0}")]
     AlreadyRegistered(String),
 
+    /// Invalid service configuration.
     #[error("Invalid service configuration: {0}")]
     InvalidConfig(String),
 
+    /// File I/O error.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Parse error (TOML, JSON, etc.).
     #[error("Parse error: {0}")]
     Parse(String),
 }

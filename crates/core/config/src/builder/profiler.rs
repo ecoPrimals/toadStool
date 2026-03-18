@@ -29,12 +29,17 @@ pub struct ProfilerConfig {
     pub output_format: OutputFormat,
 }
 
+/// Profiler benchmark output format. Valid values: json, csv, markdown, pretty.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
+    /// JSON output for machine parsing.
     Json,
+    /// CSV for spreadsheets.
     Csv,
+    /// Markdown tables.
     Markdown,
+    /// Human-readable formatted output.
     Pretty,
 }
 
@@ -148,6 +153,7 @@ pub struct ProfilerConfigBuilder {
 }
 
 impl ProfilerConfigBuilder {
+    /// Create a new profiler config builder with defaults.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -155,48 +161,56 @@ impl ProfilerConfigBuilder {
         }
     }
 
+    /// Set number of warmup iterations before benchmarking.
     #[must_use]
     pub const fn warmup_iterations(mut self, n: usize) -> Self {
         self.config.warmup_iterations = n;
         self
     }
 
+    /// Set number of benchmark iterations.
     #[must_use]
     pub const fn benchmark_iterations(mut self, n: usize) -> Self {
         self.config.benchmark_iterations = n;
         self
     }
 
+    /// Set benchmark timeout in milliseconds.
     #[must_use]
     pub const fn timeout_ms(mut self, ms: u64) -> Self {
         self.config.timeout_ms = Some(ms);
         self
     }
 
+    /// Disable benchmark timeout (run until complete).
     #[must_use]
     pub const fn no_timeout(mut self) -> Self {
         self.config.timeout_ms = None;
         self
     }
 
+    /// Run benchmarks in parallel.
     #[must_use]
     pub const fn parallel(mut self) -> Self {
         self.config.parallel = true;
         self
     }
 
+    /// Run benchmarks sequentially.
     #[must_use]
     pub const fn sequential(mut self) -> Self {
         self.config.parallel = false;
         self
     }
 
+    /// Enable detailed metrics collection.
     #[must_use]
     pub const fn detailed_metrics(mut self) -> Self {
         self.config.detailed_metrics = true;
         self
     }
 
+    /// Set output format (json, csv, markdown, pretty).
     #[must_use]
     pub const fn output_format(mut self, format: OutputFormat) -> Self {
         self.config.output_format = format;
@@ -213,6 +227,7 @@ impl ProfilerConfigBuilder {
         Ok(self.config)
     }
 
+    /// Build without validation (may produce invalid config).
     #[must_use]
     pub const fn build_unchecked(self) -> ProfilerConfig {
         self.config

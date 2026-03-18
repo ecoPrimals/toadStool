@@ -44,9 +44,13 @@ pub struct ExternalIntegrations {
 /// Webhook configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookConfig {
+    /// Webhook name.
     pub name: String,
+    /// Webhook URL.
     pub url: String,
+    /// Event types to send.
     pub event_types: Vec<String>,
+    /// HTTP headers for the request.
     pub headers: HashMap<String, String>,
 }
 

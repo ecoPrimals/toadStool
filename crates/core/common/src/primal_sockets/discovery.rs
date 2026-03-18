@@ -9,12 +9,15 @@ use super::paths;
 /// Error type for socket discovery operations
 #[derive(Debug, thiserror::Error)]
 pub enum SocketDiscoveryError {
+    /// Discovery backend failed to initialize or query
     #[error("Discovery service failed: {0}")]
     DiscoveryFailed(String),
 
+    /// No Unix socket found for the requested capability
     #[error("No Unix socket found for capability: {0:?}")]
     NoSocketFound(String),
 
+    /// Endpoint format was invalid
     #[error("Invalid socket endpoint: {0}")]
     InvalidEndpoint(String),
 }

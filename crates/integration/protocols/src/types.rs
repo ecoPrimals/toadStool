@@ -11,46 +11,60 @@ use uuid::Uuid;
 /// Protocol integration errors
 #[derive(Debug, thiserror::Error)]
 pub enum ProtocolError {
+    /// Connection to service failed
     #[error("Connection failed: {0}")]
     Connection(String),
 
+    /// Authentication failed
     #[error("Authentication failed: {0}")]
     Authentication(String),
 
+    /// Authorization denied
     #[error("Authorization failed: {0}")]
     Authorization(String),
 
+    /// Protocol negotiation failed
     #[error("Protocol negotiation failed: {0}")]
     Negotiation(String),
 
+    /// Message serialization failed
     #[error("Serialization error: {0}")]
     Serialization(String),
 
+    /// Transport layer error
     #[error("Transport error: {0}")]
     Transport(String),
 
+    /// Service discovery failed
     #[error("Service discovery error: {0}")]
     Discovery(String),
 
+    /// Message routing failed
     #[error("Message routing error: {0}")]
     Routing(String),
 
+    /// Operation timed out
     #[error("Timeout: {0}")]
     Timeout(String),
 
+    /// Network error
     #[error("Network error: {0}")]
     Network(String),
 
+    /// JSON serialization error
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// I/O error
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Internal error
     #[error("Internal error: {0}")]
     Internal(String),
 }
 
+/// Result type for protocol operations
 pub type ProtocolResult<T> = Result<T, ProtocolError>;
 
 /// Message formats supported by the protocol system
@@ -134,13 +148,13 @@ pub struct ProtocolMessage {
     /// Message ID
     pub id: Uuid,
 
-    /// Message type (Arc<str> = zero-copy clone)
+    /// Message type (`Arc<str>` = zero-copy clone)
     pub message_type: Arc<str>,
 
-    /// Source service ID (Arc<str> = zero-copy clone)
+    /// Source service ID (`Arc<str>` = zero-copy clone)
     pub source: Arc<str>,
 
-    /// Destination service ID (Arc<str> = zero-copy clone)
+    /// Destination service ID (`Arc<str>` = zero-copy clone)
     pub destination: Option<Arc<str>>,
 
     /// Message payload
@@ -159,7 +173,7 @@ pub struct ProtocolMessage {
     /// Correlation ID for request-response patterns
     pub correlation_id: Option<Uuid>,
 
-    /// Reply-to address for responses (Arc<str> = zero-copy clone)
+    /// Reply-to address for responses (`Arc<str>` = zero-copy clone)
     pub reply_to: Option<Arc<str>>,
 
     /// Message TTL
@@ -228,35 +242,57 @@ pub struct ServiceEndpoint {
 /// Protocol events for monitoring and notifications
 #[derive(Debug, Clone)]
 pub enum ProtocolEvent {
-    /// Service registered
-    ServiceRegistered { service: ServiceInfo },
+    /// Service registered in discovery
+    ServiceRegistered {
+        /// Registered service info
+        service: ServiceInfo,
+    },
 
     /// Service deregistered
-    ServiceDeregistered { service_id: String },
-
-    /// Service health changed
-    ServiceHealthChanged {
+    ServiceDeregistered {
+        /// Service identifier
         service_id: String,
+    },
+
+    /// Service health status changed
+    ServiceHealthChanged {
+        /// Service identifier
+        service_id: String,
+        /// New health status
         status: HealthStatus,
     },
 
-    /// Message sent
+    /// Message sent to destination
     MessageSent {
+        /// Message identifier
         message_id: Uuid,
+        /// Destination address
         destination: String,
     },
 
-    /// Message received
-    MessageReceived { message_id: Uuid, source: String },
+    /// Message received from source
+    MessageReceived {
+        /// Message identifier
+        message_id: Uuid,
+        /// Source address
+        source: String,
+    },
 
-    /// Connection established
+    /// Connection established to service
     ConnectionEstablished {
+        /// Service identifier
         service_id: String,
+        /// Endpoint address
         endpoint: String,
     },
 
     /// Connection lost
-    ConnectionLost { service_id: String, error: String },
+    ConnectionLost {
+        /// Service identifier
+        service_id: String,
+        /// Error description
+        error: String,
+    },
 }
 
 /// Message handler trait for processing incoming messages

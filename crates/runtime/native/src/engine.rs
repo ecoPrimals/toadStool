@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Native process runtime engine for executing native executables
 
 use bytes::Bytes;
 use std::collections::HashMap;
@@ -30,6 +31,7 @@ use crate::process::{self, ProcessHandle};
 use crate::security;
 use crate::validation;
 
+/// Native process runtime engine; executes native binaries as child processes
 pub struct NativeRuntimeEngine {
     pub(crate) config: RuntimeConfig,
     active_processes: Arc<RwLock<HashMap<Uuid, ProcessHandle>>>,
@@ -52,6 +54,7 @@ impl std::fmt::Debug for NativeRuntimeEngine {
 }
 
 impl NativeRuntimeEngine {
+    /// Create a new native runtime engine with default config
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -62,6 +65,7 @@ impl NativeRuntimeEngine {
         }
     }
 
+    /// Attach resource monitor for execution metrics
     #[must_use]
     pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
         self.resource_monitor = Some(monitor);

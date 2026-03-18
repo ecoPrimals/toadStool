@@ -11,11 +11,14 @@ const FIRMWARE_BASE: &str = "/lib/firmware/nvidia";
 /// Presence status of a firmware component.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum FwStatus {
+    /// Firmware component found at expected path.
     Present,
+    /// Firmware component not found.
     Missing,
 }
 
 impl FwStatus {
+    /// Whether the component is present.
     #[must_use]
     pub const fn is_present(self) -> bool {
         matches!(self, Self::Present)
@@ -25,12 +28,19 @@ impl FwStatus {
 /// Firmware inventory for a specific NVIDIA chip.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FirmwareInventory {
+    /// Chip codename (e.g. gv100, ga102).
     pub chip: String,
+    /// PMU firmware status (Volta/Turing).
     pub pmu: FwStatus,
+    /// GSP firmware status (Ampere+).
     pub gsp: FwStatus,
+    /// ACR (Acr) firmware status.
     pub acr: FwStatus,
+    /// GR (Graphics) firmware status.
     pub gr: FwStatus,
+    /// SEC2 firmware status.
     pub sec2: FwStatus,
+    /// NVDEC firmware status.
     pub nvdec: FwStatus,
 }
 

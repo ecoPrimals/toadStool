@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service discovery and registration
 
-use std::sync::Arc;
 use tracing::info;
 
 use crate::config::ServiceDiscoveryConfig;
@@ -46,6 +45,7 @@ mod tests {
     use super::*;
     use crate::config::ServiceDiscoveryConfig;
     use crate::types::ServiceInfo;
+    use std::sync::Arc;
     use std::time::Duration;
 
     fn make_service_info() -> ServiceInfo {

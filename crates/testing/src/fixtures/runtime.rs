@@ -11,6 +11,7 @@ pub struct TestWorkloadBuilder {
 }
 
 impl TestWorkloadBuilder {
+    /// Create a new workload builder with the given type
     pub fn new(workload_type: impl Into<String>) -> Self {
         Self {
             workload_type: workload_type.into(),
@@ -21,38 +22,46 @@ impl TestWorkloadBuilder {
         }
     }
 
+    /// Create a WASM workload builder
     pub fn wasm() -> Self {
         Self::new("Wasm")
     }
 
+    /// Create a Native workload builder
     pub fn native() -> Self {
         Self::new("Native")
     }
 
+    /// Create a Container workload builder
     pub fn container() -> Self {
         Self::new("Container")
     }
 
+    /// Create a Python workload builder
     pub fn python() -> Self {
         Self::new("Python")
     }
 
+    /// Set the entry point (e.g. "main" for WASM)
     pub fn with_entry_point(mut self, entry: impl Into<String>) -> Self {
         self.entry_point = Some(entry.into());
         self
     }
 
+    /// Set the timeout in seconds
     pub const fn with_timeout(mut self, seconds: u64) -> Self {
         self.timeout_seconds = seconds;
         self
     }
 
+    /// Set CPU and memory resources
     pub const fn with_resources(mut self, cpu_cores: f64, memory_mb: u64) -> Self {
         self.cpu_cores = cpu_cores;
         self.memory_mb = memory_mb;
         self
     }
 
+    /// Build the workload config as JSON
     pub fn build(self) -> serde_json::Value {
         let mut config = serde_json::json!({
             "workload_type": self.workload_type,

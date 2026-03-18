@@ -39,32 +39,28 @@ async fn test_scan_system_handles_partial_failure_gracefully() {
     }
 }
 
-#[tokio::test]
-async fn test_discover_services_timeout_handling() {
-    // ✅ ROBUST TEST: Skip slow network I/O - tests should be fast and deterministic
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
+#[test]
+fn test_discover_services_timeout_handling() {
+    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let mut config = IntelligentAutoConfig::new();
+        let result = rt
+            .block_on(async { timeout(Duration::from_secs(10), config.discover_services()).await });
 
-    // Test that service discovery respects timeouts and doesn't hang
-    let mut config = IntelligentAutoConfig::new();
+        assert!(
+            result.is_ok(),
+            "Service discovery should complete within timeout"
+        );
 
-    // Set a short timeout to test timeout handling
-    let result = timeout(Duration::from_secs(10), config.discover_services()).await;
-
-    // Should complete within timeout (either success or failure, not hang)
-    assert!(
-        result.is_ok(),
-        "Service discovery should complete within timeout"
-    );
-
-    match result.unwrap() {
-        Ok(services) => {
-            println!("Found {} services", services.discovered_services.len());
+        match result.unwrap() {
+            Ok(services) => {
+                println!("Found {} services", services.discovered_services.len());
+            }
+            Err(e) => {
+                println!("Service discovery failed gracefully: {e:?}");
+            }
         }
-        Err(e) => {
-            println!("Service discovery failed gracefully: {e:?}");
-        }
-    }
+    });
 }
 
 #[tokio::test]
@@ -288,28 +284,28 @@ async fn test_repeated_configuration_generation() {
 // PERFORMANCE INVARIANTS - Test performance characteristics
 // ============================================================================
 
-#[tokio::test]
-async fn test_config_generation_completes_in_reasonable_time() {
-    // ✅ ROBUST TEST: Skip slow network I/O - tests should be fast and deterministic
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
+#[test]
+fn test_config_generation_completes_in_reasonable_time() {
+    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let mut config = IntelligentAutoConfig::new();
 
-    // Test that config generation doesn't take unreasonably long
-    let mut config = IntelligentAutoConfig::new();
+        let start = std::time::Instant::now();
+        let result = rt.block_on(async {
+            timeout(
+                Duration::from_secs(30),
+                config.generate_intelligent_config(),
+            )
+            .await
+        });
+        let elapsed = start.elapsed();
 
-    let start = std::time::Instant::now();
-    let result = timeout(
-        Duration::from_secs(30),
-        config.generate_intelligent_config(),
-    )
-    .await;
-    let elapsed = start.elapsed();
-
-    assert!(
-        result.is_ok(),
-        "Config generation should complete within 30 seconds"
-    );
-    println!("Config generation took: {elapsed:?}");
+        assert!(
+            result.is_ok(),
+            "Config generation should complete within 30 seconds"
+        );
+        println!("Config generation took: {elapsed:?}");
+    });
 }
 
 #[tokio::test]
@@ -444,26 +440,25 @@ fn test_usage_hints_intensive_classification_consistency() {
 // REGRESSION TESTS - Prevent known issues from recurring
 // ============================================================================
 
-#[tokio::test]
-async fn test_config_generation_doesnt_hang_on_network_unavailable() {
-    // ✅ ROBUST TEST: Skip slow network I/O - tests should be fast and deterministic
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
+#[test]
+fn test_config_generation_doesnt_hang_on_network_unavailable() {
+    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let mut config = IntelligentAutoConfig::new();
 
-    // Regression: Ensure we don't hang if network services are unavailable
-    let mut config = IntelligentAutoConfig::new();
+        let result = rt.block_on(async {
+            timeout(
+                Duration::from_secs(15),
+                config.generate_intelligent_config(),
+            )
+            .await
+        });
 
-    // Should complete even if network is unavailable
-    let result = timeout(
-        Duration::from_secs(15),
-        config.generate_intelligent_config(),
-    )
-    .await;
-
-    assert!(
-        result.is_ok(),
-        "Config generation should complete even without network"
-    );
+        assert!(
+            result.is_ok(),
+            "Config generation should complete even without network"
+        );
+    });
 }
 
 #[tokio::test]
@@ -520,42 +515,42 @@ async fn test_documentation_example_component_access() {
 // STRESS TESTS - Test system under load
 // ============================================================================
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
-async fn test_stress_many_concurrent_configs() {
-    // Skip slow network I/O - tests should be fast and deterministic
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_SKIP_DISCOVERY", "1") };
+#[test]
+fn test_stress_many_concurrent_configs() {
+    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(8)
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let mut handles = vec![];
 
-    // Concurrent stress test: create many configs concurrently.
-    // Under workspace-wide test runs the system is already under heavy load,
-    // so we use a generous timeout and accept that some may time out.
-    let mut handles = vec![];
-
-    for i in 0..20 {
-        let handle = tokio::spawn(async move {
-            let mut config = IntelligentAutoConfig::new();
-            let result = timeout(
-                Duration::from_secs(15),
-                config.generate_intelligent_config(),
-            )
-            .await;
-            (i, result)
-        });
-        handles.push(handle);
-    }
-
-    let mut completed = 0;
-    let mut timed_out = 0;
-    for handle in handles {
-        if let Ok((_id, result)) = handle.await {
-            match result {
-                Ok(Ok(_) | Err(_)) => completed += 1,
-                Err(_) => timed_out += 1, // timeout
+            for i in 0..20 {
+                let handle = tokio::spawn(async move {
+                    let mut config = IntelligentAutoConfig::new();
+                    let result = timeout(
+                        Duration::from_secs(15),
+                        config.generate_intelligent_config(),
+                    )
+                    .await;
+                    (i, result)
+                });
+                handles.push(handle);
             }
-        }
-    }
 
-    println!("Stress test: {completed}/20 configs completed, {timed_out} timed out");
-    // Under heavy CI load all configs may time out -- that is acceptable
-    // for a stress test. The point is that no panics or deadlocks occurred.
+            let mut completed = 0;
+            let mut timed_out = 0;
+            for handle in handles {
+                if let Ok((_id, result)) = handle.await {
+                    match result {
+                        Ok(Ok(_) | Err(_)) => completed += 1,
+                        Err(_) => timed_out += 1,
+                    }
+                }
+            }
+
+            println!("Stress test: {completed}/20 configs completed, {timed_out} timed out");
+        });
+    });
 }

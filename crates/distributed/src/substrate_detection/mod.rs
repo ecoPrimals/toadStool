@@ -33,6 +33,7 @@ impl Default for SubstrateDetector {
 }
 
 impl SubstrateDetector {
+    /// Creates a new substrate detector.
     #[must_use]
     pub const fn new() -> Self {
         Self

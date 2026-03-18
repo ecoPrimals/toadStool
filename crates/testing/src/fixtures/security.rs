@@ -11,9 +11,13 @@ use tempfile::TempDir;
 
 /// Test environment that provides temporary directories and cleanup
 pub struct TestEnvironment {
+    /// Root temporary directory (auto-cleaned on drop)
     pub temp_dir: TempDir,
+    /// Config directory (e.g. for test configs)
     pub config_dir: PathBuf,
+    /// Data directory for test data
     pub data_dir: PathBuf,
+    /// Cache directory for test caches
     pub cache_dir: PathBuf,
 }
 
@@ -116,6 +120,7 @@ pub struct TestSecurityContextBuilder {
 }
 
 impl TestSecurityContextBuilder {
+    /// Create a new security context builder with defaults
     pub fn new() -> Self {
         Self {
             user_id: "test_user".to_string(),
@@ -124,21 +129,25 @@ impl TestSecurityContextBuilder {
         }
     }
 
+    /// Set the user ID
     pub fn with_user_id(mut self, user_id: impl Into<String>) -> Self {
         self.user_id = user_id.into();
         self
     }
 
+    /// Set the permission list
     pub fn with_permissions(mut self, permissions: Vec<String>) -> Self {
         self.permissions = permissions;
         self
     }
 
+    /// Set the isolation level
     pub fn with_isolation_level(mut self, level: impl Into<String>) -> Self {
         self.isolation_level = level.into();
         self
     }
 
+    /// Build the security context as JSON
     pub fn build(self) -> serde_json::Value {
         serde_json::json!({
             "user_id": self.user_id,

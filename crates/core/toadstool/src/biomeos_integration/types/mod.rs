@@ -44,12 +44,19 @@
 //!
 //! See individual module documentation for detailed examples and patterns.
 
+/// Agent deployment and model configuration types.
 pub mod agent;
+/// Authentication, authorization, and security policy types.
 pub mod auth;
+/// Primal service configuration (ToadStool, Songbird, BearDog, etc.).
 pub mod config;
+/// Core biome manifest and metadata structures.
 pub mod manifest;
+/// Network configuration, DNS, and service mesh types.
 pub mod networking;
+/// Resource allocation, GPU, and health check types.
 pub mod resources;
+/// Storage configuration, volumes, and provisioning types.
 pub mod storage;
 
 // Re-export commonly used types for convenient access

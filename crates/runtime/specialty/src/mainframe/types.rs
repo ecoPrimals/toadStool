@@ -123,31 +123,38 @@ pub struct Terminal3270Attributes {
     pub extended_attributes: bool,
 }
 
-/// 3270 Terminal Keys
+/// 3270 terminal key codes for mainframe interaction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Terminal3270Key {
-    /// Enter key
+    /// Enter/Transmit key.
     Enter,
-    /// Clear key
+    /// Clear screen key.
     Clear,
-    /// Program function keys
+    /// Program function key (PF1–PF24).
     PF(u8),
-    /// Program access keys
+    /// Program access key (PA1–PA3).
     PA(u8),
-    /// Cursor movement
+    /// Cursor up.
     CursorUp,
+    /// Cursor down.
     CursorDown,
+    /// Cursor left.
     CursorLeft,
+    /// Cursor right.
     CursorRight,
-    /// Tab keys
+    /// Forward tab.
     Tab,
+    /// Back tab.
     BackTab,
-    /// Other keys
+    /// Insert key.
     Insert,
+    /// Delete key.
     Delete,
+    /// Home key.
     Home,
+    /// End key.
     End,
-    /// String input
+    /// Arbitrary string input.
     String(String),
 }
 

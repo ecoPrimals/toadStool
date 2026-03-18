@@ -355,6 +355,7 @@ impl Default for SecurityContextBuilder {
 }
 
 impl SecurityContextBuilder {
+    /// Creates a new security context builder with defaults.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -365,36 +366,42 @@ impl SecurityContextBuilder {
         }
     }
 
+    /// Sets the isolation level.
     #[must_use]
     pub const fn with_isolation_level(mut self, level: IsolationLevel) -> Self {
         self.isolation_level = level;
         self
     }
 
+    /// Adds capabilities.
     #[must_use]
     pub fn with_capabilities(mut self, capabilities: Vec<Capability>) -> Self {
         self.capabilities.extend(capabilities);
         self
     }
 
+    /// Adds a policy.
     #[must_use]
     pub fn with_policy(mut self, policy: String) -> Self {
         self.policies.push(policy);
         self
     }
 
+    /// No-op for builder compatibility.
     #[must_use]
     pub fn with_resource_limit_exceeded(self, _message: String) -> Self {
         // Note: SecurityContext doesn't have status, this is for builder compatibility
         self
     }
 
+    /// No-op for builder compatibility.
     #[must_use]
     pub fn with_security_violation(self, _message: String) -> Self {
         // Note: SecurityContext doesn't have status, this is for builder compatibility
         self
     }
 
+    /// Builds the security context.
     #[must_use]
     pub fn build(self) -> SecurityContext {
         SecurityContext {

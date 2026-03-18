@@ -12,139 +12,209 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[non_exhaustive]
 pub enum OperatingSystemSupport {
-    // Unix-like systems
+    /// Linux distribution.
     Linux {
+        /// Distribution (ubuntu, debian, etc.).
         distribution: String,
+        /// Kernel version.
         kernel_version: String,
+        /// Init system (systemd, openrc, etc.).
         init_system: String,
+        /// Package manager (apt, dnf, etc.).
         package_manager: String,
     },
+    /// BSD variant.
     BSD {
+        /// Variant (freebsd, openbsd, etc.).
         variant: String,
+        /// Version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// macOS.
     MacOS {
+        /// macOS version.
         version: String,
+        /// Architecture (arm64, x86_64).
         architecture: String,
+        /// Available frameworks.
         frameworks: Vec<String>,
     },
-
-    // Windows systems
+    /// Windows.
     Windows {
+        /// Windows version.
         version: String,
+        /// Edition (home, pro, enterprise).
         edition: String,
+        /// Enabled features.
         features: Vec<String>,
+        /// Subsystems (WSL, etc.).
         subsystems: Vec<String>,
     },
-
-    // Mobile systems
+    /// Android mobile OS.
     Android {
+        /// Android version.
         version: String,
+        /// API level.
         api_level: u32,
+        /// Security patch level.
         security_patch: String,
     },
+    /// iOS mobile OS.
     #[serde(rename = "iOS")]
     IOS {
+        /// iOS version.
         version: String,
+        /// Device family (iPhone, iPad).
         device_family: String,
+        /// Capabilities.
         capabilities: Vec<String>,
     },
-
-    // Embedded systems
+    /// FreeRTOS embedded.
     FreeRTOS {
+        /// FreeRTOS version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Zephyr RTOS.
     Zephyr {
+        /// Zephyr version.
         version: String,
+        /// Supported boards.
         boards: Vec<String>,
     },
+    /// VxWorks RTOS.
     VxWorks {
+        /// VxWorks version.
         version: String,
+        /// BSP identifier.
         bsp: String,
     },
+    /// QNX RTOS.
     QNX {
+        /// QNX version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    // Real-time systems
+    /// RTLinux real-time.
     RTLinux {
+        /// RTLinux version.
         version: String,
+        /// Latency in microseconds.
         latency_us: f64,
     },
+    /// Xenomai real-time.
     Xenomai {
+        /// Xenomai version.
         version: String,
+        /// Skin (e.g. posix, native).
         skin: String,
     },
-
-    // Hypervisors
+    /// Xen hypervisor.
     Xen {
+        /// Xen version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// VMware hypervisor.
     VMware {
+        /// Product (ESXi, Workstation, etc.).
         product: String,
+        /// Version.
         version: String,
     },
+    /// Hyper-V hypervisor.
     HyperV {
+        /// Hyper-V version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// KVM hypervisor.
     KVM {
+        /// KVM version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    // Exotic systems
+    /// Plan 9 from Bell Labs.
     Plan9 {
+        /// Plan 9 version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Inferno OS.
     Inferno {
+        /// Inferno version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// TempleOS.
     TempleOS {
+        /// TempleOS version.
         version: String,
     },
+    /// MenuetOS.
     MenuetOS {
+        /// MenuetOS version.
         version: String,
     },
+    /// KolibriOS.
     KolibriOS {
+        /// KolibriOS version.
         version: String,
     },
-
-    // Legacy systems
+    /// MS-DOS legacy.
     MSDOS {
+        /// MS-DOS version.
         version: String,
     },
+    /// OS/2 legacy.
     OS2 {
+        /// OS/2 version.
         version: String,
     },
+    /// BeOS legacy.
     BeOS {
+        /// BeOS version.
         version: String,
     },
+    /// AmigaOS legacy.
     AmigaOS {
+        /// AmigaOS version.
         version: String,
     },
+    /// Atari TOS legacy.
     AtariTOS {
+        /// Atari TOS version.
         version: String,
     },
-
-    // Mainframe systems
+    /// IBM z/OS mainframe.
     #[serde(rename = "z/OS")]
     ZOS {
+        /// z/OS version.
         version: String,
+        /// Subsystems (CICS, IMS, etc.).
         subsystems: Vec<String>,
     },
+    /// OpenVMS.
     OpenVMS {
+        /// OpenVMS version.
         version: String,
+        /// Clustering enabled.
         clustering: bool,
     },
+    /// UNICOS (Cray).
     UNICOS {
+        /// UNICOS version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
 }

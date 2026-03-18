@@ -23,17 +23,6 @@ use toadstool_config::{ConfigError, ToadStoolConfig};
 
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
-fn clear_toadstool_env_vars() {
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        for (key, _) in std::env::vars() {
-            if key.starts_with("TOADSTOOL_") {
-                std::env::remove_var(&key);
-            }
-        }
-    }
-}
-
 // ============================================================================
 // 1. Config Validation
 // ============================================================================
@@ -142,44 +131,50 @@ fn test_for_environment_custom() {
 #[test]
 fn test_for_current_environment_with_temp_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::set_var("TOADSTOOL_ENVIRONMENT", "production") };
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "production");
-
-    clear_toadstool_env_vars();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+        ],
+        || {
+            temp_env::with_var("TOADSTOOL_ENVIRONMENT", Some("production"), || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "production");
+            });
+        },
+    );
 }
 
 #[test]
 fn test_load_with_overrides_success() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+        ],
+        || {
+            let config = ToadStoolConfig::development();
+            let temp_file = NamedTempFile::new().unwrap();
+            config.save_to_file(temp_file.path()).unwrap();
 
-    let config = ToadStoolConfig::development();
-    let temp_file = NamedTempFile::new().unwrap();
-    config.save_to_file(temp_file.path()).unwrap();
-
-    let result = ToadStoolConfig::load_with_overrides(temp_file.path());
-    assert!(result.is_ok());
-
-    clear_toadstool_env_vars();
+            let result = ToadStoolConfig::load_with_overrides(temp_file.path());
+            assert!(result.is_ok());
+        },
+    );
 }
 
 #[test]
 fn test_load_from_env_only() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::set_var("TOADSTOOL_ENV", "test") };
-
-    let result = ToadStoolConfig::load_from_env_only();
-    assert!(result.is_ok());
-
-    clear_toadstool_env_vars();
+    temp_env::with_var("TOADSTOOL_ENV", Some("test"), || {
+        let result = ToadStoolConfig::load_from_env_only();
+        assert!(result.is_ok());
+    });
 }
 
 #[test]
@@ -236,84 +231,68 @@ fn test_ports_capability_fallback_constants() {
 #[test]
 fn test_ports_get_port_with_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        std::env::set_var("TOADSTOOL_SERVER_PORT", "9000");
-    }
-    let port = get_port_with_env(0, "TOADSTOOL_SERVER_PORT");
-    assert_eq!(port, 9000);
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("TOADSTOOL_SERVER_PORT") };
+    temp_env::with_var("TOADSTOOL_SERVER_PORT", Some("9000"), || {
+        let port = get_port_with_env(0, "TOADSTOOL_SERVER_PORT");
+        assert_eq!(port, 9000);
+    });
 }
 
 #[test]
 fn test_ports_get_toadstool_port() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        std::env::set_var("TOADSTOOL_DAEMON_API_PORT", "9090");
-    }
-    let port = get_toadstool_port("DAEMON_API", toadstool::DAEMON_API);
-    assert_eq!(port, 9090);
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("TOADSTOOL_DAEMON_API_PORT") };
+    temp_env::with_var("TOADSTOOL_DAEMON_API_PORT", Some("9090"), || {
+        let port = get_toadstool_port("DAEMON_API", toadstool::DAEMON_API);
+        assert_eq!(port, 9090);
+    });
 }
 
 #[test]
 fn test_ports_get_capability_port() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        std::env::set_var("TOADSTOOL_SECURITY_PORT", "9001");
-    }
-    let port = get_capability_port("SECURITY", capability_fallback::SECURITY);
-    assert_eq!(port, 9001);
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("TOADSTOOL_SECURITY_PORT") };
+    temp_env::with_var("TOADSTOOL_SECURITY_PORT", Some("9001"), || {
+        let port = get_capability_port("SECURITY", capability_fallback::SECURITY);
+        assert_eq!(port, 9001);
+    });
 }
 
 #[test]
 fn test_ports_get_primal_port_fallback() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("BEARDOG_PORT") };
-    let port = get_primal_port("BEARDOG", capability_fallback::SECURITY);
-    assert_eq!(port, capability_fallback::SECURITY);
+    temp_env::with_var_unset("BEARDOG_PORT", || {
+        let port = get_primal_port("BEARDOG", capability_fallback::SECURITY);
+        assert_eq!(port, capability_fallback::SECURITY);
+    });
 }
 
 #[test]
 fn test_ports_resolve_capability_or_legacy_port() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        std::env::set_var("TOADSTOOL_STORAGE_PORT", "8200");
-    }
-    let port = resolve_capability_or_legacy_port("STORAGE", "NESTGATE", 8082);
-    assert_eq!(port, 8200);
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("TOADSTOOL_STORAGE_PORT") };
+    temp_env::with_var("TOADSTOOL_STORAGE_PORT", Some("8200"), || {
+        let port = resolve_capability_or_legacy_port("STORAGE", "NESTGATE", 8082);
+        assert_eq!(port, 8200);
+    });
 }
 
 #[test]
 fn test_ports_get_primal_endpoint() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        std::env::set_var("SONGBIRD_ENDPOINT", "https://coord.example.com:8443");
-    }
-    let endpoint = get_primal_endpoint("SONGBIRD");
-    assert_eq!(endpoint.as_deref(), Some("https://coord.example.com:8443"));
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("SONGBIRD_ENDPOINT") };
+    temp_env::with_var(
+        "SONGBIRD_ENDPOINT",
+        Some("https://coord.example.com:8443"),
+        || {
+            let endpoint = get_primal_endpoint("SONGBIRD");
+            assert_eq!(endpoint.as_deref(), Some("https://coord.example.com:8443"));
+        },
+    );
 }
 
 #[test]
 fn test_ports_get_primal_endpoint_missing() {
     let _guard = ENV_LOCK.lock().unwrap();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::remove_var("NONEXISTENT_ENDPOINT") };
-    let endpoint = get_primal_endpoint("NONEXISTENT");
-    assert!(endpoint.is_none());
+    temp_env::with_var_unset("NONEXISTENT_ENDPOINT", || {
+        let endpoint = get_primal_endpoint("NONEXISTENT");
+        assert!(endpoint.is_none());
+    });
 }
 
 #[test]
@@ -422,68 +401,53 @@ async fn test_discover_or_fallback_uses_fallback_when_no_services() {
 #[test]
 fn test_env_override_bind_address() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
-
-    let mut config = ToadStoolConfig::default();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::set_var("TOADSTOOL_BIND_ADDRESS", "0.0.0.0:8080") };
-    config.apply_env_overrides().unwrap();
-    assert_eq!(config.network.bind_address.to_string(), "0.0.0.0:8080");
-
-    clear_toadstool_env_vars();
+    temp_env::with_var("TOADSTOOL_BIND_ADDRESS", Some("0.0.0.0:8080"), || {
+        let mut config = ToadStoolConfig::default();
+        config.apply_env_overrides().unwrap();
+        assert_eq!(config.network.bind_address.to_string(), "0.0.0.0:8080");
+    });
 }
 
 #[test]
 fn test_env_override_invalid_bind_address_fails() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
-
-    let mut config = ToadStoolConfig::default();
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::set_var("TOADSTOOL_BIND_ADDRESS", "invalid") };
-    let result = config.apply_env_overrides();
-    assert!(result.is_err());
-
-    clear_toadstool_env_vars();
+    temp_env::with_var("TOADSTOOL_BIND_ADDRESS", Some("invalid"), || {
+        let mut config = ToadStoolConfig::default();
+        let result = config.apply_env_overrides();
+        assert!(result.is_err());
+    });
 }
 
 #[test]
 fn test_env_override_with_temp_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        std::env::set_var("TOADSTOOL_ENV", "test");
-        std::env::set_var("TOADSTOOL_LOG_LEVEL", "trace");
-        std::env::set_var("TOADSTOOL_WORKER_THREADS", "12");
-    }
-
-    let mut config = ToadStoolConfig::default();
-    config.apply_env_overrides().unwrap();
-    assert_eq!(config.app.environment, "test");
-    assert_eq!(config.logging.level, "trace");
-    assert_eq!(config.app.worker_threads, 12);
-
-    clear_toadstool_env_vars();
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_ENV", Some("test")),
+            ("TOADSTOOL_LOG_LEVEL", Some("trace")),
+            ("TOADSTOOL_WORKER_THREADS", Some("12")),
+        ],
+        || {
+            let mut config = ToadStoolConfig::default();
+            config.apply_env_overrides().unwrap();
+            assert_eq!(config.app.environment, "test");
+            assert_eq!(config.logging.level, "trace");
+            assert_eq!(config.app.worker_threads, 12);
+        },
+    );
 }
 
 #[test]
 fn test_env_override_enable_metrics() {
     let _guard = ENV_LOCK.lock().unwrap();
-    clear_toadstool_env_vars();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { std::env::set_var("TOADSTOOL_ENABLE_METRICS", "true") };
-
-    let mut config = ToadStoolConfig {
-        metrics: None,
-        ..Default::default()
-    };
-    config.apply_env_overrides().unwrap();
-    assert!(config.metrics.is_some());
-
-    clear_toadstool_env_vars();
+    temp_env::with_var("TOADSTOOL_ENABLE_METRICS", Some("true"), || {
+        let mut config = ToadStoolConfig {
+            metrics: None,
+            ..Default::default()
+        };
+        config.apply_env_overrides().unwrap();
+        assert!(config.metrics.is_some());
+    });
 }
 
 // ============================================================================

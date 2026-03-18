@@ -262,13 +262,14 @@ impl EcosystemDiscoverer {
         let mut services = HashMap::new();
 
         for (capability_key, pattern) in &self.service_patterns {
+            // Capability-based env fallbacks (not primal names). Primals discover each other at runtime.
             let legacy_keys: Vec<&str> = match capability_key.as_str() {
-                capability_keys::DISCOVERY => vec!["SONGBIRD"],
-                capability_keys::CRYPTO => vec!["BEARDOG"],
-                capability_keys::STORAGE => vec!["NESTGATE"],
-                capability_keys::COMPUTE => vec!["SQUIRREL"],
-                capability_keys::ORCHESTRATION => vec!["BIOMEOS"],
-                capability_keys::SELF => vec!["TOADSTOOL"],
+                capability_keys::DISCOVERY => vec!["COORDINATION"],
+                capability_keys::CRYPTO => vec!["CRYPTO", "PKI"],
+                capability_keys::STORAGE => vec!["STORAGE", "ARTIFACT"],
+                capability_keys::COMPUTE => vec!["COMPUTE"],
+                capability_keys::ORCHESTRATION => vec!["ORCHESTRATION"],
+                capability_keys::SELF => vec!["SELF"],
                 _ => vec![],
             };
             if let Some(endpoint) = get_capability_endpoint(capability_key, &legacy_keys) {

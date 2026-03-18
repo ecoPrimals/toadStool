@@ -12,80 +12,117 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[non_exhaustive]
 pub enum SpecializedArchitecture {
-    // AI/ML accelerators
+    /// Google TPU AI accelerator.
     TPU {
+        /// TPU version.
         version: String,
+        /// TOPS (trillion ops/sec).
         tops: f64,
+        /// Memory in GB.
         memory_gb: u32,
     },
+    /// Neural processing unit.
     NPU {
+        /// Chip identifier.
         chip: String,
+        /// TOPS.
         tops: f64,
+        /// Supported frameworks.
         frameworks: Vec<String>,
     },
+    /// Graphcore IPU.
     IPU {
+        /// IPU generation.
         generation: String,
+        /// Number of tiles.
         tiles: u32,
+        /// Memory in GB.
         memory_gb: u32,
     },
-
-    // Graphics processors
+    /// NVIDIA CUDA GPU.
     CUDA {
+        /// CUDA version.
         version: String,
+        /// Compute capability (e.g. 8.0).
         compute_capability: String,
+        /// Memory in GB.
         memory_gb: u32,
     },
+    /// AMD ROCm GPU.
     ROCm {
+        /// ROCm version.
         version: String,
+        /// GFX version.
         gfx_version: String,
+        /// Memory in GB.
         memory_gb: u32,
     },
+    /// OpenCL compute.
     OpenCL {
+        /// OpenCL version.
         version: String,
+        /// Device type (GPU, CPU, etc.).
         device_type: String,
+        /// Compute units.
         compute_units: u32,
     },
+    /// Vulkan GPU compute.
     Vulkan {
+        /// Vulkan version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
+    /// Apple Metal GPU.
     Metal {
+        /// Metal version.
         version: String,
+        /// Feature set.
         feature_set: String,
     },
-
-    // Signal processors
+    /// Digital signal processor.
     DSP {
+        /// DSP family.
         family: String,
+        /// MIPS.
         mips: f64,
+        /// Special instruction sets.
         special_instructions: Vec<String>,
     },
-
-    // Network processors
+    /// Data processing unit (SmartNIC).
     DPU {
+        /// DPU chip.
         chip: String,
+        /// Packet processing rate in Mpps.
         packet_processing_mpps: f64,
+        /// Core count.
         cores: u32,
     },
-
-    // Custom silicon
+    /// Application-specific integrated circuit.
     ASIC {
+        /// Application domain.
         application: String,
+        /// Performance metric name.
         performance_metric: String,
+        /// Metric value.
         value: f64,
     },
-
-    // Photonic processors
+    /// Photonic/optical processor.
     PhotonicProcessor {
+        /// Wavelength count.
         wavelengths: u32,
+        /// Switching speed in GHz.
         switching_speed_ghz: f64,
+        /// Power consumption in watts.
         power_consumption_w: f64,
     },
-
-    // Analog computers
+    /// Analog computer.
     AnalogComputer {
+        /// Analog computer type.
         type_name: String,
+        /// Precision in bits.
         precision_bits: u8,
+        /// Bandwidth in MHz.
         bandwidth_mhz: f64,
     },
 }
@@ -163,59 +200,76 @@ impl SpecializedArchitecture {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[non_exhaustive]
 pub enum ExperimentalPlatform {
-    /// Molecular computing
+    /// Molecular computing.
     MolecularComputing {
+        /// Platform identifier.
         platform: String,
+        /// Molecular basis (DNA, RNA, etc.).
         molecular_basis: String,
+        /// Operation temperature in Kelvin.
         operation_temperature_k: f64,
     },
-
-    /// Biocomputing hybrids
+    /// Biocomputing hybrids.
     CyborgSystems {
+        /// Biological component.
         biological_component: String,
+        /// Electronic component.
         electronic_component: String,
+        /// Interface protocol.
         interface_protocol: String,
     },
-
-    /// Metamaterial computing
+    /// Metamaterial computing.
     MetamaterialProcessor {
+        /// Material type.
         material: String,
+        /// Frequency range in GHz.
         frequency_range_ghz: (f64, f64),
+        /// Processing method.
         processing_method: String,
     },
-
-    /// Spintronics
+    /// Spintronics.
     SpintronicsProcessor {
+        /// Technology (MRAM, etc.).
         technology: String,
+        /// Spin coherence time in ns.
         spin_coherence_time_ns: f64,
+        /// Operating temperature in Kelvin.
         operating_temperature_k: f64,
     },
-
-    /// Superconducting classical computers
+    /// Superconducting classical computers.
     SuperconductingClassical {
+        /// Technology.
         technology: String,
+        /// Operating temperature in Kelvin.
         operating_temperature_k: f64,
+        /// Switching energy in joules.
         switching_energy_j: f64,
     },
-
-    /// Reversible computing
+    /// Reversible computing.
     ReversibleComputing {
+        /// Platform.
         platform: String,
+        /// Reversibility factor.
         reversibility_factor: f64,
+        /// Energy efficiency.
         energy_efficiency: f64,
     },
-
-    /// Crystalline computing
+    /// Crystalline computing.
     CrystallineComputing {
+        /// Crystal structure.
         crystal_structure: String,
+        /// Defect type.
         defect_type: String,
+        /// Coherence time in ms.
         coherence_time_ms: f64,
     },
-
-    /// Plasma computing
+    /// Plasma computing.
     PlasmaComputing {
+        /// Plasma type.
         plasma_type: String,
+        /// Confinement method.
         confinement_method: String,
+        /// Processing frequency in MHz.
         processing_frequency_mhz: f64,
     },
 }

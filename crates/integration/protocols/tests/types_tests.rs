@@ -4,6 +4,7 @@
 //! Tests for message types, health status, and service information structures.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_integration_protocols::types::*;
 use uuid::Uuid;
@@ -185,9 +186,9 @@ fn test_transport_type_custom() {
 fn test_protocol_message_creation() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "request".to_string(),
-        source: "service-a".to_string(),
-        destination: Some("service-b".to_string()),
+        message_type: Arc::from("request"),
+        source: Arc::from("service-a"),
+        destination: Some(Arc::from("service-b")),
         payload: serde_json::json!({"action": "compute"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -198,9 +199,9 @@ fn test_protocol_message_creation() {
         priority: MessagePriority::Normal,
     };
 
-    assert_eq!(message.source, "service-a");
-    assert_eq!(message.destination, Some("service-b".to_string()));
-    assert_eq!(message.message_type, "request");
+    assert_eq!(&*message.source, "service-a");
+    assert_eq!(message.destination.as_deref(), Some("service-b"));
+    assert_eq!(&*message.message_type, "request");
     assert_eq!(message.priority, MessagePriority::Normal);
 }
 
@@ -212,9 +213,9 @@ fn test_protocol_message_with_headers() {
 
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "auth_request".to_string(),
-        source: "client".to_string(),
-        destination: Some("auth-server".to_string()),
+        message_type: Arc::from("auth_request"),
+        source: Arc::from("client"),
+        destination: Some(Arc::from("auth-server")),
         payload: serde_json::json!({}),
         headers,
         timestamp: std::time::SystemTime::now(),
@@ -256,8 +257,8 @@ fn test_service_info_creation() {
         capabilities: vec!["execute".to_string(), "schedule".to_string()],
     };
 
-    assert_eq!(service.id, "svc-123");
-    assert_eq!(service.name, "ToadStool Compute");
+    assert_eq!(&*service.id, "svc-123");
+    assert_eq!(&*service.name, "ToadStool Compute");
     assert_eq!(service.health_status, HealthStatus::Healthy);
     assert_eq!(service.capabilities.len(), 2);
     assert_eq!(service.endpoints.len(), 1);
@@ -407,9 +408,9 @@ fn test_protocol_error_timeout() {
 fn test_protocol_message_with_ttl() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "command".to_string(),
-        source: "controller".to_string(),
-        destination: Some("worker".to_string()),
+        message_type: Arc::from("command"),
+        source: Arc::from("controller"),
+        destination: Some(Arc::from("worker")),
         payload: serde_json::json!({"cmd": "execute"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -428,8 +429,8 @@ fn test_protocol_message_with_ttl() {
 fn test_protocol_message_without_ttl() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "notification".to_string(),
-        source: "notifier".to_string(),
+        message_type: Arc::from("notification"),
+        source: Arc::from("notifier"),
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
@@ -449,9 +450,9 @@ fn test_protocol_message_correlation_id() {
     let corr_id = Uuid::new_v4();
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "reply".to_string(),
-        source: "responder".to_string(),
-        destination: Some("requester".to_string()),
+        message_type: Arc::from("reply"),
+        source: Arc::from("responder"),
+        destination: Some(Arc::from("requester")),
         payload: serde_json::json!({"status": "ok"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -469,28 +470,28 @@ fn test_protocol_message_correlation_id() {
 fn test_protocol_message_reply_to() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "request".to_string(),
-        source: "client".to_string(),
-        destination: Some("server".to_string()),
+        message_type: Arc::from("request"),
+        source: Arc::from("client"),
+        destination: Some(Arc::from("server")),
         payload: serde_json::json!({"query": "data"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
-        reply_to: Some("client-queue".to_string()),
+        reply_to: Some(Arc::from("client-queue")),
         ttl: Some(Duration::from_secs(300)),
         priority: MessagePriority::Normal,
     };
 
-    assert_eq!(message.reply_to, Some("client-queue".to_string()));
+    assert_eq!(message.reply_to.as_deref(), Some("client-queue"));
 }
 
 #[test]
 fn test_protocol_message_broadcast() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "broadcast".to_string(),
-        source: "broadcaster".to_string(),
+        message_type: Arc::from("broadcast"),
+        source: Arc::from("broadcaster"),
         destination: None, // No specific destination = broadcast
         payload: serde_json::json!({"announcement": "System update"}),
         headers: HashMap::new(),
@@ -503,7 +504,7 @@ fn test_protocol_message_broadcast() {
     };
 
     assert!(message.destination.is_none());
-    assert_eq!(message.message_type, "broadcast");
+    assert_eq!(&*message.message_type, "broadcast");
 }
 
 #[test]
@@ -725,9 +726,9 @@ fn test_service_endpoint_equality() {
 fn test_protocol_message_empty_payload() {
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "ping".to_string(),
-        source: "pinger".to_string(),
-        destination: Some("target".to_string()),
+        message_type: Arc::from("ping"),
+        source: Arc::from("pinger"),
+        destination: Some(Arc::from("target")),
         payload: serde_json::json!({}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
@@ -759,15 +760,15 @@ fn test_protocol_message_complex_payload() {
 
     let message = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "workload_request".to_string(),
-        source: "scheduler".to_string(),
-        destination: Some("worker-01".to_string()),
+        message_type: Arc::from("workload_request"),
+        source: Arc::from("scheduler"),
+        destination: Some(Arc::from("worker-01")),
         payload,
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),
         format: MessageFormat::Json,
         correlation_id: None,
-        reply_to: Some("scheduler-queue".to_string()),
+        reply_to: Some(Arc::from("scheduler-queue")),
         ttl: Some(Duration::from_secs(600)),
         priority: MessagePriority::Normal,
     };
@@ -869,8 +870,8 @@ fn test_auth_type_custom_serialization() {
 fn test_protocol_message_unique_ids() {
     let msg1 = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "source".to_string(),
+        message_type: Arc::from("test"),
+        source: Arc::from("source"),
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),
@@ -884,8 +885,8 @@ fn test_protocol_message_unique_ids() {
 
     let msg2 = ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "source".to_string(),
+        message_type: Arc::from("test"),
+        source: Arc::from("source"),
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),

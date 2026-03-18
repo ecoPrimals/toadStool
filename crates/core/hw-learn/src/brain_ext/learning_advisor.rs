@@ -31,9 +31,11 @@ pub struct FleetGpu {
 pub struct LearningOpportunity {
     /// The working GPU that will be observed.
     pub teacher: String,
+    /// Architecture of the teacher GPU.
     pub teacher_arch: GpuArch,
     /// The blocked GPU that will receive the learned recipe.
     pub student: String,
+    /// Architecture of the student GPU.
     pub student_arch: GpuArch,
     /// What capability the student is missing.
     pub gap: CapabilityGap,
@@ -142,9 +144,13 @@ impl LearningAdvisor {
 /// Summary of fleet status.
 #[derive(Debug, Clone)]
 pub struct FleetSummary {
+    /// Total GPUs discovered in the fleet.
     pub total_gpus: usize,
+    /// GPUs with verified compute.
     pub working: usize,
+    /// GPUs blocked (missing firmware or init).
     pub blocked: usize,
+    /// Unique vendors present in the fleet.
     pub vendors: Vec<Vendor>,
 }
 

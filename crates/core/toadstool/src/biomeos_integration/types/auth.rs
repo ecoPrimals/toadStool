@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Authentication, authorization, and security policy types.
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 
+/// Biome security configuration (auth, policies, network).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeSecurity {
     /// Enable `BearDog` integration

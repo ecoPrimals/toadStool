@@ -12,10 +12,10 @@
 //!
 //! ## Methods
 //!
-//! - `ollama.list_models()` - Models available on this gate
-//! - `ollama.inference(model, prompt, params)` - Run inference
-//! - `ollama.load(model)` - Preload model into VRAM
-//! - `ollama.unload(model)` - Free VRAM
+//! - `inference.list_models` (was `ollama.list_models`) - Models available on this gate
+//! - `inference.execute` (was `ollama.inference`) - Run inference
+//! - `inference.load_model` (was `ollama.load`) - Preload model into VRAM
+//! - `inference.unload_model` (was `ollama.unload`) - Free VRAM
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -55,11 +55,15 @@ impl Default for OllamaConfig {
 /// Model information returned by Ollama
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaModel {
+    /// Model name.
     pub name: String,
+    /// Model size in bytes.
     #[serde(default)]
     pub size: u64,
+    /// Model digest.
     #[serde(default)]
     pub digest: String,
+    /// Last modified timestamp.
     #[serde(default)]
     pub modified_at: String,
 }
@@ -265,23 +269,34 @@ fn extract_http_body(response: &str) -> Option<String> {
 /// Ollama client errors
 #[derive(Debug, thiserror::Error)]
 pub enum OllamaError {
+    /// Connection failed.
     #[error("Ollama connection failed: {0}")]
     Connection(String),
 
+    /// Request timed out.
     #[error("Ollama request timed out")]
     Timeout,
 
+    /// IO error.
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 
+    /// JSON parse error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// Invalid HTTP response.
     #[error("Invalid HTTP response: {0}")]
     InvalidResponse(String),
 
+    /// Ollama API returned an error.
     #[error("Ollama API error: {status} - {message}")]
-    Api { status: u16, message: String },
+    Api {
+        /// HTTP status code.
+        status: u16,
+        /// Error message.
+        message: String,
+    },
 }
 
 #[cfg(test)]

@@ -245,33 +245,46 @@ impl StorageAdapter {
 /// Storage requirements for mounting distributed storage
 #[derive(Debug, Clone)]
 pub struct StorageRequirements {
+    /// Local path to mount at
     pub mount_point: PathBuf,
+    /// Optional capacity in GB
     pub capacity_gb: Option<u64>,
+    /// Read-only or read-write access
     pub access_mode: AccessMode,
+    /// Whether to encrypt at rest
     pub encryption: bool,
 }
 
 /// Storage access mode
 #[derive(Debug, Clone, Copy)]
 pub enum AccessMode {
+    /// Read-only mount
     ReadOnly,
+    /// Read-write mount
     ReadWrite,
 }
 
 /// Mount information
 #[derive(Debug, Clone)]
 pub struct MountInfo {
+    /// Local mount path
     pub mount_point: PathBuf,
+    /// Dataset name in the storage backend
     pub dataset_name: String,
+    /// Storage endpoint URL
     pub endpoint: String,
+    /// Backend type (nfs, ceph, etc.)
     pub backend_type: String,
 }
 
-/// Object storage connection
+/// Object storage connection (S3-compatible)
 #[derive(Debug, Clone)]
 pub struct ObjectStorageConnection {
+    /// Bucket name
     pub bucket: String,
+    /// Endpoint URL
     pub endpoint: String,
+    /// Region (e.g. us-east-1)
     pub region: String,
 }
 

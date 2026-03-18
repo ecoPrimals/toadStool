@@ -14,12 +14,15 @@ pub type UtilResult<T> = Result<T, UtilError>;
 /// Utility error types
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum UtilError {
+    /// Operation exceeded the specified duration
     #[error("Operation timeout after {0:?}")]
     Timeout(Duration),
 
+    /// Operation failed with the given message
     #[error("Operation failed: {0}")]
     OperationFailed(String),
 
+    /// Input was invalid
     #[error("Invalid input: {0}")]
     InvalidInput(String),
 }

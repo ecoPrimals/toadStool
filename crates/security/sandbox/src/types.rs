@@ -218,7 +218,10 @@ pub enum SandboxLifetime {
     /// Ephemeral sandbox (destroyed after execution)
     Ephemeral,
     /// Persistent sandbox with TTL
-    Persistent { ttl: Duration },
+    Persistent {
+        /// Time-to-live duration.
+        ttl: Duration,
+    },
     /// Manual cleanup required
     Manual,
 }
@@ -302,8 +305,12 @@ pub struct SecurityViolation {
 /// Violation severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ViolationSeverity {
+    /// Low severity violation.
     Low,
+    /// Medium severity violation.
     Medium,
+    /// High severity violation.
     High,
+    /// Critical severity violation.
     Critical,
 }

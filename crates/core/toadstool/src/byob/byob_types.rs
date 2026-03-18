@@ -199,7 +199,10 @@ pub enum DeploymentStatus {
     /// Deployment is stopped
     Stopped,
     /// Deployment failed
-    Failed { error: String },
+    Failed {
+        /// Error message describing the failure.
+        error: String,
+    },
 }
 
 /// Service status

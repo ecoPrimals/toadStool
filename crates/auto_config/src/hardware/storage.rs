@@ -8,11 +8,14 @@ use crate::ToadStoolResult;
 
 use super::HardwareDetector;
 
-/// Storage information and configuration
+/// Storage information and configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageInfo {
+    /// Total storage in GB.
     pub total_gb: f64,
+    /// Available storage in GB.
     pub available_gb: f64,
+    /// Storage device type.
     pub storage_type: StorageType,
 }
 
@@ -26,12 +29,16 @@ impl Default for StorageInfo {
     }
 }
 
-/// Storage device type
+/// Storage device type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StorageType {
+    /// Hard disk drive.
     HDD,
+    /// Solid-state drive.
     SSD,
+    /// NVMe SSD.
     NVME,
+    /// Unknown storage type.
     Unknown,
 }
 

@@ -17,12 +17,20 @@ pub type PortResult<T> = Result<T, PortError>;
 /// Errors that can occur during port discovery
 #[derive(Debug, thiserror::Error)]
 pub enum PortError {
+    /// Port binding failed (e.g., already in use)
     #[error("Failed to bind to port {port}: {reason}")]
-    BindFailed { port: u16, reason: String },
+    BindFailed {
+        /// Port that failed to bind
+        port: u16,
+        /// Failure reason
+        reason: String,
+    },
 
+    /// No ports available in the preferred range
     #[error("No available ports found in range")]
     NoAvailablePorts,
 
+    /// Failed to obtain local address from listener
     #[error("Failed to get local address: {0}")]
     AddressError(String),
 }

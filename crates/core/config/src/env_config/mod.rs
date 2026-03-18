@@ -31,17 +31,29 @@ pub use loader::EnvConfigLoader;
 pub use network::NetworkEnvConfig;
 
 /// Comprehensive environment configuration — aggregates all domain configs.
+///
+/// Loaded from environment variables via `from_env()`. Valid environment: development, staging, production.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnvironmentConfig {
+    /// Network bind address, ports, and connection settings.
     pub network: NetworkEnvConfig,
+    /// Resource limits (CPU, memory, storage, concurrency).
     pub resources: ResourceEnvConfig,
+    /// Metrics, health checks, logging, and alerts.
     pub monitoring: MonitoringEnvConfig,
+    /// Auth, sandboxing, encryption, rate limiting, CORS.
     pub security: SecurityEnvConfig,
+    /// Deployment environment name. Env: `ENV` or `TOADSTOOL_ENV`.
     pub environment: String,
+    /// Enable debug mode. Env: `DEBUG`.
     pub debug: bool,
+    /// Enable verbose output. Env: `VERBOSE`.
     pub verbose: bool,
+    /// Persistent data directory. Env: `DATA_DIR`.
     pub data_dir: PathBuf,
+    /// Cache directory. Env: `CACHE_DIR`.
     pub cache_dir: PathBuf,
+    /// Temporary file directory. Env: `TEMP_DIR`.
     pub temp_dir: PathBuf,
 }
 

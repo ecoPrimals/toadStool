@@ -6,168 +6,233 @@ use uuid::Uuid;
 
 use crate::common::distribution::DistributionStrategy as CommonDistributionStrategy;
 
-/// Handle for a cloud job
+/// Handle for a cloud job.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudJobHandle {
+    /// Job identifier.
     pub job_id: Uuid,
+    /// Provider-specific job ID.
     pub provider_job_id: String,
+    /// Cloud provider name.
     pub provider_name: String,
+    /// Creation timestamp.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub created_at: std::time::SystemTime,
 }
 
-/// Cloud job status
+/// Cloud job lifecycle status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CloudJobStatus {
+    /// Job queued.
     Pending,
+    /// Job running.
     Running,
+    /// Job completed successfully.
     Completed,
+    /// Job failed with error.
     Failed { error: String },
+    /// Job cancelled.
     Cancelled,
 }
 
-/// Scale configuration
+/// Scale configuration for auto-scaling.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScaleConfig {
+    /// Target replica count.
     pub target_replicas: Option<u32>,
+    /// CPU scale factor.
     pub cpu_scale_factor: Option<f64>,
+    /// Memory scale factor.
     pub memory_scale_factor: Option<f64>,
 }
 
-/// Deployment strategy options
+/// Deployment strategy for cloud workload placement.
 #[derive(Debug, Clone)]
 pub enum DeploymentStrategy {
+    /// Single cloud provider.
     SingleCloud {
+        /// Provider name.
         provider_name: String,
     },
+    /// Multi-cloud distribution.
     MultiCloud {
+        /// Provider names.
         providers: Vec<String>,
+        /// Distribution config.
         distribution: MultiCloudDistribution,
     },
+    /// Hybrid with burst to cloud.
     HybridCloudBurst {
+        /// Primary (on-prem) provider.
         primary: String,
+        /// Burst providers.
         burst_providers: Vec<String>,
     },
+    /// Federated deployment across nodes.
     FederatedDeployment {
+        /// Federation node IDs.
         federation_nodes: Vec<String>,
     },
 }
 
-/// Cloud deployment result
+/// Result of cloud deployment.
 #[derive(Debug, Clone)]
 pub enum CloudDeploymentResult {
+    /// Single-provider deployment.
     Single {
+        /// Provider name.
         provider: String,
+        /// Job handle.
         handle: CloudJobHandle,
     },
+    /// Multi-provider deployment.
     Multi {
+        /// Per-provider handles.
         handles: HashMap<String, CloudJobHandle>,
     },
+    /// Federated deployment.
     Federated {
+        /// Federated deployment config.
         deployment: FederatedDeployment,
     },
 }
 
-/// Multi-cloud distribution configuration
+/// Multi-cloud distribution configuration.
 #[derive(Debug, Clone)]
 pub struct MultiCloudDistribution {
+    /// Provider names.
     pub providers: Vec<String>,
+    /// Distribution strategy.
     pub strategy: DistributionStrategy,
 }
 
-/// Cloud distribution strategy (re-exported from common for backward compatibility)
+/// Cloud distribution strategy (re-exported from common for backward compatibility).
 pub type DistributionStrategy = CommonDistributionStrategy;
 
-/// Burst distribution configuration
+/// Burst distribution configuration for hybrid cloud.
 #[derive(Debug, Clone)]
 pub struct BurstDistribution {
+    /// Burst providers.
     pub providers: Vec<String>,
+    /// Primary provider.
     pub primary_provider: String,
 }
 
-/// Federated deployment configuration
+/// Federated deployment configuration.
 #[derive(Debug, Clone)]
 pub struct FederatedDeployment {
+    /// Federation identifier.
     pub federation_id: Uuid,
+    /// Node IDs.
     pub nodes: Vec<String>,
+    /// Coordination endpoint URL.
     pub coordination_endpoint: String,
 }
 
-/// Topology type for federation
+/// Topology type for federation.
 #[derive(Debug, Clone, Default)]
 pub enum TopologyType {
+    /// Central coordinator.
     #[default]
     Centralized,
+    /// Distributed coordination.
     Distributed,
+    /// Full mesh.
     Mesh,
+    /// Hierarchical structure.
     Hierarchical,
 }
 
-/// Federation node information
+/// Federation node information.
 #[derive(Debug, Clone, Default)]
 pub struct FederationNode {
+    /// Node ID.
     pub id: String,
+    /// Cloud provider.
     pub provider: String,
+    /// Region.
     pub region: String,
+    /// Node capabilities.
     pub capabilities: Vec<String>,
 }
 
-/// Connection between federation nodes
+/// Connection between federation nodes.
 #[derive(Debug, Clone, Default)]
 pub struct NodeConnection {
+    /// Source node ID.
     pub from: String,
+    /// Target node ID.
     pub to: String,
+    /// Latency in ms.
     pub latency: f64,
+    /// Bandwidth in Gbps.
     pub bandwidth: f64,
 }
 
-/// Network connection status
+/// Network connection status.
 #[derive(Debug, Clone, Default)]
 pub struct NetworkConnection {
+    /// Connection ID.
     pub id: String,
+    /// Provider name.
     pub provider: String,
+    /// Connection status.
     pub status: ConnectionStatus,
 }
 
-/// Connection status enum
+/// Connection status for federation links.
 #[derive(Debug, Clone, Default)]
 pub enum ConnectionStatus {
+    /// Connection active.
     #[default]
     Active,
+    /// Connection inactive.
     Inactive,
+    /// Connection error.
     Error,
 }
 
-/// Data replica information
+/// Data replica information for replication.
 #[derive(Debug, Clone, Default)]
 pub struct DataReplica {
+    /// Replica ID.
     pub id: String,
+    /// Replica location.
     pub location: String,
+    /// Sync status.
     pub status: ReplicaStatus,
 }
 
-/// Replica status enum
+/// Replica sync status.
 #[derive(Debug, Clone, Default)]
 pub enum ReplicaStatus {
+    /// Replica in sync.
     #[default]
     Synced,
+    /// Replica syncing.
     Syncing,
+    /// Replica out of sync.
     OutOfSync,
 }
 
-/// Replication configuration
+/// Replication configuration.
 #[derive(Debug, Clone, Default)]
 pub struct ReplicationConfig {
+    /// Replication factor.
     pub factor: u32,
+    /// Consistency level.
     pub consistency: ConsistencyLevel,
 }
 
-/// Consistency level for replication
+/// Consistency level for distributed replication.
 #[derive(Debug, Clone, Default)]
 pub enum ConsistencyLevel {
+    /// Strong consistency.
     #[default]
     Strong,
+    /// Eventual consistency.
     Eventual,
+    /// Weak consistency.
     Weak,
 }
 

@@ -62,47 +62,78 @@ pub struct InterfaceFunction {
 /// Interface type definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InterfaceType {
-    /// Basic types
+    /// Boolean scalar
     Bool,
+    /// Unsigned 8-bit integer
     U8,
+    /// Unsigned 16-bit integer
     U16,
+    /// Unsigned 32-bit integer
     U32,
+    /// Unsigned 64-bit integer
     U64,
+    /// Signed 8-bit integer
     S8,
+    /// Signed 16-bit integer
     S16,
+    /// Signed 32-bit integer
     S32,
+    /// Signed 64-bit integer
     S64,
+    /// 32-bit floating point
     F32,
+    /// 64-bit floating point
     F64,
+    /// UTF-8 string
     String,
-    /// Complex types
+    /// Homogeneous list of element type
     List(Box<Self>),
+    /// Named field record
     Record(Vec<(String, Self)>),
+    /// Tagged variant with optional payload
     Variant(Vec<(String, Option<Self>)>),
+    /// Optional wrapper
     Option(Box<Self>),
+    /// Result type (ok, err)
     Result(Box<Self>, Box<Self>),
-    /// Custom types
+    /// User-defined type reference
     Custom(String),
 }
 
 /// Component value type for function parameters and returns
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ComponentValue {
+    /// Boolean value
     Bool(bool),
+    /// Unsigned 8-bit value
     U8(u8),
+    /// Unsigned 16-bit value
     U16(u16),
+    /// Unsigned 32-bit value
     U32(u32),
+    /// Unsigned 64-bit value
     U64(u64),
+    /// Signed 8-bit value
     S8(i8),
+    /// Signed 16-bit value
     S16(i16),
+    /// Signed 32-bit value
     S32(i32),
+    /// Signed 64-bit value
     S64(i64),
+    /// 32-bit float value
     F32(f32),
+    /// 64-bit float value
     F64(f64),
+    /// String value
     String(String),
+    /// List of values
     List(Vec<Self>),
+    /// Record with named fields
     Record(HashMap<String, Self>),
+    /// Optional value
     Option(Option<Box<Self>>),
+    /// Tagged variant with optional payload
     Variant(String, Option<Box<Self>>),
 }
 

@@ -246,8 +246,8 @@ fn test_system_resources_clone() {
 
 // --- Announce, find_peer, find_all_peers, cleanup ---
 
-#[tokio::test]
-async fn test_announce_preserves_metadata() {
+#[test]
+fn test_announce_preserves_metadata() {
     with_temp_discovery(|discovery_base| async move {
         let mut metadata = HashMap::new();
         metadata.insert("region".to_string(), "eu-west".to_string());
@@ -277,12 +277,11 @@ async fn test_announce_preserves_metadata() {
         let parsed: PrimalCapabilities = serde_json::from_str(&contents).unwrap();
         assert_eq!(parsed.metadata.get("region"), Some(&"eu-west".to_string()));
         assert_eq!(parsed.metadata.get("tier"), Some(&"premium".to_string()));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_skips_non_json() {
+#[test]
+fn test_find_peer_with_skips_non_json() {
     with_temp_discovery(|discovery_base| async move {
         tokio::fs::write(discovery_base.join("notes.txt"), "not json")
             .await
@@ -293,12 +292,11 @@ async fn test_find_peer_with_skips_non_json() {
 
         let result = PrimalCapabilities::find_peer_with("compute").await;
         assert!(result.is_err());
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_multiple_peers_returns_first_match() {
+#[test]
+fn test_find_peer_with_multiple_peers_returns_first_match() {
     with_temp_discovery(|discovery_base| async move {
         let peer1 = PrimalCapabilities {
             primal_id: "first-match".to_string(),
@@ -354,12 +352,11 @@ async fn test_find_peer_with_multiple_peers_returns_first_match() {
             "Should find one of the matching peers"
         );
         assert!(found.capabilities.iter().any(|c| c.contains("gpu-nvidia")));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_invalid_json_fails() {
+#[test]
+fn test_find_peer_with_invalid_json_fails() {
     with_temp_discovery(|discovery_base| async move {
         tokio::fs::write(discovery_base.join("bad-peer.json"), "{ invalid json }")
             .await
@@ -369,12 +366,11 @@ async fn test_find_peer_with_invalid_json_fails() {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.contains("Failed to parse") || err.contains("parse"));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_all_peers_mixed_valid_invalid_json() {
+#[test]
+fn test_find_all_peers_mixed_valid_invalid_json() {
     with_temp_discovery(|discovery_base| async move {
         let valid_peer = PrimalCapabilities {
             primal_id: "valid-peer".to_string(),
@@ -406,12 +402,11 @@ async fn test_find_all_peers_mixed_valid_invalid_json() {
         let peers = PrimalCapabilities::find_all_peers().await.unwrap();
         assert_eq!(peers.len(), 1);
         assert_eq!(peers[0].primal_id, "valid-peer");
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_empty_capability_match() {
+#[test]
+fn test_find_peer_with_empty_capability_match() {
     with_temp_discovery(|discovery_base| async move {
         let peer = PrimalCapabilities {
             primal_id: "empty-cap-peer".to_string(),
@@ -446,12 +441,11 @@ async fn test_find_peer_with_empty_capability_match() {
                 .iter()
                 .any(|c| c.contains("arch"))
         );
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_cleanup_twice_idempotent() {
+#[test]
+fn test_cleanup_twice_idempotent() {
     with_temp_discovery(|discovery_base| async move {
         let caps = PrimalCapabilities {
             primal_id: "double-cleanup-id".to_string(),
@@ -478,6 +472,5 @@ async fn test_cleanup_twice_idempotent() {
         assert!(r1.is_ok());
         assert!(r2.is_ok());
         assert!(!discovery_base.join("double-cleanup-id.json").exists());
-    })
-    .await;
+    });
 }

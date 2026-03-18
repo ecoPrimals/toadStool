@@ -12,10 +12,14 @@ use toadstool_common::constants::PRIMAL_NAME;
 /// Graph node representing a single workload unit
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphNode {
+    /// Node identifier.
     pub id: String,
+    /// Primal that executes this node.
     #[serde(default = "default_primal")]
     pub primal: String,
+    /// Operation type.
     pub operation: String,
+    /// Resource requirements.
     #[serde(default)]
     pub requirements: NodeResourceRequirements,
     #[serde(
@@ -24,7 +28,9 @@ pub struct GraphNode {
         serialize_with = "serialize_duration",
         deserialize_with = "deserialize_duration"
     )]
+    /// Estimated duration.
     pub duration: Option<Duration>,
+    /// Optional metadata.
     #[serde(default)]
     pub metadata: HashMap<String, String>,
 }
@@ -54,23 +60,30 @@ where
 /// Resource requirements for a graph node
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NodeResourceRequirements {
+    /// CPU requirements.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cpu: Option<CpuRequirements>,
+    /// Memory requirements.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memory: Option<MemoryRequirements>,
+    /// Storage requirements.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<StorageRequirements>,
+    /// GPU requirements.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gpu: Option<GpuRequirements>,
+    /// Network requirements.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<NetworkRequirements>,
 }
 
 impl GraphNode {
+    /// Creates a builder for constructing a graph node.
     pub fn builder(id: impl Into<String>, operation: impl Into<String>) -> GraphNodeBuilder {
         GraphNodeBuilder::new(id, operation)
     }
 
+    /// Creates a minimal node with default requirements.
     pub fn simple(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -98,6 +111,7 @@ pub struct GraphNodeBuilder {
 }
 
 impl GraphNodeBuilder {
+    /// Creates a new builder with the given node ID and operation.
     pub fn new(id: impl Into<String>, operation: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -113,66 +127,79 @@ impl GraphNodeBuilder {
         }
     }
 
+    /// Sets the primal type.
     pub fn primal(mut self, primal: impl Into<String>) -> Self {
         self.primal = primal.into();
         self
     }
 
+    /// Sets CPU core requirement.
     pub fn cpu(mut self, cores: f64) -> Self {
         self.cpu_cores = Some(cores);
         self
     }
 
+    /// Sets memory requirement in bytes.
     pub fn memory(mut self, bytes: u64) -> Self {
         self.memory_bytes = Some(bytes);
         self
     }
 
+    /// Sets memory requirement in gigabytes.
     pub fn memory_gb(mut self, gb: u64) -> Self {
         self.memory_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
 
+    /// Sets GPU memory requirement in bytes.
     pub fn gpu_memory(mut self, bytes: u64) -> Self {
         self.gpu_memory_bytes = Some(bytes);
         self
     }
 
+    /// Sets GPU memory requirement in gigabytes.
     pub fn gpu_memory_gb(mut self, gb: u64) -> Self {
         self.gpu_memory_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
 
+    /// Sets storage requirement in bytes.
     pub fn storage(mut self, bytes: u64) -> Self {
         self.storage_bytes = Some(bytes);
         self
     }
 
+    /// Sets storage requirement in gigabytes.
     pub fn storage_gb(mut self, gb: u64) -> Self {
         self.storage_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
 
+    /// Sets network bandwidth requirement in Mbps.
     pub fn network_bandwidth(mut self, mbps: u64) -> Self {
         self.network_bandwidth_mbps = Some(mbps);
         self
     }
 
+    /// Sets estimated duration.
     pub fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
 
+    /// Sets estimated duration in seconds.
     pub fn duration_secs(mut self, secs: u64) -> Self {
         self.duration = Some(Duration::from_secs(secs));
         self
     }
 
+    /// Adds a metadata key-value pair.
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
 
+    /// Builds the graph node.
     pub fn build(self) -> GraphNode {
         let mut requirements = NodeResourceRequirements::default();
 

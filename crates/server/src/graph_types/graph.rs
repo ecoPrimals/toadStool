@@ -11,9 +11,13 @@ use super::nodes::GraphNode;
 /// Execution graph representing a complete workflow
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionGraph {
+    /// Graph identifier.
     pub id: String,
+    /// Nodes in the graph.
     pub nodes: Vec<GraphNode>,
+    /// Edges between nodes.
     pub edges: Vec<GraphEdge>,
+    /// Optional metadata.
     #[serde(default)]
     pub metadata: HashMap<String, String>,
 }
@@ -120,11 +124,13 @@ impl ExecutionGraph {
         Ok(())
     }
 
+    /// Returns the node with the given ID.
     #[must_use]
     pub fn get_node(&self, id: &str) -> Option<&GraphNode> {
         self.nodes.iter().find(|n| n.id == id)
     }
 
+    /// Returns nodes that depend on the given node (outgoing edges).
     #[must_use]
     pub fn get_dependents(&self, node_id: &str) -> Vec<&GraphNode> {
         let dependent_ids: Vec<&str> = self
@@ -140,6 +146,7 @@ impl ExecutionGraph {
             .collect()
     }
 
+    /// Returns nodes that the given node depends on (incoming edges).
     #[must_use]
     pub fn get_dependencies(&self, node_id: &str) -> Vec<&GraphNode> {
         let dependency_ids: Vec<&str> = self
@@ -155,10 +162,12 @@ impl ExecutionGraph {
             .collect()
     }
 
+    /// Creates a builder for constructing an execution graph.
     pub fn builder(id: impl Into<String>) -> ExecutionGraphBuilder {
         ExecutionGraphBuilder::new(id)
     }
 
+    /// Creates an empty graph with the given ID.
     pub fn simple(id: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -178,6 +187,7 @@ pub struct ExecutionGraphBuilder {
 }
 
 impl ExecutionGraphBuilder {
+    /// Creates a new builder with the given graph ID.
     pub fn new(id: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -187,36 +197,43 @@ impl ExecutionGraphBuilder {
         }
     }
 
+    /// Adds a node to the graph.
     pub fn node(mut self, node: GraphNode) -> Self {
         self.nodes.push(node);
         self
     }
 
+    /// Adds multiple nodes to the graph.
     pub fn nodes(mut self, nodes: impl IntoIterator<Item = GraphNode>) -> Self {
         self.nodes.extend(nodes);
         self
     }
 
+    /// Adds an edge to the graph.
     pub fn edge(mut self, edge: GraphEdge) -> Self {
         self.edges.push(edge);
         self
     }
 
+    /// Adds an edge from one node to another.
     pub fn connect(mut self, from: impl Into<String>, to: impl Into<String>) -> Self {
         self.edges.push(GraphEdge::new(from, to));
         self
     }
 
+    /// Adds multiple edges to the graph.
     pub fn edges(mut self, edges: impl IntoIterator<Item = GraphEdge>) -> Self {
         self.edges.extend(edges);
         self
     }
 
+    /// Adds a metadata key-value pair.
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
 
+    /// Builds the execution graph.
     pub fn build(self) -> ExecutionGraph {
         ExecutionGraph {
             id: self.id,

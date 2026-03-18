@@ -50,15 +50,19 @@ pub struct InterInstanceCommunication {
     _channels: Arc<RwLock<HashMap<String, CommunicationChannel>>>,
 }
 
-/// Communication channel
+/// Bidirectional channel for inter-instance communication.
 #[derive(Debug, Clone)]
 pub struct CommunicationChannel {
+    /// Unique channel identifier.
     pub channel_id: String,
+    /// Remote endpoint for this channel.
     pub endpoint: String,
+    /// Last activity timestamp for liveness.
     pub last_activity: std::time::SystemTime,
 }
 
 impl RecursiveHostingManager {
+    /// Creates a recursive hosting manager with the given config.
     pub async fn new(config: RecursiveHostingConfig) -> ToadStoolResult<Self> {
         Ok(Self {
             _config: config,
@@ -68,6 +72,7 @@ impl RecursiveHostingManager {
         })
     }
 
+    /// Spawns a child ToadStool instance with the given hosting config.
     pub async fn create_child_instance(
         &self,
         toadstool_config: ToadStoolHostingConfig,
@@ -101,6 +106,7 @@ impl RecursiveHostingManager {
 }
 
 impl ChildResourceAllocator {
+    /// Creates a child resource allocator with default limits.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -117,6 +123,7 @@ impl Default for ChildResourceAllocator {
 }
 
 impl InterInstanceCommunication {
+    /// Creates an empty inter-instance communication manager.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -133,8 +140,6 @@ impl Default for InterInstanceCommunication {
 
 #[cfg(test)]
 mod tests {
-    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
-
     use super::*;
     use std::collections::HashMap;
 
@@ -233,35 +238,34 @@ mod tests {
         assert!(matches!(instance.status, InstanceStatus::Starting));
     }
 
-    #[tokio::test]
-    async fn test_recursive_hosting_manager_create_child_with_custom_port() {
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::set_var("TOADSTOOL_API_PORT", "9999") };
-        let config = RecursiveHostingConfig {
-            enabled: true,
-            current_depth: 0,
-            max_depth: 3,
-            parent_toadstool: None,
-            child_toadstools: vec![],
-            child_resource_allocation: crate::types::ResourceAllocationStrategy::Fair,
-        };
-        let manager = RecursiveHostingManager::new(config)
-            .await
-            .expect("manager creation");
+    #[test]
+    fn test_recursive_hosting_manager_create_child_with_custom_port() {
+        temp_env::with_var("TOADSTOOL_API_PORT", Some("9999"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let config = RecursiveHostingConfig {
+                enabled: true,
+                current_depth: 0,
+                max_depth: 3,
+                parent_toadstool: None,
+                child_toadstools: vec![],
+                child_resource_allocation: crate::types::ResourceAllocationStrategy::Fair,
+            };
+            let manager = rt
+                .block_on(RecursiveHostingManager::new(config))
+                .expect("manager creation");
 
-        let hosting_config = ToadStoolHostingConfig {
-            enabled: true,
-            mode: "child".to_string(),
-            resource_limits: HashMap::new(),
-            security_settings: HashMap::new(),
-            resource_allocation: None,
-        };
+            let hosting_config = ToadStoolHostingConfig {
+                enabled: true,
+                mode: "child".to_string(),
+                resource_limits: HashMap::new(),
+                security_settings: HashMap::new(),
+                resource_allocation: None,
+            };
 
-        let result = manager.create_child_instance(hosting_config).await;
-        assert!(result.is_ok());
-        let instance = result.expect("instance");
-        assert!(instance.endpoint.contains("9999"));
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::remove_var("TOADSTOOL_API_PORT") };
+            let result = rt.block_on(manager.create_child_instance(hosting_config));
+            assert!(result.is_ok());
+            let instance = result.expect("instance");
+            assert!(instance.endpoint.contains("9999"));
+        });
     }
 }

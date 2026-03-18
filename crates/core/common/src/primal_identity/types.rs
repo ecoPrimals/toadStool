@@ -28,7 +28,12 @@ pub enum Capability {
     Discovery(DiscoveryCapability),
 
     /// Custom capability
-    Custom { name: String, version: String },
+    Custom {
+        /// Capability name
+        name: String,
+        /// Capability version
+        version: String,
+    },
 }
 
 /// Compute capability types

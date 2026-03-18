@@ -42,25 +42,31 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path; // Pure Rust directory paths
 
-/// Primal capability registry error
+/// Primal capability registry error.
 #[derive(Debug, thiserror::Error)]
 pub enum CapabilityError {
+    /// Failed to load capabilities file from disk.
     #[error("Failed to load capabilities file: {0}")]
     LoadFailed(String),
 
+    /// Failed to parse capabilities TOML.
     #[error("Failed to parse capabilities: {0}")]
     ParseFailed(String),
 
+    /// Requested primal not found in registry.
     #[error("Primal not found: {0}")]
     PrimalNotFound(String),
 
+    /// Requested capability not found.
     #[error("Capability not found: {0}")]
     CapabilityNotFound(String),
 
+    /// No endpoint configured for the primal.
     #[error("No endpoint configured for primal: {0}")]
     NoEndpoint(String),
 }
 
+/// Result type for capability registry operations.
 pub type CapabilityResult<T> = Result<T, CapabilityError>;
 
 /// Primal capabilities registry
@@ -85,15 +91,18 @@ pub struct PrimalCapabilitiesRegistry {
     pub migration: HashMap<String, MigrationMapping>,
 }
 
-/// Registry metadata
+/// Registry metadata from primal-capabilities.toml.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RegistryMetadata {
+    /// Registry schema version.
     #[serde(default)]
     pub version: String,
 
+    /// Discovery protocol (e.g. mdns, environment).
     #[serde(default)]
     pub discovery_protocol: String,
 
+    /// Fallback strategy when discovery fails.
     #[serde(default)]
     pub fallback_strategy: String,
 }
@@ -135,61 +144,66 @@ pub struct PrimalDefinition {
     pub discovery_endpoint: Option<String>,
 }
 
-/// Discovery configuration
+/// Discovery configuration for finding primals at runtime.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DiscoveryConfig {
-    /// Discovery methods in priority order
+    /// Discovery methods in priority order (e.g. ["mdns", "environment"]).
     #[serde(default)]
     pub methods: Vec<String>,
 
-    /// Cache settings
+    /// Enable discovery result caching.
     #[serde(default)]
     pub cache_enabled: bool,
 
+    /// Cache TTL in seconds.
     #[serde(default)]
     pub cache_ttl_seconds: u64,
 
-    /// Retry settings
+    /// Number of retry attempts on discovery failure.
     #[serde(default)]
     pub retry_attempts: u32,
 
+    /// Delay between retries in milliseconds.
     #[serde(default)]
     pub retry_delay_ms: u64,
 
+    /// Discovery timeout in seconds.
     #[serde(default)]
     pub timeout_seconds: u64,
 
-    /// Health check settings
+    /// Enable health checks before using discovered services.
     #[serde(default)]
     pub health_check_enabled: bool,
 
+    /// Health check interval in seconds.
     #[serde(default)]
     pub health_check_interval_seconds: u64,
 
+    /// Health check timeout in seconds.
     #[serde(default)]
     pub health_check_timeout_seconds: u64,
 
-    /// Preferences
+    /// Discovery preferences (local, healthy, load balance).
     #[serde(default)]
     pub preferences: DiscoveryPreferences,
 }
 
-/// Discovery preferences
+/// Discovery preferences for service selection.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DiscoveryPreferences {
-    /// Prefer local services
+    /// Prefer services on localhost.
     #[serde(default)]
     pub prefer_local: bool,
 
-    /// Require healthy services
+    /// Only use services that pass health check.
     #[serde(default)]
     pub require_healthy: bool,
 
-    /// Load balancing strategy
+    /// Load balancing strategy (round-robin, random, etc.).
     #[serde(default)]
     pub load_balance: String,
 
-    /// Fallback to any available service
+    /// Use any available service if preferred unavailable.
     #[serde(default)]
     pub fallback_to_any: bool,
 }

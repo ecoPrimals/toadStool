@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: March 10, 2026 -- S140
+**Updated**: March 18, 2026 -- S159
 
 Old integration guides, barracuda-specific docs, and Feb 2026 planning docs archived to `ecoPrimals/fossil/toadStool/`.
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub.

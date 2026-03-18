@@ -4,9 +4,10 @@
 //! Pure data structures for the JSON-RPC 2.0 protocol.
 //! No logic — only serialization/deserialization.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::rpc_types::{
     ResourceRequirements, WorkloadPriority, WorkloadSubmission as TarpcWorkloadSubmission,
@@ -78,17 +79,22 @@ pub struct JsonRpcError {
 }
 
 impl JsonRpcError {
-    // Standard JSON-RPC 2.0 error codes -- from shared ecosystem constants
+    /// Parse error code (-32700).
     pub const PARSE_ERROR: i32 = toadstool_common::constants::jsonrpc::error_codes::PARSE_ERROR;
+    /// Invalid request code (-32600).
     pub const INVALID_REQUEST: i32 =
         toadstool_common::constants::jsonrpc::error_codes::INVALID_REQUEST;
+    /// Method not found code (-32601).
     pub const METHOD_NOT_FOUND: i32 =
         toadstool_common::constants::jsonrpc::error_codes::METHOD_NOT_FOUND;
+    /// Invalid params code (-32602).
     pub const INVALID_PARAMS: i32 =
         toadstool_common::constants::jsonrpc::error_codes::INVALID_PARAMS;
+    /// Internal error code (-32603).
     pub const INTERNAL_ERROR: i32 =
         toadstool_common::constants::jsonrpc::error_codes::INTERNAL_ERROR;
 
+    /// Creates a parse error.
     pub fn parse_error(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::PARSE_ERROR,
@@ -97,6 +103,7 @@ impl JsonRpcError {
         }
     }
 
+    /// Creates an invalid request error.
     pub fn invalid_request(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::INVALID_REQUEST,
@@ -105,6 +112,7 @@ impl JsonRpcError {
         }
     }
 
+    /// Creates a method not found error.
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
@@ -113,6 +121,7 @@ impl JsonRpcError {
         }
     }
 
+    /// Creates an invalid params error.
     pub fn invalid_params(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::INVALID_PARAMS,
@@ -121,6 +130,7 @@ impl JsonRpcError {
         }
     }
 
+    /// Creates an internal error.
     pub fn internal_error(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
             code: Self::INTERNAL_ERROR,
@@ -130,15 +140,45 @@ impl JsonRpcError {
     }
 }
 
+fn serialize_arc_str<S>(v: &Arc<str>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str(v)
+}
+
+fn deserialize_arc_str<'de, D>(d: D) -> Result<Arc<str>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(d)?;
+    Ok(Arc::from(s))
+}
+
 /// JSON-friendly workload submission (base64 encoding for binary data)
+///
+/// `workload_id` and `workload_type` use `Arc<str>` per wateringHole zero-copy guidelines.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JsonWorkloadSubmission {
-    pub workload_id: String,
-    pub workload_type: String,
+    /// Workload identifier.
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub workload_id: Arc<str>,
+    /// Workload type.
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub workload_type: Arc<str>,
     /// Base64-encoded binary data
     pub data: String,
+    /// Optional metadata.
     pub metadata: HashMap<String, String>,
+    /// Workload priority.
     pub priority: WorkloadPriority,
+    /// Resource requirements.
     pub requirements: ResourceRequirements,
 }
 

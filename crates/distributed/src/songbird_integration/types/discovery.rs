@@ -12,69 +12,110 @@ use toadstool_common::constants::timeouts;
 use super::node::{NodeCapabilities, NodeId};
 use super::{ConnectionHealth, SongbirdConnection};
 
+/// Node type in Songbird discovery.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeType {
+    /// ToadStool primal node.
     ToadStool,
+    /// NestGate node.
     NestGate,
+    /// BearDog crypto node.
     BearDog,
+    /// Songbird coordination node.
     Songbird,
+    /// Custom node type.
     Custom(String),
 }
 
+/// Node registration for service discovery.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeRegistration {
+    /// Node identifier.
     pub node_id: NodeId,
+    /// Node type.
     pub node_type: NodeType,
+    /// Node capabilities.
     pub capabilities: NodeCapabilities,
+    /// Endpoint URLs.
     pub endpoints: Vec<String>,
+    /// Supported protocols.
     pub protocols: Vec<String>,
+    /// Node metadata.
     pub metadata: NodeMetadata,
 }
 
+/// Node metadata for discovery.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeMetadata {
+    /// Node version.
     pub version: String,
+    /// Build info.
     pub build_info: String,
+    /// Capabilities.
     pub capabilities: NodeCapabilities,
 }
 
+/// Network status snapshot.
 #[derive(Debug, Clone)]
 pub struct NetworkStatus {
+    /// Total registered nodes.
     pub total_nodes: usize,
+    /// Active/healthy nodes.
     pub active_nodes: usize,
+    /// Total capacity across nodes.
     pub total_capacity: NodeCapabilities,
+    /// Current utilization (0.0–1.0).
     pub current_utilization: f64,
 }
 
+/// Load balancing advice from Songbird.
 #[derive(Debug, Clone)]
 pub struct LoadBalancingAdvice {
+    /// Recommended node IDs.
     pub recommended_nodes: Vec<NodeId>,
+    /// Load distribution per node.
     pub load_distribution: HashMap<NodeId, f64>,
+    /// Reasoning for the recommendation.
     pub reasoning: String,
 }
 
+/// Network requirements for job placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkRequirements {
+    /// Bandwidth in Mbps.
     pub bandwidth_mbps: Option<u64>,
+    /// Max latency in ms.
     pub latency_ms: Option<u64>,
+    /// Reliability percentage.
     pub reliability_percent: Option<f64>,
 }
 
+/// Total network capacity across nodes.
 pub struct NetworkCapacity {
+    /// Total node count.
     pub total_nodes: usize,
+    /// Total CPU cores.
     pub total_cpu_cores: f64,
+    /// Total memory in GB.
     pub total_memory_gb: f64,
+    /// Total storage in GB.
     pub total_storage_gb: f64,
 }
 
+/// Available capacity on a node for job placement.
 pub struct AvailableCapacity {
+    /// Available CPU cores.
     pub cpu_cores: f64,
+    /// Available memory in bytes.
     pub memory_bytes: u64,
+    /// Available storage in bytes.
     pub storage_bytes: u64,
+    /// Available network bandwidth in bytes/sec.
     pub network_bandwidth: u64,
 }
 
 impl AvailableCapacity {
+    /// Returns true if this capacity can satisfy the job's resource requirements.
     pub fn can_handle_job(&self, job: &crate::UniversalJob) -> bool {
         let requirements = &job.resource_requirements;
         if requirements.cpu.min_cores > self.cpu_cores {
@@ -96,45 +137,62 @@ impl AvailableCapacity {
     }
 }
 
+/// Resource reservation for a job.
 pub struct ResourceReservation {
+    /// Reservation ID.
     pub reservation_id: uuid::Uuid,
+    /// Reserved resources.
     pub resources: crate::ResourceRequirements,
 }
 
+/// Response from node registration.
 pub struct RegistrationResponse {
+    /// Registered node ID.
     pub node_id: NodeId,
+    /// Registration status.
     pub status: String,
+    /// Assigned channel IDs.
     pub assigned_channels: Vec<String>,
 }
 
+/// Discovery client for Songbird service discovery.
 pub struct DiscoveryClient {
     pub(crate) connection: Arc<SongbirdConnection>,
     pub(crate) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
+/// Registry of discovered nodes.
 #[derive(Default)]
 pub struct NodeRegistry {
+    /// Node ID to registration mapping.
     pub nodes: HashMap<NodeId, NodeRegistration>,
 }
 
 impl NodeRegistry {
+    /// Registers a node.
     pub fn register(&mut self, registration: NodeRegistration) {
         self.nodes
             .insert(registration.node_id.clone(), registration);
     }
 
+    /// Returns registration for a node ID.
     pub fn get_node(&self, node_id: &NodeId) -> Option<&NodeRegistration> {
         self.nodes.get(node_id)
     }
 
+    /// Lists all registered nodes.
     pub fn list_nodes(&self) -> Vec<&NodeRegistration> {
         self.nodes.values().collect()
     }
 }
 
+/// Network health monitor for node liveness.
 pub struct NetworkHealthMonitor {
+    /// Per-node health check results.
     pub health_checks: HashMap<NodeId, ConnectionHealth>,
+    /// Last check timestamp.
     pub last_check: Option<SystemTime>,
+    /// Check interval.
     pub check_interval: Duration,
 }
 
@@ -149,6 +207,7 @@ impl Default for NetworkHealthMonitor {
 }
 
 impl NetworkHealthMonitor {
+    /// Creates a monitor with a custom check interval.
     #[must_use]
     pub fn with_interval(interval: Duration) -> Self {
         Self {
@@ -158,6 +217,7 @@ impl NetworkHealthMonitor {
         }
     }
 
+    /// Runs health checks for all registered nodes.
     pub async fn monitor_health(&mut self) {
         self.last_check = Some(SystemTime::now());
         for (node_id, status) in &mut self.health_checks {
@@ -165,6 +225,7 @@ impl NetworkHealthMonitor {
         }
     }
 
+    /// Updates health status for a node.
     pub fn update_node_health(&mut self, node_id: NodeId, status: ConnectionHealth) {
         let previous = self.health_checks.insert(node_id.clone(), status.clone());
         if let Some(prev) = previous {
@@ -181,6 +242,7 @@ impl NetworkHealthMonitor {
         }
     }
 
+    /// Returns health status for a node, or Unknown if not registered.
     #[must_use]
     pub fn get_node_health(&self, node_id: &NodeId) -> ConnectionHealth {
         self.health_checks
@@ -189,6 +251,7 @@ impl NetworkHealthMonitor {
             .unwrap_or(ConnectionHealth::Unknown)
     }
 
+    /// Returns IDs of nodes with Healthy status.
     #[must_use]
     pub fn healthy_nodes(&self) -> Vec<NodeId> {
         self.health_checks
@@ -198,6 +261,7 @@ impl NetworkHealthMonitor {
             .collect()
     }
 
+    /// Removes a node from health monitoring.
     pub fn remove_node(&mut self, node_id: &NodeId) {
         self.health_checks.remove(node_id);
         tracing::debug!("Removed node {} from health monitoring", node_id);

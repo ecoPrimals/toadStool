@@ -16,10 +16,15 @@ pub mod service_names {
     use toadstool_common::constants::PRIMAL_NAME;
     use toadstool_common::interned_strings::capabilities;
 
+    /// Coordination/discovery capability (Songbird)
     pub const SONGBIRD: &str = capabilities::COORDINATION;
+    /// Crypto/security capability (BearDog)
     pub const BEARDOG: &str = capabilities::CRYPTO;
+    /// Storage capability (NestGate)
     pub const NESTGATE: &str = capabilities::STORAGE;
+    /// Intelligence/AI capability (Squirrel)
     pub const SQUIRREL: &str = capabilities::INTELLIGENCE;
+    /// Compute capability (ToadStool)
     pub const TOADSTOOL: &str = PRIMAL_NAME;
 
     /// All known capability identifiers as slice

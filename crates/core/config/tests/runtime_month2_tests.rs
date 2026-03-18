@@ -4,7 +4,7 @@
 //! Tier 1 tests: Coverage-measured runtime config tests
 //! Focus: Runtime defaults, overrides, validation, edge cases
 //!
-//! ✅ MODERNIZED: Uses scoped Mutex instead of #[serial]
+//! ✅ MODERNIZED: Uses temp_env for thread-safe env var testing
 
 use std::env;
 use std::sync::Mutex;
@@ -63,63 +63,38 @@ fn test_runtime_defaults_stack_size() {
 
 #[test]
 fn test_runtime_env_override_threads() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_WORKER_THREADS", "16") };
-
-    let config = load_runtime_config();
-
-    assert_eq!(config.worker_threads, 16);
-
-    unsafe { env::remove_var("TOADSTOOL_WORKER_THREADS") };
+    temp_env::with_var("TOADSTOOL_WORKER_THREADS", Some("16"), || {
+        let config = load_runtime_config();
+        assert_eq!(config.worker_threads, 16);
+    });
 }
 
 #[test]
 fn test_runtime_env_override_memory() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_MAX_MEMORY_MB", "8192") };
-
-    let config = load_runtime_config();
-
-    assert_eq!(config.max_memory_mb, 8192);
-
-    unsafe { env::remove_var("TOADSTOOL_MAX_MEMORY_MB") };
+    temp_env::with_var("TOADSTOOL_MAX_MEMORY_MB", Some("8192"), || {
+        let config = load_runtime_config();
+        assert_eq!(config.max_memory_mb, 8192);
+    });
 }
 
 #[test]
 fn test_runtime_env_override_timeout() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS", "120") };
-
-    let config = load_runtime_config();
-
-    assert_eq!(config.default_timeout_secs, 120);
-
-    unsafe { env::remove_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS") };
+    temp_env::with_var("TOADSTOOL_DEFAULT_TIMEOUT_SECS", Some("120"), || {
+        let config = load_runtime_config();
+        assert_eq!(config.default_timeout_secs, 120);
+    });
 }
 
 #[test]
 fn test_runtime_env_override_invalid_falls_back() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_WORKER_THREADS", "not-a-number") };
-
-    let config = load_runtime_config();
-
-    // Should fall back to default
-    assert!(config.worker_threads > 0);
-
-    unsafe { env::remove_var("TOADSTOOL_WORKER_THREADS") };
+    temp_env::with_var("TOADSTOOL_WORKER_THREADS", Some("not-a-number"), || {
+        let config = load_runtime_config();
+        assert!(config.worker_threads > 0);
+    });
 }
 
 // ============================================================================

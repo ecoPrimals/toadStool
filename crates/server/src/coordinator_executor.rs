@@ -86,7 +86,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
     async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
         info!(
             "Executing workload via coordinator: {}",
-            submission.workload_id
+            submission.workload_id.as_ref()
         );
 
         // Convert WorkloadSubmission to ExecutionRequest (pass by ref to avoid full clone)
@@ -214,10 +214,10 @@ fn convert_submission_to_request(
         .map(Duration::from_secs);
 
     Ok(ExecutionRequest {
-        execution_id: uuid::Uuid::parse_str(&submission.workload_id)
+        execution_id: uuid::Uuid::parse_str(submission.workload_id.as_ref())
             .unwrap_or_else(|_| uuid::Uuid::new_v4()),
         workload: workload_spec,
-        runtime_hint: Some(parse_runtime_type(&submission.workload_type)),
+        runtime_hint: Some(parse_runtime_type(submission.workload_type.as_ref())),
         resources: ResourceRequirements::default(),
         security_context: SecurityContext::default(),
         timeout,
@@ -297,8 +297,8 @@ mod tests {
     #[test]
     fn test_convert_submission_to_request() {
         let submission = WorkloadSubmission {
-            workload_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
-            workload_type: "gpu_compute".to_string(),
+            workload_id: Arc::from("550e8400-e29b-41d4-a716-446655440000"),
+            workload_type: Arc::from("gpu_compute"),
             data: vec![1, 2, 3, 4, 5].into(),
             metadata: HashMap::from([
                 ("key1".to_string(), "value1".to_string()),
@@ -335,8 +335,8 @@ mod tests {
     #[test]
     fn test_convert_submission_invalid_uuid_uses_new_v4() {
         let submission = WorkloadSubmission {
-            workload_id: "not-a-valid-uuid".to_string(),
-            workload_type: "cpu_compute".to_string(),
+            workload_id: Arc::from("not-a-valid-uuid"),
+            workload_type: Arc::from("cpu_compute"),
             data: bytes::Bytes::new(),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
@@ -358,8 +358,8 @@ mod tests {
     #[test]
     fn test_convert_submission_neural_compute_defaults_to_native() {
         let submission = WorkloadSubmission {
-            workload_id: uuid::Uuid::new_v4().to_string(),
-            workload_type: "neural_compute".to_string(),
+            workload_id: Arc::from(uuid::Uuid::new_v4().to_string()),
+            workload_type: Arc::from("neural_compute"),
             data: vec![1, 2, 3].into(),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
@@ -379,8 +379,8 @@ mod tests {
     #[test]
     fn test_convert_submission_empty_metadata() {
         let submission = WorkloadSubmission {
-            workload_id: uuid::Uuid::new_v4().to_string(),
-            workload_type: "wasm".to_string(),
+            workload_id: Arc::from(uuid::Uuid::new_v4().to_string()),
+            workload_type: Arc::from("wasm"),
             data: bytes::Bytes::new(),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Low,

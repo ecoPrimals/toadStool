@@ -53,6 +53,7 @@ impl Default for WindowsCompatibilityLayer {
 }
 
 impl WindowsCompatibilityLayer {
+    /// Creates a new Windows compatibility layer with default config.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -60,6 +61,7 @@ impl WindowsCompatibilityLayer {
         }
     }
 
+    /// Returns the Windows compatibility config.
     #[must_use]
     pub const fn get_config(&self) -> &WindowsCompatConfig {
         &self.config

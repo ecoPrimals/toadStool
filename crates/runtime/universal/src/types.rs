@@ -255,11 +255,17 @@ pub enum OperationType {
 /// Data types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataType {
+    /// 32-bit float.
     F32,
+    /// 64-bit float.
     F64,
+    /// 32-bit signed integer.
     I32,
+    /// 64-bit signed integer.
     I64,
+    /// 32-bit unsigned integer.
     U32,
+    /// 64-bit unsigned integer.
     U64,
 }
 
@@ -288,53 +294,84 @@ pub struct Workload {
 /// Workload data (type-erased for flexibility)
 #[derive(Debug, Clone)]
 pub enum WorkloadData {
-    /// Single vector
+    /// Single vector (f32).
     F32Vec(Vec<f32>),
+    /// Single vector (f64).
     F64Vec(Vec<f64>),
+    /// Single vector (i32).
     I32Vec(Vec<i32>),
+    /// Single vector (i64).
     I64Vec(Vec<i64>),
-    /// Dual vectors (for binary operations)
+    /// Dual f32 vectors (for binary operations).
     F32VecPair(Vec<f32>, Vec<f32>),
+    /// Dual f64 vectors (for binary operations).
     F64VecPair(Vec<f64>, Vec<f64>),
+    /// Dual i32 vectors (for binary operations).
     I32VecPair(Vec<i32>, Vec<i32>),
-    /// Data + Indices (for gather/scatter operations)
+    /// f32 data + indices (for gather/scatter).
     F32VecIndexed(Vec<f32>, Vec<usize>),
+    /// f64 data + indices (for gather/scatter).
     F64VecIndexed(Vec<f64>, Vec<usize>),
+    /// i32 data + indices (for gather/scatter).
     I32VecIndexed(Vec<i32>, Vec<usize>),
-    /// 2D Matrix (data, rows, cols)
+    /// 2D f32 matrix (data, rows, cols).
     F32Matrix(Vec<f32>, usize, usize),
+    /// 2D f64 matrix (data, rows, cols).
     F64Matrix(Vec<f64>, usize, usize),
+    /// 2D i32 matrix (data, rows, cols).
     I32Matrix(Vec<i32>, usize, usize),
-    /// Pair of matrices (for MatMul: A * B)
-    /// (A_data, A_rows, A_cols, B_data, B_rows, B_cols)
+    /// Pair of f32 matrices (for MatMul: A * B).
     F32MatrixPair(Vec<f32>, usize, usize, Vec<f32>, usize, usize),
+    /// Pair of f64 matrices (for MatMul: A * B).
     F64MatrixPair(Vec<f64>, usize, usize, Vec<f64>, usize, usize),
+    /// Pair of i32 matrices (for MatMul: A * B).
     I32MatrixPair(Vec<i32>, usize, usize, Vec<i32>, usize, usize),
-    /// Conv2D data (input, kernel, bias, batch, in_channels, height, width, out_channels, kernel_h, kernel_w, stride, padding)
+    /// Conv2D data.
     F32Conv2D {
+        /// Input tensor.
         input: Vec<f32>,
+        /// Kernel weights.
         kernel: Vec<f32>,
+        /// Optional bias.
         bias: Option<Vec<f32>>,
+        /// Batch size.
         batch_size: usize,
+        /// Input channels.
         in_channels: usize,
+        /// Input height.
         height: usize,
+        /// Input width.
         width: usize,
+        /// Output channels.
         out_channels: usize,
+        /// Kernel height.
         kernel_h: usize,
+        /// Kernel width.
         kernel_w: usize,
+        /// Stride.
         stride: usize,
+        /// Padding.
         padding: usize,
     },
-    /// Pooling2D data (input, batch, channels, height, width, pool_h, pool_w, stride, padding)
+    /// Pooling2D data.
     F32Pool2D {
+        /// Input tensor.
         input: Vec<f32>,
+        /// Batch size.
         batch_size: usize,
+        /// Channels.
         channels: usize,
+        /// Input height.
         height: usize,
+        /// Input width.
         width: usize,
+        /// Pool height.
         pool_h: usize,
+        /// Pool width.
         pool_w: usize,
+        /// Stride.
         stride: usize,
+        /// Padding.
         padding: usize,
     },
     /// Custom data
@@ -351,9 +388,13 @@ pub struct WorkloadParams {
 /// Parameter values
 #[derive(Debug, Clone)]
 pub enum ParamValue {
+    /// Integer parameter.
     Int(i64),
+    /// Float parameter.
     Float(f64),
+    /// String parameter.
     String(String),
+    /// Boolean parameter.
     Bool(bool),
 }
 
@@ -386,33 +427,45 @@ pub struct OutputMetadata {
 /// Compute errors
 #[derive(Debug, thiserror::Error)]
 pub enum ComputeError {
+    /// Workload not supported by this compute unit.
     #[error("Workload not supported by this compute unit")]
     UnsupportedWorkload,
 
+    /// Memory allocation failed.
     #[error("Memory allocation failed: {0}")]
     MemoryAllocationFailed(String),
 
+    /// Execution failed.
     #[error("Execution failed: {0}")]
     ExecutionFailed(String),
 
+    /// Backend error.
     #[error("Backend error: {0}")]
     BackendError(String),
 
+    /// No suitable compute unit found for workload.
     #[error("No suitable compute unit found for workload")]
     NoSuitableUnit,
 }
 
 /// Workload builder for convenience
 pub struct WorkloadBuilder {
+    /// Operation type (set via `operation()`).
     operation: Option<OperationType>,
+    /// Data type (inferred from `data_f32` etc.).
     data_type: Option<DataType>,
+    /// Number of operations.
     num_operations: usize,
+    /// Required memory in bytes.
     required_memory: usize,
+    /// Input data.
     input: Option<WorkloadData>,
+    /// Operation parameters.
     params: WorkloadParams,
 }
 
 impl WorkloadBuilder {
+    /// Create a new workload builder.
     pub fn new() -> Self {
         Self {
             operation: None,
@@ -424,11 +477,13 @@ impl WorkloadBuilder {
         }
     }
 
+    /// Set the operation type.
     pub const fn operation(mut self, op: OperationType) -> Self {
         self.operation = Some(op);
         self
     }
 
+    /// Set f32 vector input data.
     pub fn data_f32(mut self, data: Vec<f32>) -> Self {
         self.num_operations = data.len();
         self.required_memory = data.len() * std::mem::size_of::<f32>();
@@ -437,11 +492,13 @@ impl WorkloadBuilder {
         self
     }
 
+    /// Add a parameter.
     pub fn param<S: Into<String>>(mut self, key: S, value: ParamValue) -> Self {
         self.params.params.insert(key.into(), value);
         self
     }
 
+    /// Build the workload.
     pub fn build(self) -> Result<Workload, ComputeError> {
         Ok(Workload {
             operation: self.operation.ok_or_else(|| {

@@ -33,25 +33,34 @@ pub struct SecurityProviderPermission {
 /// Re-export ExternalTarget from security_provider for backward compatibility
 pub use crate::security_provider::types::ExternalTarget;
 
-/// Permission holder identification
+/// Permission holder identification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PermissionHolder {
-    /// Individual user
+    /// Individual user.
     Individual {
+        /// User identifier.
         user_id: String,
+        /// Public key for verification.
         public_key: String,
+        /// Verification level.
         verification_level: VerificationLevel,
     },
-    /// Organization (university, company, etc.)
+    /// Organization (university, company, etc.).
     Organization {
+        /// Organization identifier.
         org_id: String,
+        /// Organization type.
         org_type: OrganizationType,
+        /// Authorized user IDs.
         authorized_users: Vec<String>,
     },
-    /// Delegated permission (someone lending access)
+    /// Delegated permission (someone lending access).
     Delegated {
+        /// Original permission holder.
         original_holder: Box<Self>,
+        /// User ID delegated to.
         delegated_to: String,
+        /// Scope of delegation.
         delegation_scope: DelegationScope,
     },
 }
@@ -101,96 +110,139 @@ pub struct Delegation {
     pub delegation_proof: SecurityProof,
 }
 
-/// Organization types
+/// Organization types for permission holders.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OrganizationType {
+    /// University.
     University,
+    /// Research institution.
     Research,
+    /// Non-profit.
     NonProfit,
+    /// Commercial entity.
     Commercial,
+    /// Government.
     Government,
 }
 
-/// Delegation scope for permission lending
+/// Delegation scope for permission lending.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DelegationScope {
+    /// Resource limits for delegation.
     pub resource_limits: Option<ResourceLimits>,
+    /// Time limit for delegation.
     pub time_limits: Option<Duration>,
+    /// Subset of features allowed.
     pub feature_subset: Vec<String>,
+    /// Geographic subset allowed.
     pub geographic_subset: Vec<String>,
 }
 
-/// Resource limits for permissions
+/// Resource limits for crypto lock permissions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceLimits {
+    /// Max CPU cores.
     pub max_cpu_cores: Option<f64>,
+    /// Max memory in GB.
     pub max_memory_gb: Option<f64>,
+    /// Max storage in GB.
     pub max_storage_gb: Option<f64>,
+    /// Max network bandwidth.
     pub max_network_bandwidth: Option<f64>,
 }
 
-/// Time restrictions for permissions
+/// Time restrictions for permission validity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeRestrictions {
-    pub allowed_hours: Option<Vec<u8>>, // Hours 0-23
-    pub allowed_days: Option<Vec<u8>>,  // Days 0-6 (Sunday-Saturday)
+    /// Allowed hours (0–23).
+    pub allowed_hours: Option<Vec<u8>>,
+    /// Allowed days (0–6, Sunday–Saturday).
+    pub allowed_days: Option<Vec<u8>>,
+    /// Timezone for time checks.
     pub timezone: Option<String>,
 }
 
-/// Usage quotas for permissions
+/// Usage quotas for permission limits.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsageQuotas {
+    /// Max requests per hour.
     pub max_requests_per_hour: Option<u64>,
+    /// Max data transfer in GB.
     pub max_data_transfer_gb: Option<f64>,
+    /// Max compute hours.
     pub max_compute_hours: Option<f64>,
 }
 
-/// Permission metadata
+/// Permission metadata for audit and display.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PermissionMetadata {
+    /// Issuer identifier.
     pub issued_by: String,
+    /// Notes.
     pub notes: String,
+    /// Enabled features.
     pub features: Vec<String>,
 }
 
-/// Delegation request (for permission lending)
+/// Delegation request for permission lending.
 #[derive(Debug, Clone)]
 pub struct DelegationRequest {
+    /// Request ID.
     pub request_id: Uuid,
+    /// Base permission to delegate.
     pub base_permission_id: Uuid,
+    /// Current holder delegating.
     pub from_holder: PermissionHolder,
+    /// Target holder to receive.
     pub to_holder: PermissionHolder,
+    /// Target external integration.
     pub target: ExternalTarget,
+    /// Delegation scope.
     pub delegation_scope: DelegationScope,
+    /// Delegation duration.
     pub duration: Duration,
+    /// Request timestamp.
     pub requested_at: SystemTime,
+    /// Request status.
     pub status: DelegationStatus,
 }
 
-/// Delegation status
+/// Delegation request status.
 #[derive(Debug, Clone)]
 pub enum DelegationStatus {
+    /// Pending approval.
     Pending,
+    /// Approved.
     Approved,
+    /// Denied.
     Denied,
+    /// Expired.
     Expired,
 }
 
-/// Expiring permission notification
+/// Notification for expiring permission.
 #[derive(Debug, Clone)]
 pub struct ExpiringPermission {
+    /// Permission ID.
     pub permission_id: Uuid,
+    /// Target integration.
     pub target: ExternalTarget,
+    /// Time until expiry.
     pub expires_in: Duration,
 }
 
-/// Permission status information
+/// Permission status for display/audit.
 #[derive(Debug, Clone)]
 pub struct PermissionStatus {
+    /// Permission ID.
     pub permission_id: Uuid,
+    /// Current holder.
     pub holder: PermissionHolder,
+    /// Valid until timestamp.
     pub valid_until: SystemTime,
+    /// Permission scope.
     pub scope: PermissionScope,
+    /// Whether permission was delegated.
     pub is_delegated: bool,
 }
 

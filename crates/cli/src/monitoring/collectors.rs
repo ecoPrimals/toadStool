@@ -8,8 +8,11 @@ use crate::monitoring::types::{Metric, MetricBatch, MetricValue};
 
 /// Metrics collection interface
 pub trait MetricsCollector: Send + Sync {
+    /// Collector name (e.g. system, process, network)
     fn name(&self) -> &str;
+    /// Collect metrics into a batch
     fn collect(&self) -> Result<MetricBatch>;
+    /// Metric types this collector provides
     fn capabilities(&self) -> Vec<String>;
 }
 
@@ -23,6 +26,7 @@ impl Default for SystemMetricsCollector {
 }
 
 impl SystemMetricsCollector {
+    /// Create a new system metrics collector
     pub const fn new() -> Self {
         Self
     }
@@ -103,6 +107,7 @@ impl Default for ProcessMetricsCollector {
 }
 
 impl ProcessMetricsCollector {
+    /// Create a new process metrics collector
     pub const fn new() -> Self {
         Self
     }
@@ -148,6 +153,7 @@ impl Default for NetworkMetricsCollector {
 }
 
 impl NetworkMetricsCollector {
+    /// Create a new network metrics collector
     pub const fn new() -> Self {
         Self
     }

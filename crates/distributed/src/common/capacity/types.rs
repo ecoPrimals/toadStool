@@ -159,18 +159,26 @@ pub struct ResourceUsageSnapshot {
     pub timestamp: std::time::SystemTime,
 }
 
-/// Capacity alert
+/// Capacity alert for monitoring.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CapacityAlert {
-    /// Capacity running low
+    /// Capacity running low.
     LowCapacity {
+        /// Resource type (cpu, memory, etc.).
         resource_type: String,
+        /// Utilization percentage.
         utilization_percent: f64,
     },
-    /// Capacity exhausted
-    Exhausted { resource_type: String },
-    /// Capacity restored
-    Restored { resource_type: String },
+    /// Capacity exhausted.
+    Exhausted {
+        /// Resource type.
+        resource_type: String,
+    },
+    /// Capacity restored.
+    Restored {
+        /// Resource type.
+        resource_type: String,
+    },
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

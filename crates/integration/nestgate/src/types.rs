@@ -9,34 +9,44 @@ use uuid::Uuid;
 /// `NestGate` integration errors
 #[derive(Debug, thiserror::Error)]
 pub enum NestGateError {
+    /// Connection to NestGate storage failed.
     #[error("Connection failed: {0}")]
     Connection(String),
 
+    /// Authentication or authorization failed.
     #[error("Authentication failed: {0}")]
     Authentication(String),
 
+    /// Storage operation (store, retrieve, delete) failed.
     #[error("Storage operation failed: {0}")]
     Storage(String),
 
+    /// Data pipeline execution or configuration error.
     #[error("Data pipeline error: {0}")]
     Pipeline(String),
 
+    /// Artifact versioning or conflict error.
     #[error("Versioning error: {0}")]
     Versioning(String),
 
+    /// Network or transport layer error.
     #[error("Network error: {0}")]
     Network(String),
 
+    /// JSON or binary serialization/deserialization failed.
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    /// I/O error (file system, socket, etc.).
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Internal or unexpected error.
     #[error("Internal error: {0}")]
     Internal(String),
 }
 
+/// Result type for NestGate operations.
 pub type NestGateResult<T> = Result<T, NestGateError>;
 
 /// Storage tier options
@@ -206,9 +216,13 @@ pub struct ArtifactFilters {
 /// Cached artifact data
 #[derive(Debug, Clone)]
 pub struct CachedArtifact {
+    /// Artifact metadata.
     pub metadata: ArtifactMetadata,
+    /// Cached payload (if loaded into memory).
     pub data: Option<Vec<u8>>,
+    /// When the artifact was cached.
     pub cached_at: std::time::SystemTime,
+    /// Number of times the cache entry was accessed.
     pub access_count: u64,
 }
 

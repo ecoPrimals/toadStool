@@ -17,22 +17,37 @@ pub enum PartialResultStatus {
     /// Successful result
     Success(PartialResult),
 
-    /// Failed execution
-    Failed { tower_id: String, error: String },
+    /// Failed execution.
+    Failed {
+        /// Tower that failed.
+        tower_id: String,
+        /// Error message.
+        error: String,
+    },
 
-    /// Timeout waiting for result
-    Timeout { tower_id: String },
+    /// Timeout waiting for result.
+    Timeout {
+        /// Tower that timed out.
+        tower_id: String,
+    },
 
-    /// Pending (not yet received)
-    Pending { tower_id: String },
+    /// Pending (not yet received).
+    Pending {
+        /// Tower ID.
+        tower_id: String,
+    },
 }
 
-/// A successful partial result
+/// A successful partial result from a tower.
 #[derive(Debug, Clone)]
 pub struct PartialResult {
+    /// Tower that produced the result.
     pub tower_id: String,
+    /// Sequence number for ordering.
     pub sequence: usize,
+    /// Result data.
     pub data: Vec<u8>,
+    /// Size in bytes.
     pub size_bytes: usize,
 }
 
@@ -53,7 +68,7 @@ pub enum RecoveryStrategy {
 }
 
 impl PartialResultSet {
-    /// Create a new partial result set
+    /// Creates a new partial result set with expected count and initial results.
     pub const fn new(expected_count: usize, results: Vec<PartialResultStatus>) -> Self {
         Self {
             expected_count,
@@ -61,14 +76,14 @@ impl PartialResultSet {
         }
     }
 
-    /// Check if we have sufficient results to proceed
+    /// Returns true if we have sufficient results to proceed (≥50% success).
     pub fn is_sufficient(&self) -> bool {
         let success_count = self.successful_count();
         let min_required = self.expected_count.div_ceil(2); // At least 50%
         success_count >= min_required
     }
 
-    /// Get successful results
+    /// Returns successful partial results.
     pub fn successful_results(&self) -> Vec<&PartialResult> {
         self.results
             .iter()
@@ -79,7 +94,7 @@ impl PartialResultSet {
             .collect()
     }
 
-    /// Get count of successful results
+    /// Returns the count of successful results.
     pub fn successful_count(&self) -> usize {
         self.results
             .iter()
@@ -87,7 +102,7 @@ impl PartialResultSet {
             .count()
     }
 
-    /// Get count of failed results
+    /// Returns the count of failed or timed-out results.
     pub fn failed_count(&self) -> usize {
         self.results
             .iter()
@@ -100,7 +115,7 @@ impl PartialResultSet {
             .count()
     }
 
-    /// Get expected count
+    /// Returns the expected total result count.
     pub const fn expected_count(&self) -> usize {
         self.expected_count
     }

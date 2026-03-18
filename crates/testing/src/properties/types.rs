@@ -26,11 +26,17 @@ pub type CustomTestFunc = dyn Fn(&str) -> Vec<String>;
 /// Property-based test configuration
 #[derive(Debug, Clone)]
 pub struct PropertyTestConfig {
+    /// Name of the property test
     pub test_name: String,
+    /// Number of random test cases to run
     pub test_cases: u32,
+    /// Max shrink attempts when a failure is found
     pub shrink_attempts: u32,
+    /// Timeout for the entire property test
     pub timeout: Duration,
+    /// Whether to emit verbose output
     pub verbose: bool,
+    /// Optional RNG seed for reproducibility
     pub seed: Option<u64>,
 }
 
@@ -50,11 +56,17 @@ impl Default for PropertyTestConfig {
 /// Property test result
 #[derive(Debug, Clone)]
 pub struct PropertyTestResult {
+    /// Name of the property test
     pub test_name: String,
+    /// Whether all test cases passed
     pub success: bool,
+    /// Number of test cases executed
     pub test_cases_run: u32,
+    /// Failures found (with shrunk inputs)
     pub failures: Vec<PropertyFailure>,
+    /// Total duration of the test run
     pub duration: Duration,
+    /// Input distribution and timing statistics
     pub statistics: TestStatistics,
 }
 
@@ -106,17 +118,24 @@ impl PropertyTestResult {
 /// Property test failure with shrinking information
 #[derive(Debug, Clone)]
 pub struct PropertyFailure {
+    /// Original failing input (string representation)
     pub original_input: String,
+    /// Smallest failing input after shrinking
     pub shrunk_input: String,
+    /// Error message from the failure
     pub error_message: String,
+    /// Number of shrink steps performed
     pub shrink_steps: u32,
 }
 
 /// Statistics from property testing
 #[derive(Debug, Clone)]
 pub struct TestStatistics {
+    /// Distribution of input types/categories
     pub input_distribution: HashMap<String, u32>,
+    /// Per-case execution times
     pub execution_times: Vec<Duration>,
+    /// Coverage metrics (e.g. branch coverage)
     pub coverage_metrics: HashMap<String, f64>,
 }
 
@@ -167,12 +186,17 @@ impl Default for TestStatistics {
     }
 }
 
-/// Shrinking strategies
+/// Shrinking strategies for minimizing failing inputs
 pub enum ShrinkStrategy {
+    /// No shrinking
     None,
+    /// Linear search for smaller inputs
     Linear,
+    /// Binary search for smaller inputs
     Binary,
+    /// Recursive shrinking (e.g. for nested structures)
     Recursive,
+    /// Custom shrinking function
     Custom(Box<CustomTestFunc>),
 }
 

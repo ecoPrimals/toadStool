@@ -112,12 +112,18 @@ pub struct CloudCapabilities {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkloadLocation {
     /// Local (bare metal, VM, container)
-    Local { hostname: String },
+    Local {
+        /// Hostname or identifier.
+        hostname: String,
+    },
 
     /// Cloud provider
     Cloud {
+        /// Cloud provider name (e.g. aws, gcp).
         provider: String,
+        /// Region identifier.
         region: String,
+        /// Instance ID in the cloud provider.
         instance_id: String,
     },
 }
@@ -129,10 +135,16 @@ pub enum WorkloadHealth {
     Healthy,
 
     /// Degraded performance
-    Degraded { reason: String },
+    Degraded {
+        /// Human-readable reason for degraded state.
+        reason: String,
+    },
 
     /// Unhealthy/failing
-    Unhealthy { reason: String },
+    Unhealthy {
+        /// Human-readable reason for unhealthy state.
+        reason: String,
+    },
 
     /// Unknown status
     Unknown,

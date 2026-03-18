@@ -98,10 +98,13 @@ pub enum RoutingReason {
 /// Error from remote dispatch.
 #[derive(Debug, thiserror::Error)]
 pub enum RemoteDispatchError {
+    /// Transport/connection error.
     #[error("transport error: {0}")]
     Transport(String),
+    /// Serialization/deserialization error.
     #[error("serialization error: {0}")]
     Serialize(String),
+    /// Remote gate returned an error.
     #[error("remote error: {0}")]
     Remote(String),
 }

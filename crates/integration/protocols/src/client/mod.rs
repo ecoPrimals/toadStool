@@ -35,7 +35,7 @@ pub use handler::SimpleMessageHandler;
 pub struct ProtocolClient {
     config: ProtocolConfig,
     transport_manager: Arc<TransportManager>,
-    /// Keyed by service id (Arc<str> = zero-copy clone)
+    /// Keyed by service id (`Arc<str>` = zero-copy clone)
     services: Arc<RwLock<HashMap<Arc<str>, ServiceInfo>>>,
     message_handlers: Arc<RwLock<HashMap<String, Box<dyn MessageHandler>>>>,
     event_bus: broadcast::Sender<ProtocolEvent>,
@@ -363,8 +363,8 @@ mod tests {
     fn create_test_message(source: &str, msg_type: &str) -> ProtocolMessage {
         ProtocolMessage {
             id: Uuid::new_v4(),
-            message_type: msg_type.to_string(),
-            source: source.to_string(),
+            message_type: Arc::from(msg_type),
+            source: Arc::from(source),
             destination: None,
             payload: serde_json::json!({"test": "data"}),
             headers: HashMap::new(),
@@ -461,8 +461,8 @@ mod tests {
         let handler = SimpleMessageHandler::new(|msg| {
             Ok(Some(ProtocolMessage {
                 id: Uuid::new_v4(),
-                message_type: "response".to_string(),
-                source: "handler".to_string(),
+                message_type: Arc::from("response"),
+                source: Arc::from("handler"),
                 destination: Some(msg.source.clone()),
                 payload: msg.payload.clone(),
                 headers: HashMap::new(),
@@ -484,7 +484,7 @@ mod tests {
 
         assert!(response.is_some());
         let response = response.unwrap();
-        assert_eq!(response.message_type, "response");
+        assert_eq!(&*response.message_type, "response");
         assert_eq!(response.correlation_id, Some(test_msg.id));
     }
 
@@ -598,8 +598,8 @@ mod tests {
     async fn test_protocol_message_creation() {
         let msg = create_test_message("test-source", "test-type");
 
-        assert_eq!(msg.source, "test-source");
-        assert_eq!(msg.message_type, "test-type");
+        assert_eq!(&*msg.source, "test-source");
+        assert_eq!(&*msg.message_type, "test-type");
         assert_eq!(msg.format, MessageFormat::Json);
         assert_eq!(msg.priority, MessagePriority::Normal);
         assert!(msg.ttl.is_some());
@@ -613,7 +613,7 @@ mod tests {
 
         let msg = client.create_message("test-type", serde_json::json!({"key": "value"}));
 
-        assert_eq!(msg.message_type, "test-type");
+        assert_eq!(&*msg.message_type, "test-type");
         assert_eq!(msg.payload, serde_json::json!({"key": "value"}));
         assert!(msg.destination.is_none());
         assert_eq!(msg.format, MessageFormat::Json);
@@ -642,8 +642,8 @@ mod tests {
         let handler = SimpleMessageHandler::new(|msg| {
             Ok(Some(ProtocolMessage {
                 id: Uuid::new_v4(),
-                message_type: "echo".to_string(),
-                source: "handler".to_string(),
+                message_type: Arc::from("echo"),
+                source: Arc::from("handler"),
                 destination: Some(msg.source.clone()),
                 payload: msg.payload.clone(),
                 headers: HashMap::new(),
@@ -664,7 +664,7 @@ mod tests {
         assert!(response.is_some());
 
         let response = response.unwrap();
-        assert_eq!(response.message_type, "echo");
+        assert_eq!(&*response.message_type, "echo");
         assert_eq!(response.payload, payload);
         assert_eq!(response.correlation_id, Some(msg_id));
     }

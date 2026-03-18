@@ -8,17 +8,26 @@ use crate::ToadStoolResult;
 
 use super::HardwareDetector;
 
-/// CPU information and capabilities
+/// CPU information and capabilities.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuInfo {
+    /// CPU model name.
     pub model_name: String,
+    /// Physical core count.
     pub physical_cores: usize,
+    /// Logical core count (with hyperthreading).
     pub logical_cores: usize,
+    /// CPU family identifier.
     pub family: u32,
+    /// Base frequency in MHz.
     pub base_frequency_mhz: f64,
+    /// Max turbo frequency in MHz.
     pub max_frequency_mhz: f64,
+    /// Total cache size in KB.
     pub cache_size_kb: u32,
+    /// Supported instruction sets (e.g. AVX, SSE4).
     pub instruction_sets: Vec<String>,
+    /// CPU feature flags.
     pub features: CpuFeatures,
 }
 
@@ -38,14 +47,19 @@ impl Default for CpuInfo {
     }
 }
 
-/// CPU feature flags and capabilities
+/// CPU feature flags and capabilities.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[expect(clippy::struct_excessive_bools, reason = "configuration type")]
 pub struct CpuFeatures {
+    /// AVX support.
     pub supports_avx: bool,
+    /// AVX2 support.
     pub supports_avx2: bool,
+    /// SSE4.1 support.
     pub supports_sse4_1: bool,
+    /// SSE4.2 support.
     pub supports_sse4_2: bool,
+    /// ARM NEON support.
     pub supports_neon: bool,
     /// RISC-V 'V' vector extension (RVV 1.0).
     /// `true` when the running hart advertises the ISA flag `_v` in `/proc/cpuinfo`.

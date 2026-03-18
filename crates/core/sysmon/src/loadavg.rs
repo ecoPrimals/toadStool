@@ -6,8 +6,11 @@ use crate::error::{Result, SysmonError};
 /// System load averages.
 #[derive(Debug, Clone, Copy)]
 pub struct LoadAverage {
+    /// Load average over the last 1 minute.
     pub one: f64,
+    /// Load average over the last 5 minutes.
     pub five: f64,
+    /// Load average over the last 15 minutes.
     pub fifteen: f64,
 }
 

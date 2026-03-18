@@ -3,13 +3,18 @@
 //!
 //! Provides metrics tracking for WASM module caching
 
-/// Module cache metrics
+/// Module cache metrics for WASM module caching
 #[derive(Debug, Clone)]
 pub struct CacheMetrics {
+    /// Total number of cached modules
     pub total_modules: usize,
+    /// Total byte size of all cached modules
     pub total_size_bytes: usize,
+    /// Average module size in bytes
     pub average_module_size: usize,
+    /// Cache hit rate (0.0–1.0)
     pub cache_hit_rate: f64,
+    /// Memory usage of cache in bytes
     pub memory_usage_bytes: u64,
 }
 

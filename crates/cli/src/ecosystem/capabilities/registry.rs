@@ -194,8 +194,11 @@ impl Default for CapabilityRegistry {
 /// Registry statistics
 #[derive(Debug, Clone)]
 pub struct RegistryStats {
+    /// Number of registered capabilities
     pub total_capabilities: usize,
+    /// Total provider count across all capabilities
     pub total_providers: usize,
+    /// Number of healthy providers
     pub healthy_providers: usize,
 }
 

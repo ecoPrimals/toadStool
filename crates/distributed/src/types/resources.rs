@@ -51,38 +51,48 @@ impl Default for ResourceRequirements {
     }
 }
 
-/// CPU requirements specification
+/// CPU requirements specification for job placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuRequirements {
+    /// Minimum CPU cores required.
     pub min_cores: f64,
+    /// Maximum CPU cores (optional cap).
     pub max_cores: Option<f64>,
 }
 
-/// Memory requirements specification
+/// Memory requirements specification for job placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryRequirements {
+    /// Minimum memory in bytes.
     pub min_bytes: u64,
+    /// Maximum memory in bytes (optional cap).
     pub max_bytes: Option<u64>,
 }
 
-/// Storage requirements specification
+/// Storage requirements specification for job placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageRequirements {
+    /// Minimum storage in bytes.
     pub min_bytes: u64,
+    /// Maximum storage in bytes (optional cap).
     pub max_bytes: Option<u64>,
 }
 
-/// Network requirements specification
+/// Network requirements specification for distributed jobs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkRequirements {
+    /// Minimum bandwidth in Mbps.
     pub bandwidth_mbps: Option<u64>,
+    /// Maximum acceptable latency in ms.
     pub latency_ms: Option<u64>,
 }
 
-/// GPU requirements specification
+/// GPU requirements specification for accelerated workloads.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuRequirements {
+    /// Minimum GPU memory in GB.
     pub min_memory_gb: f64,
+    /// Required compute capability (e.g. CUDA 8.0).
     pub compute_capability: Option<String>,
 }
 
@@ -193,31 +203,62 @@ impl Default for DistributedRetryConfig {
     }
 }
 
-/// Backoff strategies for retry logic
+/// Backoff strategies for retry logic in distributed execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackoffStrategy {
-    Fixed { delay_ms: u64 },
-    Linear { initial_ms: u64, increment_ms: u64 },
-    Exponential { base_ms: u64, max_ms: u64 },
-    ExponentialJittered { base_ms: u64, max_ms: u64 },
+    /// Fixed delay between retries.
+    Fixed {
+        /// Delay in milliseconds.
+        delay_ms: u64,
+    },
+    /// Linear increase: initial + n * increment.
+    Linear {
+        /// Initial delay in ms.
+        initial_ms: u64,
+        /// Increment per retry in ms.
+        increment_ms: u64,
+    },
+    /// Exponential backoff with base and max.
+    Exponential {
+        /// Base delay in ms.
+        base_ms: u64,
+        /// Max delay in ms.
+        max_ms: u64,
+    },
+    /// Exponential backoff with jitter to avoid thundering herd.
+    ExponentialJittered {
+        /// Base delay in ms.
+        base_ms: u64,
+        /// Max delay in ms.
+        max_ms: u64,
+    },
 }
 
-/// Conditions that trigger job retry
+/// Conditions that trigger job retry in distributed execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RetryCondition {
+    /// Network connectivity or timeout error.
     NetworkError,
+    /// Resource (CPU, memory, GPU) temporarily unavailable.
     ResourceUnavailable,
+    /// Generic transient failure.
     TemporaryFailure,
+    /// Remote service returned 503 or similar.
     ServiceUnavailable,
+    /// Custom condition for extensibility.
     Custom(String),
 }
 
-/// Resource constraints for job placement
+/// Resource constraints for job placement and scheduling.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceConstraints {
+    /// Maximum CPU cores allowed for placement.
     pub max_cpu_cores: Option<f64>,
+    /// Maximum memory in bytes.
     pub max_memory_bytes: Option<u64>,
+    /// Required hardware/software features (e.g. gpu, nvme).
     pub required_features: Vec<String>,
+    /// Node IDs to exclude from placement.
     pub excluded_nodes: Vec<String>,
 }
 
@@ -263,20 +304,27 @@ impl Default for ResourceAllocation {
     }
 }
 
-/// Resource allocation strategies
+/// Resource allocation strategies for child instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ResourceAllocationStrategy {
+    /// Equal share across children.
     Fair,
+    /// Proportional to workload size.
     Proportional,
+    /// Priority-based allocation.
     Priority,
+    /// Custom strategy (plugin name).
     Custom(String),
 }
 
-/// Network configuration for hosted instances
+/// Network configuration for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
+    /// Allowed port range (min, max).
     pub port_range: (u16, u16),
+    /// Security level for network isolation.
     pub security_level: NetworkSecurityLevel,
+    /// Allowed protocols (http, https, etc.).
     pub protocols: Vec<String>,
 }
 
@@ -290,20 +338,27 @@ impl Default for NetworkConfig {
     }
 }
 
-/// Network security levels
+/// Network security levels for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NetworkSecurityLevel {
+    /// Minimal isolation (dev/test).
     Low,
+    /// Standard isolation.
     Medium,
+    /// Strict isolation (production).
     High,
+    /// Maximum isolation (compliance).
     Maximum,
 }
 
-/// Security configuration for hosted instances
+/// Security configuration for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
+    /// Process isolation level.
     pub isolation_level: IsolationLevel,
+    /// Whether sandboxing is enabled.
     pub sandboxing_enabled: bool,
+    /// Whether resource limits are enforced.
     pub resource_limits_enforced: bool,
 }
 
@@ -317,11 +372,14 @@ impl Default for SecurityConfig {
     }
 }
 
-/// Startup configuration for hosted instances
+/// Startup configuration for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StartupConfig {
+    /// Whether to auto-start on creation.
     pub auto_start: bool,
+    /// Timeout for startup completion in ms.
     pub startup_timeout_ms: u64,
+    /// Interval for health checks in ms.
     pub health_check_interval_ms: u64,
 }
 
@@ -335,12 +393,16 @@ impl Default for StartupConfig {
     }
 }
 
-/// Resource limits for OS layer operations
+/// Resource limits for OS layer and hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceLimits {
+    /// Maximum CPU cores.
     pub max_cpu_cores: f64,
+    /// Maximum memory in bytes.
     pub max_memory_bytes: u64,
+    /// Maximum storage in bytes.
     pub max_storage_bytes: u64,
+    /// Maximum network bandwidth in Mbps.
     pub max_network_bandwidth_mbps: u64,
 }
 
@@ -355,21 +417,29 @@ impl Default for ResourceLimits {
     }
 }
 
-/// Instance status for hosted instances
+/// Instance status for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InstanceStatus {
+    /// Instance is starting up.
     Starting,
+    /// Instance is running and accepting work.
     Running,
+    /// Instance is shutting down.
     Stopping,
+    /// Instance has stopped.
     Stopped,
+    /// Instance encountered an error.
     Error,
 }
 
-/// Process handle for hosted instances
+/// Process handle for hosted instances.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessHandle {
+    /// OS process ID.
     pub process_id: u32,
+    /// When the process was started.
     pub started_at: std::time::SystemTime,
+    /// Current instance status.
     pub status: InstanceStatus,
 }
 
@@ -394,12 +464,16 @@ pub struct GpuAllocation {
     pub compute_units: u32,
 }
 
-/// Resource value type
+/// Typed value for custom resource allocations.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ResourceValue {
+    /// Integer resource value.
     Integer(i64),
+    /// Float resource value.
     Float(f64),
+    /// String resource value.
     String(String),
+    /// Boolean resource value.
     Boolean(bool),
 }
 

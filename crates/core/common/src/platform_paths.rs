@@ -72,12 +72,18 @@ pub struct PathEnv {
 /// Platform detection for path resolution
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Platform {
+    /// Linux (including most distros)
     #[default]
     Linux,
+    /// macOS
     MacOS,
+    /// Windows
     Windows,
+    /// Android (detected via /system/build.prop)
     Android,
+    /// WebAssembly target
     Wasm,
+    /// Unknown or unsupported platform
     Unknown,
 }
 

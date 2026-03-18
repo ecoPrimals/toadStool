@@ -140,7 +140,7 @@ async fn test_capabilities_handler_response_time() {
 #[tokio::test]
 async fn test_provenance_handler_response_time() {
     let handler = test_handler();
-    let request = mk_request("toadstool.provenance", None);
+    let request = mk_request("provenance.query", None);
 
     let start = Instant::now();
     let response = handler.handle_request(&request).await;

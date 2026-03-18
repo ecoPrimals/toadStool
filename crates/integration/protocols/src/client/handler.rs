@@ -3,7 +3,7 @@
 
 use crate::types::{MessageHandler, ProtocolError, ProtocolMessage, ProtocolResult};
 
-/// Simple message handler implementation
+/// Message handler that delegates to a closure
 pub struct SimpleMessageHandler<F>
 where
     F: Fn(ProtocolMessage) -> Result<Option<ProtocolMessage>, ProtocolError> + Send + Sync,
@@ -15,6 +15,7 @@ impl<F> SimpleMessageHandler<F>
 where
     F: Fn(ProtocolMessage) -> Result<Option<ProtocolMessage>, ProtocolError> + Send + Sync,
 {
+    /// Create handler from closure
     pub const fn new(handler_fn: F) -> Self {
         Self { handler_fn }
     }

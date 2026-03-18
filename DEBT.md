@@ -1,9 +1,26 @@
 # Active Technical Debt Register
 
-**Date**: March 18, 2026 — S158b
+**Date**: March 18, 2026 — S159
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S159 Resolved Debt
+
+- **D-BUILD-ALL**: 3 crates with compilation errors resolved — `toadstool-core` (missing `MockNpuDispatch` in tests), `toadstool-integration-protocols` (11 `Arc<str>`/`String` mismatches from zero-copy expansion), `toadstool-server` (test paths after `paths.rs` extraction). Full workspace compiles and 11,956 tests pass.
+- **D-DOCS**: All 694+ missing documentation warnings resolved across 58 crates. `cargo clippy --workspace --all-targets -- -D warnings` passes with **0 errors**. Every public struct field, enum variant, constant, function, method, trait, and module has meaningful documentation.
+- **D-DOC-HTML**: Unescaped `Arc<str>` in doc comments (rustdoc HTML warnings) fixed — generic types backtick-escaped across 6 files.
+- **D-HARDCODE-PROD**: Production localhost/port strings evolved to named constants — `DEFAULT_COORDINATION_ENDPOINT`, `DEFAULT_SERVER_ENDPOINT`, `DEFAULT_IPC_TCP_ADDR`. Affected: coordinator.rs, discovery_mdns.rs, client/lib.rs, display/ipc/client.rs, discovery_integration.rs.
+- **D-JSONRPC-NAMES**: Non-standard JSON-RPC method names evolved to `domain.verb` per wateringHole `SEMANTIC_METHOD_NAMING_STANDARD.md`:
+  - `toadstool.provenance` → `provenance.query` (deprecated alias retained)
+  - `ollama.*` → `inference.*` (list_models, execute, load_model, unload_model)
+  - `gpu.telemetry/info/memory` → `gpu.query_telemetry/query_info/query_memory`
+- **D-PRIMAL-NAMES**: Hardcoded primal names in `auto_config/ecosystem.rs` evolved to capability-based — `"SONGBIRD"` → `"COORDINATION"`, `"BEARDOG"` → `"CRYPTO"`, `"NESTGATE"` → `"STORAGE"`.
+- **D-ZERO-COPY**: `JsonWorkloadSubmission` and `WorkloadSubmission` hot-path fields (`workload_id`, `workload_type`) evolved from `String` to `Arc<str>`. `WorkloadResult.workload_id` likewise. Server workload map keys evolved to `Arc<str>`.
+- **D-STUBS**: Security policy evaluator `warn!("Unimplemented condition evaluation")` path evolved to typed `ToadStoolError::validation(...)` errors for `NetworkAccess`, `FileSystemAccess`, `Custom` conditions. Serial transport stub module renamed to `feature_disabled` with proper documentation.
+- **D-UNSAFE-ENV**: All remaining `unsafe { env::set_var/remove_var }` blocks in test code (~36 files) migrated to `temp_env` crate. Zero `unsafe` env mutations remain in test code. `#[tokio::test]` + nested `Runtime::new()` anti-patterns fixed across 5 test files.
+- **D-FMT**: `cargo fmt --all -- --check` passes (0 diffs).
+- **D-CLIPPY-WORKSPACE**: `cargo clippy --workspace --all-targets -- -D warnings` passes with 0 errors across all 58 crates.
 
 ## S158b Resolved Debt
 
@@ -121,8 +138,8 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~83% line coverage** (~182K production lines). **21,156 tests**. Target 90%. Push 83%→90% ongoing. |
-| D-DOCS | Fill missing_docs warnings | Medium | **694+ missing doc warnings** now visible with `#![warn(missing_docs)]` on 38 crates. Fill-in ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~85% line coverage** (~182K production lines). **11,956+ tests passing** (default features). Target 90%. Push ongoing. |
+| D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
 | D-KEYRING | ~~Credential resolution: OS keyring lookup~~ | **RESOLVED S152** | `os_keyring` module — D-Bus SecretService (`secret-tool`) on Linux, macOS Keychain (`security`). Wired as step 2.5 in `resolve_credential` chain (env → file → OS keyring → BearDog). |

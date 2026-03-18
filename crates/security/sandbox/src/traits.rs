@@ -6,6 +6,7 @@ use toadstool_security_policies::SecurityPolicy;
 
 use super::types::*;
 
+/// Trait for platform-agnostic sandbox management.
 pub trait SandboxManager: Send + Sync {
     /// Create a new sandbox
     async fn create_sandbox(&self, spec: SandboxSpec) -> ToadStoolResult<String>;

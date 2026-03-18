@@ -186,6 +186,7 @@ async fn start_tcp_servers(
     Ok(())
 }
 
+/// Returns true if the error string indicates a platform constraint (e.g. SELinux, unsupported sockets).
 pub fn is_platform_constraint_str(error_str: &str) -> bool {
     if (error_str.contains("Permission denied") || error_str.contains("Operation not permitted"))
         && is_selinux_enforcing()
@@ -205,6 +206,7 @@ pub fn is_platform_constraint_str(error_str: &str) -> bool {
     false
 }
 
+/// Returns true if SELinux is in enforcing mode.
 pub fn is_selinux_enforcing() -> bool {
     std::fs::read_to_string("/sys/fs/selinux/enforce")
         .ok()
@@ -270,65 +272,41 @@ pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> 
 
 #[cfg(test)]
 mod tests {
-    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
-
     use super::*;
 
     #[tokio::test]
     async fn create_executor_standalone_mode() {
-        // Async tests: keep manual save/restore (temp_env + block_on incompatible with tokio::test)
-        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "1") };
-
-        let result = create_executor("test-family").await;
-        if let Some(v) = old {
-            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-        } else {
-            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-        }
-
-        assert!(
-            result.is_ok(),
-            "standalone executor creation failed: {:?}",
-            result.err()
-        );
+        temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("test-family"));
+            assert!(
+                result.is_ok(),
+                "standalone executor creation failed: {:?}",
+                result.err()
+            );
+        });
     }
 
     #[tokio::test]
     async fn create_executor_standalone_mode_true_lowercase() {
-        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "true") };
-
-        let result = create_executor("my-family").await;
-        if let Some(v) = old {
-            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-        } else {
-            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-        }
-
-        assert!(result.is_ok());
+        temp_env::with_var("TOADSTOOL_STANDALONE", Some("true"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("my-family"));
+            assert!(result.is_ok());
+        });
     }
 
     #[tokio::test]
     async fn create_executor_standalone_mode_true_uppercase() {
-        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "TRUE") };
-
-        let result = create_executor("test-family").await;
-        if let Some(v) = old {
-            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-        } else {
-            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-        }
-
-        assert!(
-            result.is_ok(),
-            "standalone executor with TRUE should succeed: {:?}",
-            result.err()
-        );
+        temp_env::with_var("TOADSTOOL_STANDALONE", Some("TRUE"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("test-family"));
+            assert!(
+                result.is_ok(),
+                "standalone executor with TRUE should succeed: {:?}",
+                result.err()
+            );
+        });
     }
 
     #[test]
@@ -342,41 +320,26 @@ mod tests {
 
     #[tokio::test]
     async fn create_executor_integrated_mode_when_standalone_unset() {
-        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-
-        let result = create_executor("integrated-family").await;
-        if let Some(v) = old {
-            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-        } else {
-            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-        }
-
-        // Integrated mode may fail if Songbird not available
-        match &result {
-            Ok(_) => {}
-            Err(e) => assert!(!e.to_string().is_empty(), "error should have message"),
-        }
+        temp_env::with_var_unset("TOADSTOOL_STANDALONE", || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("integrated-family"));
+            match &result {
+                Ok(_) => {}
+                Err(e) => assert!(!e.to_string().is_empty(), "error should have message"),
+            }
+        });
     }
 
     #[tokio::test]
     async fn create_executor_integrated_mode_when_standalone_0() {
-        let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-        // SAFETY: Test-only; no other threads access env vars during this test
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "0") };
-
-        let result = create_executor("family-0").await;
-        if let Some(v) = old {
-            unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-        } else {
-            unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-        }
-
-        match &result {
-            Ok(_) => {}
-            Err(e) => assert!(!e.to_string().is_empty()),
-        }
+        temp_env::with_var("TOADSTOOL_STANDALONE", Some("0"), || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let result = rt.block_on(create_executor("family-0"));
+            match &result {
+                Ok(_) => {}
+                Err(e) => assert!(!e.to_string().is_empty()),
+            }
+        });
     }
 
     #[test]

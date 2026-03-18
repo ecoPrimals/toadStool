@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Native process runtime for executing native binaries as child processes
+
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
@@ -16,4 +18,5 @@ mod validation;
 #[cfg(test)]
 mod tests;
 
+/// Native runtime engine for native workload execution
 pub use engine::NativeRuntimeEngine;

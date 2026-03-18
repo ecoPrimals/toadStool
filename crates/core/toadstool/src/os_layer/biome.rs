@@ -17,11 +17,13 @@ pub struct BiomeOSIntegration {
 }
 
 impl BiomeOSIntegration {
+    /// Creates a new BiomeOS integration with default config.
     pub async fn new() -> ToadStoolResult<Self> {
         let orchestrator = BiomeOrchestrator::new().await?;
         Ok(Self { orchestrator })
     }
 
+    /// Executes a BiomeOS deployment job.
     pub async fn execute_deployment(
         &self,
         job: UniversalJob,
@@ -67,12 +69,18 @@ impl Default for BiomeOSConfig {
 /// Biome deployment information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeDeployment {
+    /// Unique deployment identifier.
     pub deployment_id: String,
+    /// Team owning the deployment.
     pub team_id: String,
+    /// Biome manifest JSON.
     pub biome_manifest: serde_json::Value,
+    /// Current deployment status.
     pub status: BiomeDeploymentStatus,
+    /// When deployment was created.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub created_at: SystemTime,
+    /// When deployment was last updated.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub updated_at: SystemTime,
 }
@@ -80,9 +88,13 @@ pub struct BiomeDeployment {
 /// Deployment status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BiomeDeploymentStatus {
+    /// Deployment pending start.
     Pending,
+    /// Deployment running.
     Running,
+    /// Deployment stopped.
     Stopped,
+    /// Deployment failed with error message.
     Failed(String),
 }
 

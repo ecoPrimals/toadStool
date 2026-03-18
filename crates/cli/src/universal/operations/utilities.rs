@@ -15,7 +15,7 @@ pub trait UtilityOps {
     /// Get platform ID from platform type
     fn get_platform_id(&self, platform: &PlatformType) -> String;
 
-    /// Get platform metadata (Arc<str> values = zero-copy clone)
+    /// Get platform metadata (`Arc<str>` values = zero-copy clone)
     fn get_platform_metadata(&self, platform: &PlatformType) -> HashMap<String, Arc<str>>;
 
     /// Get system hardware information

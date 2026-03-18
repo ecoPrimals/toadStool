@@ -80,6 +80,7 @@ impl ResourceManager {
         violations
     }
 
+    /// Returns current system resource usage (CPU, memory, disk).
     #[must_use]
     #[allow(clippy::cast_precision_loss)]
     pub fn current_usage() -> ResourceUsage {

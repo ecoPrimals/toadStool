@@ -55,7 +55,9 @@ impl GpuGen {
 /// A classified trace event with its inferred function.
 #[derive(Debug, Clone)]
 pub struct ClassifiedEvent {
+    /// Original trace event.
     pub event: TraceEvent,
+    /// Inferred register function from offset/ioctl.
     pub function: RegFunction,
 }
 

@@ -32,9 +32,10 @@ pub struct AnalyticsDataPoint {
 pub struct TrendAnalysis {
     /// Metric being analyzed
     pub metric_name: String,
-    /// Time period of analysis
+    /// Start of analysis period
     #[serde(with = "toadstool_common::system_time_serde")]
     pub start_time: SystemTime,
+    /// End of analysis period
     #[serde(with = "toadstool_common::system_time_serde")]
     pub end_time: SystemTime,
     /// Trend direction and strength
@@ -50,32 +51,60 @@ pub struct TrendAnalysis {
 /// Trend direction enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TrendDirection {
-    Increasing { slope: f64 },
-    Decreasing { slope: f64 },
-    Stable { variation: f64 },
-    Cyclical { period_hours: f64 },
+    /// Increasing trend.
+    Increasing {
+        /// Slope of the trend.
+        slope: f64,
+    },
+    /// Decreasing trend.
+    Decreasing {
+        /// Slope magnitude.
+        slope: f64,
+    },
+    /// Stable trend.
+    Stable {
+        /// Variation around mean.
+        variation: f64,
+    },
+    /// Cyclical pattern.
+    Cyclical {
+        /// Period in hours.
+        period_hours: f64,
+    },
+    /// Irregular/no clear pattern.
     Irregular,
 }
 
 /// Statistical measures for trend analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrendStatistics {
+    /// Mean value.
     pub mean: f64,
+    /// Median value.
     pub median: f64,
+    /// Standard deviation.
     pub std_deviation: f64,
+    /// Minimum value.
     pub min: f64,
+    /// Maximum value.
     pub max: f64,
+    /// 95th percentile.
     pub percentile_95: f64,
+    /// Correlation coefficient.
     pub correlation_coefficient: f64,
 }
 
 /// Prediction point for forecasting
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PredictionPoint {
+    /// Timestamp of prediction.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub timestamp: SystemTime,
+    /// Predicted value.
     pub predicted_value: f64,
+    /// Confidence interval (low, high).
     pub confidence_interval: (f64, f64),
+    /// Method used for prediction.
     pub prediction_method: String,
 }
 
@@ -107,26 +136,53 @@ pub struct Alert {
 /// Alert condition types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlertCondition {
-    Threshold { operator: String, value: f64 },
-    RateOfChange { window_minutes: u32, threshold: f64 },
-    Anomaly { sensitivity: f64 },
-    Complex { expression: String },
+    /// Threshold comparison.
+    Threshold {
+        /// Comparison operator (e.g. "gt", "lt").
+        operator: String,
+        /// Threshold value.
+        value: f64,
+    },
+    /// Rate of change over window.
+    RateOfChange {
+        /// Window size in minutes.
+        window_minutes: u32,
+        /// Rate threshold.
+        threshold: f64,
+    },
+    /// Anomaly detection.
+    Anomaly {
+        /// Sensitivity level.
+        sensitivity: f64,
+    },
+    /// Complex expression.
+    Complex {
+        /// Expression string.
+        expression: String,
+    },
 }
 
 /// Alert severity levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlertSeverity {
+    /// Informational.
     Info,
+    /// Warning level.
     Warning,
+    /// Critical level.
     Critical,
+    /// Emergency level.
     Emergency,
 }
 
 /// Alert status enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlertStatus {
+    /// Alert is active.
     Active,
+    /// Alert is suppressed.
     Suppressed,
+    /// Alert is resolved.
     Resolved,
 }
 
@@ -150,56 +206,84 @@ pub struct Dashboard {
 /// Dashboard panel configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DashboardPanel {
+    /// Panel identifier.
     pub id: String,
+    /// Panel title.
     pub title: String,
+    /// Panel visualization type.
     pub panel_type: PanelType,
+    /// Metrics displayed.
     pub metrics: Vec<String>,
+    /// Time range for data.
     pub time_range: TimeRange,
+    /// Layout position.
     pub position: PanelPosition,
 }
 
 /// Panel type enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PanelType {
+    /// Line chart.
     LineChart,
+    /// Bar chart.
     BarChart,
+    /// Gauge.
     Gauge,
+    /// Table.
     Table,
+    /// Heatmap.
     Heatmap,
-    Custom { component: String },
+    /// Custom component.
+    Custom {
+        /// Component identifier.
+        component: String,
+    },
 }
 
 /// Time range for panel data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeRange {
+    /// Start time.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub from: SystemTime,
+    /// End time.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub to: SystemTime,
+    /// Refresh interval in seconds.
     pub refresh_interval_secs: u64,
 }
 
 /// Panel position in dashboard
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PanelPosition {
+    /// X coordinate.
     pub x: u32,
+    /// Y coordinate.
     pub y: u32,
+    /// Panel width.
     pub width: u32,
+    /// Panel height.
     pub height: u32,
 }
 
 /// Dashboard layout configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DashboardLayout {
+    /// Grid cell size.
     pub grid_size: u32,
+    /// Auto-arrange panels.
     pub auto_arrange: bool,
+    /// Responsive layout.
     pub responsive: bool,
 }
 
 /// Dashboard access permissions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DashboardPermissions {
+    /// Viewer user IDs.
     pub viewers: Vec<String>,
+    /// Editor user IDs.
     pub editors: Vec<String>,
+    /// Admin user IDs.
     pub admins: Vec<String>,
 }

@@ -25,24 +25,31 @@ pub enum AggregationStrategy {
     Custom,
 }
 
-/// Reduction operations
+/// Reduction operations for aggregating partial results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReductionOp {
+    /// Sum reduction.
     Sum,
+    /// Minimum reduction.
     Min,
+    /// Maximum reduction.
     Max,
+    /// Product reduction.
     Product,
+    /// Logical AND reduction.
     And,
+    /// Logical OR reduction.
     Or,
 }
 
-/// Result aggregator with fault tolerance
+/// Result aggregator with fault tolerance.
 pub struct ResultAggregator {
+    /// Aggregation strategy.
     strategy: AggregationStrategy,
 }
 
 impl ResultAggregator {
-    /// Create a new aggregator with specified strategy
+    /// Creates a new aggregator with the specified strategy.
     pub const fn new(strategy: AggregationStrategy) -> Self {
         Self { strategy }
     }

@@ -13,6 +13,7 @@ pub struct PrecisionBrain {
 }
 
 impl PrecisionBrain {
+    /// Create a precision brain from hardware calibration.
     #[must_use]
     pub fn new(calibration: HardwareCalibration, f64_throttle_ratio: Option<f64>) -> Self {
         let threshold = f64_throttle_ratio.unwrap_or(DEFAULT_F64_THROTTLE_RATIO);
@@ -25,21 +26,25 @@ impl PrecisionBrain {
         }
     }
 
+    /// Route a precision hint to the best safe tier.
     #[must_use]
     pub const fn route(&self, hint: PrecisionHint) -> PrecisionTier {
         self.route_table[hint as usize]
     }
 
+    /// Check if transcendentals are safe for the given hint.
     #[must_use]
     pub fn transcendentals_safe(&self, hint: PrecisionHint) -> bool {
         self.calibration.is_tier_safe(self.route(hint), true)
     }
 
+    /// Get the hardware calibration.
     #[must_use]
     pub const fn calibration(&self) -> &HardwareCalibration {
         &self.calibration
     }
 
+    /// Get the adapter name.
     #[must_use]
     pub fn adapter_name(&self) -> &str {
         &self.calibration.adapter_name

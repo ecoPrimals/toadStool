@@ -28,7 +28,7 @@ impl WorkloadHandler {
         let submission: JsonWorkloadSubmission = serde::Deserialize::deserialize(params)
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid params: {e}")))?;
 
-        info!("Submitting workload: {}", submission.workload_id);
+        info!("Submitting workload: {}", submission.workload_id.as_ref());
 
         let tarpc_submission = submission
             .into_tarpc()

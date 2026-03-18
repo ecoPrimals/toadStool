@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! Resource allocation, GPU, and health check configuration types.
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// Health check configuration for biome services.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeHealthCheckConfig {
     /// Health check interval

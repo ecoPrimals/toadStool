@@ -15,8 +15,11 @@ pub enum PaperTapeFormat {
     BASIC,
     /// Assembly
     Assembly,
-    /// Custom format
-    Custom { name: String },
+    /// Custom paper tape format.
+    Custom {
+        /// Format name.
+        name: String,
+    },
 }
 
 /// ROM formats
@@ -28,8 +31,11 @@ pub enum ROMFormat {
     MotorolaS,
     /// Binary
     Binary,
-    /// Custom format
-    Custom { name: String },
+    /// Custom ROM format.
+    Custom {
+        /// Format name.
+        name: String,
+    },
 }
 
 /// ROM file configuration
@@ -77,6 +83,6 @@ pub enum DiskImageType {
     VMDK,
     /// VHD file
     VHD,
-    /// Custom format
+    /// Custom disk image format.
     Custom(String),
 }

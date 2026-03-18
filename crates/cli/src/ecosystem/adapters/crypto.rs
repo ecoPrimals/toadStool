@@ -371,7 +371,9 @@ impl CryptoAdapter {
 /// Cryptographic key pair
 #[derive(Debug, Clone)]
 pub struct KeyPair {
+    /// Public key bytes (e.g. 32 for Ed25519)
     pub public_key: Vec<u8>,
+    /// Private key bytes (keep secret)
     pub private_key: Vec<u8>,
 }
 

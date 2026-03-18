@@ -63,8 +63,11 @@ pub enum ApplyVerdict {
 /// Result of a single init step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StepResult {
+    /// Index of the step in the recipe.
     pub step_index: usize,
+    /// Whether the step succeeded.
     pub success: bool,
+    /// Human-readable result or error message.
     pub detail: String,
 }
 

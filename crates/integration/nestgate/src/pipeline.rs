@@ -50,15 +50,32 @@ pub struct PipelineInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InputType {
     /// File system input
-    FileSystem { path: String },
+    FileSystem {
+        /// Storage path for the input source.
+        path: String,
+    },
     /// HTTP/REST endpoint
-    Http { url: String },
+    Http {
+        /// Endpoint URL to fetch data from.
+        url: String,
+    },
     /// Database query
-    Database { connection: String, query: String },
+    Database {
+        /// Database connection string.
+        connection: String,
+        /// SQL query to execute.
+        query: String,
+    },
     /// Stream processing
-    Stream { topic: String },
+    Stream {
+        /// Kafka/stream topic name.
+        topic: String,
+    },
     /// Artifact reference
-    Artifact { artifact_id: String },
+    Artifact {
+        /// Artifact identifier to retrieve.
+        artifact_id: String,
+    },
 }
 
 /// Pipeline output configuration
@@ -78,15 +95,32 @@ pub struct PipelineOutput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OutputType {
     /// File system output
-    FileSystem { path: String },
+    FileSystem {
+        /// Storage path for the output destination.
+        path: String,
+    },
     /// HTTP POST endpoint
-    Http { url: String },
+    Http {
+        /// Endpoint URL to POST results to.
+        url: String,
+    },
     /// Database insert
-    Database { connection: String, table: String },
+    Database {
+        /// Database connection string.
+        connection: String,
+        /// Target table name.
+        table: String,
+    },
     /// Stream publishing
-    Stream { topic: String },
+    Stream {
+        /// Kafka/stream topic to publish to.
+        topic: String,
+    },
     /// Store as artifact
-    Artifact { artifact_type: ArtifactType },
+    Artifact {
+        /// Artifact type for storage classification.
+        artifact_type: ArtifactType,
+    },
 }
 
 /// Pipeline processing step
@@ -112,12 +146,22 @@ pub struct PipelineStep {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StepType {
     /// Data transformation
-    Transform { script: String, language: String },
+    Transform {
+        /// Transformation script body.
+        script: String,
+        /// Script language (e.g. `python`, `sql`).
+        language: String,
+    },
     /// Data filtering
-    Filter { condition: String },
+    Filter {
+        /// Filter condition expression.
+        condition: String,
+    },
     /// Data aggregation
     Aggregate {
+        /// Fields to aggregate.
         fields: Vec<String>,
+        /// Aggregation operation (e.g. `sum`, `avg`).
         operation: String,
     },
     /// `ToadStool` execution
@@ -128,7 +172,10 @@ pub enum StepType {
         runtime: Option<String>,
     },
     /// Custom processing
-    Custom { processor: String },
+    Custom {
+        /// Processor identifier or path.
+        processor: String,
+    },
 }
 
 /// Pipeline scheduling configuration
@@ -150,11 +197,20 @@ pub enum ScheduleType {
     /// Run once immediately
     Once,
     /// Cron-style schedule
-    Cron { expression: String },
+    Cron {
+        /// Cron expression (e.g. `0 * * * *` for hourly).
+        expression: String,
+    },
     /// Interval-based schedule
-    Interval { duration: Duration },
+    Interval {
+        /// Duration between runs.
+        duration: Duration,
+    },
     /// Event-triggered
-    Event { trigger: String },
+    Event {
+        /// Event name or pattern that triggers execution.
+        trigger: String,
+    },
 }
 
 /// Pipeline resource requirements

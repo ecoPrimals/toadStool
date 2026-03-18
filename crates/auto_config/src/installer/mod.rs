@@ -41,6 +41,7 @@ pub struct SmartInstaller {
 }
 
 impl SmartInstaller {
+    /// Creates a new smart installer with auto-detected platform.
     #[must_use]
     pub fn new() -> Self {
         let platform = Platform::detect();

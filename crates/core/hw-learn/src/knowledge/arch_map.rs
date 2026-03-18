@@ -11,7 +11,9 @@ use std::collections::HashMap;
 /// Register mapping between two architectures.
 #[derive(Debug, Clone)]
 pub struct ArchMapping {
+    /// Architecture the offsets are expressed in.
     pub source: GpuArch,
+    /// Architecture to translate offsets to.
     pub target: GpuArch,
     translations: HashMap<u64, u64>,
     confidence: f64,
@@ -46,11 +48,13 @@ impl ArchMapping {
         self.translations.is_empty()
     }
 
+    /// Mapping confidence (0.0 = untested, 1.0 = validated).
     #[must_use]
     pub const fn confidence(&self) -> f64 {
         self.confidence
     }
 
+    /// Set the mapping confidence.
     pub const fn set_confidence(&mut self, confidence: f64) {
         self.confidence = confidence;
     }

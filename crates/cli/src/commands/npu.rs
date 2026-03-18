@@ -37,6 +37,7 @@ impl NpuCommand {
 }
 
 impl SetupCommand {
+    /// Execute the NPU setup command, enabling PCIe devices and kernel modules.
     pub fn run(self) -> Result<()> {
         if !self.yes {
             println!("This will:");

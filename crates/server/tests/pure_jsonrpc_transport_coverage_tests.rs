@@ -291,7 +291,7 @@ async fn gpu_info_returns_structure() {
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
-        method: Cow::Borrowed("gpu.info"),
+        method: Cow::Borrowed("gpu.query_info"),
         params: None,
         id: Some(serde_json::json!(1)),
     };
@@ -306,7 +306,7 @@ async fn gpu_memory_returns_structure() {
 
     let request = JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
-        method: Cow::Borrowed("gpu.memory"),
+        method: Cow::Borrowed("gpu.query_memory"),
         params: None,
         id: Some(serde_json::json!(1)),
     };

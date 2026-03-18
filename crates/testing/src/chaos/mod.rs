@@ -105,9 +105,13 @@ pub enum FaultType {
 /// Resource types for exhaustion testing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResourceType {
+    /// Memory resource.
     Memory,
+    /// CPU resource.
     Cpu,
+    /// Disk resource.
     Disk,
+    /// Network resource.
     Network,
 }
 

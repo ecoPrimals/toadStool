@@ -452,7 +452,10 @@ impl PrimalDiscoveryEngine {
 /// Cache statistics
 #[derive(Debug, Clone)]
 pub struct CacheStats {
+    /// Total number of cached entries
     pub total_entries: usize,
+    /// Entries still within TTL
     pub fresh_entries: usize,
+    /// Entries past TTL
     pub stale_entries: usize,
 }

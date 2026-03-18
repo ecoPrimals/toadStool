@@ -62,7 +62,9 @@ impl SafetyStatus {
 /// Single monitoring sample with timestamp.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct MonitorSample {
+    /// Sensor readings at sample time.
     pub sensors: HwmonSensors,
+    /// Safety classification for this sample.
     pub status: SafetyStatus,
 }
 

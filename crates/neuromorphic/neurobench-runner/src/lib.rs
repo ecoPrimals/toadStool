@@ -38,23 +38,30 @@ pub use metrics::{LatencyMetrics, Metrics, PowerMetrics};
 /// Crate-level error type
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// NPU or hardware initialization failed.
     #[error("Hardware initialization failed: {0}")]
     HardwareInit(String),
 
+    /// Benchmark execution failed.
     #[error("Benchmark failed: {0}")]
     BenchmarkFailed(String),
 
+    /// Dataset or sample loading failed.
     #[error("Data loading failed: {0}")]
     DataLoad(String),
 
+    /// Model loading onto NPU failed.
     #[error("Model loading failed: {0}")]
     ModelLoad(String),
 
+    /// Error from the Akida NPU driver.
     #[error("NPU error: {0}")]
     Npu(#[from] akida_driver::AkidaError),
 
+    /// I/O error during file or device access.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }
 
+/// Result type for neurobench-runner operations.
 pub type Result<T> = std::result::Result<T, Error>;

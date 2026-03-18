@@ -114,7 +114,9 @@ pub enum DiscoveryMethod {
     Explicit(HashMap<String, String>),
     /// Hybrid: Try mDNS first, fallback to explicit
     Hybrid {
+        /// Explicit endpoint overrides when mDNS fails.
         explicit_fallback: HashMap<String, String>,
+        /// Timeout before falling back to explicit config.
         mdns_timeout: Duration,
     },
 }

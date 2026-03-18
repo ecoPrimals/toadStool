@@ -12,9 +12,13 @@ use tracing::{error, warn};
 /// Memory pressure configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryPressureConfig {
+    /// Usage percent that triggers warning (e.g. 70).
     pub warning_threshold: f64,
+    /// Usage percent that triggers critical (e.g. 85).
     pub critical_threshold: f64,
+    /// Usage percent that triggers emergency (e.g. 95).
     pub emergency_threshold: f64,
+    /// Interval between pressure checks.
     pub check_interval: Duration,
 }
 
@@ -32,9 +36,13 @@ impl Default for MemoryPressureConfig {
 /// Memory pressure levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryPressureLevel {
+    /// Usage below warning threshold.
     Normal,
+    /// Usage at or above warning threshold.
     Warning,
+    /// Usage at or above critical threshold.
     Critical,
+    /// Usage at or above emergency threshold.
     Emergency,
 }
 
@@ -42,6 +50,7 @@ pub enum MemoryPressureLevel {
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait MemoryPressureCallback: Send + Sync {
+    /// Invoked when memory pressure exceeds a threshold.
     async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64);
 }
 
@@ -54,6 +63,7 @@ pub struct MemoryPressureHandler {
 }
 
 impl MemoryPressureHandler {
+    /// Creates a new memory pressure handler.
     #[must_use]
     pub fn new(config: MemoryPressureConfig) -> Self {
         Self {
@@ -69,11 +79,12 @@ impl MemoryPressureHandler {
         callbacks.push(callback);
     }
 
-    /// Register from `Box`. Converts to `Arc` for storage (one-time allocation).
+    /// Registers a callback from `Box`; converts to `Arc` for storage.
     pub async fn register_callback_box(&self, callback: Box<dyn MemoryPressureCallback>) {
         self.register_callback(Arc::from(callback)).await;
     }
 
+    /// Updates current memory usage and triggers callbacks if thresholds exceeded.
     pub async fn update_memory_usage(&self, total_memory: u64, used_memory: u64) {
         #[expect(
             clippy::cast_precision_loss,
@@ -105,6 +116,7 @@ impl MemoryPressureHandler {
         }
     }
 
+    /// Returns the current memory pressure level.
     #[expect(
         clippy::unused_async,
         reason = "API consistency; may add async monitoring in future"

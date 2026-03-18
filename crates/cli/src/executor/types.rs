@@ -136,35 +136,57 @@ mod tests {
     }
 }
 
-// Additional structs for improved functionality
+/// WASM module metadata for execution
 #[derive(Debug, Clone)]
 pub struct WasmModule {
+    /// Module ID
     pub id: Uuid,
+    /// Source path or URL
     pub source: String,
+    /// Module size in bytes
     pub size_bytes: usize,
+    /// Whether the module passed validation
     pub validated: bool,
+    /// SHA256 or similar checksum
     pub checksum: String,
+    /// When the module was compiled/loaded
     pub compiled_at: std::time::SystemTime,
 }
 
+/// Info for an in-flight WASM execution
 #[derive(Debug, Clone)]
 pub struct WasmExecutionInfo {
+    /// Execution ID
     pub execution_id: Uuid,
+    /// Module ID
     pub module_id: Uuid,
+    /// Optional WASI runtime config
     pub wasi_config: Option<WasiExecutionConfig>,
+    /// Memory limit in MB
     pub memory_limit_mb: u64,
+    /// Timeout in milliseconds
     pub timeout_ms: u64,
+    /// When execution started
     pub started_at: std::time::SystemTime,
 }
 
+/// WASI runtime configuration for WASM execution
 #[derive(Debug, Clone)]
 pub struct WasiExecutionConfig {
+    /// Stdin content (if any)
     pub stdin: Option<String>,
+    /// Whether to capture stdout
     pub stdout_capture: bool,
+    /// Whether to capture stderr
     pub stderr_capture: bool,
+    /// Environment variables
     pub environment: HashMap<String, String>,
+    /// Command-line arguments
     pub arguments: Vec<String>,
+    /// Working directory
     pub working_directory: Option<PathBuf>,
+    /// Allowed filesystem paths
     pub filesystem_access: Vec<PathBuf>,
+    /// Whether network access is allowed
     pub network_access: bool,
 }

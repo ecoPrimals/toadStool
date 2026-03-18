@@ -105,50 +105,77 @@ pub enum PolicyCondition {
     Always,
     /// Never apply (disabled)
     Never,
-    /// Workload type condition
-    WorkloadType { workload_types: Vec<String> },
-    /// Capability requirement condition
-    RequiresCapability { capabilities: Vec<Capability> },
-    /// Resource usage condition
+    /// Workload type condition.
+    WorkloadType {
+        /// Allowed workload types (e.g. native, wasm, container).
+        workload_types: Vec<String>,
+    },
+    /// Capability requirement condition.
+    RequiresCapability {
+        /// Required capabilities.
+        capabilities: Vec<Capability>,
+    },
+    /// Resource usage condition.
     ResourceUsage {
+        /// Maximum CPU percent (0–100).
         cpu_percent: Option<f64>,
+        /// Maximum memory in MB.
         memory_mb: Option<u64>,
     },
-    /// Time-based condition
+    /// Time-based condition.
     TimeWindow {
+        /// Start hour (0–23).
         start_hour: u8,
+        /// End hour (0–23).
         end_hour: u8,
+        /// Days of week (0=Sunday–6=Saturday).
         days: Vec<u8>,
     },
-    /// User/group condition
+    /// User/group condition.
     UserContext {
+        /// Allowed usernames.
         users: Vec<String>,
+        /// Allowed groups.
         groups: Vec<String>,
     },
-    /// Network access condition
-    NetworkAccess { hosts: Vec<String>, ports: Vec<u16> },
-    /// File system access condition
+    /// Network access condition.
+    NetworkAccess {
+        /// Allowed hosts.
+        hosts: Vec<String>,
+        /// Allowed ports.
+        ports: Vec<u16>,
+    },
+    /// File system access condition.
     FileSystemAccess {
+        /// Allowed paths.
         paths: Vec<PathBuf>,
+        /// Allowed operations (read, write, etc.).
         operations: Vec<String>,
     },
-    /// Custom condition with expression
+    /// Custom condition with expression.
     Custom {
+        /// Expression string (Phase 2+ evaluation).
         expression: String,
+        /// Variables for expression evaluation.
         variables: HashMap<String, serde_json::Value>,
     },
-    /// Composite condition (AND/OR/NOT)
+    /// Composite condition (AND/OR/NOT).
     Composite {
+        /// Logical operator.
         operator: LogicalOperator,
+        /// Child conditions.
         conditions: Vec<Self>,
     },
 }
 
-/// Logical operators for composite conditions
+/// Logical operators for composite conditions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LogicalOperator {
+    /// All conditions must match.
     And,
+    /// Any condition must match.
     Or,
+    /// Negate the single child condition.
     Not,
 }
 
@@ -159,29 +186,51 @@ pub enum PolicyAction {
     Allow,
     /// Deny the operation
     Deny,
-    /// Allow with warnings
-    AllowWithWarning { message: String },
-    /// Deny with custom message
-    DenyWithMessage { message: String },
-    /// Modify security context
+    /// Allow with warnings.
+    AllowWithWarning {
+        /// Warning message.
+        message: String,
+    },
+    /// Deny with custom message.
+    DenyWithMessage {
+        /// Denial message.
+        message: String,
+    },
+    /// Modify security context.
     ModifySecurityContext {
+        /// New isolation level (if any).
         isolation_level: Option<IsolationLevel>,
+        /// Capabilities to add.
         add_capabilities: Vec<Capability>,
+        /// Capabilities to remove.
         remove_capabilities: Vec<Capability>,
     },
-    /// Apply resource limits
+    /// Apply resource limits.
     ApplyResourceLimits {
+        /// CPU limit (percent).
         cpu_percent: Option<f64>,
+        /// Memory limit (MB).
         memory_mb: Option<u64>,
+        /// Network bandwidth limit (Mbps).
         network_mbps: Option<f64>,
     },
-    /// Require additional authentication
-    RequireAuthentication { method: String },
-    /// Log and continue
-    LogAndContinue { level: String, message: String },
-    /// Custom action with parameters
+    /// Require additional authentication.
+    RequireAuthentication {
+        /// Authentication method.
+        method: String,
+    },
+    /// Log and continue execution.
+    LogAndContinue {
+        /// Log level.
+        level: String,
+        /// Log message.
+        message: String,
+    },
+    /// Custom action with parameters.
     Custom {
+        /// Action identifier.
         action: String,
+        /// Action parameters.
         parameters: HashMap<String, serde_json::Value>,
     },
 }
@@ -224,48 +273,68 @@ pub struct PolicyEvaluationResult {
     pub timestamp: SystemTime,
 }
 
-/// Policy evaluation result types
+/// Policy evaluation result types.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicyResult {
+    /// Operation allowed.
     Allow,
+    /// Operation denied.
     Deny,
+    /// Context modified (allow with changes).
     Modified,
+    /// Additional authentication required.
     RequiresAuth,
 }
 
-/// Applied rule information
+/// Applied rule information from evaluation.
 #[derive(Debug, Clone)]
 pub struct AppliedRule {
+    /// Rule identifier.
     pub rule_id: String,
+    /// Rule name.
     pub rule_name: String,
+    /// Action that was applied.
     pub action: PolicyAction,
+    /// Rule priority.
     pub priority: u32,
+    /// Whether the condition matched.
     pub condition_matched: bool,
 }
 
-/// Security context modification
+/// Security context modification from policy.
 #[derive(Debug, Clone)]
 pub struct SecurityModification {
+    /// Type of modification.
     pub modification_type: String,
+    /// Previous value.
     pub old_value: serde_json::Value,
+    /// New value.
     pub new_value: serde_json::Value,
+    /// Reason for modification.
     pub reason: String,
 }
 
-/// Resource limit modification
+/// Resource limit modification from policy.
 #[derive(Debug, Clone)]
 pub struct ResourceModification {
+    /// Resource type (e.g. cpu_percent, memory_mb).
     pub resource_type: String,
+    /// Previous limit (if any).
     pub old_limit: Option<f64>,
+    /// New limit.
     pub new_limit: f64,
+    /// Reason for modification.
     pub reason: String,
 }
 
-/// Policy warning
+/// Policy warning generated during evaluation.
 #[derive(Debug, Clone)]
 pub struct PolicyWarning {
+    /// Warning level (info, warning, error).
     pub level: String,
+    /// Warning message.
     pub message: String,
+    /// Rule that generated the warning (if any).
     pub rule_id: Option<String>,
 }
 
@@ -288,33 +357,49 @@ pub struct PolicyEvaluationContext {
     pub variables: HashMap<String, serde_json::Value>,
 }
 
-/// User information for policy evaluation
+/// User information for policy evaluation.
 #[derive(Debug, Clone)]
 pub struct UserInfo {
+    /// User ID.
     pub user_id: String,
+    /// Username.
     pub username: String,
+    /// Group memberships.
     pub groups: Vec<String>,
+    /// Assigned roles.
     pub roles: Vec<String>,
+    /// Additional attributes.
     pub attributes: HashMap<String, String>,
 }
 
-/// System information for policy evaluation
+/// System information for policy evaluation.
 #[derive(Debug, Clone)]
 pub struct SystemInfo {
+    /// Hostname.
     pub hostname: String,
+    /// OS type.
     pub os_type: String,
+    /// OS version.
     pub os_version: String,
+    /// CPU architecture.
     pub architecture: String,
+    /// CPU core count.
     pub cpu_count: u32,
+    /// Total memory in MB.
     pub memory_total_mb: u64,
+    /// Load average.
     pub load_average: f64,
+    /// System uptime in seconds.
     pub uptime_seconds: u64,
 }
 
-/// File policy configuration
+/// File-based policy configuration.
 #[derive(Debug, Clone, Default)]
 pub struct FilePolicyConfig {
+    /// Directory containing policy files.
     pub policy_directory: String,
+    /// Whether to cache loaded policies.
     pub cache_enabled: bool,
+    /// Cache TTL in seconds.
     pub cache_ttl_seconds: u64,
 }

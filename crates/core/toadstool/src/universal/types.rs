@@ -103,63 +103,131 @@ impl PrimalType {
 pub enum PrimalCapability {
     // Compute capabilities
     /// Container runtime support
-    ContainerRuntime { orchestrators: Vec<String> },
+    ContainerRuntime {
+        /// Supported orchestrators (e.g. docker, k8s).
+        orchestrators: Vec<String>,
+    },
     /// Serverless execution
-    ServerlessExecution { languages: Vec<String> },
+    ServerlessExecution {
+        /// Supported languages.
+        languages: Vec<String>,
+    },
     /// GPU acceleration
-    GpuAcceleration { cuda_support: bool },
+    GpuAcceleration {
+        /// CUDA support available.
+        cuda_support: bool,
+    },
     /// Load balancing
-    LoadBalancing { algorithms: Vec<String> },
+    LoadBalancing {
+        /// Supported algorithms.
+        algorithms: Vec<String>,
+    },
     /// Auto-scaling
-    AutoScaling { metrics: Vec<String> },
+    AutoScaling {
+        /// Metrics used for scaling.
+        metrics: Vec<String>,
+    },
     /// Native execution
-    NativeExecution { architectures: Vec<String> },
+    NativeExecution {
+        /// Supported CPU architectures.
+        architectures: Vec<String>,
+    },
     /// WASM execution
-    WasmExecution { wasi_support: bool },
+    WasmExecution {
+        /// WASI support available.
+        wasi_support: bool,
+    },
 
     // Security capabilities
     /// Authentication
-    Authentication { methods: Vec<String> },
+    Authentication {
+        /// Supported auth methods.
+        methods: Vec<String>,
+    },
     /// Encryption
-    Encryption { algorithms: Vec<String> },
+    Encryption {
+        /// Supported algorithms.
+        algorithms: Vec<String>,
+    },
     /// Key management
-    KeyManagement { hsm_support: bool },
+    KeyManagement {
+        /// HSM support available.
+        hsm_support: bool,
+    },
 
     // Storage capabilities
     /// File system support
-    FileSystem { supports_zfs: bool },
+    FileSystem {
+        /// ZFS support available.
+        supports_zfs: bool,
+    },
     /// Object storage
-    ObjectStorage { backends: Vec<String> },
+    ObjectStorage {
+        /// Supported backends (e.g. s3, gcs).
+        backends: Vec<String>,
+    },
     /// Data replication
-    DataReplication { consistency: String },
+    DataReplication {
+        /// Consistency model.
+        consistency: String,
+    },
 
     // AI capabilities
     /// Model inference
-    ModelInference { models: Vec<String> },
+    ModelInference {
+        /// Supported model types.
+        models: Vec<String>,
+    },
     /// Agent framework
-    AgentFramework { mcp_support: bool },
+    AgentFramework {
+        /// MCP support available.
+        mcp_support: bool,
+    },
     /// Machine learning
-    MachineLearning { training_support: bool },
+    MachineLearning {
+        /// Training support available.
+        training_support: bool,
+    },
 
     // Network capabilities
     /// Service discovery
-    ServiceDiscovery { protocols: Vec<String> },
+    ServiceDiscovery {
+        /// Supported protocols (e.g. mdns, dns-sd).
+        protocols: Vec<String>,
+    },
     /// Network routing
-    NetworkRouting { protocols: Vec<String> },
+    NetworkRouting {
+        /// Supported routing protocols.
+        protocols: Vec<String>,
+    },
     /// Proxy services
-    ProxyServices { types: Vec<String> },
+    ProxyServices {
+        /// Proxy types (e.g. http, tcp).
+        types: Vec<String>,
+    },
 
     // OS capabilities
     /// Process management
-    ProcessManagement { container_support: bool },
+    ProcessManagement {
+        /// Container support available.
+        container_support: bool,
+    },
     /// Resource management
-    ResourceManagement { quota_support: bool },
+    ResourceManagement {
+        /// Quota enforcement support.
+        quota_support: bool,
+    },
     /// Team isolation
-    TeamIsolation { multi_tenant: bool },
+    TeamIsolation {
+        /// Multi-tenant support.
+        multi_tenant: bool,
+    },
 
-    // Custom capability
+    /// Custom capability with arbitrary name and attributes
     Custom {
+        /// Capability name.
         name: String,
+        /// Arbitrary attributes.
         attributes: HashMap<String, String>,
     },
 }
@@ -170,9 +238,15 @@ pub enum PrimalHealth {
     /// Healthy and operational
     Healthy,
     /// Degraded but operational
-    Degraded { issues: Vec<String> },
+    Degraded {
+        /// List of issues.
+        issues: Vec<String>,
+    },
     /// Unhealthy and not operational
-    Unhealthy { reason: String },
+    Unhealthy {
+        /// Failure reason.
+        reason: String,
+    },
 }
 
 // Note: PrimalEndpoints, PrimalRequest, PrimalResponse, ResponseStatus

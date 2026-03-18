@@ -28,57 +28,86 @@ use tracing::info;
 /// Integration test result
 #[derive(Debug, Clone)]
 pub struct IntegrationTestResult {
+    /// Name of the integration test
     pub test_name: String,
+    /// Outcome of the test run
     pub status: TestStatus,
+    /// Time taken to execute the test
     pub duration: Duration,
+    /// Human-readable status message
     pub message: String,
+    /// Optional detailed breakdown of components and metrics
     pub details: Option<IntegrationTestDetails>,
 }
 
 /// Integration test details
 #[derive(Debug, Clone)]
 pub struct IntegrationTestDetails {
+    /// List of components exercised by the test
     pub components_tested: Vec<String>,
+    /// Key-value test data collected during execution
     pub test_data: HashMap<String, String>,
+    /// Resource and performance metrics
     pub metrics: TestMetrics,
+    /// Artifacts produced (logs, screenshots, etc.)
     pub artifacts: Vec<TestArtifact>,
 }
 
 /// Test status enumeration
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestStatus {
+    /// All assertions passed
     Passed,
+    /// One or more assertions failed
     Failed,
+    /// Test was skipped (e.g. unsupported platform)
     Skipped,
+    /// Test exceeded its timeout
     Timeout,
 }
 
 /// Test metrics collected during execution
 #[derive(Debug, Clone)]
 pub struct TestMetrics {
+    /// Peak memory usage in megabytes
     pub memory_peak_mb: u32,
+    /// Average CPU usage percentage
     pub cpu_usage_percent: f32,
+    /// Disk I/O in megabytes
     pub disk_io_mb: u32,
+    /// Number of network requests made
     pub network_requests: u32,
+    /// Additional custom metrics (e.g. throughput, latency)
     pub custom_metrics: HashMap<String, f64>,
 }
 
 /// Test artifacts produced during execution
 #[derive(Debug, Clone)]
 pub struct TestArtifact {
+    /// Artifact name for identification
     pub name: String,
+    /// Filesystem path to the artifact
     pub path: std::path::PathBuf,
+    /// Type of artifact for categorization
     pub artifact_type: ArtifactType,
+    /// Size in bytes
     pub size_bytes: u64,
 }
 
+/// Type of test artifact produced
 #[derive(Debug, Clone)]
 pub enum ArtifactType {
+    /// Log file output
     LogFile,
+    /// Screenshot or visual capture
     Screenshot,
+    /// Configuration file
     ConfigFile,
+    /// Database dump or state
     Database,
+    /// Compiled binary
     Binary,
+    /// Other artifact type (custom string)
     Other(String),
 }
 
@@ -92,12 +121,19 @@ pub struct IntegrationTestManager {
 /// Configuration for integration tests
 #[derive(Debug, Clone)]
 pub struct IntegrationTestConfig {
+    /// Maximum number of tests that may run concurrently
     pub max_concurrent_tests: usize,
+    /// Default timeout per test
     pub default_timeout: Duration,
+    /// Whether to collect resource/performance metrics
     pub collect_metrics: bool,
+    /// Whether to save test artifacts to disk
     pub save_artifacts: bool,
+    /// Directory for storing test artifacts
     pub artifact_dir: std::path::PathBuf,
+    /// Whether to cleanup resources when tests pass
     pub cleanup_on_success: bool,
+    /// Whether to cleanup resources when tests fail
     pub cleanup_on_failure: bool,
 }
 
@@ -118,25 +154,38 @@ impl Default for IntegrationTestConfig {
 /// Context for a running integration test
 #[derive(Debug)]
 pub struct TestContext {
+    /// Name of the test being executed
     pub test_name: String,
+    /// When the test started (for duration calculation)
     pub start_time: std::time::Instant,
+    /// Temporary directory for test files
     pub temp_dir: std::path::PathBuf,
+    /// Tasks to run on test completion (cleanup)
     pub cleanup_tasks: Vec<CleanupTask>,
+    /// Collector for resource and performance metrics
     pub metrics_collector: MetricsCollector,
 }
 
 /// Cleanup task to run after test completion
 #[derive(Debug)]
 pub struct CleanupTask {
+    /// Descriptive name for the cleanup task
     pub name: String,
+    /// Action to perform (e.g. remove dir, kill process)
     pub action: CleanupAction,
 }
 
+/// Action to perform during test cleanup
 pub enum CleanupAction {
+    /// Remove a directory and its contents
     RemoveDirectory(std::path::PathBuf),
+    /// Terminate a process by PID
     KillProcess(u32),
+    /// Close a named connection
     CloseConnection(String),
+    /// Restore a file from backup (from, to)
     RestoreFile(std::path::PathBuf, std::path::PathBuf),
+    /// Custom cleanup closure
     Custom(Box<dyn Fn() -> Result<()> + Send + Sync>),
 }
 
@@ -155,7 +204,9 @@ impl std::fmt::Debug for CleanupAction {
 /// Metrics collector for integration tests
 #[derive(Debug)]
 pub struct MetricsCollector {
+    /// When collection started
     pub start_time: std::time::Instant,
+    /// Accumulated metrics
     pub metrics: TestMetrics,
 }
 
@@ -166,6 +217,7 @@ impl Default for MetricsCollector {
 }
 
 impl MetricsCollector {
+    /// Create a new metrics collector with empty metrics
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -180,10 +232,12 @@ impl MetricsCollector {
         }
     }
 
+    /// Record a custom metric value
     pub fn record_metric(&mut self, name: &str, value: f64) {
         self.metrics.custom_metrics.insert(name.to_string(), value);
     }
 
+    /// Finalize and return collected metrics (adds duration_ms)
     #[must_use]
     pub fn finalize(self) -> TestMetrics {
         let mut metrics = self.metrics;
@@ -197,5 +251,8 @@ impl MetricsCollector {
 
 // ===== Implementation Module =====
 // Implementation extracted for better organization
+
+/// Helper functions for integration test sub-components
 mod helpers;
+/// Integration test manager implementation and test runners
 pub mod integration_impl;

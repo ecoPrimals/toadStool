@@ -2,8 +2,8 @@
 //! Announce, find_peer, find_all_peers, cleanup tests.
 use super::*;
 
-#[tokio::test]
-async fn test_announce_success() {
+#[test]
+fn test_announce_success() {
     with_temp_discovery(|discovery_base| async move {
         let caps = PrimalCapabilities {
             primal_id: "announce-test-id".to_string(),
@@ -32,12 +32,11 @@ async fn test_announce_success() {
         let parsed: PrimalCapabilities = serde_json::from_str(&contents).unwrap();
         assert_eq!(parsed.primal_id, "announce-test-id");
         assert!(parsed.capabilities.contains(&"gpu-nvidia".to_string()));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_success() {
+#[test]
+fn test_find_peer_with_success() {
     with_temp_discovery(|discovery_base| async move {
         let peer = PrimalCapabilities {
             primal_id: "peer-gpu-123".to_string(),
@@ -75,12 +74,11 @@ async fn test_find_peer_with_success() {
         let found = found.unwrap();
         assert_eq!(found.primal_id, "peer-gpu-123");
         assert!(found.capabilities.iter().any(|c| c.contains("gpu-nvidia")));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_partial_match() {
+#[test]
+fn test_find_peer_with_partial_match() {
     with_temp_discovery(|discovery_base| async move {
         let peer = PrimalCapabilities {
             primal_id: "peer-partial".to_string(),
@@ -113,12 +111,11 @@ async fn test_find_peer_with_partial_match() {
                 .iter()
                 .any(|c| c.contains("nvidia"))
         );
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_not_found() {
+#[test]
+fn test_find_peer_with_not_found() {
     with_temp_discovery(|discovery_base| async move {
         let result =
             PrimalCapabilities::find_peer_with_in("nonexistent-capability-xyz", &discovery_base)
@@ -127,86 +124,66 @@ async fn test_find_peer_with_not_found() {
         let err = result.unwrap_err();
         assert!(err.contains("No peer found"));
         assert!(err.contains("nonexistent-capability-xyz"));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_empty_dir() {
+#[test]
+fn test_find_peer_with_empty_dir() {
     with_temp_discovery(|discovery_base| async move {
         let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base).await;
         assert!(result.is_err());
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_nonexistent_discovery_dir() {
-    let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+#[test]
+fn test_find_peer_with_nonexistent_discovery_dir() {
     let temp = TempDir::new().expect("temp dir");
     let base = temp.path().to_path_buf();
-    // Set XDG_RUNTIME_DIR but do NOT create ecoPrimals/discovery
-    let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
-    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
-
-    let result = PrimalCapabilities::find_peer_with("compute").await;
-
-    if let Some(p) = prev {
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
-    } else {
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-    }
-
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        err.contains("Failed to read discovery directory")
-            || err.contains("No such file")
-            || err.contains("not found"),
-        "Expected dir-read error, got: {err}"
-    );
+    let base_str = base.to_string_lossy().to_string();
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(base_str.as_str()), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(PrimalCapabilities::find_peer_with("compute"));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("Failed to read discovery directory")
+                || err.contains("No such file")
+                || err.contains("not found"),
+            "Expected dir-read error, got: {err}"
+        );
+    });
 }
 
-#[tokio::test]
-async fn test_find_all_peers_nonexistent_discovery_dir() {
-    let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+#[test]
+fn test_find_all_peers_nonexistent_discovery_dir() {
     let temp = TempDir::new().expect("temp dir");
     let base = temp.path().to_path_buf();
-    let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
-    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
-
-    let result = PrimalCapabilities::find_all_peers().await;
-
-    if let Some(p) = prev {
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
-    } else {
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-    }
-
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        err.contains("Failed to read discovery directory")
-            || err.contains("No such file")
-            || err.contains("not found"),
-        "Expected dir-read error, got: {err}"
-    );
+    let base_str = base.to_string_lossy().to_string();
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(base_str.as_str()), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(PrimalCapabilities::find_all_peers());
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("Failed to read discovery directory")
+                || err.contains("No such file")
+                || err.contains("not found"),
+            "Expected dir-read error, got: {err}"
+        );
+    });
 }
 
-#[tokio::test]
-async fn test_find_all_peers_empty() {
+#[test]
+fn test_find_all_peers_empty() {
     with_temp_discovery(|discovery_base| async move {
         let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
         assert!(peers.is_ok());
         assert!(peers.unwrap().is_empty());
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_all_peers_populated() {
+#[test]
+fn test_find_all_peers_populated() {
     with_temp_discovery(|discovery_base| async move {
         let peer1 = PrimalCapabilities {
             primal_id: "peer-1".to_string(),
@@ -261,12 +238,11 @@ async fn test_find_all_peers_populated() {
         let ids: Vec<_> = peers.iter().map(|p| p.primal_id.as_str()).collect();
         assert!(ids.contains(&"peer-1"));
         assert!(ids.contains(&"peer-2"));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_all_peers_skips_non_json() {
+#[test]
+fn test_find_all_peers_skips_non_json() {
     with_temp_discovery(|discovery_base| async move {
         tokio::fs::write(discovery_base.join("data.txt"), "not json")
             .await
@@ -278,12 +254,11 @@ async fn test_find_all_peers_skips_non_json() {
         let peers = PrimalCapabilities::find_all_peers_in(&discovery_base).await;
         assert!(peers.is_ok());
         assert!(peers.unwrap().is_empty());
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_cleanup_removes_file() {
+#[test]
+fn test_cleanup_removes_file() {
     with_temp_discovery(|discovery_base| async move {
         let caps = PrimalCapabilities {
             primal_id: "cleanup-test-id".to_string(),
@@ -308,12 +283,11 @@ async fn test_cleanup_removes_file() {
         let result = caps.cleanup().await;
         assert!(result.is_ok());
         assert!(!discovery_base.join("cleanup-test-id.json").exists());
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_cleanup_idempotent_no_file() {
+#[test]
+fn test_cleanup_idempotent_no_file() {
     with_temp_discovery(|_| async {
         let caps = PrimalCapabilities {
             primal_id: "never-announced-id".to_string(),
@@ -334,47 +308,38 @@ async fn test_cleanup_idempotent_no_file() {
 
         let result = caps.cleanup().await;
         assert!(result.is_ok());
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_announce_creates_discovery_dir() {
-    let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
+#[test]
+fn test_announce_creates_discovery_dir() {
     let temp = TempDir::new().expect("temp dir");
     let base = temp.path().to_path_buf();
     let discovery_base = base.join("ecoPrimals").join("discovery");
-    let prev = std::env::var("XDG_RUNTIME_DIR").ok();
-    // SAFETY: Test-only; sequential test execution via ENV_MUTEX
-    unsafe { std::env::set_var("XDG_RUNTIME_DIR", &base) };
-
-    let caps = PrimalCapabilities {
-        primal_id: "dir-create-test".to_string(),
-        primal_type: primals::TOADSTOOL.to_string(),
-        version: "0.1.0".to_string(),
-        resources: SystemResources {
-            cpu_cores: 2,
-            total_memory_bytes: 8 * 1024 * 1024 * 1024,
-            available_memory_bytes: 4 * 1024 * 1024 * 1024,
-            gpu_devices: vec![],
-            architecture: "x86_64".to_string(),
-            os: "linux".to_string(),
-        },
-        capabilities: vec!["compute".to_string()],
-        socket_path: PathBuf::from("/tmp/test.sock"),
-        metadata: HashMap::new(),
-    };
-    let result = caps.announce().await;
-
-    if let Some(p) = prev {
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", p) };
-    } else {
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-    }
-
-    assert!(result.is_ok());
-    assert!(discovery_base.exists());
-    assert!(discovery_base.join("dir-create-test.json").exists());
+    let base_str = base.to_string_lossy().to_string();
+    temp_env::with_var("XDG_RUNTIME_DIR", Some(base_str.as_str()), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let caps = PrimalCapabilities {
+            primal_id: "dir-create-test".to_string(),
+            primal_type: primals::TOADSTOOL.to_string(),
+            version: "0.1.0".to_string(),
+            resources: SystemResources {
+                cpu_cores: 2,
+                total_memory_bytes: 8 * 1024 * 1024 * 1024,
+                available_memory_bytes: 4 * 1024 * 1024 * 1024,
+                gpu_devices: vec![],
+                architecture: "x86_64".to_string(),
+                os: "linux".to_string(),
+            },
+            capabilities: vec!["compute".to_string()],
+            socket_path: PathBuf::from("/tmp/test.sock"),
+            metadata: HashMap::new(),
+        };
+        let result = rt.block_on(caps.announce());
+        assert!(result.is_ok());
+        assert!(discovery_base.exists());
+        assert!(discovery_base.join("dir-create-test.json").exists());
+    });
 }
 
 // --- discovery_directory and default_socket_path (private helpers) ---

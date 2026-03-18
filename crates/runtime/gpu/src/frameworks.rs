@@ -12,20 +12,23 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-/// WebGPU adapter wrapper for conditional compilation
+/// WebGPU adapter wrapper for conditional compilation.
 pub struct WebGPUAdapter {
     #[cfg(feature = "webgpu")]
+    /// wgpu instance.
     pub instance: wgpu::Instance,
     #[cfg(feature = "webgpu")]
+    /// wgpu adapter.
     pub adapter: wgpu::Adapter,
     #[cfg(not(feature = "webgpu"))]
     _private: (),
 }
 
-/// WebGPU framework implementation
+/// WebGPU framework implementation.
 pub struct WebGpuFramework;
 
 impl WebGpuFramework {
+    /// Creates a new WebGPU framework (initialization deferred to first use).
     pub const fn new() -> ToadStoolResult<Self> {
         // Initialize WebGPU adapter with proper error handling
         // Note: WebGPU initialization is async, so we defer to first usage
@@ -334,6 +337,7 @@ pub struct FallbackFramework {
 }
 
 impl FallbackFramework {
+    /// Creates a fallback framework for unsupported platform.
     #[must_use]
     pub const fn new(framework_type: GpuFramework) -> Self {
         Self { framework_type }

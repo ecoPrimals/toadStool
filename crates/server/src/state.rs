@@ -23,45 +23,65 @@ pub(crate) fn timestamp_to_unix_secs(t: &SystemTime) -> u64 {
 pub enum ServerEvent {
     /// New execution started
     ExecutionStarted {
+        /// Execution ID.
         execution_id: Uuid,
+        /// Runtime type.
         runtime_type: RuntimeType,
+        /// Event timestamp.
         timestamp: SystemTime,
     },
 
     /// Execution completed
     ExecutionCompleted {
+        /// Execution ID.
         execution_id: Uuid,
+        /// Final status.
         status: ExecutionStatus,
+        /// Duration in milliseconds.
         duration_ms: u64,
+        /// Event timestamp.
         timestamp: SystemTime,
     },
 
     /// Runtime engine registered
     RuntimeEngineRegistered {
+        /// Runtime type.
         runtime_type: RuntimeType,
+        /// Event timestamp.
         timestamp: SystemTime,
     },
 
     /// Resource usage update
     ResourceUsageUpdate {
+        /// CPU usage percentage.
         cpu_usage_percent: f64,
+        /// Memory usage percentage.
         memory_usage_percent: f64,
+        /// Number of active executions.
         active_executions: u32,
+        /// Event timestamp.
         timestamp: SystemTime,
     },
 
     /// Health status change
     HealthStatusChanged {
+        /// Whether server is healthy.
         healthy: bool,
+        /// Status message.
         message: String,
+        /// Event timestamp.
         timestamp: SystemTime,
     },
 
     /// Error occurred
     ErrorOccurred {
+        /// Error type.
         error_type: String,
+        /// Error message.
         message: String,
+        /// Related execution ID if any.
         execution_id: Option<Uuid>,
+        /// Event timestamp.
         timestamp: SystemTime,
     },
 }
@@ -161,20 +181,30 @@ impl ServerEvent {
 /// Information about an active execution
 #[derive(Debug, Clone)]
 pub struct ActiveExecution {
+    /// Execution ID.
     pub execution_id: Uuid,
+    /// Runtime type.
     pub runtime_type: RuntimeType,
+    /// When execution started.
     pub started_at: SystemTime,
+    /// Execution timeout.
     pub timeout: Duration,
+    /// Current status.
     pub status: ExecutionStatus,
+    /// Client information.
     pub client_info: ClientInfo,
 }
 
 /// Client information for tracking
 #[derive(Debug, Clone)]
 pub struct ClientInfo {
+    /// Client IP address.
     pub ip_address: Option<String>,
+    /// User-Agent header.
     pub user_agent: Option<String>,
+    /// API key if authenticated.
     pub api_key: Option<String>,
+    /// Authenticated user identifier.
     pub authenticated_user: Option<String>,
 }
 
@@ -207,13 +237,21 @@ pub struct ServerState {
 /// Server statistics tracking
 #[derive(Debug, Clone)]
 pub struct ServerStatistics {
+    /// Total executions.
     pub total_executions: u64,
+    /// Successful executions.
     pub successful_executions: u64,
+    /// Failed executions.
     pub failed_executions: u64,
+    /// Average execution time in ms.
     pub average_execution_time_ms: f64,
+    /// Peak concurrent executions.
     pub peak_concurrent_executions: u32,
+    /// Server uptime in seconds.
     pub uptime_seconds: u64,
+    /// Total requests received.
     pub total_requests: u64,
+    /// Error count.
     pub errors_count: u64,
 }
 

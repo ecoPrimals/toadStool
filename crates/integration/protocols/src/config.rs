@@ -10,7 +10,7 @@ use toadstool_common::auth::ServiceAuthConfig;
 /// Protocol client configuration
 #[derive(Debug, Clone)]
 pub struct ProtocolConfig {
-    /// Service identifier for this client (Arc<str> = zero-copy clone)
+    /// Service identifier for this client (`Arc<str>` = zero-copy clone)
     pub service_id: Arc<str>,
 
     /// Default message format

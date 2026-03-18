@@ -16,24 +16,43 @@ use std::borrow::Cow;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub enum SpringDomain {
+    /// Numerical precision (DF64, f64, Kahan).
     Precision,
+    /// Molecular dynamics simulations.
     MolecularDynamics,
+    /// Lattice QCD physics.
     LatticeQcd,
+    /// Condensed matter physics.
     CondensedMatter,
+    /// Bioinformatics (alignment, phylogenetics).
     Bioinformatics,
+    /// Machine learning and neural nets.
     MachineLearning,
+    /// Hydrology and ET₀.
     Hydrology,
+    /// Statistical tests and metrics.
     Statistics,
+    /// Numerical stability and conditioning.
     NumericalStability,
+    /// Pharmacokinetics and PK/PD.
     Pharmacokinetics,
+    /// Biosignal processing.
     Biosignal,
+    /// Microbiome and metagenomics.
     Microbiome,
+    /// Agriculture and crop modeling.
     Agriculture,
+    /// Environmental modeling.
     Environmental,
+    /// Phylogenetics and evolution.
     Phylogenetics,
+    /// Mass spectrometry.
     MassSpectrometry,
+    /// Uncertainty quantification.
     UncertaintyQuantification,
+    /// Evolutionary computation.
     EvolutionaryComputation,
+    /// Optimization algorithms.
     Optimization,
 }
 
@@ -69,15 +88,22 @@ impl SpringDomain {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
 pub enum Spring {
+    /// hotSpring: lattice QCD, MD, precision.
     HotSpring,
+    /// wetSpring: bioinformatics, wet-lab pipelines.
     WetSpring,
+    /// neuralSpring: ML, coralForge, metalForge.
     NeuralSpring,
+    /// airSpring: hydrology, IoT, ET₀.
     AirSpring,
+    /// groundSpring: condensed matter, Anderson.
     GroundSpring,
+    /// healthSpring: PK/PD, biosignal.
     HealthSpring,
 }
 
 impl Spring {
+    /// All springs in the ecoPrimals ecosystem.
     pub const ALL: &[Self] = &[
         Self::HotSpring,
         Self::WetSpring,
@@ -87,6 +113,7 @@ impl Spring {
         Self::HealthSpring,
     ];
 
+    /// Returns camelCase spring name (e.g. hotSpring).
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -103,11 +130,17 @@ impl Spring {
 /// A documented cross-spring contribution.
 #[derive(Debug, Clone, Serialize)]
 pub struct CrossSpringFlow {
+    /// Source spring.
     pub from: Spring,
+    /// Target springs that consume this pattern.
     pub to: &'static [Spring],
+    /// Domain category.
     pub domain: SpringDomain,
+    /// Pattern or kernel identifier.
     pub pattern: Cow<'static, str>,
+    /// Human-readable description of the flow.
     pub description: Cow<'static, str>,
+    /// Session or version when absorbed.
     pub session: Cow<'static, str>,
 }
 

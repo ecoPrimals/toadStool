@@ -35,17 +35,27 @@
 //! - Zero `unwrap()` in production code
 
 // Module declarations
+/// Legacy agent backend (trait-based, hardcoded providers).
 pub mod agent_backend;
+/// Capability-based agent backend (recommended).
 pub mod agent_backend_evolved;
+/// AI agent deployment manager
 pub mod agents;
+/// Cross-Primal authentication manager
 pub mod auth;
+/// Legacy auth backends (trait-based)
 pub mod auth_backend;
+/// Capability-based auth backend (recommended)
 #[cfg(test)]
 pub mod auth_backend_evolved;
+/// Storage provisioning manager
 pub mod storage;
+/// Legacy storage backends (trait-based)
 pub mod storage_backend;
+/// Capability-based storage backend (recommended)
 #[cfg(test)]
 pub mod storage_backend_evolved;
+/// Core configuration and state types
 pub mod types;
 
 // Re-export legacy backends for backward compatibility

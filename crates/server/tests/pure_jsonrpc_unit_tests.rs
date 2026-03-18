@@ -59,8 +59,8 @@ fn test_json_workload_submission() {
     let encoded = STANDARD.encode(&data);
 
     let submission = JsonWorkloadSubmission {
-        workload_id: "work-123".to_string(),
-        workload_type: "gpu_compute".to_string(),
+        workload_id: Arc::from("work-123"),
+        workload_type: Arc::from("gpu_compute"),
         data: encoded,
         metadata: HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -199,8 +199,8 @@ fn test_jsonrpc_error_constructors() {
 #[test]
 fn test_json_workload_submission_invalid_base64() {
     let submission = JsonWorkloadSubmission {
-        workload_id: "work-1".to_string(),
-        workload_type: "gpu_compute".to_string(),
+        workload_id: Arc::from("work-1"),
+        workload_type: Arc::from("gpu_compute"),
         data: "!!!not-valid-base64!!!".to_string(),
         metadata: HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -485,7 +485,7 @@ fn test_jsonrpc_request_with_params_array() {
 #[tokio::test]
 async fn test_gpu_info() {
     let handler = test_handler();
-    let request = mk_request("gpu.info", None, 1);
+    let request = mk_request("gpu.query_info", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
@@ -496,7 +496,7 @@ async fn test_gpu_info() {
 #[tokio::test]
 async fn test_gpu_memory() {
     let handler = test_handler();
-    let request = mk_request("gpu.memory", None, 1);
+    let request = mk_request("gpu.query_memory", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
@@ -726,7 +726,7 @@ async fn test_ai_local_execute_alias() {
 #[tokio::test]
 async fn test_ollama_list_models() {
     let handler = test_handler();
-    let request = mk_request("ollama.list_models", None, 1);
+    let request = mk_request("inference.list_models", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.result.is_some() || response.error.is_some());
 }
@@ -734,7 +734,7 @@ async fn test_ollama_list_models() {
 #[tokio::test]
 async fn test_ollama_inference_missing_params() {
     let handler = test_handler();
-    let request = mk_request("ollama.inference", None, 1);
+    let request = mk_request("inference.execute", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.result.is_none());
     let err = response.error.expect("error present");
@@ -744,7 +744,7 @@ async fn test_ollama_inference_missing_params() {
 #[tokio::test]
 async fn test_ollama_load_missing_model() {
     let handler = test_handler();
-    let request = mk_request("ollama.load", Some(serde_json::json!({})), 1);
+    let request = mk_request("inference.load_model", Some(serde_json::json!({})), 1);
     let response = handler.handle_request(&request).await;
     assert!(response.result.is_none());
     let err = response.error.expect("error present");
@@ -754,7 +754,7 @@ async fn test_ollama_load_missing_model() {
 #[tokio::test]
 async fn test_ollama_unload_missing_model() {
     let handler = test_handler();
-    let request = mk_request("ollama.unload", None, 1);
+    let request = mk_request("inference.unload_model", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.result.is_none());
     let err = response.error.expect("error present");

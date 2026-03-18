@@ -82,9 +82,10 @@ fn test_capability_constants() {
     assert_eq!(CAP_MEMORY_SMALL, "memory-small");
 }
 
-#[tokio::test]
-async fn test_discover_self_returns_valid() {
-    let caps = PrimalCapabilities::discover_self("toadstool").await;
+#[test]
+fn test_discover_self_returns_valid() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let caps = rt.block_on(PrimalCapabilities::discover_self("toadstool"));
     assert!(!caps.primal_id.is_empty());
     assert_eq!(caps.primal_type, "toadstool");
     assert!(caps.resources.cpu_cores >= 1);
@@ -97,29 +98,27 @@ async fn test_discover_self_returns_valid() {
     );
 }
 
-#[tokio::test]
-async fn test_find_peer_with_in_empty_dir() {
+#[test]
+fn test_find_peer_with_in_empty_dir() {
     with_temp_discovery(|discovery_base| async move {
         let result = PrimalCapabilities::find_peer_with_in("compute", &discovery_base).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("No peer found"));
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_all_peers_in_empty_dir() {
+#[test]
+fn test_find_all_peers_in_empty_dir() {
     with_temp_discovery(|discovery_base| async move {
         let peers = PrimalCapabilities::find_all_peers_in(&discovery_base)
             .await
             .unwrap();
         assert_eq!(peers.len(), 0);
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_find_peer_with_capability_contains_match() {
+#[test]
+fn test_find_peer_with_capability_contains_match() {
     with_temp_discovery(|discovery_base| async move {
         let peer = PrimalCapabilities {
             primal_id: "contain-match".to_string(),
@@ -149,12 +148,11 @@ async fn test_find_peer_with_capability_contains_match() {
             .await
             .unwrap();
         assert_eq!(found.primal_id, "contain-match");
-    })
-    .await;
+    });
 }
 
-#[tokio::test]
-async fn test_cleanup_when_file_not_exists() {
+#[test]
+fn test_cleanup_when_file_not_exists() {
     with_temp_discovery(|_discovery_base| async move {
         let caps = PrimalCapabilities {
             primal_id: "never-announced".to_string(),
@@ -174,8 +172,7 @@ async fn test_cleanup_when_file_not_exists() {
         };
         let result = caps.cleanup().await;
         assert!(result.is_ok());
-    })
-    .await;
+    });
 }
 
 #[test]
@@ -187,8 +184,8 @@ fn test_query_system_resources_returns_valid() {
     assert_eq!(resources.os, std::env::consts::OS);
 }
 
-#[tokio::test]
-async fn test_find_all_peers_in_returns_multiple() {
+#[test]
+fn test_find_all_peers_in_returns_multiple() {
     with_temp_discovery(|discovery_base| async move {
         for i in 0..3 {
             let peer = PrimalCapabilities {
@@ -219,6 +216,5 @@ async fn test_find_all_peers_in_returns_multiple() {
             .await
             .unwrap();
         assert_eq!(peers.len(), 3);
-    })
-    .await;
+    });
 }

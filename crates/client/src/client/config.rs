@@ -102,18 +102,34 @@ impl ClientConfig {
     }
 }
 
-/// Authentication configuration
+/// Authentication configuration for the client.
 #[derive(Debug, Clone)]
 pub enum AuthConfig {
-    /// API key authentication
-    ApiKey { key: String, header_name: String },
+    /// API key in a custom header.
+    ApiKey {
+        /// API key value.
+        key: String,
+        /// HTTP header name (e.g. X-API-Key).
+        header_name: String,
+    },
 
-    /// Bearer token authentication
-    BearerToken { token: String },
+    /// Bearer token authentication.
+    BearerToken {
+        /// Bearer token value.
+        token: String,
+    },
 
-    /// Basic authentication
-    Basic { username: String, password: String },
+    /// HTTP Basic authentication.
+    Basic {
+        /// Username.
+        username: String,
+        /// Password.
+        password: String,
+    },
 
-    /// Custom authentication
-    Custom { headers: HashMap<String, String> },
+    /// Custom authentication headers.
+    Custom {
+        /// Headers to add to requests.
+        headers: HashMap<String, String>,
+    },
 }

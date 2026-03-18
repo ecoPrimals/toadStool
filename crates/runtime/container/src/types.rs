@@ -170,10 +170,12 @@ pub enum NetworkMode {
     Custom(String),
 }
 
-/// Port range specification
+/// Port range specification for container networking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortRange {
+    /// Inclusive start port
     pub start: u16,
+    /// Inclusive end port
     pub end: u16,
 }
 

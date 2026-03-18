@@ -159,7 +159,7 @@ pub mod handlers;
 
 // manual_jsonrpc: REMOVED S94 — fully replaced by pure_jsonrpc
 
-// ✅ PURE RUST: Ollama integration client (ollama.list_models/inference/load/unload)
+// ✅ PURE RUST: Ollama integration client (inference.list_models/execute/load_model/unload_model)
 pub mod ollama;
 
 // ✅ EVOLVED: Mocks isolated to testing (deep debt principle)

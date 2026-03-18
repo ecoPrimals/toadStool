@@ -12,90 +12,126 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ContainerPlatform {
-    // Container runtimes
-    /// Docker container runtime
+    /// Docker container runtime.
     Docker {
+        /// Docker version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    /// Podman container runtime
-    Podman { version: String, rootless: bool },
-
-    /// Containerd runtime
-    Containerd {
+    /// Podman container runtime.
+    Podman {
+        /// Podman version.
         version: String,
+        /// Rootless mode.
+        rootless: bool,
+    },
+    /// Containerd runtime.
+    Containerd {
+        /// Containerd version.
+        version: String,
+        /// Snapshotter (overlayfs, etc.).
         snapshotter: String,
     },
-
-    /// CRI-O runtime
-    CriO { version: String, runtime: String },
-
-    // VM-based containers
-    /// Firecracker microVM
-    Firecracker { version: String, jailer: bool },
-
-    /// Kata Containers
-    Kata { version: String, hypervisor: String },
-
-    /// gVisor sandboxed container runtime
-    #[serde(rename = "gVisor")]
-    GVisor { version: String, platform: String },
-
-    // WebAssembly runtimes
-    /// Wasmtime WebAssembly runtime
-    Wasmtime {
+    /// CRI-O runtime.
+    CriO {
+        /// CRI-O version.
         version: String,
+        /// Runtime (runc, crun, etc.).
+        runtime: String,
+    },
+    /// Firecracker microVM.
+    Firecracker {
+        /// Firecracker version.
+        version: String,
+        /// Jailer enabled.
+        jailer: bool,
+    },
+    /// Kata Containers.
+    Kata {
+        /// Kata version.
+        version: String,
+        /// Hypervisor (QEMU, Cloud Hypervisor, etc.).
+        hypervisor: String,
+    },
+    /// gVisor sandboxed container runtime.
+    #[serde(rename = "gVisor")]
+    GVisor {
+        /// gVisor version.
+        version: String,
+        /// Platform (linux/amd64, etc.).
+        platform: String,
+    },
+    /// Wasmtime WebAssembly runtime.
+    Wasmtime {
+        /// Wasmtime version.
+        version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    /// Wasmer WebAssembly runtime
+    /// Wasmer WebAssembly runtime.
     Wasmer {
+        /// Wasmer version.
         version: String,
+        /// Backends (cranelift, llvm, etc.).
         backends: Vec<String>,
     },
-
-    /// WasmEdge runtime
+    /// WasmEdge runtime.
     WasmEdge {
+        /// WasmEdge version.
         version: String,
+        /// Extensions.
         extensions: Vec<String>,
     },
-
-    // Unikernel platforms
-    /// Unikernel platforms
-    Unikernel { platform: String, language: String },
-
-    // Serverless platforms
-    /// AWS Lambda
-    Lambda { runtime: String, memory_mb: u32 },
-
-    /// Google Cloud Run
-    CloudRun {
+    /// Unikernel platforms.
+    Unikernel {
+        /// Platform name.
+        platform: String,
+        /// Language (ocaml, rust, etc.).
+        language: String,
+    },
+    /// AWS Lambda.
+    Lambda {
+        /// Runtime (nodejs18.x, python3.11, etc.).
         runtime: String,
+        /// Memory in MB.
+        memory_mb: u32,
+    },
+    /// Google Cloud Run.
+    CloudRun {
+        /// Runtime.
+        runtime: String,
+        /// CPU allocation (request, limit).
         cpu_allocation: String,
     },
-
-    /// Azure Functions
+    /// Azure Functions.
     AzureFunctions {
+        /// Runtime.
         runtime: String,
+        /// Trigger type (http, timer, etc.).
         trigger_type: String,
     },
-
-    // Orchestration platforms
-    /// Kubernetes container orchestration
+    /// Kubernetes container orchestration.
     Kubernetes {
+        /// Kubernetes version.
         version: String,
+        /// Distribution (vanilla, openshift, etc.).
         distribution: String,
     },
-
-    /// Docker Swarm
+    /// Docker Swarm.
     DockerSwarm {
+        /// Swarm version.
         version: String,
+        /// Enabled features.
         features: Vec<String>,
     },
-
-    /// HashiCorp Nomad
-    Nomad { version: String, driver: String },
+    /// HashiCorp Nomad.
+    Nomad {
+        /// Nomad version.
+        version: String,
+        /// Driver (docker, exec, etc.).
+        driver: String,
+    },
 }
 
 impl ContainerPlatform {

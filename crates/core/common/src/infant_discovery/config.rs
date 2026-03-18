@@ -65,10 +65,12 @@ mod tests {
 
     #[test]
     fn config_fields_are_mutable() {
-        let mut config = ServiceDiscoveryConfig::default();
-        config.enable_cache = false;
-        config.retry_attempts = 10;
-        config.cache_ttl = Duration::from_secs(60);
+        let config = ServiceDiscoveryConfig {
+            enable_cache: false,
+            retry_attempts: 10,
+            cache_ttl: Duration::from_secs(60),
+            ..Default::default()
+        };
         assert!(!config.enable_cache);
         assert_eq!(config.retry_attempts, 10);
         assert_eq!(config.cache_ttl, Duration::from_secs(60));

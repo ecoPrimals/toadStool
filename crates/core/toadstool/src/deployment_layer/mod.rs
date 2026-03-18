@@ -38,29 +38,41 @@ pub enum DeploymentLayer {
 
     /// Running as middleware on another OS
     MiddlewareLayer {
+        /// Host OS name (e.g. Pop!_OS).
         host_os: String,
+        /// Host OS version if detectable.
         host_version: Option<String>,
     },
 
     /// Providing services to another OS layer above
-    ServiceLayer { guest_os: Vec<String> },
+    ServiceLayer {
+        /// Guest OS(s) being served (e.g. SteamOS).
+        guest_os: Vec<String>,
+    },
 
     /// Running inside a container
     ContainerLayer {
+        /// Container runtime (Docker, Podman, etc.).
         runtime: ContainerRuntime,
+        /// Container ID if available.
         container_id: Option<String>,
     },
 
     /// Running inside a virtual machine
     VMLayer {
+        /// Hypervisor name (e.g. QEMU, KVM).
         hypervisor: String,
+        /// Whether GPU is passed through to the VM.
         gpu_passthrough: bool,
     },
 
     /// Running in a cloud environment
     CloudLayer {
+        /// Cloud provider.
         provider: CloudProvider,
+        /// Instance type if known.
         instance_type: Option<String>,
+        /// Region if known.
         region: Option<String>,
     },
 }
@@ -133,33 +145,48 @@ impl fmt::Display for DeploymentLayer {
 /// Container runtime types
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ContainerRuntime {
+    /// Docker runtime.
     Docker,
+    /// Podman runtime.
     Podman,
+    /// Containerd runtime.
     Containerd,
+    /// CRI-O runtime.
     CRIO,
+    /// Other or custom runtime.
     Other(String),
 }
 
 /// Cloud provider types
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CloudProvider {
+    /// Amazon Web Services.
     AWS,
+    /// Google Cloud Platform.
     GCP,
+    /// Microsoft Azure.
     Azure,
+    /// Oracle Cloud.
     Oracle,
+    /// DigitalOcean.
     DigitalOcean,
+    /// Custom or unknown provider.
     Custom(String),
 }
 
 /// Detection errors
 #[derive(Debug, thiserror::Error)]
 pub enum DetectionError {
+    /// I/O error during detection.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+    /// External HTTP detection disabled.
     #[error("External HTTP detection disabled - use Songbird for external HTTP")]
     ExternalHttpDisabled,
+    /// Container ID not found in environment.
     #[error("Container ID not found")]
     ContainerIdNotFound,
+    /// Generic detection failure.
     #[error("Failed to detect deployment layer: {0}")]
     DetectionFailed(String),
 }

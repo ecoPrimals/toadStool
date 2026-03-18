@@ -6,68 +6,101 @@
 use crate::universal::{ComputeCapabilities, UniversalWorkload, WorkloadResult};
 use std::time::Instant;
 
-/// Remote tower endpoint discovered via Songbird
+/// Remote tower endpoint discovered via Songbird.
 #[derive(Debug, Clone)]
 pub struct RemoteTowerEndpoint {
+    /// Unique tower identifier.
     pub tower_id: String,
+    /// Network address (e.g. http://host:port).
     pub address: String,
+    /// GPU capabilities (if discovered).
     pub gpu_capabilities: Option<ComputeCapabilities>,
+    /// Last discovery timestamp.
     pub last_seen: Instant,
+    /// Latency estimate in ms.
     pub latency_ms: u64,
 }
 
-/// Distributed job state tracking
+/// Distributed job state tracking.
 #[derive(Debug, Clone)]
 pub struct DistributedJobState {
+    /// Job identifier.
     pub job_id: String,
+    /// Workload to execute.
     pub workload: UniversalWorkload,
+    /// Current status.
     pub status: JobStatus,
+    /// Assigned tower (if scheduled).
     pub assigned_tower: Option<String>,
+    /// Result (if completed).
     pub result: Option<WorkloadResult>,
+    /// Creation timestamp.
     pub created_at: Instant,
+    /// Completion timestamp (if completed).
     pub completed_at: Option<Instant>,
 }
 
-/// Job execution status
+/// Job execution status.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JobStatus {
+    /// Awaiting scheduling.
     Pending,
+    /// Scheduled to a tower.
     Scheduled,
+    /// Currently running.
     Running,
+    /// Completed successfully.
     Completed,
+    /// Failed.
     Failed,
 }
 
-/// Workload partitioning strategy for distributed execution
+/// Workload partitioning strategy for distributed execution.
 #[derive(Debug, Clone)]
 pub enum PartitionStrategy {
-    /// Execute on single best tower (no partitioning)
+    /// Execute on single best tower (no partitioning).
     Single,
 
-    /// Split by data chunks for parallel processing
-    DataParallel { chunk_size: usize },
+    /// Split by data chunks for parallel processing.
+    DataParallel {
+        /// Chunk size in elements.
+        chunk_size: usize,
+    },
 
-    /// Replicate and race - use fastest response
-    Redundant { replicas: usize },
+    /// Replicate and race — use fastest response.
+    Redundant {
+        /// Number of replicas.
+        replicas: usize,
+    },
 
-    /// Pipeline stages across different towers
-    Pipeline { stages: Vec<String> },
+    /// Pipeline stages across different towers.
+    Pipeline {
+        /// Stage identifiers.
+        stages: Vec<String>,
+    },
 }
 
-/// Distributed scheduler statistics
+/// Distributed scheduler statistics.
 #[derive(Debug, Clone)]
 pub struct DistributedStats {
+    /// Total discovered towers.
     pub total_towers: usize,
+    /// Currently active towers.
     pub active_towers: usize,
+    /// Total jobs submitted.
     pub total_jobs: usize,
+    /// Jobs pending scheduling.
     pub pending_jobs: usize,
+    /// Jobs currently running.
     pub running_jobs: usize,
+    /// Jobs completed successfully.
     pub completed_jobs: usize,
+    /// Jobs that failed.
     pub failed_jobs: usize,
 }
 
 impl DistributedStats {
-    /// Create empty statistics
+    /// Creates empty statistics.
     pub const fn empty() -> Self {
         Self {
             total_towers: 0,

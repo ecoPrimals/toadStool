@@ -23,10 +23,15 @@ use std::time::{Duration, Instant};
 /// Context for a running performance benchmark
 #[derive(Debug)]
 pub struct BenchmarkContext {
+    /// Name of the benchmark
     pub test_name: String,
+    /// When the benchmark started
     pub start_time: Instant,
+    /// Per-iteration durations
     pub iteration_times: Vec<Duration>,
+    /// Resource usage during the benchmark
     pub resource_monitor: ResourceMonitor,
+    /// Additional custom metrics
     pub custom_metrics: HashMap<String, Vec<f64>>,
 }
 
@@ -55,10 +60,15 @@ impl BenchmarkContext {
 /// Resource monitor for tracking system usage during benchmarks
 #[derive(Debug)]
 pub struct ResourceMonitor {
+    /// Memory samples in MB
     pub memory_samples: Vec<u32>,
+    /// CPU utilization samples (percent)
     pub cpu_samples: Vec<f32>,
+    /// Disk I/O samples in bytes
     pub disk_io_samples: Vec<u64>,
+    /// Network I/O samples in bytes
     pub network_io_samples: Vec<u64>,
+    /// When monitoring started
     pub start_time: Instant,
 }
 

@@ -6,7 +6,7 @@ use crate::types::{
     HealthStatus, ProtocolError, ProtocolResult, ServiceEndpoint, ServiceInfo, TransportType,
 };
 
-/// Select service based on routing strategy
+/// Select service from candidates based on routing strategy and health
 pub fn select_service<'a>(
     services: &'a [ServiceInfo],
     strategy: &RoutingStrategy,
@@ -27,7 +27,7 @@ pub fn select_service<'a>(
     }
 }
 
-/// Select endpoint from service
+/// Select endpoint from service matching transport and health
 pub fn select_endpoint<'a>(
     service: &'a ServiceInfo,
     supported_transports: &[TransportType],

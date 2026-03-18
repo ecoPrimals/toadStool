@@ -24,7 +24,10 @@ pub enum SelectionPolicy {
     Adaptive,
 
     /// Round-robin across substrates
-    RoundRobin { next: usize },
+    RoundRobin {
+        /// Index of the next substrate to select.
+        next: usize,
+    },
 
     /// Custom scoring function
     Custom,

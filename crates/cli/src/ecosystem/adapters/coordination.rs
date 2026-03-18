@@ -359,31 +359,42 @@ impl CoordinationAdapter {
 /// Service information for registration
 #[derive(Debug, Clone)]
 pub struct ServiceInfo {
+    /// Service name
     pub name: String,
+    /// Capability IDs this service provides
     pub capabilities: Vec<String>,
+    /// Service endpoint URL
     pub endpoint: String,
+    /// Optional metadata key-value pairs
     pub metadata: HashMap<String, String>,
 }
 
-/// Registration token
+/// Registration token from coordination service
 #[derive(Debug, Clone)]
 pub struct RegistrationToken {
+    /// Opaque token for heartbeat and unregister
     pub token: String,
 }
 
-/// Peer service information
+/// Peer service information from discovery
 #[derive(Debug, Clone)]
 pub struct PeerInfo {
+    /// Peer service name
     pub name: String,
+    /// Peer endpoint URL
     pub endpoint: String,
+    /// Capabilities the peer provides
     pub capabilities: Vec<String>,
+    /// Health status (healthy, unhealthy, unknown)
     pub health: String,
 }
 
-/// Distributed lock handle
+/// Distributed lock handle for coordination
 #[derive(Debug, Clone)]
 pub struct LockHandle {
+    /// Lock name (resource being locked)
     pub lock_name: String,
+    /// Unique lock ID for release
     pub lock_id: String,
 }
 

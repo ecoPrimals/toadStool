@@ -17,8 +17,11 @@ pub use config::BearDogConfig;
 pub use policy::{PolicyRule, SecurityAuditEvent, SecurityPolicy};
 pub use trait_::BearDogIntegrationTrait;
 
+/// Type alias for BearDog config
 pub type SecurityServiceConfig = BearDogConfig;
+/// Type alias for BearDog integration client
 pub type SecurityServiceIntegration = BearDogIntegration;
+/// Type alias for BearDog trait object
 pub type SecurityServiceTrait = dyn BearDogIntegrationTrait;
 
 #[cfg(test)]

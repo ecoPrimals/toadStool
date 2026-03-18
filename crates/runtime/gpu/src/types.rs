@@ -79,6 +79,7 @@ pub struct DeviceId {
 }
 
 impl DeviceId {
+    /// Creates a new device ID.
     #[must_use]
     pub const fn new(framework: GpuFramework, device_index: u32, uuid: String) -> Self {
         Self {
@@ -188,23 +189,38 @@ pub struct PerformanceCharacteristics {
     pub max_power_watts: f64,
 }
 
-/// Supported data types
+/// Supported data types for GPU buffers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DataType {
+    /// 8-bit signed integer.
     Int8,
+    /// 16-bit signed integer.
     Int16,
+    /// 32-bit signed integer.
     Int32,
+    /// 64-bit signed integer.
     Int64,
+    /// 8-bit unsigned integer.
     UInt8,
+    /// 16-bit unsigned integer.
     UInt16,
+    /// 32-bit unsigned integer.
     UInt32,
+    /// 64-bit unsigned integer.
     UInt64,
+    /// 16-bit float.
     Float16,
+    /// 32-bit float.
     Float32,
+    /// 64-bit float.
     Float64,
+    /// 64-bit complex.
     Complex64,
+    /// 128-bit complex.
     Complex128,
+    /// Boolean.
     Bool,
+    /// Custom type.
     Custom(String),
 }
 
@@ -238,22 +254,30 @@ impl Default for DeviceUsage {
     }
 }
 
-/// Framework-specific device handles
+/// Framework-specific device handles.
 #[derive(Debug)]
 pub enum FrameworkHandle {
+    /// OpenCL device.
     #[cfg(feature = "opencl")]
     OpenCl(ocl::Device),
+    /// CUDA context (cudarc 0.19).
     #[cfg(feature = "cuda")]
-    /// cudarc 0.19: CudaContext replaces CudaDevice, wrapped in Arc for Clone
     Cuda(Arc<cudarc::driver::safe::CudaContext>),
+    /// Vulkan device.
     #[cfg(feature = "vulkan")]
     Vulkan(Arc<vulkano::device::Device>),
+    /// WebGPU device.
     #[cfg(feature = "webgpu")]
-    WebGpu(Arc<wgpu::Device>), // Wrap in Arc since wgpu::Device doesn't implement Clone
+    WebGpu(Arc<wgpu::Device>),
     // #[cfg(feature = "metal")]
     // Metal(metal::Device), // Not available on Linux
-    /// Framework was detected but could not provide a real device handle
-    Unavailable { name: String, reason: String },
+    /// Framework was detected but could not provide a real device handle.
+    Unavailable {
+        /// Framework name.
+        name: String,
+        /// Reason for unavailability.
+        reason: String,
+    },
 }
 
 impl Clone for FrameworkHandle {
@@ -425,11 +449,14 @@ pub struct KernelInput {
     pub access_pattern: AccessPattern,
 }
 
-/// Memory access patterns
+/// Memory access patterns for buffers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AccessPattern {
+    /// Read-only access.
     ReadOnly,
+    /// Write-only access.
     WriteOnly,
+    /// Read-write access.
     ReadWrite,
 }
 

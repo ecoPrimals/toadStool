@@ -23,7 +23,9 @@ pub const CHAOS_TIMEOUT: Duration = Duration::from_secs(20);
 /// Error type for timeout operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeoutError {
+    /// Operation exceeded the timeout
     Elapsed,
+    /// Operation failed before timeout
     OperationFailed,
 }
 
@@ -144,10 +146,14 @@ where
     Err(RetryError::MaxAttemptsExceeded)
 }
 
+/// Error from retry_with_timeout
 #[derive(Debug)]
 pub enum RetryError<E> {
+    /// Operation timed out on final attempt
     Timeout,
+    /// Operation failed with the given error
     Failed(E),
+    /// Exhausted all retry attempts
     MaxAttemptsExceeded,
 }
 

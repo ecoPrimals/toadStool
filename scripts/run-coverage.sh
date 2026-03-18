@@ -55,7 +55,7 @@ run_tier1() {
         "toadstool-runtime-python"
         "toadstool-runtime-secure-enclave"
         # toadstool-runtime-edge excluded (serialport→libudev C dep)
-        # toadstool-runtime-specialty excluded (incomplete trait implementations)
+        "toadstool-runtime-specialty"
         "toadstool-integration-beardog"
         "toadstool-integration-primals"
         "toadstool-integration-nestgate"

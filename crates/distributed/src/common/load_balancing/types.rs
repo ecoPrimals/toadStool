@@ -22,10 +22,16 @@ pub enum LoadBalancingStrategy {
     LatencyBased,
     /// Optimize for cost (use cheapest resources)
     CostOptimized,
-    /// Prefer targets in specific regions
-    RegionalAffinity { preferred_regions: Vec<String> },
-    /// Weighted distribution (some targets get more work)
-    Weighted { weights: HashMap<String, u32> },
+    /// Prefer targets in specific regions.
+    RegionalAffinity {
+        /// Preferred region IDs.
+        preferred_regions: Vec<String>,
+    },
+    /// Weighted distribution (some targets get more work).
+    Weighted {
+        /// Target ID to weight mapping.
+        weights: HashMap<String, u32>,
+    },
     /// Random selection
     Random,
     /// Consistent hashing (for session affinity)

@@ -63,16 +63,24 @@ pub enum RuntimeSelectionStrategy {
     /// Select based on workload characteristics
     WorkloadOptimized,
     /// Custom selection with weighted factors
-    Custom { weights: SelectionWeights },
+    Custom {
+        /// Weights for each selection criterion
+        weights: SelectionWeights,
+    },
 }
 
-/// Selection weights for custom strategy
+/// Selection weights for custom runtime selection strategy
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectionWeights {
+    /// Weight for execution time (0.0–1.0)
     pub execution_time: f64,
+    /// Weight for memory usage (0.0–1.0)
     pub memory_usage: f64,
+    /// Weight for CPU usage (0.0–1.0)
     pub cpu_usage: f64,
+    /// Weight for resource availability (0.0–1.0)
     pub resource_availability: f64,
+    /// Weight for historical success rate (0.0–1.0)
     pub historical_success_rate: f64,
 }
 

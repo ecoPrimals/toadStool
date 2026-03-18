@@ -102,7 +102,10 @@ pub enum DiscoveryMethod {
     Configuration,
 
     /// Discovered via another primal
-    Referral { from: String },
+    Referral {
+        /// Primal that referred this endpoint
+        from: String,
+    },
 }
 
 /// Primal discovery engine
@@ -306,12 +309,18 @@ impl PrimalDiscovery {
 /// Discovery errors
 #[derive(Debug, thiserror::Error)]
 pub enum DiscoveryError {
+    /// No service with the requested capability was found
     #[error("Capability not found: {capability}")]
-    NotFound { capability: String },
+    NotFound {
+        /// Capability that was requested
+        capability: String,
+    },
 
+    /// mDNS discovery failed
     #[error("mDNS error: {0}")]
     MDnsError(String),
 
+    /// Configuration was invalid
     #[error("Configuration error: {0}")]
     ConfigError(String),
 }

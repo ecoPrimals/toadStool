@@ -6,16 +6,24 @@ use crate::backends::wgpu_backend::GpuAdapterInfo;
 /// Hardware calibration for NVVM safety.
 #[derive(Debug, Clone)]
 pub struct HardwareCalibration {
+    /// Adapter name (e.g. "NVIDIA GeForce RTX 3090").
     pub adapter_name: String,
+    /// Driver name (e.g. "nvk", "radv", "nvidia").
     pub driver: String,
+    /// Per-tier capability matrix.
     pub tiers: Vec<TierCapability>,
+    /// Whether any f64 precision is supported.
     pub has_any_f64: bool,
+    /// Whether DF64 arithmetic is safe on this adapter.
     pub df64_arithmetic_safe: bool,
+    /// Whether NVVM transcendentals risk poisoning.
     pub nvvm_transcendental_risk: bool,
+    /// NVVM poisoning risk classification.
     pub poisoning_risk: NvvmPoisoningRisk,
 }
 
 impl HardwareCalibration {
+    /// Build calibration from wgpu adapter info.
     #[must_use]
     pub fn from_adapter_info(info: &GpuAdapterInfo) -> Self {
         let adapter_name = info.name.clone();
@@ -94,6 +102,7 @@ impl HardwareCalibration {
         }
     }
 
+    /// Check if a precision tier is safe for this hardware.
     #[must_use]
     pub fn is_tier_safe(&self, tier: PrecisionTier, uses_transcendentals: bool) -> bool {
         let Some(tc) = self.tiers.iter().find(|t| t.tier == tier) else {
@@ -108,6 +117,7 @@ impl HardwareCalibration {
         true
     }
 
+    /// Select the best safe precision tier for the given constraints.
     #[must_use]
     pub fn best_tier(&self, precision_critical: bool, uses_transcendentals: bool) -> PrecisionTier {
         let order = if precision_critical {

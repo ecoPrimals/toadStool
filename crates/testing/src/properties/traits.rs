@@ -21,20 +21,27 @@ use toadstool::ToadStoolResult as Result;
 
 /// Trait for generating test inputs
 pub trait Generator<T> {
+    /// Generate a random input of the given size/complexity
     fn generate(&mut self, size: usize) -> T;
+    /// Produce smaller candidates for shrinking a failing input
     fn shrink(&self, input: &T) -> Vec<T>;
 }
 
 /// Trait for testable properties
 pub trait Property<T> {
+    /// Test the property against the given input
     fn test(&self, input: &T) -> Result<()>;
+    /// Human-readable property name
     fn name(&self) -> &str;
 }
 
 /// Random number generator trait for testability
 pub trait RandomNumberGenerator {
+    /// Generate next u64
     fn next_u64(&mut self) -> u64;
+    /// Generate next f64 in [0, 1)
     fn next_f64(&mut self) -> f64;
+    /// Set RNG seed for reproducibility
     fn seed(&mut self, seed: u64);
 }
 

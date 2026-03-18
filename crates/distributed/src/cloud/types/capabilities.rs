@@ -3,68 +3,103 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Cloud capabilities
+/// Cloud provider capabilities for placement decisions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudCapabilities {
+    /// Supported compute types.
     pub compute_types: Vec<ComputeType>,
+    /// Supported storage types.
     pub storage_types: Vec<StorageType>,
+    /// Networking features.
     pub networking_features: Vec<NetworkingFeature>,
+    /// Security features.
     pub security_features: Vec<SecurityFeature>,
+    /// Compliance certifications.
     pub compliance_certifications: Vec<ComplianceCertification>,
+    /// Available regions.
     pub regions: Vec<Region>,
+    /// Max CPU cores (if limited).
     pub max_cpu_cores: Option<u32>,
+    /// Max memory in GB (if limited).
     pub max_memory_gb: Option<u32>,
+    /// GPU support available.
     pub gpu_support: bool,
+    /// Kubernetes support.
     pub kubernetes_support: bool,
+    /// Serverless support.
     pub serverless_support: bool,
 }
 
-/// Cloud provider metadata
+/// Cloud provider metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudProviderMetadata {
+    /// Provider name.
     pub name: String,
+    /// Provider version.
     pub version: String,
+    /// API version.
     pub api_version: String,
+    /// Supported protocols.
     pub supported_protocols: Vec<String>,
+    /// Documentation URL.
     pub documentation_url: String,
+    /// Support contact.
     pub support_contact: String,
 }
 
-/// Resource specifications
+/// Resource specifications for cloud placement.
 #[derive(Debug, Clone)]
 pub struct ResourceSpec {
+    /// CPU cores.
     pub cpu_cores: f64,
+    /// Memory in GB.
     pub memory_gb: f64,
+    /// Storage in GB.
     pub storage_gb: f64,
+    /// GPU count (optional).
     pub gpu_count: Option<u32>,
+    /// Network bandwidth in Mbps (optional).
     pub network_bandwidth_mbps: Option<u64>,
 }
 
-/// Pricing information
+/// Pricing information for cost estimation.
 #[derive(Debug, Clone)]
 pub struct PricingInfo {
+    /// CPU cost per hour.
     pub cpu_cost_per_hour: f64,
+    /// Memory cost per GB-hour.
     pub memory_cost_per_gb_hour: f64,
+    /// Storage cost per GB-month.
     pub storage_cost_per_gb_month: f64,
+    /// Network cost per GB.
     pub network_cost_per_gb: f64,
+    /// Total estimated cost.
     pub total_estimated_cost: f64,
 }
 
-/// Availability information
+/// Availability information for a provider/region.
 #[derive(Debug, Clone)]
 pub struct AvailabilityInfo {
+    /// Available CPU cores.
     pub cpu_cores: f64,
+    /// Available memory in GB.
     pub memory_gb: f64,
+    /// Available storage in GB.
     pub storage_gb: f64,
+    /// Available GPU count.
     pub gpu_count: u32,
+    /// Available regions.
     pub regions: Vec<String>,
+    /// Availability zones.
     pub availability_zones: Vec<String>,
 }
 
-/// Multi-cloud availability tracking
+/// Multi-cloud availability tracking.
 #[derive(Debug, Clone)]
 pub struct MultiCloudAvailability {
+    /// Per-provider availability.
     providers: HashMap<String, AvailabilityInfo>,
+    /// Unavailable providers.
     unavailable_providers: Vec<String>,
 }
 
@@ -75,6 +110,7 @@ impl Default for MultiCloudAvailability {
 }
 
 impl MultiCloudAvailability {
+    /// Creates an empty multi-cloud availability tracker.
     pub fn new() -> Self {
         Self {
             providers: HashMap::new(),
@@ -82,71 +118,102 @@ impl MultiCloudAvailability {
         }
     }
 
+    /// Adds a provider with availability info.
     pub fn add_provider(&mut self, name: impl Into<String>, availability: AvailabilityInfo) {
         self.providers.insert(name.into(), availability);
     }
 
+    /// Marks a provider as unavailable.
     pub fn mark_provider_unavailable(&mut self, name: impl Into<String>) {
         self.unavailable_providers.push(name.into());
     }
 }
 
-/// Region information
+/// Cloud region information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Region {
+    /// Region name.
     pub name: String,
+    /// Geographic location.
     pub location: String,
+    /// Availability zones in region.
     pub availability_zones: Vec<String>,
 }
 
-/// Compute type options
+/// Compute type for cloud placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ComputeType {
+    /// Virtual machine.
     VM,
+    /// Container.
     Container,
+    /// Serverless (lambda, etc.).
     Serverless,
+    /// Bare metal.
     BareMetalC,
+    /// GPU instance.
     GPU,
+    /// FPGA instance.
     FPGA,
 }
 
-/// Storage type options
+/// Storage type for cloud placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StorageType {
+    /// Block storage (EBS, etc.).
     BlockStorage,
+    /// Object storage (S3, etc.).
     ObjectStorage,
+    /// File storage (EFS, etc.).
     FileStorage,
+    /// Database storage.
     DatabaseStorage,
 }
 
-/// Networking feature options
+/// Networking feature for cloud placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NetworkingFeature {
+    /// VPC support.
     VPC,
+    /// Load balancer.
     LoadBalancer,
+    /// CDN.
     CDN,
+    /// Private networking.
     PrivateNetworking,
+    /// VPN.
     VPN,
 }
 
-/// Security feature options
+/// Security feature for compliance.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum SecurityFeature {
+    /// Encryption at rest/transit.
     Encryption,
+    /// Identity and access management.
     IdentityManagement,
+    /// Network security (firewall, etc.).
     NetworkSecurity,
+    /// Compliance tooling.
     Compliance,
 }
 
-/// Compliance certifications
+/// Compliance certification for cloud provider.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ComplianceCertification {
+    /// SOC 2.
     SOC2,
+    /// ISO 27001.
     ISO27001,
+    /// HIPAA.
     HIPAA,
+    /// PCI DSS.
     PciDss,
+    /// GDPR.
     GDPR,
+    /// FedRAMP.
     FedRAMP,
+    /// Custom certification.
     Custom(String),
 }
 

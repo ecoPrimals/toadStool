@@ -27,9 +27,13 @@ pub struct LinuxSandboxManager {
 /// Detected Linux kernel capabilities, probed once at startup.
 #[derive(Debug, Clone)]
 pub struct LinuxPlatformCaps {
+    /// Whether cgroups v2 is available.
     pub cgroups_v2: bool,
+    /// Whether seccomp is available.
     pub seccomp: bool,
+    /// Whether namespaces are available.
     pub namespaces: bool,
+    /// Available namespace types (e.g. user, pid, net).
     pub available_ns: Vec<String>,
 }
 

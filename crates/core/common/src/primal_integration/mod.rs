@@ -130,15 +130,30 @@ pub type DiscoveryResult = Result<Vec<PrimalEndpoint>, DiscoveryError>;
 /// Discovery errors
 #[derive(Debug, thiserror::Error)]
 pub enum DiscoveryError {
+    /// No service advertising the capability was found
     #[error("No service found with capability: {capability}")]
-    NoServiceFound { capability: String },
+    NoServiceFound {
+        /// Capability that was requested
+        capability: String,
+    },
 
+    /// Discovered service failed health check
     #[error("Service unhealthy: {service_id}")]
-    ServiceUnhealthy { service_id: String },
+    ServiceUnhealthy {
+        /// Service identifier
+        service_id: String,
+    },
 
+    /// Discovery method (mDNS, env, etc.) failed
     #[error("Discovery method failed: {method}: {reason}")]
-    DiscoveryFailed { method: String, reason: String },
+    DiscoveryFailed {
+        /// Discovery method that failed
+        method: String,
+        /// Failure reason
+        reason: String,
+    },
 
+    /// Network-level error during discovery
     #[error("Network error: {0}")]
     Network(String),
 }

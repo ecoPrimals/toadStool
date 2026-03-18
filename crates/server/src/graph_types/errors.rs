@@ -4,22 +4,30 @@
 /// Graph validation error
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum GraphValidationError {
+    /// Graph has no nodes.
     #[error("Graph is empty (no nodes)")]
     EmptyGraph,
 
+    /// Duplicate node ID.
     #[error("Duplicate node ID: {0}")]
     DuplicateNodeId(String),
 
+    /// Invalid edge.
     #[error("Invalid edge from '{from}' to '{to}': {reason}")]
     InvalidEdge {
+        /// Source node ID.
         from: String,
+        /// Target node ID.
         to: String,
+        /// Reason for invalidity.
         reason: String,
     },
 
+    /// Self-edge (node pointing to itself).
     #[error("Self-edge detected on node '{0}'")]
     SelfEdge(String),
 
+    /// Cycle detected.
     #[error("Cycle detected in graph: {}", .0.join(" -> "))]
     CycleDetected(Vec<String>),
 }

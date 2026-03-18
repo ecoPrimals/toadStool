@@ -101,43 +101,60 @@ pub struct OSLayerConfig {
     pub os_layer_resource_limits: ResourceLimits,
 }
 
-/// Scheduling algorithms
+/// Scheduling algorithms for job ordering.
 #[derive(Debug, Clone)]
 pub enum SchedulingAlgorithm {
+    /// First-come first-serve.
     FirstComeFirstServe,
+    /// Priority-based scheduling.
     Priority,
+    /// Round-robin across nodes.
     RoundRobin,
+    /// Shortest job first.
     ShortestJobFirst,
+    /// Resource-aware placement.
     ResourceAware,
+    /// Network-aware placement.
     NetworkAware,
+    /// Energy-optimized placement.
     EnergyOptimized,
 }
 
-/// Network load balancing configuration
+/// Network load balancing configuration.
 #[derive(Debug, Clone)]
 pub struct NetworkLoadBalancing {
+    /// Load balancing strategy.
     pub strategy: LoadBalancingStrategy,
+    /// Health check interval in ms.
     pub health_check_interval_ms: u64,
+    /// Failover threshold (failures before marking down).
     pub failover_threshold: u32,
 }
 
-/// Resource sharing configuration
+/// Resource sharing configuration.
 #[derive(Debug, Clone)]
 pub struct ResourceSharingConfig {
+    /// Enable resource sharing.
     pub enabled: bool,
+    /// Sharing ratio (0.0–1.0).
     pub sharing_ratio: f64,
+    /// Priority boost for shared resources.
     pub priority_boost: f64,
 }
 
-/// Fault tolerance configuration
+/// Fault tolerance configuration.
 #[derive(Debug, Clone)]
 pub struct FaultToleranceConfig {
+    /// Enable fault tolerance.
     pub enabled: bool,
+    /// Max retries per job.
     pub max_retries: u32,
+    /// Circuit breaker failure threshold.
     pub circuit_breaker_threshold: u32,
 }
 
 impl UniversalScheduler {
+    /// Creates a universal scheduler with the given config.
     pub async fn new(config: UniversalSchedulerConfig) -> ToadStoolResult<Self> {
         let local_queue = Arc::new(RwLock::new(UniversalJobQueue::new()));
 
@@ -174,6 +191,7 @@ impl UniversalScheduler {
         })
     }
 
+    /// Schedules a job based on its execution target.
     pub async fn schedule_job(&self, job: UniversalJob) -> ToadStoolResult<()> {
         // Add job to local queue
         self.local_queue.write().await.add_job(job.clone()).await?;

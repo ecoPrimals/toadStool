@@ -51,12 +51,14 @@ impl Default for Toolchain6502 {
 }
 
 impl Toolchain6502 {
+    /// Creates a new 6502 cross-compilation toolchain with default settings.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
 impl ToolchainZ80 {
+    /// Creates a new Z80 cross-compilation toolchain with default settings.
     pub fn new() -> Self {
         Self::default()
     }
@@ -72,6 +74,7 @@ impl Default for ToolchainZ80 {
 }
 
 impl Toolchain68000 {
+    /// Creates a new 68000 cross-compilation toolchain with default settings.
     pub fn new() -> Self {
         Self::default()
     }

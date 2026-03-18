@@ -63,88 +63,120 @@ pub struct CrossCloudNetworking {
     pub encryption_required: bool,
 }
 
-/// VPN configuration
+/// VPN configuration for cross-cloud networking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VpnConfig {
+    /// VPN type (wireguard, ipsec, etc.).
     pub vpn_type: String,
+    /// VPN endpoint.
     pub endpoint: String,
+    /// Shared key for auth.
     pub shared_key: String,
 }
 
-/// DNS configuration
+/// DNS configuration for service discovery.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DnsConfig {
+    /// DNS provider.
     pub dns_provider: String,
+    /// Zone ID.
     pub zone_id: String,
+    /// TTL in seconds.
     pub ttl_seconds: u32,
 }
 
-/// Cloud orchestrator configuration
+/// Cloud orchestrator configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudOrchestratorConfig {
+    /// Scheduling strategy.
     pub scheduling_strategy: crate::cloud::HybridSchedulingStrategy,
+    /// Cost config.
     pub cost_config: CostConfig,
+    /// Compliance config.
     pub compliance_config: ComplianceConfig,
+    /// Load balancer config.
     pub load_balancer_config: LoadBalancerConfig,
+    /// Federation config.
     pub federation_config: FederationConfig,
 }
 
-/// Cost configuration
+/// Cost configuration for cloud orchestration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CostConfig {
+    /// Budget limit (optional).
     pub budget_limit: Option<f64>,
+    /// Enable cost tracking.
     pub cost_tracking_enabled: bool,
+    /// Spot instance preference (0.0–1.0).
     pub spot_instance_preference: f64,
 }
 
-/// Compliance configuration
+/// Compliance configuration for cloud placement.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceConfig {
+    /// Required certifications.
     pub required_certifications: Vec<ComplianceCertification>,
+    /// Allowed regions.
     pub allowed_regions: Vec<String>,
+    /// Data sovereignty requirements.
     pub data_sovereignty_requirements: Vec<DataSovereigntyRequirement>,
 }
 
-/// Data sovereignty requirement
+/// Data sovereignty requirement for compliance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataSovereigntyRequirement {
+    /// Data type.
     pub data_type: String,
+    /// Allowed regions.
     pub allowed_regions: Vec<String>,
+    /// Encryption required.
     pub encryption_required: bool,
 }
 
-/// Load balancer configuration (using common types)
+/// Load balancer configuration (using common types).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadBalancerConfig {
+    /// Load balancing algorithm.
     pub algorithm: LoadBalancingAlgorithm,
+    /// Health check interval.
     pub health_check_interval: Duration,
+    /// Failover timeout.
     pub failover_timeout: Duration,
 }
 
-/// Load balancing algorithm (re-exported from common for backward compatibility)
+/// Load balancing algorithm (re-exported from common for backward compatibility).
 pub type LoadBalancingAlgorithm = CommonLoadBalancingAlgorithm;
 
-/// Federation configuration
+/// Federation configuration for multi-cloud coordination.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FederationConfig {
+    /// Federation ID.
     pub federation_id: String,
+    /// Discovery endpoint URLs.
     pub discovery_endpoints: Vec<String>,
+    /// Trust anchor certificates.
     pub trust_anchors: Vec<String>,
 }
 
-/// Failover configuration
+/// Failover configuration for high availability.
 #[derive(Debug, Clone)]
 pub struct FailoverConfig {
+    /// Enable automatic failover.
     pub automatic_failover: bool,
+    /// Failover threshold duration.
     pub failover_threshold: Duration,
+    /// Backup provider names.
     pub backup_providers: Vec<String>,
 }
 
-/// Network configuration
+/// Network configuration for cross-cloud communication.
 #[derive(Debug, Clone, Default)]
 pub struct NetworkConfig {
+    /// Enable encryption.
     pub encryption: bool,
+    /// Enable compression.
     pub compression: bool,
+    /// Connection timeout.
     pub timeout: Duration,
 }
 

@@ -10,7 +10,8 @@ use tracing::debug;
 use crate::config::HealthConfig;
 use crate::types::{HealthStatus, ProtocolEvent, ServiceInfo};
 
-/// Spawn background health monitoring task for registered services
+/// Spawn background health monitoring task for registered services.
+/// Periodically checks endpoint connectivity and emits ServiceHealthChanged events.
 pub fn spawn_health_monitor(
     services: Arc<RwLock<HashMap<Arc<str>, ServiceInfo>>>,
     health_config: HealthConfig,

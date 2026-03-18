@@ -26,29 +26,43 @@ pub struct SubstrateConfig {
     pub auto_discover: bool,
 }
 
+/// How to select compute substrate (CPU, GPU, NPU, TPU).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SubstratePreference {
+    /// Auto-discover best available substrate.
     Auto,
+    /// Use a specific substrate type.
     Specific(SubstrateType),
+    /// Select by capability names (e.g. ["cuda", "opencl"]).
     ByCapability(Vec<String>),
 }
 
+/// Compute substrate type. Valid values: cpu, gpu, npu, tpu.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SubstrateType {
+    /// CPU execution.
     Cpu,
+    /// GPU (CUDA, OpenCL, etc.).
     Gpu,
+    /// Neural processing unit.
     Npu,
+    /// Tensor processing unit.
     Tpu,
 }
 
+/// Performance optimization target.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum PerformanceTarget {
+    /// Minimize latency.
     Latency,
+    /// Maximize throughput.
     Throughput,
+    /// Minimize energy consumption.
     Energy,
+    /// Balance latency, throughput, and energy.
     Balanced,
 }
 
@@ -129,12 +143,15 @@ impl SubstrateConfig {
     }
 }
 
-/// Substrate configuration builder
+/// Substrate configuration builder.
+///
+/// Fluent API for substrate selection, power budget, and performance target.
 pub struct SubstrateConfigBuilder {
     config: SubstrateConfig,
 }
 
 impl SubstrateConfigBuilder {
+    /// Create a new builder with default substrate config.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -142,54 +159,63 @@ impl SubstrateConfigBuilder {
         }
     }
 
+    /// Prefer auto-discovery of best substrate.
     #[must_use]
     pub fn prefer_auto(mut self) -> Self {
         self.config.preferred = SubstratePreference::Auto;
         self
     }
 
+    /// Prefer CPU execution.
     #[must_use]
     pub fn prefer_cpu(mut self) -> Self {
         self.config.preferred = SubstratePreference::Specific(SubstrateType::Cpu);
         self
     }
 
+    /// Prefer GPU execution.
     #[must_use]
     pub fn prefer_gpu(mut self) -> Self {
         self.config.preferred = SubstratePreference::Specific(SubstrateType::Gpu);
         self
     }
 
+    /// Prefer NPU execution.
     #[must_use]
     pub fn prefer_npu(mut self) -> Self {
         self.config.preferred = SubstratePreference::Specific(SubstrateType::Npu);
         self
     }
 
+    /// Set power budget in watts (for power-constrained deployments).
     #[must_use]
     pub const fn power_budget_watts(mut self, watts: f64) -> Self {
         self.config.power_budget_watts = Some(watts);
         self
     }
 
+    /// Target minimum latency.
     #[must_use]
     pub const fn target_latency(mut self) -> Self {
         self.config.performance_target = PerformanceTarget::Latency;
         self
     }
 
+    /// Target maximum throughput.
     #[must_use]
     pub const fn target_throughput(mut self) -> Self {
         self.config.performance_target = PerformanceTarget::Throughput;
         self
     }
 
+    /// Target minimum energy consumption.
     #[must_use]
     pub const fn target_energy(mut self) -> Self {
         self.config.performance_target = PerformanceTarget::Energy;
         self
     }
 
+    /// Build the substrate configuration.
     #[must_use]
     pub fn build(self) -> SubstrateConfig {
         self.config

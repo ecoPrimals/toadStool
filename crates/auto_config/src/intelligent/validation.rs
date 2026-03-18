@@ -16,6 +16,7 @@ impl Default for ConfigValidator {
 }
 
 impl ConfigValidator {
+    /// Creates a new configuration validator.
     #[must_use]
     pub const fn new() -> Self {
         Self

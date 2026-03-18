@@ -44,7 +44,9 @@ pub enum PowerPolicy {
     Eco,
     /// User-defined bus clock gate configuration with a target state.
     Custom {
+        /// Target power state for this policy.
         target_state: GpuPowerState,
+        /// Bus-level clock gating configuration for `NV_PBUS_EXT_CG`.
         clock_gating: ClockGateConfig,
     },
 }

@@ -353,7 +353,7 @@ fn akida_npu_dispatch_load_and_dispatch() {
         .dispatch(handle, Cow::Borrowed(&[1.0, 2.0, 3.0]))
         .unwrap();
     assert_eq!(result.output, vec![1.0, 2.0, 3.0]);
-    assert!(result.latency_us >= 0);
+    assert!(result.latency_us > 0, "mock should return positive latency");
     assert_eq!(result.power_mw, Some(1500.0));
 }
 

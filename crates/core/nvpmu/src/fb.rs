@@ -76,15 +76,21 @@ pub mod regs {
     /// FBPA (Framebuffer Partition Array) base.
     /// Each FBPA manages one HBM2 stack. GV100 has 4.
     pub const FBPA_BASE: u64 = super::registers::FBPA_BASE;
+    /// Per-FBPA stride in the register space (0x4000).
     pub const FBPA_STRIDE: u64 = super::registers::FBPA_STRIDE;
+    /// Number of FBPA partitions on GV100 (4 HBM2 stacks).
     pub const FBPA_COUNT: u32 = super::registers::GV100_FBPA_COUNT;
 
     /// FB memory controller config (within each FBPA).
     /// Nouveau sets these during `ramgv100_init()`.
     pub const FBPA_CMD: u64 = 0x00; // relative to FBPA base
+    /// FBPA config register; readback indicates memory controller init state.
     pub const FBPA_CFG: u64 = 0x04;
+    /// FBPA timing config register 0.
     pub const FBPA_TIMING0: u64 = 0x80;
+    /// FBPA timing config register 1.
     pub const FBPA_TIMING1: u64 = 0x84;
+    /// FBPA timing config register 2.
     pub const FBPA_TIMING2: u64 = 0x88;
 
     /// `NV_PFB_NISO_FLUSH_SYSMEM_ADDR` — used to verify VRAM accessibility.
@@ -93,6 +99,7 @@ pub mod regs {
 
     /// PRAMIN window base — used for VRAM read/write via BAR0.
     pub const PRAMIN_BASE: u64 = 0x0070_0000;
+    /// PRAMIN window size in bytes (1 `MiB`).
     pub const PRAMIN_SIZE: u64 = 0x0010_0000; // 1 MB window
 }
 
@@ -153,8 +160,11 @@ pub struct FbPartitionReport {
 /// Single FBPA partition readback.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FbPartitionEntry {
+    /// FBPA partition index (0–3 on GV100).
     pub index: u32,
+    /// FBPA config register value; non-zero indicates training complete.
     pub cfg: u32,
+    /// FBPA timing0 register value.
     pub timing0: u32,
 }
 

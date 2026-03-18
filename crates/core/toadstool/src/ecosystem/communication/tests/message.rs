@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Message type and serialization tests
 
+#[cfg(not(feature = "networking"))]
+use crate::ecosystem::{CommunicationManager, ServiceChannel, ServiceClient};
 use crate::ecosystem::{
     DiscoveryMethodConfig, EcosystemMessage, EcosystemMessageType, ServiceStatus,
 };
-#[cfg(not(feature = "networking"))]
-use crate::ecosystem::{ServiceChannel, ServiceClient};
 
 #[test]
 fn test_ecosystem_message_new_constructor() {
@@ -254,7 +254,7 @@ async fn test_fallback_response_preserves_original_id() {
     let stored_id = response
         .payload
         .get("original_message_id")
-        .and_then(|v| v.as_str());
+        .and_then(|v: &serde_json::Value| v.as_str());
     assert_eq!(stored_id, Some(original_id_str.as_str()));
 }
 
@@ -311,11 +311,17 @@ fn test_fallback_response_contains_reason_and_mode() {
     );
     let response = manager.fallback_response(original);
     assert_eq!(
-        response.payload.get("reason").and_then(|v| v.as_str()),
+        response
+            .payload
+            .get("reason")
+            .and_then(|v: &serde_json::Value| v.as_str()),
         Some("Networking feature not compiled")
     );
     assert_eq!(
-        response.payload.get("mode").and_then(|v| v.as_str()),
+        response
+            .payload
+            .get("mode")
+            .and_then(|v: &serde_json::Value| v.as_str()),
         Some("degraded")
     );
 }

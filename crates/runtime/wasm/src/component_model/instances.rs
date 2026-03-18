@@ -31,7 +31,10 @@ pub enum ComponentState {
     /// Component is executing
     Running,
     /// Component has failed
-    Failed { error: String },
+    Failed {
+        /// Error message describing the failure
+        error: String,
+    },
     /// Component is shutting down
     Terminating,
 }

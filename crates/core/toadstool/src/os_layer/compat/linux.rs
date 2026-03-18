@@ -55,6 +55,7 @@ impl Default for LinuxCompatibilityLayer {
 }
 
 impl LinuxCompatibilityLayer {
+    /// Creates a new Linux compatibility layer with default config.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -63,6 +64,7 @@ impl LinuxCompatibilityLayer {
         }
     }
 
+    /// Returns the Linux compatibility config.
     #[must_use]
     pub const fn get_config(&self) -> &LinuxCompatConfig {
         &self.config

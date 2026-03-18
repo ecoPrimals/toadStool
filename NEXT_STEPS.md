@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 18, 2026 -- S158b Scope + Deep Debt Execution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-or-later | **All 4 quality gates green** | 0 clippy pedantic+nursery (56 crates) | 21,156+ tests (0 failures) | 1,896 `.rs` files, 565K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **29 crates `forbid(unsafe_code)`**
-**Latest**: S158b — specs/README.md rewritten with scope, aims, and silicon-targeting future. Build fix (5 protocols errors). Smart refactoring (engine 817→715, capabilities 760→406). Hardcoding evolution (IPs→constants). Missing docs (20+ items). Primal self-knowledge audit clean.
+**Updated**: March 18, 2026 -- S159 Deep Audit & Execution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-or-later | **All 4 quality gates green** | 0 clippy pedantic+nursery (58 crates) | 11,956+ tests (0 failures, default features) | 1,896 `.rs` files, 565K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **29 crates `forbid(unsafe_code)`**
+**Latest**: S159 — Deep audit against wateringHole standards. 694+ missing_docs filled. 3 build errors fixed. JSON-RPC → domain.verb. Hardcoded primal names → capability-based. Zero-copy expanded (Arc<str>). Production stubs eliminated. All unsafe env::set_var → temp_env.
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S158)
 
-**~83% line coverage** (182K lines instrumented). **21,156 tests**. Target 90%. Coverage push to 90% ongoing — hardware mocks needed for remaining gaps.
+**~85% line coverage** (~182K lines instrumented). **11,956+ tests** (default features). Target 90%. Coverage push to 90% ongoing — hardware mocks needed for remaining gaps.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 

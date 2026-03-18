@@ -20,6 +20,7 @@ use crate::{
 };
 use toadstool_common::constants::timeouts;
 
+/// BYOB compute executor for team biome deployment and lifecycle management.
 pub struct ByobComputeExecutor {
     /// Runtime engine for executing workloads
     runtime_engine: Arc<dyn RuntimeEngine>,

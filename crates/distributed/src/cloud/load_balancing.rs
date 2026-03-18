@@ -13,6 +13,7 @@ pub struct MultiCloudLoadBalancer {
 }
 
 impl MultiCloudLoadBalancer {
+    /// Creates a new multi-cloud load balancer.
     pub async fn new(config: LoadBalancerConfig) -> ToadStoolResult<Self> {
         Ok(Self { _config: config })
     }

@@ -357,7 +357,6 @@ impl ToadStoolClient {
 }
 
 #[cfg(test)]
-#[allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
 mod tests {
     use super::*;
 
@@ -375,23 +374,21 @@ mod tests {
 
     #[test]
     fn test_resolve_socket_path_env_override() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var("TOADSTOOL_SOCKET", "/tmp/test_toadstool.sock") };
-        let path = resolve_socket_path("http://localhost:8080");
-        assert_eq!(path, std::path::PathBuf::from("/tmp/test_toadstool.sock"));
-        unsafe { std::env::remove_var("TOADSTOOL_SOCKET") };
+        temp_env::with_var("TOADSTOOL_SOCKET", Some("/tmp/test_toadstool.sock"), || {
+            let path = resolve_socket_path("http://localhost:8080");
+            assert_eq!(path, std::path::PathBuf::from("/tmp/test_toadstool.sock"));
+        });
     }
 
     #[test]
     fn test_resolve_socket_path_default_fallback() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::remove_var("TOADSTOOL_SOCKET") };
-        let path = resolve_socket_path("http://localhost:8080");
-        // Should return some reasonable socket path
-        assert!(
-            path.to_string_lossy().ends_with(".sock")
-                || path.to_string_lossy().contains("toadstool")
-        );
+        temp_env::with_var_unset("TOADSTOOL_SOCKET", || {
+            let path = resolve_socket_path("http://localhost:8080");
+            assert!(
+                path.to_string_lossy().ends_with(".sock")
+                    || path.to_string_lossy().contains("toadstool")
+            );
+        });
     }
 
     #[test]

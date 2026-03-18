@@ -9,23 +9,36 @@ use toadstool_runtime_universal::{
     ComputeUnitType, OperationType, UniversalRuntime, WorkloadBuilder,
 };
 
+/// Specification for a single benchmark workload.
 #[derive(Debug, Clone)]
 pub struct WorkloadSpec {
+    /// Human-readable workload name.
     pub name: &'static str,
+    /// Operation type to benchmark.
     pub operation: OperationType,
+    /// Input size (element count).
     pub size: usize,
+    /// Workload category for grouping results.
     pub category: WorkloadCategory,
+    /// Expected best-performing substrate (informational).
     pub expected_winner: &'static str,
 }
 
+/// Workload category for grouping benchmark results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkloadCategory {
-    ElementWise,   // Simple per-element operations (ReLU, Tanh, etc.)
-    Reduction,     // Aggregate operations (sum, max, etc.)
-    MemoryBound,   // Gather/scatter, transpose
-    ComputeBound,  // MatMul, convolution
-    Normalization, // LayerNorm, BatchNorm
-    Mixed,         // Complex multi-stage operations
+    /// Simple per-element operations (ReLU, Tanh, etc.).
+    ElementWise,
+    /// Aggregate operations (sum, max, etc.).
+    Reduction,
+    /// Gather/scatter, transpose.
+    MemoryBound,
+    /// MatMul, convolution.
+    ComputeBound,
+    /// LayerNorm, BatchNorm.
+    Normalization,
+    /// Complex multi-stage operations.
+    Mixed,
 }
 
 /// Comprehensive workload suite
@@ -174,18 +187,28 @@ pub fn get_benchmark_suite() -> Vec<WorkloadSpec> {
     ]
 }
 
+/// Result of a single workload benchmark across substrates.
 #[derive(Debug)]
 pub struct BenchmarkResult {
+    /// Workload name.
     pub workload: String,
+    /// Workload category.
     pub category: WorkloadCategory,
+    /// CPU execution time in microseconds.
     pub cpu_time_us: Option<f64>,
+    /// AMD GPU execution time in microseconds.
     pub gpu_amd_time_us: Option<f64>,
+    /// NVIDIA GPU execution time in microseconds.
     pub gpu_nvidia_time_us: Option<f64>,
+    /// NPU execution time in microseconds.
     pub npu_time_us: Option<f64>,
+    /// Best-performing substrate name.
     pub winner: String,
+    /// Speedup vs CPU baseline.
     pub speedup: f64,
 }
 
+/// Runs the full benchmark suite across all substrates.
 pub async fn run_comprehensive_benchmark(runtime: &UniversalRuntime) -> Vec<BenchmarkResult> {
     let suite = get_benchmark_suite();
     let mut results = Vec::new();
@@ -303,6 +326,7 @@ async fn benchmark_substrate_by_index(
     Some(elapsed.as_secs_f64() * 1_000_000.0)
 }
 
+/// Prints a formatted summary of benchmark results.
 pub fn print_results_summary(results: &[BenchmarkResult]) {
     println!("\n╔══════════════════════════════════════════════════════════════════════════════╗");
     println!("║                                                                              ║");

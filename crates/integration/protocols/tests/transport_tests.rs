@@ -4,6 +4,7 @@
 //! Tests for HTTP transport, message routing, and protocol handling.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_integration_protocols::transport::*;
 use toadstool_integration_protocols::types::*;
@@ -641,8 +642,8 @@ fn test_connection_service_id() {
 fn make_test_message() -> ProtocolMessage {
     ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "source".to_string(),
+        message_type: Arc::from("test"),
+        source: Arc::from("source"),
         destination: None,
         payload: serde_json::json!({}),
         headers: HashMap::new(),

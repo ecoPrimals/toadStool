@@ -17,6 +17,7 @@ pub struct TestServerConfigBuilder {
 }
 
 impl TestServerConfigBuilder {
+    /// Create a new server config with defaults (port 0 = OS-assigned)
     pub fn new() -> Self {
         Self {
             host: "127.0.0.1".to_string(),
@@ -26,26 +27,31 @@ impl TestServerConfigBuilder {
         }
     }
 
+    /// Set the bind host
     pub fn with_host(mut self, host: impl Into<String>) -> Self {
         self.host = host.into();
         self
     }
 
+    /// Set the bind port
     pub const fn with_port(mut self, port: u16) -> Self {
         self.port = port;
         self
     }
 
+    /// Enable or disable metrics collection
     pub const fn with_metrics(mut self, enabled: bool) -> Self {
         self.enable_metrics = enabled;
         self
     }
 
+    /// Set log level (e.g. "debug", "info")
     pub fn with_log_level(mut self, level: impl Into<String>) -> Self {
         self.log_level = level.into();
         self
     }
 
+    /// Build the server config as JSON
     pub fn build(self) -> serde_json::Value {
         serde_json::json!({
             "server": {
@@ -59,6 +65,7 @@ impl TestServerConfigBuilder {
         })
     }
 
+    /// Get the socket address for binding
     pub fn socket_addr(&self) -> SocketAddr {
         format!("{}:{}", self.host, self.port)
             .parse()
@@ -81,6 +88,7 @@ pub struct TestApiRequestBuilder {
 }
 
 impl TestApiRequestBuilder {
+    /// Create a new request builder with method and path
     pub fn new(method: impl Into<String>, path: impl Into<String>) -> Self {
         Self {
             method: method.into(),
@@ -90,28 +98,34 @@ impl TestApiRequestBuilder {
         }
     }
 
+    /// Create a GET request builder
     pub fn get(path: impl Into<String>) -> Self {
         Self::new("GET", path)
     }
 
+    /// Create a POST request builder
     pub fn post(path: impl Into<String>) -> Self {
         Self::new("POST", path)
     }
 
+    /// Set the request body
     pub fn with_body(mut self, body: serde_json::Value) -> Self {
         self.body = Some(body);
         self
     }
 
+    /// Add a header
     pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((key.into(), value.into()));
         self
     }
 
+    /// Add Content-Type: application/json header
     pub fn with_json_content_type(self) -> Self {
         self.with_header("Content-Type", "application/json")
     }
 
+    /// Build the request as JSON
     pub fn build(self) -> serde_json::Value {
         serde_json::json!({
             "method": self.method,

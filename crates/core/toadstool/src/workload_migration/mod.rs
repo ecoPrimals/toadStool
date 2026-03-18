@@ -122,16 +122,23 @@ pub enum MigrationTarget {
 
     /// Move to cloud
     Cloud {
+        /// Cloud provider name.
         provider: String,
+        /// Target region.
         region: String,
+        /// Estimated cost per hour.
         estimated_cost_per_hour: f64,
     },
 
     /// Move to different cloud
     DifferentCloud {
+        /// Current cloud provider.
         from_provider: String,
+        /// Target cloud provider.
         to_provider: String,
+        /// Target region.
         to_region: String,
+        /// Estimated cost per hour.
         estimated_cost_per_hour: f64,
     },
 }

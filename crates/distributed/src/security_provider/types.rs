@@ -24,54 +24,88 @@ pub struct PermissionRequest {
     pub delegation_info: Option<DelegationInfo>,
 }
 
-// Re-export supporting enums (used by ExternalTarget)
+/// Cloud provider for permission targeting.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CloudProvider {
+    /// Amazon Web Services.
     AWS,
+    /// Microsoft Azure.
     Azure,
+    /// Google Cloud Platform.
     GCP,
+    /// DigitalOcean.
     DigitalOcean,
+    /// Linode.
     Linode,
+    /// Vultr.
     Vultr,
+    /// Hetzner.
     Hetzner,
+    /// OVH.
     OVH,
+    /// Scaleway.
     Scaleway,
 }
 
+/// Container platform for permission targeting.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ContainerPlatform {
+    /// Docker.
     Docker,
+    /// Kubernetes.
     Kubernetes,
+    /// Nomad.
     Nomad,
+    /// OpenShift.
     OpenShift,
+    /// Docker Swarm.
     DockerSwarm,
+    /// Podman.
     Podman,
 }
 
+/// Quantum provider for permission targeting.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum QuantumProvider {
+    /// IBM Quantum.
     IBM,
+    /// Google Quantum.
     Google,
+    /// IonQ.
     IonQ,
+    /// Rigetti.
     Rigetti,
+    /// AWS Braket.
     AWSBraket,
+    /// Azure Quantum.
     AzureQuantum,
 }
 
+/// HPC scheduler for permission targeting.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum HPCScheduler {
+    /// SLURM.
     SLURM,
+    /// PBS.
     PBS,
+    /// SGE.
     SGE,
+    /// LSF.
     LSF,
+    /// Custom scheduler.
     Custom,
 }
 
+/// Service tier for enterprise services.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ServiceTier {
+    /// Basic tier.
     Basic,
+    /// Professional tier.
     Professional,
+    /// Enterprise tier.
     Enterprise,
+    /// Premium tier.
     Premium,
 }
 

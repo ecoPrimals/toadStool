@@ -34,8 +34,11 @@ pub enum RealtimeOS {
     EmbOS,
     /// µC/OS
     MicroCOS,
-    /// Custom RTOS
-    Custom { name: String },
+    /// Custom real-time OS.
+    Custom {
+        /// RTOS name.
+        name: String,
+    },
 }
 
 /// Scheduling policies for real-time systems
@@ -53,8 +56,11 @@ pub enum SchedulingPolicy {
     RateMonotonic,
     /// Earliest deadline first
     EarliestDeadlineFirst,
-    /// Custom scheduling
-    Custom { name: String },
+    /// Custom scheduling policy.
+    Custom {
+        /// Policy name.
+        name: String,
+    },
 }
 
 /// Task configuration for real-time systems
@@ -98,6 +104,9 @@ pub enum InterruptType {
     Timer,
     /// External interrupt
     External,
-    /// Custom interrupt
-    Custom { name: String },
+    /// Custom interrupt type.
+    Custom {
+        /// Interrupt type name.
+        name: String,
+    },
 }

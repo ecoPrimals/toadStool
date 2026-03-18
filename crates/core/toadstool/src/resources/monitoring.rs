@@ -45,6 +45,7 @@ pub struct SystemResourceMonitor {
 }
 
 impl SystemResourceMonitor {
+    /// Creates a new system resource monitor.
     #[must_use]
     pub fn new() -> Self {
         Self {

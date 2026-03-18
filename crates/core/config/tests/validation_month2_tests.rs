@@ -128,78 +128,46 @@ fn test_runtime_config_custom_memory_limit() {
 
 #[test]
 fn test_env_override_bind_port() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_BIND_PORT", "9090") };
-
-    let config = load_config_from_env();
-
-    assert_eq!(config.network.bind_port, 9090);
-
-    unsafe { env::remove_var("TOADSTOOL_BIND_PORT") };
+    temp_env::with_var("TOADSTOOL_BIND_PORT", Some("9090"), || {
+        let config = load_config_from_env();
+        assert_eq!(config.network.bind_port, 9090);
+    });
 }
 
 #[test]
 fn test_env_override_bind_host() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_BIND_HOST", "127.0.0.1") };
-
-    let config = load_config_from_env();
-
-    assert_eq!(config.network.bind_host, "127.0.0.1");
-
-    unsafe { env::remove_var("TOADSTOOL_BIND_HOST") };
+    temp_env::with_var("TOADSTOOL_BIND_HOST", Some("127.0.0.1"), || {
+        let config = load_config_from_env();
+        assert_eq!(config.network.bind_host, "127.0.0.1");
+    });
 }
 
 #[test]
 fn test_env_override_worker_threads() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_WORKER_THREADS", "8") };
-
-    let config = load_config_from_env();
-
-    assert_eq!(config.runtime.worker_threads, 8);
-
-    unsafe { env::remove_var("TOADSTOOL_WORKER_THREADS") };
+    temp_env::with_var("TOADSTOOL_WORKER_THREADS", Some("8"), || {
+        let config = load_config_from_env();
+        assert_eq!(config.runtime.worker_threads, 8);
+    });
 }
 
 #[test]
 fn test_env_override_invalid_port_falls_back() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_BIND_PORT", "invalid") };
-
-    let config = load_config_from_env();
-
-    // Should fall back to default
-    assert_eq!(config.network.bind_port, 8080);
-
-    unsafe { env::remove_var("TOADSTOOL_BIND_PORT") };
+    temp_env::with_var("TOADSTOOL_BIND_PORT", Some("invalid"), || {
+        let config = load_config_from_env();
+        assert_eq!(config.network.bind_port, 8080);
+    });
 }
 
 #[test]
 fn test_env_override_port_out_of_range_clamps() {
-    // ✅ MODERN: Scoped lock instead of #[serial]
     let _guard = ENV_LOCK.lock().unwrap();
-
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::set_var("TOADSTOOL_BIND_PORT", "99999") }; // > 65535
-
-    let _config = load_config_from_env();
-
-    // Port is u16, so it's always <= 65535 (removed redundant check)
-
-    unsafe { env::remove_var("TOADSTOOL_BIND_PORT") };
+    temp_env::with_var("TOADSTOOL_BIND_PORT", Some("99999"), || {
+        let _config = load_config_from_env();
+    });
 }
 
 // ============================================================================

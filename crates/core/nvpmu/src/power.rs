@@ -12,11 +12,17 @@ use std::path::{Path, PathBuf};
 /// PCI power state as reported by sysfs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PciPowerState {
+    /// Full power (D0); device fully operational.
     D0,
+    /// Low power state D1.
     D1,
+    /// Low power state D2.
     D2,
+    /// D3hot: `PCIe` link active, main power off; BAR0 inaccessible.
     D3Hot,
+    /// D3cold: main power off; full wake required.
     D3Cold,
+    /// Unknown or unsupported state.
     Unknown,
 }
 
@@ -49,8 +55,11 @@ impl PciPowerState {
 /// PCI reset method available for a device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResetMethod {
+    /// Function-level reset (FLR); per-function reset.
     Flr,
+    /// Secondary bus reset; resets entire PCI bus.
     SecondaryBusReset,
+    /// Power management reset.
     PmReset,
 }
 
@@ -71,6 +80,7 @@ pub struct GpuPowerController {
 }
 
 impl GpuPowerController {
+    /// Create a power controller for a GPU at the given PCI BDF.
     #[must_use]
     pub fn new(bdf: &str) -> Self {
         Self {

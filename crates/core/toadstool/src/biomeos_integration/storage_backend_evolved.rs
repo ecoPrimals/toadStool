@@ -18,41 +18,56 @@ use tokio::sync::RwLock;
 /// Errors for storage backend
 #[derive(Debug, thiserror::Error)]
 pub enum StorageBackendError {
+    /// No storage provider discovered
     #[error("Storage provider not found")]
     NoStorageProvider,
 
+    /// Volume provisioning RPC failed
     #[error("Volume provisioning failed: {0}")]
     ProvisioningFailed(String),
 
+    /// Mount operation failed
     #[error("Mount operation failed: {0}")]
     MountFailed(String),
 
+    /// Unmount operation failed
     #[error("Unmount operation failed: {0}")]
     UnmountFailed(String),
 
+    /// Volume deletion failed
     #[error("Volume deletion failed: {0}")]
     DeletionFailed(String),
 
+    /// Volume not found
     #[error("Volume not found: {0}")]
     VolumeNotFound(String),
 
+    /// Capability discovery or RPC error
     #[error("Capability error: {0}")]
     Capability(#[from] CapabilityError),
 
+    /// JSON serialization error
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 }
 
+/// Result type for storage backend operations
 pub type Result<T> = std::result::Result<T, StorageBackendError>;
 
 /// Volume information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolumeInfo {
+    /// Volume identifier
     pub id: String,
+    /// Volume name
     pub name: String,
+    /// Size in bytes
     pub size_bytes: u64,
+    /// Current mount path if mounted
     pub mount_path: Option<PathBuf>,
+    /// Volume lifecycle status
     pub status: VolumeStatus,
+    /// Whether volume persists across restarts
     pub persistent: bool,
 }
 
@@ -60,20 +75,30 @@ pub struct VolumeInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum VolumeStatus {
+    /// Volume is being created
     Creating,
+    /// Volume is ready for use
     Ready,
+    /// Volume is mounted
     Mounted,
+    /// Volume is unmounted
     Unmounted,
+    /// Volume is being deleted
     Deleting,
+    /// Volume is in error state
     Error,
 }
 
 /// Volume provisioning request
 #[derive(Debug, Serialize)]
 pub struct VolumeRequest {
+    /// Volume name
     pub name: String,
+    /// Requested size in bytes
     pub size_bytes: u64,
+    /// Whether volume should persist
     pub persistent: bool,
+    /// Optional mount path hint
     pub mount_path: Option<PathBuf>,
 }
 

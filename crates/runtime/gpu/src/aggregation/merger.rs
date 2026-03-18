@@ -11,18 +11,23 @@ pub struct MatrixMerger {
     total_cols: usize,
 }
 
-/// Describes a chunk of a matrix
+/// Describes a chunk of a matrix for distributed merging.
 #[derive(Debug, Clone)]
 pub struct MatrixChunk {
+    /// Start row index (inclusive).
     pub row_start: usize,
+    /// End row index (exclusive).
     pub row_end: usize,
+    /// Start column index (inclusive).
     pub col_start: usize,
+    /// End column index (exclusive).
     pub col_end: usize,
+    /// Chunk data (row-major).
     pub data: Vec<f32>,
 }
 
 impl MatrixMerger {
-    /// Create a new matrix merger
+    /// Creates a new matrix merger for the given dimensions.
     pub const fn new(total_rows: usize, total_cols: usize) -> Self {
         Self {
             total_rows,

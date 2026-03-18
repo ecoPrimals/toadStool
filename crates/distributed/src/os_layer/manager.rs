@@ -41,16 +41,20 @@ impl Default for OSLayerConfig {
     }
 }
 
-/// Enum to hold different compatibility layer types
-/// Now uses the canonical CompatibilityLayer trait from core
+/// Enum to hold different compatibility layer types.
+/// Now uses the canonical CompatibilityLayer trait from core.
 #[derive(Debug)]
 pub enum CompatibilityLayerEnum {
+    /// Linux compatibility layer.
     Linux(LinuxCompatibilityLayer),
+    /// Windows compatibility layer.
     Windows(WindowsCompatibilityLayer),
+    /// macOS compatibility layer.
     MacOS(MacOSCompatibilityLayer),
 }
 
 impl CompatibilityLayerEnum {
+    /// Initializes the compatibility layer for the target OS.
     pub async fn initialize(&mut self) -> ToadStoolResult<()> {
         match self {
             Self::Linux(layer) => CompatibilityLayer::initialize(layer).await,
@@ -59,6 +63,7 @@ impl CompatibilityLayerEnum {
         }
     }
 
+    /// Executes a request through the OS-specific compatibility layer.
     pub async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,
@@ -76,6 +81,7 @@ impl CompatibilityLayerEnum {
         }
     }
 
+    /// Shuts down the compatibility layer and releases resources.
     pub async fn shutdown(&mut self) -> ToadStoolResult<()> {
         match self {
             Self::Linux(layer) => CompatibilityLayer::shutdown(layer).await,
@@ -86,6 +92,7 @@ impl CompatibilityLayerEnum {
 }
 
 impl OSLayerManager {
+    /// Creates an OS layer manager with the given config.
     #[must_use]
     pub fn new(config: OSLayerConfig) -> Self {
         Self {
@@ -94,6 +101,7 @@ impl OSLayerManager {
         }
     }
 
+    /// Initializes all configured compatibility layers.
     pub async fn initialize(&mut self) -> ToadStoolResult<()> {
         // Initialize compatibility layers using canonical core implementation
         if self.config.available_layers.contains(&"linux".to_string()) {
@@ -122,6 +130,7 @@ impl OSLayerManager {
         Ok(())
     }
 
+    /// Executes a request using the default compatibility layer.
     pub async fn execute_with_compatibility(
         &self,
         request: ExecutionRequest,

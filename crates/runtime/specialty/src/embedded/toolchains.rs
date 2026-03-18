@@ -69,6 +69,7 @@ pub struct Toolchain8086;
 pub struct Toolchain68000;
 
 impl Toolchain6502 {
+    /// Creates a new 6502 embedded toolchain instance.
     pub const fn new() -> Self {
         Self
     }

@@ -16,15 +16,25 @@ use serde::{Deserialize, Serialize};
 /// Kinds of GPU compute patterns used by springs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum WorkloadPattern {
+    /// Aggregate reduction (sum, max, etc.).
     Reduction,
+    /// Scatter write pattern.
     Scatter,
+    /// Monte Carlo simulation.
     MonteCarlo,
+    /// ODE batch integration.
     OdeBatch,
+    /// NLME iteration.
     NlmeIteration,
+    /// Matrix multiplication.
     MatMul,
+    /// Fast Fourier transform.
     Fft,
+    /// Sparse matrix-vector product.
     SpMV,
+    /// Element-wise operations.
     ElementWise,
+    /// Smith-Waterman alignment.
     SmithWaterman,
     /// Pairwise distance / similarity (N×N or N×M).
     /// neuralSpring: `PairwiseL2Gpu`, `PairwiseHammingGpu`.
@@ -83,14 +93,18 @@ impl WorkloadPattern {
 /// Target compute substrate for workload execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SubstrateTarget {
+    /// CPU execution.
     Cpu,
+    /// GPU execution.
     Gpu,
+    /// NPU execution.
     Npu,
 }
 
 /// Routing threshold for a workload pattern, validated by cross-spring benchmarks.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingThreshold {
+    /// Workload pattern this threshold applies to.
     pub pattern: WorkloadPattern,
     /// Problem size (element count) below which CPU is faster.
     pub gpu_crossover_n: u64,

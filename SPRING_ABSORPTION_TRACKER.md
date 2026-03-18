@@ -1,7 +1,7 @@
 # Spring Absorption Tracker
 
 **Session**: S158b Scope + Deep Debt Execution (March 18, 2026)
-**ToadStool**: master, ~83% line coverage. **21,156 tests**, 0 failures. Clippy pedantic clean (0 warnings across all 56 crates). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **29 crates** `#![forbid(unsafe_code)]`. Zero production unwraps. All quality gates passing.
+**ToadStool**: master, ~85% line coverage. **11,956+ tests** (default features), 0 failures. Clippy pedantic clean (0 warnings across all 58 crates). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **29 crates** `#![forbid(unsafe_code)]`. Zero production unwraps. All quality gates passing. S159.
 **S156**: Full codebase audit: runtime-specialty resurrected (167 compile errors → 0), hardcoding → named constants, unsafe → safe error handling, doc warnings fixed, 17.4 GB build garbage cleaned. +313 net new tests.
 **S153**: IPC-first reconciliation (barraCuda v0.35 zero compile-time deps), `compute.hardware.vfio_devices`, `ecoprimals-mode` CLI, hotSpring VFIO validation absorption (6/7 tests on Titan V pass, dispatch blocked on coralReef USERD_TARGET fix). Spring pins: hotSpring v0.6.31, coralReef Iter 43, barraCuda v0.35.
 **S149**: Deep debt execution — clippy 0 warnings, resolve_credential() fully wired (file-based + security provider RPC), handler refactored (shader extracted), orphaned deps removed, nouveau_drm evolved to rustix, hw-learn stubs → real implementations, interned constants everywhere. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35.

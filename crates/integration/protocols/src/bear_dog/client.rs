@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+//! BearDog integration client for auth, authz, and zero-trust validation
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -16,6 +17,7 @@ use super::config::BearDogConfig;
 use super::policy::{SecurityAuditEvent, SecurityPolicy};
 use super::transport;
 
+/// BearDog PKI security service integration via Unix socket JSON-RPC
 pub struct BearDogIntegration {
     config: BearDogConfig,
     access_token: Arc<Mutex<Option<String>>>,
@@ -26,6 +28,7 @@ pub struct BearDogIntegration {
 }
 
 impl BearDogIntegration {
+    /// Create a new BearDog integration with the given config
     pub fn new(config: BearDogConfig) -> Result<Self, ToadStoolError> {
         Ok(Self {
             config,
@@ -37,6 +40,7 @@ impl BearDogIntegration {
         })
     }
 
+    /// Authenticate with BearDog and obtain access token
     pub async fn authenticate(
         &self,
         service_id: &str,
@@ -91,6 +95,7 @@ impl BearDogIntegration {
         }
     }
 
+    /// Check authorization for resource/action
     pub async fn authorize(
         &self,
         resource: &str,
@@ -161,6 +166,7 @@ impl BearDogIntegration {
         }
     }
 
+    /// Perform zero-trust validation of security context
     pub async fn zero_trust_validation(
         &self,
         security_context: &SecurityContext,
@@ -210,6 +216,7 @@ impl BearDogIntegration {
         }
     }
 
+    /// Start token refresh, validation, and audit flush background tasks
     pub async fn start_background_tasks(self: Arc<Self>) -> ToadStoolResult<()> {
         info!("🔄 Starting security service background tasks");
 

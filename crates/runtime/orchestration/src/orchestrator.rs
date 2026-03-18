@@ -224,6 +224,7 @@ pub struct WorkloadRequest {
 }
 
 impl WorkloadRequest {
+    /// Creates a new workload request builder.
     #[allow(clippy::new_ret_no_self)] // Builder pattern - returns builder, not Self
     pub fn new() -> WorkloadRequestBuilder {
         WorkloadRequestBuilder::default()
@@ -261,36 +262,43 @@ pub struct WorkloadRequestBuilder {
 }
 
 impl WorkloadRequestBuilder {
+    /// Sets the number of operations for the workload.
     pub const fn operation_count(mut self, count: usize) -> Self {
         self.request.operation_count = count;
         self
     }
 
+    /// Sets the power budget in watts.
     pub const fn power_budget_watts(mut self, watts: f64) -> Self {
         self.request.power_budget_watts = Some(watts);
         self
     }
 
+    /// Sets target to minimize latency.
     pub const fn target_latency(mut self) -> Self {
         self.request.target = PerformanceTarget::Latency;
         self
     }
 
+    /// Sets target to maximize throughput.
     pub const fn target_throughput(mut self) -> Self {
         self.request.target = PerformanceTarget::Throughput;
         self
     }
 
+    /// Sets target to minimize energy consumption.
     pub const fn target_energy(mut self) -> Self {
         self.request.target = PerformanceTarget::Energy;
         self
     }
 
+    /// Sets the batch size hint.
     pub const fn batch_size(mut self, size: usize) -> Self {
         self.request.batch_size = Some(size);
         self
     }
 
+    /// Builds the workload request.
     pub const fn build(self) -> Result<WorkloadRequest, OrchestrationError> {
         if self.request.operation_count == 0 {
             return Err(OrchestrationError::InvalidOperationCount);
@@ -327,16 +335,19 @@ pub struct PerformanceHistory {
 }
 
 impl PerformanceHistory {
+    /// Creates a new empty performance history.
     pub const fn new() -> Self {
         Self {
             records: Vec::new(),
         }
     }
 
+    /// Records a workload result for the given substrate type.
     pub fn record(&mut self, substrate_type: SubstrateType, result: &WorkloadResult) {
         self.records.push((substrate_type, result.clone()));
     }
 
+    /// Returns the average duration for executions on the given substrate type.
     pub fn average_duration_for(&self, substrate_type: SubstrateType) -> Option<Duration> {
         let durations: Vec<_> = self
             .records
@@ -353,10 +364,12 @@ impl PerformanceHistory {
         Some(total / durations.len() as u32)
     }
 
+    /// Returns the total number of recorded executions.
     pub const fn total_executions(&self) -> usize {
         self.records.len()
     }
 
+    /// Returns the average duration across all recorded executions.
     pub fn average_duration(&self) -> Duration {
         if self.records.is_empty() {
             return Duration::from_secs(0);
@@ -376,8 +389,11 @@ impl Default for PerformanceHistory {
 /// Orchestrator statistics
 #[derive(Debug, Clone)]
 pub struct OrchestratorStats {
+    /// Total number of workload executions.
     pub total_executions: usize,
+    /// Number of available substrates.
     pub substrates_available: usize,
+    /// Average execution duration in milliseconds.
     pub average_duration_ms: f64,
 }
 

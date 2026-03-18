@@ -41,7 +41,8 @@ pub use stubs::{
     WorkloadType,
 };
 
-// Simple stubs for other mocks that we'll implement properly later
+/// Simple stubs for configuration, security, and workload mocks.
+/// Used when full mock implementations are not yet needed.
 pub mod stubs {
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
@@ -59,6 +60,7 @@ pub mod stubs {
     }
 
     impl MockConfigLoader {
+        /// Create an empty config loader for testing
         #[must_use]
         pub fn new() -> Self {
             Self {
@@ -97,11 +99,16 @@ pub mod stubs {
         isolation_enabled: bool,
     }
 
+    /// Security level for mock security contexts
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub enum SecurityLevel {
+        /// Low security (permissive)
         Low,
+        /// Medium security (default)
         Medium,
+        /// High security (restrictive)
         High,
+        /// Critical security (minimal permissions)
         Critical,
     }
 
@@ -112,6 +119,7 @@ pub mod stubs {
     }
 
     impl MockSecurityContext {
+        /// Create a default security context (Medium level, read/write/execute)
         #[must_use]
         pub fn new() -> Self {
             Self {
@@ -180,20 +188,31 @@ pub mod stubs {
         args: Vec<String>,
     }
 
+    /// Workload type for mock workload specs
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub enum WorkloadType {
+        /// Native binary execution
         Native,
+        /// Container execution (Docker, etc.)
         Container,
+        /// WebAssembly module
         Wasm,
+        /// GPU-accelerated workload
         Gpu,
     }
 
+    /// Resource requirements for workload specs
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ResourceRequirements {
+        /// CPU cores required
         pub cpu_cores: Option<f64>,
+        /// Memory in bytes
         pub memory_bytes: Option<u64>,
+        /// Storage in bytes
         pub storage_bytes: Option<u64>,
+        /// Network bandwidth in bytes/sec
         pub network_bandwidth: Option<u64>,
+        /// GPU units required
         pub gpu_units: Option<u32>,
     }
 
@@ -204,6 +223,7 @@ pub mod stubs {
     }
 
     impl MockWorkloadSpec {
+        /// Create a default workload spec (Native, 1 CPU, 1GB memory)
         #[must_use]
         pub fn new() -> Self {
             Self {

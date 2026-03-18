@@ -89,7 +89,8 @@ pub mod encryption;
 pub mod error;
 pub mod execution;
 pub mod fractal_integration;
-pub mod ipc; // Universal IPC (evolved from ipc_helpers)
+/// Universal IPC (evolved from ipc_helpers).
+pub mod ipc;
 /// Legacy IPC helpers - prefer `toadstool::ipc` for new code.
 pub mod ipc_helpers;
 pub mod launcher; // Phase 3: Deployment coordination

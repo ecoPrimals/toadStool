@@ -26,6 +26,7 @@ pub struct ComputeResourceCoordinator {
 }
 
 impl ComputeResourceCoordinator {
+    /// Creates a new compute resource coordinator.
     #[must_use]
     pub fn new(config: ResourceConfig) -> Self {
         Self {
@@ -156,22 +157,32 @@ impl ComputeResourceCoordinator {
     }
 }
 
-/// Resource pool statistics
+/// Resource pool statistics.
 #[derive(Debug, Clone)]
 pub struct ResourcePoolStats {
+    /// Total memory in bytes.
     pub total_memory: u64,
+    /// Allocated memory in bytes.
     pub allocated_memory: u64,
+    /// Available memory in bytes.
     pub available_memory: u64,
+    /// Total compute units.
     pub total_compute_units: u32,
+    /// Allocated compute units.
     pub allocated_compute_units: u32,
+    /// Available compute units.
     pub available_compute_units: u32,
+    /// Memory utilization (0–100).
     pub memory_utilization_percent: f64,
+    /// Compute utilization (0–100).
     pub compute_utilization_percent: f64,
 }
 
-/// Weighted round-robin load balancer
+/// Weighted round-robin load balancer for device selection.
 pub struct WeightedRoundRobinBalancer {
+    /// Device weights for weighted selection.
     device_weights: HashMap<DeviceId, f64>,
+    /// Current round-robin index.
     current_index: usize,
 }
 
@@ -182,6 +193,7 @@ impl Default for WeightedRoundRobinBalancer {
 }
 
 impl WeightedRoundRobinBalancer {
+    /// Creates a new weighted round-robin balancer.
     #[must_use]
     pub fn new() -> Self {
         Self {

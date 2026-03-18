@@ -6,7 +6,7 @@ use super::helpers::check_thermal_for_bdf;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 impl HwLearnHandler {
-    /// `gpu.telemetry` — Report thermal and power data for all detected GPUs.
+    /// `gpu.query_telemetry` — Report thermal and power data for all detected GPUs.
     ///
     /// Returns per-GPU temperature, power, safety status.
     ///

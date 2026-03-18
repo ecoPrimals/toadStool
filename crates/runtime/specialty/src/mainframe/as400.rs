@@ -230,10 +230,12 @@ impl Default for JCLGenerator {
 }
 
 impl JCLGenerator {
+    /// Creates a new JCL generator with default templates.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Initializes the generator with JCL settings and loads templates.
     pub async fn initialize(&mut self, settings: &JCLSettings) -> ToadStoolResult<()> {
         self.settings = settings.clone();
 
@@ -253,6 +255,7 @@ impl JCLGenerator {
         Ok(())
     }
 
+    /// Generates JCL for the given legacy job.
     pub async fn generate_jcl(&self, _job: &LegacyJob) -> ToadStoolResult<String> {
         // Generate JCL based on job type
         let template = self
@@ -285,10 +288,12 @@ impl Default for COBOLCompiler {
 }
 
 impl COBOLCompiler {
+    /// Creates a new COBOL compiler with default settings.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Initializes the compiler with COBOL settings.
     pub async fn initialize(&mut self, settings: &COBOLSettings) -> ToadStoolResult<()> {
         self.settings = settings.clone();
         Ok(())
@@ -328,10 +333,12 @@ impl Default for Terminal3270 {
 }
 
 impl Terminal3270 {
+    /// Creates a new 3270 terminal emulator.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Connects to the mainframe using the given connection settings.
     pub async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()> {
         self.connection = settings.clone();
         // In a real implementation, this would establish a 3270 connection
@@ -342,6 +349,7 @@ impl Terminal3270 {
         Ok(())
     }
 
+    /// Disconnects from the 3270 terminal session.
     pub async fn disconnect(&mut self) -> ToadStoolResult<()> {
         self.session = None;
         info!("Disconnected from 3270 terminal");
@@ -359,10 +367,12 @@ impl Default for DatasetManager {
 }
 
 impl DatasetManager {
+    /// Creates a new dataset manager.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Initializes with the given dataset configurations.
     pub async fn initialize(
         &mut self,
         datasets: &HashMap<String, DatasetConfig>,
@@ -383,6 +393,7 @@ impl Default for DCLProcessor {
 }
 
 impl DCLProcessor {
+    /// Creates a new DCL processor for VAX/VMS.
     pub fn new() -> Self {
         Self::default()
     }
@@ -399,6 +410,7 @@ impl Default for VAXFortranCompiler {
 }
 
 impl VAXFortranCompiler {
+    /// Creates a new VAX FORTRAN compiler interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -419,6 +431,7 @@ impl Default for VAXTerminal {
 }
 
 impl VAXTerminal {
+    /// Creates a new VAX terminal interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -434,6 +447,7 @@ impl Default for VMSFileSystem {
 }
 
 impl VMSFileSystem {
+    /// Creates a new VMS file system interface.
     pub fn new() -> Self {
         Self::default()
     }
@@ -451,6 +465,7 @@ impl Default for RPGCompiler {
 }
 
 impl RPGCompiler {
+    /// Creates a new RPG compiler for AS/400.
     pub fn new() -> Self {
         Self::default()
     }
@@ -483,6 +498,7 @@ impl Default for Terminal5250 {
 }
 
 impl Terminal5250 {
+    /// Creates a new 5250 terminal emulator for AS/400.
     pub fn new() -> Self {
         Self::default()
     }
@@ -498,6 +514,7 @@ impl Default for IFSManager {
 }
 
 impl IFSManager {
+    /// Creates a new IFS (Integrated File System) manager for AS/400.
     pub fn new() -> Self {
         Self::default()
     }

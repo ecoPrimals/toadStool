@@ -24,6 +24,7 @@ impl Default for ConfigGenerator {
 }
 
 impl ConfigGenerator {
+    /// Creates a new configuration generator.
     #[must_use]
     pub const fn new() -> Self {
         Self {

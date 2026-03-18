@@ -7,7 +7,9 @@ use std::fmt;
 /// with context about which `/proc` path failed.
 #[derive(Debug)]
 pub struct SysmonError {
+    /// The `/proc` or sysfs path that failed to read.
     pub path: &'static str,
+    /// The underlying I/O error.
     pub source: std::io::Error,
 }
 
@@ -29,6 +31,7 @@ impl SysmonError {
     }
 }
 
+/// Result type for sysmon operations; errors carry the path that failed.
 pub type Result<T> = std::result::Result<T, SysmonError>;
 
 #[cfg(test)]

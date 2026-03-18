@@ -18,18 +18,23 @@
 pub mod ports {
     use crate::ports::capability_fallback;
 
+    /// Coordination capability port (legacy).
     #[deprecated(note = "Use ports::capability_fallback::COORDINATION")]
     pub const SONGBIRD: u16 = capability_fallback::COORDINATION;
 
+    /// Security capability port (legacy).
     #[deprecated(note = "Use ports::capability_fallback::SECURITY")]
     pub const BEARDOG: u16 = capability_fallback::SECURITY;
 
+    /// Storage capability port (legacy).
     #[deprecated(note = "Use ports::capability_fallback::STORAGE")]
     pub const NESTGATE: u16 = capability_fallback::STORAGE;
 
+    /// ToadStool API port (0 = OS-assigned).
     #[deprecated(note = "Use defaults::network::API_PORT for ToadStool self-config")]
     pub const TOADSTOOL: u16 = 0;
 
+    /// Platform capability port (legacy).
     #[deprecated(note = "Use ports::capability_fallback::PLATFORM")]
     pub const SQUIRREL: u16 = capability_fallback::PLATFORM;
 }

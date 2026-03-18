@@ -60,7 +60,7 @@ pub struct NpuInfo {
 /// Result of a dispatch operation.
 #[derive(Debug)]
 pub struct DispatchResult {
-    /// Output tensor data.
+    /// Output tensor data from the inference.
     pub output: Vec<f32>,
     /// Inference latency in microseconds.
     pub latency_us: u64,
@@ -77,19 +77,31 @@ pub enum NpuDispatchError {
 
     /// Device is not ready (not initialized, powered down, etc.).
     #[error("device not ready: {reason}")]
-    DeviceNotReady { reason: String },
+    DeviceNotReady {
+        /// Human-readable reason for the failure.
+        reason: String,
+    },
 
     /// Model loading failed.
     #[error("model load failed: {reason}")]
-    ModelLoadFailed { reason: String },
+    ModelLoadFailed {
+        /// Human-readable reason for the failure.
+        reason: String,
+    },
 
     /// Dispatch / inference failed.
     #[error("dispatch failed: {reason}")]
-    DispatchFailed { reason: String },
+    DispatchFailed {
+        /// Human-readable reason for the failure.
+        reason: String,
+    },
 
     /// Device was hot-unplugged or became unreachable.
     #[error("device lost: {reason}")]
-    DeviceLost { reason: String },
+    DeviceLost {
+        /// Human-readable reason for the failure.
+        reason: String,
+    },
 }
 
 /// Generic NPU dispatch trait — vendor-agnostic neuromorphic compute.
@@ -159,9 +171,9 @@ pub struct NpuInferenceRequest {
     pub model: NpuModelHandle,
     /// Input features (f32 for NPU compatibility).
     pub input: Vec<f32>,
-    /// Optional batch size hint for the NPU scheduler.
+    /// Optional batch size hint for the NPU scheduler; used when batching is supported.
     pub batch_size_hint: Option<usize>,
-    /// Priority level (0 = highest).
+    /// Priority level (0 = highest); lower values are scheduled first.
     pub priority: u8,
 }
 
@@ -291,6 +303,44 @@ impl NpuDispatch for AkidaNpuDispatch {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Debug)]
+    struct MockNpuDispatch {
+        info: NpuInfo,
+        next_handle: u32,
+    }
+
+    impl NpuDispatch for MockNpuDispatch {
+        fn info(&self) -> &NpuInfo {
+            &self.info
+        }
+
+        fn load_model(&mut self, _model_data: &[u8]) -> Result<NpuModelHandle, NpuDispatchError> {
+            let handle = NpuModelHandle::new(self.next_handle);
+            self.next_handle += 1;
+            Ok(handle)
+        }
+
+        fn dispatch(
+            &mut self,
+            _model: NpuModelHandle,
+            input: Cow<'_, [f32]>,
+        ) -> Result<DispatchResult, NpuDispatchError> {
+            Ok(DispatchResult {
+                output: input.into_owned(),
+                latency_us: 10,
+                power_mw: Some(100.0),
+            })
+        }
+
+        fn power_mw(&self) -> Result<f32, NpuDispatchError> {
+            Ok(100.0)
+        }
+
+        fn is_alive(&self) -> bool {
+            true
+        }
+    }
 
     #[test]
     fn test_npu_model_handle() {
@@ -467,7 +517,10 @@ mod tests {
             memory_bytes: 4096,
             capabilities: vec![NpuCapability::Inference, NpuCapability::SpikingNetwork],
         };
-        let npu = MockNpuDispatch { info };
+        let npu = MockNpuDispatch {
+            info,
+            next_handle: 0,
+        };
         assert!(npu.supports(NpuCapability::SpikingNetwork));
         assert!(!npu.supports(NpuCapability::BatchInference));
     }
@@ -481,7 +534,10 @@ mod tests {
             memory_bytes: 4096,
             capabilities: vec![NpuCapability::Inference],
         };
-        let mut npu = MockNpuDispatch { info };
+        let mut npu = MockNpuDispatch {
+            info,
+            next_handle: 0,
+        };
         let handle = npu.load_model(&[]).unwrap();
         let input: [f32; 2] = [1.5, 2.5];
         let result = npu.dispatch(handle, Cow::Borrowed(&input)).unwrap();

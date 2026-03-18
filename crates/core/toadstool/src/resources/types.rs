@@ -407,37 +407,55 @@ impl Default for SystemResources {
 /// Process information for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessInfo {
+    /// Workload identifier.
     pub workload_id: String,
+    /// Number of processes.
     pub process_count: usize,
+    /// Total CPU time in seconds.
     pub total_cpu_time: f64,
+    /// Memory usage in bytes.
     pub memory_usage: u64,
+    /// Aggregate process status.
     pub status: ProcessStatus,
 }
 
 /// Process status enumeration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessStatus {
+    /// Processes running.
     Running,
+    /// Processes sleeping/waiting.
     Sleeping,
+    /// Processes stopped.
     Stopped,
+    /// Zombie processes.
     Zombie,
+    /// Unknown status.
     Unknown,
 }
 
 /// Network statistics for monitoring
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkStats {
+    /// Bytes received.
     pub bytes_received: u64,
+    /// Bytes transmitted.
     pub bytes_transmitted: u64,
+    /// Packets received.
     pub packets_received: u64,
+    /// Packets transmitted.
     pub packets_transmitted: u64,
+    /// Number of interfaces.
     pub interfaces: usize,
 }
 
 /// System load averages
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadAverages {
+    /// 1-minute load average.
     pub one_minute: f64,
+    /// 5-minute load average.
     pub five_minutes: f64,
+    /// 15-minute load average.
     pub fifteen_minutes: f64,
 }

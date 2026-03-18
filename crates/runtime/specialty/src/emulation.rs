@@ -41,6 +41,7 @@ impl Default for PDP11Emulator {
 }
 
 impl PDP11Emulator {
+    /// Creates a new PDP-11 emulator instance.
     pub fn new() -> Self {
         Self::default()
     }
@@ -57,6 +58,7 @@ impl Default for Apple2Emulator {
 }
 
 impl Apple2Emulator {
+    /// Creates a new Apple II emulator instance.
     pub fn new() -> Self {
         Self::default()
     }

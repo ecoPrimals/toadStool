@@ -28,24 +28,39 @@ pub const MIN_HEARTBEAT_INTERVAL_SECS: u64 = 1;
 /// Federation-related errors. Messages clearly state what is or isn't available.
 #[derive(Debug, Error)]
 pub enum FederationError {
+    /// Node is not a federation member.
     #[error("Node '{node_id}' is not a federation member")]
-    NotAMember { node_id: String },
-
+    NotAMember {
+        /// Node ID.
+        node_id: String,
+    },
+    /// Node is already a member.
     #[error("Node '{node_id}' is already a member")]
-    AlreadyMember { node_id: String },
-
+    AlreadyMember {
+        /// Node ID.
+        node_id: String,
+    },
+    /// Discovery not yet implemented.
     #[error("Discovery not yet implemented: {0}. Use add_node for local membership.")]
     DiscoveryNotImplemented(String),
-
+    /// Cross-federation coordination not yet implemented.
     #[error("Cross-federation coordination not yet implemented: {0}")]
     CrossFederationNotImplemented(String),
-
+    /// Member has not sent heartbeat within timeout.
     #[error("Member '{node_id}' has not sent heartbeat within timeout ({timeout_secs}s)")]
-    MemberStale { node_id: String, timeout_secs: u64 },
-
+    MemberStale {
+        /// Node ID.
+        node_id: String,
+        /// Timeout in seconds.
+        timeout_secs: u64,
+    },
+    /// Heartbeat rate limit exceeded.
     #[error("Heartbeat rate limit: wait at least {min_interval_secs}s between heartbeats")]
-    HeartbeatRateLimited { min_interval_secs: u64 },
-
+    HeartbeatRateLimited {
+        /// Minimum interval in seconds.
+        min_interval_secs: u64,
+    },
+    /// Invalid node.
     #[error("Invalid node: {0}")]
     InvalidNode(String),
 }
@@ -65,6 +80,7 @@ impl From<FederationError> for ToadStoolError {
 /// Federation member with heartbeat tracking and capability advertisement.
 #[derive(Debug, Clone)]
 pub struct FederationMember {
+    /// Federation node info.
     pub node: FederationNode,
     /// Last heartbeat timestamp (monotonic for timeout checks).
     /// Uses tokio::time::Instant so tests can advance virtual time.
@@ -98,6 +114,7 @@ pub struct CloudFederationManager {
 }
 
 impl CloudFederationManager {
+    /// Creates a new cloud federation manager.
     pub async fn new(config: FederationConfig) -> ToadStoolResult<Self> {
         Ok(Self {
             topology: CloudFederationTopology::new(TopologyType::default()),

@@ -13,75 +13,108 @@ use std::fmt;
 /// not HOW to achieve it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Constraint {
+    /// Hard: workload must have GPU.
     RequiresGPU,
+    /// Soft: prefer GPU if available.
     PrefersGPU,
+    /// Hard: minimum RAM in GB.
     MinMemoryGB(f64),
+    /// Hard: minimum CPU cores.
     MinCPUCores(usize),
+    /// Hard: max end-to-end latency in ms.
     MaxLatencyMs(u64),
+    /// Soft: preferred latency in ms.
     PreferredLatencyMs(u64),
+    /// Hard: minimum network bandwidth in Gbps.
     MinBandwidthGbps(f64),
+    /// Soft: preferred bandwidth in Gbps.
     PreferredBandwidthGbps(f64),
+    /// Hard: workload must have named capability.
     RequiresCapability(String),
+    /// Soft: prefer capability if available.
     PrefersCapability(String),
+    /// Hard: must run on local host.
     MustBeLocal,
+    /// Soft: prefer local execution.
     PreferLocal,
+    /// Hard: must use named execution layer.
     RequiresLayer(String),
+    /// Soft: prefer named execution layer.
     PrefersLayer(String),
+    /// Hard: requires persistent block storage.
     RequiresPersistentStorage,
+    /// Hard: max cost per hour in currency units.
     MaxCostPerHour(f64),
+    /// Soft: minimize cost when selecting substrate.
     MinimizeCost,
+    /// Custom constraint with name, hardness, and value.
     Custom {
+        /// Constraint identifier.
         name: String,
+        /// True if hard (must satisfy), false if soft.
         hard: bool,
+        /// Constraint value (opaque string).
         value: String,
     },
 }
 
 impl Constraint {
+    /// Returns a hard GPU requirement constraint.
     pub const fn requires_gpu() -> Self {
         Self::RequiresGPU
     }
 
+    /// Returns a soft GPU preference constraint.
     pub const fn prefers_gpu() -> Self {
         Self::PrefersGPU
     }
 
+    /// Returns a hard max latency constraint in milliseconds.
     pub const fn max_latency_ms(ms: u64) -> Self {
         Self::MaxLatencyMs(ms)
     }
 
+    /// Returns a soft preferred latency constraint in milliseconds.
     pub const fn preferred_latency_ms(ms: u64) -> Self {
         Self::PreferredLatencyMs(ms)
     }
 
+    /// Returns a hard minimum bandwidth constraint in Gbps.
     pub const fn min_bandwidth_gbps(gbps: f64) -> Self {
         Self::MinBandwidthGbps(gbps)
     }
 
+    /// Returns a hard minimum memory constraint in GB.
     pub const fn min_memory_gb(gb: f64) -> Self {
         Self::MinMemoryGB(gb)
     }
 
+    /// Returns a hard minimum CPU cores constraint.
     pub const fn min_cpu_cores(cores: usize) -> Self {
         Self::MinCPUCores(cores)
     }
 
+    /// Returns a hard local-only execution constraint.
     pub const fn must_be_local() -> Self {
         Self::MustBeLocal
     }
 
+    /// Returns a soft local execution preference constraint.
     pub const fn prefer_local() -> Self {
         Self::PreferLocal
     }
 
+    /// Returns a hard capability requirement constraint.
     pub fn requires_capability(cap: impl Into<String>) -> Self {
         Self::RequiresCapability(cap.into())
     }
 
+    /// Returns a soft capability preference constraint.
     pub fn prefers_capability(cap: impl Into<String>) -> Self {
         Self::PrefersCapability(cap.into())
     }
 
+    /// Returns true if this constraint is hard (must be satisfied).
     pub const fn is_hard(&self) -> bool {
         matches!(
             self,
@@ -99,10 +132,12 @@ impl Constraint {
         )
     }
 
+    /// Returns true if this constraint is soft (preference only).
     pub const fn is_soft(&self) -> bool {
         !self.is_hard()
     }
 
+    /// Returns the constraint name for logging and serialization.
     pub fn name(&self) -> &str {
         match self {
             Self::RequiresGPU => "requires_gpu",

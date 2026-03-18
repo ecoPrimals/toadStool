@@ -51,33 +51,50 @@ pub struct EmbeddedJob {
 /// Types of embedded jobs
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EmbeddedJobType {
-    /// Compile source code
+    /// Compile source code for target architecture.
     Compilation {
+        /// Source language (C, assembly, etc.).
         language: EmbeddedLanguage,
+        /// Optimization level for the compiler.
         optimization: OptimizationLevel,
+        /// Whether to include debug symbols.
         debug_info: bool,
     },
-    /// Program ROM/Flash
+    /// Program ROM/Flash memory on target device.
     Programming {
+        /// Target memory region (flash, EEPROM, etc.).
         target_memory: MemoryRegionType,
+        /// Whether to verify after programming.
         verify: bool,
+        /// Whether to erase before programming.
         erase_first: bool,
     },
-    /// Debug session
+    /// Debug session with breakpoints.
     Debugging {
+        /// Debug interface (JTAG, SWD, etc.).
         debug_interface: DebugInterface,
+        /// Breakpoints to set.
         breakpoints: Vec<Breakpoint>,
     },
-    /// Emulation
+    /// Run code in emulator.
     Emulation {
+        /// Type of emulator (software, hardware, in-circuit).
         emulator_type: EmulatorType,
+        /// ROM image to load.
         rom_image: Vec<u8>,
     },
-    /// Memory dump
-    MemoryDump { start_address: u32, length: u32 },
-    /// Peripheral test
+    /// Dump memory region from target.
+    MemoryDump {
+        /// Start address for dump.
+        start_address: u32,
+        /// Number of bytes to dump.
+        length: u32,
+    },
+    /// Test a peripheral device.
     PeripheralTest {
+        /// Peripheral type to test.
         peripheral: PeripheralType,
+        /// Type of test (functional, performance, etc.).
         test_type: PeripheralTestType,
     },
 }
@@ -483,8 +500,11 @@ pub enum SectionType {
     Stack,
     /// Heap section
     Heap,
-    /// Custom section
-    Custom { name: String },
+    /// Custom section with user-defined name.
+    Custom {
+        /// Section name.
+        name: String,
+    },
 }
 
 /// Programmer interface trait
@@ -609,9 +629,15 @@ pub enum EmulationStatus {
     /// Emulation is stopped
     Stopped,
     /// Emulation is paused at breakpoint
-    Breakpoint { address: u32 },
+    Breakpoint {
+        /// Address where execution stopped.
+        address: u32,
+    },
     /// Emulation error
-    Error { message: String },
+    Error {
+        /// Error description.
+        message: String,
+    },
 }
 
 /// Peripheral interface trait

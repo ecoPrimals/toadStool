@@ -71,14 +71,23 @@ impl ResourceMonitor for MockResourceMonitor {
 /// Mock system resources for testing (with usage metrics)
 #[cfg(test)]
 pub struct MockSystemResourcesWithUsage {
+    /// CPU usage percentage.
     pub cpu_usage_percent: f64,
+    /// Memory usage percentage.
     pub memory_usage_percent: f64,
+    /// Available memory in bytes.
     pub available_memory_bytes: u64,
+    /// Total memory in bytes.
     pub total_memory_bytes: u64,
+    /// Disk usage percentage.
     pub disk_usage_percent: f64,
+    /// Network bytes sent.
     pub network_bytes_sent: u64,
+    /// Network bytes received.
     pub network_bytes_received: u64,
+    /// Load average (1, 5, 15 min).
     pub load_average: [f64; 3],
+    /// Uptime in seconds.
     pub uptime_seconds: u64,
 }
 

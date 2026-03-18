@@ -27,33 +27,43 @@ const FALLBACK_WORKLOAD: &str = "workload (identifier not available)";
 /// unified error system.
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
+    /// Server initialization failed.
     #[error("Server initialization failed: {0}")]
     Initialization(String),
 
+    /// Runtime engine error.
     #[error("Runtime engine error: {0}")]
     RuntimeEngine(String),
 
+    /// Resource exhausted.
     #[error("Resource exhausted: {0}")]
     ResourceExhaustion(String),
 
+    /// Authentication failed.
     #[error("Authentication failed: {0}")]
     Authentication(String),
 
+    /// Authorization failed.
     #[error("Authorization failed: {0}")]
     Authorization(String),
 
+    /// Invalid configuration.
     #[error("Invalid configuration: {0}")]
     Configuration(String),
 
+    /// Network error.
     #[error("Network error: {0}")]
     Network(String),
 
+    /// Execution failed.
     #[error("Execution failed: {0}")]
     Execution(String),
 
+    /// Resource not found.
     #[error("Not found: {0}")]
     NotFound(String),
 
+    /// Internal server error.
     #[error("Internal server error: {0}")]
     Internal(String),
 }
@@ -131,6 +141,7 @@ impl From<ToadStoolError> for ServerError {
     }
 }
 
+/// Result type alias for server operations.
 pub type ServerResult<T> = Result<T, ServerError>;
 
 #[cfg(test)]

@@ -34,6 +34,7 @@ impl Default for HwLearnHandler {
 }
 
 impl HwLearnHandler {
+    /// Creates a new hw-learn handler with default store directory.
     #[must_use]
     pub fn new() -> Self {
         let store_dir = helpers::dirs_for_store();

@@ -90,30 +90,46 @@ impl SystemState {
 pub enum FaultType {
     /// Network partition between nodes
     NetworkPartition {
+        /// Duration in milliseconds.
         duration_ms: u64,
+        /// Affected node IDs.
         affected_nodes: Vec<String>,
     },
     /// Resource exhaustion
     ResourceExhaustion {
+        /// Resource type to exhaust.
         resource_type: ResourceType,
+        /// Exhaustion percentage.
         percentage: u8,
+        /// Duration in milliseconds.
         duration_ms: u64,
     },
     /// Service crash
     ServiceCrash {
+        /// Service name to crash.
         service_name: String,
+        /// Restart delay in milliseconds.
         restart_delay_ms: u64,
     },
     /// Timeout injection
-    TimeoutInjection { operation: String, delay_ms: u64 },
+    TimeoutInjection {
+        /// Operation to delay.
+        operation: String,
+        /// Delay in milliseconds.
+        delay_ms: u64,
+    },
 }
 
 /// Resource types for exhaustion testing
 #[derive(Debug, Clone)]
 pub enum ResourceType {
+    /// CPU resource.
     Cpu,
+    /// Memory resource.
     Memory,
+    /// Disk resource.
     Disk,
+    /// Network resource.
     Network,
 }
 
@@ -121,9 +137,13 @@ type ValidationFn = Box<dyn Fn(&SystemState) -> Result<(), String> + Send + Sync
 
 /// Chaos test scenario builder
 pub struct ChaosScenario {
+    /// Scenario name.
     name: String,
+    /// Faults to inject.
     faults: Vec<FaultType>,
+    /// Optional validation callback.
     validation: Option<ValidationFn>,
+    /// Scenario timeout.
     timeout: Duration,
 }
 

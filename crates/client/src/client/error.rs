@@ -16,29 +16,37 @@ use toadstool_common::error::{
 /// bidirectional conversion with `ToadStoolError` for seamless integration.
 #[derive(Debug, Error)]
 pub enum ClientError {
+    /// HTTP/JSON-RPC request failed.
     #[error("HTTP request failed: {0}")]
-    Http(String), // EVOLVED: No reqwest dependency! ✅
+    Http(String),
 
+    /// Authentication failed.
     #[error("Authentication failed: {0}")]
     Authentication(String),
 
+    /// Invalid client configuration.
     #[error("Invalid configuration: {0}")]
     Configuration(String),
 
+    /// Server returned an error.
     #[error("Server error: {0}")]
     Server(String),
 
+    /// Request timed out.
     #[error("Timeout: {0}")]
     Timeout(String),
 
+    /// JSON serialization/deserialization failed.
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    /// URL parsing failed.
     #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
 
+    /// I/O error (e.g. Unix socket).
     #[error("IO error: {0}")]
-    Io(#[from] std::io::Error), // EVOLVED: For Unix socket errors ✅
+    Io(#[from] std::io::Error),
 }
 
 // ============================================================================

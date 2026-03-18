@@ -65,3 +65,4 @@ tarpc = ["dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-
 
 [dev-dependencies]
 tokio-test = "0.4"
+temp-env = "0.3"

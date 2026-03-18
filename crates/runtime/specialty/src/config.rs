@@ -10,24 +10,42 @@ use crate::types::configs::{
 };
 use crate::types::systems::{LegacyArchitecture, LegacySystemType};
 
+/// Configuration for the specialty hardware runtime engine.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpecialtyRuntimeConfig {
+    /// Whether mainframe system support is enabled.
     pub mainframe_enabled: bool,
+    /// Whether embedded system support is enabled.
     pub embedded_enabled: bool,
+    /// Whether industrial control system support is enabled.
     pub industrial_enabled: bool,
+    /// Whether real-time OS support is enabled.
     pub realtime_enabled: bool,
+    /// Whether cross-compilation toolchains are available.
     pub cross_compilation_enabled: bool,
+    /// Whether legacy networking protocols are supported.
     pub legacy_networking_enabled: bool,
+    /// Whether emulation of legacy architectures is enabled.
     pub emulation_enabled: bool,
+    /// Maximum number of jobs that can run concurrently.
     pub max_concurrent_jobs: usize,
+    /// Timeout for individual job execution.
     pub job_timeout: Duration,
+    /// Timeout for inter-process communication.
     pub communication_timeout: Duration,
+    /// List of legacy system types this runtime supports.
     pub supported_systems: Vec<LegacySystemType>,
+    /// Toolchain configs keyed by legacy architecture.
     pub toolchain_configs: HashMap<LegacyArchitecture, ToolchainConfig>,
+    /// Mainframe-specific configurations by name.
     pub mainframe_configs: HashMap<String, MainframeConfig>,
+    /// Embedded system configurations by name.
     pub embedded_configs: HashMap<String, EmbeddedConfig>,
+    /// Industrial system configurations by name.
     pub industrial_configs: HashMap<String, IndustrialConfig>,
+    /// Real-time system configurations by name.
     pub realtime_configs: HashMap<String, RealtimeConfig>,
+    /// Emulation configs keyed by legacy system type.
     pub emulation_configs: HashMap<LegacySystemType, ConfigEmulationConfig>,
 }
 

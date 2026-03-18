@@ -17,12 +17,19 @@ const PCI_CLASS_MASK: u32 = 0x00FF_FF00;
 /// Discovered NVIDIA GPU with PCI identity and sysfs path.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct NvidiaGpu {
+    /// PCI bus:device.function address.
     pub bdf: String,
+    /// PCI vendor ID (0x10de for NVIDIA).
     pub vendor_id: u16,
+    /// PCI device ID (maps to chip codename).
     pub device_id: u16,
+    /// PCI class code (0x0300xx VGA, 0x0302xx 3D).
     pub class_code: u32,
+    /// Sysfs path under `/sys/bus/pci/devices/`.
     pub sysfs_path: PathBuf,
+    /// Bound kernel driver (nouveau, nvidia, vfio-pci, etc.).
     pub driver: Option<String>,
+    /// Inferred chip codename for firmware probing.
     pub chip: Option<String>,
 }
 

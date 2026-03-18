@@ -9,6 +9,7 @@ use tokio::fs;
 use tracing::info;
 
 impl TemplateGenerator {
+    /// Create a template generator for the given output directory
     #[must_use]
     pub const fn new(output_dir: PathBuf, force_overwrite: bool) -> Self {
         Self {

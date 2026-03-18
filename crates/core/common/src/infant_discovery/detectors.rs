@@ -64,6 +64,7 @@ impl HardwareEnvironment {
 pub struct BareMetalDetector;
 
 impl BareMetalDetector {
+    /// Create a new bare metal detector.
     #[must_use]
     pub const fn new() -> Self {
         Self

@@ -25,12 +25,19 @@ pub use resource_leak::{ResourceAllocation, ResourceLeakDetector};
 /// Production hardening configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductionHardeningConfig {
+    /// Enable circuit breakers for fault tolerance.
     pub enable_circuit_breakers: bool,
+    /// Enable resource leak detection.
     pub enable_leak_detection: bool,
+    /// Enable memory pressure monitoring.
     pub enable_memory_pressure: bool,
+    /// Default circuit breaker settings.
     pub default_circuit_config: CircuitBreakerConfig,
+    /// Memory pressure thresholds and callbacks.
     pub memory_pressure_config: MemoryPressureConfig,
+    /// Duration before idle allocation is considered a leak.
     pub leak_detection_threshold: Duration,
+    /// Interval for leak cleanup sweep.
     pub leak_cleanup_interval: Duration,
 }
 
@@ -61,6 +68,7 @@ pub struct ProductionHardeningManager {
 }
 
 impl ProductionHardeningManager {
+    /// Creates a new production hardening manager with the given config.
     #[must_use]
     pub fn new(config: ProductionHardeningConfig) -> Self {
         let leak_detector = Arc::new(ResourceLeakDetector::new(

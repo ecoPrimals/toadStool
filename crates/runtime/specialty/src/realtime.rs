@@ -37,12 +37,16 @@ pub struct QNXAdapter {
     active_jobs: Arc<RwLock<HashMap<Uuid, RealtimeJob>>>,
 }
 
-/// Real-time Job
+/// Job submitted to a real-time OS (VxWorks, QNX, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealtimeJob {
+    /// Unique identifier for the job.
     pub job_id: Uuid,
+    /// Name of the RTOS task.
     pub task_name: String,
+    /// Task priority (higher = more urgent).
     pub priority: u8,
+    /// Current execution status.
     pub status: JobStatus,
 }
 
@@ -56,6 +60,7 @@ impl Default for VxWorksAdapter {
 }
 
 impl VxWorksAdapter {
+    /// Creates a new VxWorks adapter.
     pub fn new() -> Self {
         Self::default()
     }
@@ -71,6 +76,7 @@ impl Default for QNXAdapter {
 }
 
 impl QNXAdapter {
+    /// Creates a new QNX adapter.
     pub fn new() -> Self {
         Self::default()
     }

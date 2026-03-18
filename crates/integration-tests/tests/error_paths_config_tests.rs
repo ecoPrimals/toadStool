@@ -8,39 +8,23 @@ use std::env;
 
 #[test]
 fn test_invalid_port_number() {
-    // Test handling of invalid port numbers (out of range)
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { env::set_var("TOADSTOOL_API_PORT", "99999") }; // Invalid: > 65535
-
-    // Configuration should either:
-    // 1. Use default port, OR
-    // 2. Return validation error
-
-    // Clean up
-    unsafe { env::remove_var("TOADSTOOL_API_PORT") };
+    temp_env::with_var("TOADSTOOL_API_PORT", Some("99999"), || {
+        // Configuration should either use default port or return validation error
+    });
 }
 
 #[test]
 fn test_malformed_duration_string() {
-    // Test handling of malformed duration strings
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { env::set_var("TOADSTOOL_TIMEOUT", "invalid") };
-
-    // Should fallback to default or return error
-    // Should NOT panic
-
-    unsafe { env::remove_var("TOADSTOOL_TIMEOUT") };
+    temp_env::with_var("TOADSTOOL_TIMEOUT", Some("invalid"), || {
+        // Should fallback to default or return error; should NOT panic
+    });
 }
 
 #[test]
 fn test_negative_timeout_value() {
-    // Test handling of negative timeout values
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { env::set_var("TOADSTOOL_TIMEOUT", "-100") };
-
-    // Should reject or use default
-
-    unsafe { env::remove_var("TOADSTOOL_TIMEOUT") };
+    temp_env::with_var("TOADSTOOL_TIMEOUT", Some("-100"), || {
+        // Should reject or use default
+    });
 }
 
 #[test]
@@ -100,20 +84,10 @@ fn test_empty_config_file() {
 
 #[test]
 fn test_environment_variable_override() {
-    // Test that env vars override config file
-    let original = env::var("TOADSTOOL_TEST_VAR").ok();
-
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { env::set_var("TOADSTOOL_TEST_VAR", "override_value") };
-
-    let value = env::var("TOADSTOOL_TEST_VAR");
-    assert_eq!(value.unwrap(), "override_value");
-
-    // Clean up
-    match original {
-        Some(val) => unsafe { env::set_var("TOADSTOOL_TEST_VAR", val) },
-        None => unsafe { env::remove_var("TOADSTOOL_TEST_VAR") },
-    }
+    temp_env::with_var("TOADSTOOL_TEST_VAR", Some("override_value"), || {
+        let value = env::var("TOADSTOOL_TEST_VAR");
+        assert_eq!(value.unwrap(), "override_value");
+    });
 }
 
 #[test]

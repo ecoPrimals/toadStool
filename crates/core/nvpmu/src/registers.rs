@@ -77,6 +77,7 @@ pub const CG_STALL_EN: u32 = 1 << 14;
 
 /// Bits \[19:16\]: wake-up delay count after clock gate release.
 pub const CG_WAKEUP_DLY_MASK: u32 = 0x000F_0000;
+/// Bit shift to extract wake-up delay from `PBUS_EXT_CG`.
 pub const CG_WAKEUP_DLY_SHIFT: u32 = 16;
 
 // -- Thermal -------------------------------------------------------------------
@@ -87,6 +88,7 @@ pub const GPU_TEMP: u64 = 0x0002_0460;
 
 /// Mask to extract temperature from `GPU_TEMP` register.
 pub const GPU_TEMP_MASK: u32 = 0x0000_FF00;
+/// Bit shift to extract temperature (bits \[15:8\]) from `GPU_TEMP`.
 pub const GPU_TEMP_SHIFT: u32 = 8;
 
 // -- PCIe Power Management ----------------------------------------------------

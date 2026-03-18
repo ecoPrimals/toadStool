@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use toadstool_config::network::DEFAULT_CONNECTION_TIMEOUT_SECS;
 
+/// Top-level CLI subcommands (run, up, down, ps, logs, validate, init, etc.)
 #[derive(Subcommand)]
 pub enum Commands {
     /// Start and run a biome in the foreground
@@ -27,9 +28,10 @@ pub enum Commands {
         #[arg(long)]
         debug: bool,
 
-        /// Resource limits override
+        /// CPU limit override (cores)
         #[arg(long)]
         cpu_limit: Option<f64>,
+        /// Memory limit override (e.g. 512Mi)
         #[arg(long)]
         memory_limit: Option<String>,
 
@@ -177,18 +179,21 @@ pub enum Commands {
 
     /// Ecosystem integration commands
     Ecosystem {
+        /// Subcommand (discover, register, auth, storage)
         #[command(subcommand)]
         action: EcosystemCommands,
     },
 
     /// Advanced universal compute operations
     Universal {
+        /// Subcommand (detect, benchmark, migrate, federate)
         #[command(subcommand)]
         operation: UniversalCommands,
     },
 
     /// Hardware transport operations (HDMI, serial, capture)
     Transport {
+        /// Subcommand (discover, list, status)
         #[command(subcommand)]
         action: TransportCommands,
     },
@@ -328,6 +333,7 @@ pub enum Commands {
     /// Switches between gaming mode (nvidia/nouveau for display) and science
     /// mode (vfio-pci for sovereign compute dispatch).
     Mode {
+        /// Subcommand (science, gaming, status)
         #[command(subcommand)]
         action: ModeCommand,
     },
@@ -355,6 +361,7 @@ pub enum Commands {
     },
 }
 
+/// Ecosystem integration subcommands (discover, register, auth, storage)
 #[derive(Subcommand)]
 pub enum EcosystemCommands {
     /// Discover and connect to ecosystem services
@@ -403,6 +410,7 @@ pub enum EcosystemCommands {
     },
 }
 
+/// Hardware transport subcommands (discover, list, status)
 #[derive(Subcommand)]
 pub enum TransportCommands {
     /// Discover available hardware transports
@@ -423,6 +431,7 @@ pub enum TransportCommands {
     Status,
 }
 
+/// Universal compute subcommands (detect, benchmark, migrate, federate)
 #[derive(Subcommand)]
 pub enum UniversalCommands {
     /// Detect all available compute substrates

@@ -16,11 +16,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExecutableSource {
     /// File on disk
-    File { path: PathBuf },
+    File {
+        /// Path to executable.
+        path: PathBuf,
+    },
     /// URL to download from
-    Url { url: String },
+    Url {
+        /// Download URL.
+        url: String,
+    },
     /// Raw bytes (zero-copy: clone bumps refcount, not a memcpy)
-    Bytes { data: Bytes },
+    Bytes {
+        /// Binary data.
+        data: Bytes,
+    },
 }
 
 /// Source of a WASM module.
@@ -30,11 +39,20 @@ pub enum ExecutableSource {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WasmModuleSource {
     /// File on disk
-    File { path: PathBuf },
+    File {
+        /// Path to WASM module.
+        path: PathBuf,
+    },
     /// Raw bytes (zero-copy: clone bumps refcount, not a memcpy)
-    Bytes { data: Bytes },
+    Bytes {
+        /// Module binary data.
+        data: Bytes,
+    },
     /// URL to download from
-    Url { url: String },
+    Url {
+        /// Download URL.
+        url: String,
+    },
 }
 
 /// WASI configuration
@@ -111,31 +129,58 @@ pub struct RegistryAuth {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GpuProgramSource {
     /// `OpenCL` source code
-    OpenCL { source: String },
+    OpenCL {
+        /// OpenCL C source string.
+        source: String,
+    },
     /// CUDA source code
-    Cuda { source: String },
+    Cuda {
+        /// CUDA C++ source string.
+        source: String,
+    },
     /// Vulkan SPIR-V bytecode
-    Vulkan { spirv: Vec<u8> },
+    Vulkan {
+        /// SPIR-V binary.
+        spirv: Vec<u8>,
+    },
 }
 
 /// GPU program argument
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GpuArgument {
     /// Buffer argument
-    Buffer { data: Vec<u8> },
+    Buffer {
+        /// Buffer data.
+        data: Vec<u8>,
+    },
     /// Scalar argument
-    Scalar { value: f64 },
+    Scalar {
+        /// Scalar value.
+        value: f64,
+    },
     /// Integer argument
-    Integer { value: i64 },
+    Integer {
+        /// Integer value.
+        value: i64,
+    },
 }
 
 /// Source of Python code
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PythonSource {
     /// Inline Python code
-    Code { code: String },
+    Code {
+        /// Python source code.
+        code: String,
+    },
     /// Python file
-    File { path: PathBuf },
+    File {
+        /// Path to Python file.
+        path: PathBuf,
+    },
     /// Python module name
-    Module { name: String },
+    Module {
+        /// Module name to import.
+        name: String,
+    },
 }

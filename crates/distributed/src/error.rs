@@ -3,18 +3,22 @@
 
 use thiserror::Error;
 
-/// Errors from the distributed computing layer
+/// Errors from the distributed computing layer.
 #[derive(Error, Debug)]
 pub enum DistributedError {
+    /// TOADSTOOL_ENDPOINT env var not set; required for discovery.
     #[error("TOADSTOOL_ENDPOINT not set - primal must know its own endpoint for discovery")]
     ToadstoolEndpointNotSet,
 
+    /// Songbird service registration failed with the given reason.
     #[error("Songbird registration failed: {0}")]
     SongbirdRegistration(String),
 
+    /// Workload cannot be converted to UniversalJob without scheduler.
     #[error("Workload conversion to UniversalJob requires scheduler integration")]
     WorkloadConversionRequiresScheduler,
 
+    /// JSON or other serialization failed.
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 }

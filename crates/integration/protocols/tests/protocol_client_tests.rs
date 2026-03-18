@@ -16,7 +16,7 @@ use toadstool_integration_protocols::types::*;
 
 fn create_test_config() -> ProtocolConfig {
     ProtocolConfig {
-        service_id: "test-service".to_string(),
+        service_id: Arc::from("test-service"),
         default_format: MessageFormat::Json,
         supported_transports: vec![TransportType::Http],
         auth_config: None,
@@ -73,7 +73,7 @@ async fn test_protocol_client_creation() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_protocol_client_with_custom_service_id() {
     let mut config = create_test_config();
-    config.service_id = "custom-service-id".to_string();
+    config.service_id = Arc::from("custom-service-id");
 
     let client = ProtocolClient::new(config).await;
     assert!(client.is_ok());
@@ -191,7 +191,7 @@ async fn test_discover_services_from_cache() {
     // Discover should find it in cache
     let services = client.discover_services("test-service").await.unwrap();
     assert_eq!(services.len(), 1);
-    assert_eq!(services[0].name, "test-service");
+    assert_eq!(&*services[0].name, "test-service");
 }
 
 // ============================================================================
@@ -205,8 +205,8 @@ async fn test_create_message() {
 
     let message = client.create_message("test-type", json!({"data": "test"}));
 
-    assert_eq!(message.message_type, "test-type");
-    assert_eq!(message.source, "test-service");
+    assert_eq!(&*message.message_type, "test-type");
+    assert_eq!(&*message.source, "test-service");
     assert_eq!(message.format, MessageFormat::Json);
 }
 
@@ -228,7 +228,7 @@ async fn test_create_message_with_complex_payload() {
     });
 
     let message = client.create_message("compute-request", payload);
-    assert_eq!(message.message_type, "compute-request");
+    assert_eq!(&*message.message_type, "compute-request");
     assert!(message.payload.is_object());
 }
 
@@ -416,7 +416,7 @@ async fn test_create_message_with_empty_payload() {
     let client = ProtocolClient::new(config).await.unwrap();
 
     let message = client.create_message("empty", json!({}));
-    assert_eq!(message.message_type, "empty");
+    assert_eq!(&*message.message_type, "empty");
     assert!(message.payload.is_object());
 }
 
@@ -464,8 +464,8 @@ async fn test_discover_services_with_different_names() {
 
     assert_eq!(compute_services.len(), 1);
     assert_eq!(storage_services.len(), 1);
-    assert_eq!(compute_services[0].name, "compute-service");
-    assert_eq!(storage_services[0].name, "storage-service");
+    assert_eq!(&*compute_services[0].name, "compute-service");
+    assert_eq!(&*storage_services[0].name, "storage-service");
 }
 
 // ============================================================================

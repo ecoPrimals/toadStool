@@ -132,6 +132,7 @@ pub enum SubstrateType {
 }
 
 impl SubstrateType {
+    /// Return lowercase string representation.
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Cpu => "cpu",
@@ -314,29 +315,41 @@ impl SubstrateCapabilities {
 pub enum BufferOperation {
     /// Add two buffers element-wise
     Add {
+        /// First operand buffer.
         a: Vec<u8>,
+        /// Second operand buffer.
         b: Vec<u8>,
+        /// Element size in bytes.
         element_size: usize,
     },
 
     /// Multiply two buffers element-wise
     Multiply {
+        /// First operand buffer.
         a: Vec<u8>,
+        /// Second operand buffer.
         b: Vec<u8>,
+        /// Element size in bytes.
         element_size: usize,
     },
 
     /// Apply unary function to buffer
     Map {
+        /// Input data buffer.
         data: Vec<u8>,
+        /// Element size in bytes.
         element_size: usize,
+        /// Unary operation to apply.
         operation: UnaryOp,
     },
 
     /// Custom operation (substrate-specific)
     Custom {
+        /// Operation name.
         name: String,
+        /// Input data.
         data: Vec<u8>,
+        /// Operation metadata.
         metadata: serde_json::Value,
     },
 }
@@ -358,10 +371,15 @@ impl BufferOperation {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum UnaryOp {
+    /// Negate (unary minus).
     Negate,
+    /// Square (x²).
     Square,
+    /// Square root.
     Sqrt,
+    /// Exponential.
     Exp,
+    /// Natural logarithm.
     Log,
 }
 
@@ -454,11 +472,14 @@ use crate::types::{
 ///
 /// **Deep Debt**: Bridge simple and full interfaces
 pub struct SubstrateAdapter<S: ComputeSubstrate> {
+    /// Wrapped substrate.
     substrate: S,
+    /// Converted capabilities for ComputeUnit interface.
     capabilities: Capabilities,
 }
 
 impl<S: ComputeSubstrate> SubstrateAdapter<S> {
+    /// Create adapter from a substrate.
     pub fn new(substrate: S) -> Self {
         let substrate_caps = substrate.capabilities();
         let capabilities = Self::convert_capabilities(&substrate_caps);

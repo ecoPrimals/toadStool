@@ -105,35 +105,53 @@ impl CapabilityDependency {
 pub mod capabilities {
     /// Security capability features
     pub mod security {
+        /// Encryption feature
         pub const ENCRYPTION: &str = "capability:security:encryption";
+        /// Digital signing feature
         pub const SIGNING: &str = "capability:security:signing";
+        /// Key management feature
         pub const KEY_MANAGEMENT: &str = "capability:security:key-management";
+        /// PKI feature
         pub const PKI: &str = "capability:pki";
+        /// Audit logging feature
         pub const AUDIT: &str = "capability:security:audit";
     }
 
     /// Storage capability features
     pub mod storage {
+        /// Persistent storage feature
         pub const PERSISTENCE: &str = "capability:storage:persistence";
+        /// Compression feature
         pub const COMPRESSION: &str = "capability:storage:compression";
+        /// Versioning feature
         pub const VERSIONING: &str = "capability:storage:versioning";
+        /// Backup feature
         pub const BACKUP: &str = "capability:storage:backup";
+        /// Replication feature
         pub const REPLICATION: &str = "capability:storage:replication";
     }
 
     /// Coordination capability features
     pub mod coordination {
+        /// Service mesh feature
         pub const SERVICE_MESH: &str = "capability:coordination:service-mesh";
+        /// Service discovery feature
         pub const DISCOVERY: &str = "capability:coordination:discovery";
+        /// Load balancing feature
         pub const LOAD_BALANCING: &str = "capability:coordination:load-balancing";
+        /// Health check feature
         pub const HEALTH_CHECK: &str = "capability:coordination:health-check";
     }
 
     /// Intelligence capability features
     pub mod intelligence {
+        /// Inference feature
         pub const INFERENCE: &str = "capability:intelligence:inference";
+        /// Training feature
         pub const TRAINING: &str = "capability:intelligence:training";
+        /// NLP feature
         pub const NLP: &str = "capability:intelligence:nlp";
+        /// Vision feature
         pub const VISION: &str = "capability:intelligence:vision";
     }
 }

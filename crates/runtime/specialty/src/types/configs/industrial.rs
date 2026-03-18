@@ -31,8 +31,11 @@ pub enum IndustrialSystemType {
     HMI,
     /// MES (Manufacturing Execution System)
     MES,
-    /// Custom system
-    Custom { name: String },
+    /// Custom industrial system type.
+    Custom {
+        /// System type name.
+        name: String,
+    },
 }
 
 /// Industrial communication protocols
@@ -60,8 +63,11 @@ pub enum IndustrialProtocol {
     HART,
     /// AS-Interface
     ASInterface,
-    /// Custom protocol
-    Custom { name: String },
+    /// Custom industrial protocol.
+    Custom {
+        /// Protocol name.
+        name: String,
+    },
 }
 
 /// Industrial device configuration
@@ -96,8 +102,11 @@ pub enum IndustrialDeviceType {
     Transmitter,
     /// Controller
     Controller,
-    /// Custom device
-    Custom { name: String },
+    /// Custom industrial device type.
+    Custom {
+        /// Device type name.
+        name: String,
+    },
 }
 
 /// Safety configuration for industrial systems
@@ -150,8 +159,11 @@ pub enum SafetyFunctionType {
     PressureMat,
     /// Two-hand control
     TwoHandControl,
-    /// Custom function
-    Custom { name: String },
+    /// Custom safety function.
+    Custom {
+        /// Function type name.
+        name: String,
+    },
 }
 
 /// Emergency stop configuration
@@ -174,6 +186,9 @@ pub enum ResetProcedure {
     Manual,
     /// Key reset
     KeyReset,
-    /// Custom procedure
-    Custom { name: String },
+    /// Custom reset procedure.
+    Custom {
+        /// Procedure name.
+        name: String,
+    },
 }

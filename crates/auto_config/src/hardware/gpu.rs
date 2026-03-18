@@ -10,15 +10,22 @@ use crate::ToadStoolResult;
 
 use super::HardwareDetector;
 
-/// GPU information and capabilities
+/// GPU information and capabilities.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuInfo {
+    /// GPU model name.
     pub name: String,
+    /// Vendor (NVIDIA, AMD, Intel).
     pub vendor: String,
+    /// VRAM in GB.
     pub memory_gb: f64,
+    /// Driver version string.
     pub driver_version: String,
+    /// Compute capability (e.g. CUDA sm_xx).
     pub compute_capability: String,
+    /// CUDA support.
     pub supports_cuda: bool,
+    /// OpenCL support.
     pub supports_opencl: bool,
 }
 

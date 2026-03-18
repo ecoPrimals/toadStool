@@ -118,8 +118,12 @@ impl Eq for SecretString {}
 /// Errors from credential resolution.
 #[derive(Debug, thiserror::Error)]
 pub enum CredentialError {
+    /// Credential not found in any source (env, keyring, security provider)
     #[error("credential '{name}' not found in environment, keyring, or security provider")]
-    NotFound { name: String },
+    NotFound {
+        /// Credential name that was requested
+        name: String,
+    },
 }
 
 /// Resolve a named credential through the standard chain:

@@ -14,11 +14,17 @@ use crate::resources::ResourceRequirements;
 /// Resource allocation tracking
 #[derive(Debug, Clone)]
 pub struct ResourceAllocation {
+    /// Unique allocation ID.
     pub id: Uuid,
+    /// Resource type (e.g. memory, gpu).
     pub resource_type: String,
+    /// When allocated.
     pub allocated_at: Instant,
+    /// Resource requirements.
     pub requirements: ResourceRequirements,
+    /// Owner identifier.
     pub owner: String,
+    /// Last access time (for leak detection).
     pub last_accessed: Instant,
 }
 
@@ -30,6 +36,7 @@ pub struct ResourceLeakDetector {
 }
 
 impl ResourceLeakDetector {
+    /// Creates a new leak detector with given thresholds.
     #[must_use]
     pub fn new(leak_threshold: Duration, cleanup_interval: Duration) -> Self {
         Self {
@@ -39,11 +46,13 @@ impl ResourceLeakDetector {
         }
     }
 
+    /// Tracks a new resource allocation for leak detection.
     pub async fn track_allocation(&self, allocation: ResourceAllocation) {
         let mut allocations = self.allocations.write().await;
         allocations.insert(allocation.id, allocation);
     }
 
+    /// Updates last-accessed timestamp for a tracked resource.
     pub async fn update_access(&self, resource_id: Uuid) {
         let mut allocations = self.allocations.write().await;
         if let Some(allocation) = allocations.get_mut(&resource_id) {
@@ -51,11 +60,13 @@ impl ResourceLeakDetector {
         }
     }
 
+    /// Removes a resource from tracking (normal deallocation).
     pub async fn remove_allocation(&self, resource_id: Uuid) {
         let mut allocations = self.allocations.write().await;
         allocations.remove(&resource_id);
     }
 
+    /// Scans for and removes allocations exceeding leak threshold.
     pub async fn cleanup_leaked_resources(&self) -> Vec<ResourceAllocation> {
         let mut allocations = self.allocations.write().await;
         let now = Instant::now();
@@ -77,6 +88,7 @@ impl ResourceLeakDetector {
         leaked
     }
 
+    /// Starts the background cleanup task.
     #[expect(
         clippy::unused_async,
         reason = "spawns background task; async for API consistency"

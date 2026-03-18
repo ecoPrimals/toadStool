@@ -66,103 +66,62 @@ fn s155_get_socket_path_from_toadstool_socket_env() {
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let socket_path = temp_dir.path().join("custom-toadstool.sock");
     let path_str = socket_path.to_string_lossy().to_string();
-    let old = std::env::var("TOADSTOOL_SOCKET").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_SOCKET", &path_str) };
-
-    let result = get_socket_path("any-family", "any-node");
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_SOCKET", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_SOCKET") };
-    }
-
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), socket_path);
+    temp_env::with_var("TOADSTOOL_SOCKET", Some(path_str.as_str()), || {
+        let result = get_socket_path("any-family", "any-node");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), socket_path);
+    });
 }
 
 #[test]
 fn s155_get_socket_path_from_primal_socket_with_family() {
-    let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
-    let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::remove_var("TOADSTOOL_SOCKET");
-        std::env::set_var("PRIMAL_SOCKET", "/run/primal");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-    }
-
-    let result = get_socket_path("family-x", "node1");
-    if let Some(v) = old_toad {
-        unsafe { std::env::set_var("TOADSTOOL_SOCKET", v) };
-    }
-    if let Some(v) = old_biome {
-        unsafe { std::env::set_var("BIOMEOS_SOCKET_PATH", v) };
-    }
-    unsafe { std::env::remove_var("PRIMAL_SOCKET") };
-
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), PathBuf::from("/run/primal-family-x"));
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("PRIMAL_SOCKET", Some("/run/primal")),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+        ],
+        || {
+            let result = get_socket_path("family-x", "node1");
+            assert!(result.is_ok());
+            assert_eq!(result.unwrap(), PathBuf::from("/run/primal-family-x"));
+        },
+    );
 }
 
 #[test]
 fn s155_get_socket_path_tmp_fallback_when_xdg_not_exists() {
-    let old_toad = std::env::var("TOADSTOOL_SOCKET").ok();
-    let old_primal = std::env::var("PRIMAL_SOCKET").ok();
-    let old_biome = std::env::var("BIOMEOS_SOCKET_PATH").ok();
-    let old_xdg = std::env::var("XDG_RUNTIME_DIR").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::remove_var("TOADSTOOL_SOCKET");
-        std::env::remove_var("PRIMAL_SOCKET");
-        std::env::remove_var("BIOMEOS_SOCKET_PATH");
-        std::env::set_var("XDG_RUNTIME_DIR", "/nonexistent-path-12345-abcd");
-    }
-
-    let result = get_socket_path("custom", "node1");
-
-    if let Some(v) = old_toad {
-        unsafe { std::env::set_var("TOADSTOOL_SOCKET", v) };
-    }
-    if let Some(v) = old_primal {
-        unsafe { std::env::set_var("PRIMAL_SOCKET", v) };
-    }
-    if let Some(v) = old_biome {
-        unsafe { std::env::set_var("BIOMEOS_SOCKET_PATH", v) };
-    }
-    if let Some(v) = old_xdg {
-        unsafe { std::env::set_var("XDG_RUNTIME_DIR", v) };
-    } else {
-        unsafe { std::env::remove_var("XDG_RUNTIME_DIR") };
-    }
-
-    assert!(result.is_ok());
-    let path = result.unwrap();
-    assert!(path.ends_with("biomeos/toadstool-custom.sock"));
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("PRIMAL_SOCKET", None::<&str>),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+            ("XDG_RUNTIME_DIR", Some("/nonexistent-path-12345-abcd")),
+        ],
+        || {
+            let result = get_socket_path("custom", "node1");
+            assert!(result.is_ok());
+            let path = result.unwrap();
+            assert!(path.ends_with("biomeos/toadstool-custom.sock"));
+        },
+    );
 }
 
 // ============================================================================
 // UniBin execution tests
 // ============================================================================
 
-#[tokio::test]
-async fn s155_create_executor_standalone_mode() {
-    let old = std::env::var("TOADSTOOL_STANDALONE").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_STANDALONE", "1") };
-
-    let result = create_executor("test-family").await;
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_STANDALONE", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_STANDALONE") };
-    }
-
-    assert!(
-        result.is_ok(),
-        "standalone executor creation failed: {:?}",
-        result.err()
-    );
+#[test]
+fn s155_create_executor_standalone_mode() {
+    temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(create_executor("test-family"));
+        assert!(
+            result.is_ok(),
+            "standalone executor creation failed: {:?}",
+            result.err()
+        );
+    });
 }
 
 #[test]
@@ -251,76 +210,41 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
 
 #[test]
 fn s155_resolve_family_id_override_takes_precedence() {
-    let old = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", "env-family") };
-
-    let family_id = resolve_family_id(Some("override-family".to_string()));
-    assert_eq!(family_id, "override-family");
-
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_FAMILY_ID") };
-    }
+    temp_env::with_var("TOADSTOOL_FAMILY_ID", Some("env-family"), || {
+        let family_id = resolve_family_id(Some("override-family".to_string()));
+        assert_eq!(family_id, "override-family");
+    });
 }
 
 #[test]
 fn s155_resolve_family_id_from_env() {
-    let old = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", "test-family") };
-
-    let family_id = resolve_family_id(None);
-    assert_eq!(family_id, "test-family");
-
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_FAMILY_ID") };
-    }
+    temp_env::with_var("TOADSTOOL_FAMILY_ID", Some("test-family"), || {
+        let family_id = resolve_family_id(None);
+        assert_eq!(family_id, "test-family");
+    });
 }
 
 #[test]
 fn s155_resolve_family_id_fallback_to_default() {
-    let old1 = std::env::var("TOADSTOOL_FAMILY_ID").ok();
-    let old2 = std::env::var("TOADSTOOL_FAMILY").ok();
-    let old3 = std::env::var("BIOMEOS_FAMILY_ID").ok();
-    // SAFETY: Test-only; sequential test execution
-    unsafe {
-        std::env::remove_var("TOADSTOOL_FAMILY_ID");
-        std::env::remove_var("TOADSTOOL_FAMILY");
-        std::env::remove_var("BIOMEOS_FAMILY_ID");
-    }
-
-    let family_id = resolve_family_id(None);
-    assert_eq!(family_id, "default");
-
-    if let Some(v) = old1 {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY_ID", v) };
-    }
-    if let Some(v) = old2 {
-        unsafe { std::env::set_var("TOADSTOOL_FAMILY", v) };
-    }
-    if let Some(v) = old3 {
-        unsafe { std::env::set_var("BIOMEOS_FAMILY_ID", v) };
-    }
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_FAMILY_ID",
+            "TOADSTOOL_FAMILY",
+            "BIOMEOS_FAMILY_ID",
+        ],
+        || {
+            let family_id = resolve_family_id(None);
+            assert_eq!(family_id, "default");
+        },
+    );
 }
 
 #[test]
 fn s155_resolve_node_id_from_env() {
-    let old = std::env::var("TOADSTOOL_NODE_ID").ok();
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var("TOADSTOOL_NODE_ID", "node-42") };
-
-    let node_id = resolve_node_id();
-    assert_eq!(node_id, "node-42");
-
-    if let Some(v) = old {
-        unsafe { std::env::set_var("TOADSTOOL_NODE_ID", v) };
-    } else {
-        unsafe { std::env::remove_var("TOADSTOOL_NODE_ID") };
-    }
+    temp_env::with_var("TOADSTOOL_NODE_ID", Some("node-42"), || {
+        let node_id = resolve_node_id();
+        assert_eq!(node_id, "node-42");
+    });
 }
 
 #[test]

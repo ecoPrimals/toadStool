@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive concurrent tests for `runtime_defaults` module
 //!
-//! ✅ MODERN CONCURRENT TESTING - Uses scoped Mutex for parallel execution
+//! ✅ MODERN CONCURRENT TESTING - Uses temp_env for parallel execution
 
-use std::env;
 use std::sync::Mutex;
 use tempfile::NamedTempFile;
 use toadstool_config::ToadStoolConfig;
 
-// ✅ MODERN: Scoped lock for environment variable tests
+// ✅ MODERN: Scoped lock for environment variable tests (extra serialization safety)
 static ENV_LOCK: std::sync::OnceLock<Mutex<()>> = std::sync::OnceLock::new();
 
 fn get_env_lock() -> &'static Mutex<()> {
@@ -19,141 +18,107 @@ fn get_env_lock() -> &'static Mutex<()> {
 
 #[test]
 fn test_for_current_environment_defaults_to_development() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    // Clear all env vars
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-    }
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "development");
+    let _guard = get_env_lock().lock().unwrap();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+        ],
+        || {
+            let config = ToadStoolConfig::for_current_environment();
+            assert_eq!(config.app.environment, "development");
+        },
+    );
 }
 
 #[test]
 fn test_for_current_environment_toadstool_environment_only() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    // Clean slate first
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-        env::set_var("TOADSTOOL_ENVIRONMENT", "production");
-    }
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "production");
-
-    // Cleanup
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::remove_var("TOADSTOOL_ENVIRONMENT") };
+    let _guard = get_env_lock().lock().unwrap();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+        ],
+        || {
+            temp_env::with_var("TOADSTOOL_ENVIRONMENT", Some("production"), || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "production");
+            });
+        },
+    );
 }
 
 #[test]
 fn test_for_current_environment_toadstool_env_only() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    // Clean slate first
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-        env::set_var("TOADSTOOL_ENV", "staging");
-    }
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "staging");
-
-    // Cleanup
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe { env::remove_var("TOADSTOOL_ENV") };
+    let _guard = get_env_lock().lock().unwrap();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+        ],
+        || {
+            temp_env::with_var("TOADSTOOL_ENV", Some("staging"), || {
+                let config = ToadStoolConfig::for_current_environment();
+                assert_eq!(config.app.environment, "staging");
+            });
+        },
+    );
 }
 
 #[test]
 fn test_for_current_environment_fallback_chain() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::set_var("TOADSTOOL_ENV", "staging");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-    }
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "staging");
-
-    // Test fallback: ENVIRONMENT
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENV");
-        env::set_var("ENVIRONMENT", "test");
-    }
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "test");
-
-    // Test fallback: ENV
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("ENVIRONMENT");
-        env::set_var("ENV", "production");
-    }
-
-    let config = ToadStoolConfig::for_current_environment();
-    assert_eq!(config.app.environment, "production");
-
-    // Complete cleanup of ALL env vars
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-    }
+    let _guard = get_env_lock().lock().unwrap();
+    temp_env::with_vars_unset(["TOADSTOOL_ENVIRONMENT", "ENVIRONMENT", "ENV"], || {
+        temp_env::with_var("TOADSTOOL_ENV", Some("staging"), || {
+            let config = ToadStoolConfig::for_current_environment();
+            assert_eq!(config.app.environment, "staging");
+        });
+    });
+    temp_env::with_vars_unset(["TOADSTOOL_ENV", "ENVIRONMENT", "ENV"], || {
+        temp_env::with_var("ENVIRONMENT", Some("test"), || {
+            let config = ToadStoolConfig::for_current_environment();
+            assert_eq!(config.app.environment, "test");
+        });
+    });
+    temp_env::with_vars_unset(["TOADSTOOL_ENV", "ENVIRONMENT", "ENV"], || {
+        temp_env::with_var("ENV", Some("production"), || {
+            let config = ToadStoolConfig::for_current_environment();
+            assert_eq!(config.app.environment, "production");
+        });
+    });
 }
 
 // ==================== Load Functions Tests ====================
 
 #[test]
 fn test_load_with_overrides_success() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    // Clean slate first
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-    }
+    let _guard = get_env_lock().lock().unwrap();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+        ],
+        || {
+            let config = ToadStoolConfig::development();
+            let temp_file = NamedTempFile::new().unwrap();
+            let temp_path = temp_file.path();
 
-    let config = ToadStoolConfig::development();
-    let temp_file = NamedTempFile::new().unwrap();
-    let temp_path = temp_file.path();
+            config.save_to_file(temp_path).unwrap();
 
-    // Save config
-    config.save_to_file(temp_path).unwrap();
-
-    // Load with overrides
-    let loaded = ToadStoolConfig::load_with_overrides(temp_path);
-    assert!(loaded.is_ok());
-    let loaded_config = loaded.unwrap();
-    assert_eq!(loaded_config.app.environment, "development");
-
-    // Cleanup
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-    }
+            let loaded = ToadStoolConfig::load_with_overrides(temp_path);
+            assert!(loaded.is_ok());
+            let loaded_config = loaded.unwrap();
+            assert_eq!(loaded_config.app.environment, "development");
+        },
+    );
 }
 
 #[test]
@@ -164,33 +129,30 @@ fn test_load_with_overrides_nonexistent_file() {
 
 #[test]
 fn test_load_from_env_only_success() {
-    let _guard = get_env_lock().lock().unwrap(); // ✅ MODERN: Concurrent-safe
-    // Clean slate first
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-        env::remove_var("TOADSTOOL_LOG_LEVEL");
-        env::set_var("TOADSTOOL_ENVIRONMENT", "test");
-        env::set_var("TOADSTOOL_LOG_LEVEL", "info");
-    }
-
-    let result = ToadStoolConfig::load_from_env_only();
-    assert!(result.is_ok());
-    let config = result.unwrap();
-    assert_eq!(config.app.environment, "test");
-
-    // Cleanup
-    // SAFETY: Test-only; sequential test execution via ENV_LOCK
-    unsafe {
-        env::remove_var("TOADSTOOL_ENVIRONMENT");
-        env::remove_var("TOADSTOOL_ENV");
-        env::remove_var("ENVIRONMENT");
-        env::remove_var("ENV");
-        env::remove_var("TOADSTOOL_LOG_LEVEL");
-    }
+    let _guard = get_env_lock().lock().unwrap();
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_ENVIRONMENT",
+            "TOADSTOOL_ENV",
+            "ENVIRONMENT",
+            "ENV",
+            "TOADSTOOL_LOG_LEVEL",
+        ],
+        || {
+            temp_env::with_vars(
+                [
+                    ("TOADSTOOL_ENVIRONMENT", Some("test")),
+                    ("TOADSTOOL_LOG_LEVEL", Some("info")),
+                ],
+                || {
+                    let result = ToadStoolConfig::load_from_env_only();
+                    assert!(result.is_ok());
+                    let config = result.unwrap();
+                    assert_eq!(config.app.environment, "test");
+                },
+            );
+        },
+    );
 }
 
 // ==================== Save/Load Round-Trip Tests ====================

@@ -48,13 +48,27 @@ pub struct ToadStoolCapabilities {
     pub platform_capabilities: PlatformCapabilities,
 }
 
+/// Execution environment for workload isolation (container, WASM, or native).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExecutionEnvironment {
-    Container { runtime: String },
-    Wasm { runtime: String },
-    Native { isolation: IsolationLevel },
+    /// Containerized execution with a specific runtime (e.g. Docker).
+    Container {
+        /// Container runtime identifier.
+        runtime: String,
+    },
+    /// WebAssembly sandbox execution.
+    Wasm {
+        /// WASM runtime identifier (e.g. wasmtime).
+        runtime: String,
+    },
+    /// Native process execution with configurable isolation.
+    Native {
+        /// Isolation level for the native process.
+        isolation: IsolationLevel,
+    },
 }
 
+/// Platform capabilities detected for the current host (OS, arch, CPU cores).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformCapabilities {
     /// Operating system
@@ -81,6 +95,7 @@ impl Default for DistributedConfig {
 }
 
 impl ToadStoolCapabilities {
+    /// Detects current platform capabilities (OS, arch, runtimes) for registration.
     pub async fn detect_current() -> toadstool::ToadStoolResult<Self> {
         use toadstool::RuntimeType;
 

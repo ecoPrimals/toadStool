@@ -26,6 +26,7 @@ pub struct UniversalKernelCompiler {
 }
 
 impl UniversalKernelCompiler {
+    /// Creates a new universal kernel compiler.
     #[must_use]
     pub fn new(config: CompilationConfig) -> Self {
         Self {
@@ -184,14 +185,16 @@ impl UniversalKernelCompiler {
     }
 }
 
-/// Cache statistics
+/// Cache statistics for compiled kernels.
 #[derive(Debug, Clone)]
 pub struct CacheStatistics {
+    /// Number of cached entries.
     pub entries: usize,
+    /// Total memory used by cache in bytes.
     pub memory_usage_bytes: u64,
 }
 
-/// Basic kernel optimizer implementation
+/// Basic kernel optimizer (comment/whitespace removal).
 pub struct BasicKernelOptimizer;
 
 impl KernelOptimizer for BasicKernelOptimizer {

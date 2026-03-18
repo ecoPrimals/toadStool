@@ -116,9 +116,15 @@ pub enum DiscoveryMethodConfig {
     /// mDNS discovery
     Mdns,
     /// Configuration file
-    ConfigFile { path: String },
+    ConfigFile {
+        /// Path to the config file.
+        path: String,
+    },
     /// Registry service
-    Registry { endpoint: String },
+    Registry {
+        /// Registry endpoint URL.
+        endpoint: String,
+    },
 }
 
 /// Status of a service instance

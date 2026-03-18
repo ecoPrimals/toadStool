@@ -8,10 +8,15 @@ const CLK_TCK: u64 = 100; // Standard on Linux for all mainstream architectures
 /// Information about a running process.
 #[derive(Debug, Clone)]
 pub struct ProcessInfo {
+    /// Process ID.
     pub pid: u32,
+    /// Process name (comm from `/proc/[pid]/stat`).
     pub name: String,
+    /// CPU usage as percentage of lifetime (0–100).
     pub cpu_usage: f32,
+    /// Resident set size (RSS) in bytes.
     pub memory: u64,
+    /// Process start time as Unix epoch seconds.
     pub start_time: u64,
 }
 

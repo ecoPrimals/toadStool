@@ -46,6 +46,7 @@ pub fn get_family_id() -> String {
     paths::resolve_family_id(&SocketPathEnv::from_env())
 }
 
+/// Get beardog (crypto) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("crypto").
 #[deprecated(
     since = "0.2.0",
     note = "Use discover_crypto_socket() for capability-based discovery. See docs for migration."
@@ -65,6 +66,7 @@ pub fn get_beardog_socket_path() -> PathBuf {
     paths::resolve_beardog_socket_fallback(&SocketPathEnv::from_env())
 }
 
+/// Get songbird (coordination) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("coordination").
 #[deprecated(
     since = "0.2.0",
     note = "Use discover_coordination_socket() for capability-based discovery. See docs for migration."
@@ -84,6 +86,7 @@ pub fn get_songbird_socket_path() -> PathBuf {
     paths::resolve_songbird_socket_fallback(&SocketPathEnv::from_env())
 }
 
+/// Get nestgate (storage) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("storage").
 #[deprecated(
     since = "0.2.0",
     note = "Use discover_storage_socket() for capability-based discovery. See docs for migration."
@@ -103,22 +106,26 @@ pub fn get_nestgate_socket_path() -> PathBuf {
     paths::resolve_nestgate_socket_fallback(&SocketPathEnv::from_env())
 }
 
+/// Get squirrel (AI) socket path.
 #[allow(deprecated)]
 #[must_use]
 pub fn get_squirrel_socket_path() -> PathBuf {
     paths::resolve_squirrel_socket(&SocketPathEnv::from_env())
 }
 
+/// Get Nucleus (biomeOS) socket path.
 #[must_use]
 pub fn get_nucleus_socket_path() -> PathBuf {
     paths::resolve_nucleus_socket(&SocketPathEnv::from_env())
 }
 
+/// Get ToadStool main socket path.
 #[must_use]
 pub fn get_toadstool_socket_path() -> PathBuf {
     paths::resolve_toadstool_socket(&SocketPathEnv::from_env())
 }
 
+/// Resolve socket path by primal service name. Prefer [`get_socket_path_for_capability`] for capability-based discovery.
 #[deprecated(
     since = "0.92.0",
     note = "Use `get_socket_path_for_capability()` for sovereignty-compliant discovery"

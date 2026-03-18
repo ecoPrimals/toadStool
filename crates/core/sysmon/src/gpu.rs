@@ -17,9 +17,13 @@ use std::path::{Path, PathBuf};
 /// Vendor identification for GPU-specific sysfs paths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GpuVendor {
+    /// AMD GPU (PCI vendor 0x1002).
     Amd,
+    /// NVIDIA GPU (PCI vendor 0x10de).
     Nvidia,
+    /// Intel integrated or discrete GPU (PCI vendor 0x8086).
     Intel,
+    /// Unknown or unsupported vendor.
     Unknown,
 }
 

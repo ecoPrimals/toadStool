@@ -13,10 +13,14 @@ use super::constraint::Constraint;
 /// Priority level for composition requests
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum ConstraintPriority {
+    /// Lowest priority; best-effort scheduling.
     Background = 0,
+    /// Default priority.
     #[default]
     Normal = 1,
+    /// Higher than normal; prefer earlier scheduling.
     High = 2,
+    /// Highest priority; schedule as soon as possible.
     Critical = 3,
 }
 
@@ -34,13 +38,18 @@ impl fmt::Display for ConstraintPriority {
 /// A composition request with constraints
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompositionRequest {
+    /// Request identifier.
     pub name: String,
+    /// Hard and soft constraints.
     pub constraints: Vec<Constraint>,
+    /// Scheduling priority.
     pub priority: ConstraintPriority,
+    /// Optional key-value metadata.
     pub metadata: HashMap<String, String>,
 }
 
 impl CompositionRequest {
+    /// Creates a new composition request with default priority.
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -50,32 +59,38 @@ impl CompositionRequest {
         }
     }
 
+    /// Adds a constraint to the request.
     #[must_use]
     pub fn with_constraint(mut self, constraint: Constraint) -> Self {
         self.constraints.push(constraint);
         self
     }
 
+    /// Sets the scheduling priority.
     #[must_use]
     pub const fn with_priority(mut self, priority: ConstraintPriority) -> Self {
         self.priority = priority;
         self
     }
 
+    /// Adds a metadata key-value pair.
     #[must_use]
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
     }
 
+    /// Returns only hard (must-satisfy) constraints.
     pub fn hard_constraints(&self) -> Vec<&Constraint> {
         self.constraints.iter().filter(|c| c.is_hard()).collect()
     }
 
+    /// Returns only soft (preference) constraints.
     pub fn soft_constraints(&self) -> Vec<&Constraint> {
         self.constraints.iter().filter(|c| c.is_soft()).collect()
     }
 
+    /// Returns (hard_count, soft_count).
     pub fn constraint_count(&self) -> (usize, usize) {
         let hard = self.hard_constraints().len();
         let soft = self.soft_constraints().len();

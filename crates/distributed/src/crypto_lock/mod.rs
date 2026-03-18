@@ -30,7 +30,7 @@ pub use cache::*;
 pub use permissions::*;
 pub use validation::*;
 
-// Helper function for duration from days
+/// Converts days to `Duration` for permission validity.
 #[must_use]
 pub const fn duration_from_days(days: u64) -> std::time::Duration {
     std::time::Duration::from_secs(days * 86400)

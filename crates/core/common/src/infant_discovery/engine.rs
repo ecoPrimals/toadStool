@@ -7,7 +7,6 @@
 //! start with zero knowledge and discover everything dynamically.
 
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
 
 use super::capabilities::{
@@ -396,6 +395,7 @@ impl CapabilityDiscovery for DiscoveryEngine {
 mod tests {
     use super::*;
     use crate::infant_discovery::DiscoveryEngineBuilder;
+    use std::time::Duration;
 
     struct MockSource {
         name: String,

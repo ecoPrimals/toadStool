@@ -36,19 +36,26 @@ pub enum JobState {
 pub enum JobType {
     /// Model inference (Ollama, GGUF, safetensors)
     Inference {
+        /// Model name.
         model: String,
+        /// Prompt text.
         prompt: String,
+        /// Optional inference parameters.
         #[serde(default)]
         params: serde_json::Value,
     },
     /// Data transformation (embedding, tokenization)
     Transform {
+        /// Operation name.
         operation: String,
+        /// Input data.
         input: serde_json::Value,
     },
     /// Arbitrary compute via plugin
     Custom {
+        /// Plugin identifier.
         plugin: String,
+        /// Plugin-specific payload.
         payload: serde_json::Value,
     },
 }
@@ -56,23 +63,31 @@ pub enum JobType {
 /// A compute job submitted to the queue
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputeJob {
+    /// Unique job identifier.
     pub id: JobId,
+    /// Job type and parameters.
     pub job_type: JobType,
+    /// Current job state.
     pub state: JobState,
+    /// When the job was submitted.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub submitted_at: SystemTime,
     #[serde(
         skip_serializing_if = "Option::is_none",
         with = "toadstool_common::system_time_serde::opt"
     )]
+    /// When execution started (if running or completed).
     pub started_at: Option<SystemTime>,
     #[serde(
         skip_serializing_if = "Option::is_none",
         with = "toadstool_common::system_time_serde::opt"
     )]
+    /// When execution completed (if completed).
     pub completed_at: Option<SystemTime>,
+    /// Result payload (if completed successfully).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<serde_json::Value>,
+    /// Error message (if failed).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     /// Priority (lower = higher priority)
@@ -500,31 +515,67 @@ mod tests {
 /// Job queue errors
 #[derive(Debug, thiserror::Error)]
 pub enum JobQueueError {
+    /// Queue is full.
     #[error("Queue is full (max: {max})")]
-    QueueFull { max: usize },
+    QueueFull {
+        /// Maximum queue size.
+        max: usize,
+    },
 
+    /// Job not found.
     #[error("Job not found: {id}")]
-    JobNotFound { id: JobId },
+    JobNotFound {
+        /// Job ID.
+        id: JobId,
+    },
 
+    /// Job is not yet complete.
     #[error("Job {id} is not complete (current state: pending/running)")]
-    JobNotComplete { id: JobId },
+    JobNotComplete {
+        /// Job ID.
+        id: JobId,
+    },
 
+    /// Job has no result.
     #[error("Job {id} has no result")]
-    NoResult { id: JobId },
+    NoResult {
+        /// Job ID.
+        id: JobId,
+    },
 
+    /// Job failed with error.
     #[error("Job {id} failed: {error}")]
-    JobFailed { id: JobId, error: String },
+    JobFailed {
+        /// Job ID.
+        id: JobId,
+        /// Error message.
+        error: String,
+    },
 
+    /// Job was cancelled.
     #[error("Job {id} was cancelled")]
-    JobCancelled { id: JobId },
+    JobCancelled {
+        /// Job ID.
+        id: JobId,
+    },
 
+    /// Cannot cancel job in current state.
     #[error("Cannot cancel job {id} in state {state:?}")]
-    CannotCancel { id: JobId, state: JobState },
+    CannotCancel {
+        /// Job ID.
+        id: JobId,
+        /// Current state.
+        state: JobState,
+    },
 
+    /// Invalid state transition.
     #[error("Invalid state transition for job {id}: {from:?} -> {to:?}")]
     InvalidTransition {
+        /// Job ID.
         id: JobId,
+        /// Source state.
         from: JobState,
+        /// Target state.
         to: JobState,
     },
 }

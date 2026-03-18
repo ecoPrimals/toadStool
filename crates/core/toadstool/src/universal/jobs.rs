@@ -34,25 +34,36 @@ pub enum JobPriority {
 pub enum UniversalJobType {
     /// Native process execution
     Native {
+        /// Executable path or name.
         executable: String,
+        /// Command-line arguments.
         args: Vec<String>,
+        /// Environment variables.
         env: HashMap<String, String>,
     },
     /// WebAssembly execution
     Wasm {
+        /// WASM module bytes.
         module: Vec<u8>,
+        /// Arguments to pass.
         args: Vec<String>,
+        /// Environment variables.
         env: HashMap<String, String>,
     },
     /// Primal delegation
     Primal {
+        /// Target primal type.
         primal_type: String,
+        /// Endpoint URL.
         endpoint: String,
+        /// JSON payload.
         payload: serde_json::Value,
     },
     /// `BiomeOS` orchestration
     BiomeOS {
+        /// Biome manifest JSON.
         biome_manifest: serde_json::Value,
+        /// Team identifier.
         team_id: String,
     },
 }

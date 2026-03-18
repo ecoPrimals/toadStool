@@ -22,8 +22,11 @@ const DEFAULT_RING_CAPACITY: usize = 1_000;
 /// Severity level for a security event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
+    /// Informational; no action required.
     Info,
+    /// Warning; may warrant investigation.
     Warning,
+    /// Critical; requires immediate attention.
     Critical,
 }
 
@@ -32,8 +35,11 @@ pub enum Severity {
 pub struct SecurityEvent {
     /// Unix timestamp (milliseconds).
     pub timestamp_ms: u64,
+    /// Severity level.
     pub severity: Severity,
+    /// Event category for filtering.
     pub category: EventCategory,
+    /// Human-readable event description.
     pub message: String,
     /// Optional workload or request identifier.
     pub correlation_id: Option<String>,
@@ -55,6 +61,7 @@ impl SecurityEvent {
         }
     }
 
+    /// Attach a correlation ID for request tracing.
     #[must_use]
     pub fn with_correlation(mut self, id: impl Into<String>) -> Self {
         self.correlation_id = Some(id.into());
@@ -65,20 +72,30 @@ impl SecurityEvent {
 /// Coarse category for quick filtering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventCategory {
+    /// Authentication or authorization failure.
     AuthFailure,
+    /// Access denied by policy.
     PolicyDenial,
+    /// Unusual resource usage (CPU, memory).
     ResourceAnomaly,
+    /// Unusual network activity.
     NetworkAnomaly,
+    /// Data or integrity violation.
     IntegrityViolation,
+    /// General operational notice.
     Operational,
 }
 
 /// Snapshot of system resource usage, sampled periodically for anomaly detection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceSnapshot {
+    /// Unix timestamp (milliseconds) when sampled.
     pub timestamp_ms: u64,
+    /// CPU utilization (0–100%).
     pub cpu_usage_percent: f32,
+    /// Memory used in bytes.
     pub memory_used_bytes: u64,
+    /// Total memory in bytes.
     pub memory_total_bytes: u64,
 }
 
@@ -94,11 +111,13 @@ pub struct SecurityMonitor {
 }
 
 impl SecurityMonitor {
+    /// Create a monitor with default ring buffer capacity.
     #[must_use]
     pub fn new() -> Self {
         Self::with_capacity(DEFAULT_RING_CAPACITY)
     }
 
+    /// Create a monitor with the given ring buffer capacity.
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {

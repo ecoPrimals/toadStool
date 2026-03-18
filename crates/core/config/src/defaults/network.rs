@@ -76,3 +76,11 @@ pub const DISCOVERY_PORT: u16 = 0;
 /// Default federation port for cross-primal communication
 /// Port 0 = OS-assigned at bind time.
 pub const FEDERATION_PORT: u16 = 0;
+
+/// Default coordination endpoint URL (fallback when discovery unavailable).
+/// Re-exported from `toadstool_common` for config layer access.
+pub use toadstool_common::constants::network::DEFAULT_COORDINATION_ENDPOINT;
+
+/// Default server endpoint for client connections (development/testing fallback).
+/// Alias for `DEFAULT_COORDINATION_ENDPOINT`. Use `TOADSTOOL_SERVER_URL` env var or discovery in production.
+pub use toadstool_common::constants::network::DEFAULT_COORDINATION_ENDPOINT as DEFAULT_SERVER_ENDPOINT;

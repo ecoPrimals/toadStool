@@ -65,8 +65,11 @@ impl Default for ServiceMetadata {
 /// Service health status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ServiceHealth {
+    /// Health status unknown or not yet checked
     Unknown,
+    /// Service is degraded but may still accept requests
     Degraded,
+    /// Service is healthy and ready
     Healthy,
 }
 
@@ -80,7 +83,10 @@ pub enum DiscoverySource {
     MDNS,
 
     /// Discovered via service mesh (consul, etcd, etc.)
-    ServiceMesh(String),
+    ServiceMesh(
+        /// Mesh identifier (e.g., "consul", "etcd")
+        String,
+    ),
 
     /// Discovered via configuration file
     ConfigFile,
@@ -180,21 +186,27 @@ pub trait CapabilityDiscovery: Send + Sync {
 /// Errors during capability discovery
 #[derive(Debug, thiserror::Error)]
 pub enum DiscoveryError {
+    /// Requested capability was not found by any source
     #[error("Capability '{0}' not found")]
     CapabilityNotFound(String),
 
+    /// Discovery operation exceeded timeout
     #[error("Discovery timeout after {0:?}")]
     Timeout(Duration),
 
+    /// No services with acceptable health were found
     #[error("No healthy services found for capability '{0}'")]
     NoHealthyServices(String),
 
+    /// No discovered service supports the required protocol
     #[error("Protocol '{0}' not supported by any discovered service")]
     ProtocolNotSupported(String),
 
+    /// A discovery source failed during resolution
     #[error("Discovery source failed: {0}")]
     SourceFailed(String),
 
+    /// Configuration was invalid or missing
     #[error("Configuration error: {0}")]
     ConfigError(String),
 }

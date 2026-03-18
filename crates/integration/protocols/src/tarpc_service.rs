@@ -34,20 +34,47 @@
 //! ```
 
 use bytes::Bytes;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
+use std::sync::Arc;
+
+fn serialize_arc_str<S>(v: &Arc<str>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str(v)
+}
+
+fn deserialize_arc_str<'de, D>(d: D) -> Result<Arc<str>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(d)?;
+    Ok(Arc::from(s))
+}
 
 /// Workload submission for compute execution.
 ///
 /// `data` uses [`bytes::Bytes`] — an `Arc<[u8]>` — so passing a submission
 /// through multiple handler layers or threads costs a single refcount bump
 /// rather than copying potentially megabyte-sized payloads.
+///
+/// `workload_id` and `workload_type` use `Arc<str>` per wateringHole zero-copy
+/// guidelines: clone is a refcount bump, not allocation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadSubmission {
     /// Unique workload identifier
-    pub workload_id: String,
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub workload_id: Arc<str>,
     /// Workload type (gpu_compute, cpu_compute, wasm, etc.)
-    pub workload_type: String,
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub workload_type: Arc<str>,
     /// Binary workload data (zero-copy: clone bumps refcount, not a memcpy)
     pub data: Bytes,
     /// Workload metadata
@@ -58,12 +85,16 @@ pub struct WorkloadSubmission {
     pub requirements: ResourceRequirements,
 }
 
-/// Workload priority levels
+/// Workload priority levels for scheduling
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum WorkloadPriority {
+    /// Low priority
     Low,
+    /// Normal priority
     Normal,
+    /// High priority
     High,
+    /// Critical priority
     Critical,
 }
 
@@ -84,10 +115,16 @@ pub struct ResourceRequirements {
 ///
 /// `data` uses [`bytes::Bytes`] so result payloads can be shared across
 /// multiple consumers (e.g. cache + caller) without copying.
+///
+/// `workload_id` uses `Arc<str>` per wateringHole zero-copy guidelines.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadResult {
     /// Workload identifier
-    pub workload_id: String,
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub workload_id: Arc<str>,
     /// Execution status
     pub status: WorkloadStatus,
     /// Result data (if successful; zero-copy clone)
@@ -101,11 +138,17 @@ pub struct WorkloadResult {
 /// Workload execution status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkloadStatus {
+    /// Awaiting submission
     Pending,
+    /// Queued for execution
     Queued,
+    /// Currently executing
     Running,
+    /// Completed successfully
     Completed,
+    /// Execution failed
     Failed,
+    /// Cancelled by user
     Cancelled,
 }
 
@@ -377,8 +420,8 @@ mod tests {
     #[test]
     fn test_workload_submission_serialization() {
         let submission = WorkloadSubmission {
-            workload_id: "work-123".to_string(),
-            workload_type: "gpu_compute".to_string(),
+            workload_id: Arc::from("work-123"),
+            workload_type: Arc::from("gpu_compute"),
             data: bytes::Bytes::from(vec![1, 2, 3, 4]),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
@@ -395,7 +438,10 @@ mod tests {
         let deserialized: WorkloadSubmission =
             serde_json::from_str(&json).expect("Deserialization failed");
 
-        assert_eq!(submission.workload_id, deserialized.workload_id);
+        assert_eq!(
+            submission.workload_id.as_ref(),
+            deserialized.workload_id.as_ref()
+        );
     }
 
     #[test]

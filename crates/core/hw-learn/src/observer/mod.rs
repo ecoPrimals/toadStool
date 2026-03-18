@@ -67,36 +67,76 @@ pub struct TraceEvent {
 /// Vendor-neutral classification of trace events.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TraceEventKind {
-    /// MMIO register write: offset, value, width in bytes.
-    RegisterWrite { offset: u64, value: u64, width: u8 },
-    /// MMIO register read: offset, returned value.
-    RegisterRead { offset: u64, value: u64, width: u8 },
-    /// DRM ioctl call: ioctl number, argument size, success/failure.
+    /// MMIO register write.
+    RegisterWrite {
+        /// BAR-relative register offset.
+        offset: u64,
+        /// Value written.
+        value: u64,
+        /// Access width in bytes (4 or 8).
+        width: u8,
+    },
+    /// MMIO register read.
+    RegisterRead {
+        /// BAR-relative register offset.
+        offset: u64,
+        /// Value read back.
+        value: u64,
+        /// Access width in bytes (4 or 8).
+        width: u8,
+    },
+    /// DRM ioctl call.
     IoctlCall {
+        /// DRM ioctl number.
         ioctl_nr: u64,
+        /// Argument buffer size.
         arg_size: u32,
+        /// Whether the ioctl succeeded.
         success: bool,
     },
-    /// Firmware load: engine name, firmware path.
-    FirmwareLoad { engine: String, path: String },
-    /// GSP RPC message: function ID, payload size.
+    /// Firmware load.
+    FirmwareLoad {
+        /// Engine name (e.g., MEC, GSP).
+        engine: String,
+        /// Path to firmware blob.
+        path: String,
+    },
+    /// GSP RPC message (nouveau).
     GspRpc {
+        /// RPC function ID.
         func_id: u32,
+        /// Payload size in bytes.
         payload_size: u32,
+        /// Message direction.
         direction: RpcDirection,
     },
-    /// AMD PM4 packet: opcode, word count.
-    Pm4Packet { opcode: u16, count: u16 },
-    /// Intel batch buffer command: opcode, dword count.
-    BatchCommand { opcode: u32, dwords: u16 },
+    /// AMD PM4 packet.
+    Pm4Packet {
+        /// PM4 opcode.
+        opcode: u16,
+        /// Word count in packet.
+        count: u16,
+    },
+    /// Intel batch buffer command.
+    BatchCommand {
+        /// Command opcode.
+        opcode: u32,
+        /// Dword count.
+        dwords: u16,
+    },
     /// Delay/gap in trace (no activity for this duration).
-    Gap { duration_us: u64 },
+    Gap {
+        /// Gap duration in microseconds.
+        duration_us: u64,
+    },
 }
 
 /// Direction of a GSP RPC message.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum RpcDirection {
+    /// Host (CPU) to GSP (GPU System Processor).
     HostToGsp,
+    /// GSP to host.
     GspToHost,
 }
 

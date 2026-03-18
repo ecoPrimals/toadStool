@@ -8,6 +8,7 @@
 //! - Self-evolves and adapts to hardware changes
 //! - `BarraCuda` runs the math on all hardware via ToadStool
 
+/// Hardware discovery and management (GPU, NPU, CPU, FPGA).
 pub mod hardware;
 pub mod hardware_transport;
 pub mod npu_controller;

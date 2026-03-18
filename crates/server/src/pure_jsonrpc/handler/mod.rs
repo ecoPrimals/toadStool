@@ -187,14 +187,22 @@ impl JsonRpcHandler {
                 return self.dispatch.dispatch_capabilities(params).await;
             }
 
-            "gpu.info" => return core::gpu_info().await,
-            "gpu.memory" => return core::gpu_memory().await,
-            "gpu.telemetry" => return self.hw_learn.gpu_telemetry(params).await,
+            "gpu.query_info" | "gpu.info" => return core::gpu_info().await,
+            "gpu.query_memory" | "gpu.memory" => return core::gpu_memory().await,
+            "gpu.query_telemetry" | "gpu.telemetry" => {
+                return self.hw_learn.gpu_telemetry(params).await;
+            }
 
-            "ollama.list_models" => return self.ollama.ollama_list_models().await,
-            "ollama.inference" => return self.ollama.ollama_inference(params).await,
-            "ollama.load" => return self.ollama.ollama_load(params).await,
-            "ollama.unload" => return self.ollama.ollama_unload(params).await,
+            "inference.list_models" | "ollama.list_models" => {
+                return self.ollama.ollama_list_models().await;
+            }
+            "inference.execute" | "ollama.inference" => {
+                return self.ollama.ollama_inference(params).await;
+            }
+            "inference.load_model" | "ollama.load" => return self.ollama.ollama_load(params).await,
+            "inference.unload_model" | "ollama.unload" => {
+                return self.ollama.ollama_unload(params).await;
+            }
 
             "gate.update" => return self.job.gate_update(params).await,
             "gate.remove" => return self.job.gate_remove(params).await,
@@ -271,7 +279,9 @@ impl JsonRpcHandler {
             "shader.compile.status" => return self.shader.compile_status(params).await,
             "shader.compile.capabilities" => return self.shader.compile_capabilities().await,
 
-            "toadstool.provenance" => return Self::toadstool_provenance().await,
+            "provenance.query" | "provenance.get" | "toadstool.provenance" => {
+                return Self::toadstool_provenance().await;
+            }
 
             _ => {}
         }
@@ -315,6 +325,13 @@ impl JsonRpcHandler {
             "shader_compile_status" => self.shader.compile_status(params).await,
             "shader_compile_capabilities" => self.shader.compile_capabilities().await,
             "toadstool_provenance" => Self::toadstool_provenance().await,
+            "ollama_list_models" => self.ollama.ollama_list_models().await,
+            "ollama_inference" => self.ollama.ollama_inference(params).await,
+            "ollama_load" => self.ollama.ollama_load(params).await,
+            "ollama_unload" => self.ollama.ollama_unload(params).await,
+            "gpu_info" => core::gpu_info().await,
+            "gpu_memory" => core::gpu_memory().await,
+            "gpu_telemetry" => self.hw_learn.gpu_telemetry(params).await,
             "discovery_primals" => science::discovery_primals().await,
             "discovery_primal_health" => science::discovery_primal_health(params).await,
             "discovery_direct_rpc" => science::discovery_direct_rpc(params).await,

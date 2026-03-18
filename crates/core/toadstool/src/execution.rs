@@ -96,7 +96,10 @@ pub enum ExecutionStatus {
     /// Execution completed successfully
     Success,
     /// Execution failed (Cow for zero-copy static error messages)
-    Failed { error: Cow<'static, str> },
+    Failed {
+        /// Error message.
+        error: Cow<'static, str>,
+    },
     /// Execution was cancelled
     Cancelled,
     /// Execution timed out

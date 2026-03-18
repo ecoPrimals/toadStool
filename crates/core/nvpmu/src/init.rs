@@ -46,14 +46,22 @@ use hw_learn::distiller::{
 /// Result of applying a PMU init recipe.
 #[derive(Debug, serde::Serialize)]
 pub struct InitResult {
+    /// Target chip codename.
     pub chip: String,
+    /// Number of register write steps successfully applied.
     pub steps_applied: usize,
+    /// Number of steps that failed.
     pub steps_failed: usize,
+    /// Number of verify steps that passed.
     pub verify_passed: usize,
+    /// Number of verify steps that failed.
     pub verify_failed: usize,
+    /// Whether the recipe completed successfully.
     pub success: bool,
+    /// Whether rollback was attempted (only with `apply_with_recovery`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rollback_attempted: Option<bool>,
+    /// Whether rollback succeeded (only when `rollback_attempted` is true).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rollback_succeeded: Option<bool>,
 }

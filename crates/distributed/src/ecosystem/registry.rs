@@ -8,16 +8,21 @@ pub struct ServiceRegistry {
     _services: Arc<RwLock<HashMap<String, RegisteredService>>>,
 }
 
-/// Registered service
+/// A service registered in the discovery registry with health metadata.
 #[derive(Debug, Clone)]
 pub struct RegisteredService {
+    /// Service name for lookup.
     pub name: String,
+    /// Base endpoint URL for requests.
     pub endpoint: String,
+    /// URL for health check probes.
     pub health_check_url: String,
+    /// Last time the service was seen (heartbeat).
     pub last_seen: std::time::SystemTime,
 }
 
 impl ServiceRegistry {
+    /// Creates an empty service registry.
     #[must_use]
     pub fn new() -> Self {
         Self {

@@ -19,17 +19,26 @@ use std::time::Duration;
 use toadstool::error::ToadStoolResult;
 use uuid::Uuid;
 
-/// Parallelism model supported by compute resource
+/// Parallelism model supported by compute resource.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ParallelismModel {
-    /// SIMD - Single Instruction Multiple Data (CPU vectors, AVX, NEON)
-    Simd { width: u32 },
+    /// SIMD — Single Instruction Multiple Data (CPU vectors, AVX, NEON).
+    Simd {
+        /// Vector width in elements.
+        width: u32,
+    },
 
-    /// SIMT - Single Instruction Multiple Threads (GPU threads)
-    Simt { max_threads: u64 },
+    /// SIMT — Single Instruction Multiple Threads (GPU threads).
+    Simt {
+        /// Maximum concurrent threads.
+        max_threads: u64,
+    },
 
-    /// Task-based parallelism (CPU cores, thread pools)
-    Task { max_tasks: u32 },
+    /// Task-based parallelism (CPU cores, thread pools).
+    Task {
+        /// Maximum concurrent tasks.
+        max_tasks: u32,
+    },
 
     /// Dataflow/Stream processing (specialized accelerators)
     Dataflow,
@@ -79,23 +88,29 @@ pub struct MemoryCapabilities {
     pub access_patterns: Vec<MemoryAccessPattern>,
 }
 
-/// Cache level description
+/// Cache level description.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CacheLevel {
+    /// Cache level (1, 2, 3, etc.).
     pub level: u8,
+    /// Size in bytes.
     pub size_bytes: u64,
+    /// Cache line size in bytes.
     pub line_size_bytes: u32,
-    /// Cache associativity (ways)
-    /// 0 = fully associative or unknown
+    /// Cache associativity (ways); 0 = fully associative or unknown.
     pub associativity: u32,
 }
 
-/// Optimized memory access patterns
+/// Optimized memory access patterns.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryAccessPattern {
+    /// Sequential access.
     Sequential,
+    /// Strided access.
     Strided,
+    /// Random access.
     Random,
+    /// Coalesced access (GPU-friendly).
     Coalesced,
 }
 
@@ -319,30 +334,47 @@ impl OperationCapabilities {
     }
 }
 
-/// Required precision for computation
+/// Required precision for computation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Precision {
+    /// 16-bit float.
     Fp16,
+    /// 32-bit float.
     Fp32,
+    /// 64-bit float.
     Fp64,
+    /// 8-bit integer.
     Int8,
+    /// 16-bit integer.
     Int16,
+    /// 32-bit integer.
     Int32,
+    /// 64-bit integer.
     Int64,
+    /// Mixed precision.
     Mixed,
 }
 
-/// Required operations for computation
+/// Required operations for computation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation {
+    /// General compute.
     GeneralCompute,
+    /// Matrix multiply.
     MatrixMultiply,
+    /// Tensor operations.
     TensorOps,
+    /// Convolution.
     Convolution,
+    /// FFT.
     Fft,
+    /// Reduction.
     Reduction,
+    /// Atomic operations.
     Atomic,
+    /// Branch-heavy code.
     BranchHeavy,
+    /// Custom operation.
     Custom(String),
 }
 
@@ -458,68 +490,94 @@ pub struct UniversalWorkload {
     pub hints: OptimizationHints,
 }
 
-/// Buffer for compute data
+/// Buffer for compute data.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ComputeBuffer {
+    /// Buffer name.
     pub name: String,
+    /// Buffer data.
     pub data: bytes::Bytes,
+    /// Element data type.
     pub element_type: DataType,
 }
 
-/// Universal kernel representation
+/// Universal kernel representation.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum UniversalKernel {
-    /// Source code in a universal language
+    /// Source code in a universal language.
     Source {
+        /// Kernel language.
         language: KernelLanguage,
+        /// Source code.
         code: String,
+        /// Entry point name.
         entry_point: String,
     },
 
-    /// Pre-compiled binary
+    /// Pre-compiled binary.
     Binary {
+        /// Binary format.
         format: BinaryFormat,
+        /// Binary data.
         data: bytes::Bytes,
     },
 
-    /// High-level operation description
+    /// High-level operation description.
     Operation {
+        /// Operation type.
         operation: Operation,
+        /// Operation parameters.
         parameters: HashMap<String, serde_json::Value>,
     },
 
-    /// Reference to standard library function
-    Library { name: String, version: String },
+    /// Reference to standard library function.
+    Library {
+        /// Function name.
+        name: String,
+        /// Version string.
+        version: String,
+    },
 }
 
-/// Supported kernel languages
+/// Supported kernel languages.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum KernelLanguage {
+    /// WGSL (WebGPU Shading Language).
     Wgsl,
+    /// SPIR-V.
     Spirv,
+    /// OpenCL C.
     OpenClC,
+    /// CUDA.
     Cuda,
+    /// Metal Shading Language.
     Metal,
+    /// Python (for high-level kernels).
     Python,
+    /// Rust (for GPU kernels).
     Rust,
+    /// Custom language.
     Custom(String),
 }
 
-/// Binary formats
+/// Binary formats for pre-compiled kernels.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum BinaryFormat {
+    /// SPIR-V binary.
     SpirvBinary,
+    /// Native binary.
     NativeBinary,
+    /// Custom format.
     Custom(String),
 }
 
-/// Optimization hints for scheduler
+/// Optimization hints for scheduler.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct OptimizationHints {
-    /// Prefer latency over throughput
+    /// Prefer latency over throughput.
     pub low_latency: bool,
 
-    /// Prefer energy efficiency
+    /// Prefer energy efficiency.
     pub energy_efficient: bool,
 
     /// Allow approximate results

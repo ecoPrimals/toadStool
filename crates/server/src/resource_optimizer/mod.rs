@@ -21,12 +21,15 @@ pub use types::{
 /// Optimization error
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum OptimizationError {
+    /// Resource estimation failed.
     #[error("Estimation failed: {0}")]
     EstimationFailed(#[from] crate::resource_estimator::EstimationError),
 
+    /// System capability query failed.
     #[error("System query failed: {0}")]
     SystemQueryFailed(String),
 
+    /// Analysis failed.
     #[error("Analysis failed: {0}")]
     AnalysisFailed(String),
 }
@@ -43,6 +46,7 @@ impl Default for ResourceOptimizer {
 }
 
 impl ResourceOptimizer {
+    /// Creates a new resource optimizer.
     pub fn new() -> Self {
         Self {
             estimator: ResourceEstimator::new(),

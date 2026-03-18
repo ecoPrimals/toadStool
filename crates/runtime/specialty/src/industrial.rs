@@ -35,19 +35,25 @@ pub struct SCADAAdapter {
     active_jobs: Arc<RwLock<HashMap<Uuid, SCADAJob>>>,
 }
 
-/// PLC Job
+/// Job submitted to a PLC (Programmable Logic Controller).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PLCJob {
+    /// Unique identifier for the job.
     pub job_id: Uuid,
+    /// Ladder logic or PLC program content.
     pub program: String,
+    /// Current execution status.
     pub status: JobStatus,
 }
 
-/// SCADA Job
+/// Job submitted to a SCADA (Supervisory Control And Data Acquisition) system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SCADAJob {
+    /// Unique identifier for the job.
     pub job_id: Uuid,
+    /// SCADA configuration or HMI layout.
     pub configuration: String,
+    /// Current execution status.
     pub status: JobStatus,
 }
 
@@ -61,6 +67,7 @@ impl Default for PLCAdapter {
 }
 
 impl PLCAdapter {
+    /// Creates a new PLC adapter with default settings.
     pub fn new() -> Self {
         Self::default()
     }
@@ -76,6 +83,7 @@ impl Default for SCADAAdapter {
 }
 
 impl SCADAAdapter {
+    /// Creates a new SCADA adapter with default settings.
     pub fn new() -> Self {
         Self::default()
     }

@@ -21,6 +21,7 @@ pub struct IsolatedEnv {
 }
 
 impl IsolatedEnv {
+    /// Create a new isolated environment with a temporary directory
     pub fn new() -> std::io::Result<Self> {
         Ok(Self {
             temp_dir: TempDir::new()?,
@@ -28,20 +29,24 @@ impl IsolatedEnv {
         })
     }
 
+    /// Get the temporary directory path
     pub fn path(&self) -> &std::path::Path {
         self.temp_dir.path()
     }
 
+    /// Set an environment variable for the duration of the test
     pub async fn set_var(&self, key: impl Into<String>, value: impl Into<String>) {
         let mut vars = self.env_vars.write().await;
         vars.push((key.into(), value.into()));
     }
 
+    /// Get an environment variable previously set via set_var
     pub async fn get_var(&self, key: &str) -> Option<String> {
         let vars = self.env_vars.read().await;
         vars.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
     }
 
+    /// Create a path for a file in the temp dir (does not create the file)
     pub fn create_file(&self, name: &str) -> PathBuf {
         self.path().join(name)
     }
@@ -60,30 +65,36 @@ pub struct IsolatedConfig {
 }
 
 impl IsolatedConfig {
+    /// Create a new isolated config with empty JSON
     pub fn new() -> Self {
         Self {
             data: Arc::new(RwLock::new(serde_json::json!({}))),
         }
     }
 
+    /// Set a config value by key
     pub async fn set(&self, key: &str, value: serde_json::Value) {
         let mut data = self.data.write().await;
         data[key] = value;
     }
 
+    /// Get a config value by key
     pub async fn get(&self, key: &str) -> Option<serde_json::Value> {
         let data = self.data.read().await;
         data.get(key).cloned()
     }
 
+    /// Get a config value as string
     pub async fn get_str(&self, key: &str) -> Option<String> {
         self.get(key).await?.as_str().map(|s| s.to_string())
     }
 
+    /// Get a config value as u64
     pub async fn get_u64(&self, key: &str) -> Option<u64> {
         self.get(key).await?.as_u64()
     }
 
+    /// Get a config value as bool
     pub async fn get_bool(&self, key: &str) -> Option<bool> {
         self.get(key).await?.as_bool()
     }
@@ -110,6 +121,7 @@ impl Drop for RuntimeGuard {
 }
 
 impl IsolatedRuntime {
+    /// Create a runtime using the current tokio handle
     pub fn new() -> Self {
         Self {
             handle: tokio::runtime::Handle::current(),
@@ -117,10 +129,12 @@ impl IsolatedRuntime {
         }
     }
 
+    /// Get the tokio runtime handle for spawning tasks
     pub const fn handle(&self) -> &tokio::runtime::Handle {
         &self.handle
     }
 
+    /// Spawn an async task on the runtime
     pub fn spawn<F>(&self, future: F) -> tokio::task::JoinHandle<F::Output>
     where
         F: std::future::Future + Send + 'static,
@@ -129,6 +143,7 @@ impl IsolatedRuntime {
         self.handle.spawn(future)
     }
 
+    /// Spawn a blocking task on the runtime
     pub fn spawn_blocking<F, R>(&self, f: F) -> tokio::task::JoinHandle<R>
     where
         F: FnOnce() -> R + Send + 'static,
@@ -151,6 +166,7 @@ pub struct TestScope<T> {
 }
 
 impl<T> TestScope<T> {
+    /// Create a scope that owns a resource (no cleanup)
     pub fn new(resource: T) -> Self {
         Self {
             resource: Some(resource),
@@ -158,6 +174,7 @@ impl<T> TestScope<T> {
         }
     }
 
+    /// Create a scope with a cleanup closure to run on drop
     pub fn with_cleanup<F>(resource: T, cleanup: F) -> Self
     where
         F: FnOnce(T) + Send + 'static,

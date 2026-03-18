@@ -11,18 +11,25 @@ use crate::types::{
 /// Connection information for active connections
 #[derive(Debug, Clone)]
 pub struct Connection {
+    /// Connected service identifier
     pub service_id: String,
+    /// Endpoint details
     pub endpoint: ServiceEndpoint,
+    /// Connection creation time
     pub created_at: Instant,
+    /// Last activity timestamp
     pub last_used: Instant,
+    /// Number of in-flight requests
     pub active_requests: u32,
 }
 
-/// Transport implementations enum
+/// Transport implementations enum.
 /// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 #[derive(Debug, Clone)]
 pub enum Transport {
+    /// HTTP transport (deprecated; delegated to Songbird)
     Http(HttpTransport),
+    /// tRPC over Unix sockets
     TRpc(TRpcTransport),
 }
 
@@ -72,10 +79,12 @@ impl Default for HttpTransport {
 }
 
 impl HttpTransport {
+    /// Create a new HTTP transport placeholder
     pub const fn new() -> Self {
         Self {}
     }
 
+    /// Send message (placeholder; HTTP delegated to Songbird)
     pub async fn send_message(
         &self,
         _message: &ProtocolMessage,
@@ -89,10 +98,12 @@ impl HttpTransport {
         ))
     }
 
+    /// Check if endpoint uses HTTP transport
     pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         matches!(endpoint.transport, TransportType::Http)
     }
 
+    /// Return transport type
     pub const fn transport_type(&self) -> TransportType {
         TransportType::Http
     }
@@ -113,10 +124,12 @@ impl Default for TRpcTransport {
 }
 
 impl TRpcTransport {
+    /// Create a new tRPC transport
     pub const fn new() -> Self {
         Self {}
     }
 
+    /// Send message (Unix socket tRPC; not yet implemented)
     pub async fn send_message(
         &self,
         _message: &ProtocolMessage,
@@ -129,10 +142,12 @@ impl TRpcTransport {
         ))
     }
 
+    /// Check if endpoint uses tRPC transport
     pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         matches!(endpoint.transport, TransportType::TRpc)
     }
 
+    /// Return transport type
     pub const fn transport_type(&self) -> TransportType {
         TransportType::TRpc
     }
@@ -151,6 +166,7 @@ impl Default for TransportManager {
 }
 
 impl TransportManager {
+    /// Create transport manager with default HTTP and tRPC transports
     pub fn new() -> Self {
         let mut transports = HashMap::new();
 
@@ -161,11 +177,13 @@ impl TransportManager {
         Self { transports }
     }
 
+    /// Register a transport for its type
     pub fn register_transport(&mut self, transport: Transport) {
         self.transports
             .insert(transport.transport_type(), transport);
     }
 
+    /// Send message via appropriate transport for endpoint
     pub async fn send_message(
         &self,
         message: &ProtocolMessage,
@@ -185,6 +203,7 @@ impl TransportManager {
         transport.send_message(message, endpoint).await
     }
 
+    /// Get list of registered transport types
     pub fn get_supported_transports(&self) -> Vec<TransportType> {
         self.transports.keys().cloned().collect()
     }

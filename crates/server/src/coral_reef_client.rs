@@ -15,9 +15,13 @@ use tracing::{debug, warn};
 /// coralReef health response from `shader.compile.status`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoralReefHealth {
+    /// Compiler name.
     pub name: String,
+    /// Version string.
     pub version: String,
+    /// Status string.
     pub status: String,
+    /// Supported GPU architectures.
     #[serde(default)]
     pub supported_archs: Vec<String>,
 }
@@ -25,12 +29,16 @@ pub struct CoralReefHealth {
 /// Compile response from `shader.compile.spirv` / `shader.compile.wgsl`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompileResponse {
+    /// Compiled binary.
     #[serde(default)]
     pub binary: Option<Vec<u8>>,
+    /// Binary size in bytes.
     #[serde(default)]
     pub size: Option<u64>,
+    /// Target architecture.
     #[serde(default)]
     pub arch: Option<String>,
+    /// Compilation status.
     #[serde(default)]
     pub status: Option<String>,
     /// Target device this binary was compiled for (card index).
@@ -90,6 +98,7 @@ impl Default for CoralReefClient {
 }
 
 impl CoralReefClient {
+    /// Creates a new coralReef client.
     pub fn new() -> Self {
         Self {
             inner: OnceCell::new(),

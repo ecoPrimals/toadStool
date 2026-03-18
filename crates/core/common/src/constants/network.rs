@@ -69,6 +69,10 @@ pub const BIND_ALL_IPV6: &str = "::";
 /// Default hostname
 pub const DEFAULT_HOSTNAME: &str = "localhost";
 
+/// Default coordination endpoint URL (fallback when discovery unavailable).
+/// Used by clients/tests when connecting to coordination services.
+pub const DEFAULT_COORDINATION_ENDPOINT: &str = "http://127.0.0.1:8080";
+
 // ============================================================================
 // Protocol Constants
 // ============================================================================
@@ -191,7 +195,6 @@ pub fn etcd_endpoints() -> String {
 }
 
 #[cfg(test)]
-#[allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
 mod tests {
     use super::*;
 
@@ -271,95 +274,96 @@ mod tests {
 
     #[test]
     fn test_consul_http_addr_default() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe {
-            std::env::remove_var("CONSUL_HTTP_ADDR");
-            std::env::remove_var("CONSUL_HOST");
-            std::env::remove_var("CONSUL_PORT");
-        }
-        let addr = consul_http_addr();
-        assert!(addr.starts_with("http://"));
-        assert!(addr.contains(":8500"));
+        temp_env::with_vars_unset(["CONSUL_HTTP_ADDR", "CONSUL_HOST", "CONSUL_PORT"], || {
+            let addr = consul_http_addr();
+            assert!(addr.starts_with("http://"));
+            assert!(addr.contains(":8500"));
+        });
     }
 
     #[test]
     fn test_consul_http_addr_from_env() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var("CONSUL_HTTP_ADDR", "http://consul.example.com:8500") };
-        let addr = consul_http_addr();
-        assert_eq!(addr, "http://consul.example.com:8500");
-        unsafe { std::env::remove_var("CONSUL_HTTP_ADDR") };
+        temp_env::with_var(
+            "CONSUL_HTTP_ADDR",
+            Some("http://consul.example.com:8500"),
+            || {
+                let addr = consul_http_addr();
+                assert_eq!(addr, "http://consul.example.com:8500");
+            },
+        );
     }
 
     #[test]
     fn test_etcd_endpoints_default() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe {
-            std::env::remove_var("ETCD_ENDPOINTS");
-            std::env::remove_var("ETCD_HOST");
-            std::env::remove_var("ETCD_PORT");
-        }
-        let endpoints = etcd_endpoints();
-        assert!(endpoints.starts_with("http://"));
-        assert!(endpoints.contains(":2379"));
+        temp_env::with_vars_unset(["ETCD_ENDPOINTS", "ETCD_HOST", "ETCD_PORT"], || {
+            let endpoints = etcd_endpoints();
+            assert!(endpoints.starts_with("http://"));
+            assert!(endpoints.contains(":2379"));
+        });
     }
 
     #[test]
     fn test_etcd_endpoints_from_env() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var("ETCD_ENDPOINTS", "http://etcd.example.com:2379") };
-        let endpoints = etcd_endpoints();
-        assert_eq!(endpoints, "http://etcd.example.com:2379");
-        unsafe { std::env::remove_var("ETCD_ENDPOINTS") };
+        temp_env::with_var(
+            "ETCD_ENDPOINTS",
+            Some("http://etcd.example.com:2379"),
+            || {
+                let endpoints = etcd_endpoints();
+                assert_eq!(endpoints, "http://etcd.example.com:2379");
+            },
+        );
     }
 
     #[test]
     fn test_etcd_endpoints_host_port_env() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe {
-            std::env::remove_var("ETCD_ENDPOINTS");
-            std::env::set_var("ETCD_HOST", "etcd.local");
-            std::env::set_var("ETCD_PORT", "2379");
-        }
-        let endpoints = etcd_endpoints();
-        assert_eq!(endpoints, "http://etcd.local:2379");
-        unsafe {
-            std::env::remove_var("ETCD_HOST");
-            std::env::remove_var("ETCD_PORT");
-        }
+        temp_env::with_vars(
+            [
+                ("ETCD_ENDPOINTS", None::<&str>),
+                ("ETCD_HOST", Some("etcd.local")),
+                ("ETCD_PORT", Some("2379")),
+            ],
+            || {
+                let endpoints = etcd_endpoints();
+                assert_eq!(endpoints, "http://etcd.local:2379");
+            },
+        );
     }
 
     #[test]
     fn test_consul_toadstool_default_addr() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe {
-            std::env::remove_var("CONSUL_HTTP_ADDR");
-            std::env::remove_var("CONSUL_HOST");
-            std::env::remove_var("CONSUL_PORT");
-            std::env::set_var(
-                "TOADSTOOL_CONSUL_DEFAULT_ADDR",
-                "http://consul.override:8600",
-            );
-        }
-        let addr = consul_http_addr();
-        assert_eq!(addr, "http://consul.override:8600");
-        unsafe { std::env::remove_var("TOADSTOOL_CONSUL_DEFAULT_ADDR") };
+        temp_env::with_vars(
+            [
+                ("CONSUL_HTTP_ADDR", None::<&str>),
+                ("CONSUL_HOST", None::<&str>),
+                ("CONSUL_PORT", None::<&str>),
+                (
+                    "TOADSTOOL_CONSUL_DEFAULT_ADDR",
+                    Some("http://consul.override:8600"),
+                ),
+            ],
+            || {
+                let addr = consul_http_addr();
+                assert_eq!(addr, "http://consul.override:8600");
+            },
+        );
     }
 
     #[test]
     fn test_etcd_toadstool_default_endpoints() {
-        // SAFETY: Test-only; sequential test execution
-        unsafe {
-            std::env::remove_var("ETCD_ENDPOINTS");
-            std::env::remove_var("ETCD_HOST");
-            std::env::remove_var("ETCD_PORT");
-            std::env::set_var(
-                "TOADSTOOL_ETCD_DEFAULT_ENDPOINTS",
-                "http://etcd.override:2380",
-            );
-        }
-        let endpoints = etcd_endpoints();
-        assert_eq!(endpoints, "http://etcd.override:2380");
-        unsafe { std::env::remove_var("TOADSTOOL_ETCD_DEFAULT_ENDPOINTS") };
+        temp_env::with_vars(
+            [
+                ("ETCD_ENDPOINTS", None::<&str>),
+                ("ETCD_HOST", None::<&str>),
+                ("ETCD_PORT", None::<&str>),
+                (
+                    "TOADSTOOL_ETCD_DEFAULT_ENDPOINTS",
+                    Some("http://etcd.override:2380"),
+                ),
+            ],
+            || {
+                let endpoints = etcd_endpoints();
+                assert_eq!(endpoints, "http://etcd.override:2380");
+            },
+        );
     }
 }

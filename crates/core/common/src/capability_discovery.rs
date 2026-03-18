@@ -290,15 +290,19 @@ pub enum DiscoveryMethod {
 /// Discovery errors
 #[derive(Debug, Error)]
 pub enum DiscoveryError {
+    /// Discovery operation exceeded timeout
     #[error("Discovery timeout")]
     Timeout,
 
+    /// No services advertising the capability were found
     #[error("No services found for capability: {0}")]
     NoServicesFound(String),
 
+    /// Discovery backend failed
     #[error("Discovery failed: {0}")]
     DiscoveryFailed(String),
 
+    /// Configuration was invalid
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
 }

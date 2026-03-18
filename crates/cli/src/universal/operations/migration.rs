@@ -55,65 +55,80 @@ pub trait MigrationOps {
         plan: &MigrationPlan,
     ) -> impl Future<Output = Result<bool>> + Send;
 
-    // Helper methods
+    /// Prepare target platform for migration
     fn prepare_target_platform(&self, target: &str) -> impl Future<Output = Result<()>> + Send;
+    /// Create a checkpoint of the workload state
     fn create_workload_checkpoint(
         &self,
         biome: &str,
     ) -> impl Future<Output = Result<WorkloadCheckpoint>> + Send;
+    /// Transfer checkpoint data to target platform
     fn transfer_checkpoint(
         &self,
         checkpoint: &WorkloadCheckpoint,
         target: &str,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Restore workload from checkpoint on target
     fn restore_from_checkpoint(
         &self,
         checkpoint: &WorkloadCheckpoint,
         target: &str,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Remove workload from source after migration
     fn cleanup_source_workload(&self, biome: &str) -> impl Future<Output = Result<()>> + Send;
+    /// Stop the workload on source platform
     fn stop_source_workload(&self, biome: &str) -> impl Future<Output = Result<()>> + Send;
+    /// Export workload state for transfer
     fn export_workload_state(
         &self,
         biome: &str,
     ) -> impl Future<Output = Result<WorkloadExport>> + Send;
+    /// Transfer exported data to target
     fn transfer_workload_data(
         &self,
         export: &WorkloadExport,
         target: &str,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Import export and start workload on target
     fn import_and_start_workload(
         &self,
         export: &WorkloadExport,
         target: &str,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Start continuous replication from source to target
     fn start_continuous_replication(
         &self,
         source: &str,
         target: &str,
     ) -> impl Future<Output = Result<ReplicationHandle>> + Send;
+    /// Wait for replication to sync
     fn wait_for_replication_sync(
         &self,
         handle: &ReplicationHandle,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Perform quick switchover from source to target
     fn perform_quick_switchover(
         &self,
         source: &str,
         target: &str,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Stop replication
     fn stop_replication(
         &self,
         handle: &ReplicationHandle,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Create a snapshot of workload state
     fn create_workload_snapshot(
         &self,
         biome: &str,
     ) -> impl Future<Output = Result<WorkloadSnapshot>> + Send;
+    /// Deploy snapshot to target platform
     fn deploy_snapshot_to_target(
         &self,
         snapshot: &WorkloadSnapshot,
         target: &str,
     ) -> impl Future<Output = Result<()>> + Send;
+    /// Start the cloned workload on target
     fn start_cloned_workload(&self, target: &str) -> impl Future<Output = Result<()>> + Send;
 }
 

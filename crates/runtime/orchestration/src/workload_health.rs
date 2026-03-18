@@ -46,24 +46,47 @@ pub enum InterruptAction {
     /// Informational only — log and continue.
     NoAction,
     /// Increase monitoring frequency.
-    IncreaseMonitoring { interval_ms: u64 },
+    IncreaseMonitoring {
+        /// Polling interval in milliseconds.
+        interval_ms: u64,
+    },
     /// Decrease monitoring frequency (things are improving).
-    DecreaseMonitoring { interval_ms: u64 },
+    DecreaseMonitoring {
+        /// Polling interval in milliseconds.
+        interval_ms: u64,
+    },
     /// Kill the current workload.
-    KillWorkload { reason: String },
+    KillWorkload {
+        /// Reason for killing.
+        reason: String,
+    },
     /// Restart workload with different parameters.
-    RestartWorkload { reason: String },
+    RestartWorkload {
+        /// Reason for restart.
+        reason: String,
+    },
     /// Migrate workload to a different substrate.
-    MigrateSubstrate { target: String, reason: String },
+    MigrateSubstrate {
+        /// Target substrate identifier.
+        target: String,
+        /// Reason for migration.
+        reason: String,
+    },
     /// Preempt workload (yield resources to higher priority).
-    Preempt { reason: String },
+    Preempt {
+        /// Reason for preemption.
+        reason: String,
+    },
 }
 
 /// A recorded workload interrupt with anomaly, severity, and recommended action.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadInterrupt {
+    /// Detected anomaly kind.
     pub anomaly: WorkloadAnomaly,
+    /// Current attention state (severity).
     pub severity: AttentionState,
+    /// Recommended corrective action.
     pub action: InterruptAction,
     /// Human-readable context.
     pub context: String,

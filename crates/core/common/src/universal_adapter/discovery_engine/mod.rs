@@ -61,6 +61,8 @@ impl DiscoveryEngine {
         })
     }
 
+    /// Create discovery engine with custom sources.
+    ///
     /// # Errors
     ///
     /// This constructor does not fail; returns [`ToadStoolResult`] for API consistency.
@@ -71,6 +73,7 @@ impl DiscoveryEngine {
         })
     }
 
+    /// Create discovery engine with no sources (for testing or manual source addition).
     #[must_use]
     pub fn empty() -> Self {
         Self {
@@ -103,18 +106,25 @@ impl DiscoveryEngine {
         Ok(all_providers)
     }
 
+    /// Add a discovery source to the engine.
     pub fn add_source(&mut self, source: Box<dyn DiscoverySource>) {
         self.sources.push(source);
     }
 }
 
+/// Trait for capability provider discovery sources.
+///
+/// Implement this to add custom discovery backends (e.g., custom registries).
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait DiscoverySource: Send + Sync {
+    /// Discover capability providers from this source.
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>>;
+    /// Human-readable source name for logging.
     fn name(&self) -> &str;
 }
 
+/// mDNS/DNS-SD discovery source for local network capability providers.
 pub struct MDnsSource {
     browse_timeout_secs: u64,
 }
@@ -128,11 +138,13 @@ impl Default for MDnsSource {
 }
 
 impl MDnsSource {
+    /// Create mDNS source with default browse timeout.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Create mDNS source with custom browse timeout in seconds.
     #[must_use]
     pub const fn with_timeout(secs: u64) -> Self {
         Self {
@@ -253,10 +265,12 @@ impl DiscoverySource for MDnsSource {
     }
 }
 
+/// Environment variable discovery source (TOADSTOOL_*_PROVIDER vars).
 #[derive(Default)]
 pub struct EnvironmentSource {}
 
 impl EnvironmentSource {
+    /// Create environment source (reads TOADSTOOL_*_PROVIDER vars).
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -371,10 +385,12 @@ impl DiscoverySource for EnvironmentSource {
     }
 }
 
+/// Local registry discovery source (XDG config dir / registry.json).
 #[derive(Default)]
 pub struct LocalRegistrySource {}
 
 impl LocalRegistrySource {
+    /// Create local registry source (reads XDG config / registry.json).
     #[must_use]
     pub fn new() -> Self {
         Self::default()

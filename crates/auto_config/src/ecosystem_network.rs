@@ -151,8 +151,6 @@ pub async fn discover_network_services(
 
 #[cfg(test)]
 mod tests {
-    #![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
-
     use super::*;
 
     #[tokio::test]
@@ -256,23 +254,17 @@ mod tests {
     #[tokio::test]
     async fn test_get_service_info_version_from_env() {
         use crate::ecosystem_types::{ServicePattern, ServiceType};
-        let old = std::env::var("COMPUTE_SVC_VERSION").ok();
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var("COMPUTE_SVC_VERSION", "2.0.0") };
-        let pattern = ServicePattern {
-            name: "compute-svc".to_string(),
-            description: String::new(),
-            service_type: ServiceType::Compute,
-            default_ports: vec![8080],
-            health_endpoints: vec![],
-            required_capabilities: vec![],
-        };
-        let info = get_service_info("http://localhost:8080", &pattern);
-        if let Some(v) = old {
-            unsafe { std::env::set_var("COMPUTE_SVC_VERSION", v) };
-        } else {
-            unsafe { std::env::remove_var("COMPUTE_SVC_VERSION") };
-        }
-        assert_eq!(info.version, "2.0.0");
+        temp_env::with_var("COMPUTE_SVC_VERSION", Some("2.0.0"), || {
+            let pattern = ServicePattern {
+                name: "compute-svc".to_string(),
+                description: String::new(),
+                service_type: ServiceType::Compute,
+                default_ports: vec![8080],
+                health_endpoints: vec![],
+                required_capabilities: vec![],
+            };
+            let info = get_service_info("http://localhost:8080", &pattern);
+            assert_eq!(info.version, "2.0.0");
+        });
     }
 }

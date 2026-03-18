@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal sockets tests
-#![allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
 
 use std::path::PathBuf;
 
@@ -411,14 +410,10 @@ fn test_get_socket_path_for_service_unknown_with_env_override() {
     let service_name = format!("testsvc_{}", std::process::id());
     let test_key = format!("TESTSVC_{}_SOCKET", std::process::id());
     let custom_path = "/tmp/custom-test.sock";
-    // SAFETY: Test-only; no other threads access env vars during this test
-    unsafe { std::env::set_var(&test_key, custom_path) };
-
-    let path = get_socket_path_for_service(&service_name);
-
-    unsafe { std::env::remove_var(&test_key) };
-
-    assert_eq!(path.to_string_lossy(), custom_path);
+    temp_env::with_var(&test_key, Some(custom_path), || {
+        let path = get_socket_path_for_service(&service_name);
+        assert_eq!(path.to_string_lossy(), custom_path);
+    });
 }
 
 #[test]

@@ -17,7 +17,9 @@ pub enum CapabilityType {
     ///
     /// Could be provided by: beardog, cloud HSM, local keyring, etc.
     Security {
+        /// Security features this provider supports
         features: Vec<SecurityFeature>,
+        /// Minimum trust level required
         min_trust_level: TrustLevel,
     },
 
@@ -25,7 +27,9 @@ pub enum CapabilityType {
     ///
     /// Could be provided by: nestgate, S3, local filesystem, database, etc.
     Storage {
+        /// Storage features this provider supports
         features: Vec<StorageFeature>,
+        /// Minimum throughput in Mbps (optional)
         min_throughput_mbps: Option<u64>,
     },
 
@@ -33,7 +37,9 @@ pub enum CapabilityType {
     ///
     /// Could be provided by: songbird, k8s, consul, etcd, etc.
     Coordination {
+        /// Coordination features this provider supports
         features: Vec<CoordinationFeature>,
+        /// Maximum acceptable latency in milliseconds
         max_latency_ms: Option<u64>,
     },
 
@@ -41,7 +47,9 @@ pub enum CapabilityType {
     ///
     /// Could be provided by: squirrel, `OpenAI`, local models, etc.
     Intelligence {
+        /// Intelligence features this provider supports
         features: Vec<IntelligenceFeature>,
+        /// Supported model types
         model_types: Vec<ModelType>,
     },
 
@@ -49,19 +57,25 @@ pub enum CapabilityType {
     ///
     /// Could be provided by: local, cloud, edge devices, etc.
     Compute {
+        /// Compute features this provider supports
         features: Vec<ComputeFeature>,
+        /// Minimum memory in GB
         min_memory_gb: Option<f64>,
     },
 
     /// Network capabilities (routing, mesh, tunneling)
     Network {
+        /// Network features this provider supports
         features: Vec<NetworkFeature>,
+        /// Minimum bandwidth in Mbps
         min_bandwidth_mbps: Option<u64>,
     },
 
     /// Monitoring capabilities (metrics, logging, tracing)
     Monitoring {
+        /// Monitoring features this provider supports
         features: Vec<MonitoringFeature>,
+        /// Data retention period in days
         retention_days: Option<u32>,
     },
 }
@@ -305,11 +319,21 @@ pub enum ServiceEndpoint {
     /// Unix domain socket
     UnixSocket(std::path::PathBuf),
     /// TCP socket
-    Tcp { host: String, port: u16 },
+    Tcp {
+        /// Hostname or IP address
+        host: String,
+        /// Port number
+        port: u16,
+    },
     /// In-process (same binary)
     InProcess,
     /// Custom protocol
-    Custom { protocol: String, address: String },
+    Custom {
+        /// Protocol identifier
+        protocol: String,
+        /// Network address
+        address: String,
+    },
 }
 
 /// Health status of a capability provider

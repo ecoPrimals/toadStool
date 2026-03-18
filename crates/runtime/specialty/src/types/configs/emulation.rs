@@ -33,6 +33,9 @@ pub enum EmulatorType {
     MESS,
     /// Virtual machine
     VirtualMachine,
-    /// Custom emulator
-    Custom { name: String },
+    /// Custom emulator.
+    Custom {
+        /// Emulator name.
+        name: String,
+    },
 }

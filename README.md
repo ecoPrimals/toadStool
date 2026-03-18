@@ -41,7 +41,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 21,156 workspace tests (0 failures, 222 intentional ignores) |
+| `cargo test --workspace` | 11,956+ workspace tests (default features), 21,000+ with all-features |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
@@ -152,15 +152,15 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 | `compute.*` | `health`, `version`, `capabilities`, `discover_capabilities`, `submit`, `status`, `result`, `cancel`, `list` | biomeOS Node Atomic aliases + GPU queue |
 | `ai.*` | `local_inference`, `local_execute` | biomeOS ai_local capability |
 | `ai.nautilus.*` | `status`, `observe`, `train`, `predict`, `screen`, `edges`, `shell.export`, `shell.import` | Evolutionary reservoir computing (feature-gated `nautilus`) |
-| `gpu.*` | `info`, `memory` | Hardware info |
-| `ollama.*` | `list_models`, `inference`, `load`, `unload` | Local LLM lifecycle |
+| `gpu.*` | `gpu.query_info`, `gpu.query_memory`, `gpu.query_telemetry` | Hardware info |
+| `inference.*` | `list_models`, `inference`, `load`, `unload` | (was ollama.*, deprecated aliases retained) |
 | `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
 | `transport.*` | `discover`, `list`, `route` | Hardware transport discovery + routing |
 | `shader.compile.*` | `wgsl`, `spirv`, `status`, `capabilities` | coralReef proxy (capability-based discovery, naga fallback) |
 | `ecology.*` | 14 methods | Ecosystem integration (NUCLEUS discovery, capability routing) |
 | `discovery.*` | NUCLEUS discovery, capability probing | Runtime capability-based discovery |
 | `deploy.*` | graph routing, workload placement | Deploy graph routing and placement |
-| `toadstool.provenance` | cross-spring flow matrix | Cross-spring evolution introspection API |
+| `provenance.query` | cross-spring flow matrix | (was toadstool.provenance, deprecated alias retained) |
 
 ---
 
@@ -241,9 +241,9 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 21,156 (server + core + distributed + common + config + CLI + testing + display + auto_config) |
+| Workspace tests | 11,956+ (default features) |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; 20 crates `#![forbid(unsafe_code)]` |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
@@ -262,11 +262,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,156 tests (S157); ~83% line (182K lines instrumented); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 11,956+ tests (S159); ~85% line (182K lines instrumented); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S159 (Mar 18, 2026)**: Deep audit and execution. All 694+ missing_docs warnings filled across 58 crates. Clippy `--workspace -D warnings` passes (0 errors). 3 compilation errors fixed (MockNpuDispatch, Arc<str>/String, paths module). JSON-RPC methods standardized to `domain.verb`. Hardcoded localhost evolved to named constants. Primal names → capability-based in auto_config. Zero-copy expanded (workload IDs → Arc<str>). Production stubs eliminated. All unsafe env::set_var → temp_env. Nested-runtime anti-patterns fixed.
 - **S155b (Mar 15, 2026)**: Coverage expansion, clippy pedantic clean, dependency audit clean, unsafe audit clean. 21,156 tests. ~83% line coverage (182K lines instrumented). Next: push 83%→90% (hardware mocks), property-based testing for computation modules, multi-primal integration test infrastructure.
 - **S147 (Mar 12, 2026)**: hw-learn wiring + sovereign compute hardening — 5 `compute.hardware.*` JSON-RPC methods (observe/distill/apply/share_recipe/status), nvpmu `Bar0Access` implements `RegisterAccess` trait (hw-learn→BAR0 bridge), `nvvm_safety.rs` renamed to `spirv_codegen_safety.rs` (naga root-cause per hotSpring v0.6.30), `FirmwareInventory` in `gpu.info` response (compute_viable/compute_blockers), PRIMAL_REGISTRY updated, genomeBin manifest enriched. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35. 20,015 tests.
 - **S146 (Mar 10, 2026)**: Deep evolution — nvvm_transcendental_risk in gpu.info, PrecisionBrain wired into compile_wgsl_multi, PcieTopologyGraph stable, SpringDomain +10 domains (SCREAMING_SNAKE_CASE), HealthSpring added, gpu_memory_estimate_bytes + route_with_vram, cross-spring provenance expanded. Spring pins: hotSpring v0.6.27, neuralSpring V96, wetSpring V109, healthSpring V19. 19,972 tests.
@@ -287,7 +288,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,156 tests (S157); ~83% line (182K instrumented); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 11,956+ tests (S159); ~85% line (182K instrumented); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -332,4 +333,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 18, 2026 — S158b. 21,156 workspace tests. ~83% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 56 crates. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 18, 2026 — S159. 11,956+ workspace tests. ~85% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. Rust 1.85+ (edition 2024, MSRV).

@@ -28,6 +28,7 @@ use tracing::{info, warn};
 // Legacy integration layer; uses deprecated EcosystemService for ServiceConnection migration
 #[allow(deprecated)]
 impl EcosystemIntegrator {
+    /// Create a new ecosystem integrator (legacy discovery layer)
     #[must_use]
     pub fn new() -> Self {
         Self {

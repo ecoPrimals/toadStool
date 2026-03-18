@@ -20,9 +20,11 @@ pub enum TerminalType {
     ANSI,
     /// Dumb terminal
     Dumb,
-    /// Custom terminal
+    /// Custom terminal type.
     Custom {
+        /// Terminal type name.
         name: String,
+        /// Supported capabilities.
         capabilities: Vec<String>,
     },
 }
@@ -51,8 +53,11 @@ pub enum LineEnding {
     Windows,
     /// Classic Mac (CR)
     ClassicMac,
-    /// Custom
-    Custom { sequence: String },
+    /// Custom line ending sequence.
+    Custom {
+        /// Line ending byte sequence.
+        sequence: String,
+    },
 }
 
 /// Character encodings for legacy systems
@@ -72,8 +77,11 @@ pub enum CharacterEncoding {
     PETSCII,
     /// ATASCII (Atari)
     ATASCII,
-    /// Custom encoding
-    Custom { name: String },
+    /// Custom character encoding.
+    Custom {
+        /// Encoding name.
+        name: String,
+    },
 }
 
 /// Flow control types

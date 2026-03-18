@@ -6,10 +6,15 @@ use crate::error::{Result, SysmonError};
 /// Per-interface network statistics.
 #[derive(Debug, Clone)]
 pub struct NetworkInterface {
+    /// Interface name (e.g. `eth0`, `wlan0`).
     pub name: String,
+    /// Total bytes received since boot.
     pub received: u64,
+    /// Total bytes transmitted since boot.
     pub transmitted: u64,
+    /// Total packets received since boot.
     pub packets_received: u64,
+    /// Total packets transmitted since boot.
     pub packets_transmitted: u64,
 }
 

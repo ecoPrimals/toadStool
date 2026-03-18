@@ -4,10 +4,15 @@
 /// GPU device type classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GpuDeviceType {
+    /// Discrete GPU (PCIe, dedicated VRAM).
     Discrete,
+    /// Integrated GPU (shared memory with CPU).
     Integrated,
+    /// Virtual GPU (VM passthrough).
     Virtual,
+    /// CPU software renderer.
     Cpu,
+    /// Other or unknown device type.
     Other,
 }
 
@@ -35,7 +40,9 @@ pub struct GpuAdapterInfo {
     pub max_compute_workgroups_per_dimension: u32,
     /// Max compute workgroup size (x * y * z).
     pub max_compute_workgroup_size_x: u32,
+    /// Max compute workgroup size Y dimension.
     pub max_compute_workgroup_size_y: u32,
+    /// Max compute workgroup size Z dimension.
     pub max_compute_workgroup_size_z: u32,
     /// Max buffer size in bytes.
     pub max_buffer_size: u64,

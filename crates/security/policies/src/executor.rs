@@ -23,6 +23,7 @@ impl Default for ActionExecutor {
 }
 
 impl ActionExecutor {
+    /// Creates a new action executor.
     #[must_use]
     pub const fn new() -> Self {
         Self

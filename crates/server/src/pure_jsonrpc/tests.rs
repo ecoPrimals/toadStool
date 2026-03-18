@@ -52,8 +52,8 @@ fn test_json_workload_submission() {
     let encoded = STANDARD.encode(&data);
 
     let submission = JsonWorkloadSubmission {
-        workload_id: "work-123".to_string(),
-        workload_type: "gpu_compute".to_string(),
+        workload_id: Arc::from("work-123"),
+        workload_type: Arc::from("gpu_compute"),
         data: encoded,
         metadata: HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -192,8 +192,8 @@ fn test_jsonrpc_error_constructors() {
 #[test]
 fn test_json_workload_submission_invalid_base64() {
     let submission = JsonWorkloadSubmission {
-        workload_id: "work-1".to_string(),
-        workload_type: "gpu_compute".to_string(),
+        workload_id: Arc::from("work-1"),
+        workload_type: Arc::from("gpu_compute"),
         data: "!!!not-valid-base64!!!".to_string(),
         metadata: HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -501,8 +501,8 @@ fn test_jsonrpc_error_serialization_roundtrip() {
 fn test_json_workload_submission_serialization_roundtrip() {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     let sub = JsonWorkloadSubmission {
-        workload_id: "w-1".to_string(),
-        workload_type: "cpu_compute".to_string(),
+        workload_id: Arc::from("w-1"),
+        workload_type: Arc::from("cpu_compute"),
         data: STANDARD.encode([1u8, 2, 3]),
         metadata: [("k".to_string(), "v".to_string())].into(),
         priority: WorkloadPriority::High,
@@ -515,7 +515,7 @@ fn test_json_workload_submission_serialization_roundtrip() {
     };
     let json = serde_json::to_string(&sub).unwrap();
     let restored: JsonWorkloadSubmission = serde_json::from_str(&json).unwrap();
-    assert_eq!(sub.workload_id, restored.workload_id);
+    assert_eq!(sub.workload_id.as_ref(), restored.workload_id.as_ref());
     assert_eq!(sub.data, restored.data);
 }
 
@@ -560,7 +560,7 @@ async fn test_semantic_method_dispatch_cancel() {
 #[tokio::test]
 async fn test_gpu_info_handler() {
     let handler = test_handler();
-    let request = mk_request("gpu.info", None, 1);
+    let request = mk_request("gpu.query_info", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
@@ -571,7 +571,7 @@ async fn test_gpu_info_handler() {
 #[tokio::test]
 async fn test_gpu_memory_handler() {
     let handler = test_handler();
-    let request = mk_request("gpu.memory", None, 1);
+    let request = mk_request("gpu.query_memory", None, 1);
     let response = handler.handle_request(&request).await;
     assert!(response.error.is_none());
     let result = response.result.expect("result present");
@@ -581,7 +581,7 @@ async fn test_gpu_memory_handler() {
 #[tokio::test]
 async fn test_ollama_list_models() {
     let handler = test_handler();
-    let request = mk_request("ollama.list_models", None, 1);
+    let request = mk_request("inference.list_models", None, 1);
     let response = handler.handle_request(&request).await;
     // Without ollama running, expect error (connection refused or similar)
     if response.error.is_some() {

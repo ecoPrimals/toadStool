@@ -34,9 +34,15 @@ pub enum SchedulingDecision {
     /// Execute locally — this node has the required capabilities.
     ExecuteLocal,
     /// Delegate to a discovered peer with the given endpoint.
-    Delegate { endpoint: String },
+    Delegate {
+        /// Peer endpoint URL.
+        endpoint: String,
+    },
     /// Reject — no node can satisfy the constraints.
-    Reject { reason: String },
+    Reject {
+        /// Rejection reason.
+        reason: String,
+    },
 }
 
 #[cfg(test)]

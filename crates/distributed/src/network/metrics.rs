@@ -9,16 +9,21 @@ pub struct NetworkMetricsCollector {
     metrics: Arc<RwLock<NetworkMetricsData>>,
 }
 
-/// Network metrics data
+/// Aggregated request/response metrics for network distribution.
 #[derive(Debug, Clone)]
 pub struct NetworkMetricsData {
+    /// Total requests sent.
     pub total_requests: u64,
+    /// Requests that completed successfully.
     pub successful_requests: u64,
+    /// Requests that failed (timeout, error, etc.).
     pub failed_requests: u64,
+    /// Mean response time across all requests.
     pub average_response_time: Duration,
 }
 
 impl NetworkMetricsCollector {
+    /// Creates a new network metrics collector.
     #[must_use]
     pub fn new() -> Self {
         Self {

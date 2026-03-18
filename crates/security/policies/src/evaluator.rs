@@ -10,7 +10,6 @@ use std::time::SystemTime;
 
 use regex::Regex;
 use tokio::sync::RwLock;
-use tracing::warn;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::workload::WorkloadSpec;
@@ -33,6 +32,7 @@ impl Default for ConditionEvaluator {
 }
 
 impl ConditionEvaluator {
+    /// Creates a new condition evaluator.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -209,10 +209,24 @@ impl ConditionEvaluator {
                 }
             },
 
-            _ => {
-                warn!("Unimplemented condition evaluation: {:?}", condition);
-                Ok(false)
+            PolicyCondition::NetworkAccess { hosts, ports } => {
+                Err(ToadStoolError::validation(format!(
+                    "NetworkAccess condition not yet implemented (hosts: {hosts:?}, ports: {ports:?}); \
+                 use validate_condition to ensure policy structure is valid before evaluation"
+                )))
             }
+
+            PolicyCondition::FileSystemAccess { paths, operations } => {
+                Err(ToadStoolError::validation(format!(
+                    "FileSystemAccess condition not yet implemented (paths: {paths:?}, operations: {operations:?}); \
+                     use validate_condition to ensure policy structure is valid before evaluation"
+                )))
+            }
+
+            PolicyCondition::Custom { expression, .. } => Err(ToadStoolError::validation(format!(
+                "Custom expression condition not yet implemented (expression: {expression:?}); \
+                 Phase 2+ will add regex_cache-based evaluation"
+            ))),
         }
     }
 }

@@ -24,17 +24,29 @@
 //! └── Cross-compilation Support
 //! ```
 
+/// Configuration for specialty runtime subsystems.
 pub mod config;
+/// Cross-compilation toolchain and target support.
 pub mod cross_compilation;
+/// Embedded systems adapters and toolchains.
 pub mod embedded;
+/// Emulation support for legacy architectures.
 pub mod emulation;
+/// Core specialty runtime engine.
 pub mod engine;
+/// Error types for specialty runtime operations.
 pub mod error;
+/// Industrial control system adapters.
 pub mod industrial;
+/// Legacy networking protocol support.
 pub mod legacy_networking;
+/// Mainframe system adapters (IBM, VAX, AS/400).
 pub mod mainframe;
+/// Real-time operating system support.
 pub mod realtime;
+/// Bridge between specialty runtime and core platform.
 pub mod runtime_bridge;
+/// Type definitions for specialty systems.
 pub mod types;
 
 #[cfg(test)]

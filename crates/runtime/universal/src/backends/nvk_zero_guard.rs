@@ -75,6 +75,7 @@ pub fn nvk_zero_guard_check_f32(output: &[f32]) -> ZeroGuardVerdict {
 /// Device health status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeviceHealthStatus {
+    /// Device is operating normally.
     Healthy,
     /// Device may be poisoned — NVVM compilation failure detected.
     PoisonSuspected,

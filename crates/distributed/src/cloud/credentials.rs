@@ -18,8 +18,11 @@ use toadstool_common::SecretString;
 /// `secret_access_key` and `session_token` are secrets (redacted everywhere).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AWSCredentials {
+    /// AWS access key ID (identifier, safe to log).
     pub access_key_id: String,
+    /// AWS secret access key (redacted).
     pub secret_access_key: SecretString,
+    /// Session token for temporary credentials (optional).
     pub session_token: Option<SecretString>,
 }
 
@@ -33,34 +36,45 @@ impl Default for AWSCredentials {
     }
 }
 
-/// Azure credentials
+/// Azure credentials.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AzureCredentials {
+    /// Azure tenant ID.
     pub tenant_id: String,
+    /// Azure client ID.
     pub client_id: String,
+    /// Azure client secret (redacted).
     pub client_secret: SecretString,
 }
 
-/// GCP credentials
+/// GCP credentials.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GCPCredentials {
+    /// GCP service account key JSON (redacted).
     pub service_account_key: SecretString,
 }
 
-/// Kubernetes configuration
+/// Kubernetes configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KubernetesConfig {
+    /// Path to kubeconfig file.
     pub kubeconfig_path: Option<String>,
+    /// Inline kubeconfig content.
     pub kubeconfig_content: Option<String>,
+    /// Cluster API endpoint.
     pub cluster_endpoint: Option<String>,
+    /// Bearer token for auth.
     pub token: Option<String>,
 }
 
-/// Edge mesh configuration
+/// Edge mesh configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdgeMeshConfig {
+    /// Mesh identifier.
     pub mesh_id: String,
+    /// Discovery endpoint URLs.
     pub discovery_endpoints: Vec<String>,
+    /// Enable encryption.
     pub encryption_enabled: bool,
 }
 
@@ -68,26 +82,37 @@ pub struct EdgeMeshConfig {
 // Authentication & Encryption
 // ============================================================================
 
-/// Encryption level options
+/// Encryption level options.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EncryptionLevel {
+    /// Standard encryption.
     Standard,
+    /// High encryption.
     High,
+    /// Maximum encryption.
     Maximum,
 }
 
-/// Authentication methods
+/// Authentication methods for self-hosted/cloud.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AuthMethod {
+    /// Token-based auth.
     Token {
+        /// Bearer token (redacted).
         token: SecretString,
     },
+    /// Certificate-based auth.
     Certificate {
+        /// Path to certificate.
         cert_path: String,
+        /// Path to private key.
         key_path: String,
     },
+    /// BearDog auth.
     BearDogAuth {
+        /// Auth endpoint URL.
         endpoint: String,
+        /// Credentials (redacted).
         credentials: SecretString,
     },
 }

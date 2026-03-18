@@ -260,6 +260,15 @@ mod tests {
     use toadstool_common::primal_identity::{CoordinationCapability, ServiceEndpoint};
     use toadstool_common::runtime_discovery::{DiscoveryClient, LocalhostDiscoveryClient};
 
+    /// Test fallback endpoint (port 50001)
+    const TEST_FALLBACK_50001: &str = "http://localhost:50001";
+    /// Test fallback endpoint (port 9999)
+    const TEST_FALLBACK_9999: &str = "http://localhost:9999";
+    /// Test fallback endpoint (port 8888)
+    const TEST_FALLBACK_8888: &str = "http://localhost:8888";
+    /// Test fallback endpoint (port 7777)
+    const TEST_FALLBACK_7777: &str = "http://localhost:7777";
+
     /// Test discovery client that returns configurable results
     struct TestDiscoveryClient {
         services: Vec<DiscoveredService>,
@@ -306,7 +315,7 @@ mod tests {
         // When discovery fails or returns no results, should use fallback
         let client = Arc::new(LocalhostDiscoveryClient::new());
         let discovery = RuntimeDiscovery::new(client);
-        let fallback = "http://localhost:50001";
+        let fallback = TEST_FALLBACK_50001;
 
         let result = discover_or_fallback(
             &discovery,
@@ -333,7 +342,7 @@ mod tests {
             fail: false,
         });
         let discovery = RuntimeDiscovery::new(client);
-        let fallback = "http://localhost:50001";
+        let fallback = TEST_FALLBACK_50001;
 
         let result = discover_or_fallback(
             &discovery,
@@ -360,7 +369,7 @@ mod tests {
             fail: false,
         });
         let discovery = RuntimeDiscovery::new(client);
-        let fallback = "http://localhost:9999";
+        let fallback = TEST_FALLBACK_9999;
 
         let result = discover_or_fallback(
             &discovery,
@@ -380,7 +389,7 @@ mod tests {
             fail: false,
         });
         let discovery = RuntimeDiscovery::new(client);
-        let fallback = "http://localhost:8888";
+        let fallback = TEST_FALLBACK_8888;
 
         let result = discover_or_fallback(
             &discovery,
@@ -400,7 +409,7 @@ mod tests {
             fail: true,
         });
         let discovery = RuntimeDiscovery::new(client);
-        let fallback = "http://localhost:7777";
+        let fallback = TEST_FALLBACK_7777;
 
         let result = discover_or_fallback(
             &discovery,

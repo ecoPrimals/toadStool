@@ -187,8 +187,11 @@ fn check_local_capacity(requirements: &ResourceRequirements) -> ToadStoolResult<
 /// location if the migration fails.
 #[derive(Debug, Clone)]
 pub struct PreMigrationSnapshot {
+    /// Workload identifier.
     pub workload_id: String,
+    /// Location before migration (for rollback).
     pub location_before: Option<crate::cloud_provider_trait::WorkloadLocation>,
+    /// When snapshot was captured.
     pub captured_at: SystemTime,
 }
 

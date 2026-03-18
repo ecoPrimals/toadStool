@@ -19,6 +19,7 @@ pub struct ConfigManager {
 }
 
 impl ConfigManager {
+    /// Creates a new config manager with platform-specific config path.
     #[must_use]
     pub fn new() -> Self {
         let platform = Platform::detect();

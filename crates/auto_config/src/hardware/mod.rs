@@ -179,12 +179,16 @@ impl Default for SystemCapabilities {
     }
 }
 
-/// System performance classification
+/// System performance classification.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PerformanceClass {
+    /// Low-end system.
     LowEnd,
+    /// Budget system.
     Budget,
+    /// Mainstream system.
     Mainstream,
+    /// High-end system.
     HighEnd,
 }
 

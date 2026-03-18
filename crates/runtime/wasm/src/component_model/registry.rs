@@ -11,13 +11,13 @@ use toadstool::{ToadStoolError, ToadStoolResult};
 use super::core::{ComponentInterface, ComponentModelConfig};
 use super::instances::{ComponentInstance, ComponentResourceUsage, ComponentState};
 
-/// Component registry for managing component instances
+/// Component registry for managing component instances and interfaces
 pub struct ComponentRegistry {
-    /// Active component instances
+    /// Active component instances keyed by instance ID
     instances: Arc<RwLock<HashMap<String, ComponentInstance>>>,
-    /// Component model configuration
+    /// Component model configuration (limits, timeouts)
     config: ComponentModelConfig,
-    /// Interface registry
+    /// Registered component interfaces by name
     interfaces: Arc<RwLock<HashMap<String, ComponentInterface>>>,
 }
 
@@ -189,14 +189,20 @@ pub struct ComponentStats {
     pub total_instances: usize,
     /// Total number of interfaces
     pub total_interfaces: usize,
-    /// Instances by state
+    /// Count of instances in initializing state
     pub initializing_instances: usize,
+    /// Count of instances in ready state
     pub ready_instances: usize,
+    /// Count of instances in running state
     pub running_instances: usize,
+    /// Count of instances in failed state
     pub failed_instances: usize,
+    /// Count of instances in terminating state
     pub terminating_instances: usize,
-    /// Aggregate resource usage
+    /// Total memory used by all instances (bytes)
     pub total_memory_bytes: u64,
+    /// Total CPU time consumed (ms)
     pub total_cpu_time_ms: u64,
+    /// Total function invocations across instances
     pub total_function_calls: u64,
 }

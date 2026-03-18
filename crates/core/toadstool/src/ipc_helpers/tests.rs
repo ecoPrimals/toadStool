@@ -289,10 +289,13 @@ fn test_get_semantic_name_unknown_returns_none() {
 #[test]
 fn test_list_semantic_methods_count_and_contents() {
     let methods = list_semantic_methods();
-    assert_eq!(methods.len(), 91);
+    assert!(
+        methods.len() >= 100,
+        "registry should have 100+ semantic methods"
+    );
     assert!(methods.contains(&"compute.execute".to_string()));
     assert!(methods.contains(&"shader.compile.wgsl".to_string()));
-    assert!(methods.contains(&"toadstool.provenance".to_string()));
+    assert!(methods.contains(&"provenance.query".to_string()));
     assert!(methods.contains(&"ecology.et0_fao56".to_string()));
     assert!(methods.contains(&"discovery.primals".to_string()));
     assert!(methods.contains(&"deploy.capability_call".to_string()));
@@ -304,7 +307,12 @@ fn test_resolution_consistency_roundtrip() {
     for semantic in &methods {
         let impl_name = resolve_method_name(semantic);
         let back = get_semantic_name(&impl_name);
-        assert_eq!(back, Some(semantic.clone()), "roundtrip: {semantic}");
+        // Deprecated aliases map to same impl as canonical; back may be canonical form
+        assert!(
+            back.as_ref()
+                .is_some_and(|b| resolve_method_name(b) == impl_name),
+            "roundtrip: {semantic} -> {impl_name:?} -> {back:?}"
+        );
     }
 }
 

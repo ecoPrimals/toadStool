@@ -6,8 +6,9 @@ use tracing::debug;
 use crate::ToadStoolResult;
 use crate::hardware::SystemCapabilities;
 
-/// Platform-specific optimization engine
+/// Platform-specific optimization engine.
 pub struct PlatformOptimizer {
+    /// Detected platform information.
     pub platform_info: PlatformInfo,
 }
 
@@ -18,6 +19,7 @@ impl Default for PlatformOptimizer {
 }
 
 impl PlatformOptimizer {
+    /// Creates a new platform optimizer with detected platform info.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -133,15 +135,19 @@ impl PlatformOptimizer {
     }
 }
 
-/// Platform information and capabilities
+/// Platform information and capabilities.
 #[derive(Debug, Clone)]
 pub struct PlatformInfo {
+    /// OS name (e.g. linux, macos, windows).
     pub os_name: String,
+    /// OS version string.
     pub os_version: String,
+    /// CPU architecture (e.g. x86_64, aarch64).
     pub architecture: String,
 }
 
 impl PlatformInfo {
+    /// Detects the current platform.
     #[must_use]
     pub fn detect() -> Self {
         Self {
@@ -152,20 +158,27 @@ impl PlatformInfo {
     }
 }
 
-/// Platform support features
+/// Platform support features.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum PlatformSupport {
+    /// Container support (Docker, etc.).
     Containers,
+    /// Sandboxing support.
     Sandboxing,
+    /// Process isolation support.
     ProcessIsolation,
+    /// Network isolation support.
     NetworkIsolation,
 }
 
-/// Platform-specific configuration and capabilities
+/// Platform-specific configuration and capabilities.
 #[derive(Debug, Clone)]
 pub struct PlatformConfig {
+    /// Platform name.
     pub platform_name: String,
+    /// Supported platform features.
     pub supported_features: std::collections::HashSet<PlatformSupport>,
+    /// Platform-specific optimizations.
     pub optimizations: Vec<PlatformOptimization>,
 }
 
@@ -201,10 +214,13 @@ impl PlatformConfig {
     }
 }
 
-/// Platform-specific optimization
+/// Platform-specific optimization.
 #[derive(Debug, Clone)]
 pub struct PlatformOptimization {
+    /// Optimization type identifier.
     pub optimization_type: String,
+    /// Human-readable description.
     pub description: String,
-    pub performance_gain: f64, // Expected performance improvement (0.0 to 1.0)
+    /// Expected performance improvement (0.0 to 1.0).
+    pub performance_gain: f64,
 }

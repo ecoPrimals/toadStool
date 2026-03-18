@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #[cfg(test)]
-#[allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
 mod service_registry_tests {
     use super::super::*;
 
@@ -482,79 +481,51 @@ port = 7777
 
     #[test]
     fn test_service_registry_from_env_coordinator() {
-        let coord_key = "TOADSTOOL_COORDINATOR";
-        let orig = std::env::var(coord_key).ok();
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var(coord_key, "songbird:http://localhost:7777") };
-
-        let registry = ServiceRegistry::from_env();
-        let coord = registry.coordinator();
-        assert!(coord.is_some());
-        assert_eq!(coord.unwrap().name, "songbird");
-        assert_eq!(coord.unwrap().endpoint, "http://localhost:7777");
-
-        if let Some(v) = orig {
-            unsafe { std::env::set_var(coord_key, v) };
-        } else {
-            unsafe { std::env::remove_var(coord_key) };
-        }
+        temp_env::with_var(
+            "TOADSTOOL_COORDINATOR",
+            Some("songbird:http://localhost:7777"),
+            || {
+                let registry = ServiceRegistry::from_env();
+                let coord = registry.coordinator();
+                assert!(coord.is_some());
+                assert_eq!(coord.unwrap().name, "songbird");
+                assert_eq!(coord.unwrap().endpoint, "http://localhost:7777");
+            },
+        );
     }
 
     #[test]
     fn test_service_registry_from_env_storage() {
-        let storage_key = "TOADSTOOL_STORAGE";
-        let orig = std::env::var(storage_key).ok();
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var(storage_key, "squirrel:http://localhost:8888") };
-
-        let registry = ServiceRegistry::from_env();
-        let storage = registry.storage();
-        assert!(storage.is_some());
-        assert_eq!(storage.unwrap().name, "squirrel");
-
-        if let Some(v) = orig {
-            unsafe { std::env::set_var(storage_key, v) };
-        } else {
-            unsafe { std::env::remove_var(storage_key) };
-        }
+        temp_env::with_var(
+            "TOADSTOOL_STORAGE",
+            Some("squirrel:http://localhost:8888"),
+            || {
+                let registry = ServiceRegistry::from_env();
+                let storage = registry.storage();
+                assert!(storage.is_some());
+                assert_eq!(storage.unwrap().name, "squirrel");
+            },
+        );
     }
 
     #[test]
     fn test_service_registry_from_env_services_json() {
-        let services_key = "TOADSTOOL_SERVICES";
-        let orig = std::env::var(services_key).ok();
         let json = r#"[{"name":"custom","type":"cache","endpoint":"http://localhost:6379","capabilities":["redis"]}]"#;
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var(services_key, json) };
-
-        let registry = ServiceRegistry::from_env();
-        let cache = registry.find_by_type(&ServiceType::Cache);
-        assert_eq!(cache.len(), 1);
-        assert_eq!(cache[0].name, "custom");
-        assert_eq!(cache[0].endpoint, "http://localhost:6379");
-
-        if let Some(v) = orig {
-            unsafe { std::env::set_var(services_key, v) };
-        } else {
-            unsafe { std::env::remove_var(services_key) };
-        }
+        temp_env::with_var("TOADSTOOL_SERVICES", Some(json), || {
+            let registry = ServiceRegistry::from_env();
+            let cache = registry.find_by_type(&ServiceType::Cache);
+            assert_eq!(cache.len(), 1);
+            assert_eq!(cache[0].name, "custom");
+            assert_eq!(cache[0].endpoint, "http://localhost:6379");
+        });
     }
 
     #[test]
     fn test_service_registry_from_env_no_colon_ignored() {
-        let coord_key = "TOADSTOOL_COORDINATOR";
-        let orig = std::env::var(coord_key).ok();
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var(coord_key, "no-colon-here") };
-
-        let registry = ServiceRegistry::from_env();
-        assert!(registry.coordinator().is_none());
-
-        if let Some(v) = orig {
-            unsafe { std::env::set_var(coord_key, v) };
-        } else {
-            unsafe { std::env::remove_var(coord_key) };
-        }
+        temp_env::with_var("TOADSTOOL_COORDINATOR", Some("no-colon-here"), || {
+            let registry = ServiceRegistry::from_env();
+            assert!(registry.coordinator().is_none());
+        });
     }
 
     #[test]
@@ -600,34 +571,12 @@ port = 7777
 
     #[test]
     fn test_service_registry_from_env_invalid_json_ignored() {
-        let svc_key = "TOADSTOOL_SERVICES";
-        let coord_key = "TOADSTOOL_COORDINATOR";
-        let storage_key = "TOADSTOOL_STORAGE";
-        let orig_svc = std::env::var(svc_key).ok();
-        let orig_coord = std::env::var(coord_key).ok();
-        let orig_storage = std::env::var(storage_key).ok();
-
-        // SAFETY: Test-only; sequential test execution
-        unsafe {
-            std::env::remove_var(coord_key);
-            std::env::remove_var(storage_key);
-            std::env::set_var(svc_key, r"{ invalid json }");
-        }
-
-        let registry = ServiceRegistry::from_env();
-        assert!(registry.is_empty());
-
-        if let Some(v) = orig_svc {
-            unsafe { std::env::set_var(svc_key, v) };
-        } else {
-            unsafe { std::env::remove_var(svc_key) };
-        }
-        if let Some(v) = orig_coord {
-            unsafe { std::env::set_var(coord_key, v) };
-        }
-        if let Some(v) = orig_storage {
-            unsafe { std::env::set_var(storage_key, v) };
-        }
+        temp_env::with_vars_unset(["TOADSTOOL_COORDINATOR", "TOADSTOOL_STORAGE"], || {
+            temp_env::with_var("TOADSTOOL_SERVICES", Some(r"{ invalid json }"), || {
+                let registry = ServiceRegistry::from_env();
+                assert!(registry.is_empty());
+            });
+        });
     }
 
     #[test]
@@ -699,21 +648,16 @@ port = 7777
 
     #[test]
     fn test_service_registry_from_env_coordinator_with_whitespace() {
-        let key = "TOADSTOOL_COORDINATOR";
-        let orig = std::env::var(key).ok();
-        // SAFETY: Test-only; sequential test execution
-        unsafe { std::env::set_var(key, "  songbird  :  http://localhost:7777  ") };
-
-        let registry = ServiceRegistry::from_env();
-        let coord = registry.coordinator();
-        assert!(coord.is_some());
-        assert_eq!(coord.unwrap().name, "songbird");
-
-        if let Some(v) = orig {
-            unsafe { std::env::set_var(key, v) };
-        } else {
-            unsafe { std::env::remove_var(key) };
-        }
+        temp_env::with_var(
+            "TOADSTOOL_COORDINATOR",
+            Some("  songbird  :  http://localhost:7777  "),
+            || {
+                let registry = ServiceRegistry::from_env();
+                let coord = registry.coordinator();
+                assert!(coord.is_some());
+                assert_eq!(coord.unwrap().name, "songbird");
+            },
+        );
     }
 
     #[test]

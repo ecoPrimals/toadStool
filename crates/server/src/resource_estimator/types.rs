@@ -74,12 +74,15 @@ pub struct NodeEstimate {
 /// Estimation error
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum EstimationError {
+    /// Invalid graph structure.
     #[error("Invalid graph: {0}")]
     InvalidGraph(#[from] GraphValidationError),
 
+    /// Graph contains cycles.
     #[error("Graph contains cycles (not a DAG)")]
     CyclicGraph,
 
+    /// Node estimation failed.
     #[error("Unable to estimate node '{0}': {1}")]
     NodeEstimationFailed(String, String),
 }

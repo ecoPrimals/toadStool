@@ -22,6 +22,7 @@ use super::macos::MacOSSandboxManager;
 #[cfg(target_os = "windows")]
 use super::windows::WindowsSandboxManager;
 
+/// Cross-platform sandbox manager delegating to OS-specific implementations.
 pub struct CrossPlatformSandboxManager {
     config: SandboxConfig,
     sandboxes: Arc<RwLock<HashMap<String, SandboxInfo>>>,

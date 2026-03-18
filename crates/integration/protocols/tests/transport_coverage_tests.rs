@@ -5,6 +5,7 @@
 //! coverage from 36.67% towards the 60%+ target.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Instant;
 use toadstool_integration_protocols::transport::*;
 use toadstool_integration_protocols::types::*;
@@ -17,9 +18,9 @@ use uuid::Uuid;
 fn create_test_message() -> ProtocolMessage {
     ProtocolMessage {
         id: Uuid::new_v4(),
-        message_type: "test".to_string(),
-        source: "test-service".to_string(),
-        destination: Some("target-service".to_string()),
+        message_type: Arc::from("test"),
+        source: Arc::from("test-service"),
+        destination: Some(Arc::from("target-service")),
         payload: serde_json::json!({"test": "data"}),
         headers: HashMap::new(),
         timestamp: std::time::SystemTime::now(),

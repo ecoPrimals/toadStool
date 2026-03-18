@@ -53,6 +53,7 @@ impl Default for MacOSCompatibilityLayer {
 }
 
 impl MacOSCompatibilityLayer {
+    /// Creates a new macOS compatibility layer with default config.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -60,6 +61,7 @@ impl MacOSCompatibilityLayer {
         }
     }
 
+    /// Returns the macOS compatibility config.
     #[must_use]
     pub const fn get_config(&self) -> &MacOSCompatConfig {
         &self.config

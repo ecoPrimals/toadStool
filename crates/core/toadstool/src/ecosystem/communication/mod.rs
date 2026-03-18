@@ -40,10 +40,12 @@ pub struct CommunicationManager {
 }
 
 impl CommunicationManager {
+    /// Creates a communication manager with default timeout.
     pub fn new() -> Self {
         Self::with_timeout(timeouts::DEFAULT_REQUEST_TIMEOUT)
     }
 
+    /// Creates a communication manager with custom request timeout.
     #[must_use]
     pub fn with_timeout(timeout: Duration) -> Self {
         Self {
@@ -52,6 +54,7 @@ impl CommunicationManager {
         }
     }
 
+    /// Creates a channel for the discovered service.
     pub async fn create_channel(
         &self,
         service: &DiscoveredService,
@@ -89,6 +92,7 @@ impl CommunicationManager {
         Ok(channel)
     }
 
+    /// Sends a message to the service via the channel.
     #[allow(clippy::unused_async, clippy::significant_drop_tightening)] // Conditional async; Tarpc fallback_client() borrows from guard
     pub async fn send_message(
         &self,
@@ -125,6 +129,7 @@ impl CommunicationManager {
         }
     }
 
+    /// Performs a health check on the service.
     #[allow(clippy::unused_async, clippy::significant_drop_tightening)] // Conditional async; Tarpc fallback_client() borrows from guard
     pub async fn check_health(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
         debug!("🔍 Checking health of service: {}", channel.service_name);
@@ -163,6 +168,7 @@ impl CommunicationManager {
         }
     }
 
+    /// Sends a heartbeat to the service and updates last seen.
     pub async fn send_heartbeat(&self, service_id: &str) -> ToadStoolResult<()> {
         let channels = self.channels.read().await;
         let channel = channels
@@ -182,16 +188,19 @@ impl CommunicationManager {
         Ok(())
     }
 
+    /// Returns the channel for a service by ID.
     pub async fn get_channel(&self, service_id: &str) -> Option<ServiceChannel> {
         let channels = self.channels.read().await;
         channels.get(service_id).cloned()
     }
 
+    /// Returns all active channels.
     pub async fn get_all_channels(&self) -> Vec<ServiceChannel> {
         let channels = self.channels.read().await;
         channels.values().cloned().collect()
     }
 
+    /// Removes the channel for a service.
     pub async fn remove_channel(&self, service_id: &str) {
         let mut channels = self.channels.write().await;
         if let Some(channel) = channels.remove(service_id) {
@@ -199,6 +208,7 @@ impl CommunicationManager {
         }
     }
 
+    /// Updates the status of a channel.
     pub async fn update_channel_status(&self, service_id: &str, status: ServiceStatus) {
         let mut channels = self.channels.write().await;
         if let Some(channel) = channels.get_mut(service_id) {

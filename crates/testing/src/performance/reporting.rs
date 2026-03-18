@@ -22,7 +22,9 @@ use super::types::BenchmarkResult;
 /// Performance test report
 #[derive(Debug, Clone)]
 pub struct PerformanceReport {
+    /// Total number of benchmarks in the report
     pub total_benchmarks: usize,
+    /// Individual benchmark results
     pub results: Vec<BenchmarkResult>,
 }
 

@@ -14,6 +14,7 @@ pub struct MetricsStore {
 }
 
 impl MetricsStore {
+    /// Create a new metrics store with the given retention period
     pub fn new(retention_period: Duration) -> Self {
         Self {
             series: HashMap::new(),
@@ -22,6 +23,7 @@ impl MetricsStore {
         }
     }
 
+    /// Store a batch of metrics and update stats
     pub async fn store_batch(&mut self, batch: MetricBatch) {
         for metric in batch.metrics {
             let series = self
@@ -46,6 +48,7 @@ impl MetricsStore {
         self.cleanup_old_data().await;
     }
 
+    /// Update min/max/avg stats for a metric
     pub fn update_stats(&mut self, metric_name: &str, value: f64) {
         let stats = self
             .stats

@@ -68,9 +68,13 @@ pub enum SecurityEventType {
 /// Security severity levels
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SecuritySeverity {
+    /// Low severity; informational.
     Low,
+    /// Medium severity; notable event.
     Medium,
+    /// High severity; potential risk.
     High,
+    /// Critical severity; immediate action.
     Critical,
 }
 

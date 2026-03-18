@@ -6,9 +6,13 @@ use crate::error::{Result, SysmonError};
 /// Information about a mounted filesystem.
 #[derive(Debug, Clone)]
 pub struct DiskInfo {
+    /// Path where the filesystem is mounted (e.g. `/` or `/home`).
     pub mount_point: String,
+    /// Filesystem type (e.g. `ext4`, `xfs`, `btrfs`).
     pub filesystem: String,
+    /// Total capacity in bytes.
     pub total_space: u64,
+    /// Free space available to unprivileged users in bytes.
     pub available_space: u64,
 }
 

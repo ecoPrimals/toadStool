@@ -55,7 +55,12 @@ pub enum ResponseStatus {
     /// Success
     Success,
     /// Error with details
-    Error { code: String, message: String },
+    Error {
+        /// Error code.
+        code: String,
+        /// Human-readable message.
+        message: String,
+    },
     /// Timeout
     Timeout,
     /// Service unavailable

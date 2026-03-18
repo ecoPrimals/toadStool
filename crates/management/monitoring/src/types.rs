@@ -25,6 +25,7 @@ pub enum MonitoringGranularity {
 }
 
 impl MonitoringGranularity {
+    /// Convert granularity to sampling interval duration
     #[must_use]
     pub const fn to_duration(self) -> Duration {
         match self {
@@ -79,24 +80,41 @@ pub enum ThresholdAction {
 /// Resource monitoring error types
 #[derive(Debug, Clone)]
 pub enum ResourceMonitorError {
+    /// Process was not registered for monitoring
     ProcessNotRegistered(String),
+    /// Process not found in system
     ProcessNotFound(String),
+    /// Command execution failed
     CommandExecutionFailed(String),
+    /// Parse error reading metrics
     ParseError(String),
+    /// Platform does not support this operation
     PlatformNotSupported(String),
+    /// Resource limit exceeded
     ResourceLimitExceeded {
+        /// Process identifier
         process_id: String,
+        /// Resource type (CPU, memory, etc.)
         resource_type: String,
+        /// Current usage value
         current_value: f64,
+        /// Configured limit
         limit: f64,
     },
+    /// Network monitoring unavailable on platform
     NetworkMonitoringNotAvailable,
+    /// Threshold violation detected
     ThresholdViolation {
+        /// Workload identifier
         workload_id: String,
+        /// Resource type
         resource_type: String,
+        /// Current value
         current_value: f64,
+        /// Threshold exceeded
         threshold: f64,
     },
+    /// Other error
     Other(String),
 }
 

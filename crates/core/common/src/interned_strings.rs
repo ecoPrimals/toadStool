@@ -239,32 +239,51 @@ pub mod primals {
 
 /// Common status strings
 pub mod status {
+    /// Service/process is running; used in health checks and status reports.
     pub const RUNNING: &str = "running";
+    /// Service/process is stopped; used in status reports.
     pub const STOPPED: &str = "stopped";
+    /// Service/process is in startup; used during bootstrap.
     pub const STARTING: &str = "starting";
+    /// Service/process is shutting down; used during teardown.
     pub const STOPPING: &str = "stopping";
+    /// Service/process has failed; used in error reporting.
     pub const FAILED: &str = "failed";
+    /// Service is healthy; used in health checks.
     pub const HEALTHY: &str = "healthy";
+    /// Service is degraded; used in health checks.
     pub const DEGRADED: &str = "degraded";
+    /// Status is unknown; used when state cannot be determined.
     pub const UNKNOWN: &str = "unknown";
 }
 
 /// Common environment strings
 pub mod env {
+    /// Development environment; used for config selection and logging.
     pub const DEVELOPMENT: &str = "development";
+    /// Staging environment; used for config selection and logging.
     pub const STAGING: &str = "staging";
+    /// Production environment; used for config selection and logging.
     pub const PRODUCTION: &str = "production";
+    /// Test environment; used for config selection in tests.
     pub const TEST: &str = "test";
 }
 
 /// Common content types
 pub mod content_types {
+    /// JSON MIME type; used for Content-Type headers and serialization.
     pub const JSON: &str = "application/json";
+    /// YAML MIME type; used for Content-Type headers and config parsing.
     pub const YAML: &str = "application/yaml";
+    /// TOML MIME type; used for Content-Type headers and config parsing.
     pub const TOML: &str = "application/toml";
+    /// Plain text MIME type; used for Content-Type headers.
     pub const TEXT: &str = "text/plain";
+    /// HTML MIME type; used for Content-Type headers.
     pub const HTML: &str = "text/html";
+    /// XML MIME type; used for Content-Type headers.
     pub const XML: &str = "application/xml";
+    /// Binary octet-stream MIME type; used for raw binary payloads.
     pub const BINARY: &str = "application/octet-stream";
 }
 
@@ -288,11 +307,17 @@ pub mod runtime_types {
 
 /// Common discovery sources
 pub mod discovery_sources {
+    /// mDNS discovery; used when service was found via multicast DNS.
     pub const MDNS: &str = "mdns";
+    /// Environment variable discovery; used when service came from env vars.
     pub const ENVIRONMENT: &str = "environment";
+    /// Config file discovery; used when service came from config.
     pub const CONFIG_FILE: &str = "config-file";
+    /// Service mesh discovery; used when service came from mesh.
     pub const SERVICE_MESH: &str = "service-mesh";
+    /// Fallback discovery; used when no other source matched.
     pub const FALLBACK: &str = "fallback";
+    /// Universal adapter discovery; used when service came from adapter.
     pub const UNIVERSAL_ADAPTER: &str = "universal-adapter";
 }
 

@@ -38,42 +38,65 @@ use crate::distiller::{
 /// - `drivers/gpu/drm/amd/include/asic_reg/gc/gc_10_3_0_offset.h`
 /// - `drivers/gpu/drm/amd/include/asic_reg/gc/gc_10_3_0_sh_mask.h`
 pub mod gfx10_registers {
-    /// GRBM — Graphics Register Bus Manager (top-level control).
+    /// GRBM_STATUS — engine idle/active status.
     pub const GRBM_STATUS: u64 = 0x8010;
+    /// GRBM_SOFT_RESET — GFX engine soft reset control.
     pub const GRBM_SOFT_RESET: u64 = 0x8020;
+    /// GRBM_GFX_CNTL — ME/pipe/queue selection for register access.
     pub const GRBM_GFX_CNTL: u64 = 0x8000;
 
-    /// CP — Command Processor (drives compute queues).
+    /// CP_MEC_ME1_UCODE_ADDR — MEC microcode load address.
     pub const CP_MEC_ME1_UCODE_ADDR: u64 = 0x8188;
+    /// CP_MEC_ME1_UCODE_DATA — MEC microcode data port.
     pub const CP_MEC_ME1_UCODE_DATA: u64 = 0x818C;
+    /// CP_HQD_ACTIVE — Hardware Queue Descriptor active flag.
     pub const CP_HQD_ACTIVE: u64 = 0xC91C;
+    /// CP_HQD_PQ_CONTROL — Ring buffer size and control.
     pub const CP_HQD_PQ_CONTROL: u64 = 0xC938;
+    /// CP_HQD_PQ_RPTR — Read pointer for compute queue.
     pub const CP_HQD_PQ_RPTR: u64 = 0xC940;
+    /// CP_HQD_PQ_WPTR — Write pointer for compute queue.
     pub const CP_HQD_PQ_WPTR: u64 = 0xC950;
+    /// CP_HQD_PQ_BASE — Ring buffer base address (low 32 bits).
     pub const CP_HQD_PQ_BASE: u64 = 0xC930;
+    /// CP_HQD_PQ_BASE_HI — Ring buffer base address (high 32 bits).
     pub const CP_HQD_PQ_BASE_HI: u64 = 0xC934;
 
-    /// SRBM — System Register Bus Manager.
+    /// SRBM_STATUS — system-level engine status.
     pub const SRBM_STATUS: u64 = 0x0E60;
 
-    /// RLC — Run List Controller (manages compute ring scheduling).
+    /// RLC_CNTL — Run List Controller enable.
     pub const RLC_CNTL: u64 = 0xB100;
+    /// RLC_CSIB_ADDR_LO — Clear State Image Block address (low).
     pub const RLC_CSIB_ADDR_LO: u64 = 0xB118;
+    /// RLC_CSIB_ADDR_HI — Clear State Image Block address (high).
     pub const RLC_CSIB_ADDR_HI: u64 = 0xB11C;
+    /// RLC_CSIB_LENGTH — Clear State Image Block size.
     pub const RLC_CSIB_LENGTH: u64 = 0xB120;
 
-    /// GC — Graphics Compute (shader engine config).
+    /// SPI_CONFIG_CNTL — Shader Processor Interrupt config.
     pub const SPI_CONFIG_CNTL: u64 = 0x9100;
+    /// SPI_CONFIG_CNTL_1 — Additional SPI config.
     pub const SPI_CONFIG_CNTL_1: u64 = 0x9104;
+    /// COMPUTE_DISPATCH_INITIATOR — Dispatch packet initiator.
     pub const COMPUTE_DISPATCH_INITIATOR: u64 = 0xA400;
+    /// COMPUTE_NUM_THREAD_X — Dispatch thread count X dimension.
     pub const COMPUTE_NUM_THREAD_X: u64 = 0xA404;
+    /// COMPUTE_NUM_THREAD_Y — Dispatch thread count Y dimension.
     pub const COMPUTE_NUM_THREAD_Y: u64 = 0xA408;
+    /// COMPUTE_NUM_THREAD_Z — Dispatch thread count Z dimension.
     pub const COMPUTE_NUM_THREAD_Z: u64 = 0xA40C;
+    /// COMPUTE_PGM_LO — Shader program address (low).
     pub const COMPUTE_PGM_LO: u64 = 0xA410;
+    /// COMPUTE_PGM_HI — Shader program address (high).
     pub const COMPUTE_PGM_HI: u64 = 0xA414;
+    /// COMPUTE_PGM_RSRC1 — Shader resource descriptor 1.
     pub const COMPUTE_PGM_RSRC1: u64 = 0xA418;
+    /// COMPUTE_PGM_RSRC2 — Shader resource descriptor 2.
     pub const COMPUTE_PGM_RSRC2: u64 = 0xA41C;
+    /// COMPUTE_TMPRING_SIZE — LDS/temp ring size for wavefronts.
     pub const COMPUTE_TMPRING_SIZE: u64 = 0xA424;
+    /// COMPUTE_USER_DATA_0 — First user-data slot for shader.
     pub const COMPUTE_USER_DATA_0: u64 = 0xA500;
 }
 

@@ -87,8 +87,11 @@ pub enum JobStatus {
     Running,
     /// Job completed successfully
     Completed,
-    /// Job failed
-    Failed { error: String },
+    /// Job failed with error.
+    Failed {
+        /// Error message.
+        error: String,
+    },
     /// Job was cancelled
     Cancelled,
     /// Job timed out

@@ -306,13 +306,14 @@ fn test_graph_edge_data_flow_and_control() {
 #[tokio::test]
 async fn test_standalone_executor_execute() {
     use bytes::Bytes;
+    use std::sync::Arc;
     use toadstool_server::rpc_types::{ResourceRequirements, WorkloadPriority, WorkloadSubmission};
     use toadstool_server::tarpc_server::WorkloadExecutor;
 
     let executor = StandaloneExecutor::new();
     let submission = WorkloadSubmission {
-        workload_id: "test-1".to_string(),
-        workload_type: "cpu_compute".to_string(),
+        workload_id: Arc::from("test-1"),
+        workload_type: Arc::from("cpu_compute"),
         data: Bytes::from(vec![1, 2, 3]),
         metadata: std::collections::HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -322,7 +323,7 @@ async fn test_standalone_executor_execute() {
     let result = executor.execute(submission).await;
     assert!(result.is_ok());
     let res = result.unwrap();
-    assert_eq!(res.workload_id, "test-1");
+    assert_eq!(res.workload_id.as_ref(), "test-1");
 }
 
 #[tokio::test]

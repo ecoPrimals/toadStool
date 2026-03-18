@@ -31,25 +31,39 @@ pub struct McpRequest {
     pub timestamp: SystemTime,
 }
 
-/// Types of MCP requests from AI providers
+/// Types of MCP requests from AI providers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum McpRequestType {
-    /// Natural language configuration request
-    NaturalLanguageConfig { instruction: String },
-    /// Execute code with AI intent
+    /// Natural language configuration request.
+    NaturalLanguageConfig {
+        /// User instruction in natural language.
+        instruction: String,
+    },
+    /// Execute code with AI intent.
     ExecuteWithIntent {
+        /// Code to execute.
         code: String,
+        /// AI-derived execution intent.
         intent: ExecutionIntent,
     },
-    /// Optimize configuration for specific task
-    OptimizeForTask { task_description: String },
+    /// Optimize configuration for specific task.
+    OptimizeForTask {
+        /// Task description.
+        task_description: String,
+    },
     /// Get current system status
     GetSystemStatus,
-    /// Create new AI session
-    CreateSession { preferences: Option<AiPreferences> },
-    /// Update session preferences
-    UpdatePreferences { preferences: AiPreferences },
+    /// Create new AI session.
+    CreateSession {
+        /// Initial preferences (if any).
+        preferences: Option<AiPreferences>,
+    },
+    /// Update session preferences.
+    UpdatePreferences {
+        /// New preferences.
+        preferences: AiPreferences,
+    },
 }
 
 /// AI-understood execution intent

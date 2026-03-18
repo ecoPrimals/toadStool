@@ -112,8 +112,8 @@ fn test_standalone_executor_default() {
 
 fn mk_submission(id: &str, workload_type: &str, data: Vec<u8>) -> WorkloadSubmission {
     WorkloadSubmission {
-        workload_id: id.to_string(),
-        workload_type: workload_type.to_string(),
+        workload_id: Arc::from(id),
+        workload_type: Arc::from(workload_type),
         data: data.into(),
         metadata: std::collections::HashMap::new(),
         priority: WorkloadPriority::Normal,
@@ -128,7 +128,7 @@ async fn test_standalone_executor_execute() {
     let result = exec.execute(submission).await;
     assert!(result.is_ok());
     let res = result.unwrap();
-    assert_eq!(res.workload_id, "test-wl-1");
+    assert_eq!(res.workload_id.as_ref(), "test-wl-1");
     assert!(matches!(res.status, WorkloadStatus::Completed));
     assert!(res.data.is_some());
 }
@@ -170,7 +170,7 @@ async fn test_mock_executor_submit_and_query() {
         .submit_workload(tarpc::context::current(), submission)
         .await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().workload_id, "mock-1");
+    assert_eq!(result.unwrap().workload_id.as_ref(), "mock-1");
 }
 
 #[tokio::test]
@@ -232,7 +232,7 @@ async fn test_mock_executor_health_check() {
 #[tokio::test]
 async fn test_workload_result_serialization() {
     let result = WorkloadResult {
-        workload_id: "ser-1".to_string(),
+        workload_id: Arc::from("ser-1"),
         status: WorkloadStatus::Completed,
         data: Some(vec![1, 2, 3].into()),
         error: None,
@@ -246,7 +246,7 @@ async fn test_workload_result_serialization() {
     };
     let json = serde_json::to_string(&result).unwrap();
     let restored: WorkloadResult = serde_json::from_str(&json).unwrap();
-    assert_eq!(restored.workload_id, result.workload_id);
+    assert_eq!(restored.workload_id.as_ref(), result.workload_id.as_ref());
     assert!(matches!(restored.status, WorkloadStatus::Completed));
 }
 
@@ -255,8 +255,8 @@ async fn test_workload_submission_serialization() {
     let sub = mk_submission("sub-1", "gpu_compute", vec![0xff, 0xfe]);
     let json = serde_json::to_string(&sub).unwrap();
     let restored: WorkloadSubmission = serde_json::from_str(&json).unwrap();
-    assert_eq!(restored.workload_id, sub.workload_id);
-    assert_eq!(restored.workload_type, sub.workload_type);
+    assert_eq!(restored.workload_id.as_ref(), sub.workload_id.as_ref());
+    assert_eq!(restored.workload_type.as_ref(), sub.workload_type.as_ref());
 }
 
 #[tokio::test]
@@ -405,7 +405,7 @@ async fn test_list_workloads_after_submit() {
     assert!(list.is_ok());
     let workloads = list.unwrap();
     assert_eq!(workloads.len(), 1);
-    assert_eq!(workloads[0].workload_id, "list-test");
+    assert_eq!(workloads[0].workload_id.as_ref(), "list-test");
 }
 
 #[tokio::test]

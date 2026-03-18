@@ -34,18 +34,25 @@ struct BufferBucket {
     buffers: VecDeque<Buffer<u8>>,
 }
 
+/// Memory pool statistics.
 #[derive(Debug, Default, Clone)]
 pub struct PoolStatistics {
+    /// Number of allocations.
     pub allocations: u64,
+    /// Number of deallocations.
     pub deallocations: u64,
+    /// Cache hits (buffer reused).
     pub cache_hits: u64,
+    /// Cache misses (new allocation).
     pub cache_misses: u64,
+    /// Total bytes allocated.
     pub total_bytes_allocated: u64,
+    /// Total bytes reused from pool.
     pub total_bytes_reused: u64,
 }
 
 impl MemoryPool {
-    /// Create a new memory pool with default configuration
+    /// Creates a new memory pool with default configuration.
     pub fn new() -> Self {
         Self::with_capacity(16) // 16 size buckets by default
     }

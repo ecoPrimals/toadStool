@@ -9,8 +9,9 @@ use crate::ToadStoolResult;
 use crate::hardware::{PerformanceClass, SystemCapabilities};
 use toadstool_config::ToadStoolConfig;
 
-/// Usage pattern learning and prediction
+/// Usage pattern learning and prediction from environment.
 pub struct UsageLearner {
+    /// Hints extracted from the environment.
     pub environment_hints: Vec<EnvironmentHint>,
 }
 
@@ -21,6 +22,7 @@ impl Default for UsageLearner {
 }
 
 impl UsageLearner {
+    /// Creates a new usage learner.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -189,52 +191,71 @@ impl UsageLearner {
     }
 }
 
-/// Usage pattern hints for optimization
+/// Usage pattern hints for optimization.
 #[derive(Debug, Clone, Default)]
 pub struct UsageHints {
+    /// Predicted workload types (e.g. development, machine_learning).
     pub predicted_workload_types: Vec<String>,
+    /// Expected CPU usage (0–1).
     pub expected_cpu_usage: f64,
+    /// Expected memory usage (0–1).
     pub expected_memory_usage: f64,
+    /// Whether GPU is preferred.
     pub prefers_gpu: bool,
+    /// Whether containers are preferred.
     pub prefers_containers: bool,
 }
 
 impl UsageHints {
+    /// Returns true if expected CPU usage exceeds 70%.
     #[must_use]
     pub fn is_cpu_intensive(&self) -> bool {
         self.expected_cpu_usage > 0.7
     }
 
+    /// Returns true if expected memory usage exceeds 70%.
     #[must_use]
     pub fn is_memory_intensive(&self) -> bool {
         self.expected_memory_usage > 0.7
     }
 }
 
-/// Environment hint for usage pattern detection
+/// Environment hint for usage pattern detection.
 #[derive(Debug, Clone)]
 pub struct EnvironmentHint {
+    /// Hint type identifier.
     pub hint_type: String,
+    /// Confidence score (0–1).
     pub confidence: f64,
+    /// Human-readable description.
     pub description: String,
 }
 
-/// Configuration snapshot for learning and optimization
+/// Configuration snapshot for learning and optimization.
 #[derive(Debug, Clone)]
 pub struct ConfigSnapshot {
+    /// When the snapshot was taken.
     pub timestamp: std::time::SystemTime,
+    /// Current configuration.
     pub config: ToadStoolConfig,
+    /// Detected hardware capabilities.
     pub hardware: SystemCapabilities,
+    /// Usage pattern hints.
     pub usage_hints: UsageHints,
+    /// Performance metrics (if available).
     pub performance_metrics: Option<PerformanceMetrics>,
 }
 
-/// Performance metrics for configuration optimization
+/// Performance metrics for configuration optimization.
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
+    /// Average execution time.
     pub avg_execution_time: Duration,
+    /// Peak memory usage (fraction of total).
     pub memory_usage_peak: f64,
+    /// Average CPU usage (0–1).
     pub cpu_usage_avg: f64,
+    /// Throughput in executions per second.
     pub throughput_executions_per_sec: f64,
 }
 

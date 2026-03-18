@@ -48,6 +48,7 @@ impl Default for LegacyCompatibilityLayer {
 }
 
 impl LegacyCompatibilityLayer {
+    /// Creates a new legacy compatibility layer with default config.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -55,6 +56,7 @@ impl LegacyCompatibilityLayer {
         }
     }
 
+    /// Returns the legacy compatibility config.
     #[must_use]
     pub const fn get_config(&self) -> &LegacyCompatConfig {
         &self.config

@@ -318,25 +318,39 @@ impl Default for SelfIdentity {
 /// Advertisement message for service discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceAdvertisement {
+    /// Unique instance identifier.
     pub instance_id: Uuid,
+    /// Primal type (e.g. songbird, nestgate).
     pub primal_type: String,
+    /// Service version.
     pub version: String,
+    /// Advertised capabilities.
     pub capabilities: Vec<Capability>,
+    /// Endpoint URL if known.
     pub endpoint: Option<String>,
+    /// Supported protocols.
     pub protocols: Vec<String>,
 }
 
 /// A service discovered at runtime
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveredService {
+    /// Unique instance identifier.
     pub instance_id: Uuid,
+    /// Primal type (e.g. songbird, nestgate).
     pub primal_type: String,
+    /// Service version.
     pub version: String,
+    /// Discovered capabilities.
     pub capabilities: Vec<Capability>,
+    /// Resolved endpoint URL.
     pub endpoint: String,
+    /// Supported protocols.
     pub protocols: Vec<String>,
+    /// When first discovered.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub discovered_at: SystemTime,
+    /// Last seen timestamp.
     #[serde(with = "toadstool_common::system_time_serde")]
     pub last_seen: SystemTime,
 }

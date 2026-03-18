@@ -3,8 +3,11 @@
 //!
 //! Analyzes workload characteristics to enable intelligent backend selection.
 
+/// AI/ML workload analysis.
 mod aiml;
+/// Workload characteristic classifications.
 mod characteristics;
+/// CUDA workload analysis.
 mod cuda;
 
 #[cfg(test)]
@@ -20,11 +23,13 @@ use crate::workload::WorkloadSpec;
 pub struct WorkloadAnalyzer;
 
 impl WorkloadAnalyzer {
+    /// Creates a new workload analyzer.
     #[must_use]
     pub const fn new() -> Self {
         Self
     }
 
+    /// Analyzes a workload and returns its characteristics.
     #[must_use]
     pub fn analyze(&self, workload: &WorkloadSpec) -> WorkloadCharacteristics {
         match workload {
@@ -50,6 +55,7 @@ impl WorkloadAnalyzer {
         }
     }
 
+    /// Classifies memory size into a MemoryRequirement tier.
     pub const fn classify_memory(bytes: u64) -> characteristics::MemoryRequirement {
         use characteristics::MemoryRequirement;
         match bytes {

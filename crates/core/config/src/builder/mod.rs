@@ -42,22 +42,27 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use thiserror::Error;
 
-/// Configuration errors
+/// Configuration errors for builder-based config loading.
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    /// File I/O error (e.g. file not found).
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// TOML parse/serialization error.
     #[error("TOML parse error: {0}")]
     Toml(#[from] toml::de::Error),
 
+    /// Invalid or missing environment variable.
     #[error("Environment variable error: {0}")]
     EnvVar(String),
 
+    /// Configuration validation failed.
     #[error("Validation error: {0}")]
     Validation(String),
 }
 
+/// Result type for builder config operations.
 pub type Result<T> = std::result::Result<T, ConfigError>;
 
 /// Base trait for all ToadStool configurations

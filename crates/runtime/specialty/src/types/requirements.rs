@@ -74,9 +74,11 @@ pub enum CompilerType {
     /// System/360 assembler
     #[serde(rename = "ASM_System360")]
     AsmSystem360,
-    /// Cross-compiler
+    /// Generic cross-compiler.
     CrossCompiler {
+        /// Host architecture (e.g. x86_64).
         host_arch: String,
+        /// Target architecture for generated code.
         target_arch: LegacyArchitecture,
     },
 }
@@ -186,8 +188,11 @@ pub enum SpecialHardware {
     ParallelPort,
     /// IEEE-488 interface
     IEEE488,
-    /// Custom hardware
-    CustomHardware { description: String },
+    /// Custom hardware device.
+    CustomHardware {
+        /// Human-readable description.
+        description: String,
+    },
 }
 
 /// Memory types for legacy systems
@@ -271,18 +276,25 @@ pub enum FileSystemType {
     Unix,
     /// RT-11 file system
     RT11,
-    /// Custom file system
-    Custom { name: String },
+    /// Custom file system type.
+    Custom {
+        /// File system name.
+        name: String,
+    },
 }
 
-/// Communication protocols for legacy systems
+/// Communication protocols for legacy systems.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CommunicationProtocol {
-    /// Serial communication
+    /// Serial communication (RS-232, etc.).
     Serial {
+        /// Baud rate.
         baud_rate: u32,
+        /// Data bits (5–8).
         data_bits: u8,
+        /// Stop bits (1 or 2).
         stop_bits: u8,
+        /// Parity setting.
         parity: Parity,
     },
     /// Parallel communication
@@ -311,8 +323,13 @@ pub enum CommunicationProtocol {
     SNA,
     /// X.25
     X25,
-    /// Custom protocol
-    Custom { name: String, specification: String },
+    /// Custom communication protocol.
+    Custom {
+        /// Protocol name.
+        name: String,
+        /// Protocol specification reference.
+        specification: String,
+    },
 }
 
 /// Port requirements for legacy systems
@@ -337,8 +354,11 @@ pub enum PortType {
     IEEE488,
     /// Centronics
     Centronics,
-    /// Custom port
-    Custom { name: String },
+    /// Custom port type.
+    Custom {
+        /// Port type name.
+        name: String,
+    },
 }
 
 /// Network requirements for legacy systems
@@ -375,22 +395,32 @@ pub enum NetworkProtocol {
     BanyanVINES,
 }
 
-/// Parity settings for serial communication
+/// Parity settings for serial communication.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Parity {
+    /// No parity.
     None,
+    /// Even parity.
     Even,
+    /// Odd parity.
     Odd,
+    /// Mark parity (always 1).
     Mark,
+    /// Space parity (always 0).
     Space,
 }
 
-/// Optimization level for compilation
+/// Optimization level for compilation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OptimizationLevel {
+    /// No optimization.
     None,
+    /// Basic optimizations.
     Basic,
+    /// Aggressive optimizations.
     Aggressive,
+    /// Optimize for size.
     Size,
+    /// Optimize for speed.
     Speed,
 }

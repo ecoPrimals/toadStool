@@ -70,6 +70,7 @@ pub struct ProviderHealth {
 }
 
 impl ProviderHealth {
+    /// Creates a healthy provider status with latency.
     pub const fn healthy(latency_ms: u64) -> Self {
         Self {
             available: true,
@@ -79,6 +80,7 @@ impl ProviderHealth {
         }
     }
 
+    /// Creates an unhealthy provider status with error message.
     pub fn unhealthy(error: impl Into<String>) -> Self {
         Self {
             available: false,

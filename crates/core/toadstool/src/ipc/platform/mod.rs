@@ -42,17 +42,28 @@ pub use tcp::{bind as bind_tcp, connect as connect_tcp};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Endpoint {
     /// Filesystem Unix socket (Linux, macOS)
-    Unix { path: PathBuf },
+    Unix {
+        /// Socket path on filesystem.
+        path: PathBuf,
+    },
 
     /// Abstract Unix socket (Linux, Android)
     ///
     /// Uses Linux-specific abstract namespace (name starts with null byte).
     /// Doesn't create filesystem entry, better for Android (SELinux-friendly).
     #[cfg(target_os = "linux")]
-    Abstract { name: String },
+    Abstract {
+        /// Abstract socket name (e.g. @biomeos_toadstool).
+        name: String,
+    },
 
     /// TCP socket (universal fallback)
-    Tcp { host: String, port: u16 },
+    Tcp {
+        /// Host or IP address.
+        host: String,
+        /// Port number.
+        port: u16,
+    },
 }
 
 impl Endpoint {

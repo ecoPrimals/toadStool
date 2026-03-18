@@ -210,34 +210,47 @@ pub struct WorkloadProfile {
 /// Workload size categories
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkloadSize {
-    Small,  // < 1K operations
-    Medium, // 1K - 1M operations
-    Large,  // > 1M operations
+    /// < 1K operations
+    Small,
+    /// 1K - 1M operations
+    Medium,
+    /// > 1M operations
+    Large,
 }
 
 /// Latency requirements
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LatencyRequirement {
-    Critical,  // < 1ms
-    Important, // < 10ms
-    Relaxed,   // > 10ms
+    /// < 1ms
+    Critical,
+    /// < 10ms
+    Important,
+    /// > 10ms
+    Relaxed,
 }
 
 /// Power constraints
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerConstraint {
-    UltraLow, // < 1W
-    Low,      // < 10W
-    Medium,   // < 100W
+    /// < 1W
+    UltraLow,
+    /// < 10W
+    Low,
+    /// < 100W
+    Medium,
+    /// No power constraint
     Unconstrained,
 }
 
 /// Throughput requirements
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThroughputRequirement {
-    Low,    // < 1 GFLOPS
-    Medium, // 1-10 GFLOPS
-    High,   // > 10 GFLOPS
+    /// < 1 GFLOPS
+    Low,
+    /// 1-10 GFLOPS
+    Medium,
+    /// > 10 GFLOPS
+    High,
 }
 
 impl WorkloadProfile {

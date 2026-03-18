@@ -11,20 +11,29 @@ use super::request::CompositionRequest;
 /// Constraint satisfaction result
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConstraintSatisfaction {
+    /// Constraint fully satisfied.
     Satisfied,
+    /// Partially satisfied; payload is score in [0, 1).
     Partial(f64),
-    Unsatisfied { reason: String },
+    /// Not satisfied; reason explains why.
+    Unsatisfied {
+        /// Human-readable reason for failure.
+        reason: String,
+    },
 }
 
 impl ConstraintSatisfaction {
+    /// Returns true if satisfied or partially satisfied.
     pub const fn is_satisfied(&self) -> bool {
         matches!(self, Self::Satisfied | Self::Partial(_))
     }
 
+    /// Returns true only when fully satisfied.
     pub const fn is_fully_satisfied(&self) -> bool {
         matches!(self, Self::Satisfied)
     }
 
+    /// Returns satisfaction score: 1.0 satisfied, partial value, or 0.0 unsatisfied.
     pub const fn score(&self) -> f64 {
         match self {
             Self::Satisfied => 1.0,
@@ -37,17 +46,23 @@ impl ConstraintSatisfaction {
 /// Constraint evaluation result for a composition request
 #[derive(Debug, Clone)]
 pub struct ConstraintEvaluation {
+    /// Original composition request.
     pub request: CompositionRequest,
+    /// Per-constraint satisfaction results.
     pub results: HashMap<String, ConstraintSatisfaction>,
+    /// Aggregate score in [0, 1].
     pub overall_score: f64,
+    /// True if all hard constraints satisfied.
     pub is_feasible: bool,
 }
 
 impl ConstraintEvaluation {
+    /// Returns satisfaction for a constraint by name.
     pub fn get_satisfaction(&self, constraint_name: &str) -> Option<&ConstraintSatisfaction> {
         self.results.get(constraint_name)
     }
 
+    /// Returns hard constraints that are not satisfied.
     pub fn unsatisfied_hard_constraints(&self) -> Vec<(&str, &ConstraintSatisfaction)> {
         self.results
             .iter()
@@ -56,6 +71,7 @@ impl ConstraintEvaluation {
             .collect()
     }
 
+    /// Returns average score across soft constraints only.
     pub fn soft_constraint_score(&self) -> f64 {
         let soft_results: Vec<_> = self
             .request

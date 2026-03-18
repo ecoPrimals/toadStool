@@ -9,9 +9,13 @@ use std::time::Duration;
 /// Comprehensive metrics container
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Metrics {
+    /// Latency distribution (min, max, percentiles).
     pub latency: LatencyMetrics,
+    /// Power consumption (W, energy per inference).
     pub power: PowerMetrics,
+    /// Throughput (inferences/sec, batch size).
     pub throughput: ThroughputMetrics,
+    /// Accuracy (top-1, top-5, confusion matrix).
     pub accuracy: AccuracyMetrics,
 }
 
@@ -30,11 +34,15 @@ pub struct LatencyMetrics {
     pub median: Duration,
     /// Standard deviation (as Duration)
     pub std_dev_nanos: u64,
-    /// Percentiles
+    /// 50th percentile (median) latency.
     pub p50: Duration,
+    /// 90th percentile latency.
     pub p90: Duration,
+    /// 95th percentile latency.
     pub p95: Duration,
+    /// 99th percentile latency.
     pub p99: Duration,
+    /// 99.9th percentile latency.
     pub p999: Duration,
 }
 
@@ -145,13 +153,13 @@ impl PowerMetrics {
 /// Throughput metrics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ThroughputMetrics {
-    /// Inferences per second
+    /// Inferences per second (sustained throughput).
     pub inferences_per_second: f64,
-    /// Total inferences
+    /// Total inferences completed.
     pub total_inferences: usize,
-    /// Total time
+    /// Total wall-clock time for all inferences.
     pub total_time: Duration,
-    /// Effective batch size
+    /// Effective batch size used.
     pub batch_size: usize,
 }
 

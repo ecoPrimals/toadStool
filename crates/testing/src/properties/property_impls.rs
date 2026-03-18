@@ -114,7 +114,7 @@ pub struct MonotonicProperty<T, F> {
     _phantom: std::marker::PhantomData<T>,
 }
 
-/// Utility macros for common property tests
+/// Creates an invariant property that tests a predicate holds for all inputs.
 #[macro_export]
 macro_rules! invariant {
     ($name:expr, $predicate:expr) => {
@@ -122,6 +122,7 @@ macro_rules! invariant {
     };
 }
 
+/// Creates a round-trip property for encode/decode cycles.
 #[macro_export]
 macro_rules! round_trip {
     ($name:expr, $encode:expr, $decode:expr) => {

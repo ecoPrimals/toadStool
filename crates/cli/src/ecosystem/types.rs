@@ -26,14 +26,19 @@ pub struct EcosystemIntegrator {
     pub(super) credentials: Option<EcosystemCredentials>,
 }
 
+/// Discovered ecosystem service endpoint
 #[derive(Debug, Clone)]
 #[allow(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compatibility
 pub struct ServiceEndpoint {
+    /// Service capability type (discovery, crypto, storage)
     pub service_type: EcosystemService,
+    /// Network address (host:port)
     pub address: SocketAddr,
     /// **Zero-Copy**: Uses `Arc<str>` for cheap clones in registry lookups
     pub version: Arc<str>,
+    /// Capability names this service provides
     pub capabilities: Vec<String>,
+    /// How the endpoint was discovered and verified
     pub trust_level: TrustLevel,
 }
 
@@ -117,14 +122,21 @@ impl EcosystemService {
     }
 }
 
+/// Trust level of a discovered service endpoint
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TrustLevel {
+    /// Trust level unknown
     Unknown,
-    Discovered, // Found via network scan
-    Advertised, // Advertised via mDNS/service mesh
-    Configured, // Explicitly configured (env var/config file)
-    Verified,   // Cryptographically verified
-    Sovereign,  // Full sovereign verification
+    /// Found via network scan
+    Discovered,
+    /// Advertised via mDNS/service mesh
+    Advertised,
+    /// Explicitly configured (env var/config file)
+    Configured,
+    /// Cryptographically verified
+    Verified,
+    /// Full sovereign verification
+    Sovereign,
 }
 
 #[derive(Debug, Clone)]
@@ -151,45 +163,70 @@ pub(super) struct EcosystemCredentials {
     pub(super) certificates: Vec<String>,
 }
 
+/// Result of a service discovery scan
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveryResult {
+    /// Discovered service endpoints
     pub services: Vec<ServiceEndpoint>,
+    /// How long the scan took
     pub scan_duration: Duration,
+    /// Total number of services found
     pub total_discovered: usize,
+    /// Number cryptographically verified
     pub verified_count: usize,
 }
 
+/// BearDog crypto permission grant
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogPermission {
+    /// Unique permission ID
     pub permission_id: Uuid,
+    /// Identity the permission is granted to
     pub granted_to: String,
+    /// Allowed capability names
     pub capabilities: Vec<String>,
+    /// Expiration time
     #[serde(with = "toadstool_common::system_time_serde")]
     pub valid_until: std::time::SystemTime,
+    /// Cryptographic signature
     pub signature: String,
 }
 
+/// NestGate storage mount configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestGateMount {
+    /// Dataset name in NestGate
     pub dataset_name: String,
+    /// Local mount path
     pub mount_point: PathBuf,
+    /// NestGate endpoint URL
     pub endpoint: String,
+    /// ZFS dataset name (if applicable)
     pub zfs_dataset: Option<String>,
-    pub access_mode: String, // read, write, admin
+    /// Access mode (read, write, admin)
+    pub access_mode: String,
+    /// Encryption key (if encrypted)
     pub encryption_key: Option<String>,
 }
 
+/// Service discovered during a scan
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(deprecated)] // Using ServiceType during migration period
 pub struct DiscoveredService {
+    /// Capability type (discovery, crypto, storage, compute)
     pub service_type: ServiceType,
+    /// Network address
     pub address: SocketAddr,
+    /// How the service was discovered
     pub trust_level: TrustLevel,
+    /// Capability key-value pairs
     pub capabilities: HashMap<String, String>,
+    /// When the service was last seen
     #[serde(with = "toadstool_common::system_time_serde")]
     pub last_seen: std::time::SystemTime,
 }
 
+/// Service capability type (deprecated: use capability-based discovery)
 #[deprecated(
     since = "0.2.0",
     note = "Use capability-based service identification. See service_type.rs"
@@ -247,33 +284,51 @@ impl ServiceType {
     }
 }
 
+/// Cryptographic signature on a service response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceSignature {
+    /// Algorithm (e.g. ed25519)
     pub algorithm: String,
+    /// Base64-encoded signature
     pub signature: String,
+    /// Signer's public key
     pub public_key: String,
+    /// When the signature was created
     #[serde(with = "toadstool_common::system_time_serde")]
     pub timestamp: std::time::SystemTime,
+    /// Nonce for replay protection
     pub nonce: String,
 }
 
+/// Service response with cryptographic signature
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedServiceResponse {
+    /// Service instance ID
     pub service_id: String,
+    /// Capability type
     pub service_type: String,
+    /// Status string (e.g. ok, busy)
     pub status: String,
+    /// Capability names
     pub capabilities: Vec<String>,
+    /// Response timestamp
     #[serde(with = "toadstool_common::system_time_serde")]
     pub timestamp: std::time::SystemTime,
+    /// Signature for verification
     pub signature: ServiceSignature,
 }
 
+/// Context for verifying service signatures (trusted keys, revocation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CryptoVerificationContext {
+    /// Map of service type to trusted public key (base64)
     pub trusted_public_keys: HashMap<String, String>,
+    /// Revoked public keys (base64)
     pub revoked_keys: Vec<String>,
+    /// When verification context was built
     #[serde(with = "toadstool_common::system_time_serde")]
     pub verification_timestamp: std::time::SystemTime,
+    /// Max age of responses to accept (minutes)
     pub max_age_minutes: u32,
 }
 
@@ -310,6 +365,7 @@ impl Default for CryptoVerificationContext {
 }
 
 impl CryptoVerificationContext {
+    /// Create a new verification context (loads trusted keys from env)
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -323,6 +379,7 @@ impl CryptoVerificationContext {
         self
     }
 
+    /// Verify an Ed25519 signature over a message
     pub fn verify_ed25519_signature(
         &self,
         message: &[u8],
@@ -346,6 +403,7 @@ impl CryptoVerificationContext {
         }
     }
 
+    /// Verify a signed service response using trusted keys
     pub fn verify_service_signature(
         &self,
         service_type: &str,

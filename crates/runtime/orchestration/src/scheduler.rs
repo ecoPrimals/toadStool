@@ -15,6 +15,7 @@ pub struct WorkloadScheduler {
 }
 
 impl WorkloadScheduler {
+    /// Creates a new workload scheduler with default strategy.
     pub fn new() -> Self {
         Self {
             strategy: SchedulingStrategy::default(),

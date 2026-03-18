@@ -32,69 +32,116 @@ use super::scheduling::HybridCloudScheduler;
 // Cloud Provider Enum
 // ============================================================================
 
-/// Universal cloud provider abstraction
+/// Universal cloud provider abstraction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CloudProvider {
-    /// Amazon Web Services
+    /// Amazon Web Services.
     AWS {
+        /// AWS region.
         region: String,
+        /// AWS credentials.
         credentials: AWSCredentials,
+        /// Cost budget (optional).
         cost_budget: Option<f64>,
     },
-    /// Microsoft Azure
+    /// Microsoft Azure.
     Azure {
+        /// Subscription ID.
         subscription: String,
+        /// Azure credentials.
         credentials: AzureCredentials,
+        /// Resource group.
         resource_group: String,
     },
-    /// Google Cloud Platform
+    /// Google Cloud Platform.
     GCP {
+        /// GCP project ID.
         project: String,
+        /// GCP credentials.
         credentials: GCPCredentials,
+        /// Zone.
         zone: String,
     },
-    /// DigitalOcean
-    DigitalOcean { token: String, region: String },
-    /// Linode
-    Linode { token: String, region: String },
-    /// Vultr
-    Vultr { api_key: String, region: String },
-    /// Hetzner Cloud
-    Hetzner { token: String, location: String },
-    /// OVH Cloud
-    OVH {
-        application_key: String,
-        application_secret: String,
-        consumer_key: String,
+    /// DigitalOcean.
+    DigitalOcean {
+        /// API token.
+        token: String,
+        /// Region.
         region: String,
     },
-    /// Scaleway
+    /// Linode.
+    Linode {
+        /// API token.
+        token: String,
+        /// Region.
+        region: String,
+    },
+    /// Vultr.
+    Vultr {
+        /// API key.
+        api_key: String,
+        /// Region.
+        region: String,
+    },
+    /// Hetzner Cloud.
+    Hetzner {
+        /// API token.
+        token: String,
+        /// Location.
+        location: String,
+    },
+    /// OVH Cloud.
+    OVH {
+        /// Application key.
+        application_key: String,
+        /// Application secret.
+        application_secret: String,
+        /// Consumer key.
+        consumer_key: String,
+        /// Region.
+        region: String,
+    },
+    /// Scaleway.
     Scaleway {
+        /// Access key.
         access_key: String,
+        /// Secret key.
         secret_key: String,
+        /// Organization ID.
         organization_id: String,
+        /// Zone.
         zone: String,
     },
-    /// BearDog Cloud (our own self-owned cloud!)
+    /// BearDog Cloud (self-owned cloud).
     BearDogCloud {
+        /// Endpoint URL.
         endpoint: String,
+        /// Auth token.
         token: String,
+        /// Encryption level.
         encryption_level: EncryptionLevel,
     },
-    /// Self-hosted infrastructure
+    /// Self-hosted infrastructure.
     SelfHosted {
+        /// Endpoint URLs.
         endpoints: Vec<String>,
+        /// Auth method.
         auth_method: AuthMethod,
     },
-    /// Kubernetes cluster (any K8s, anywhere)
+    /// Kubernetes cluster.
     Kubernetes {
+        /// K8s config.
         config: KubernetesConfig,
+        /// Namespace.
         namespace: String,
-        storage_class: Option<String>, // nestGate backing
+        /// Storage class (optional).
+        storage_class: Option<String>,
     },
-    /// Edge/IoT devices
+    /// Edge/IoT devices.
     EdgeDevices {
+        /// Device registry endpoint.
         device_registry: String,
+        /// Mesh network config.
         mesh_network: EdgeMeshConfig,
     },
 }
