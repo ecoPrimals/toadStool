@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for `PolicyManager`
 //!
 //! This module provides extensive test coverage for the `PolicyManager`,

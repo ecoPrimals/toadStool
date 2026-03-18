@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Hardware Transport Layer — any hardware input to any hardware output.
 //!
 //! Defines the generic [`HardwareTransport`] trait that all physical I/O paths
@@ -276,5 +276,34 @@ mod tests {
     fn medium_display() {
         assert_eq!(format!("{}", TransportMedium::Display), "Display");
         assert_eq!(format!("{}", TransportMedium::Capture), "Capture");
+    }
+
+    #[test]
+    fn transport_medium_all_variants() {
+        assert_eq!(format!("{}", TransportMedium::Serial), "Serial");
+        assert_eq!(format!("{}", TransportMedium::Pcie), "PCIe");
+        assert_eq!(format!("{}", TransportMedium::NvLink), "NVLink");
+    }
+
+    #[test]
+    fn transport_error_open_failed() {
+        let e = TransportError::OpenFailed("permission denied".into());
+        assert!(e.to_string().contains("open") || e.to_string().contains("permission"));
+    }
+
+    #[test]
+    fn encode_frame_exact_buffer_size() {
+        let payload = b"x";
+        let mut buf = vec![0u8; FRAME_HEADER_SIZE + 1];
+        let written = encode_frame(0, payload, &mut buf).unwrap();
+        assert_eq!(written, FRAME_HEADER_SIZE + 1);
+    }
+
+    #[test]
+    fn decode_frame_version_zero_rejected() {
+        let mut buf = vec![0u8; FRAME_HEADER_SIZE];
+        buf[0..4].copy_from_slice(b"TSXP");
+        buf[4] = 0;
+        assert!(decode_frame(&buf).is_err());
     }
 }

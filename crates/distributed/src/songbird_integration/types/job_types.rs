@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job request/response, complexity, subtask, and coordination types
 
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 use uuid::Uuid;
@@ -11,10 +12,11 @@ use crate::ResourceRequirements;
 // Job Request/Response Types
 // ============================================================================
 
+/// Job payload: Bytes = Arc<[u8]> — clone is refcount bump (wateringHole zero-copy)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SongbirdJobRequest {
     pub job_id: Uuid,
-    pub job_payload: Vec<u8>,
+    pub job_payload: Bytes,
     pub target_nodes: Vec<String>,
     pub resource_requirements: ResourceRequirements,
     pub priority: u8,
@@ -109,10 +111,11 @@ pub enum MassiveJobResult {
 // Sub-task and Coordination Types
 // ============================================================================
 
+/// SubTask payload: Bytes = Arc<[u8]> — clone is refcount bump (wateringHole zero-copy)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubTask {
     pub id: Uuid,
-    pub payload: Vec<u8>,
+    pub payload: Bytes,
     pub resource_requirements: ResourceRequirements,
     pub priority: u8,
     pub constraints: Vec<String>,

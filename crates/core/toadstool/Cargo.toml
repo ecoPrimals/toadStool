@@ -26,8 +26,8 @@ tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
 futures = "0.3"
 
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
+# Serialization (rc for Arc<str> zero-copy in storage types)
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 bytes = { workspace = true }
 

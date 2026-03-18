@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unified PCI device discovery via sysfs.
 //!
 //! Shared scanner for all toadStool crates that need PCI device discovery
@@ -169,9 +169,13 @@ fn read_driver_name(device_path: &Path) -> Option<String> {
 
 /// Well-known PCI vendor IDs used in ecoPrimals.
 pub mod vendors {
+    /// NVIDIA Corporation (GPUs, Tegra)
     pub const NVIDIA: u16 = 0x10de;
+    /// BrainChip Inc. (Akida NPU)
     pub const BRAINCHIP: u16 = 0x1e96;
+    /// Advanced Micro Devices (GPUs, CPUs)
     pub const AMD: u16 = 0x1002;
+    /// Intel Corporation (GPUs, CPUs, FPGAs)
     pub const INTEL: u16 = 0x8086;
 }
 

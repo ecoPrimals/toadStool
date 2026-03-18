@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for `PolicyManager`
 //!
 //! These tests exercise the full policy evaluation pipeline with real implementations.

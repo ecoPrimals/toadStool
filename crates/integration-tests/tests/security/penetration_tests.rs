@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security penetration tests
 //!
 //! Exercises the security model's boundary enforcement: capability escalation

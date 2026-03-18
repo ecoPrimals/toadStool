@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload-size-aware routing thresholds from cross-spring Kokkos parity benchmarks.
 //!
 //! Thresholds are absorbed from:

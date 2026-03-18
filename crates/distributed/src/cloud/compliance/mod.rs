@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Compliance and security enforcement
 //!
 //! This module validates data sovereignty, security tier requirements (encryption, audit logging),

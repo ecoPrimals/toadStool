@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 17, 2026 -- S158 Comprehensive Audit + Deep Debt Execution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-only | **All 4 quality gates green** | 0 clippy pedantic+nursery (56 crates) | 21,156+ tests (0 failures) | 1,896 `.rs` files, 565K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **29 crates `forbid(unsafe_code)`**
-**Latest**: S158 — Comprehensive audit against wateringHole standards. SIGSEGV fix (OnceLock GPU probe). License compliance (all Cargo.toml inherit workspace). forbid(unsafe_code) +9 crates. Hardcoding evolution (test constants). Debris cleanup.
+**Updated**: March 18, 2026 -- S158b Scope + Deep Debt Execution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-or-later | **All 4 quality gates green** | 0 clippy pedantic+nursery (56 crates) | 21,156+ tests (0 failures) | 1,896 `.rs` files, 565K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **29 crates `forbid(unsafe_code)`**
+**Latest**: S158b — specs/README.md rewritten with scope, aims, and silicon-targeting future. Build fix (5 protocols errors). Smart refactoring (engine 817→715, capabilities 760→406). Hardcoding evolution (IPs→constants). Missing docs (20+ items). Primal self-knowledge audit clean.
 
 ---
 
@@ -31,9 +31,9 @@ parameter tuning.
 All `set_var`/`remove_var` calls wrapped in `unsafe {}` across 14 files. Mangled
 syntax fixed in 3 server files. Test suite fully unblocked.
 
-### P1: Test Coverage → 90% (D-COV) — Ongoing (S157)
+### P1: Test Coverage → 90% (D-COV) — Ongoing (S158)
 
-**~83% line coverage** (182K lines instrumented). **21,156 tests** (S156). Mock hardware layers for V4L2/VFIO available (`MockV4l2Device`, `MockVfioDevice`). Coverage push to 90% ongoing — hardware mocks needed for remaining gaps.
+**~83% line coverage** (182K lines instrumented). **21,156 tests**. Target 90%. Coverage push to 90% ongoing — hardware mocks needed for remaining gaps.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -43,11 +43,14 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-### Key Remaining Items (S156)
+### Key Remaining Items (S158)
 
 | Item | Status |
 |------|--------|
 | Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
+| Fill missing_docs warnings | 694+ warnings now visible with `#![warn(missing_docs)]` on 38 crates |
+| Phase 2 dep migration: procfs → toadstool-sysmon | Pending |
+| Phase 3: tarpc binary transport | Pending |
 | Property-based testing for computation modules | Pending |
 | Multi-primal integration test infrastructure | Pending |
 | VFIO PBDMA dispatch | Blocked on coralReef (USERD_TARGET encoding fix) |

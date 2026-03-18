@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration management tests
 //!
 //! Tests use the real `ToadStoolConfig` and `NetworkConfig` APIs.

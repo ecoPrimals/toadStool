@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Apply learned init recipes to target GPUs.
 //!
 //! The applicator replays recipe steps on a target GPU and verifies

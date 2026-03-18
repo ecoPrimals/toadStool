@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 //! Coverage tests for `biomeos_integration::agent_backend_evolved`
 //! Target: agent_backend_evolved.rs — capability-based agent deployment backend

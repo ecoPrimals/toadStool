@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::common::{mk_request, test_handler};
 use crate::pure_jsonrpc::types::JsonRpcError;

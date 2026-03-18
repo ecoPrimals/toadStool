@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
@@ -14,9 +14,13 @@
 
 use std::borrow::Cow;
 
+use akida_driver::{
+    BackendType, BatchCapabilities, Capabilities, ChipVersion, ModelHandle, NpuBackend, PcieConfig,
+    WeightMutationSupport,
+};
 use toadstool_core::npu_dispatch::{
-    DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError, NpuInferenceRequest, NpuInfo,
-    NpuModelHandle,
+    AkidaNpuDispatch, DispatchResult, NpuCapability, NpuDispatch, NpuDispatchError,
+    NpuInferenceRequest, NpuInfo, NpuModelHandle,
 };
 
 // ─── NpuModelHandle ────────────────────────────────────────────────────────
@@ -246,4 +250,124 @@ fn npu_dispatch_dispatch_request_default() {
     assert!(result.is_ok());
     let r = result.unwrap();
     assert_eq!(r.output, vec![1.0, 2.0, 3.0]);
+}
+
+// ─── Mock NpuBackend for AkidaNpuDispatch ────────────────────────────────────
+
+/// Mock akida-driver backend to exercise AkidaNpuDispatch without hardware.
+#[derive(Debug)]
+struct MockAkidaBackend {
+    caps: Capabilities,
+    model_counter: std::sync::atomic::AtomicU32,
+}
+
+impl MockAkidaBackend {
+    fn new() -> Self {
+        let caps = Capabilities {
+            chip_version: ChipVersion::Akd1000,
+            npu_count: 80,
+            memory_mb: 10,
+            pcie: PcieConfig::new(3, 8),
+            power_mw: None,
+            temperature_c: None,
+            mesh: None,
+            clock_mode: None,
+            batch: Some(BatchCapabilities {
+                max_batch: 8,
+                optimal_batch: 8,
+                optimal_speedup: 2.35,
+            }),
+            weight_mutation: WeightMutationSupport::None,
+        };
+        Self {
+            caps,
+            model_counter: std::sync::atomic::AtomicU32::new(0),
+        }
+    }
+}
+
+impl NpuBackend for MockAkidaBackend {
+    fn init(_device_id: &str) -> akida_driver::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self::new())
+    }
+
+    fn capabilities(&self) -> &Capabilities {
+        &self.caps
+    }
+
+    fn load_model(&mut self, _model: &[u8]) -> akida_driver::Result<ModelHandle> {
+        let id = self
+            .model_counter
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            + 1;
+        Ok(ModelHandle::new(id))
+    }
+
+    fn load_reservoir(&mut self, _w_in: &[f32], _w_res: &[f32]) -> akida_driver::Result<()> {
+        Ok(())
+    }
+
+    fn infer(&mut self, input: &[f32]) -> akida_driver::Result<Vec<f32>> {
+        Ok(input.to_vec())
+    }
+
+    fn measure_power(&self) -> akida_driver::Result<f32> {
+        Ok(1500.0)
+    }
+
+    fn backend_type(&self) -> BackendType {
+        BackendType::Userspace
+    }
+
+    fn is_ready(&self) -> bool {
+        true
+    }
+}
+
+#[test]
+fn akida_npu_dispatch_from_backend_info() {
+    let backend = Box::new(MockAkidaBackend::new());
+    let dispatch = AkidaNpuDispatch::from_backend(backend);
+    let info = dispatch.info();
+    assert!(info.name.starts_with("Akida"));
+    assert_eq!(info.vendor, "brainchip");
+    assert_eq!(info.processing_elements, 80);
+    assert!(dispatch.supports(NpuCapability::Inference));
+    assert!(dispatch.supports(NpuCapability::PowerMonitoring));
+    assert!(dispatch.supports(NpuCapability::ReservoirComputing));
+    assert!(dispatch.supports(NpuCapability::BatchInference));
+    assert!(!dispatch.supports(NpuCapability::OnChipLearning));
+}
+
+#[test]
+fn akida_npu_dispatch_load_and_dispatch() {
+    let backend = Box::new(MockAkidaBackend::new());
+    let mut dispatch = AkidaNpuDispatch::from_backend(backend);
+    let handle = dispatch.load_model(b"fake_model_data").unwrap();
+    assert_eq!(handle.id(), 1);
+
+    let result = dispatch
+        .dispatch(handle, Cow::Borrowed(&[1.0, 2.0, 3.0]))
+        .unwrap();
+    assert_eq!(result.output, vec![1.0, 2.0, 3.0]);
+    assert!(result.latency_us >= 0);
+    assert_eq!(result.power_mw, Some(1500.0));
+}
+
+#[test]
+fn akida_npu_dispatch_power_mw() {
+    let backend = Box::new(MockAkidaBackend::new());
+    let dispatch = AkidaNpuDispatch::from_backend(backend);
+    let power = dispatch.power_mw().unwrap();
+    assert!((power - 1500.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn akida_npu_dispatch_is_alive() {
+    let backend = Box::new(MockAkidaBackend::new());
+    let dispatch = AkidaNpuDispatch::from_backend(backend);
+    assert!(dispatch.is_alive());
 }

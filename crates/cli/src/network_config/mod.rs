@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Songbird Network Configuration Module
 //!
 //! This module provides comprehensive network configuration for Songbird service mesh

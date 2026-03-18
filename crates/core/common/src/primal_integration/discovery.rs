@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based service discovery.
 //!
 //! Discovers ecoPrimal services via env vars, mDNS, Kubernetes, Docker Compose, and registries.
@@ -268,7 +268,7 @@ fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
                 if capabilities.iter().any(|c| c == capability) {
                     let host = info.get_addresses().iter().next().map_or_else(
                         || info.get_hostname().trim_end_matches('.').to_string(),
-                        |a| a.to_string(),
+                        ToString::to_string,
                     );
                     let port = info.get_port();
                     let url = format!("http://{host}:{port}");
@@ -513,7 +513,7 @@ fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> 
 
 #[cfg(test)]
 mod tests {
-    // SPDX-License-Identifier: AGPL-3.0-only
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
 
     #[test]

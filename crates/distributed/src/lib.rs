@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![warn(missing_docs)]
+
 //! # `ToadStool` Distributed Computing Integration
 //!
 //! Simplified distributed computing integration focused on:

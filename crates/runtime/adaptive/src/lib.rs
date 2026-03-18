@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Adaptive Optimization System for barraCuda
 //!
 //! Runtime learning system that automatically optimizes GPU operation configurations

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pipeline operations for the NestGate storage client
 //!
 //! Provides create, start, and status operations for data processing pipelines.

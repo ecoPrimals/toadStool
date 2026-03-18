@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical background services tests
 
 #![allow(clippy::no_effect_underscore_binding)]

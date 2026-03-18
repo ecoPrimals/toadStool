@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Terminal and session configuration types for legacy systems
 
 use serde::{Deserialize, Serialize};

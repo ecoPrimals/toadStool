@@ -44,7 +44,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo test --workspace` | 21,156 workspace tests (0 failures, 222 intentional ignores) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; 20 crates `#![forbid(unsafe_code)]` |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -56,7 +56,7 @@ Nest    = Tower  + NestGate           <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| License | AGPL-3.0-only -- root LICENSE file + SPDX headers on all files |
+| License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | File size limit | All production files under 1000 lines (largest: 451; hw_learn/wgpu_backend refactored S155b) |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
@@ -332,4 +332,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 16, 2026 — S157. 21,156 workspace tests. ~83% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); 22 crates `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 56 crates. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 18, 2026 — S158b. 21,156 workspace tests. ~83% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 56 crates. Rust 1.85+ (edition 2024, MSRV).

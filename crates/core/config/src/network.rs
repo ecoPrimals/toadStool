@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network configuration utilities
 //!
 //! **Migration Note**: For runtime configuration, use `EnvironmentConfig::from_env()`

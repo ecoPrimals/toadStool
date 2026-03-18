@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Multi-touch tracking and management
 //!
 //! Tracks multiple simultaneous touch points from touchscreen devices.

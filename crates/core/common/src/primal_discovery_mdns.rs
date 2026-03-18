@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration adapter between `primal_discovery` and mDNS
 //!
 //! This module provides mDNS-SD (multicast DNS service discovery) for finding
@@ -132,10 +132,10 @@ impl MdnsAdapter {
                     if capabilities.iter().any(|c| c == capability) {
                         // Build endpoint URL
                         let addresses = info.get_addresses();
-                        let host = addresses.iter().next().map_or_else(
-                            || info.get_hostname().to_string(),
-                            |addr| addr.to_string(),
-                        );
+                        let host = addresses
+                            .iter()
+                            .next()
+                            .map_or_else(|| info.get_hostname().to_string(), ToString::to_string);
                         let port = info.get_port();
                         let url = format!("http://{host}:{port}");
 
@@ -217,7 +217,7 @@ impl MdnsAdapter {
                     let host = addresses
                         .iter()
                         .next()
-                        .map_or_else(|| info.get_hostname().to_string(), |addr| addr.to_string());
+                        .map_or_else(|| info.get_hostname().to_string(), ToString::to_string);
                     let port = info.get_port();
                     let url = format!("http://{host}:{port}");
 

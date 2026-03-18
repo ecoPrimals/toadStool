@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Compute Operations - Advanced Substrate Management
 //!
 //! Advanced operations for universal compute platform management:

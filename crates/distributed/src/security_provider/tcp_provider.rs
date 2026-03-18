@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! TCP Security Provider
 //!
 //! Communicates with a remote security provider over TCP using JSON-RPC 2.0.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Primal Capability Infrastructure
 //!
 //! Self-knowledge and capability-based discovery for primals.
@@ -31,6 +31,9 @@
 //! // Find peer with specific capability
 //! let gpu_primal = PrimalCapabilities::find_peer_with("gpu-nvidia").await?;
 //! ```
+
+mod gpu;
+mod paths;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -104,7 +107,7 @@ impl PrimalCapabilities {
         let primal_id = Uuid::new_v4().to_string();
         let resources = query_system_resources();
         let capabilities = build_capabilities(&resources);
-        let socket_path = default_socket_path(&primal_id);
+        let socket_path = paths::default_socket_path(&primal_id);
 
         info!("✅ Self-knowledge acquired:");
         info!("   - Primal ID: {}", primal_id);
@@ -141,8 +144,8 @@ impl PrimalCapabilities {
     ///
     /// Returns error string if directory creation, serialization, or file write fails.
     pub async fn announce(&self) -> Result<(), String> {
-        let discovery_dir = discovery_directory();
-        let eco_root = ecoprimals_root_directory();
+        let discovery_dir = paths::discovery_directory();
+        let eco_root = paths::ecoprimals_root_directory();
 
         fs::create_dir_all(&discovery_dir)
             .await
@@ -180,7 +183,7 @@ impl PrimalCapabilities {
     ///
     /// Returns error string if discovery directory read fails or no peer with the capability is found.
     pub async fn find_peer_with(capability: &str) -> Result<Self, String> {
-        Self::find_peer_with_in(capability, &discovery_directory()).await
+        Self::find_peer_with_in(capability, &paths::discovery_directory()).await
     }
 
     /// Find peer with specific capability in a given discovery directory.
@@ -241,7 +244,7 @@ impl PrimalCapabilities {
     ///
     /// Returns error string if discovery directory read fails.
     pub async fn find_all_peers() -> Result<Vec<Self>, String> {
-        Self::find_all_peers_in(&discovery_directory()).await
+        Self::find_all_peers_in(&paths::discovery_directory()).await
     }
 
     /// Find all peers in a given discovery directory.
@@ -293,14 +296,14 @@ impl PrimalCapabilities {
     pub async fn cleanup(&self) -> Result<(), String> {
         let filename = format!("{}.json", self.primal_id);
 
-        let canonical = discovery_directory().join(&filename);
+        let canonical = paths::discovery_directory().join(&filename);
         if canonical.exists() {
             fs::remove_file(&canonical)
                 .await
                 .map_err(|e| format!("Failed to remove capability file: {e}"))?;
         }
 
-        let compat = ecoprimals_root_directory().join(&filename);
+        let compat = paths::ecoprimals_root_directory().join(&filename);
         if compat.exists() {
             fs::remove_file(&compat)
                 .await
@@ -331,8 +334,7 @@ pub fn query_system_resources() -> SystemResources {
     let total_memory = mem.total;
     let available_memory = mem.available;
 
-    // Query GPU devices (self-knowledge)
-    let gpu_devices = query_gpu_devices();
+    let gpu_devices = gpu::query_gpu_devices();
 
     // System architecture and OS
     let architecture = String::from(std::env::consts::ARCH);
@@ -345,332 +347,6 @@ pub fn query_system_resources() -> SystemResources {
         gpu_devices,
         architecture,
         os,
-    }
-}
-
-/// Query GPU devices (self-knowledge)
-///
-/// Deep debt principle: No vendor lock-in, query all available GPUs
-///
-/// Query GPU devices (self-knowledge)
-///
-/// Detects GPUs via platform-specific mechanisms:
-/// - Linux: /sys/class/drm for all GPUs, /proc/driver/nvidia for NVIDIA details
-/// - macOS: System Profiler for Apple Silicon/discrete GPUs
-///
-/// **Design**: Vendor-agnostic, graceful degradation if no GPUs found
-fn query_gpu_devices() -> Vec<GpuDevice> {
-    let mut devices = Vec::new();
-    let mut device_id = 0;
-
-    #[cfg(target_os = "linux")]
-    {
-        // Check for NVIDIA GPUs via /proc/driver/nvidia
-        if let Ok(entries) = std::fs::read_dir("/proc/driver/nvidia/gpus") {
-            for entry in entries.flatten() {
-                let gpu_path = entry.path();
-                let pci_id = entry.file_name().to_string_lossy().to_string();
-
-                let info_path = gpu_path.join("information");
-                let mut name = format!("NVIDIA GPU {device_id}");
-                let mut memory_bytes = 0u64;
-
-                if let Ok(info) = std::fs::read_to_string(&info_path) {
-                    for line in info.lines() {
-                        if line.starts_with("Model:") {
-                            name = line.trim_start_matches("Model:").trim().to_string();
-                        }
-                    }
-                }
-
-                if let Ok(output) = std::process::Command::new("nvidia-smi")
-                    .args([
-                        "--query-gpu=memory.total",
-                        "--format=csv,noheader,nounits",
-                        "-i",
-                        &device_id.to_string(),
-                    ])
-                    .output()
-                    && output.status.success()
-                    && let Ok(mem_str) = String::from_utf8(output.stdout)
-                    && let Ok(mem_mb) = mem_str.trim().parse::<u64>()
-                {
-                    memory_bytes = mem_mb * 1024 * 1024;
-                }
-
-                let render_node = find_render_node_for_pci(&pci_id);
-                let driver = detect_nvidia_driver();
-
-                devices.push(GpuDevice {
-                    device_id,
-                    name,
-                    vendor: "nvidia".to_string(),
-                    memory_bytes,
-                    compute_capability: Some(pci_id),
-                    render_node,
-                    driver,
-                    arch: None,
-                });
-                device_id += 1;
-            }
-        }
-
-        // Check for AMD/Intel GPUs via /sys/class/drm
-        if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
-            for entry in entries.flatten() {
-                let name = entry.file_name().to_string_lossy().to_string();
-                // Only look at card* entries (skip renderD*)
-                if !name.starts_with("card") || name.contains("render") {
-                    continue;
-                }
-
-                let card_path = entry.path();
-                let device_path = card_path.join("device");
-
-                // Check vendor
-                let vendor_path = device_path.join("vendor");
-                if let Ok(vendor_id) = std::fs::read_to_string(&vendor_path) {
-                    let vendor_id = vendor_id.trim();
-
-                    // Skip if it's an NVIDIA card (already detected above)
-                    if vendor_id == "0x10de" {
-                        continue;
-                    }
-
-                    let vendor = match vendor_id {
-                        "0x1002" => "amd",
-                        "0x8086" => "intel",
-                        _ => continue, // Unknown vendor, skip
-                    };
-
-                    // Try to get device name
-                    let mut gpu_name = format!("{} GPU {}", vendor.to_uppercase(), device_id);
-
-                    // Read uevent for more details
-                    let uevent_path = device_path.join("uevent");
-                    if let Ok(uevent) = std::fs::read_to_string(&uevent_path) {
-                        for line in uevent.lines() {
-                            if line.starts_with("PCI_ID=") {
-                                let pci_id = line.trim_start_matches("PCI_ID=");
-                                gpu_name = format!("{} GPU ({})", vendor.to_uppercase(), pci_id);
-                            }
-                        }
-                    }
-
-                    let mut memory_bytes = 0u64;
-                    let mem_path = device_path.join("mem_info_vram_total");
-                    if let Ok(mem_str) = std::fs::read_to_string(&mem_path)
-                        && let Ok(mem) = mem_str.trim().parse::<u64>()
-                    {
-                        memory_bytes = mem;
-                    }
-
-                    let render_node = find_render_node_sibling(&card_path);
-                    let driver = read_driver_name(&device_path);
-                    let arch = infer_gpu_arch(vendor, &device_path);
-
-                    devices.push(GpuDevice {
-                        device_id,
-                        name: gpu_name,
-                        vendor: vendor.to_string(),
-                        memory_bytes,
-                        compute_capability: None,
-                        render_node,
-                        driver,
-                        arch,
-                    });
-                    device_id += 1;
-                }
-            }
-        }
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        // On macOS, use system_profiler to detect GPUs
-        if let Ok(output) = std::process::Command::new("system_profiler")
-            .args(["SPDisplaysDataType", "-json"])
-            .output()
-        {
-            if output.status.success() {
-                if let Ok(json_str) = String::from_utf8(output.stdout) {
-                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        if let Some(displays) =
-                            json.get("SPDisplaysDataType").and_then(|d| d.as_array())
-                        {
-                            for display in displays {
-                                let name = display
-                                    .get("sppci_model")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("Unknown GPU")
-                                    .to_string();
-
-                                let vendor = if name.contains("Apple")
-                                    || name.contains("M1")
-                                    || name.contains("M2")
-                                    || name.contains("M3")
-                                {
-                                    "apple"
-                                } else if name.contains("AMD") || name.contains("Radeon") {
-                                    "amd"
-                                } else if name.contains("Intel") {
-                                    "intel"
-                                } else if name.contains("NVIDIA") {
-                                    "nvidia"
-                                } else {
-                                    "unknown"
-                                };
-
-                                // Try to get VRAM
-                                let memory_bytes = display
-                                    .get("sppci_vram")
-                                    .and_then(|v| v.as_str())
-                                    .and_then(|s| {
-                                        // Parse strings like "8 GB" or "16384 MB"
-                                        let parts: Vec<&str> = s.split_whitespace().collect();
-                                        if parts.len() >= 2 {
-                                            let num: u64 = parts[0].parse().ok()?;
-                                            let unit = parts[1].to_uppercase();
-                                            match unit.as_str() {
-                                                "GB" => Some(num * 1024 * 1024 * 1024),
-                                                "MB" => Some(num * 1024 * 1024),
-                                                _ => None,
-                                            }
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .unwrap_or(0);
-
-                                devices.push(GpuDevice {
-                                    device_id,
-                                    name,
-                                    vendor: vendor.to_string(),
-                                    memory_bytes,
-                                    compute_capability: None,
-                                    render_node: None,
-                                    driver: Some("metal".to_string()),
-                                    arch: None,
-                                });
-                                device_id += 1;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Graceful degradation: ToadStool works without GPU detection
-    // GPU capabilities are optional enhancement, not required
-    if !devices.is_empty() {
-        info!("🎮 Detected {} GPU(s) via self-knowledge", devices.len());
-        for device in &devices {
-            info!(
-                "   - {}: {} ({} MB)",
-                device.vendor,
-                device.name,
-                device.memory_bytes / (1024 * 1024)
-            );
-        }
-    }
-
-    devices
-}
-
-/// Find the render node (e.g. `/dev/dri/renderD128`) for a card directory.
-///
-/// Given `/sys/class/drm/card0`, looks for a sibling `renderD*` whose
-/// `device` symlink points to the same PCI device.
-#[cfg(target_os = "linux")]
-fn find_render_node_sibling(card_path: &std::path::Path) -> Option<String> {
-    let parent = card_path.parent()?;
-    let card_device = card_path.join("device").canonicalize().ok()?;
-    if let Ok(entries) = std::fs::read_dir(parent) {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if name.starts_with("renderD") {
-                let render_device = entry.path().join("device").canonicalize().ok();
-                if render_device.as_ref() == Some(&card_device) {
-                    return Some(format!("/dev/dri/{name}"));
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Find the render node for an NVIDIA GPU given its PCI address.
-#[cfg(target_os = "linux")]
-fn find_render_node_for_pci(pci_id: &str) -> Option<String> {
-    let drm_path = std::path::Path::new("/sys/class/drm");
-    if let Ok(entries) = std::fs::read_dir(drm_path) {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if name.starts_with("renderD")
-                && let Ok(target) = std::fs::read_link(entry.path().join("device"))
-                && target.to_string_lossy().contains(pci_id)
-            {
-                return Some(format!("/dev/dri/{name}"));
-            }
-        }
-    }
-    None
-}
-
-/// Read the kernel driver name from the `driver` symlink in sysfs.
-#[cfg(target_os = "linux")]
-fn read_driver_name(device_path: &std::path::Path) -> Option<String> {
-    let driver_link = device_path.join("driver");
-    std::fs::read_link(driver_link)
-        .ok()
-        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
-}
-
-/// Detect NVIDIA driver type from loaded kernel modules.
-#[cfg(target_os = "linux")]
-fn detect_nvidia_driver() -> Option<String> {
-    if std::path::Path::new("/sys/module/nvidia").exists() {
-        Some("nvidia".to_string())
-    } else if std::path::Path::new("/sys/module/nouveau").exists() {
-        Some("nouveau".to_string())
-    } else {
-        None
-    }
-}
-
-/// Infer GPU micro-architecture from PCI revision and vendor.
-#[cfg(target_os = "linux")]
-fn infer_gpu_arch(vendor: &str, device_path: &std::path::Path) -> Option<String> {
-    let revision_path = device_path.join("revision");
-    let _revision = std::fs::read_to_string(revision_path).ok();
-    match vendor {
-        "amd" => {
-            let uevent = std::fs::read_to_string(device_path.join("uevent")).ok()?;
-            for line in uevent.lines() {
-                if line.starts_with("PCI_ID=") {
-                    let pci_id = line.trim_start_matches("PCI_ID=");
-                    if let Some(device_id) = pci_id.split(':').nth(1) {
-                        let id = u32::from_str_radix(device_id, 16).ok()?;
-                        return Some(amd_arch_from_device_id(id).to_string());
-                    }
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// Map AMD PCI device ID ranges to architecture names.
-#[cfg(target_os = "linux")]
-fn amd_arch_from_device_id(device_id: u32) -> &'static str {
-    match device_id {
-        0x73A0..=0x73FF => "rdna3",
-        0x7300..=0x739F => "rdna2",
-        0x6900..=0x69FF => "rdna1",
-        0x6860..=0x68FF => "vega",
-        _ => "unknown",
     }
 }
 
@@ -724,36 +400,6 @@ pub fn build_capabilities(resources: &SystemResources) -> Vec<String> {
     }
 
     capabilities
-}
-
-/// Runtime base directory: XDG_RUNTIME_DIR or platform temp dir.
-fn runtime_base_dir() -> PathBuf {
-    std::env::var("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| std::env::temp_dir())
-}
-
-/// Get discovery directory (canonical path)
-///
-/// Prefers XDG_RUNTIME_DIR, falls back to platform temp directory.
-fn discovery_directory() -> PathBuf {
-    runtime_base_dir().join("ecoPrimals").join("discovery")
-}
-
-/// Get ecoPrimals root directory (ecosystem-compatible discovery path)
-///
-/// Some primals scan `$XDG_RUNTIME_DIR/ecoPrimals/` directly for discovery
-/// entries, so we dual-write to this root alongside `ecoPrimals/discovery/`.
-fn ecoprimals_root_directory() -> PathBuf {
-    runtime_base_dir().join("ecoPrimals")
-}
-
-/// Get default socket path for this primal
-fn default_socket_path(primal_id: &str) -> PathBuf {
-    runtime_base_dir()
-        .join("ecoPrimals")
-        .join("sockets")
-        .join(format!("{primal_id}.sock"))
 }
 
 #[cfg(test)]

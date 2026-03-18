@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Utility Operations
 //!
 //! Extension trait for utility helper methods.
@@ -7,6 +7,7 @@ use crate::Result;
 use crate::universal::types::{GpuInfo, HardwareInfo};
 use std::collections::HashMap;
 use std::future::Future;
+use std::sync::Arc;
 use toadstool_distributed::substrate_detection::PlatformType;
 
 /// Utility operations trait
@@ -14,8 +15,8 @@ pub trait UtilityOps {
     /// Get platform ID from platform type
     fn get_platform_id(&self, platform: &PlatformType) -> String;
 
-    /// Get platform metadata
-    fn get_platform_metadata(&self, platform: &PlatformType) -> HashMap<String, String>;
+    /// Get platform metadata (Arc<str> values = zero-copy clone)
+    fn get_platform_metadata(&self, platform: &PlatformType) -> HashMap<String, Arc<str>>;
 
     /// Get system hardware information
     fn get_system_hardware_info(&self) -> impl Future<Output = Result<HardwareInfo>> + Send;
@@ -85,7 +86,7 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
         }
     }
 
-    fn get_platform_metadata(&self, platform: &PlatformType) -> HashMap<String, String> {
+    fn get_platform_metadata(&self, platform: &PlatformType) -> HashMap<String, Arc<str>> {
         let mut metadata = HashMap::new();
 
         match platform {
@@ -93,90 +94,99 @@ impl UtilityOps for crate::universal::UniversalComputeManager {
                 distribution,
                 architecture,
             } => {
-                metadata.insert("type".to_string(), "linux".to_string());
-                metadata.insert("distribution".to_string(), distribution.clone());
-                metadata.insert("architecture".to_string(), architecture.clone());
+                metadata.insert("type".to_string(), Arc::from("linux"));
+                metadata.insert("distribution".to_string(), Arc::from(distribution.as_str()));
+                metadata.insert("architecture".to_string(), Arc::from(architecture.as_str()));
             }
             PlatformType::MacOS {
                 version,
                 architecture,
             } => {
-                metadata.insert("type".to_string(), "macos".to_string());
-                metadata.insert("version".to_string(), version.clone());
-                metadata.insert("architecture".to_string(), architecture.clone());
+                metadata.insert("type".to_string(), Arc::from("macos"));
+                metadata.insert("version".to_string(), Arc::from(version.as_str()));
+                metadata.insert("architecture".to_string(), Arc::from(architecture.as_str()));
             }
             PlatformType::Windows {
                 version,
                 architecture,
             } => {
-                metadata.insert("type".to_string(), "windows".to_string());
-                metadata.insert("version".to_string(), version.clone());
-                metadata.insert("architecture".to_string(), architecture.clone());
+                metadata.insert("type".to_string(), Arc::from("windows"));
+                metadata.insert("version".to_string(), Arc::from(version.as_str()));
+                metadata.insert("architecture".to_string(), Arc::from(architecture.as_str()));
             }
             PlatformType::Docker => {
-                metadata.insert("type".to_string(), "container".to_string());
-                metadata.insert("runtime".to_string(), "docker".to_string());
+                metadata.insert("type".to_string(), Arc::from("container"));
+                metadata.insert("runtime".to_string(), Arc::from("docker"));
             }
             PlatformType::Podman => {
-                metadata.insert("type".to_string(), "container".to_string());
-                metadata.insert("runtime".to_string(), "podman".to_string());
+                metadata.insert("type".to_string(), Arc::from("container"));
+                metadata.insert("runtime".to_string(), Arc::from("podman"));
             }
             PlatformType::Containerd => {
-                metadata.insert("type".to_string(), "container".to_string());
-                metadata.insert("runtime".to_string(), "containerd".to_string());
+                metadata.insert("type".to_string(), Arc::from("container"));
+                metadata.insert("runtime".to_string(), Arc::from("containerd"));
             }
             PlatformType::WebAssembly { runtime } => {
-                metadata.insert("type".to_string(), "wasm".to_string());
-                metadata.insert("runtime".to_string(), runtime.clone());
+                metadata.insert("type".to_string(), Arc::from("wasm"));
+                metadata.insert("runtime".to_string(), Arc::from(runtime.as_str()));
             }
             PlatformType::Language { name, command } => {
-                metadata.insert("type".to_string(), "language".to_string());
-                metadata.insert("name".to_string(), name.clone());
-                metadata.insert("command".to_string(), command.clone());
+                metadata.insert("type".to_string(), Arc::from("language"));
+                metadata.insert("name".to_string(), Arc::from(name.as_str()));
+                metadata.insert("command".to_string(), Arc::from(command.as_str()));
             }
             PlatformType::GPU { vendor, framework } => {
-                metadata.insert("type".to_string(), "gpu".to_string());
-                metadata.insert("vendor".to_string(), vendor.clone());
-                metadata.insert("framework".to_string(), framework.clone());
+                metadata.insert("type".to_string(), Arc::from("gpu"));
+                metadata.insert("vendor".to_string(), Arc::from(vendor.as_str()));
+                metadata.insert("framework".to_string(), Arc::from(framework.as_str()));
             }
             PlatformType::Other { os, architecture } => {
-                metadata.insert("type".to_string(), "other".to_string());
-                metadata.insert("os".to_string(), os.clone());
-                metadata.insert("architecture".to_string(), architecture.clone());
+                metadata.insert("type".to_string(), Arc::from("other"));
+                metadata.insert("os".to_string(), Arc::from(os.as_str()));
+                metadata.insert("architecture".to_string(), Arc::from(architecture.as_str()));
             }
             PlatformType::EdgeDevice {
                 device_type,
                 architecture,
             } => {
-                metadata.insert("type".to_string(), "edge_device".to_string());
-                metadata.insert("device_type".to_string(), device_type.clone());
-                metadata.insert("architecture".to_string(), architecture.clone());
+                metadata.insert("type".to_string(), Arc::from("edge_device"));
+                metadata.insert("device_type".to_string(), Arc::from(device_type.as_str()));
+                metadata.insert("architecture".to_string(), Arc::from(architecture.as_str()));
             }
             PlatformType::MCUDevelopment { platform, tool } => {
-                metadata.insert("type".to_string(), "mcu_development".to_string());
-                metadata.insert("platform".to_string(), platform.clone());
-                metadata.insert("tool".to_string(), tool.clone());
+                metadata.insert("type".to_string(), Arc::from("mcu_development"));
+                metadata.insert("platform".to_string(), Arc::from(platform.as_str()));
+                metadata.insert("tool".to_string(), Arc::from(tool.as_str()));
             }
             PlatformType::BiologicalComputing {
                 platform,
                 simulation,
             } => {
-                metadata.insert("type".to_string(), "biological".to_string());
-                metadata.insert("platform".to_string(), platform.clone());
-                metadata.insert("simulation".to_string(), simulation.to_string());
+                metadata.insert("type".to_string(), Arc::from("biological"));
+                metadata.insert("platform".to_string(), Arc::from(platform.as_str()));
+                metadata.insert(
+                    "simulation".to_string(),
+                    Arc::from(if *simulation { "true" } else { "false" }),
+                );
             }
             PlatformType::Quantum {
                 framework,
                 simulator,
             } => {
-                metadata.insert("type".to_string(), "quantum".to_string());
-                metadata.insert("framework".to_string(), framework.clone());
-                metadata.insert("simulator".to_string(), simulator.to_string());
+                metadata.insert("type".to_string(), Arc::from("quantum"));
+                metadata.insert("framework".to_string(), Arc::from(framework.as_str()));
+                metadata.insert(
+                    "simulator".to_string(),
+                    Arc::from(if *simulator { "true" } else { "false" }),
+                );
             }
             PlatformType::NeuromorphicComputing { platform, hardware } => {
-                metadata.insert("type".to_string(), "neuromorphic".to_string());
-                metadata.insert("platform".to_string(), platform.clone());
-                metadata.insert("hardware".to_string(), hardware.to_string());
+                metadata.insert("type".to_string(), Arc::from("neuromorphic"));
+                metadata.insert("platform".to_string(), Arc::from(platform.as_str()));
+                metadata.insert(
+                    "hardware".to_string(),
+                    Arc::from(if *hardware { "true" } else { "false" }),
+                );
             }
         }
 
@@ -406,9 +416,12 @@ mod tests {
             architecture: "aarch64".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"linux".to_string()));
-        assert_eq!(meta.get("distribution"), Some(&"Debian".to_string()));
-        assert_eq!(meta.get("architecture"), Some(&"aarch64".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("linux"));
+        assert_eq!(meta.get("distribution").map(|s| s.as_ref()), Some("Debian"));
+        assert_eq!(
+            meta.get("architecture").map(|s| s.as_ref()),
+            Some("aarch64")
+        );
     }
 
     #[tokio::test]
@@ -418,8 +431,8 @@ mod tests {
             .expect("manager should create");
         let platform = PlatformType::Docker;
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"container".to_string()));
-        assert_eq!(meta.get("runtime"), Some(&"docker".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("container"));
+        assert_eq!(meta.get("runtime").map(|s| s.as_ref()), Some("docker"));
     }
 
     #[tokio::test]
@@ -432,9 +445,9 @@ mod tests {
             framework: "ROCm".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"gpu".to_string()));
-        assert_eq!(meta.get("vendor"), Some(&"AMD".to_string()));
-        assert_eq!(meta.get("framework"), Some(&"ROCm".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("gpu"));
+        assert_eq!(meta.get("vendor").map(|s| s.as_ref()), Some("AMD"));
+        assert_eq!(meta.get("framework").map(|s| s.as_ref()), Some("ROCm"));
     }
 
     #[tokio::test]
@@ -461,8 +474,8 @@ mod tests {
             .await
             .expect("manager should create");
         let meta = manager.get_platform_metadata(&PlatformType::Podman);
-        assert_eq!(meta.get("type"), Some(&"container".to_string()));
-        assert_eq!(meta.get("runtime"), Some(&"podman".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("container"));
+        assert_eq!(meta.get("runtime").map(|s| s.as_ref()), Some("podman"));
     }
 
     #[tokio::test]
@@ -471,8 +484,8 @@ mod tests {
             .await
             .expect("manager should create");
         let meta = manager.get_platform_metadata(&PlatformType::Containerd);
-        assert_eq!(meta.get("type"), Some(&"container".to_string()));
-        assert_eq!(meta.get("runtime"), Some(&"containerd".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("container"));
+        assert_eq!(meta.get("runtime").map(|s| s.as_ref()), Some("containerd"));
     }
 
     #[tokio::test]
@@ -484,8 +497,8 @@ mod tests {
             runtime: "Wasmtime".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"wasm".to_string()));
-        assert_eq!(meta.get("runtime"), Some(&"Wasmtime".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("wasm"));
+        assert_eq!(meta.get("runtime").map(|s| s.as_ref()), Some("Wasmtime"));
     }
 
     #[tokio::test]
@@ -498,9 +511,9 @@ mod tests {
             command: "python3".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"language".to_string()));
-        assert_eq!(meta.get("name"), Some(&"Python".to_string()));
-        assert_eq!(meta.get("command"), Some(&"python3".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("language"));
+        assert_eq!(meta.get("name").map(|s| s.as_ref()), Some("Python"));
+        assert_eq!(meta.get("command").map(|s| s.as_ref()), Some("python3"));
     }
 
     #[tokio::test]
@@ -513,8 +526,8 @@ mod tests {
             architecture: "amd64".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"other".to_string()));
-        assert_eq!(meta.get("os"), Some(&"FreeBSD".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("other"));
+        assert_eq!(meta.get("os").map(|s| s.as_ref()), Some("FreeBSD"));
     }
 
     #[tokio::test]
@@ -527,8 +540,11 @@ mod tests {
             architecture: "armv7l".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"edge_device".to_string()));
-        assert_eq!(meta.get("device_type"), Some(&"Raspberry Pi".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("edge_device"));
+        assert_eq!(
+            meta.get("device_type").map(|s| s.as_ref()),
+            Some("Raspberry Pi")
+        );
     }
 
     #[tokio::test]

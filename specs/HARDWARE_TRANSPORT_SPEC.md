@@ -3,7 +3,7 @@
 **Version**: 1.2  
 **Status**: Implemented (S94b) + PCIe P2P implemented (S142) + VFIO interface (S150)  
 **Crates**: `toadstool-core`, `toadstool-display`, `nvpmu`  
-**License**: AGPL-3.0-only
+**License**: AGPL-3.0-or-later
 
 ## Overview
 

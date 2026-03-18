@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for unified memory buffer operations
 //!
 //! These tests verify individual buffer operations with correct API usage.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! coralReef shader compiler client for capability-based discovery and IPC.
 //!
 //! Discovers coralReef at runtime via capability-based discovery, then proxies

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Distribution Types
 //!
 //! Generic distribution abstractions used across Songbird, Cloud, and other distributed systems.

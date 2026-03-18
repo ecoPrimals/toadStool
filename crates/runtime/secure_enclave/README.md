@@ -136,7 +136,7 @@ This showcase successfully identified gaps in the codebase:
 
 ## License
 
-AGPL-3.0-only (same as ToadStool parent)
+AGPL-3.0-or-later (same as ToadStool parent)
 
 ## Contributing
 

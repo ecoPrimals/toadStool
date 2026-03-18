@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BAR0 permission management for sovereign GPU compute.
 //!
 //! Provides udev rule installation for non-root BAR0 access to NVIDIA GPUs.

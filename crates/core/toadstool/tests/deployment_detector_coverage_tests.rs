@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 //! Targeted tests for `deployment_layer/detector.rs` coverage expansion
 //! Covers: cloud metadata getters, env-based detection branches,

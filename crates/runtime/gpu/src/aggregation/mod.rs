@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Result Aggregation with Fault Tolerance
 //!
 //! Aggregates partial results from distributed GPU execution with:

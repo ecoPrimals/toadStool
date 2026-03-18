@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # biomeOS Integration for Universal Orchestration
 //!
 //! This module provides comprehensive biomeOS integration capabilities for orchestrating

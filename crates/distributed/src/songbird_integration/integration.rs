@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core Songbird integration implementation
 
 use std::sync::Arc;
 
+use bytes::Bytes;
 use std::time::SystemTime;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tracing::debug;
@@ -63,7 +64,7 @@ impl ToadStoolSongbirdIntegration {
                 let req = self.create_songbird_job_request(&job)?;
                 let subtask = super::types::SubTask {
                     id: req.job_id,
-                    payload: req.job_payload.clone(),
+                    payload: req.job_payload.clone(), // Bytes::clone = refcount bump
                     resource_requirements: req.resource_requirements.clone(),
                     priority: req.priority,
                     constraints: req.constraints.clone(),
@@ -85,10 +86,10 @@ impl ToadStoolSongbirdIntegration {
                         let mut st_req = req.resource_requirements.clone();
                         st_req.cpu.min_cores = per_cpu;
                         st_req.memory.min_bytes = per_mem;
-                        let mut payload = req.job_payload.clone();
-                        payload.extend(
-                            format!("{{\"partition\":{i},\"total\":{subtask_count}}}").as_bytes(),
-                        );
+                        let suffix =
+                            Bytes::from(format!("{{\"partition\":{i},\"total\":{subtask_count}}}"));
+                        let payload =
+                            Bytes::from([req.job_payload.as_ref(), suffix.as_ref()].concat());
                         (
                             super::types::SubTask {
                                 id: uuid::Uuid::new_v4(),
@@ -277,8 +278,10 @@ impl ToadStoolSongbirdIntegration {
     ) -> ToadStoolResult<SongbirdJobRequest> {
         let job_request = SongbirdJobRequest {
             job_id: job.job_id,
-            job_payload: serde_json::to_vec(&job.execution_request)
-                .map_err(|e| ToadStoolError::validation(e.to_string()))?,
+            job_payload: Bytes::from(
+                serde_json::to_vec(&job.execution_request)
+                    .map_err(|e| ToadStoolError::validation(e.to_string()))?,
+            ),
             target_nodes: vec![], // Will be determined by Songbird
             resource_requirements: job.resource_requirements.clone(),
             priority: job.priority as u8,

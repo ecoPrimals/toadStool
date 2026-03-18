@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage expansion for core discovery module
 //!
 //! Focus: Increase coverage of discovery/orchestration.rs

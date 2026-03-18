@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(deprecated)] // primals module is deprecated; we demonstrate it for showcase
 
 use colored::Colorize;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse Intel GPU batch buffer command dumps.
 //!
 //! Intel GPUs (i915, xe) submit work via batch buffers containing

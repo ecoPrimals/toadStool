@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team
 //
@@ -16,6 +16,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 
 //! # `ToadStool` Configuration System
 //!
@@ -296,10 +297,6 @@ pub mod development {
     /// Default development watch file changes
     pub const DEFAULT_DEV_WATCH_FILES: bool = true;
 
-    /// Use placeholder implementations for external services when true.
-    /// Override via `TOADSTOOL_STUB_EXTERNAL_SERVICES` env var.
-    pub const DEFAULT_DEV_STUB_EXTERNAL: bool = true;
-
     /// Default development disable auth
     pub const DEFAULT_DEV_DISABLE_AUTH: bool = false;
 
@@ -359,10 +356,6 @@ pub mod production {
 
     /// Default production watch file changes
     pub const DEFAULT_PROD_WATCH_FILES: bool = false;
-
-    /// Use placeholder implementations for external services when true.
-    /// Production default: false (use real services). Override via `TOADSTOOL_STUB_EXTERNAL_SERVICES`.
-    pub const DEFAULT_PROD_STUB_EXTERNAL: bool = false;
 
     /// Default production disable auth
     pub const DEFAULT_PROD_DISABLE_AUTH: bool = false;

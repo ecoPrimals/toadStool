@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Execution types and runtime engine interface
 
 use bytes::Bytes;
@@ -516,7 +516,7 @@ pub use crate::runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
 
 #[cfg(test)]
 mod tests {
-    // SPDX-License-Identifier: AGPL-3.0-only
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
     use proptest::prelude::*;
 

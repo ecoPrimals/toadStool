@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for under-covered modules in toadstool-distributed (phase 2)
 //!
 //! Targets: coordination_integration/client/rpc, songbird_integration (distribution,

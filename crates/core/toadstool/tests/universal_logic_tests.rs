@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive logic tests for universal.rs
 //!
 //! This test file focuses on the actual business logic and behavior

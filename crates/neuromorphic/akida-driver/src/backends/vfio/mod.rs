@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! VFIO NPU backend — Pure Rust with DMA support
 //!
 //! Uses Linux VFIO (Virtual Function I/O) for:

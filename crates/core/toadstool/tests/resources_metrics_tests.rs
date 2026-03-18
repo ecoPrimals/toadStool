@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Resources Metrics and Monitoring
 //!
 //! Week 16 Sprint: Targeting `RuntimeMetrics`, `ResourceLimits`, and monitoring

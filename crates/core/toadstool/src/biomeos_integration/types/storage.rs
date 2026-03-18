@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage configuration types for BiomeOS integration
 //!
 //! This module contains types for storage provisioning, volumes,
@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 /// Storage configuration for the biome
@@ -51,18 +52,20 @@ pub struct PersistentVolume {
 }
 
 /// Storage provisioning request to `NestGate`
+///
+/// Uses `Arc<str>` for volume_name and size (wateringHole zero-copy): clone = refcount bump.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageProvisioningRequest {
     /// Volume name
-    pub volume_name: String,
+    pub volume_name: Arc<str>,
     /// Volume size
-    pub size: String,
+    pub size: Arc<str>,
     /// Storage class
-    pub storage_class: Option<String>,
+    pub storage_class: Option<Arc<str>>,
     /// Access modes
-    pub access_modes: Vec<String>,
+    pub access_modes: Vec<Arc<str>>,
     /// Backup policy
-    pub backup_policy: Option<String>,
+    pub backup_policy: Option<Arc<str>>,
     /// Replication settings
     pub replication: Option<ReplicationSettings>,
 }
@@ -75,7 +78,7 @@ pub struct ReplicationSettings {
     /// Replication factor
     pub factor: u32,
     /// Replication strategy
-    pub strategy: String,
+    pub strategy: Arc<str>,
 }
 
 /// Volume information

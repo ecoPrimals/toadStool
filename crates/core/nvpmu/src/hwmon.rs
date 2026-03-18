@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU sensor reading via Linux hwmon sysfs.
 //!
 //! Each hwmon device under `/sys/class/hwmon/hwmonN/` or a GPU's

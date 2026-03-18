@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CUDA workload types for compatibility layer
 //!
 //! Defines CUDA-specific workload characteristics to enable intelligent

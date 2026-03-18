@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Matrix Multiplication (`MatMul`) Operation Demo
 
 #![allow(clippy::cast_precision_loss, clippy::many_single_char_names)]

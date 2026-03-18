@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Secure Enclave Runtime for ToadStool
 //!
 //! This crate provides **zero-knowledge compute** capabilities for ToadStool,

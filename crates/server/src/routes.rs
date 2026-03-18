@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! HTTP route setup and handler registration
 //!
 //! Builds the Axum router with health, API, and dashboard endpoints.

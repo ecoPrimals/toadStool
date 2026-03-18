@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![expect(
     clippy::cast_precision_loss,
     reason = "Temperature millidegree i64→f64 conversion; real values ≪ 2^52"

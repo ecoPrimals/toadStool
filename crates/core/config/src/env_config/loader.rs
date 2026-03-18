@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Environment variable loader with zero-copy prefix and type-safe parsing.
 
 use std::borrow::Cow;

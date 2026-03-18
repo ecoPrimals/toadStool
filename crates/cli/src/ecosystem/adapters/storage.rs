@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage adapter - capability-based storage operations
 //!
 //! This adapter replaces the hardcoded NestGate integration with a generic

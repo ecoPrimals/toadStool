@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for display IPC client
 //!
 //! Tests message framing, serialization, endpoint handling WITHOUT real TCP/Unix connections.

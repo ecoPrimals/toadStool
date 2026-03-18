@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime Port Discovery - Deep Debt Compliant
 //!
 //! NO hardcoded ports! This module discovers available ports at runtime,
@@ -8,6 +8,8 @@
 
 use std::net::{SocketAddr, TcpListener};
 use std::ops::Range;
+
+use crate::constants::network::{BIND_ALL_IPV4, LOCALHOST_IPV4};
 
 /// Result type for port discovery operations
 pub type PortResult<T> = Result<T, PortError>;
@@ -88,11 +90,12 @@ impl RuntimePortDiscovery {
 
     /// Check if specific port is available
     fn is_port_available(&self, port: u16) -> bool {
-        let addr = if self.localhost_only {
-            format!("127.0.0.1:{port}")
+        let host = if self.localhost_only {
+            LOCALHOST_IPV4
         } else {
-            format!("0.0.0.0:{port}")
+            BIND_ALL_IPV4
         };
+        let addr = format!("{host}:{port}");
 
         addr.parse::<SocketAddr>()
             .is_ok_and(|socket_addr| TcpListener::bind(socket_addr).is_ok())
@@ -100,11 +103,12 @@ impl RuntimePortDiscovery {
 
     /// Find any available port (let OS choose if port=0)
     fn find_available_port(&self, port: u16) -> PortResult<u16> {
-        let addr = if self.localhost_only {
-            format!("127.0.0.1:{port}")
+        let host = if self.localhost_only {
+            LOCALHOST_IPV4
         } else {
-            format!("0.0.0.0:{port}")
+            BIND_ALL_IPV4
         };
+        let addr = format!("{host}:{port}");
 
         let listener = TcpListener::bind(&addr).map_err(|e| PortError::BindFailed {
             port,

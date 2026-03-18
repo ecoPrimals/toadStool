@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability discovery via Songbird/discovery service.
 //!
 //! Queries the discovery service to find providers for a given capability.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CPU as First-Class Compute Resource
 //!
 //! Treats CPU cores as a legitimate compute resource, not just a "fallback"

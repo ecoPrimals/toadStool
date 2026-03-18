@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Serial Transport — bidirectional data over USB serial / UART.
 //!
 //! Wraps the `serialport` crate (same backing lib as the edge crate) as a

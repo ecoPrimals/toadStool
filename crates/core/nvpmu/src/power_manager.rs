@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Five-state sovereign GPU power management.
 //!
 //! Absorbs hotSpring's glow plug discovery into a proper state machine.

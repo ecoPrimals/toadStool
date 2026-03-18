@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DRM modesetting — CRTC allocation, framebuffer attachment, and mode configuration.
 //!
 //! Binds a dumb buffer to a CRTC and connector so pixels actually reach a physical

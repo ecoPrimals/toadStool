@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BAR0 MMIO register access for NVIDIA GPUs.
 //!
 //! Maps GPU BAR0 via `/sys/bus/pci/devices/{BDF}/resource0` for direct

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Crypto adapter - capability-based cryptographic operations
 //!
 //! This adapter replaces the hardcoded BearDog integration with a generic

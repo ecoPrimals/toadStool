@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Load Balancing Module
 //!
 //! Generic load balancing abstractions for balancing work across nodes, clouds, and devices.

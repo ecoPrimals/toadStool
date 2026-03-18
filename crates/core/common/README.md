@@ -82,5 +82,5 @@ cargo doc --open --package toadstool-common
 
 ## License
 
-AGPL-3.0-only (same as ToadStool parent project)
+AGPL-3.0-or-later (same as ToadStool parent project)
 

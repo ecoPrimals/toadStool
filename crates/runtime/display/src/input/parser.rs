@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Event parsing from evdev to `InputEvent`
 //!
 //! Converts low-level evdev events into typed `InputEvent` enums for petalTongue.

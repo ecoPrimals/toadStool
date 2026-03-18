@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # toadstool-sysmon
 //!
 //! Pure Rust system monitoring via `/proc` filesystem parsing.
@@ -31,6 +31,7 @@
 //! ```
 
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 
 pub mod cpu;
 pub mod disk;

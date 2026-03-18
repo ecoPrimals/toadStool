@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional Universal Platform tests for Week 16 Sprint
 //!
 //! Focus: Expanding coverage on `SystemResources`, `JobMetrics`, and integration tests

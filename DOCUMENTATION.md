@@ -36,7 +36,7 @@
 
 - **Standalone-resilient** — Pull to any machine, `cargo test` works. GPU-optional with CPU fallback. Device-lost recovery via `poll_safe()`.
 - **ecoBin v3.0** — Zero C FFI deps. `toadstool-sysmon` pure Rust `/proc` parser replaces sysinfo. PyO3 feature-gated only.
-- **AGPL-3.0-only** — All Cargo.toml + all .rs files aligned to single license. `deny.toml` enforced.
+- **AGPL-3.0-or-later** — All Cargo.toml + all .rs files aligned to single license. `deny.toml` enforced.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **Deep debt: clean** — Zero `chrono`, zero `log` (core), zero `pollster`, zero `serde_yaml`, zero `sysinfo`, zero `libc` (akida-driver→rustix), zero production stubs/mocks, ~70+ justified `unsafe` blocks (all SAFETY documented), zero hardcoded localhost/ports, zero `Box<dyn Error>`, zero blind `.unwrap()`, zero `todo!()`, zero `unimplemented!()`, zero FIXME/HACK, zero `dbg!()`, zero stale TODOs. 5 crates migrated to native AFIT. All env tests thread-safe via `temp_env`.
 - **Sovereignty RESOLVED** — All production callers use `get_socket_path_for_capability()` or `interned_strings::primals::*`. Legacy name-based APIs fully deprecated.

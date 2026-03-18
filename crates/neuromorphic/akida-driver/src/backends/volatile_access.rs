@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Safe volatile access abstractions for memory-mapped hardware
 //!
 //! Encapsulates unsafe volatile reads/writes and copy operations behind

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Canonical authentication configuration for ToadStool services
 //!
 //! This module provides unified authentication configuration types for service-to-service

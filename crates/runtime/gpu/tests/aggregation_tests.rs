@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::float_cmp)]
 //! Tests for Result Aggregation with Fault Tolerance
 

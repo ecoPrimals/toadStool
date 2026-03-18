@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! HTTP API handlers for server endpoints
 //!
 //! Organized by resource/domain: execution, capabilities, cluster, health.

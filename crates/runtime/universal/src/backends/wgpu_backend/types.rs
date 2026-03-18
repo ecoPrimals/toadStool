@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! wgpu adapter types — GpuAdapterInfo, HardwareFingerprint, capability enums.
 
 /// GPU device type classification.

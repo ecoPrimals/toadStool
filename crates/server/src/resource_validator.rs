@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource validation for collaborative intelligence
 //!
 //! This module validates whether the system has sufficient resources to execute

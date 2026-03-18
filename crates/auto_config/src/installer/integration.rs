@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! System integration: PATH, desktop shortcuts, shell completion
 
 use std::path::Path;

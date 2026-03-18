@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload Orchestrator - Main coordination logic
 //!
 //! **Deep Debt**: Runtime discovery, intelligent selection, automatic fallback

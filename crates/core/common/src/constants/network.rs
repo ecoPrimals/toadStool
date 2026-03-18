@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network-related constants
 //!
 //! Centralized network configuration values including ports, addresses,
@@ -59,6 +59,9 @@ pub const LOCALHOST_IPV6: &str = "::1";
 
 /// Bind to all interfaces `IPv4`
 pub const BIND_ALL_IPV4: &str = "0.0.0.0";
+
+/// Bind to any IPv4 interface with OS-assigned port (e.g. for mDNS socket)
+pub const BIND_ANY: &str = "0.0.0.0:0";
 
 /// Bind to all interfaces `IPv6`
 pub const BIND_ALL_IPV6: &str = "::";
@@ -208,6 +211,7 @@ mod tests {
         assert_eq!(LOCALHOST_IPV4, "127.0.0.1");
         assert_eq!(LOCALHOST_IPV6, "::1");
         assert_eq!(BIND_ALL_IPV4, "0.0.0.0");
+        assert_eq!(BIND_ANY, "0.0.0.0:0");
         assert_eq!(BIND_ALL_IPV6, "::");
         assert_eq!(DEFAULT_HOSTNAME, "localhost");
     }

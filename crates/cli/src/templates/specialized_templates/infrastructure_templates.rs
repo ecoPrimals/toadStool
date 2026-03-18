@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Infrastructure domain templates: Distributed, Sovereign
 //!
 //! Cluster orchestration and security-focused templates for multi-node

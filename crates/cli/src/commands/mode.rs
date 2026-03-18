@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU mode switching for single-GPU systems.
 //!
 //! Switches between gaming mode (nvidia/nouveau for display) and science

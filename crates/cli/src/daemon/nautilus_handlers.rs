@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC proxy for `ai.nautilus.*` namespace.
 //!
 //! ToadStool forwards nautilus requests to barraCuda via capability-based IPC.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Server error types and handling
 //!
 //! This module provides server-specific error types that integrate with the unified

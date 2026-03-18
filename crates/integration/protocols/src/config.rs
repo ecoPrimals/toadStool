@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration structures for protocol integration
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::types::{MessageFormat, TransportType};
@@ -9,8 +10,8 @@ use toadstool_common::auth::ServiceAuthConfig;
 /// Protocol client configuration
 #[derive(Debug, Clone)]
 pub struct ProtocolConfig {
-    /// Service identifier for this client
-    pub service_id: String,
+    /// Service identifier for this client (Arc<str> = zero-copy clone)
+    pub service_id: Arc<str>,
 
     /// Default message format
     pub default_format: MessageFormat,
@@ -40,7 +41,7 @@ pub struct ProtocolConfig {
 impl Default for ProtocolConfig {
     fn default() -> Self {
         Self {
-            service_id: format!("toadstool-{}", uuid::Uuid::new_v4()),
+            service_id: Arc::from(format!("toadstool-{}", uuid::Uuid::new_v4())),
             default_format: MessageFormat::Json,
             supported_transports: vec![TransportType::Http, TransportType::TRpc], // WebSocket removed — use JSON-RPC 2.0
             auth_config: None,

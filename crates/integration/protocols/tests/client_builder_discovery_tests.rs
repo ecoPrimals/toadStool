@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for protocol client builder, discovery, and health check types
 //!
 //! Pure unit tests - no network or hardware required.
@@ -120,8 +120,8 @@ fn test_service_endpoint_construction() {
 #[test]
 fn test_service_info_construction() {
     let service = ServiceInfo {
-        id: "svc-1".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("svc-1"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: std::collections::HashMap::new(),

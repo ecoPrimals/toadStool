@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Server startup and shutdown lifecycle
 //!
 //! Handles HTTP server binding, serving, and graceful shutdown of active executions.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource estimation, validation, and optimization for JSON-RPC handler.
 
 use crate::resource_estimator::ResourceEstimator;

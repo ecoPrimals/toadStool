@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Infant Discovery System
@@ -28,17 +28,21 @@
 //! This means ToadStool no longer attempts to detect Kubernetes, Docker,
 //! or cloud providers. Those are Songbird's responsibility.
 
+pub mod builder;
 pub mod capabilities;
+pub mod config;
 pub mod detectors;
 pub mod engine;
 pub mod sources;
 
 // Re-export key types for convenience
+pub use builder::DiscoveryEngineBuilder;
 pub use capabilities::{
     CapabilityDiscovery, DetectedSubstrate, DiscoveredService, DiscoveryError,
     DiscoveryPreferences, DiscoverySource, EndpointResolver, EndpointSource, ServiceHealth,
     ServiceMetadata, SubstrateCapability, SubstrateDetector, SubstrateType,
 };
-pub use engine::{DiscoveryEngine, DiscoveryEngineBuilder, ServiceDiscoveryConfig};
-// Type alias for backward compatibility
-pub use engine::ServiceDiscoveryConfig as DiscoveryConfig;
+pub use config::ServiceDiscoveryConfig;
+/// Type alias for backward compatibility
+pub use config::ServiceDiscoveryConfig as DiscoveryConfig;
+pub use engine::DiscoveryEngine;

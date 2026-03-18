@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-Based Service Discovery - Pure Infant Discovery Pattern
 //!
 //! This module implements the **pure infant discovery** pattern where ToadStool:

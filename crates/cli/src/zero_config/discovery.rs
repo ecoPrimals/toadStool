@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! System and ecosystem discovery functionality
 
 use crate::{CliContextExt, Result};
 use std::future::Future;
+use toadstool_common::constants::network::LOCALHOST_IPV4;
 use tokio::process::Command;
 use tracing::{debug, info};
 
@@ -208,7 +209,7 @@ impl ZeroConfigDeployment {
 
         // Parse network interfaces
         for line in content.lines() {
-            if line.contains("inet ") && !line.contains("127.0.0.1") {
+            if line.contains("inet ") && !line.contains(LOCALHOST_IPV4) {
                 if let Some(ip) = line.split_whitespace().nth(1) {
                     if let Some(ip_addr) = ip.split('/').next() {
                         local_ips.push(ip_addr.to_string());

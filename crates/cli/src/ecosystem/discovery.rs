@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service discovery functionality for ecosystem integration
 //!
 //! This module handles discovering services on the network using:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security audit logging
 //!
 //! Extracted from security_hardening.rs for modularity (Feb 14, 2026).

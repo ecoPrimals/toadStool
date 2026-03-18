@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![warn(missing_docs)]
 #![allow(
     async_fn_in_trait,
     clippy::doc_markdown,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service deployment functionality
 //!
 //! ✅ FULLY MODERNIZED (Nov 24, 2025):

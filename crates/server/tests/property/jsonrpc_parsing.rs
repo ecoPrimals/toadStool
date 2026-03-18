@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Property-based tests for JSON-RPC request parsing
 //!
 //! Tests that JSON-RPC requests can be parsed correctly regardless of

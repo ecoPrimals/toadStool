@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 //! Coverage tests for `primal_integration::discovery`
 //! Target: `crates/core/common/src/primal_integration/discovery.rs`

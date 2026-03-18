@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Sensor reading via `nvidia-smi` for proprietary NVIDIA drivers.
 //!
 //! The proprietary NVIDIA driver does not expose hwmon sensors via sysfs.

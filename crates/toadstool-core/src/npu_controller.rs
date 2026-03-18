@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Generic NPU Parameter Controller — hotSpring absorption (S94).
 //!
 //! Provides the trait for NPU-driven autonomous parameter tuning.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse Linux kernel mmiotrace logs into `TraceEvent`s.
 //!
 //! mmiotrace format (from `/sys/kernel/tracing/trace`):

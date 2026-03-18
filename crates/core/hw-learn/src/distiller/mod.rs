@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distill raw trace observations into minimal, portable init recipes.
 //!
 //! The distiller takes `ObserveResult` from the observer and produces
@@ -148,7 +148,7 @@ pub enum VerifyCheck {
     /// Verify a memory region is accessible via sentinel write/readback.
     /// Used by the differential probe to confirm FB/HBM2 init steps.
     MemoryAccessible {
-        /// Aperture name (e.g. "VRAM", "SysMem", "BAR2").
+        /// Aperture name (e.g. "VRAM", "`SysMem`", "BAR2").
         aperture: String,
         /// Byte offset within the aperture to test.
         offset: u64,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for under-covered modules in toadstool-core (S155).
 //!
 //! Target modules:
@@ -517,6 +517,55 @@ fn transport_router_route_loop() {
     assert!(chunk_count >= 1, "route_loop should run at least once");
 }
 
+#[test]
+fn transport_router_route_once_empty_rx_returns_zero() {
+    let mut router = TransportRouter::new();
+    let rx = LoopbackTransport::new("rx", TransportDirection::Bidirectional, 1_000_000);
+    router.register(Box::new(rx));
+    router.register(Box::new(LoopbackTransport::new(
+        "tx",
+        TransportDirection::Bidirectional,
+        1_000_000,
+    )));
+    let n = router.route_once("rx", "tx", 1024).unwrap();
+    assert_eq!(n, 0, "empty rx buffer should return 0 bytes transferred");
+}
+
+#[test]
+fn transport_router_route_loop_stops_on_callback_false() {
+    let mut router = TransportRouter::new();
+    let mut rx = LoopbackTransport::new("rx", TransportDirection::Bidirectional, 1_000_000);
+    rx.buf = b"data".to_vec();
+    router.register(Box::new(rx));
+    router.register(Box::new(LoopbackTransport::new(
+        "tx",
+        TransportDirection::Bidirectional,
+        1_000_000,
+    )));
+    let mut iterations = 0;
+    let total = router
+        .route_loop("rx", "tx", 1024, |n| {
+            iterations += 1;
+            n > 0 && iterations < 1
+        })
+        .unwrap();
+    assert_eq!(total, 4, "should transfer 4 bytes in first iteration");
+    assert_eq!(iterations, 1);
+}
+
+#[test]
+fn transport_router_get_mut() {
+    let mut router = TransportRouter::new();
+    router.register(Box::new(LoopbackTransport::new(
+        "a",
+        TransportDirection::Tx,
+        1_000_000,
+    )));
+    let t = router.get_mut("a");
+    assert!(t.is_some());
+    assert!(router.get_mut("b").is_none());
+}
+
 // ============================================================================
 // Hardware Transport (hardware_transport.rs)
 // ============================================================================
@@ -570,6 +619,28 @@ fn encode_decode_frame_round_trip() {
 }
 
 #[test]
+fn encode_decode_frame_empty_payload() {
+    let payload: &[u8] = &[];
+    let mut buf = vec![0u8; FRAME_HEADER_SIZE + 16];
+    let written = encode_frame(0, payload, &mut buf).unwrap();
+    assert_eq!(written, FRAME_HEADER_SIZE);
+    let (seq, decoded) = decode_frame(&buf[..written]).unwrap();
+    assert_eq!(seq, 0);
+    assert!(decoded.is_empty());
+}
+
+#[test]
+fn encode_decode_frame_odd_length_payload() {
+    let payload = b"abc";
+    let mut buf = vec![0u8; FRAME_HEADER_SIZE + 8];
+    let written = encode_frame(1, payload, &mut buf).unwrap();
+    assert_eq!(written, FRAME_HEADER_SIZE + 3);
+    let (seq, decoded) = decode_frame(&buf[..written]).unwrap();
+    assert_eq!(seq, 1);
+    assert_eq!(decoded, payload);
+}
+
+#[test]
 fn encode_frame_too_small() {
     let mut buf = [0u8; 4];
     assert!(encode_frame(0, b"data", &mut buf).is_none());
@@ -603,6 +674,26 @@ fn decode_frame_checksum_mismatch() {
     buf[9..13].copy_from_slice(&4u32.to_le_bytes());
     buf[13..17].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
     assert!(decode_frame(&buf).is_err());
+}
+
+#[test]
+fn decode_frame_payload_too_small() {
+    let mut buf = vec![0u8; FRAME_HEADER_SIZE];
+    buf[0..4].copy_from_slice(b"TSXP");
+    buf[4] = 1;
+    buf[9..13].copy_from_slice(&100u32.to_le_bytes());
+    assert!(decode_frame(&buf).is_err());
+}
+
+#[test]
+fn transport_error_io_from_std() {
+    use std::io;
+    let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
+    let transport_err = TransportError::from(io_err);
+    assert!(
+        transport_err.to_string().contains("file not found")
+            || transport_err.to_string().contains("I/O")
+    );
 }
 
 #[test]

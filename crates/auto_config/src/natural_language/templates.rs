@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration templates for common use cases
 //!
 //! This module provides pre-configured templates for common workload types,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // auth_backend_evolved.rs - Capability-based authentication backend
 //
 // DEEP DEBT EVOLUTION: This backend discovers security providers by capability

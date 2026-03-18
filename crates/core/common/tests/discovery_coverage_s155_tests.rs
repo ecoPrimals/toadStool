@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery coverage tests for primal discovery, service discovery, primal sockets,
 //! primal identity, universal adapter, and capability provider modules.
 

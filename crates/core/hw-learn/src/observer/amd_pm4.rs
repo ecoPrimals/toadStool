@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse AMD PM4 command stream dumps.
 //!
 //! AMD GPUs use PM4 (Packet Manager 4) format for command submission.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Readout layer training for reservoir computing
 //!
 //! Trains a simple linear layer to map reservoir states to target outputs.

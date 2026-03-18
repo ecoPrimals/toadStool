@@ -156,7 +156,7 @@ See the main [ToadStool repository](https://github.com/your-org/toadstool) for c
 
 ## License
 
-AGPL-3.0-only
+AGPL-3.0-or-later
 
 ---
 

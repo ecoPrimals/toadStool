@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse strace DRM ioctl output into `TraceEvent`s.
 //!
 //! Expected strace format (from `strace -e trace=ioctl -y`):

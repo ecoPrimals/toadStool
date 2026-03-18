@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # BYOB HTTP routes for container runtime
 //!
 //! HTTP API endpoints for handling BYOB deployment requests from Songbird.

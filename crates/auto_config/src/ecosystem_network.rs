@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem network discovery
 //!
 //! Network scanning, probing, and service discovery on local networks.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource estimation for collaborative intelligence
 //!
 //! This module provides resource estimation capabilities for execution graphs.

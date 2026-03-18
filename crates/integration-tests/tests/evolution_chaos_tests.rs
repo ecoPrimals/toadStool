@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Evolution Chaos Tests
 //!
 //! Chaos engineering tests for ToadStool's `UniBin` and refactored executor modules.

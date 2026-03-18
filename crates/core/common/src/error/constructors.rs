@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Helper constructors for creating errors ergonomically
 //!
 //! This module provides convenient constructor methods for error types,

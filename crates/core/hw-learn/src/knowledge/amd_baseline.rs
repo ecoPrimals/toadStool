@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! AMD amdgpu compute init canonical pattern — the gold-standard reference recipe.
 //!
 //! The amdgpu kernel driver is fully open-source, making its compute init sequence

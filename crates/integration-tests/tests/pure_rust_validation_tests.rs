@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure Rust validation tests
 //!
 //! These tests validate ToadStool's 99.95% Pure Rust achievement by:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Channel management and message routing tests
 
 use crate::ecosystem::{CommunicationManager, ServiceStatus};

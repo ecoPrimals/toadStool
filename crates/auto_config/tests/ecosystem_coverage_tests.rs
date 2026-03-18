@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for ecosystem configuration, service discovery, capability mapping
 
 #![allow(clippy::pedantic)]

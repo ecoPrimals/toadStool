@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // UniversalComputeManager Implementation
 // Core implementation with all operations delegated to extension traits in operations/ module.
 

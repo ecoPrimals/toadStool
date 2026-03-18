@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Metrics, job splitting, load estimation, and coordination types
 
 use uuid::Uuid;
@@ -51,7 +51,7 @@ impl JobSplittingStrategy {
         for i in 0..num_subtasks {
             subtasks.push(SubTask {
                 id: Uuid::new_v4(),
-                payload: vec![],
+                payload: bytes::Bytes::new(),
                 resource_requirements: ResourceRequirements {
                     cpu: crate::types::resources::CpuRequirements {
                         min_cores: per_task_cpu,
@@ -84,7 +84,7 @@ impl JobSplittingStrategy {
         (0..num_subtasks)
             .map(|i| SubTask {
                 id: Uuid::new_v4(),
-                payload: vec![],
+                payload: bytes::Bytes::new(),
                 resource_requirements: job.resource_requirements.clone(),
                 priority: job.priority as u8,
                 constraints: vec![format!("task_{}_of_{}", i, num_subtasks)],

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Connection handling for Pure JSON-RPC server (Unix socket + TCP)
 //!
 //! Generic over JsonRpcHandler. Parses requests from owned bytes so that

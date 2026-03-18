@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! SPIR-V codegen safety — transcendental poisoning defense.
 //!
 //! Root cause: naga SPIR-V codegen (not NVVM) produces incorrect transcendental

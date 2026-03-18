@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -40,9 +40,12 @@ async fn test_get_platform_metadata_mcu() {
         tool: "idf".to_string(),
     };
     let meta = manager.get_platform_metadata(&platform);
-    assert_eq!(meta.get("type"), Some(&"mcu_development".to_string()));
-    assert_eq!(meta.get("platform"), Some(&"ESP32".to_string()));
-    assert_eq!(meta.get("tool"), Some(&"idf".to_string()));
+    assert_eq!(
+        meta.get("type").map(|s| s.as_ref()),
+        Some("mcu_development")
+    );
+    assert_eq!(meta.get("platform").map(|s| s.as_ref()), Some("ESP32"));
+    assert_eq!(meta.get("tool").map(|s| s.as_ref()), Some("idf"));
 }
 
 #[tokio::test]
@@ -55,9 +58,9 @@ async fn test_get_platform_metadata_biological() {
         simulation: false,
     };
     let meta = manager.get_platform_metadata(&platform);
-    assert_eq!(meta.get("type"), Some(&"biological".to_string()));
-    assert_eq!(meta.get("platform"), Some(&"DNA".to_string()));
-    assert_eq!(meta.get("simulation"), Some(&"false".to_string()));
+    assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("biological"));
+    assert_eq!(meta.get("platform").map(|s| s.as_ref()), Some("DNA"));
+    assert_eq!(meta.get("simulation").map(|s| s.as_ref()), Some("false"));
 }
 
 #[tokio::test]
@@ -70,9 +73,9 @@ async fn test_get_platform_metadata_quantum() {
         simulator: false,
     };
     let meta = manager.get_platform_metadata(&platform);
-    assert_eq!(meta.get("type"), Some(&"quantum".to_string()));
-    assert_eq!(meta.get("framework"), Some(&"Qiskit".to_string()));
-    assert_eq!(meta.get("simulator"), Some(&"false".to_string()));
+    assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("quantum"));
+    assert_eq!(meta.get("framework").map(|s| s.as_ref()), Some("Qiskit"));
+    assert_eq!(meta.get("simulator").map(|s| s.as_ref()), Some("false"));
 }
 
 #[tokio::test]
@@ -85,9 +88,9 @@ async fn test_get_platform_metadata_neuromorphic() {
         hardware: true,
     };
     let meta = manager.get_platform_metadata(&platform);
-    assert_eq!(meta.get("type"), Some(&"neuromorphic".to_string()));
-    assert_eq!(meta.get("platform"), Some(&"Loihi".to_string()));
-    assert_eq!(meta.get("hardware"), Some(&"true".to_string()));
+    assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("neuromorphic"));
+    assert_eq!(meta.get("platform").map(|s| s.as_ref()), Some("Loihi"));
+    assert_eq!(meta.get("hardware").map(|s| s.as_ref()), Some("true"));
 }
 
 #[tokio::test]

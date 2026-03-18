@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive concurrent tests for GPU Runtime
 //!
 //! ⚠️ TEMPORARY: Tests temporarily disabled due to segfault investigation

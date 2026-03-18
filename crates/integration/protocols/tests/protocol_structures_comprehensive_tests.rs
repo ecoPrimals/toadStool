@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Protocol Structures
 //!
 //! This test suite provides extensive coverage of structure types used in protocol integration,
@@ -200,8 +200,8 @@ fn test_protocol_message_clone() {
 #[test]
 fn test_service_info_creation() {
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -228,8 +228,8 @@ fn test_service_info_with_endpoints() {
     };
 
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![endpoint],
         metadata: HashMap::new(),
@@ -249,8 +249,8 @@ fn test_service_info_with_metadata() {
     metadata.insert("datacenter".to_string(), "dc1".to_string());
 
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: metadata.clone(),
@@ -269,8 +269,8 @@ fn test_service_info_with_metadata() {
 #[test]
 fn test_service_info_with_capabilities() {
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -290,8 +290,8 @@ fn test_service_info_with_capabilities() {
 #[test]
 fn test_service_info_health_status() {
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -306,8 +306,8 @@ fn test_service_info_health_status() {
 #[test]
 fn test_service_info_serialization() {
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -327,8 +327,8 @@ fn test_service_info_serialization() {
 #[test]
 fn test_service_info_clone() {
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -490,8 +490,8 @@ fn test_service_with_multiple_endpoints() {
     ];
 
     let service = ServiceInfo {
-        id: "multi-endpoint-service".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("multi-endpoint-service"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints,
         metadata: HashMap::new(),
@@ -508,8 +508,8 @@ fn test_service_with_multiple_endpoints() {
 #[test]
 fn test_message_with_service_info() {
     let service = ServiceInfo {
-        id: "service-123".to_string(),
-        name: "test-service".to_string(),
+        id: std::sync::Arc::from("service-123"),
+        name: std::sync::Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),

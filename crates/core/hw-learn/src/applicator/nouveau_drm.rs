@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Apply recipe steps via nouveau DRM ioctls.
 //!
 //! This module uses the nouveau new UAPI (kernel 6.6+) to apply

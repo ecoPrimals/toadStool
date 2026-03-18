@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! IPC helpers tests
 //!
 //! Uses `temp_env` for safe, isolated environment variable testing. No unsafe

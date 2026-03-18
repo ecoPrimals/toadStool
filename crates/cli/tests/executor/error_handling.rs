@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error handling tests
 //!
 //! Tests for error paths, timeouts, and boundary conditions.

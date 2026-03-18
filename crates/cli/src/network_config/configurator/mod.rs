@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Orchestration Network Configurator
 //!
 //! Manages network configuration for the orchestration capability:

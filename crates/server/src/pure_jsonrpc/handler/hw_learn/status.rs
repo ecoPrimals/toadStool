@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Status handler — report hw-learn pipeline state and firmware inventory.
 
 use super::HwLearnHandler;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Helper functions for sandbox management
 //!
 //! This module contains platform-agnostic helper functions for sandbox

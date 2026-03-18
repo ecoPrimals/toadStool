@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🎯 Zero-Copy Constants - Ecosystem Service Names & Capabilities
 //!
 //! Central location for static string constants to avoid repeated allocations.

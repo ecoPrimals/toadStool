@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Legacy system and architecture type definitions
 
 use serde::{Deserialize, Serialize};

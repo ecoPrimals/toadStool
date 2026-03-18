@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core types and data structures for protocol integration
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -133,14 +134,14 @@ pub struct ProtocolMessage {
     /// Message ID
     pub id: Uuid,
 
-    /// Message type
-    pub message_type: String,
+    /// Message type (Arc<str> = zero-copy clone)
+    pub message_type: Arc<str>,
 
-    /// Source service ID
-    pub source: String,
+    /// Source service ID (Arc<str> = zero-copy clone)
+    pub source: Arc<str>,
 
-    /// Destination service ID
-    pub destination: Option<String>,
+    /// Destination service ID (Arc<str> = zero-copy clone)
+    pub destination: Option<Arc<str>>,
 
     /// Message payload
     pub payload: serde_json::Value,
@@ -158,8 +159,8 @@ pub struct ProtocolMessage {
     /// Correlation ID for request-response patterns
     pub correlation_id: Option<Uuid>,
 
-    /// Reply-to address for responses
-    pub reply_to: Option<String>,
+    /// Reply-to address for responses (Arc<str> = zero-copy clone)
+    pub reply_to: Option<Arc<str>>,
 
     /// Message TTL
     pub ttl: Option<Duration>,
@@ -169,13 +170,15 @@ pub struct ProtocolMessage {
 }
 
 /// Service information structure
+///
+/// Uses `Arc<str>` for id and name (wateringHole zero-copy): clone is refcount bump, not memcpy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceInfo {
     /// Service ID
-    pub id: String,
+    pub id: Arc<str>,
 
     /// Service name
-    pub name: String,
+    pub name: Arc<str>,
 
     /// Service version
     pub version: String,

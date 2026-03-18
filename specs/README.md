@@ -1,27 +1,72 @@
 # ToadStool Specifications
 
-## Current Status (March 13, 2026 — S153)
+## Scope & Aims
 
-**Quick Start:**
-- **`../README.md`** — Project overview, architecture, key achievements
-- **`../STATUS.md`** — Detailed status with quality gates
-- **`../SOVEREIGN_COMPUTE_GAPS.md`** — Remaining work tracker (what to close before proceeding)
-- **`UNIVERSAL_PRECISION_ARCHITECTURE.md`** — Math is universal, precision is silicon
+**toadStool is the sovereign hardware infrastructure primal.** It discovers,
+manages, and orchestrates every piece of compute silicon available — GPU
+shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizers, NPUs, CPUs,
+and future accelerators. No vendor SDKs. No proprietary drivers. Pure Rust
+from application to bare metal.
 
-**Key Numbers:**
-- **21,156+ workspace tests** (0 failures, all concurrent)
-- **96+ JSON-RPC methods** (dynamically built from semantic registry)
-- **3 hardware transports** — DisplayTransport (DRM), CaptureTransport (V4L2), SerialTransport (PCIe P2P implemented S142)
-- **coralReef shader proxy** — capability-based discovery, naga fallback
-- **VFIO interface** — `VfioBar0Access` for NVIDIA GPUs, BAR0 permissions, `setup-gpu-sovereign.sh`
-- **Live BAR0 apply** — `compute.hardware.apply` + `auto_init` (knowledge → init pipeline)
-- **Clippy pedantic** — 0 warnings with `--all-targets`
-- **Zero-copy** — `bytes::Bytes` in 6 GPU/runtime types
-- **Capability-based discovery** — sovereignty: all production callers migrated
-- **ecoBin pure-rust verified** — zero C FFI deps
-- **Rust 1.85+ (edition 2024)** — `is_some_and`, `div_ceil`, modern idiomatic patterns
+### Core Principles
 
-**Architecture:**
+1. **Hardware atheism** — toadStool does not prefer any vendor or silicon
+   type. It discovers what exists and routes work to the best available
+   substrate for the requested tolerance.
+
+2. **Self-knowledge only** — toadStool knows about hardware. It discovers
+   other primals (barraCuda, coralReef, songBird, bearDog, nestGate) at
+   runtime via capability-based IPC. No compile-time coupling. No hardcoded
+   primal names in dispatch paths.
+
+3. **Every piece of silicon** — driven by the ludoSpring V24 audit
+   (`wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`): a modern
+   GPU die has 8+ distinct hardware units, each a special-purpose computer.
+   toadStool aims to discover, profile, and route to ALL of them.
+
+4. **Tolerance-based routing** — springs specify mathematical tolerance
+   (e.g. `1e-14`), not hardware targets. toadStool picks the cheapest
+   hardware that meets the tolerance from its measured performance surface.
+
+5. **Sovereign pipeline** — VFIO-based dispatch without Vulkan/CUDA API
+   restrictions. This enables mixed command streams (compute + graphics +
+   RT in one submission) that no existing framework supports.
+
+6. **ecoBin v3.0** — single binary, pure Rust, cross-platform. Zero C
+   application dependencies. Feature-gated optional backends (CUDA, OpenCL,
+   Vulkan) for interop where needed.
+
+### Quality Gates
+
+| Gate | Standard | Status |
+|------|----------|--------|
+| `cargo fmt` | Clean | ✅ |
+| `cargo clippy --pedantic --nursery` | 0 errors, 0 warnings | ✅ S158 |
+| `cargo doc --no-deps` | 0 warnings | ✅ |
+| `#![warn(missing_docs)]` | All 38 library crates | ✅ S158 |
+| License | AGPL-3.0-or-later (SPDX on all files) | ✅ S158 |
+| Production `panic!()` | 0 in non-test code | ✅ |
+| Production `.unwrap()` | 0 in non-test code | ✅ |
+| Unsafe code | All documented with `// SAFETY:` | ✅ |
+| Files > 1000 lines | 0 | ✅ |
+| Hardcoded IPs/ports | Centralized to `constants::network` | ✅ S158 |
+| Test coverage | Target 90%, current ~83% | 🔄 D-COV |
+| Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
+
+### Key Numbers (S158)
+
+- **56 workspace crates**, 1,896 `.rs` files, 565,323 lines
+- **21,156+ tests** (0 failures)
+- **96+ JSON-RPC methods** (`domain.operation` semantic naming)
+- **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
+- **VFIO interface** — BAR0, DMA, power management (nvpmu)
+- **NPU dispatch** — Akida AKD1000/1500 (kernel, VFIO, userspace)
+- **29 crates** `#![forbid(unsafe_code)]`, remainder `#![deny(unsafe_code)]`
+- **ecoBin v3.0 certified** — sysinfo replaced by `toadstool-sysmon`
+- **Rust 2024 edition**, MSRV 1.85
+
+### Architecture
+
 ```
 barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRATE)
                      │ VFIO transport              │ VFIO interface
@@ -30,7 +75,8 @@ barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRA
                      │                             │  thermal safety, routing)
 ```
 
-**Active evolution:** Sovereign compute gap closure, VFIO validation, cross-toadStool pooling. See `../SOVEREIGN_COMPUTE_GAPS.md`.
+**Active evolution:** Sovereign compute gap closure, VFIO validation,
+performance surface database, multi-unit routing. See `../SOVEREIGN_COMPUTE_GAPS.md`.
 
 ---
 
@@ -87,6 +133,19 @@ barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRA
 |----------|---------|---------|--------|
 | ~~RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS~~ | Neuromorphic reservoir computing ops | Jan 29 | Transferred to barraCuda |
 | **[PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md)** | Capability-based discovery | Nov 2025 | ✅ Implemented |
+
+### Every Piece of Silicon — Future Evolution (S158)
+
+*Driven by ludoSpring V24 `GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`.*
+
+| Phase | Description | Status | Dependency |
+|:-----:|-------------|:------:|------------|
+| **A** | Sovereign compute dispatch (VFIO shader cores) | 🔄 WIP | coralReef USERD_TARGET |
+| **B** | Performance surface database (per-unit profiling) | 📋 Planned | Phase A, spring experiments |
+| **C** | Multi-unit routing (shader + tensor + RT + TMU + ROP) | 📋 Planned | Phase B |
+| **D** | Mixed command streams (compute + graphics + RT) | 📋 Planned | Phase C, coralReef MMA/draw emission |
+
+**Target silicon**: Shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizer, tessellator, video enc/dec — every functional unit on the GPU die. See `wateringHole/TOADSTOOL_LEVERAGE_GUIDE.md` Section 11 and `wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`.
 
 ---
 
@@ -200,60 +259,74 @@ Historical documents have been moved to the `ecoPrimals/` fossil record. Current
 
 ### Runtime Discovery, Not Hardcoding
 
+toadStool discovers hardware at runtime and routes work based on measured
+capabilities. No vendor strings, no hardcoded ports, no compile-time
+assumptions about what silicon is available.
+
 ```rust
-// WRONG
+// WRONG — hardcoded vendor assumption
 let cache_size = if vendor == "AMD" { 128_MB } else { 6_MB };
 
-// RIGHT
+// RIGHT — runtime capability probe
 let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
 ```
 
-### Math Is Universal, Precision Is Silicon
+### Self-Knowledge Only
 
-All math is WGSL primary. One source, any precision via `compile_shader_universal()`:
-- 700 WGSL shaders (497 f32 via LazyLock, 182 f64, 21 Df64 — zero f32-only)
-- Dual-layer: op_preamble (abstract ops) + naga df64_rewrite (infix→bridge functions)
-- 12 universal `{{SCALAR}}` templates
-- Same shader → Vulkan (NVIDIA/AMD), Metal (Apple), DX12 (Windows)
+toadStool knows about hardware. It discovers other primals at runtime via
+capability-based IPC (`get_socket_path_for_capability`). No primal names
+in production dispatch paths. No compile-time cross-primal dependencies.
 
-### Vendor-Agnostic Results
+```rust
+// WRONG — hardcoded primal name
+let socket = get_socket_path_for_service("beardog");
 
-Same binary, identical results:
-- RTX 3090 (NVIDIA) → checksum **5.128010**
-- RX 6950 XT (AMD) → checksum **5.128010**
-- Zero CUDA, Zero ROCm
+// RIGHT — capability-based discovery
+let socket = get_socket_path_for_capability(capabilities::CRYPTO);
+```
 
-### Sibling Validation Projects
+### Tolerance-Based Routing
 
-BarraCuda is validated by multiple domain-specific projects:
+Springs specify mathematical tolerance, not hardware targets. toadStool
+selects the cheapest hardware unit that meets the requested precision
+from its measured performance surface.
 
-| Project | Domain | Checks | Key Findings |
-|---------|--------|:------:|--------------|
-| **hotSpring** | Nuclear physics (HFB + lattice QCD) | 664 tests | GPU-resident HFB, consumer QCD validated, 22 papers |
-| **wetSpring** | Life science + analytical chemistry | 918 tests | log_f64 bug found+fixed; Shannon/Simpson/Bray-Curtis validated |
-| **airSpring** | Precision agriculture (ET₀, soil, IoT) | 468 tests | FAO-56 validated; 918 real station-days; 53-72% water savings |
-| **neuralSpring** | Neural network inference | 580 tests | 6 universal ops serve every domain |
-| **groundSpring** | Hydrogeology | 154 tests | RAWR bootstrap, regression, hydrology |
+```
+tolerance 1e-14 → DF64 on FP32 shader cores (RTX 3090: ~3.24 TFLOPS)
+tolerance 1e-7  → FP32 shader cores (RTX 3090: ~35.6 TFLOPS)
+tolerance 1e-4  → FP16 tensor cores (RTX 3090: ~142 TFLOPS)
+```
 
-**Combined validation**: 4,000+ acceptance checks across physics, chemistry, biology, agriculture, and ML.
+### Sovereign by Default
 
-All projects evolve compute pipelines from Python to Rust+GPU, validating accuracy
-at every step. Bugs discovered by validation projects are fixed immediately in
-ToadStool core.
+The VFIO sovereign pipeline gives bare-metal GPU access without vendor
+SDK restrictions. This enables mixed command streams — compute + graphics
++ RT in one submission — that no existing framework supports.
 
-**Cross-spring synergies**:
-- hotSpring → airSpring: f64 GPU patterns, dispatch batching, hybrid GPU+Rayon
-- airSpring → wetSpring: Spatial interpolation (kriging) for sampling sites
-- wetSpring → airSpring: IoT stream processing for real-time sensor data
+### ecoBin v3.0 — Pure Rust
+
+Zero C application dependencies. Feature-gated optional backends
+(CUDA, OpenCL, Vulkan) for interop. Remaining libc is ecosystem-
+transitive only (mio, tokio, wgpu).
+
+### Deep Debt Resolution
+
+Every workaround has an evolution path. Mocks are test-only. Stubs evolve
+to complete implementations. External C dependencies evolve to pure Rust.
+Large files are smart-refactored into coherent domain modules. Unsafe code
+is evolved to safe Rust where possible, hardware-justified and documented
+where not.
 
 ---
 
 ## Quick Links
 
 - **Immediate work:** `../NEXT_STEPS.md`
+- **Debt register:** `../DEBT.md`
+- **Sovereign gaps:** `../SOVEREIGN_COMPUTE_GAPS.md`
 - **Architecture docs:** `docs/architecture/`
-- **Showcases:** `showcase/` (4-level progressive demos)
 - **Hardware traits:** `crates/toadstool-core/src/` (NpuDispatch, NpuParameterController)
 - **GPU backends:** `crates/runtime/universal/src/backends/`
 - **Tests:** `cargo test --workspace`
-- **barraCuda (math/shaders):** `ecoPrimals/barraCuda/`
+- **Leverage guide:** `wateringHole/TOADSTOOL_LEVERAGE_GUIDE.md`
+- **All-silicon plan:** `wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`

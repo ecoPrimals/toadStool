@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Inference operations on Akida hardware
 //!
 //! Provides capability-based inference execution on NPUs.

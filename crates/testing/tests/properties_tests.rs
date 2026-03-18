@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ToadStool - Universal Compute Platform
 // Tests for property-based testing utilities
 

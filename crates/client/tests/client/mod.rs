@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Client Tests Module
 //!
 //! Tests for client builders across WASM, Native, and Container runtimes.

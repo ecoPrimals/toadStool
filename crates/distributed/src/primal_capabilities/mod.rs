@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal-Agnostic Capability System
 //!
 //! This module provides a universal capability registration and discovery system

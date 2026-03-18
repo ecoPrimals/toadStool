@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime Service Discovery - Zero Hardcoding
 //!
 //! This module provides runtime discovery of services based on capabilities,
@@ -349,7 +349,10 @@ impl LocalhostDiscoveryClient {
                 capabilities: vec![Capability::Compute(
                     crate::primal_identity::ComputeCapability::NativeExecution,
                 )],
-                endpoints: vec![ServiceEndpoint::http("localhost", port)],
+                endpoints: vec![ServiceEndpoint::http(
+                    crate::constants::network::DEFAULT_HOSTNAME,
+                    port,
+                )],
                 healthy: true,
                 metadata: HashMap::new(),
             });

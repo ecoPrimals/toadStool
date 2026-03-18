@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `ProtocolClient`
 
 use serde_json::json;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_integration_protocols::client::ProtocolClient;
@@ -38,8 +39,8 @@ fn create_test_config() -> ProtocolConfig {
 
 fn create_test_service_info() -> ServiceInfo {
     ServiceInfo {
-        id: "test-service-1".to_string(),
-        name: "test-service".to_string(),
+        id: Arc::from("test-service-1"),
+        name: Arc::from("test-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![ServiceEndpoint {
             id: "endpoint-1".to_string(),
@@ -120,8 +121,8 @@ async fn test_register_multiple_services() {
     let client = ProtocolClient::new(config).await.unwrap();
 
     let service1 = ServiceInfo {
-        id: "service-1".to_string(),
-        name: "test-service-1".to_string(),
+        id: Arc::from("service-1"),
+        name: Arc::from("test-service-1"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
@@ -131,8 +132,8 @@ async fn test_register_multiple_services() {
     };
 
     let service2 = ServiceInfo {
-        id: "service-2".to_string(),
-        name: "test-service-2".to_string(),
+        id: Arc::from("service-2"),
+        name: Arc::from("test-service-2"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
@@ -275,7 +276,10 @@ async fn test_get_service_health_after_registration() {
 
     client.register_service(service_info.clone()).await.unwrap();
 
-    let health = client.get_service_health(&service_info.id).await.unwrap();
+    let health = client
+        .get_service_health(service_info.id.as_ref())
+        .await
+        .unwrap();
     assert!(matches!(health, HealthStatus::Healthy));
 }
 
@@ -431,8 +435,8 @@ async fn test_discover_services_with_different_names() {
     let client = ProtocolClient::new(config).await.unwrap();
 
     let service1 = ServiceInfo {
-        id: "service-1".to_string(),
-        name: "compute-service".to_string(),
+        id: Arc::from("service-1"),
+        name: Arc::from("compute-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         health_status: HealthStatus::Healthy,
@@ -442,8 +446,8 @@ async fn test_discover_services_with_different_names() {
     };
 
     let service2 = ServiceInfo {
-        id: "service-2".to_string(),
-        name: "storage-service".to_string(),
+        id: Arc::from("service-2"),
+        name: Arc::from("storage-service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         health_status: HealthStatus::Healthy,

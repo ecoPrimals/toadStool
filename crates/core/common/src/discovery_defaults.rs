@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service Discovery Fallback Defaults
 //!
 //! This module provides fallback configuration for service discovery.
@@ -180,11 +180,8 @@ impl Default for DiscoveryErrorStrategy {
 }
 
 #[cfg(test)]
-#[allow(unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024; test-only usage
 mod tests {
     use super::*;
-
-    static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
     fn test_discovery_config_default() {
@@ -253,120 +250,71 @@ mod tests {
 
     #[test]
     fn test_discovery_config_default_production_mode() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("TOADSTOOL_ENV").ok();
-        // SAFETY: Test-only; sequential test execution via ENV_MUTEX
-        unsafe { env::set_var("TOADSTOOL_ENV", "production") };
-
-        let config = DiscoveryConfig::default();
-        assert!(!config.enable_localhost_fallback);
-        assert!(!config.allow_insecure);
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("TOADSTOOL_ENV", p) };
-        } else {
-            unsafe { env::remove_var("TOADSTOOL_ENV") };
-        }
+        temp_env::with_var("TOADSTOOL_ENV", Some("production"), || {
+            let config = DiscoveryConfig::default();
+            assert!(!config.enable_localhost_fallback);
+            assert!(!config.allow_insecure);
+        });
     }
 
     #[test]
     fn test_localhost_fallbacks_default_production_mode() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("TOADSTOOL_ENV").ok();
-        unsafe { env::set_var("TOADSTOOL_ENV", "production") };
-
-        let fallbacks = LocalhostFallbacks::default();
-        assert!(!fallbacks.enabled);
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("TOADSTOOL_ENV", p) };
-        } else {
-            unsafe { env::remove_var("TOADSTOOL_ENV") };
-        }
+        temp_env::with_var("TOADSTOOL_ENV", Some("production"), || {
+            let fallbacks = LocalhostFallbacks::default();
+            assert!(!fallbacks.enabled);
+        });
     }
 
     #[test]
     fn test_discovery_error_strategy_default_production_mode() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("TOADSTOOL_ENV").ok();
-        unsafe { env::set_var("TOADSTOOL_ENV", "production") };
-
-        let strategy = DiscoveryErrorStrategy::default();
-        assert_eq!(strategy, DiscoveryErrorStrategy::FailFast);
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("TOADSTOOL_ENV", p) };
-        } else {
-            unsafe { env::remove_var("TOADSTOOL_ENV") };
-        }
+        temp_env::with_var("TOADSTOOL_ENV", Some("production"), || {
+            let strategy = DiscoveryErrorStrategy::default();
+            assert_eq!(strategy, DiscoveryErrorStrategy::FailFast);
+        });
     }
 
     #[test]
     fn test_get_fallback_url_env_override() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("REDIS_URL").ok();
-        unsafe { env::set_var("REDIS_URL", "redis://custom.example.com:6380") };
-
-        let fallbacks = LocalhostFallbacks { enabled: true };
-        let url = fallbacks.get_fallback_url("redis");
-        assert_eq!(url.as_deref(), Some("redis://custom.example.com:6380"));
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("REDIS_URL", p) };
-        } else {
-            unsafe { env::remove_var("REDIS_URL") };
-        }
+        temp_env::with_var("REDIS_URL", Some("redis://custom.example.com:6380"), || {
+            let fallbacks = LocalhostFallbacks { enabled: true };
+            let url = fallbacks.get_fallback_url("redis");
+            assert_eq!(url.as_deref(), Some("redis://custom.example.com:6380"));
+        });
     }
 
     #[test]
     fn test_get_fallback_url_toadstool_env_override() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("TOADSTOOL_URL").ok();
-        unsafe { env::set_var("TOADSTOOL_URL", "http://toadstool.local:9999") };
-
-        let fallbacks = LocalhostFallbacks { enabled: true };
-        let url = fallbacks.get_fallback_url("toadstool");
-        assert_eq!(url.as_deref(), Some("http://toadstool.local:9999"));
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("TOADSTOOL_URL", p) };
-        } else {
-            unsafe { env::remove_var("TOADSTOOL_URL") };
-        }
+        temp_env::with_var("TOADSTOOL_URL", Some("http://toadstool.local:9999"), || {
+            let fallbacks = LocalhostFallbacks { enabled: true };
+            let url = fallbacks.get_fallback_url("toadstool");
+            assert_eq!(url.as_deref(), Some("http://toadstool.local:9999"));
+        });
     }
 
     #[test]
     fn test_get_fallback_url_postgres_env_override() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("POSTGRES_URL").ok();
-        unsafe { env::set_var("POSTGRES_URL", "postgresql://db.example.com:5433") };
-
-        let fallbacks = LocalhostFallbacks { enabled: true };
-        let url = fallbacks.get_fallback_url("postgres");
-        assert_eq!(url.as_deref(), Some("postgresql://db.example.com:5433"));
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("POSTGRES_URL", p) };
-        } else {
-            unsafe { env::remove_var("POSTGRES_URL") };
-        }
+        temp_env::with_var(
+            "POSTGRES_URL",
+            Some("postgresql://db.example.com:5433"),
+            || {
+                let fallbacks = LocalhostFallbacks { enabled: true };
+                let url = fallbacks.get_fallback_url("postgres");
+                assert_eq!(url.as_deref(), Some("postgresql://db.example.com:5433"));
+            },
+        );
     }
 
     #[test]
     fn test_get_fallback_url_mongodb_env_override() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("MONGODB_URL").ok();
-        unsafe { env::set_var("MONGODB_URL", "mongodb://mongo.example.com:27018") };
-
-        let fallbacks = LocalhostFallbacks { enabled: true };
-        let url = fallbacks.get_fallback_url("mongodb");
-        assert_eq!(url.as_deref(), Some("mongodb://mongo.example.com:27018"));
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("MONGODB_URL", p) };
-        } else {
-            unsafe { env::remove_var("MONGODB_URL") };
-        }
+        temp_env::with_var(
+            "MONGODB_URL",
+            Some("mongodb://mongo.example.com:27018"),
+            || {
+                let fallbacks = LocalhostFallbacks { enabled: true };
+                let url = fallbacks.get_fallback_url("mongodb");
+                assert_eq!(url.as_deref(), Some("mongodb://mongo.example.com:27018"));
+            },
+        );
     }
 
     #[test]
@@ -415,58 +363,34 @@ mod tests {
 
     #[test]
     fn test_discovery_config_default_staging_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("TOADSTOOL_ENV").ok();
-        unsafe { env::set_var("TOADSTOOL_ENV", "staging") };
-
-        let config = DiscoveryConfig::default();
-        assert!(config.enable_localhost_fallback);
-        assert!(config.allow_insecure);
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("TOADSTOOL_ENV", p) };
-        } else {
-            unsafe { env::remove_var("TOADSTOOL_ENV") };
-        }
+        temp_env::with_var("TOADSTOOL_ENV", Some("staging"), || {
+            let config = DiscoveryConfig::default();
+            assert!(config.enable_localhost_fallback);
+            assert!(config.allow_insecure);
+        });
     }
 
     #[test]
     fn test_discovery_config_default_empty_env() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("TOADSTOOL_ENV").ok();
-        unsafe { env::remove_var("TOADSTOOL_ENV") };
-
-        let config = DiscoveryConfig::default();
-        assert!(config.enable_localhost_fallback);
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("TOADSTOOL_ENV", p) };
-        } else {
-            unsafe { env::remove_var("TOADSTOOL_ENV") };
-        }
+        temp_env::with_var_unset("TOADSTOOL_ENV", || {
+            let config = DiscoveryConfig::default();
+            assert!(config.enable_localhost_fallback);
+        });
     }
 
     #[test]
     fn test_get_fallback_url_service_type_case_insensitive() {
-        let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
-        let prev = env::var("REDIS_URL").ok();
-        unsafe { env::set_var("REDIS_URL", "redis://custom:6379") };
-
-        let fallbacks = LocalhostFallbacks { enabled: true };
-        assert_eq!(
-            fallbacks.get_fallback_url("redis").as_deref(),
-            Some("redis://custom:6379")
-        );
-        assert_eq!(
-            fallbacks.get_fallback_url("Redis").as_deref(),
-            Some("redis://custom:6379")
-        );
-
-        if let Some(p) = prev {
-            unsafe { env::set_var("REDIS_URL", p) };
-        } else {
-            unsafe { env::remove_var("REDIS_URL") };
-        }
+        temp_env::with_var("REDIS_URL", Some("redis://custom:6379"), || {
+            let fallbacks = LocalhostFallbacks { enabled: true };
+            assert_eq!(
+                fallbacks.get_fallback_url("redis").as_deref(),
+                Some("redis://custom:6379")
+            );
+            assert_eq!(
+                fallbacks.get_fallback_url("Redis").as_deref(),
+                Some("redis://custom:6379")
+            );
+        });
     }
 
     #[test]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Extensions to toadStool's `PrecisionBrain` for hardware learning.
 //!
 //! - **`LearningAdvisor`** — identifies teacher/student GPU pairs and

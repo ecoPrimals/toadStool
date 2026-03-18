@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! macOS compatibility layer.
 //!
 //! On macOS, initializes successfully. On other platforms, returns

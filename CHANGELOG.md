@@ -132,7 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Fixes
 - Flaky test `test_concurrent_resource_monitoring_events` — barrier synchronization with subscribe-before-start pattern
-- SPDX header: `examples/real_gpu_pool.rs` corrected from `AGPL-3.0-or-later` to `AGPL-3.0-only`
+- SPDX header: `examples/real_gpu_pool.rs` corrected from `AGPL-3.0-or-later` to `AGPL-3.0-or-later`
 - Broken intra-doc link in `streaming_dispatch.rs` → `Self::record_dispatch_with_progress`
 
 #### Debris Cleanup
@@ -202,7 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`cargo clippy -D warnings`**: All 44 crates pass. Fixed: sysmon missing Cargo metadata, unused `ServiceStatus` import.
 
 #### License Alignment
-- **AGPL-3.0-or-later → AGPL-3.0-only**: 1,687 SPDX header comments updated across all `.rs` files. `deny.toml` and root `Cargo.toml` aligned to wateringHole standard.
+- **AGPL-3.0-or-later → AGPL-3.0-or-later**: 1,687 SPDX header comments updated across all `.rs` files. `deny.toml` and root `Cargo.toml` aligned to wateringHole standard.
 
 #### Repository URL Standardization
 - **`your-org` → `ecoPrimals`**: Root Cargo.toml URLs updated. 33 crates consolidated to `repository.workspace = true`.
@@ -254,7 +254,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stale `showcase/results/`, `scripts/`, `utils/` archived to `ecoPrimals/fossil/toadStool/showcase-legacy-S138/`.
 
 #### Doc Cleanup
-- **AGPL-3.0-or-later → AGPL-3.0-only**: 17 README.md files across crates and specs updated.
+- **AGPL-3.0-or-later → AGPL-3.0-or-later**: 17 README.md files across crates and specs updated.
 - **Session headers**: 6 root docs updated from S135/S136 to S138 (specs/README, docs/README, TESTING.md, QUICK_REFERENCE, README, SOVEREIGN_COMPUTE).
 - **BREAKING_CHANGES.md**: "sysinfo" reference updated to "toadstool-sysmon".
 - **7 stale TODO(D-PEDANTIC)** comments removed from crate lib.rs files.
@@ -546,7 +546,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### License & SPDX Compliance
 - **Unified all 37 Cargo.toml files** to `license.workspace = true` (inheriting `AGPL-3.0-or-later`)
 - **Added SPDX headers to 2,780 `.rs` files** — 0 files missing after this session
-- **Normalized 112 inconsistent SPDX headers** (94 `AGPL-3.0-only` + 18 bare `AGPL-3.0` → `AGPL-3.0-or-later`)
+- **Normalized 112 inconsistent SPDX headers** (94 `AGPL-3.0-or-later` + 18 bare `AGPL-3.0` → `AGPL-3.0-or-later`)
 
 #### Sovereignty Evolution
 - **`ECOSYSTEM_PRIMALS` → `ECOSYSTEM_CAPABILITIES`**: Access control trust model evolved from primal-name-based (`primal:nestgate`) to capability-based (`capability:storage`)

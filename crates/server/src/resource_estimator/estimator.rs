@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core resource estimation logic
 //!
 //! Analyzes execution graphs and produces resource estimates using topological

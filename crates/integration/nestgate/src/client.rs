@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage client implementation using capability-based discovery
 //!
 //! **TRUE PRIMAL**: Self-knowledge only - discovers storage via capabilities!

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for production hardening module
 //!
 //! Tests cover circuit breakers, resource leak detection, and memory pressure handling.

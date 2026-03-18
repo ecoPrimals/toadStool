@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -405,7 +405,7 @@ pub enum ResourceValue {
 
 #[cfg(test)]
 mod tests {
-    // SPDX-License-Identifier: AGPL-3.0-only
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
     use proptest::prelude::*;
 

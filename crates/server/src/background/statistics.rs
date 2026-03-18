@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Statistics collection background task
 //!
 //! Periodic aggregation and logging of server statistics.

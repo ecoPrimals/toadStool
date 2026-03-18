@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Discovery engine - orchestrates capability discovery from multiple sources
@@ -15,6 +15,7 @@ use super::capabilities::{
     DiscoveryPreferences, DiscoverySource, EndpointSource, ServiceHealth, ServiceMetadata,
     SubstrateDetector, SubstrateType,
 };
+use super::config::ServiceDiscoveryConfig;
 
 impl From<&str> for DiscoverySource {
     fn from(source_name: &str) -> Self {
@@ -43,36 +44,7 @@ pub struct DiscoveryEngine {
     config: ServiceDiscoveryConfig,
 }
 
-/// Service discovery engine configuration
-#[derive(Debug, Clone)]
-pub struct ServiceDiscoveryConfig {
-    /// Enable caching of discovered services.
-    pub enable_cache: bool,
-
-    /// Cache TTL.
-    pub cache_ttl: Duration,
-
-    /// Default discovery timeout.
-    pub default_timeout: Duration,
-
-    /// Number of retry attempts.
-    pub retry_attempts: u32,
-
-    /// Retry delay.
-    pub retry_delay: Duration,
-}
-
-impl Default for ServiceDiscoveryConfig {
-    fn default() -> Self {
-        Self {
-            enable_cache: true,
-            cache_ttl: Duration::from_secs(300), // 5 minutes
-            default_timeout: Duration::from_secs(30),
-            retry_attempts: 3,
-            retry_delay: Duration::from_secs(1),
-        }
-    }
-}
+// ServiceDiscoveryConfig is defined in config.rs, imported above
 
 impl DiscoveryEngine {
     /// Create a new discovery engine with default configuration.
@@ -114,7 +86,7 @@ impl DiscoveryEngine {
         let sources: Vec<Arc<dyn EndpointSource>> =
             self.sources.read().await.iter().map(Arc::clone).collect();
 
-        for source in sources.iter() {
+        for source in &sources {
             match source.resolve(capability).await {
                 Ok(Some(endpoint)) => {
                     tracing::info!(
@@ -155,7 +127,7 @@ impl DiscoveryEngine {
         let detectors: Vec<Arc<dyn SubstrateDetector>> =
             self.detectors.read().await.iter().map(Arc::clone).collect();
 
-        for detector in detectors.iter() {
+        for detector in &detectors {
             match detector.detect().await {
                 Ok(Some(substrate)) => {
                     tracing::info!(
@@ -367,7 +339,7 @@ impl CapabilityDiscovery for DiscoveryEngine {
                 self.sources.read().await.iter().map(Arc::clone).collect();
 
             // Query all sources sequentially (avoid lifetime issues)
-            for source in sources.iter() {
+            for source in &sources {
                 match source.resolve(&capability_str).await {
                     Ok(Some(endpoint)) => {
                         // Create discovered service from this endpoint
@@ -418,86 +390,12 @@ impl CapabilityDiscovery for DiscoveryEngine {
     }
 }
 
-/// Builder for discovery engine with fluent API
-pub struct DiscoveryEngineBuilder {
-    config: ServiceDiscoveryConfig,
-    sources: Vec<Arc<dyn EndpointSource>>,
-    detectors: Vec<Arc<dyn SubstrateDetector>>,
-}
-
-impl DiscoveryEngineBuilder {
-    /// Create a new builder
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            config: ServiceDiscoveryConfig::default(),
-            sources: Vec::new(),
-            detectors: Vec::new(),
-        }
-    }
-
-    /// Set cache TTL
-    #[must_use]
-    pub const fn cache_ttl(mut self, ttl: Duration) -> Self {
-        self.config.cache_ttl = ttl;
-        self
-    }
-
-    /// Set default timeout
-    #[must_use]
-    pub const fn timeout(mut self, timeout: Duration) -> Self {
-        self.config.default_timeout = timeout;
-        self
-    }
-
-    /// Disable caching
-    #[must_use]
-    pub const fn disable_cache(mut self) -> Self {
-        self.config.enable_cache = false;
-        self
-    }
-
-    /// Add an endpoint source
-    #[must_use]
-    pub fn with_source(mut self, source: Arc<dyn EndpointSource>) -> Self {
-        self.sources.push(source);
-        self
-    }
-
-    /// Add a substrate detector
-    #[must_use]
-    pub fn with_detector(mut self, detector: Arc<dyn SubstrateDetector>) -> Self {
-        self.detectors.push(detector);
-        self
-    }
-
-    /// Build the discovery engine
-    pub async fn build(self) -> DiscoveryEngine {
-        let engine = DiscoveryEngine::with_config(self.config);
-
-        // Register all sources
-        for source in self.sources {
-            engine.register_source(source).await;
-        }
-
-        // Register all detectors
-        for detector in self.detectors {
-            engine.register_detector(detector).await;
-        }
-
-        engine
-    }
-}
-
-impl Default for DiscoveryEngineBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// DiscoveryEngineBuilder is defined in builder.rs
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::infant_discovery::DiscoveryEngineBuilder;
 
     struct MockSource {
         name: String,

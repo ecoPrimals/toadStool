@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Observe and distill handlers — parse mmiotraces, diff traces, build init recipes.
 
 use super::HwLearnHandler;

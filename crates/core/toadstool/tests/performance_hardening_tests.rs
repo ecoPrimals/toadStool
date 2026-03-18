@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for performance hardening module
 //!
 //! Tests for optimized resource monitoring, memory pools, intelligent caching,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -606,8 +606,8 @@ mod universal_tests {
             architecture: "aarch64".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type"), Some(&"linux".to_string()));
-        assert_eq!(meta.get("distribution"), Some(&"Debian".to_string()));
+        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("linux"));
+        assert_eq!(meta.get("distribution").map(|s| s.as_ref()), Some("Debian"));
     }
 
     #[tokio::test]

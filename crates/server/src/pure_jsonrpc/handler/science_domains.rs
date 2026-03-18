@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Domain-specific science routing handlers.
 //!
 //! Extracted from `science.rs` to keep each module under 1000 LOC.

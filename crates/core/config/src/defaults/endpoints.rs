@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Self-Configuration Endpoints
 //!
 //! **Philosophy**: ToadStool should only have knowledge about its own API endpoint.

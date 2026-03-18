@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for protocol integration types
 
 use std::collections::HashMap;
@@ -345,8 +345,8 @@ fn test_service_endpoint_tcp() {
 #[test]
 fn test_service_info_creation() {
     let service = ServiceInfo {
-        id: "service-1".to_string(),
-        name: "API Gateway".to_string(),
+        id: std::sync::Arc::from("service-1"),
+        name: std::sync::Arc::from("API Gateway"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -372,8 +372,8 @@ fn test_service_info_with_endpoints() {
     };
 
     let service = ServiceInfo {
-        id: "service-2".to_string(),
-        name: "Data Service".to_string(),
+        id: std::sync::Arc::from("service-2"),
+        name: std::sync::Arc::from("Data Service"),
         version: "2.0.0".to_string(),
         endpoints: vec![endpoint],
         metadata: HashMap::new(),

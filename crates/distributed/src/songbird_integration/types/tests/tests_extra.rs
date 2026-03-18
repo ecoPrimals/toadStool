@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::float_cmp)]
 //! Additional type tests (serde, config, etc.)
 
@@ -596,7 +596,7 @@ fn test_songbird_job_request_full_roundtrip() {
     req.cpu.min_cores = 2.0;
     let job_req = SongbirdJobRequest {
         job_id: Uuid::new_v4(),
-        job_payload: vec![1, 2, 3, 4, 5],
+        job_payload: bytes::Bytes::from(vec![1, 2, 3, 4, 5]),
         target_nodes: vec!["n1".to_string(), "n2".to_string()],
         resource_requirements: req.clone(),
         priority: 10,
@@ -638,7 +638,7 @@ fn test_distribution_plan_with_subtasks_serde() {
 fn test_songbird_job_request_empty_payload_serde() {
     let req = SongbirdJobRequest {
         job_id: Uuid::new_v4(),
-        job_payload: vec![],
+        job_payload: bytes::Bytes::new(),
         target_nodes: vec![],
         resource_requirements: ResourceRequirements::default(),
         priority: 0,

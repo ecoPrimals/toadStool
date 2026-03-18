@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service discovery and registration
 
+use std::sync::Arc;
 use tracing::info;
 
 use crate::config::ServiceDiscoveryConfig;
@@ -49,8 +50,8 @@ mod tests {
 
     fn make_service_info() -> ServiceInfo {
         ServiceInfo {
-            id: "test-service-1".to_string(),
-            name: "Test Service".to_string(),
+            id: Arc::from("test-service-1"),
+            name: Arc::from("Test Service"),
             version: "1.0.0".to_string(),
             endpoints: vec![],
             metadata: std::collections::HashMap::new(),

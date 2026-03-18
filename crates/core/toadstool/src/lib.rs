@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team
 //
@@ -16,6 +16,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 #![allow(
     clippy::missing_errors_doc,
     clippy::must_use_candidate,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for biomeOS storage integration.
 //!
 //! All configs use capability-based discovery: no hardcoded primal endpoints.
@@ -359,12 +359,12 @@ fn test_replication_settings_creation() {
     let settings = ReplicationSettings {
         enabled: true,
         factor: 3,
-        strategy: "sync".to_string(),
+        strategy: std::sync::Arc::from("sync"),
     };
 
     assert!(settings.enabled);
     assert_eq!(settings.factor, 3);
-    assert_eq!(settings.strategy, "sync");
+    assert_eq!(settings.strategy.as_ref(), "sync");
 }
 
 #[test]
@@ -372,7 +372,7 @@ fn test_replication_settings_disabled() {
     let settings = ReplicationSettings {
         enabled: false,
         factor: 1,
-        strategy: "none".to_string(),
+        strategy: std::sync::Arc::from("none"),
     };
 
     assert!(!settings.enabled);
@@ -387,10 +387,10 @@ fn test_replication_settings_different_strategies() {
         let settings = ReplicationSettings {
             enabled: true,
             factor: 3,
-            strategy: strategy.to_string(),
+            strategy: std::sync::Arc::from(strategy),
         };
 
-        assert_eq!(settings.strategy, strategy);
+        assert_eq!(settings.strategy.as_ref(), strategy);
     }
 }
 
@@ -399,14 +399,14 @@ fn test_replication_settings_clone() {
     let settings1 = ReplicationSettings {
         enabled: true,
         factor: 5,
-        strategy: "async".to_string(),
+        strategy: std::sync::Arc::from("async"),
     };
 
     let settings2 = settings1.clone();
 
     assert_eq!(settings1.enabled, settings2.enabled);
     assert_eq!(settings1.factor, settings2.factor);
-    assert_eq!(settings1.strategy, settings2.strategy);
+    assert_eq!(settings1.strategy.as_ref(), settings2.strategy.as_ref());
 }
 
 // ============================================================================

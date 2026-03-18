@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Transport layer tests for protocol communication
 //!
 //! Tests for HTTP transport, message routing, and protocol handling.

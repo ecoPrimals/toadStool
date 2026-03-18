@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Load balancer — dynamic workload distribution across compute substrates.
 //!
 //! Implements three strategies:

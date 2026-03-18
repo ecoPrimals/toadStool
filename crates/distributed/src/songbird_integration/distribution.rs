@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job distribution and splitting logic
 
 use std::collections::HashMap;
@@ -90,9 +90,10 @@ impl MassiveJobDistributor {
         match analysis.complexity {
             JobComplexity::Simple => {
                 // Single subtask for simple jobs
-                let job_payload = serde_json::to_vec(&job.execution_request).map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to serialize job: {e}"))
-                })?;
+                let job_payload =
+                    bytes::Bytes::from(serde_json::to_vec(&job.execution_request).map_err(
+                        |e| ToadStoolError::runtime(format!("Failed to serialize job: {e}")),
+                    )?);
 
                 Ok(vec![SubTask {
                     id: Uuid::new_v4(),
@@ -181,8 +182,10 @@ impl MassiveJobDistributor {
         base_requirements: &ResourceRequirements,
     ) -> ToadStoolResult<Vec<SubTask>> {
         let mut subtasks = Vec::new();
-        let job_payload = serde_json::to_vec(&job.execution_request)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize job: {e}")))?;
+        let job_payload = bytes::Bytes::from(
+            serde_json::to_vec(&job.execution_request)
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize job: {e}")))?,
+        );
 
         // Calculate resource allocation per subtask
         let cpu_per_task = base_requirements.cpu.min_cores / count as f64;
@@ -203,11 +206,10 @@ impl MassiveJobDistributor {
                 gpu: base_requirements.gpu.clone(),
             };
 
-            // Create subtask with partition information
-            let mut subtask_payload = job_payload.clone();
-            // Add partition metadata (simplified)
+            // Create subtask with partition information (Bytes::concat = zero-copy clone of base)
             let partition_info = format!("{{\"partition\": {i}, \"total_partitions\": {count}}}");
-            subtask_payload.extend(partition_info.as_bytes());
+            let subtask_payload =
+                bytes::Bytes::from([job_payload.as_ref(), partition_info.as_bytes()].concat());
 
             subtasks.push(SubTask {
                 id: Uuid::new_v4(),

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for under-covered modules in toadstool-distributed
 //!
 //! Targets: crypto_integration/client, cloud/federation, songbird_integration,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BearDog Integration Types
 //!
 //! This test suite provides extensive coverage of BearDog security integration types

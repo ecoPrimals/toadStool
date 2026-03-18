@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! bearDog Entropy Integration
 //!
 //! High-quality, human-mixed entropy for GPU random number generation.

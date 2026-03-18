@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida Model Zoo Manager
 //!
 //! Provides utilities for downloading, converting, and managing

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery Engine - Multi-Source Capability Provider Discovery
 //!
 //! Discovers capability providers from multiple sources:

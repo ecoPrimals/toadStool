@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Generic NPU Dispatch — vendor-agnostic neuromorphic compute interface.
 //!
 //! `NpuDispatch` is toadStool's hardware-layer abstraction for neuromorphic
@@ -456,5 +456,35 @@ mod tests {
             capabilities: vec![NpuCapability::Inference],
         };
         assert_eq!(info.memory_bytes, 16 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_npu_dispatch_supports_trait_default() {
+        let info = NpuInfo {
+            name: "Test".into(),
+            vendor: "v".into(),
+            processing_elements: 4,
+            memory_bytes: 4096,
+            capabilities: vec![NpuCapability::Inference, NpuCapability::SpikingNetwork],
+        };
+        let npu = MockNpuDispatch { info };
+        assert!(npu.supports(NpuCapability::SpikingNetwork));
+        assert!(!npu.supports(NpuCapability::BatchInference));
+    }
+
+    #[test]
+    fn test_dispatch_with_cow_borrowed() {
+        let info = NpuInfo {
+            name: "Test".into(),
+            vendor: "v".into(),
+            processing_elements: 4,
+            memory_bytes: 4096,
+            capabilities: vec![NpuCapability::Inference],
+        };
+        let mut npu = MockNpuDispatch { info };
+        let handle = npu.load_model(&[]).unwrap();
+        let input: [f32; 2] = [1.5, 2.5];
+        let result = npu.dispatch(handle, Cow::Borrowed(&input)).unwrap();
+        assert_eq!(result.output, vec![1.5, 2.5]);
     }
 }

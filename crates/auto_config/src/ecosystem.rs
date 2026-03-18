@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Discovery for Auto-Configuration
 //!
 //! Discovers available ecosystem services by capability and automatically
@@ -280,8 +280,10 @@ impl EcosystemDiscoverer {
         }
 
         let config = EnvironmentConfig::from_env();
-        let discovery_bind_fallback =
-            std::env::var("TOADSTOOL_DISCOVERY_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0".to_owned());
+        let discovery_bind_fallback = std::env::var("TOADSTOOL_DISCOVERY_BIND_ADDR")
+            .unwrap_or_else(|_| {
+                toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT.to_owned()
+            });
         let local_ips = vec![
             config.network.bind_address.clone(),
             toadstool_common::constants::network::LOCALHOST_IPV4.to_string(),

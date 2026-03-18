@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Signal handling for biome execution
 //!
 //! This module provides Unix signal handling for graceful shutdown and process control.

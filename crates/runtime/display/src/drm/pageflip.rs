@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Page flip and `VSync` support.
 //!
 //! Provides double-buffered page flipping for tear-free output.

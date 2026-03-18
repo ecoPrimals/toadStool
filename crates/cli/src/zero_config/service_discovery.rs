@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service discovery implementations
 //!
 //! Provides multiple discovery mechanisms for finding ecosystem services:
@@ -15,9 +15,7 @@ use tokio::time::timeout;
 use tracing::debug;
 
 use super::types::ServiceEndpoint;
-
-/// Bind to any interface with OS-assigned port (mDNS socket)
-const BIND_ANY: &str = "0.0.0.0:0";
+use toadstool_common::constants::network::BIND_ANY;
 
 /// mDNS multicast group address (RFC 6762)
 const MDNS_MULTICAST_ADDR: &str = "224.0.0.251";

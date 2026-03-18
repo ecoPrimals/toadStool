@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error formatting utilities with zero-copy optimizations
 //!
 //! Uses `Cow<'_, str>` for conditional allocation - only allocates when formatting is needed.

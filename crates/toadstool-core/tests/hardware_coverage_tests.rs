@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for toadstool-core hardware module
 //! Exercises `HardwareManager`, `HardwareDevice`, `HardwareType`, `enable_npu_userspace`.
 
@@ -108,4 +108,48 @@ fn test_hardware_error_display() {
     let s = err.to_string();
     assert!(s.contains("NPU device not found"));
     assert!(s.contains("0000:01:00.0"));
+}
+
+#[test]
+fn test_hardware_device_all_fields() {
+    let device = HardwareDevice {
+        hardware_type: HardwareType::Npu,
+        name: "Akida AKD1500".to_string(),
+        pcie_address: Some("0000:02:00.0".to_string()),
+        vendor_id: Some("1e7c".to_string()),
+        device_id: Some("bca2".to_string()),
+        driver_available: false,
+        userspace_capable: true,
+    };
+    assert_eq!(device.name, "Akida AKD1500");
+    assert_eq!(device.device_id.as_deref(), Some("bca2"));
+    assert!(!device.driver_available);
+    assert!(device.userspace_capable);
+}
+
+#[test]
+fn test_hardware_type_fpga_and_custom() {
+    let _ = HardwareType::Fpga;
+    let _ = HardwareType::Custom;
+    assert_ne!(HardwareType::Gpu, HardwareType::Npu);
+    assert_eq!(HardwareType::Cpu, HardwareType::Cpu);
+}
+
+#[test]
+fn test_hardware_manager_devices_iteration() {
+    let manager = HardwareManager::discover().unwrap();
+    let devices: Vec<_> = manager.devices().iter().collect();
+    assert!(!devices.is_empty());
+    for d in &devices {
+        assert!(!d.name.is_empty());
+    }
+}
+
+#[test]
+fn test_hardware_manager_devices_by_type_fpga_custom() {
+    let manager = HardwareManager::discover().unwrap();
+    let fpga = manager.devices_by_type(HardwareType::Fpga);
+    let custom = manager.devices_by_type(HardwareType::Custom);
+    assert!(fpga.is_empty());
+    assert!(custom.is_empty());
 }

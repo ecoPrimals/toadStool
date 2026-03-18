@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network environment configuration.
 //!
 //! # Self-Knowledge Architecture
@@ -126,7 +126,10 @@ impl NetworkEnvConfig {
             metrics_port: loader.get_u16("METRICS_PORT", crate::defaults::network::METRICS_PORT),
             health_port: loader.get_u16("HEALTH_PORT", crate::defaults::network::DISCOVERY_PORT),
             events_port: loader.get_u16("EVENTS_PORT", crate::defaults::network::EVENTS_PORT),
-            bind_address: loader.get_string("BIND_ADDRESS", "0.0.0.0"),
+            bind_address: loader.get_string(
+                "BIND_ADDRESS",
+                crate::defaults::network::BIND_ADDRESS_DEFAULT,
+            ),
             external_hostname: loader.get_string("EXTERNAL_HOSTNAME", DEFAULT_HOSTNAME),
             tls_enabled: loader.get_bool("TLS_ENABLED", false),
             connection_timeout_secs: loader.get_u64("CONNECTION_TIMEOUT_SECS", 10),
@@ -173,7 +176,7 @@ impl NetworkEnvConfig {
     #[allow(deprecated)]
     pub fn songbird_endpoint(&self) -> String {
         // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://localhost:{}", self.songbird_port)
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.songbird_port)
     }
 
     /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Authentication)`
@@ -185,7 +188,7 @@ impl NetworkEnvConfig {
     #[allow(deprecated)]
     pub fn beardog_endpoint(&self) -> String {
         // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://localhost:{}", self.beardog_port)
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.beardog_port)
     }
 
     /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
@@ -197,7 +200,7 @@ impl NetworkEnvConfig {
     #[allow(deprecated)]
     pub fn nestgate_endpoint(&self) -> String {
         // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://localhost:{}", self.nestgate_port)
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.nestgate_port)
     }
 
     /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::MCP)`
@@ -209,6 +212,6 @@ impl NetworkEnvConfig {
     #[allow(deprecated)]
     pub fn squirrel_endpoint(&self) -> String {
         // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://localhost:{}", self.squirrel_port)
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.squirrel_port)
     }
 }

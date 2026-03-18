@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration validation
 //!
 //! Validates ToadStool configuration values to ensure they are within acceptable ranges

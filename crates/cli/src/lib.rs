@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 #![allow(
     clippy::doc_markdown,

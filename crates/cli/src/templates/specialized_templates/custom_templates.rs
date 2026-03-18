@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Custom template: User-specified configurations
 //!
 //! Allows users to define custom biome configurations via CustomTemplateSpec.

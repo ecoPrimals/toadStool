@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DRM buffer management
 //!
 //! Provides safe abstractions for allocating and managing DRM buffers.

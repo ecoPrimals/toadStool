@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for runtime/gpu/src/engine/mod.rs
 //!
 //! Focus: GPU engine creation, configuration, capability queries, error handling.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for capability-based primal discovery.
 #![allow(deprecated, clippy::await_holding_lock, unsafe_code)] // env::set_var/remove_var are unsafe in Rust 2024
 

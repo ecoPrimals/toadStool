@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for production and performance hardening modules working together
 //!
 //! These tests verify that production hardening (circuit breakers, leak detection, memory pressure)

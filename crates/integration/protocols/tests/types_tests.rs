@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Type system tests for protocol integration
 //!
 //! Tests for message types, health status, and service information structures.
@@ -246,8 +246,8 @@ fn test_service_info_creation() {
     };
 
     let service = ServiceInfo {
-        id: "svc-123".to_string(),
-        name: "ToadStool Compute".to_string(),
+        id: std::sync::Arc::from("svc-123"),
+        name: std::sync::Arc::from("ToadStool Compute"),
         version: "1.0.0".to_string(),
         endpoints: vec![endpoint],
         metadata: HashMap::new(),
@@ -286,8 +286,8 @@ fn test_service_info_multiple_endpoints() {
     };
 
     let service = ServiceInfo {
-        id: "multi-endpoint-service".to_string(),
-        name: "Multi-Endpoint Service".to_string(),
+        id: std::sync::Arc::from("multi-endpoint-service"),
+        name: std::sync::Arc::from("Multi-Endpoint Service"),
         version: "2.0.0".to_string(),
         endpoints: vec![ep1, ep2],
         metadata: HashMap::new(),
@@ -513,8 +513,8 @@ fn test_service_info_with_metadata() {
     metadata.insert("zone".to_string(), "a".to_string());
 
     let service = ServiceInfo {
-        id: "svc-meta".to_string(),
-        name: "Metadata Service".to_string(),
+        id: std::sync::Arc::from("svc-meta"),
+        name: std::sync::Arc::from("Metadata Service"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata,
@@ -533,8 +533,8 @@ fn test_service_info_with_metadata() {
 #[test]
 fn test_service_info_with_capabilities() {
     let service = ServiceInfo {
-        id: "capable-svc".to_string(),
-        name: "Capable Service".to_string(),
+        id: std::sync::Arc::from("capable-svc"),
+        name: std::sync::Arc::from("Capable Service"),
         version: "2.1.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -554,8 +554,8 @@ fn test_service_info_with_capabilities() {
 #[test]
 fn test_service_info_version_parsing() {
     let service = ServiceInfo {
-        id: "versioned".to_string(),
-        name: "Versioned Service".to_string(),
+        id: std::sync::Arc::from("versioned"),
+        name: std::sync::Arc::from("Versioned Service"),
         version: "3.2.1-beta".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -779,8 +779,8 @@ fn test_protocol_message_complex_payload() {
 #[test]
 fn test_service_info_no_endpoints() {
     let service = ServiceInfo {
-        id: "no-endpoints".to_string(),
-        name: "Configuring Service".to_string(),
+        id: std::sync::Arc::from("no-endpoints"),
+        name: std::sync::Arc::from("Configuring Service"),
         version: "0.1.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),
@@ -904,8 +904,8 @@ fn test_protocol_message_unique_ids() {
 fn test_service_info_timestamp() {
     let now = std::time::SystemTime::now();
     let service = ServiceInfo {
-        id: "timestamp-test".to_string(),
-        name: "Timestamp Test".to_string(),
+        id: std::sync::Arc::from("timestamp-test"),
+        name: std::sync::Arc::from("Timestamp Test"),
         version: "1.0.0".to_string(),
         endpoints: vec![],
         metadata: HashMap::new(),

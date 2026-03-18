@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Health monitoring for protocol services
 
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ use crate::types::{HealthStatus, ProtocolEvent, ServiceInfo};
 
 /// Spawn background health monitoring task for registered services
 pub fn spawn_health_monitor(
-    services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
+    services: Arc<RwLock<HashMap<Arc<str>, ServiceInfo>>>,
     health_config: HealthConfig,
     event_bus: broadcast::Sender<ProtocolEvent>,
 ) {
@@ -53,7 +53,7 @@ pub fn spawn_health_monitor(
                         }
                     };
 
-                    health_updates.push((service_id.clone(), endpoint.id.clone(), is_healthy));
+                    health_updates.push((Arc::clone(service_id), endpoint.id.clone(), is_healthy));
                 }
             }
 
@@ -69,7 +69,7 @@ pub fn spawn_health_monitor(
                         service_info.health_status = new_status.clone();
                         if event_bus
                             .send(ProtocolEvent::ServiceHealthChanged {
-                                service_id: service_id.clone(),
+                                service_id: service_id.to_string(),
                                 status: new_status,
                             })
                             .is_err()

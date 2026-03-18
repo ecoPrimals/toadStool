@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Protocol client implementation for service communication
 //!
 //! Domain modules:
@@ -35,7 +35,8 @@ pub use handler::SimpleMessageHandler;
 pub struct ProtocolClient {
     config: ProtocolConfig,
     transport_manager: Arc<TransportManager>,
-    services: Arc<RwLock<HashMap<String, ServiceInfo>>>,
+    /// Keyed by service id (Arc<str> = zero-copy clone)
+    services: Arc<RwLock<HashMap<Arc<str>, ServiceInfo>>>,
     message_handlers: Arc<RwLock<HashMap<String, Box<dyn MessageHandler>>>>,
     event_bus: broadcast::Sender<ProtocolEvent>,
 }
@@ -65,28 +66,42 @@ impl ProtocolClient {
 
     /// Register a service with the protocol client
     pub async fn register_service(&self, service_info: ServiceInfo) -> ProtocolResult<()> {
-        info!("Registering service: {}", service_info.id);
+        let service_id = Arc::clone(&service_info.id);
+        info!("Registering service: {}", service_id);
 
         {
             let mut services = self.services.write().await;
-            services
-                .entry(service_info.id.clone())
-                .or_insert_with(|| service_info.clone());
+            match services.entry(Arc::clone(&service_id)) {
+                std::collections::hash_map::Entry::Occupied(mut o) => {
+                    *o.get_mut() = service_info;
+                }
+                std::collections::hash_map::Entry::Vacant(v) => {
+                    v.insert(service_info);
+                }
+            }
         }
+
+        let service_for_events = self
+            .services
+            .read()
+            .await
+            .get(&service_id)
+            .cloned()
+            .unwrap();
 
         if let Some(ref discovery_config) = self.config.discovery_config
             && discovery_config.auto_register
         {
-            discovery::register_with_discovery(&service_info, discovery_config).await?;
+            discovery::register_with_discovery(&service_for_events, discovery_config).await?;
         }
 
         if let Err(e) = self.event_bus.send(ProtocolEvent::ServiceRegistered {
-            service: service_info.clone(),
+            service: service_for_events,
         }) {
             tracing::debug!("Event bus send failed (no listeners): {e}");
         }
 
-        info!("Successfully registered service: {}", service_info.id);
+        info!("Successfully registered service: {}", service_id);
         Ok(())
     }
 
@@ -100,7 +115,7 @@ impl ProtocolClient {
                 .read()
                 .await
                 .values()
-                .filter(|s| s.name == service_name)
+                .filter(|s| s.name.as_ref() == service_name)
                 .cloned()
                 .collect();
 
@@ -122,7 +137,7 @@ impl ProtocolClient {
                 let mut services = self.services.write().await;
                 for service in &discovered_services {
                     services
-                        .entry(service.id.clone())
+                        .entry(Arc::clone(&service.id))
                         .or_insert_with(|| service.clone());
                 }
             }
@@ -145,7 +160,7 @@ impl ProtocolClient {
     ) -> ProtocolMessage {
         ProtocolMessage {
             id: uuid::Uuid::new_v4(),
-            message_type: message_type.to_string(),
+            message_type: Arc::from(message_type),
             source: self.config.service_id.clone(),
             destination: None,
             payload,
@@ -170,7 +185,7 @@ impl ProtocolClient {
             destination, message.message_type
         );
 
-        message.destination = Some(destination.to_string());
+        message.destination = Some(Arc::from(destination));
 
         let services = self.discover_services(destination).await?;
         if services.is_empty() {
@@ -191,14 +206,14 @@ impl ProtocolClient {
 
         if let Err(e) = self.event_bus.send(ProtocolEvent::MessageSent {
             message_id: message.id,
-            destination: destination.to_string(),
+            destination: destination.to_owned(),
         }) {
             tracing::debug!("Event bus send failed (no listeners): {e}");
         }
 
         if let Err(e) = self.event_bus.send(ProtocolEvent::MessageReceived {
             message_id: response.id,
-            source: response.source.clone(),
+            source: response.source.to_string(),
         }) {
             tracing::debug!("Event bus send failed (no listeners): {e}");
         }
@@ -228,12 +243,12 @@ impl ProtocolClient {
 
         {
             let handlers = self.message_handlers.read().await;
-            if let Some(handler) = handlers.get(message.message_type.as_str()) {
+            if let Some(handler) = handlers.get(&*message.message_type) {
                 let result = handler.handle_message(message.clone())?;
 
                 if let Err(e) = self.event_bus.send(ProtocolEvent::MessageReceived {
                     message_id: message.id,
-                    source: message.source,
+                    source: message.source.to_string(),
                 }) {
                     tracing::debug!("Event bus send failed (no listeners): {e}");
                 }
@@ -326,8 +341,8 @@ mod tests {
 
     fn create_test_service(id: &str, name: &str, status: HealthStatus) -> ServiceInfo {
         ServiceInfo {
-            id: id.to_string(),
-            name: name.to_string(),
+            id: Arc::from(id),
+            name: Arc::from(name),
             version: "1.0.0".to_string(),
             endpoints: vec![ServiceEndpoint {
                 id: format!("{id}-endpoint"),
@@ -414,7 +429,7 @@ mod tests {
 
         let discovered = client.discover_services("test-service").await.unwrap();
         assert_eq!(discovered.len(), 1);
-        assert_eq!(discovered[0].id, "service-1");
+        assert_eq!(discovered[0].id.as_ref(), "service-1");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -496,7 +511,11 @@ mod tests {
         ];
 
         let selected = routing::select_service(&services, &RoutingStrategy::RoundRobin).unwrap();
-        assert_eq!(selected.id, "service-2", "Should select healthy service");
+        assert_eq!(
+            selected.id.as_ref(),
+            "service-2",
+            "Should select healthy service"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -510,7 +529,7 @@ mod tests {
         ];
 
         let selected = routing::select_service(&services, &RoutingStrategy::RoundRobin).unwrap();
-        assert_eq!(selected.id, "service-1");
+        assert_eq!(selected.id.as_ref(), "service-1");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -540,7 +559,7 @@ mod tests {
 
         match event.unwrap() {
             ProtocolEvent::ServiceRegistered { service: s } => {
-                assert_eq!(s.id, "service-1");
+                assert_eq!(s.id.as_ref(), "service-1");
             }
             _ => panic!("Expected ServiceRegistered event"),
         }

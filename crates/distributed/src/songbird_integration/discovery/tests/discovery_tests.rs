@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::float_cmp)]
 //! SongbirdNetworkDiscovery and type serialization tests
 
@@ -16,7 +16,7 @@ use super::{make_discovery, make_node_registration};
 fn make_subtask() -> SubTask {
     SubTask {
         id: uuid::Uuid::new_v4(),
-        payload: vec![],
+        payload: bytes::Bytes::new(),
         resource_requirements: ResourceRequirements {
             cpu: CpuRequirements {
                 min_cores: 2.0,
@@ -200,7 +200,7 @@ async fn test_songbird_discovery_get_optimal_distribution_with_nodes() {
         .unwrap();
     let subtask = SubTask {
         id: uuid::Uuid::new_v4(),
-        payload: vec![1, 2, 3],
+        payload: bytes::Bytes::from(vec![1, 2, 3]),
         resource_requirements: ResourceRequirements {
             cpu: CpuRequirements {
                 min_cores: 2.0,
@@ -364,7 +364,7 @@ async fn test_get_optimal_distribution_subtask_specialized_hardware_bonus() {
     discovery.register_node(reg).await.unwrap();
     let subtask = SubTask {
         id: uuid::Uuid::new_v4(),
-        payload: vec![],
+        payload: bytes::Bytes::new(),
         resource_requirements: ResourceRequirements {
             cpu: CpuRequirements {
                 min_cores: 2.0,
@@ -419,7 +419,7 @@ async fn test_get_optimal_distribution_multiple_subtasks() {
     let subtasks = vec![
         SubTask {
             id: uuid::Uuid::new_v4(),
-            payload: vec![1],
+            payload: bytes::Bytes::from(vec![1]),
             resource_requirements: ResourceRequirements {
                 cpu: CpuRequirements {
                     min_cores: 2.0,
@@ -444,7 +444,7 @@ async fn test_get_optimal_distribution_multiple_subtasks() {
         },
         SubTask {
             id: uuid::Uuid::new_v4(),
-            payload: vec![2],
+            payload: bytes::Bytes::from(vec![2]),
             resource_requirements: ResourceRequirements {
                 cpu: CpuRequirements {
                     min_cores: 2.0,
@@ -487,7 +487,7 @@ async fn test_capability_matching_prefers_node_with_specialized_hardware() {
     discovery.register_node(cpu_node).await.unwrap();
     let subtask = SubTask {
         id: uuid::Uuid::new_v4(),
-        payload: vec![],
+        payload: bytes::Bytes::new(),
         resource_requirements: ResourceRequirements {
             cpu: CpuRequirements {
                 min_cores: 2.0,
@@ -683,7 +683,7 @@ async fn test_find_best_node_no_node_meets_requirements_returns_error() {
         .unwrap();
     let subtask = SubTask {
         id: uuid::Uuid::new_v4(),
-        payload: vec![],
+        payload: bytes::Bytes::new(),
         resource_requirements: ResourceRequirements {
             cpu: CpuRequirements {
                 min_cores: 16.0,

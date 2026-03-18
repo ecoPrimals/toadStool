@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! NestGate storage backend — production implementation over Unix sockets
 
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use super::super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use super::VolumeStatus;
@@ -102,21 +103,25 @@ impl StorageBackend for NestGateBackend {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
         use super::super::types::{ReplicationSettings, StorageProvisioningRequest};
 
-        let config_name = config.name.clone();
+        let config_name: Arc<str> = Arc::from(config.name.as_str());
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
 
         let request = StorageProvisioningRequest {
-            volume_name: config.name.clone(),
-            size: config.size.clone(),
-            storage_class: config.storage_class.clone(),
-            access_modes: config.access_modes.clone(),
-            backup_policy: config.backup_policy.clone(),
+            volume_name: Arc::from(config.name.as_str()),
+            size: Arc::from(config.size.as_str()),
+            storage_class: config.storage_class.as_deref().map(Arc::from),
+            access_modes: config
+                .access_modes
+                .iter()
+                .map(|s| Arc::from(s.as_str()))
+                .collect(),
+            backup_policy: config.backup_policy.as_deref().map(Arc::from),
             replication: if replication_enabled {
                 Some(ReplicationSettings {
                     enabled: true,
                     factor: replication_factor,
-                    strategy: "async".to_owned(),
+                    strategy: Arc::from("async"),
                 })
             } else {
                 None
@@ -148,21 +153,25 @@ impl StorageBackend for NestGateBackend {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
         use super::super::types::{ReplicationSettings, StorageProvisioningRequest};
 
-        let config_name = config.name.clone();
+        let config_name: Arc<str> = Arc::from(config.name.as_str());
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
 
         let request = StorageProvisioningRequest {
-            volume_name: config.name.clone(),
-            size: config.capacity.clone(),
-            storage_class: Some(config.storage_class.clone()),
-            access_modes: config.access_modes.clone(),
+            volume_name: Arc::from(config.name.as_str()),
+            size: Arc::from(config.capacity.as_str()),
+            storage_class: Some(Arc::from(config.storage_class.as_str())),
+            access_modes: config
+                .access_modes
+                .iter()
+                .map(|s| Arc::from(s.as_str()))
+                .collect(),
             backup_policy: None,
             replication: if replication_enabled {
                 Some(ReplicationSettings {
                     enabled: true,
                     factor: replication_factor,
-                    strategy: "sync".to_owned(),
+                    strategy: Arc::from("sync"),
                 })
             } else {
                 None
@@ -312,13 +321,14 @@ mod tests {
     };
     use super::*;
     use std::path::PathBuf;
+    use std::sync::Arc;
 
     #[test]
     fn test_replication_settings_serialization() {
         let settings = ReplicationSettings {
             enabled: true,
             factor: 5,
-            strategy: "sync".to_string(),
+            strategy: Arc::from("sync"),
         };
         let json = serde_json::to_value(&settings).unwrap();
         assert_eq!(json["enabled"], true);
@@ -367,15 +377,15 @@ mod tests {
     #[test]
     fn test_storage_provisioning_request_serialization() {
         let req = StorageProvisioningRequest {
-            volume_name: "test-vol".to_string(),
-            size: "100Gi".to_string(),
-            storage_class: Some("fast".to_string()),
-            access_modes: vec!["ReadWriteOnce".to_string()],
-            backup_policy: Some("daily".to_string()),
+            volume_name: Arc::from("test-vol"),
+            size: Arc::from("100Gi"),
+            storage_class: Some(Arc::from("fast")),
+            access_modes: vec![Arc::from("ReadWriteOnce")],
+            backup_policy: Some(Arc::from("daily")),
             replication: Some(ReplicationSettings {
                 enabled: true,
                 factor: 3,
-                strategy: "async".to_string(),
+                strategy: Arc::from("async"),
             }),
         };
         let json = serde_json::to_value(&req).expect("serialize");
@@ -395,16 +405,20 @@ mod tests {
             backup_policy: None,
         };
         let req = StorageProvisioningRequest {
-            volume_name: config.name.clone(),
-            size: config.size.clone(),
-            storage_class: config.storage_class.clone(),
-            access_modes: config.access_modes.clone(),
-            backup_policy: config.backup_policy.clone(),
+            volume_name: Arc::from(config.name.as_str()),
+            size: Arc::from(config.size.as_str()),
+            storage_class: config.storage_class.as_deref().map(Arc::from),
+            access_modes: config
+                .access_modes
+                .iter()
+                .map(|s| Arc::from(s.as_str()))
+                .collect(),
+            backup_policy: config.backup_policy.as_deref().map(Arc::from),
             replication: None,
         };
-        assert_eq!(req.volume_name, "myvol");
-        assert_eq!(req.size, "50Gi");
-        assert_eq!(req.storage_class, Some("ssd".to_string()));
+        assert_eq!(req.volume_name.as_ref(), "myvol");
+        assert_eq!(req.size.as_ref(), "50Gi");
+        assert_eq!(req.storage_class.as_deref(), Some("ssd"));
     }
 
     #[test]
@@ -417,21 +431,25 @@ mod tests {
             host_path: Some(PathBuf::from("/data")),
         };
         let req = StorageProvisioningRequest {
-            volume_name: pv.name.clone(),
-            size: pv.capacity.clone(),
-            storage_class: Some(pv.storage_class.clone()),
-            access_modes: pv.access_modes.clone(),
+            volume_name: Arc::from(pv.name.as_str()),
+            size: Arc::from(pv.capacity.as_str()),
+            storage_class: Some(Arc::from(pv.storage_class.as_str())),
+            access_modes: pv
+                .access_modes
+                .iter()
+                .map(|s| Arc::from(s.as_str()))
+                .collect(),
             backup_policy: None,
             replication: Some(ReplicationSettings {
                 enabled: true,
                 factor: 2,
-                strategy: "sync".to_string(),
+                strategy: Arc::from("sync"),
             }),
         };
-        assert_eq!(req.volume_name, "pv-data");
-        assert_eq!(req.size, "200Gi");
-        assert_eq!(req.storage_class, Some("standard".to_string()));
-        assert_eq!(req.replication.unwrap().strategy, "sync");
+        assert_eq!(req.volume_name.as_ref(), "pv-data");
+        assert_eq!(req.size.as_ref(), "200Gi");
+        assert_eq!(req.storage_class.as_deref(), Some("standard"));
+        assert_eq!(req.replication.as_ref().unwrap().strategy.as_ref(), "sync");
     }
 
     #[test]

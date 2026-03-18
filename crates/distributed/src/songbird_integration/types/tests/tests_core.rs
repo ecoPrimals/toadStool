@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::float_cmp)]
 //! Core type tests
 
@@ -22,7 +22,7 @@ fn test_connection_health_variants() {
 fn test_songbird_job_request_constructor() {
     let req = SongbirdJobRequest {
         job_id: Uuid::new_v4(),
-        job_payload: vec![1, 2, 3],
+        job_payload: bytes::Bytes::from(vec![1, 2, 3]),
         target_nodes: vec!["node1".to_string()],
         resource_requirements: ResourceRequirements::default(),
         priority: 5,
@@ -36,7 +36,7 @@ fn test_songbird_job_request_constructor() {
 fn test_songbird_job_request_serde_roundtrip() {
     let req = SongbirdJobRequest {
         job_id: Uuid::new_v4(),
-        job_payload: vec![1, 2, 3],
+        job_payload: bytes::Bytes::from(vec![1, 2, 3]),
         target_nodes: vec![],
         resource_requirements: ResourceRequirements::default(),
         priority: 1,
@@ -73,7 +73,7 @@ fn test_job_distribution_strategy_serde() {
 fn test_sub_task_constructor() {
     let task = SubTask {
         id: Uuid::new_v4(),
-        payload: vec![],
+        payload: bytes::Bytes::new(),
         resource_requirements: ResourceRequirements::default(),
         priority: 1,
         constraints: vec![],
@@ -363,7 +363,7 @@ fn test_job_distribution_strategy_all_variants_serde() {
 fn test_sub_task_serde() {
     let task = SubTask {
         id: Uuid::new_v4(),
-        payload: vec![1, 2, 3],
+        payload: bytes::Bytes::from(vec![1, 2, 3]),
         resource_requirements: ResourceRequirements::default(),
         priority: 3,
         constraints: vec!["gpu".to_string()],

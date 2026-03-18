@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Health monitoring for BYOB deployments
 //!
 //! Handles service health checks and deployment monitoring.

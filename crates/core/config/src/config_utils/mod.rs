@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration Utilities
 //!
 //! This module provides utility functions to replace hardcoded values with
@@ -81,12 +81,6 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
         network::get_toadstool_port()
-    }
-
-    /// Resolve whether to use placeholder implementations for external services
-    #[must_use]
-    pub fn stub_external_services() -> bool {
-        environment::stub_external_services()
     }
 
     /// Get federation port from environment or default

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error types for secure enclave runtime
 //!
 //! Follows ToadStool's 3-tier error system with proper error handling

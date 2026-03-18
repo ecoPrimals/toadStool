@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // ToadStool Hardware Manager
 //
 // Deep Debt: ToadStool directly interfaces with hardware in Rust
@@ -34,12 +34,19 @@ pub enum HardwareType {
 /// Hardware device discovered by ToadStool
 #[derive(Debug, Clone)]
 pub struct HardwareDevice {
+    /// Type of hardware (GPU, NPU, FPGA, etc.)
     pub hardware_type: HardwareType,
+    /// Human-readable device name (e.g. "NVIDIA RTX 3090", "BrainChip Akida AKD1000")
     pub name: String,
+    /// PCI bus address if applicable (e.g. "0000:01:00.0")
     pub pcie_address: Option<String>,
+    /// PCI vendor ID (e.g. "10de" for NVIDIA)
     pub vendor_id: Option<String>,
+    /// PCI device ID (e.g. "2204" for RTX 3090)
     pub device_id: Option<String>,
+    /// Whether a kernel driver is loaded for this device
     pub driver_available: bool,
+    /// Whether userspace access is possible (VFIO, `/dev/akida*`, etc.)
     pub userspace_capable: bool,
 }
 
@@ -294,5 +301,55 @@ mod tests {
 
         // Should find at least same devices
         assert!(manager.devices().len() >= initial_count);
+    }
+
+    #[test]
+    fn test_devices_by_type_cpu() {
+        let manager = HardwareManager::discover().expect("Discovery failed");
+        let cpus = manager.devices_by_type(HardwareType::Cpu);
+        assert!(!cpus.is_empty());
+        assert!(cpus.iter().all(|d| d.hardware_type == HardwareType::Cpu));
+    }
+
+    #[test]
+    fn test_has_gpu_has_npu() {
+        let manager = HardwareManager::discover().expect("Discovery failed");
+        let _ = manager.has_gpu();
+        let _ = manager.has_npu();
+    }
+
+    #[test]
+    fn test_device_count_matches_len() {
+        let manager = HardwareManager::discover().expect("Discovery failed");
+        assert_eq!(manager.device_count(), manager.devices().len());
+    }
+
+    #[test]
+    fn test_enable_npu_userspace_nonexistent() {
+        let manager = HardwareManager::discover().expect("Discovery failed");
+        let result = manager.enable_npu_userspace("0000:ff:ff.0-nonexistent");
+        assert!(result.is_err());
+        assert!(matches!(result, Err(HardwareError::NpuNotFound { .. })));
+    }
+
+    #[test]
+    fn test_hardware_type_equality() {
+        assert_eq!(HardwareType::Gpu, HardwareType::Gpu);
+        assert_ne!(HardwareType::Gpu, HardwareType::Npu);
+    }
+
+    #[test]
+    fn test_hardware_device_clone() {
+        let device = HardwareDevice {
+            hardware_type: HardwareType::Cpu,
+            name: "CPU".to_string(),
+            pcie_address: None,
+            vendor_id: None,
+            device_id: None,
+            driver_available: true,
+            userspace_capable: true,
+        };
+        let cloned = device.clone();
+        assert_eq!(cloned.name, device.name);
     }
 }

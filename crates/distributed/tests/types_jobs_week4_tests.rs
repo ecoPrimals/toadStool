@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed System Job Types - Week 4 Test Coverage Expansion
 //!
 //! Comprehensive tests for distributed job types including job specifications,

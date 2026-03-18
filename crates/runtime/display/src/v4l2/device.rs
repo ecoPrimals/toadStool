@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! V4L2 capture device — pure Rust via `rustix` ioctls.
 //!
 //! Wraps `/dev/video*` devices for reading video frames from HDMI capture cards.
