@@ -6,13 +6,14 @@
 
 ## What Is This?
 
-**ToadStool** is the hardware infrastructure primal. It discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. Ollama model lifecycle management. Distributed workload dispatch across machines. Cloud cost estimation, compliance validation, and federation.
+**ToadStool** is the hardware infrastructure primal — the **WHERE** in the Compute Trio (barraCuda = WHAT, toadStool = WHERE, coralReef = HOW). It discovers GPUs, NPUs, CPUs at runtime via sysfs/PCIe. JSON-RPC 2.0 + tarpc IPC over Unix sockets. GPU job queue with cross-gate routing. **All-silicon pipeline**: discovers every functional unit on the GPU die (shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizer, depth buffer, tessellator, video encoder) and routes work to the cheapest unit that meets the requested tolerance.
 
 **Key principles:**
+- **Every piece of silicon** -- a GPU has 8+ special-purpose computers; toadStool discovers and routes to all of them
+- **Tolerance-based routing** -- springs specify math tolerance, toadStool picks hardware; never the reverse
 - **Capability-based discovery** -- primals discover each other at runtime by capability, not name
 - **Self-knowledge only** -- ToadStool knows its own identity; everything else is discovered
 - **ecoBin compliant** -- single binary, pure Rust, cross-architecture, cross-platform
-- **Hardware layer** -- discovers and exposes compute substrates; barraCuda dispatches math
 
 **BarraCuda** (compute math) is a separate primal at `ecoPrimals/barraCuda/`. ToadStool provides hardware discovery and capability probing; barraCuda dispatches shaders and owns all math.
 

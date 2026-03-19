@@ -5,7 +5,34 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 16, 2026 (Sessions 43-156)
+## [Unreleased] - March 18, 2026 (Sessions 43-159d)
+
+### Session S159d (Mar 18, 2026) — Multi-Unit Routing Engine + Sysfs Silicon Discovery
+- **`compute.route.multi_unit` JSON-RPC handler**: Takes workload array of `(op, tolerance)` pairs, consults performance surface, builds `MultiUnitRoutingPlan`. Surface-data mode picks highest-throughput unit meeting tolerance; heuristic mode (no data) routes RT cores for spatial, ROPs for scatter, TMUs for lookups, tensor cores for loose-tolerance matmul. Every decision has shader-core fallback.
+- **Sysfs silicon discovery**: `GpuDevice::silicon_capabilities()` in `toadstool-sysmon` uses PCI device ID tables for precise TMU/ROP counts. Covers Volta, Turing, Ampere, Ada (NVIDIA), RDNA 2/3 (AMD), and Intel.
+- **Semantic registry**: `compute.route.multi_unit` registered.
+- **Tests**: 9 handler tests + 5 sysmon tests. All workspace clippy -D clean.
+- **Specs**: Phase B marked COMPLETE, Phase C engine marked LANDED in `ALL_SILICON_PIPELINE.md`.
+
+### Session S159c (Mar 18, 2026) — Silicon Discovery + Performance Surface Handlers
+- **Silicon probe**: `probe_silicon_capabilities()` auto-populates `SiliconCapabilities` on every wgpu adapter init. Detects NVIDIA tensor/RT core generation, AMD RDNA 2/3 RT, estimates TMU/ROP counts, infers video encoder and graphics pipeline units.
+- **`compute.performance_surface.{report,query,list}`**: Springs report measured `(op, unit, precision, throughput, tolerance)` data. Query returns highest-throughput unit meeting tolerance with shader-core fallback. List enumerates all recorded operations and units.
+- **Semantic registry**: 3 new `compute.performance_surface.*` mappings.
+- **Tests**: 5 silicon probe tests (RTX 4090, Titan V, Intel iGPU, AMD RDNA3, CPU), 5 handler tests.
+
+### Session S159b (Mar 18, 2026) — All-Silicon Pipeline Foundation
+- **`SiliconUnit` enum** (9 variants): ShaderCore, TensorCore, RtCore, TextureUnit, Rop, Rasterizer, DepthBuffer, Tessellator, VideoEncoder — each a distinct compute unit on the GPU die.
+- **`TensorCoreGen`/`RtCoreGen`**: Generation-specific capability enums (Volta→Hopper, Turing→Ada).
+- **`SiliconCapabilities`**: Per-GPU silicon report (attached to `GpuAdapterInfo`).
+- **Performance surface types**: `PerformanceMeasurement`, `PerformanceSurfaceEntry`, `RoutedOperation`, `MultiUnitRoutingPlan`.
+- **`SubstrateCapabilityKind`**: 7 new fixed-function unit variants.
+- **Specs**: `specs/ALL_SILICON_PIPELINE.md` created. `specs/README.md` rewritten for compute trio and all-silicon scope.
+- **Tests**: 12 unit tests. All workspace clippy -D clean.
+
+### Session S159 (Mar 18, 2026) — Deep Audit & Execution
+- Deep audit against wateringHole standards. 694+ missing_docs filled. 3 build errors fixed.
+- JSON-RPC → `domain.verb` standard. Hardcoded primal names → capability-based.
+- Zero-copy expanded (`Arc<str>`). Production stubs eliminated. All unsafe `env::set_var` → `temp_env`.
 
 ### Session S156 (Mar 16, 2026) — Full Codebase Audit + Specialty Resurrection
 
