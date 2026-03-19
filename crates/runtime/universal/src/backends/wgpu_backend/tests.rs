@@ -456,4 +456,126 @@ mod wgpu_backend_tests {
             );
         }
     }
+
+    #[test]
+    fn test_silicon_probe_rtx4090_has_tensor_rt_cores() {
+        use super::super::initialization::probe_silicon_capabilities;
+        use toadstool_core::silicon::{SiliconUnit, TensorCoreGen, RtCoreGen};
+
+        let info = wgpu::AdapterInfo {
+            name: "NVIDIA GeForce RTX 4090".to_owned(),
+            vendor: 0x10de,
+            device: 0x2684,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: "nvidia".to_owned(),
+            driver_info: "560.35.03".to_owned(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        let caps = probe_silicon_capabilities(&info, GpuDeviceType::Discrete);
+
+        assert_eq!(caps.tensor_cores, Some(TensorCoreGen::Ada));
+        assert_eq!(caps.rt_cores, Some(RtCoreGen::Ada));
+        assert!(caps.has_video_encoder);
+        assert!(caps.rasterizer_available);
+        assert!(caps.tessellator_available);
+        assert!(caps.estimated_tmu_count > 0);
+        assert!(caps.estimated_rop_count > 0);
+        assert!(caps.has_unit(SiliconUnit::TensorCore));
+        assert!(caps.has_unit(SiliconUnit::RtCore));
+        assert!(caps.has_unit(SiliconUnit::VideoEncoder));
+        assert!(caps.has_unit(SiliconUnit::Rasterizer));
+    }
+
+    #[test]
+    fn test_silicon_probe_titan_v_volta_tensor_no_rt() {
+        use super::super::initialization::probe_silicon_capabilities;
+        use toadstool_core::silicon::{SiliconUnit, TensorCoreGen};
+
+        let info = wgpu::AdapterInfo {
+            name: "NVIDIA Titan V".to_owned(),
+            vendor: 0x10de,
+            device: 0x1d81,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: "nvk".to_owned(),
+            driver_info: "mesa".to_owned(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        let caps = probe_silicon_capabilities(&info, GpuDeviceType::Discrete);
+
+        assert_eq!(caps.tensor_cores, Some(TensorCoreGen::Volta));
+        assert_eq!(caps.rt_cores, None);
+        assert!(!caps.has_unit(SiliconUnit::RtCore));
+        assert!(caps.has_unit(SiliconUnit::TensorCore));
+    }
+
+    #[test]
+    fn test_silicon_probe_intel_igpu_basic() {
+        use super::super::initialization::probe_silicon_capabilities;
+        use toadstool_core::silicon::SiliconUnit;
+
+        let info = wgpu::AdapterInfo {
+            name: "Intel UHD Graphics 770".to_owned(),
+            vendor: 0x8086,
+            device: 0x4680,
+            device_type: wgpu::DeviceType::IntegratedGpu,
+            driver: "anv".to_owned(),
+            driver_info: "mesa".to_owned(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        let caps = probe_silicon_capabilities(&info, GpuDeviceType::Integrated);
+
+        assert!(caps.tensor_cores.is_none());
+        assert!(caps.rt_cores.is_none());
+        assert!(!caps.has_video_encoder);
+        assert!(caps.rasterizer_available);
+        assert!(caps.has_unit(SiliconUnit::ShaderCore));
+        assert!(caps.has_unit(SiliconUnit::TextureUnit));
+        assert!(!caps.has_unit(SiliconUnit::TensorCore));
+    }
+
+    #[test]
+    fn test_silicon_probe_amd_rdna3_has_rt() {
+        use super::super::initialization::probe_silicon_capabilities;
+        use toadstool_core::silicon::SiliconUnit;
+
+        let info = wgpu::AdapterInfo {
+            name: "AMD Radeon RX 7900 XTX".to_owned(),
+            vendor: 0x1002,
+            device: 0x744c,
+            device_type: wgpu::DeviceType::DiscreteGpu,
+            driver: "radv".to_owned(),
+            driver_info: "mesa".to_owned(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        let caps = probe_silicon_capabilities(&info, GpuDeviceType::Discrete);
+
+        assert!(caps.tensor_cores.is_none());
+        assert!(caps.rt_cores.is_some());
+        assert!(caps.has_video_encoder);
+        assert!(caps.has_unit(SiliconUnit::RtCore));
+        assert!(caps.estimated_tmu_count > 0);
+    }
+
+    #[test]
+    fn test_silicon_probe_cpu_fallback_minimal() {
+        use super::super::initialization::probe_silicon_capabilities;
+        use toadstool_core::silicon::SiliconUnit;
+
+        let info = wgpu::AdapterInfo {
+            name: "llvmpipe (LLVM 17)".to_owned(),
+            vendor: 0,
+            device: 0,
+            device_type: wgpu::DeviceType::Cpu,
+            driver: "llvmpipe".to_owned(),
+            driver_info: String::new(),
+            backend: wgpu::Backend::Vulkan,
+        };
+        let caps = probe_silicon_capabilities(&info, GpuDeviceType::Cpu);
+
+        assert!(caps.tensor_cores.is_none());
+        assert!(caps.rt_cores.is_none());
+        assert!(!caps.has_video_encoder);
+        assert!(!caps.rasterizer_available);
+        assert_eq!(caps.available_units, vec![SiliconUnit::ShaderCore]);
+    }
 }

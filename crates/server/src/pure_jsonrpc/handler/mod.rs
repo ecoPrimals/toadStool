@@ -15,6 +15,7 @@ mod resources;
 mod science;
 mod science_domains;
 mod shader;
+mod silicon;
 mod transport;
 mod workload;
 
@@ -32,6 +33,7 @@ use job::JobHandler;
 use ollama::OllamaHandler;
 use resources::ResourceHandler;
 use shader::ShaderHandler;
+use silicon::SiliconHandler;
 use transport::TransportHandler;
 use workload::WorkloadHandler;
 
@@ -53,6 +55,7 @@ pub struct JsonRpcHandler {
     transport: TransportHandler,
     ollama: OllamaHandler,
     shader: ShaderHandler,
+    silicon: SiliconHandler,
 }
 
 impl JsonRpcHandler {
@@ -81,6 +84,7 @@ impl JsonRpcHandler {
             transport: TransportHandler::new(),
             ollama: OllamaHandler::new(),
             shader: ShaderHandler::new(crate::coral_reef_client::create_coral_reef_client()),
+            silicon: SiliconHandler::new(),
         }
     }
 
@@ -279,6 +283,14 @@ impl JsonRpcHandler {
             "shader.compile.status" => return self.shader.compile_status(params).await,
             "shader.compile.capabilities" => return self.shader.compile_capabilities().await,
 
+            "compute.performance_surface.report" => {
+                return self.silicon.report(params).await;
+            }
+            "compute.performance_surface.query" => {
+                return self.silicon.query(params).await;
+            }
+            "compute.performance_surface.list" => return self.silicon.list().await,
+
             "provenance.query" | "provenance.get" | "toadstool.provenance" => {
                 return Self::toadstool_provenance().await;
             }
@@ -346,6 +358,9 @@ impl JsonRpcHandler {
             "hw_learn_auto_init" => self.hw_learn.hw_learn_auto_init(params).await,
             "hw_learn_auto_init_all" => self.hw_learn.hw_learn_auto_init_all(params).await,
             "hw_learn_vfio_devices" => self.hw_learn.hw_learn_vfio_devices(params).await,
+            "performance_surface_report" => self.silicon.report(params).await,
+            "performance_surface_query" => self.silicon.query(params).await,
+            "performance_surface_list" => self.silicon.list().await,
             n if n.starts_with("ecology_") => {
                 let method = n.replace('_', ".");
                 science::ecology_offload(&method, params).await

@@ -240,6 +240,26 @@ impl SemanticMethodRegistry {
         add_mapping("shader.compile.capabilities", "shader_compile_capabilities");
 
         // ═══════════════════════════════════════════════════════════
+        // SILICON DOMAIN - All-silicon pipeline / performance surface (S159)
+        //
+        // Springs report measured throughput for (op, unit, precision)
+        // triples. toadStool stores and queries for tolerance routing.
+        // ═══════════════════════════════════════════════════════════
+
+        add_mapping(
+            "compute.performance_surface.report",
+            "performance_surface_report",
+        );
+        add_mapping(
+            "compute.performance_surface.query",
+            "performance_surface_query",
+        );
+        add_mapping(
+            "compute.performance_surface.list",
+            "performance_surface_list",
+        );
+
+        // ═══════════════════════════════════════════════════════════
         // PROVENANCE DOMAIN - Cross-spring evolution tracking
         // ═══════════════════════════════════════════════════════════
 

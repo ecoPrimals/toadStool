@@ -4,8 +4,145 @@
 use super::types::{GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, is_nvidia_ada_lovelace};
 use crate::types::*;
 use std::sync::Arc;
+use toadstool_core::silicon::{
+    RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen,
+};
 
 use super::WgpuComputeUnit;
+
+const NVIDIA_VENDOR_ID: u32 = 0x10de;
+const AMD_VENDOR_ID: u32 = 0x1002;
+const INTEL_VENDOR_ID: u32 = 0x8086;
+
+/// Probe silicon capabilities from wgpu adapter info.
+///
+/// Uses vendor ID, device name, and feature flags to infer which
+/// fixed-function hardware units are present. This doesn't require
+/// VFIO — it works with the standard wgpu adapter probe.
+pub(crate) fn probe_silicon_capabilities(info: &wgpu::AdapterInfo, device_type: GpuDeviceType) -> SiliconCapabilities {
+    let name_lower = info.name.to_lowercase();
+    let is_discrete = matches!(device_type, GpuDeviceType::Discrete);
+    let is_nvidia = info.vendor == NVIDIA_VENDOR_ID;
+    let is_amd = info.vendor == AMD_VENDOR_ID;
+    let is_intel = info.vendor == INTEL_VENDOR_ID;
+
+    let tensor_cores = if is_nvidia {
+        detect_nvidia_tensor_gen(&name_lower)
+    } else {
+        None
+    };
+
+    let rt_cores = if is_nvidia {
+        detect_nvidia_rt_gen(&name_lower)
+    } else if is_amd {
+        detect_amd_rt_gen(&name_lower)
+    } else {
+        None
+    };
+
+    let has_video_encoder = is_discrete && (is_nvidia || is_amd || is_intel);
+
+    let (estimated_tmu_count, estimated_rop_count) = estimate_tmu_rop(&name_lower, is_nvidia, is_amd);
+
+    let has_graphics = is_discrete || matches!(device_type, GpuDeviceType::Integrated);
+
+    let mut available_units = vec![SiliconUnit::ShaderCore];
+    if has_graphics {
+        available_units.push(SiliconUnit::TextureUnit);
+        available_units.push(SiliconUnit::Rop);
+        available_units.push(SiliconUnit::Rasterizer);
+        available_units.push(SiliconUnit::DepthBuffer);
+        available_units.push(SiliconUnit::Tessellator);
+    }
+    if tensor_cores.is_some() {
+        available_units.push(SiliconUnit::TensorCore);
+    }
+    if rt_cores.is_some() {
+        available_units.push(SiliconUnit::RtCore);
+    }
+    if has_video_encoder {
+        available_units.push(SiliconUnit::VideoEncoder);
+    }
+
+    SiliconCapabilities {
+        tensor_cores,
+        rt_cores,
+        has_video_encoder,
+        estimated_tmu_count,
+        estimated_rop_count,
+        rasterizer_available: has_graphics,
+        tessellator_available: has_graphics,
+        available_units,
+    }
+}
+
+fn detect_nvidia_tensor_gen(name: &str) -> Option<TensorCoreGen> {
+    if name.contains("h100") || name.contains("h200") {
+        Some(TensorCoreGen::Hopper)
+    } else if name.contains("rtx 40") || name.contains("rtx40") || name.contains("l40") || name.contains("ada") {
+        Some(TensorCoreGen::Ada)
+    } else if name.contains("rtx 30") || name.contains("rtx30") || name.contains("a100") || name.contains("a6000") {
+        Some(TensorCoreGen::Ampere)
+    } else if name.contains("rtx 20") || name.contains("rtx20") || name.contains("t4") || name.contains("quadro rtx") {
+        Some(TensorCoreGen::Turing)
+    } else if name.contains("titan v") || name.contains("v100") || name.contains("gv100") {
+        Some(TensorCoreGen::Volta)
+    } else {
+        None
+    }
+}
+
+fn detect_nvidia_rt_gen(name: &str) -> Option<RtCoreGen> {
+    if name.contains("rtx 40") || name.contains("rtx40") || name.contains("l40") || name.contains("ada") {
+        Some(RtCoreGen::Ada)
+    } else if name.contains("rtx 30") || name.contains("rtx30") || name.contains("a6000") {
+        Some(RtCoreGen::Ampere)
+    } else if name.contains("rtx 20") || name.contains("rtx20") || name.contains("quadro rtx") {
+        Some(RtCoreGen::Turing)
+    } else {
+        None
+    }
+}
+
+fn detect_amd_rt_gen(name: &str) -> Option<RtCoreGen> {
+    if name.contains("rx 7") || name.contains("rdna 3") {
+        Some(RtCoreGen::Ampere) // RDNA 3 RT is roughly 2nd-gen equivalent
+    } else if name.contains("rx 6") || name.contains("rdna 2") {
+        Some(RtCoreGen::Turing) // RDNA 2 RT is roughly 1st-gen equivalent
+    } else {
+        None
+    }
+}
+
+fn estimate_tmu_rop(name: &str, is_nvidia: bool, is_amd: bool) -> (u32, u32) {
+    if is_nvidia {
+        if name.contains("rtx 3090") || name.contains("rtx 4090") {
+            (328, 112)
+        } else if name.contains("rtx 3080") || name.contains("rtx 4080") {
+            (272, 96)
+        } else if name.contains("rtx 3070") || name.contains("rtx 4070") {
+            (184, 96)
+        } else if name.contains("rtx 3060") || name.contains("rtx 4060") {
+            (112, 48)
+        } else if name.contains("titan v") {
+            (320, 96)
+        } else {
+            (128, 64) // conservative default for unknown NVIDIA
+        }
+    } else if is_amd {
+        if name.contains("6950") || name.contains("7900") {
+            (320, 128)
+        } else if name.contains("6800") || name.contains("7800") {
+            (240, 96)
+        } else if name.contains("mi50") || name.contains("mi60") {
+            (256, 64)
+        } else {
+            (128, 64)
+        }
+    } else {
+        (64, 32) // Intel / other
+    }
+}
 
 impl WgpuComputeUnit {
     /// Create from a wgpu adapter
@@ -150,6 +287,8 @@ impl WgpuComputeUnit {
         // VarianceF64/CorrelationF64 returning 0.0 on RTX 40xx).
         let f64_zeros_risk = (is_nvk && supports_f64) || (is_ada_lovelace && is_proprietary_nvidia);
 
+        let silicon = probe_silicon_capabilities(&info, device_type);
+
         let adapter_info = GpuAdapterInfo {
             name: name.clone(),
             driver: info.driver.clone(),
@@ -171,7 +310,7 @@ impl WgpuComputeUnit {
             max_subgroup_size,
             fingerprint,
             safe_allocation_limit: safe_alloc,
-            silicon: None,
+            silicon: Some(silicon),
         };
 
         Ok(Self {
