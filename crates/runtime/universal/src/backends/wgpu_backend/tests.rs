@@ -110,6 +110,7 @@ mod wgpu_backend_tests {
                 name,
             ),
             safe_allocation_limit: safe_alloc,
+            silicon: None,
         }
     }
 

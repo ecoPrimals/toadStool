@@ -55,6 +55,7 @@ fn make_test_adapter(
         max_subgroup_size: 32,
         fingerprint,
         safe_allocation_limit: 4_294_967_296,
+        silicon: None,
     }
 }
 

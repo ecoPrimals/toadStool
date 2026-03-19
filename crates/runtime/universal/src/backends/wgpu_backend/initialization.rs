@@ -171,6 +171,7 @@ impl WgpuComputeUnit {
             max_subgroup_size,
             fingerprint,
             safe_allocation_limit: safe_alloc,
+            silicon: None,
         };
 
         Ok(Self {

@@ -72,6 +72,12 @@ pub struct GpuAdapterInfo {
     pub fingerprint: HardwareFingerprint,
     /// Safe allocation ceiling in bytes (guards against NVK PTE faults).
     pub safe_allocation_limit: u64,
+    /// Per-unit silicon capabilities discovered on this GPU die.
+    ///
+    /// Enumerates which functional units (tensor cores, RT cores, TMUs,
+    /// ROPs, rasterizer, tessellator, video encoder) are present and their
+    /// generation. `None` until silicon discovery is performed.
+    pub silicon: Option<toadstool_core::SiliconCapabilities>,
 }
 
 /// Precision routing advice for f64 workloads.
@@ -91,10 +97,12 @@ pub enum PrecisionRoutingAdvice {
     F32Only,
 }
 
-/// Substrate capability kinds aligned with metalForge's 12-variant model.
+/// Substrate capability kinds — compute primitives and silicon unit access.
 ///
-/// Each capability represents a concrete compute primitive that the
-/// substrate can execute. Discovered at runtime, not hardcoded.
+/// Each capability represents a concrete compute primitive or hardware unit
+/// that the substrate can execute. Discovered at runtime, not hardcoded.
+/// Expanded in S159 with fixed-function GPU unit capabilities per the
+/// ludoSpring V24 all-silicon audit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SubstrateCapabilityKind {
     /// Native f64 arithmetic in shaders.
@@ -122,8 +130,28 @@ pub enum SubstrateCapabilityKind {
     /// Subgroup / warp-level operations.
     SubgroupOps,
     /// Sovereign compile pipeline (coralReef SPIR-V → native without vendor toolchains).
-    /// groundSpring V100: `SubstrateKind::Sovereign` recognition.
     SovereignCompile,
+    /// Tensor core matrix multiply-accumulate (MMA).
+    /// CG solver, pairwise distances, convolution, FFT butterfly.
+    TensorCoreMma,
+    /// RT core BVH spatial query.
+    /// MD neighbor search, Monte Carlo transport, line-of-sight.
+    RtCoreBvh,
+    /// Texture unit interpolated lookup.
+    /// EOS tables, activation functions, exp/log at reduced precision.
+    TextureUnitLookup,
+    /// ROP/alpha-blend scatter-add.
+    /// Histograms, particle deposition, Beer-Lambert transmittance.
+    RopScatterAdd,
+    /// Rasterizer spatial binning.
+    /// Voxelization, FEM cell assignment, PIC/SPH binning.
+    RasterizerBinning,
+    /// Depth buffer min-reduction.
+    /// Voronoi diagrams, distance fields, nearest-neighbor.
+    DepthBufferMinReduce,
+    /// Hardware video encode/decode.
+    /// Simulation frame compression, motion-estimation registration.
+    VideoEncodeDecode,
 }
 
 /// Backend-agnostic hardware fingerprint for capability comparison

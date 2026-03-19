@@ -3,54 +3,116 @@
 ## Scope & Aims
 
 **toadStool is the sovereign hardware infrastructure primal.** It discovers,
-manages, and orchestrates every piece of compute silicon available — GPU
-shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizers, NPUs, CPUs,
-and future accelerators. No vendor SDKs. No proprietary drivers. Pure Rust
-from application to bare metal.
+profiles, and routes to every piece of compute silicon — GPU shader cores,
+tensor cores, RT cores, TMUs, ROPs, rasterizers, tessellators, video encoders,
+NPUs, CPUs, and future accelerators. No vendor SDKs. No proprietary drivers.
+Pure Rust from application to bare metal.
+
+When toadStool split into the compute trio (barraCuda + coralReef + toadStool),
+it refocused: **toadStool is WHERE.** It owns hardware discovery, the measured
+performance surface, and tolerance-based routing. Every piece of silicon we
+unlock is new evolution for the whole trio and new science for the springs.
+
+### The Compute Trio
+
+```
+Spring → barraCuda (WHAT)  "Yukawa force, tolerance 1e-14"
+              │              Pure math. No hardware knowledge.
+              ↓
+         toadStool (WHERE)  "RTX 3090: shader DF64 for force eval,
+              │              RT cores for neighbor search, ROPs for
+              │              accumulation, TMU for potential table"
+              ↓              Routes by measured performance surface.
+         coralReef (HOW)    Compiles each sub-op to native ISA for
+              │              the target unit selected by toadStool.
+              ↓
+         Hardware            Mixed command stream → all silicon active.
+```
+
+- **barraCuda** defines math with tolerance. Hardware-atheistic. Scales fp2→∞.
+- **toadStool** discovers units, owns the performance surface, routes to cheapest
+  hardware meeting tolerance. Graceful degradation when units unavailable.
+- **coralReef** compiles to native ISA per target unit. Learns new targets.
+
+Each primal evolves independently. A new hardware unit requires: toadStool
+learns to discover it, coralReef learns to emit its instructions. barraCuda
+and all springs are unchanged.
 
 ### Core Principles
 
-1. **Hardware atheism** — toadStool does not prefer any vendor or silicon
+1. **Every piece of silicon** — a modern GPU die has 8+ distinct hardware
+   units, each a special-purpose computer. The rasterizer is a spatial query
+   engine. The depth buffer is a min-reducer. The ROPs are scatter-adders.
+   toadStool discovers, profiles, and routes to ALL of them.
+
+2. **Tolerance-based routing** — springs specify mathematical tolerance
+   (e.g. `1e-14`), not hardware targets. toadStool picks the cheapest
+   hardware that meets the tolerance from its measured performance surface.
+
+3. **Hardware atheism** — toadStool does not prefer any vendor or silicon
    type. It discovers what exists and routes work to the best available
    substrate for the requested tolerance.
 
-2. **Self-knowledge only** — toadStool knows about hardware. It discovers
-   other primals (barraCuda, coralReef, songBird, bearDog, nestGate) at
-   runtime via capability-based IPC. No compile-time coupling. No hardcoded
-   primal names in dispatch paths.
-
-3. **Every piece of silicon** — driven by the ludoSpring V24 audit
-   (`wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`): a modern
-   GPU die has 8+ distinct hardware units, each a special-purpose computer.
-   toadStool aims to discover, profile, and route to ALL of them.
-
-4. **Tolerance-based routing** — springs specify mathematical tolerance
-   (e.g. `1e-14`), not hardware targets. toadStool picks the cheapest
-   hardware that meets the tolerance from its measured performance surface.
+4. **Self-knowledge only** — toadStool knows about hardware. It discovers
+   other primals at runtime via capability-based IPC. No compile-time
+   coupling. No hardcoded primal names in dispatch paths.
 
 5. **Sovereign pipeline** — VFIO-based dispatch without Vulkan/CUDA API
    restrictions. This enables mixed command streams (compute + graphics +
    RT in one submission) that no existing framework supports.
 
 6. **ecoBin v3.0** — single binary, pure Rust, cross-platform. Zero C
-   application dependencies. Feature-gated optional backends (CUDA, OpenCL,
-   Vulkan) for interop where needed.
+   application dependencies. Feature-gated optional backends for interop.
+
+### The Hidden Computers on the GPU Die
+
+Every unit was designed for graphics but actually computes a general math
+function. Every spring discovery benefits all springs.
+
+| Silicon Unit | What It Actually Computes | Science Use |
+|---|---|---|
+| **Shader Cores** | FP arithmetic (add, mul, fma) | Compute shaders, DF64 |
+| **Tensor Cores** | Matrix multiply-accumulate (4×4→16×16) | CG solver, pairwise distances, convolution |
+| **RT Cores** | BVH spatial index query | MD neighbor search, Monte Carlo transport |
+| **TMUs** | 2D interpolated lookup (1 cycle) | EOS tables, activation functions, exp/log |
+| **ROPs / Blend** | Per-pixel scatter-add / min / max | Histograms, particle deposition, Beer-Lambert |
+| **Rasterizer** | Point-in-polygon + barycentric interp | Voxelization, FEM cell assignment, spatial binning |
+| **Depth Buffer** | Per-pixel min reduction | Voronoi diagrams, distance fields, nearest-neighbor |
+| **Tessellator** | Adaptive mesh subdivision | AMR, FEM mesh refinement |
+| **Video Enc/Dec** | Block transform coding + motion estimation | Simulation compression, image registration |
+
+### The Silicon Budget
+
+A single RTX 3090 today delivers 0.33 TFLOPS native fp64. With DF64: 3.24
+TFLOPS. With the full hardware budget — all units running in parallel on
+different parts of the problem — the projection is **50-100 effective TFLOPS**.
+That's a small HPC cluster in a single PCIe slot.
+
+| Tolerance | Sufficient Precision | Cheapest Hardware (RTX 3090) | Throughput |
+|---|---|---|---|
+| 1e-2 | ~3 digits | FP16 tensor cores | ~142 TFLOPS |
+| 1e-4 | ~5 digits | FP16 tensor cores | ~142 TFLOPS |
+| 1e-7 | ~7 digits | FP32 shader cores | ~35.6 TFLOPS |
+| 1e-10 | ~10 digits | TF32 tensor cores (accumulated) | ~71 TFLOPS |
+| 1e-14 | ~14 digits | DF64 on FP32 shader cores | ~3.24-8.9 TFLOPS |
+| 1e-16 | ~16 digits | Native FP64 | ~0.33 TFLOPS |
+
+toadStool picks the row. coralReef compiles for it. Springs never see the table.
 
 ### Quality Gates
 
 | Gate | Standard | Status |
 |------|----------|--------|
 | `cargo fmt` | Clean | ✅ |
-| `cargo clippy --pedantic --nursery` | 0 errors, 0 warnings | ✅ S158 |
-| `cargo doc --no-deps` | 0 warnings | ✅ |
-| `#![warn(missing_docs)]` | All 38 library crates | ✅ S158 |
-| License | AGPL-3.0-or-later (SPDX on all files) | ✅ S158 |
-| Production `panic!()` | 0 in non-test code | ✅ |
-| Production `.unwrap()` | 0 in non-test code | ✅ |
+| `cargo clippy --pedantic --nursery -D warnings` | 0 errors, 0 warnings | ✅ S159 |
+| `cargo doc --no-deps` | 0 warnings | ✅ S159 |
+| `#![warn(missing_docs)]` | All 58 crates | ✅ S159 |
+| License | AGPL-3.0-or-later (SPDX on all files) | ✅ |
+| Production `panic!()` / `.unwrap()` | 0 in non-test code | ✅ |
 | Unsafe code | All documented with `// SAFETY:` | ✅ |
 | Files > 1000 lines | 0 | ✅ |
-| Hardcoded IPs/ports | Centralized to `constants::network` | ✅ S158 |
-| Test coverage | Target 90%, current ~83% | 🔄 D-COV |
+| Hardcoded IPs/ports/primal names | 0 in production | ✅ S159 |
+| Test coverage | Target 90%, current ~85% | 🔄 D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
 ### Key Numbers (S159)
@@ -62,21 +124,27 @@ from application to bare metal.
 - **VFIO interface** — BAR0, DMA, power management (nvpmu)
 - **NPU dispatch** — Akida AKD1000/1500 (kernel, VFIO, userspace)
 - **29 crates** `#![forbid(unsafe_code)]`, remainder `#![deny(unsafe_code)]`
-- **ecoBin v3.0 certified** — sysinfo replaced by `toadstool-sysmon`
+- **ecoBin v3.0 certified** — pure Rust, zero C application deps
 - **Rust 2024 edition**, MSRV 1.85
 
 ### Architecture
 
 ```
-barraCuda (WHAT) → coralReef (COMPILE+DISPATCH) → toadStool (WHERE+ORCHESTRATE)
-                     │ VFIO transport              │ VFIO interface
-                     │ (coral-driver: channels,    │ (device mgmt, BAR0 init,
-                     │  QMD, pushbuf, DMA)         │  permissions, pooling,
-                     │                             │  thermal safety, routing)
+barraCuda (WHAT) → toadStool (WHERE) → coralReef (HOW) → Hardware
+                     │                    │
+                     │ Performance         │ VFIO transport
+                     │ surface routing     │ (coral-driver: channels,
+                     │ Per-unit dispatch   │  QMD, pushbuf, DMA)
+                     │ Graceful fallback   │
+                     │                    │
+                     └────────────────────┘
+                       VFIO interface
+                       (device mgmt, BAR0 init, permissions,
+                        pooling, thermal safety, multi-unit routing)
 ```
 
-**Active evolution:** Sovereign compute gap closure, VFIO validation,
-performance surface database, multi-unit routing. See `../SOVEREIGN_COMPUTE_GAPS.md`.
+**Active evolution:** All-silicon pipeline (Phases A→D), sovereign compute
+gap closure, performance surface database. See `ALL_SILICON_PIPELINE.md`.
 
 ---
 
@@ -134,18 +202,23 @@ performance surface database, multi-unit routing. See `../SOVEREIGN_COMPUTE_GAPS
 | ~~RESERVOIR_COMPUTING_BARRACUDA_EXTENSIONS~~ | Neuromorphic reservoir computing ops | Jan 29 | Transferred to barraCuda |
 | **[PRIMAL_CAPABILITY_SYSTEM.md](./PRIMAL_CAPABILITY_SYSTEM.md)** | Capability-based discovery | Nov 2025 | ✅ Implemented |
 
-### Every Piece of Silicon — Future Evolution (S158)
+### All-Silicon Pipeline — Phased Evolution
 
-*Driven by ludoSpring V24 `GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`.*
+*Every piece of silicon we unlock is new evolution for the whole trio and new
+science for the springs. Driven by ludoSpring V24 audit. See `ALL_SILICON_PIPELINE.md`.*
 
-| Phase | Description | Status | Dependency |
-|:-----:|-------------|:------:|------------|
-| **A** | Sovereign compute dispatch (VFIO shader cores) | 🔄 WIP | coralReef USERD_TARGET |
-| **B** | Performance surface database (per-unit profiling) | 📋 Planned | Phase A, spring experiments |
-| **C** | Multi-unit routing (shader + tensor + RT + TMU + ROP) | 📋 Planned | Phase B |
-| **D** | Mixed command streams (compute + graphics + RT) | 📋 Planned | Phase C, coralReef MMA/draw emission |
+| Phase | Description | Status | What It Unlocks |
+|:-----:|-------------|:------:|-----------------|
+| **A** | Sovereign compute dispatch (VFIO shader cores) | 🔄 WIP | Springs get sovereign shader compute without Vulkan/CUDA |
+| **B** | Silicon discovery + performance surface database | 🔄 **S159** | toadStool knows every unit on the die and measured throughput |
+| **C** | Tolerance-based multi-unit routing | 📋 Planned | Single workload splits across shader + tensor + RT + TMU + ROP |
+| **D** | Mixed command streams (compute + graphics + RT) | 📋 Planned | 50-100 effective TFLOPS per RTX 3090 — all silicon active |
 
-**Target silicon**: Shader cores, tensor cores, RT cores, TMUs, ROPs, rasterizer, tessellator, video enc/dec — every functional unit on the GPU die. See `wateringHole/TOADSTOOL_LEVERAGE_GUIDE.md` Section 11 and `wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`.
+**Phase B (S159)**: Foundation types landed — `SiliconUnit` enum (9 GPU
+functional units), `PerformanceMeasurement` for spring experiment data,
+`PerformanceSurfaceEntry` for the routing database, `SiliconCapabilities`
+on `GpuAdapterInfo` for per-unit discovery. `compute.performance_surface.*`
+JSON-RPC methods specified. Springs can begin reporting experiment data.
 
 ---
 
@@ -257,39 +330,16 @@ Historical documents have been moved to the `ecoPrimals/` fossil record. Current
 
 ## Design Principles
 
-### Runtime Discovery, Not Hardcoding
+### Every Piece of Silicon
 
-toadStool discovers hardware at runtime and routes work based on measured
-capabilities. No vendor strings, no hardcoded ports, no compile-time
-assumptions about what silicon is available.
+A GPU is not one computer — it's eight special-purpose computers on one die.
+toadStool discovers all of them, measures their throughput for each operation
+class, and routes work to the cheapest unit that meets the tolerance.
 
-```rust
-// WRONG — hardcoded vendor assumption
-let cache_size = if vendor == "AMD" { 128_MB } else { 6_MB };
-
-// RIGHT — runtime capability probe
-let hierarchy = SubstrateMemoryHierarchy::probe(&device).await;
-```
-
-### Self-Knowledge Only
-
-toadStool knows about hardware. It discovers other primals at runtime via
-capability-based IPC (`get_socket_path_for_capability`). No primal names
-in production dispatch paths. No compile-time cross-primal dependencies.
-
-```rust
-// WRONG — hardcoded primal name
-let socket = get_socket_path_for_service("beardog");
-
-// RIGHT — capability-based discovery
-let socket = get_socket_path_for_capability(capabilities::CRYPTO);
-```
-
-### Tolerance-Based Routing
+### Tolerance-Based Routing, Not Hardware Selection
 
 Springs specify mathematical tolerance, not hardware targets. toadStool
-selects the cheapest hardware unit that meets the requested precision
-from its measured performance surface.
+selects the cheapest hardware unit that meets the requested precision.
 
 ```
 tolerance 1e-14 → DF64 on FP32 shader cores (RTX 3090: ~3.24 TFLOPS)
@@ -297,25 +347,30 @@ tolerance 1e-7  → FP32 shader cores (RTX 3090: ~35.6 TFLOPS)
 tolerance 1e-4  → FP16 tensor cores (RTX 3090: ~142 TFLOPS)
 ```
 
+Graceful degradation: RT cores unavailable → compute BVH on shader cores.
+Tensor cores unavailable → shader cores. The math is the same; the throughput
+changes. Springs never see the difference except in speed.
+
+### Runtime Discovery, Not Hardcoding
+
+No vendor strings, no hardcoded ports, no compile-time assumptions about
+what silicon is available.
+
+### Self-Knowledge Only
+
+toadStool knows about hardware. It discovers other primals at runtime via
+capability-based IPC. No primal names in production dispatch paths.
+
 ### Sovereign by Default
 
 The VFIO sovereign pipeline gives bare-metal GPU access without vendor
-SDK restrictions. This enables mixed command streams — compute + graphics
-+ RT in one submission — that no existing framework supports.
-
-### ecoBin v3.0 — Pure Rust
-
-Zero C application dependencies. Feature-gated optional backends
-(CUDA, OpenCL, Vulkan) for interop. Remaining libc is ecosystem-
-transitive only (mio, tokio, wgpu).
+SDK restrictions. Mixed command streams — compute + graphics + RT in one
+submission — that no existing framework supports.
 
 ### Deep Debt Resolution
 
 Every workaround has an evolution path. Mocks are test-only. Stubs evolve
 to complete implementations. External C dependencies evolve to pure Rust.
-Large files are smart-refactored into coherent domain modules. Unsafe code
-is evolved to safe Rust where possible, hardware-justified and documented
-where not.
 
 ---
 
