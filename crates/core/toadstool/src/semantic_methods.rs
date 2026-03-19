@@ -258,6 +258,7 @@ impl SemanticMethodRegistry {
             "compute.performance_surface.list",
             "performance_surface_list",
         );
+        add_mapping("compute.route.multi_unit", "route_multi_unit");
 
         // ═══════════════════════════════════════════════════════════
         // PROVENANCE DOMAIN - Cross-spring evolution tracking

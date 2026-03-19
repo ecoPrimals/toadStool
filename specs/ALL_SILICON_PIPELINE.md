@@ -1,7 +1,7 @@
 # All-Silicon Pipeline Specification
 
 **Date**: March 18, 2026 — S159
-**Status**: Phase B foundation landed; Phases C-D planned
+**Status**: Phase B complete, Phase C routing engine landed; Phase D planned
 **Depends on**: `wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`
 
 ---
@@ -239,25 +239,33 @@ Phase A: Sovereign compute dispatch (VFIO shader cores)
   CURRENT — blocked on coralReef FECS firmware loading
   Unlocks: sovereign shader compute for all springs
 
-Phase B: Silicon discovery + performance surface database
-  S159 FOUNDATION — types and JSON-RPC methods landed
+Phase B: Silicon discovery + performance surface database  ✅ COMPLETE
+  S159b-c: types, JSON-RPC methods, wgpu probe, sysfs probe landed
   Unlocks: toadStool knows every unit and measured throughput
-  Does NOT require Phase A — uses wgpu feature queries + sysfs probing
+  Silicon auto-populated from wgpu adapter + PCI device ID sysfs tables
 
-Phase C: Tolerance-based multi-unit routing
-  Requires: Phase B (performance surface data from spring experiments)
-  Unlocks: single workload splits across multiple units
+Phase C: Tolerance-based multi-unit routing  ✅ ENGINE LANDED
+  S159c: compute.route.multi_unit handler + heuristic fallback
+  Consults performance surface → picks best unit per tolerance
+  Every decision has shader-core fallback
 
 Phase D: Mixed command streams
   Requires: Phase A (VFIO) + Phase C (routing decisions)
   Unlocks: all silicon active in single dispatch — 50-100 TFLOPS
 ```
 
-**Key insight**: Phase B does NOT depend on Phase A. We can discover silicon
-capabilities and build the performance surface database using wgpu feature
-queries, sysfs probing, and spring experiment data — all without VFIO.
-Springs can begin their hardware experiments (per ludoSpring V24 assignments)
-and report measured data to toadStool now.
+**Key insight**: Phases B and C do NOT depend on Phase A. Silicon discovery
+uses wgpu feature queries and PCI device ID tables from sysfs. The routing
+engine uses performance surface data reported by springs via JSON-RPC.
+Springs can begin hardware experiments now and report to toadStool — the
+routing engine will immediately incorporate new measurements.
+
+**Implementation references**:
+- Silicon discovery (wgpu): `crates/runtime/universal/src/backends/wgpu_backend/initialization.rs`
+- Silicon discovery (sysfs): `crates/core/sysmon/src/gpu.rs` → `GpuDevice::silicon_capabilities()`
+- Performance surface handlers: `crates/server/src/pure_jsonrpc/handler/silicon.rs`
+- Multi-unit routing: `compute.route.multi_unit` in same module
+- Core types: `crates/toadstool-core/src/silicon.rs`
 
 ---
 

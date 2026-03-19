@@ -290,6 +290,9 @@ impl JsonRpcHandler {
                 return self.silicon.query(params).await;
             }
             "compute.performance_surface.list" => return self.silicon.list().await,
+            "compute.route.multi_unit" => {
+                return self.silicon.route_multi_unit(params).await;
+            }
 
             "provenance.query" | "provenance.get" | "toadstool.provenance" => {
                 return Self::toadstool_provenance().await;
@@ -361,6 +364,7 @@ impl JsonRpcHandler {
             "performance_surface_report" => self.silicon.report(params).await,
             "performance_surface_query" => self.silicon.query(params).await,
             "performance_surface_list" => self.silicon.list().await,
+            "route_multi_unit" => self.silicon.route_multi_unit(params).await,
             n if n.starts_with("ecology_") => {
                 let method = n.replace('_', ".");
                 science::ecology_offload(&method, params).await

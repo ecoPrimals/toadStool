@@ -13,6 +13,7 @@ keywords = ["sysmon", "monitoring", "proc", "pure-rust", "linux"]
 categories = ["os", "hardware-support"]
 
 [dependencies]
+toadstool-core = { path = "../../toadstool-core" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rustix = { version = "1.1", features = ["fs"] }
