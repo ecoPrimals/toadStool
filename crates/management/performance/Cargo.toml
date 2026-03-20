@@ -43,8 +43,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = { workspace = true }
 
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
+# EVOLVED: procfs removed (Mar 20, 2026) — unused; toadstool-sysmon provides /proc parsing
 [target.'cfg(target_os = "linux")'.dependencies]
-procfs = { version = "0.16", default-features = false }
 
 [dev-dependencies]
 tempfile = "3.0"

@@ -14,9 +14,7 @@
 
 use std::path::{Path, PathBuf};
 
-use toadstool_core::silicon::{
-    RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen,
-};
+use toadstool_core::silicon::{RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen};
 
 /// Vendor identification for GPU-specific sysfs paths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -477,55 +475,61 @@ impl GpuDevice {
 fn nvidia_silicon(device_id: u32) -> SiliconCapabilities {
     let (tensor_gen, rt_gen, tmu, rop) = match device_id {
         // Volta (GV100): Titan V, Tesla V100
-        0x1D81 | 0x1DB1 | 0x1DB4..=0x1DBA => {
-            (Some(TensorCoreGen::Volta), None, 320_u32, 96_u32)
-        }
+        0x1D81 | 0x1DB1 | 0x1DB4..=0x1DBA => (Some(TensorCoreGen::Volta), None, 320_u32, 96_u32),
         // Turing (TU102): RTX 2080 Ti, Titan RTX, Quadro RTX 8000/6000
-        0x1E02..=0x1E3F | 0x1E82..=0x1EBF => {
-            (Some(TensorCoreGen::Turing), Some(RtCoreGen::Turing), 288, 96)
-        }
+        0x1E02..=0x1E3F | 0x1E82..=0x1EBF => (
+            Some(TensorCoreGen::Turing),
+            Some(RtCoreGen::Turing),
+            288,
+            96,
+        ),
         // Turing (TU104): RTX 2080/2080 Super, Quadro RTX 5000
-        0x1E04..=0x1E7F | 0x1F02..=0x1F3F => {
-            (Some(TensorCoreGen::Turing), Some(RtCoreGen::Turing), 192, 64)
-        }
+        0x1E04..=0x1E7F | 0x1F02..=0x1F3F => (
+            Some(TensorCoreGen::Turing),
+            Some(RtCoreGen::Turing),
+            192,
+            64,
+        ),
         // Turing (TU106): RTX 2070/2060
-        0x1E84..=0x1EFF | 0x1F82..=0x1FBF => {
-            (Some(TensorCoreGen::Turing), Some(RtCoreGen::Turing), 120, 64)
-        }
+        0x1E84..=0x1EFF | 0x1F82..=0x1FBF => (
+            Some(TensorCoreGen::Turing),
+            Some(RtCoreGen::Turing),
+            120,
+            64,
+        ),
         // Turing (TU116/TU117): GTX 1660/1650 — no tensor/RT cores
         0x2182..=0x21FF => (None, None, 96, 48),
         // Ampere (GA102): RTX 3090/3080 Ti/3080
-        0x2204..=0x223F => {
-            (Some(TensorCoreGen::Ampere), Some(RtCoreGen::Ampere), 328, 112)
-        }
+        0x2204..=0x223F => (
+            Some(TensorCoreGen::Ampere),
+            Some(RtCoreGen::Ampere),
+            328,
+            112,
+        ),
         // Ampere (GA104): RTX 3070/3060 Ti
-        0x2484..=0x24BF => {
-            (Some(TensorCoreGen::Ampere), Some(RtCoreGen::Ampere), 192, 96)
-        }
+        0x2484..=0x24BF => (
+            Some(TensorCoreGen::Ampere),
+            Some(RtCoreGen::Ampere),
+            192,
+            96,
+        ),
         // Ampere (GA106): RTX 3060
-        0x2504..=0x253F => {
-            (Some(TensorCoreGen::Ampere), Some(RtCoreGen::Ampere), 112, 48)
-        }
+        0x2504..=0x253F => (
+            Some(TensorCoreGen::Ampere),
+            Some(RtCoreGen::Ampere),
+            112,
+            48,
+        ),
         // A100 (GA100)
-        0x20B0..=0x20BF | 0x20F1..=0x20FF => {
-            (Some(TensorCoreGen::Ampere), None, 432, 160)
-        }
+        0x20B0..=0x20BF | 0x20F1..=0x20FF => (Some(TensorCoreGen::Ampere), None, 432, 160),
         // Ada Lovelace (AD102): RTX 4090/4080
-        0x2684..=0x26BF => {
-            (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 512, 176)
-        }
+        0x2684..=0x26BF => (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 512, 176),
         // Ada Lovelace (AD104): RTX 4070 Ti/4070
-        0x2704..=0x273F => {
-            (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 240, 80)
-        }
+        0x2704..=0x273F => (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 240, 80),
         // Ada Lovelace (AD106): RTX 4060 Ti/4060
-        0x2784..=0x27BF => {
-            (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 136, 48)
-        }
+        0x2784..=0x27BF => (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 136, 48),
         // Ada Lovelace (AD107): RTX 4060 mobile / 4050
-        0x2804..=0x283F => {
-            (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 96, 32)
-        }
+        0x2804..=0x283F => (Some(TensorCoreGen::Ada), Some(RtCoreGen::Ada), 96, 32),
         // Unknown NVIDIA — conservative baseline
         _ => (None, None, 128, 64),
     };

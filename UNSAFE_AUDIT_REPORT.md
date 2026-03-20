@@ -1,6 +1,6 @@
 # Unsafe Code Audit Report
 
-**Date:** March 17, 2026  
+**Date:** March 20, 2026 (updated S160)  
 **Scope:** All `unsafe` blocks, `unsafe impl`, and `unsafe fn` in `crates/` (excluding `target/`, `archive/`)
 
 ---
@@ -9,9 +9,9 @@
 
 | Category | Count | Action |
 |----------|-------|--------|
-| **NECESSARY** (hardware/FFI) | ~80+ | No change |
-| **TEST-ONLY** (env::set_var/remove_var) | ~200+ | Acceptable; 3 files evolved to `temp_env` |
-| **EVOLVABLE** | 3 files | **Evolved** to safe Rust via `temp_env` |
+| **NECESSARY** (hardware/FFI) | ~70+ | No change — all SAFETY-documented |
+| **TEST-ONLY** (env::set_var/remove_var) | **0** | All migrated to `temp_env` (S159) |
+| **EVOLVABLE** | 0 | All evolved to safe Rust |
 
 ---
 

@@ -59,8 +59,8 @@ thiserror = { workspace = true }
 
 # EVOLVED: nix removed (Feb 14, 2026) - prefer rustix
 # EVOLVED: caps removed (Mar 9, 2026) - unused, libc dep eliminated
+# EVOLVED: procfs removed (Mar 20, 2026) — unused; toadstool-sysmon provides /proc parsing
 [target.'cfg(target_os = "linux")'.dependencies]
-procfs = { version = "0.16", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.52", features = [

@@ -23,7 +23,7 @@ pub struct DetectedPlatform {
         with = "toadstool_common::system_time_serde::opt"
     )]
     pub last_tested: Option<std::time::SystemTime>,
-    /// Additional metadata (Arc<str> for zero-copy clone)
+    /// Additional metadata (`Arc<str>` for zero-copy clone)
     pub metadata: HashMap<String, Arc<str>>,
 }
 

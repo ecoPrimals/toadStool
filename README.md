@@ -42,7 +42,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | 11,956+ workspace tests (default features), 21,000+ with all-features |
+| `cargo test --workspace` | **21,275 tests, 0 failures** (S160), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
@@ -242,7 +242,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | 11,956+ (default features) |
+| Workspace tests | **21,275** (S160), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -263,11 +263,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 11,956+ tests (S159); ~85% line (182K lines instrumented); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 21,275 tests (S160); ~83% line (186K lines instrumented); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S160 (Mar 20, 2026)**: Deep execution + coverage expansion. 9 broken tests fixed (neuromorphic detection, nested-runtime, transport assertions). +49 new tests across resource types, security policies/sandbox types, property-based testing. Hardcoded Akida specs → named constants. Dead `procfs` dep removed from 3 crates. 21,275 tests, 0 failures.
 - **S159 (Mar 18, 2026)**: Deep audit and execution. All 694+ missing_docs warnings filled across 58 crates. Clippy `--workspace -D warnings` passes (0 errors). 3 compilation errors fixed (MockNpuDispatch, Arc<str>/String, paths module). JSON-RPC methods standardized to `domain.verb`. Hardcoded localhost evolved to named constants. Primal names → capability-based in auto_config. Zero-copy expanded (workload IDs → Arc<str>). Production stubs eliminated. All unsafe env::set_var → temp_env. Nested-runtime anti-patterns fixed.
 - **S155b (Mar 15, 2026)**: Coverage expansion, clippy pedantic clean, dependency audit clean, unsafe audit clean. 21,156 tests. ~83% line coverage (182K lines instrumented). Next: push 83%→90% (hardware mocks), property-based testing for computation modules, multi-primal integration test infrastructure.
 - **S147 (Mar 12, 2026)**: hw-learn wiring + sovereign compute hardening — 5 `compute.hardware.*` JSON-RPC methods (observe/distill/apply/share_recipe/status), nvpmu `Bar0Access` implements `RegisterAccess` trait (hw-learn→BAR0 bridge), `nvvm_safety.rs` renamed to `spirv_codegen_safety.rs` (naga root-cause per hotSpring v0.6.30), `FirmwareInventory` in `gpu.info` response (compute_viable/compute_blockers), PRIMAL_REGISTRY updated, genomeBin manifest enriched. Spring pins: hotSpring v0.6.30, neuralSpring V98/S145, coralReef Iter 35. 20,015 tests.
@@ -289,7 +290,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 11,956+ tests (S159); ~85% line (182K instrumented); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 21,275 tests (S160); ~83% line (186K instrumented); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -334,4 +335,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 18, 2026 — S159. 11,956+ workspace tests. ~85% line coverage (target 90%). 96+ JSON-RPC methods. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Spring pins: hotSpring v0.6.31, groundSpring V100, neuralSpring V107/S156, wetSpring V109, airSpring v0.8.3, healthSpring V28, coralReef Phase 10 Iteration 47, barraCuda v0.35 IPC-first. ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 20, 2026 — S160. 21,275 workspace tests, 0 failures. ~83% line coverage (186K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. Rust 1.85+ (edition 2024, MSRV).

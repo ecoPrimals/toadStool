@@ -317,4 +317,96 @@ mod tests {
         assert!(property.test(&42).is_ok());
         assert!(property.test(&-1).is_err());
     }
+
+    #[test]
+    fn test_round_trip_property_success() {
+        let property = RoundTripProperty::new(
+            "u32_le_bytes",
+            |x: &u32| Ok(x.to_le_bytes().to_vec()),
+            |bytes: &[u8]| {
+                let arr: [u8; 4] = bytes
+                    .try_into()
+                    .map_err(|_| toadstool::ToadStoolError::runtime("bad length"))?;
+                Ok(u32::from_le_bytes(arr))
+            },
+        );
+
+        assert_eq!(property.name(), "u32_le_bytes");
+        assert!(property.test(&42).is_ok());
+        assert!(property.test(&0).is_ok());
+        assert!(property.test(&u32::MAX).is_ok());
+    }
+
+    #[test]
+    fn test_round_trip_property_failure() {
+        let property = RoundTripProperty::new(
+            "always_wrong",
+            |x: &u32| Ok(x.to_le_bytes().to_vec()),
+            |_bytes: &[u8]| Ok(999_u32),
+        );
+
+        let result = property.test(&42);
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("Round-trip property failed"));
+    }
+
+    #[test]
+    fn test_shrink_strategy_debug() {
+        assert_eq!(
+            format!("{:?}", ShrinkStrategy::None),
+            "ShrinkStrategy::None"
+        );
+        assert_eq!(
+            format!("{:?}", ShrinkStrategy::Linear),
+            "ShrinkStrategy::Linear"
+        );
+        assert_eq!(
+            format!("{:?}", ShrinkStrategy::Binary),
+            "ShrinkStrategy::Binary"
+        );
+        assert_eq!(
+            format!("{:?}", ShrinkStrategy::Recursive),
+            "ShrinkStrategy::Recursive"
+        );
+        let custom = ShrinkStrategy::Custom(Box::new(|_| vec![]));
+        assert_eq!(format!("{custom:?}"), "ShrinkStrategy::Custom(<function>)");
+    }
+
+    #[test]
+    fn test_test_statistics_empty_times() {
+        let stats = TestStatistics::new();
+        assert_eq!(stats.average_execution_time(), Duration::ZERO);
+        assert_eq!(stats.max_execution_time(), Duration::ZERO);
+        assert_eq!(stats.min_execution_time(), Duration::ZERO);
+    }
+
+    #[test]
+    fn test_test_statistics_default() {
+        let stats = TestStatistics::default();
+        assert!(stats.input_distribution.is_empty());
+        assert!(stats.execution_times.is_empty());
+        assert!(stats.coverage_metrics.is_empty());
+    }
+
+    #[test]
+    fn test_property_test_result_report_with_stats() {
+        let mut stats = TestStatistics::new();
+        stats.execution_times.push(Duration::from_millis(10));
+        stats.execution_times.push(Duration::from_millis(20));
+
+        let result = PropertyTestResult {
+            test_name: "with_stats".to_string(),
+            success: true,
+            test_cases_run: 2,
+            failures: vec![],
+            duration: Duration::from_millis(30),
+            statistics: stats,
+        };
+
+        let report = result.to_report_string();
+        assert!(report.contains("with_stats"));
+        assert!(report.contains("PASSED"));
+        assert!(report.contains("Average Execution Time"));
+    }
 }

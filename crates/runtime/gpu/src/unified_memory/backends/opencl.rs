@@ -479,7 +479,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires GPU hardware
+    #[ignore = "requires OpenCL GPU hardware"]
     async fn test_opencl_allocation() {
         let backend = match OpenClBackend::try_init().await {
             Ok(b) => b,

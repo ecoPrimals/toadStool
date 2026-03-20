@@ -5,7 +5,31 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 18, 2026 (Sessions 43-159d)
+## [Unreleased] - March 20, 2026 (Sessions 43-160)
+
+### Session S160 (Mar 20, 2026) — Deep Execution + Coverage Expansion
+
+#### Test Fixes (9 broken tests → 0 failures)
+- Fixed `test_detect_neuromorphic_platforms` false assertion on Akida-equipped hardware — now hardware-agnostic
+- Fixed 7 nested-runtime panics in `unibin_execution_coverage_tests.rs` (`#[tokio::test]` + `Runtime::new()` → `#[test]` + `thread::spawn` + `Builder::new_current_thread()`)
+- Fixed 2 transport test assertions after TRpc error message update ("pending Phase 3")
+
+#### Coverage Expansion (+49 new tests → 21,275 total, 0 failures)
+- `resources/types.rs`: 17 tests — validate, defaults, serde round-trips, `is_empty()`
+- `security/policies/types.rs`: 14 tests — PolicyCondition/Action/ViolationAction variants, serde
+- `security/sandbox/types.rs`: 12 tests — defaults, enum serde, SandboxStatus equality
+- `properties/property_impls.rs`: 6 tests — RoundTripProperty success/failure, ShrinkStrategy debug
+
+#### Hardcoding Evolution
+- Akida detection: 6 magic numbers → `AKIDA_*` named constants + `make_akida()` closure
+- BearDog config: magic timeouts → named constants, `/tmp` → `std::env::temp_dir()`
+- Resource validator: CPU/network/GPU magic numbers → named constants
+- Cargo profiles: consolidated `.cargo/config.toml` → `Cargo.toml` single source of truth
+
+#### Dependency & Quality
+- Removed dead `procfs` dep from 3 crates
+- 2 bare `#[ignore]` → `#[ignore = "reason"]` (OpenCL, Vulkan)
+- Updated STATUS.md, DEBT.md, CHANGELOG.md
 
 ### Session S159d (Mar 18, 2026) — Multi-Unit Routing Engine + Sysfs Silicon Discovery
 - **`compute.route.multi_unit` JSON-RPC handler**: Takes workload array of `(op, tolerance)` pairs, consults performance surface, builds `MultiUnitRoutingPlan`. Surface-data mode picks highest-throughput unit meeting tolerance; heuristic mode (no data) routes RT cores for spatial, ROPs for scatter, TMUs for lookups, tensor cores for loose-tolerance matmul. Every decision has shader-core fallback.

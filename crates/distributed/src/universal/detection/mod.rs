@@ -85,37 +85,36 @@ impl UniversalSubstrateCapabilities {
 
         #[cfg(target_os = "linux")]
         {
-            let dev_akida = std::path::Path::new("/dev");
-            if dev_akida.is_dir()
-                && let Ok(entries) = std::fs::read_dir(dev_akida)
+            const AKIDA_CHIP_NAME: &str = "Akida";
+            const AKIDA_MANUFACTURER: &str = "BrainChip";
+            const AKIDA_CORE_COUNT: u32 = 1;
+            const AKIDA_NEURONS_PER_CORE: u32 = 1_000_000;
+            const AKIDA_SYNAPSES_PER_CORE: u64 = 4_000_000;
+            const AKIDA_POWER_MW: f64 = 500.0;
+
+            let make_akida = || NeuromorphicPlatform::NeuromorphicChip {
+                chip_name: AKIDA_CHIP_NAME.to_string(),
+                manufacturer: AKIDA_MANUFACTURER.to_string(),
+                core_count: AKIDA_CORE_COUNT,
+                neuron_count_per_core: AKIDA_NEURONS_PER_CORE,
+                synapse_count_per_core: AKIDA_SYNAPSES_PER_CORE,
+                power_consumption_mw: AKIDA_POWER_MW,
+            };
+
+            let dev_path = std::path::Path::new("/dev");
+            if dev_path.is_dir()
+                && let Ok(entries) = std::fs::read_dir(dev_path)
             {
                 for entry in entries.flatten() {
-                    let name = entry.file_name();
-                    let name_str = name.to_string_lossy();
-                    if name_str.starts_with("akida") {
-                        platforms.push(NeuromorphicPlatform::NeuromorphicChip {
-                            chip_name: "Akida".to_string(),
-                            manufacturer: "BrainChip".to_string(),
-                            core_count: 1,
-                            neuron_count_per_core: 1_000_000,
-                            synapse_count_per_core: 4_000_000,
-                            power_consumption_mw: 500.0,
-                        });
+                    if entry.file_name().to_string_lossy().starts_with("akida") {
+                        platforms.push(make_akida());
                         break;
                     }
                 }
             }
 
-            let sys_akida = std::path::Path::new("/sys/class/akida");
-            if platforms.is_empty() && sys_akida.is_dir() {
-                platforms.push(NeuromorphicPlatform::NeuromorphicChip {
-                    chip_name: "Akida".to_string(),
-                    manufacturer: "BrainChip".to_string(),
-                    core_count: 1,
-                    neuron_count_per_core: 1_000_000,
-                    synapse_count_per_core: 4_000_000,
-                    power_consumption_mw: 500.0,
-                });
+            if platforms.is_empty() && std::path::Path::new("/sys/class/akida").is_dir() {
+                platforms.push(make_akida());
             }
         }
 
@@ -399,7 +398,21 @@ mod tests {
     async fn test_detect_neuromorphic_platforms() {
         let platforms = UniversalSubstrateCapabilities::detect_neuromorphic_platforms().await;
         assert!(platforms.is_ok());
-        assert!(platforms.unwrap().is_empty());
+        let platforms = platforms.unwrap();
+        for platform in &platforms {
+            assert!(!platform.platform_type().is_empty());
+            if let NeuromorphicPlatform::NeuromorphicChip {
+                chip_name,
+                manufacturer,
+                core_count,
+                ..
+            } = platform
+            {
+                assert!(!chip_name.is_empty());
+                assert!(!manufacturer.is_empty());
+                assert!(*core_count > 0);
+            }
+        }
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

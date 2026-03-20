@@ -51,13 +51,6 @@ linker = "riscv64-linux-gnu-gcc"
 [env]
 RUST_TEST_THREADS = { value = "4", force = false }
 
-[profile.release]
-opt-level = "z"        # Optimize for size
-lto = true             # Link-time optimization
-codegen-units = 1      # Single codegen unit for maximum optimization
-strip = true           # Strip symbols
-panic = "abort"        # Smaller binary size
-
-[profile.release-fast]
-inherits = "release"
-opt-level = 3          # Optimize for speed instead of size
+# Profiles are defined in Cargo.toml (single source of truth):
+#   [profile.release]      — genomeBin size-optimized (opt-level = "z", strip, panic=abort)
+#   [profile.release-fast] — speed-optimized (opt-level = 3, inherits release)

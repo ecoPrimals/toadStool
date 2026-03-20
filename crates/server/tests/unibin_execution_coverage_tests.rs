@@ -26,59 +26,96 @@ use toadstool_server::unibin::{
 // create_executor tests
 // ============================================================================
 
-#[tokio::test]
-async fn create_executor_standalone_with_empty_string() {
+#[test]
+fn create_executor_standalone_with_empty_string() {
     temp_env::with_var("TOADSTOOL_STANDALONE", Some(""), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(create_executor("empty-family"));
-        match &result {
-            Ok(_) => {}
-            Err(e) => assert!(!e.to_string().is_empty()),
-        }
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = create_executor("empty-family").await;
+                if let Err(e) = &result {
+                    assert!(!e.to_string().is_empty());
+                }
+            });
+        })
+        .join()
+        .expect("test thread");
     });
 }
 
-#[tokio::test]
-async fn create_executor_standalone_with_false() {
+#[test]
+fn create_executor_standalone_with_false() {
     temp_env::with_var("TOADSTOOL_STANDALONE", Some("false"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(create_executor("false-family"));
-        match &result {
-            Ok(_) => {}
-            Err(e) => assert!(!e.to_string().is_empty()),
-        }
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = create_executor("false-family").await;
+                if let Err(e) = &result {
+                    assert!(!e.to_string().is_empty());
+                }
+            });
+        })
+        .join()
+        .expect("test thread");
     });
 }
 
-#[tokio::test]
-async fn create_executor_includes_family_id_in_instance_id() {
+#[test]
+fn create_executor_includes_family_id_in_instance_id() {
     temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(create_executor("my-unique-family-123"));
-        assert!(result.is_ok());
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = create_executor("my-unique-family-123").await;
+                assert!(
+                    result.is_ok(),
+                    "executor creation failed: {:?}",
+                    result.err()
+                );
+            });
+        })
+        .join()
+        .expect("test thread");
     });
 }
 
-#[tokio::test]
-async fn create_executor_distributed_with_songbird_endpoint() {
+#[test]
+fn create_executor_distributed_with_songbird_endpoint() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_STANDALONE", Some("0")),
             ("SONGBIRD_ENDPOINT", Some("unix:///tmp/songbird.sock")),
         ],
         || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("songbird-family"));
-            match &result {
-                Ok(_) => {}
-                Err(e) => assert!(!e.to_string().is_empty()),
-            }
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("songbird-family").await;
+                    if let Err(e) = &result {
+                        assert!(!e.to_string().is_empty());
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
         },
     );
 }
 
-#[tokio::test]
-async fn create_executor_distributed_with_coordination_endpoint() {
+#[test]
+fn create_executor_distributed_with_coordination_endpoint() {
     temp_env::with_vars_unset(["SONGBIRD_ENDPOINT"], || {
         temp_env::with_vars(
             [
@@ -89,31 +126,47 @@ async fn create_executor_distributed_with_coordination_endpoint() {
                 ),
             ],
             || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                let result = rt.block_on(create_executor("coord-family"));
-                match &result {
-                    Ok(_) => {}
-                    Err(e) => assert!(!e.to_string().is_empty()),
-                }
+                std::thread::spawn(|| {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("runtime");
+                    rt.block_on(async {
+                        let result = create_executor("coord-family").await;
+                        if let Err(e) = &result {
+                            assert!(!e.to_string().is_empty());
+                        }
+                    });
+                })
+                .join()
+                .expect("test thread");
             },
         );
     });
 }
 
-#[tokio::test]
-async fn create_executor_distributed_with_auth_token() {
+#[test]
+fn create_executor_distributed_with_auth_token() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_STANDALONE", Some("0")),
             ("SONGBIRD_AUTH_TOKEN", Some("test-secret-token")),
         ],
         || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("auth-family"));
-            match &result {
-                Ok(_) => {}
-                Err(e) => assert!(!e.to_string().is_empty()),
-            }
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("auth-family").await;
+                    if let Err(e) = &result {
+                        assert!(!e.to_string().is_empty());
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
         },
     );
 }
@@ -432,12 +485,25 @@ fn is_platform_constraint_str_protocol_substring() {
     assert!(is_platform_constraint_str("protocol not available"));
 }
 
-#[tokio::test]
-async fn create_executor_family_id_in_instance() {
+#[test]
+fn create_executor_family_id_in_instance() {
     temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let exec_result = rt.block_on(create_executor("family-xyz"));
-        assert!(exec_result.is_ok());
+        std::thread::spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(async {
+                let result = create_executor("family-xyz").await;
+                assert!(
+                    result.is_ok(),
+                    "executor creation failed: {:?}",
+                    result.err()
+                );
+            });
+        })
+        .join()
+        .expect("test thread");
     });
 }
 

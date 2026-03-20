@@ -274,38 +274,65 @@ pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> 
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn create_executor_standalone_mode() {
+    #[test]
+    fn create_executor_standalone_mode() {
         temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("test-family"));
-            assert!(
-                result.is_ok(),
-                "standalone executor creation failed: {:?}",
-                result.err()
-            );
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("test-family").await;
+                    assert!(
+                        result.is_ok(),
+                        "standalone executor creation failed: {:?}",
+                        result.err()
+                    );
+                });
+            })
+            .join()
+            .expect("test thread");
         });
     }
 
-    #[tokio::test]
-    async fn create_executor_standalone_mode_true_lowercase() {
+    #[test]
+    fn create_executor_standalone_mode_true_lowercase() {
         temp_env::with_var("TOADSTOOL_STANDALONE", Some("true"), || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("my-family"));
-            assert!(result.is_ok());
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("my-family").await;
+                    assert!(result.is_ok());
+                });
+            })
+            .join()
+            .expect("test thread");
         });
     }
 
-    #[tokio::test]
-    async fn create_executor_standalone_mode_true_uppercase() {
+    #[test]
+    fn create_executor_standalone_mode_true_uppercase() {
         temp_env::with_var("TOADSTOOL_STANDALONE", Some("TRUE"), || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("test-family"));
-            assert!(
-                result.is_ok(),
-                "standalone executor with TRUE should succeed: {:?}",
-                result.err()
-            );
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("test-family").await;
+                    assert!(
+                        result.is_ok(),
+                        "standalone executor with TRUE should succeed: {:?}",
+                        result.err()
+                    );
+                });
+            })
+            .join()
+            .expect("test thread");
         });
     }
 
@@ -318,27 +345,45 @@ mod tests {
         });
     }
 
-    #[tokio::test]
-    async fn create_executor_integrated_mode_when_standalone_unset() {
+    #[test]
+    fn create_executor_integrated_mode_when_standalone_unset() {
         temp_env::with_var_unset("TOADSTOOL_STANDALONE", || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("integrated-family"));
-            match &result {
-                Ok(_) => {}
-                Err(e) => assert!(!e.to_string().is_empty(), "error should have message"),
-            }
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("integrated-family").await;
+                    match &result {
+                        Ok(_) => {}
+                        Err(e) => assert!(!e.to_string().is_empty(), "error should have message"),
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
         });
     }
 
-    #[tokio::test]
-    async fn create_executor_integrated_mode_when_standalone_0() {
+    #[test]
+    fn create_executor_integrated_mode_when_standalone_0() {
         temp_env::with_var("TOADSTOOL_STANDALONE", Some("0"), || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(create_executor("family-0"));
-            match &result {
-                Ok(_) => {}
-                Err(e) => assert!(!e.to_string().is_empty()),
-            }
+            std::thread::spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("runtime");
+                rt.block_on(async {
+                    let result = create_executor("family-0").await;
+                    match &result {
+                        Ok(_) => {}
+                        Err(e) => assert!(!e.to_string().is_empty()),
+                    }
+                });
+            })
+            .join()
+            .expect("test thread");
         });
     }
 

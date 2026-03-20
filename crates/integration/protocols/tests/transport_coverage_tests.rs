@@ -211,7 +211,12 @@ async fn test_trpc_transport_send_message_no_server() {
     assert!(result.is_err());
     if let Err(e) = result {
         let msg = e.to_string().to_ascii_lowercase();
-        assert!(msg.contains("not yet implemented") || msg.contains("not implemented"));
+        assert!(
+            msg.contains("pending phase 3")
+                || msg.contains("not yet implemented")
+                || msg.contains("not implemented"),
+            "unexpected error message: {msg}"
+        );
     }
 }
 

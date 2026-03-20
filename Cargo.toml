@@ -194,21 +194,26 @@ overflow-checks = true
 opt-level = 2
 
 [profile.release]
-# Maximum optimization for production builds
-opt-level = 3
+# genomeBin: size-optimized for single-binary deployment (ecoBin v3.0)
+# NOTE: .cargo/config.toml also sets release profile (strip, panic=abort).
+# Cargo.toml is the single source of truth; config.toml adds target-specific flags.
+opt-level = "z"
 debug = false
 lto = true
 codegen-units = 1
+strip = true
 panic = "abort"
 
+[profile.release-fast]
+# Speed-optimized release for benchmarks and latency-sensitive builds
+inherits = "release"
+opt-level = 3
+strip = false
+
 [profile.bench]
-# Optimized for benchmarking
 opt-level = 3
 debug = false
 lto = true
-
-
-
 
  
 # Production code quality: warnings as errors

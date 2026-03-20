@@ -27,7 +27,7 @@ pub struct ToadStoolTarpcServer {
     start_time: Instant,
     /// Service version (`Arc<str>` avoids allocation on spawn-per-connection clone)
     version: Arc<str>,
-    /// Active workloads (Arc<str> key = zero-copy clone for entry/insert)
+    /// Active workloads (`Arc<str>` key = zero-copy clone for entry/insert)
     workloads: Arc<RwLock<std::collections::HashMap<Arc<str>, WorkloadResult>>>,
     /// Workload executor (real implementation, not mock)
     executor: Arc<dyn WorkloadExecutor + Send + Sync>,

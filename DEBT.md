@@ -1,9 +1,25 @@
 # Active Technical Debt Register
 
-**Date**: March 18, 2026 — S159
+**Date**: March 20, 2026 — S160
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S160 Resolved Debt
+
+- **D-TEST-FLAKY**: `test_detect_neuromorphic_platforms` falsely asserted empty result on a machine with real Akida NPU hardware (`/dev/akida0`). Test evolved to hardware-agnostic — validates platform shape when present, passes on all machines.
+- **D-TEST-NESTED-RT**: 7 integration tests in `unibin_execution_coverage_tests.rs` panicked with "Cannot start a runtime from within a runtime". Converted from `#[tokio::test]` + nested `Runtime::new()` to `#[test]` + `thread::spawn` + `Builder::new_current_thread()`. Total nested-runtime fixes this session: 7 integration + 5 in-module (previous session) = 12.
+- **D-TEST-TRANSPORT-ASSERT**: 2 transport tests asserted stale "not yet implemented" after `TRpcTransport::send_message` error was updated to "tarpc transport pending Phase 3". Assertions broadened to match either message.
+- **D-HARDCODE-AKIDA**: `detect_neuromorphic_platforms()` had 6 magic numbers for Akida hardware specs duplicated in two code paths. Extracted to `AKIDA_*` named constants + `make_akida()` closure.
+- **D-COV-PROPERTIES**: `property_impls.rs` (35%→~90%): Added tests for `RoundTripProperty` (success + failure paths), `ShrinkStrategy::Debug` (all 5 variants), `TestStatistics` (empty/default), `PropertyTestResult::to_report_string` with stats.
+- **D-COV-RESOURCE-TYPES**: `resources/types.rs` (0% inline→covered): 17 new tests covering `ResourceRequirements::validate()` (success + error paths), `ResourceUsage::is_empty()`, serde round-trips for `RuntimeMetrics`, `LoadAverages`, `NetworkStats`, `ProcessInfo`, and all Default impls.
+- **D-COV-SANDBOX-TYPES**: `sandbox/types.rs` (0% inline→covered): 12 new tests covering `SandboxConfig::default()`, `ResourceLimits::default()`, `NetworkConfig::default()`, serde round-trips for `MountType`, `NetworkIsolationMode`, `SandboxLifetime`, `ViolationSeverity`, `FilesystemMount`, `BandwidthLimits`, plus `SandboxStatus` equality.
+- **D-COV-POLICY-TYPES**: `policies/types.rs` (0% inline→covered): 14 new tests covering `PolicyManagerConfig::default()`, `PolicyCondition` variants (Always, Never, Composite, WorkloadType, ResourceUsage, TimeWindow), `PolicyAction` variants (6 tested), `ViolationAction` (5 variants), `LogicalOperator`, `PolicyResult` equality, `FilePolicyConfig::default()`, `PolicyRule`/`SecurityPolicy` serde round-trips.
+- **D-CARGO-PROFILE**: `Cargo.toml` and `.cargo/config.toml` had conflicting `[profile.release]` definitions. Consolidated to `Cargo.toml` as single source of truth.
+- **D-DEAD-DEP**: Unused `procfs` dependency removed from 3 crates (`sandbox`, `policies`, `performance`).
+- **D-HARDCODE-BEARDOG**: BearDog config magic numbers (30s, 300s, 60s) replaced with named constants. `/tmp` fallback replaced with `std::env::temp_dir()`.
+- **D-HARDCODE-RESVAL**: Resource validator magic numbers (CPU cores, network bandwidth thresholds, GPU memory) replaced with named constants.
+- **D-IGNORE-BARE**: 2 bare `#[ignore]` attributes in OpenCL/Vulkan backends replaced with `#[ignore = "reason"]`.
 
 ## S159 Resolved Debt
 

@@ -35,10 +35,8 @@ impl SiliconHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let params = params.ok_or_else(|| JsonRpcError::invalid_params("missing params"))?;
 
-        let measurement: PerformanceMeasurement =
-            serde_json::from_value(params.clone()).map_err(|e| {
-                JsonRpcError::invalid_params(format!("invalid measurement: {e}"))
-            })?;
+        let measurement: PerformanceMeasurement = serde_json::from_value(params.clone())
+            .map_err(|e| JsonRpcError::invalid_params(format!("invalid measurement: {e}")))?;
 
         let unit_name = measurement.silicon_unit.as_str().to_string();
         let op_name = measurement.operation.clone();
@@ -95,13 +93,11 @@ impl SiliconHandler {
             }));
         }
 
-        let best = match matching
-            .iter()
-            .max_by(|a, b| {
-                a.throughput_gflops
-                    .partial_cmp(&b.throughput_gflops)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            }) {
+        let best = match matching.iter().max_by(|a, b| {
+            a.throughput_gflops
+                .partial_cmp(&b.throughput_gflops)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
             Some(m) => m,
             None => return Err(JsonRpcError::internal_error("no matching measurement")),
         };
@@ -121,8 +117,7 @@ impl SiliconHandler {
             recommended_unit: best.silicon_unit,
             recommended_precision: best.precision_mode.clone(),
             estimated_throughput_gflops: best.throughput_gflops,
-            fallback_unit: fallback
-                .map_or(SiliconUnit::ShaderCore, |f| f.silicon_unit),
+            fallback_unit: fallback.map_or(SiliconUnit::ShaderCore, |f| f.silicon_unit),
             fallback_throughput_gflops: fallback.map_or(0.0, |f| f.throughput_gflops),
         };
 
@@ -209,9 +204,7 @@ impl SiliconHandler {
             let tolerance = item
                 .get("tolerance")
                 .and_then(|v| v.as_f64())
-                .ok_or_else(|| {
-                    JsonRpcError::invalid_params("workload item missing 'tolerance'")
-                })?;
+                .ok_or_else(|| JsonRpcError::invalid_params("workload item missing 'tolerance'"))?;
 
             let routed = route_single_op(&store, op, tolerance);
             total_throughput += routed.estimated_throughput_gflops;
@@ -236,11 +229,7 @@ impl SiliconHandler {
 /// 2. Pick the highest-throughput unit as primary
 /// 3. Pick shader-core measurement as fallback (always available)
 /// 4. If no measurements exist, fall back to heuristic defaults
-fn route_single_op(
-    store: &[PerformanceMeasurement],
-    op: &str,
-    tolerance: f64,
-) -> RoutedOperation {
+fn route_single_op(store: &[PerformanceMeasurement], op: &str, tolerance: f64) -> RoutedOperation {
     let matching: Vec<&PerformanceMeasurement> = store
         .iter()
         .filter(|m| m.operation == op && m.tolerance_achieved <= tolerance)
@@ -271,8 +260,10 @@ fn route_single_op(
         Some(Box::new(RoutedOperation {
             operation: op.to_string(),
             silicon_unit: shader_fallback.map_or(SiliconUnit::ShaderCore, |f| f.silicon_unit),
-            precision_mode: shader_fallback
-                .map_or_else(|| precision_for_tolerance(tolerance), |f| f.precision_mode.clone()),
+            precision_mode: shader_fallback.map_or_else(
+                || precision_for_tolerance(tolerance),
+                |f| f.precision_mode.clone(),
+            ),
             estimated_throughput_gflops: shader_fallback.map_or(0.0, |f| f.throughput_gflops),
             reason: String::from("shader core fallback"),
             fallback: None,
@@ -301,56 +292,61 @@ fn route_single_op(
 fn route_heuristic(op: &str, tolerance: f64) -> RoutedOperation {
     let op_lower = op.to_lowercase();
 
-    let (unit, precision, throughput_est, reason) =
-        if op_lower.contains("neighbor") || op_lower.contains("spatial") || op_lower.contains("bvh")
-        {
+    let (unit, precision, throughput_est, reason) = if op_lower.contains("neighbor")
+        || op_lower.contains("spatial")
+        || op_lower.contains("bvh")
+    {
+        (
+            SiliconUnit::RtCore,
+            "fp32",
+            5400.0,
+            "spatial query heuristic — RT cores for BVH traversal",
+        )
+    } else if op_lower.contains("histogram")
+        || op_lower.contains("scatter")
+        || op_lower.contains("deposit")
+    {
+        (
+            SiliconUnit::Rop,
+            "fp32",
+            2700.0,
+            "scatter/additive heuristic — ROPs for per-pixel atomic ops",
+        )
+    } else if op_lower.contains("lookup") || op_lower.contains("table") || op_lower.contains("eos")
+    {
+        (
+            SiliconUnit::TextureUnit,
+            "fp32",
+            4000.0,
+            "table lookup heuristic — TMUs for interpolated reads",
+        )
+    } else if op_lower.contains("matmul")
+        || op_lower.contains("mma")
+        || op_lower.contains("cg_solve")
+    {
+        if tolerance >= 1e-4 {
             (
-                SiliconUnit::RtCore,
-                "fp32",
-                5400.0,
-                "spatial query heuristic — RT cores for BVH traversal",
+                SiliconUnit::TensorCore,
+                "fp16",
+                142_000.0,
+                "matrix heuristic — tensor cores at FP16 for loose tolerance",
             )
-        } else if op_lower.contains("histogram") || op_lower.contains("scatter") || op_lower.contains("deposit")
-        {
-            (
-                SiliconUnit::Rop,
-                "fp32",
-                2700.0,
-                "scatter/additive heuristic — ROPs for per-pixel atomic ops",
-            )
-        } else if op_lower.contains("lookup") || op_lower.contains("table") || op_lower.contains("eos")
-        {
-            (
-                SiliconUnit::TextureUnit,
-                "fp32",
-                4000.0,
-                "table lookup heuristic — TMUs for interpolated reads",
-            )
-        } else if op_lower.contains("matmul") || op_lower.contains("mma") || op_lower.contains("cg_solve")
-        {
-            if tolerance >= 1e-4 {
-                (
-                    SiliconUnit::TensorCore,
-                    "fp16",
-                    142_000.0,
-                    "matrix heuristic — tensor cores at FP16 for loose tolerance",
-                )
-            } else {
-                (
-                    SiliconUnit::ShaderCore,
-                    &*precision_for_tolerance(tolerance),
-                    throughput_for_tolerance(tolerance),
-                    "matrix heuristic — shader cores for tight tolerance",
-                )
-            }
         } else {
             (
                 SiliconUnit::ShaderCore,
                 &*precision_for_tolerance(tolerance),
                 throughput_for_tolerance(tolerance),
-                "default heuristic — shader cores",
+                "matrix heuristic — shader cores for tight tolerance",
             )
-        };
+        }
+    } else {
+        (
+            SiliconUnit::ShaderCore,
+            &*precision_for_tolerance(tolerance),
+            throughput_for_tolerance(tolerance),
+            "default heuristic — shader cores",
+        )
+    };
 
     let fallback = if unit != SiliconUnit::ShaderCore {
         Some(Box::new(RoutedOperation {
@@ -545,7 +541,9 @@ mod tests {
         assert_eq!(ops[2]["silicon_unit"], "rop");
         assert_eq!(ops[2]["operation"], "accumulation");
 
-        let total = result["total_estimated_throughput_gflops"].as_f64().unwrap();
+        let total = result["total_estimated_throughput_gflops"]
+            .as_f64()
+            .unwrap();
         assert!(total > 10_000.0);
     }
 

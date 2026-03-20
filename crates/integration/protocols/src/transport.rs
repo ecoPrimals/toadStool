@@ -109,13 +109,13 @@ impl HttpTransport {
     }
 }
 
-/// Pure Rust tRPC transport implementation (Unix socket-based)
+/// tRPC transport (tarpc over Unix sockets)
 ///
-/// EVOLVED: Uses Unix sockets instead of HTTP! Pure Rust! ✅
+/// Phase 3 transport: JSON-RPC is the required primary protocol per
+/// `wateringHole/PRIMAL_IPC_PROTOCOL.md`; tarpc is the optional high-performance
+/// secondary for primal-to-primal Rust-to-Rust paths.
 #[derive(Debug, Clone)]
-pub struct TRpcTransport {
-    // Pure Rust Unix sockets! ✅
-}
+pub struct TRpcTransport {}
 
 impl Default for TRpcTransport {
     fn default() -> Self {
@@ -129,16 +129,18 @@ impl TRpcTransport {
         Self {}
     }
 
-    /// Send message (Unix socket tRPC; not yet implemented)
+    /// Send message via tarpc over Unix sockets.
+    ///
+    /// Phase 3: tarpc binary transport is planned but not yet wired for
+    /// production primal-to-primal communication. Use JSON-RPC (primary)
+    /// via `pure_jsonrpc` for all current IPC needs.
     pub async fn send_message(
         &self,
         _message: &ProtocolMessage,
         _endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        // EVOLVED: Use UnixStream for inter-primal communication!
-        // Implementation would use tokio::net::UnixStream
         Err(ProtocolError::Transport(
-            "tRPC over Unix sockets - not yet implemented".to_string(),
+            "tarpc transport pending Phase 3 — use JSON-RPC via pure_jsonrpc for IPC".to_string(),
         ))
     }
 

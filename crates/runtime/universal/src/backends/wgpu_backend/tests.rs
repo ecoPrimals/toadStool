@@ -460,7 +460,7 @@ mod wgpu_backend_tests {
     #[test]
     fn test_silicon_probe_rtx4090_has_tensor_rt_cores() {
         use super::super::initialization::probe_silicon_capabilities;
-        use toadstool_core::silicon::{SiliconUnit, TensorCoreGen, RtCoreGen};
+        use toadstool_core::silicon::{RtCoreGen, SiliconUnit, TensorCoreGen};
 
         let info = wgpu::AdapterInfo {
             name: "NVIDIA GeForce RTX 4090".to_owned(),

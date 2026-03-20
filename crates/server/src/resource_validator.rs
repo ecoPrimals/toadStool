@@ -194,11 +194,13 @@ impl ResourceValidator {
         debug!("Querying system capabilities");
 
         // Query CPU
+        const CPU_FALLBACK_CORES: u32 = 4;
+        const CPU_AVAILABLE_PERCENT: u32 = 80;
+
         let total_cpu_cores = std::thread::available_parallelism()
-            .map(|n| u32::try_from(n.get()).unwrap_or(4))
-            .unwrap_or(4);
-        // Assume 80% available (rough heuristic, in production would query actual usage)
-        let available_cpu_cores = (total_cpu_cores * 80) / 100;
+            .map(|n| u32::try_from(n.get()).unwrap_or(CPU_FALLBACK_CORES))
+            .unwrap_or(CPU_FALLBACK_CORES);
+        let available_cpu_cores = (total_cpu_cores * CPU_AVAILABLE_PERCENT) / 100;
 
         let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
             total: 0,
@@ -223,14 +225,18 @@ impl ResourceValidator {
             self.query_gpu_capabilities().await;
 
         let interfaces = toadstool_sysmon::network_stats().unwrap_or_default();
+        const NETWORK_FALLBACK_MBPS: u64 = 100;
+        const NETWORK_HIGH_TRAFFIC_THRESHOLD: u64 = 1_000_000_000;
+        const NETWORK_HIGH_MBPS: u64 = 1000;
+
         let network_bandwidth_mbps = if interfaces.is_empty() {
-            100 // No interfaces detected, conservative fallback
+            NETWORK_FALLBACK_MBPS
         } else {
             let total_received: u64 = interfaces.iter().map(|i| i.received).sum();
-            if total_received > 1_000_000_000 {
-                1000
+            if total_received > NETWORK_HIGH_TRAFFIC_THRESHOLD {
+                NETWORK_HIGH_MBPS
             } else {
-                100
+                NETWORK_FALLBACK_MBPS
             }
         };
 
@@ -262,9 +268,9 @@ impl ResourceValidator {
                 let gpu_count = gpus.len();
                 let gpu_types: Vec<String> = gpus.iter().map(|g| g.name.clone()).collect();
 
-                // Conservative estimate: 2GB per GPU (wgpu doesn't expose actual memory)
-                // Real memory should be queried via vendor-specific APIs when needed
-                let estimated_memory_per_gpu = 2 * 1024 * 1024 * 1024; // 2GB
+                const GPU_ESTIMATED_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+
+                let estimated_memory_per_gpu = GPU_ESTIMATED_MEMORY_BYTES;
                 #[allow(clippy::cast_possible_truncation)]
                 let total_gpu_memory = estimated_memory_per_gpu * gpu_count as u64; // fits: GPU count < u64::MAX
 

@@ -691,7 +691,11 @@ async fn test_trpc_transport_send_message_returns_error() {
     let result = transport.send_message(&msg, &endpoint).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(err.to_string().contains("not yet implemented"));
+    let err_msg = err.to_string().to_ascii_lowercase();
+    assert!(
+        err_msg.contains("pending phase 3") || err_msg.contains("not yet implemented"),
+        "unexpected error message: {err_msg}"
+    );
 }
 
 #[tokio::test]

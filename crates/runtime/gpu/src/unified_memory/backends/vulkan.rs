@@ -457,7 +457,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore] // Requires Vulkan hardware
+    #[ignore = "requires Vulkan GPU hardware"]
     async fn test_vulkan_allocation() {
         let backend = match VulkanBackend::try_init().await {
             Ok(b) => b,

@@ -4,9 +4,7 @@
 use super::types::{GpuAdapterInfo, GpuDeviceType, HardwareFingerprint, is_nvidia_ada_lovelace};
 use crate::types::*;
 use std::sync::Arc;
-use toadstool_core::silicon::{
-    RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen,
-};
+use toadstool_core::silicon::{RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen};
 
 use super::WgpuComputeUnit;
 
@@ -19,7 +17,10 @@ const INTEL_VENDOR_ID: u32 = 0x8086;
 /// Uses vendor ID, device name, and feature flags to infer which
 /// fixed-function hardware units are present. This doesn't require
 /// VFIO — it works with the standard wgpu adapter probe.
-pub(crate) fn probe_silicon_capabilities(info: &wgpu::AdapterInfo, device_type: GpuDeviceType) -> SiliconCapabilities {
+pub(crate) fn probe_silicon_capabilities(
+    info: &wgpu::AdapterInfo,
+    device_type: GpuDeviceType,
+) -> SiliconCapabilities {
     let name_lower = info.name.to_lowercase();
     let is_discrete = matches!(device_type, GpuDeviceType::Discrete);
     let is_nvidia = info.vendor == NVIDIA_VENDOR_ID;
@@ -42,7 +43,8 @@ pub(crate) fn probe_silicon_capabilities(info: &wgpu::AdapterInfo, device_type: 
 
     let has_video_encoder = is_discrete && (is_nvidia || is_amd || is_intel);
 
-    let (estimated_tmu_count, estimated_rop_count) = estimate_tmu_rop(&name_lower, is_nvidia, is_amd);
+    let (estimated_tmu_count, estimated_rop_count) =
+        estimate_tmu_rop(&name_lower, is_nvidia, is_amd);
 
     let has_graphics = is_discrete || matches!(device_type, GpuDeviceType::Integrated);
 
@@ -79,11 +81,23 @@ pub(crate) fn probe_silicon_capabilities(info: &wgpu::AdapterInfo, device_type: 
 fn detect_nvidia_tensor_gen(name: &str) -> Option<TensorCoreGen> {
     if name.contains("h100") || name.contains("h200") {
         Some(TensorCoreGen::Hopper)
-    } else if name.contains("rtx 40") || name.contains("rtx40") || name.contains("l40") || name.contains("ada") {
+    } else if name.contains("rtx 40")
+        || name.contains("rtx40")
+        || name.contains("l40")
+        || name.contains("ada")
+    {
         Some(TensorCoreGen::Ada)
-    } else if name.contains("rtx 30") || name.contains("rtx30") || name.contains("a100") || name.contains("a6000") {
+    } else if name.contains("rtx 30")
+        || name.contains("rtx30")
+        || name.contains("a100")
+        || name.contains("a6000")
+    {
         Some(TensorCoreGen::Ampere)
-    } else if name.contains("rtx 20") || name.contains("rtx20") || name.contains("t4") || name.contains("quadro rtx") {
+    } else if name.contains("rtx 20")
+        || name.contains("rtx20")
+        || name.contains("t4")
+        || name.contains("quadro rtx")
+    {
         Some(TensorCoreGen::Turing)
     } else if name.contains("titan v") || name.contains("v100") || name.contains("gv100") {
         Some(TensorCoreGen::Volta)
@@ -93,7 +107,11 @@ fn detect_nvidia_tensor_gen(name: &str) -> Option<TensorCoreGen> {
 }
 
 fn detect_nvidia_rt_gen(name: &str) -> Option<RtCoreGen> {
-    if name.contains("rtx 40") || name.contains("rtx40") || name.contains("l40") || name.contains("ada") {
+    if name.contains("rtx 40")
+        || name.contains("rtx40")
+        || name.contains("l40")
+        || name.contains("ada")
+    {
         Some(RtCoreGen::Ada)
     } else if name.contains("rtx 30") || name.contains("rtx30") || name.contains("a6000") {
         Some(RtCoreGen::Ampere)

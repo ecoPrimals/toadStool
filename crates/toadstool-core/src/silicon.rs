@@ -85,7 +85,11 @@ impl SiliconUnit {
     pub const fn is_graphics_pipeline_unit(&self) -> bool {
         matches!(
             self,
-            Self::Rasterizer | Self::DepthBuffer | Self::Rop | Self::TextureUnit | Self::Tessellator
+            Self::Rasterizer
+                | Self::DepthBuffer
+                | Self::Rop
+                | Self::TextureUnit
+                | Self::Tessellator
         )
     }
 
