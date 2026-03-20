@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// NPU management commands
+//! NPU management commands for Akida neuromorphic hardware
 
 use crate::Result;
 use akida_driver::setup::NpuSetup;
 use clap::Parser;
 
+/// Top-level NPU subcommand for Akida hardware management
 #[derive(Parser)]
 #[command(name = "npu")]
 #[command(about = "Manage Akida NPU hardware")]
@@ -19,6 +20,7 @@ pub enum NpuCommand {
     List,
 }
 
+/// Options for the `npu setup` subcommand
 #[derive(Parser)]
 pub struct SetupCommand {
     /// Skip confirmation prompts
@@ -27,6 +29,7 @@ pub struct SetupCommand {
 }
 
 impl NpuCommand {
+    /// Dispatch to the appropriate NPU subcommand handler
     pub fn run(self) -> Result<()> {
         match self {
             Self::Setup(cmd) => cmd.run(),

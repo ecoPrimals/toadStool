@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // Vulkan memory mapping requires raw pointer dereference
 //! Vulkan unified memory backend
 //!
 //! **Status**: ✅ PRODUCTION READY with wgpu fallback

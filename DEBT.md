@@ -7,6 +7,21 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 ## S160 Resolved Debt
 
+- **D-CLIPPY-CLIENT**: `toadstool-client` tarpc test code used `String` where `Arc<str>` was expected after zero-copy evolution. Fixed 4 type mismatches + added 4 missing doc comments on `TarpcClientError` variants.
+- **D-CLIPPY-GPU-DOCS**: `toadstool-runtime-gpu` OpenCL `DeviceInfo` (8 fields) and CUDA `DeviceInfo` (10 fields) missing documentation. All 18 struct fields documented with hardware-descriptive docs.
+- **D-CLIPPY-UNIVERSAL**: `spirv_codegen_safety/fleet.rs` `FleetMember` struct and `learning_opportunities()` function missing docs. Documented with purpose and field descriptions.
+- **D-CLIPPY-CLI-NPU**: `cli/commands/npu.rs` `NpuCommand` enum, `SetupCommand` struct, and `run()` method missing docs. Documented.
+- **D-UNSAFE-POLICY**: 4 crates missing `unsafe_code` lint policy. Added `#![deny(unsafe_code)]` to `hw-learn`, `runtime/gpu`, `secure_enclave`. Each module with legitimate unsafe (DRM ioctls, OpenCL/CUDA/Vulkan FFI, memory mapping, kernel ioctls) has targeted `#![allow(unsafe_code)]` with justification. Total: 23 forbid + 20 deny = 43/43 crates covered.
+- **D-COV-GPU-TYPES**: `runtime/gpu/types.rs` (0 tests→26): Default, Debug, serde round-trips, factory methods, Hash/Eq, Clone, Arc sharing for all 20+ public types.
+- **D-COV-POLICY-MGR**: `security/policies/manager.rs` (0 tests→30): PolicyManager creation, config defaults, TOML/YAML loading, save (strict/non-strict), validation, evaluation (Never/WorkloadType/Composite/inheritance), composition, dependency resolution, cache TTL, delete.
+- **D-COV-SERVER-CAPS**: `server/capabilities/mod.rs` (0 tests→25): Capability registration, discovery, matching, peer finding, struct serde round-trips, edge cases (empty, duplicate, missing dir), async discovery.
+- **D-COV-COMPLIANCE**: `distributed/cloud/compliance/validation.rs` (0 tests→28): CloudComplianceEnforcer lifecycle, certification rules, data sovereignty, security tiers (Basic/Standard/High), resource isolation, region computation, error Display/Into.
+- **D-COV-GPU-ENGINE**: `runtime/gpu/engine/mod.rs` (0 tests→38): UniversalGpuEngine constructors/config, async device/workload API, RuntimeEngine initialize/execute/capabilities/supports_workload, BackendSelectionStrategy variants, ComputeEngineStatistics, EvolutionMetrics, serde round-trips.
+- **D-COV-CONFIG-UTILS**: `core/config/config_utils/mod.rs` (0 tests→24): ConfigUtils network/paths/env/defaults, EnvConfigLoader, edge cases (missing vars, invalid numerics, invalid bools), serde round-trips for NetworkEnvConfig/EnvironmentConfig.
+- **D-COV-TARPC-EXPAND**: `server/tarpc_server.rs` (supplemental→13): semantic_methods helpers, serde round-trips for ExecutionMetrics/ComputeUnit/AvailableResources/HealthStatus/WorkloadResult, StandaloneExecutor default, workload map edge cases, running-workload health metrics.
+- **D-COV-DETECTION**: `distributed/universal/detection/mod.rs` (0 tests→27): detect_all() host-conditional, substrate types Default/Clone/Debug/serde, error paths (invalid JSON, wrong shape).
+- **D-COV-PLATFORM**: `management/monitoring/platform.rs` (0 tests→11): get_platform_metrics for own/custom/invalid PIDs, MonitoringConfig/MonitoringGranularity/ThresholdAction/ResourceMonitorError Clone/Debug/serde, RuntimeMetrics serde idempotency.
+- **D-COV-SANDBOX-MGR**: `security/sandbox/manager.rs` (0 tests→17): SandboxManager lifecycle (create/start/stop/destroy), resource limit validation (memory 0, CPU 0/100), mount validation, monitoring, policy/logs, public types Default/Clone/Debug/serde.
 - **D-TEST-FLAKY**: `test_detect_neuromorphic_platforms` falsely asserted empty result on a machine with real Akida NPU hardware (`/dev/akida0`). Test evolved to hardware-agnostic — validates platform shape when present, passes on all machines.
 - **D-TEST-NESTED-RT**: 7 integration tests in `unibin_execution_coverage_tests.rs` panicked with "Cannot start a runtime from within a runtime". Converted from `#[tokio::test]` + nested `Runtime::new()` to `#[test]` + `thread::spawn` + `Builder::new_current_thread()`. Total nested-runtime fixes this session: 7 integration + 5 in-module (previous session) = 12.
 - **D-TEST-TRANSPORT-ASSERT**: 2 transport tests asserted stale "not yet implemented" after `TRpcTransport::send_message` error was updated to "tarpc transport pending Phase 3". Assertions broadened to match either message.
@@ -154,7 +169,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~85% line coverage** (~182K production lines). **11,956+ tests passing** (default features). Target 90%. Push ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (187K lines, llvm-cov S160). **21,514+ tests passing** (267 new S160 across 10 test files). Target 90%. Top remaining gaps: `byob_impl/mod.rs`, `agent_backend.rs`, `hw_learn/auto_init.rs`, `science_domains.rs`. Push ongoing. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |

@@ -8,14 +8,14 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 errors, 0 warnings across all 58 crates** |
 | `cargo doc --all-features --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **21,275 tests, 0 failures, 222 ignored**. S160: +49 new tests, 9 broken tests fixed. |
-| `cargo llvm-cov` | **~83% line** | ~186K lines instrumented. Target 90%. S160: +49 test expansions. |
+| `cargo test --workspace` | PASS | **21,514+ tests, 0 failures**. S160: +267 new coverage tests across 10 files, 9 broken tests fixed. |
+| `cargo llvm-cov` | **~84% line** | 187K lines instrumented. Target 90%. S160: +267 new tests, coverage push ongoing. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | License compliance | PASS | **AGPL-3.0-or-later**: all Cargo.toml have `license.workspace = true` + all .rs files have SPDX headers |
 | Production panics | PASS | **0 production panic!()** |
 | Sovereignty | PASS | Capability-based discovery. Zero hardcoded primal names. |
 | ecoBin v3.0 | PASS | First primal certified. Zero infrastructure C. |
-| `#![forbid(unsafe_code)]` | PASS | **29 crates forbid, ~10 deny** (S158: +9 upgraded) |
+| `#![forbid(unsafe_code)]` | PASS | **23 crates forbid, 20 deny** — 43/43 crates covered (S160: +4 crates added) |
 
 ## Codebase Metrics
 

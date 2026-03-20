@@ -21,6 +21,7 @@ mod calibration;
 mod precision_brain;
 mod types;
 
+/// GPU fleet management for cross-device learning opportunity discovery
 #[cfg(feature = "hardware-learning")]
 pub mod fleet;
 

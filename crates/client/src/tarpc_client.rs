@@ -16,12 +16,16 @@ use thiserror::Error;
 /// Error type for ToadStool tarpc client operations.
 #[derive(Debug, Error)]
 pub enum TarpcClientError {
+    /// Failed to establish transport connection (Unix socket or TCP)
     #[error("Connection failed: {0}")]
     Connection(String),
+    /// RPC transport-layer error from tarpc
     #[error("RPC transport error: {0}")]
     Transport(#[from] tarpc::client::RpcError),
+    /// Service-level error returned by the remote handler
     #[error("Service error: {0}")]
     Service(String),
+    /// Capability-based discovery failed to locate a compute service
     #[error("Discovery failed: {0}")]
     Discovery(String),
 }
@@ -290,6 +294,7 @@ impl ToadStoolTarpcClient {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::sync::Arc;
     use toadstool_integration_protocols::tarpc_service::{ResourceRequirements, WorkloadPriority};
 
     // Integration tests require actual server running
@@ -336,8 +341,8 @@ mod tests {
     #[test]
     fn test_workload_submission_structure() {
         let submission = WorkloadSubmission {
-            workload_id: "work-test-123".to_string(),
-            workload_type: "gpu_compute".to_string(),
+            workload_id: Arc::from("work-test-123"),
+            workload_type: Arc::from("gpu_compute"),
             data: bytes::Bytes::from(vec![1, 2, 3, 4]),
             metadata: HashMap::new(),
             priority: WorkloadPriority::Normal,
@@ -349,7 +354,7 @@ mod tests {
             },
         };
 
-        assert_eq!(submission.workload_id, "work-test-123");
-        assert_eq!(submission.workload_type, "gpu_compute");
+        assert_eq!(&*submission.workload_id, "work-test-123");
+        assert_eq!(&*submission.workload_type, "gpu_compute");
     }
 }

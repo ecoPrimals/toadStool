@@ -5,12 +5,17 @@ use hw_learn::brain_ext::learning_advisor::{FleetGpu, LearningAdvisor, LearningO
 use hw_learn::distiller::{GpuArch, Vendor};
 use toadstool_sysmon::{FirmwareInventory, GpuDevice};
 
+/// A GPU in the local fleet paired with its precision brain and firmware state
 pub struct FleetMember {
+    /// Discovered GPU device from sysmon
     pub device: GpuDevice,
+    /// Calibrated precision brain for this device
     pub brain: PrecisionBrain,
+    /// Firmware inventory (init state, compute viability)
     pub firmware: FirmwareInventory,
 }
 
+/// Analyze a fleet of GPUs for hw-learn opportunities (firmware gaps, untested arches)
 pub fn learning_opportunities(fleet: &[FleetMember]) -> Vec<LearningOpportunity> {
     let fleet_gpus: Vec<FleetGpu> = fleet
         .iter()

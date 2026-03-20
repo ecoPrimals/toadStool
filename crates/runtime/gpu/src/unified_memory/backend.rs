@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // Unsafe Send/Sync impls for GPU allocation handles
 //! Backend trait for unified memory implementations
 
 use crate::unified_memory::types::*;

@@ -44,7 +44,7 @@ use crate::types::*;
 /// OpenCL compute unit (DEPRECATED - use wgpu instead)
 ///
 /// **Deep Debt Evolution**:
-/// - ✅ This stub correctly returns errors (no panics)
+/// - ✅ Returns clear errors when OpenCL unavailable (no panics)
 /// - ✅ Clear migration path to wgpu
 /// - ✅ Feature-gated for legacy compatibility
 ///

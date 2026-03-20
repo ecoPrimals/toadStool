@@ -117,6 +117,7 @@ jit = ["cranelift-jit", "wasmtime"]
 testing = []
 
 [dev-dependencies]
+bytes = { workspace = true }
 tokio-test = { workspace = true }
 proptest = "1.0"
 criterion = "0.5"

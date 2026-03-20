@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // OpenCL kernel enqueue requires unsafe per ocl crate API
 //! OpenCL Backend - Core device discovery, creation, and execution
 //!
 //! Handles platform/device enumeration, context creation, program compilation,
@@ -11,16 +12,24 @@ use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 
-/// Device information discovered at runtime
+/// Device information discovered at runtime via OpenCL platform queries
 #[derive(Debug, Clone)]
 pub struct DeviceInfo {
+    /// Human-readable device name (e.g. "NVIDIA GeForce RTX 3090")
     pub name: String,
+    /// Vendor string (e.g. "NVIDIA Corporation")
     pub vendor: String,
+    /// OpenCL version string reported by the device
     pub version: String,
+    /// Number of parallel compute units on the device
     pub max_compute_units: u32,
+    /// Maximum work items per work group
     pub max_work_group_size: usize,
+    /// Total global memory in bytes
     pub global_mem_size: u64,
+    /// Per-compute-unit local (shared) memory in bytes
     pub local_mem_size: u64,
+    /// Maximum clock frequency in MHz
     pub max_clock_frequency: u32,
 }
 

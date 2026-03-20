@@ -48,18 +48,28 @@ pub struct CudaBackend {
     pub(crate) module_cache: Arc<tokio::sync::RwLock<HashMap<String, Arc<CudaModule>>>>,
 }
 
-/// CUDA device information discovered at runtime
+/// CUDA device information discovered at runtime via cudarc device queries
 #[derive(Debug, Clone)]
 pub struct DeviceInfo {
+    /// Human-readable device name (e.g. "NVIDIA GeForce RTX 3090")
     pub name: String,
+    /// Device ordinal (index in CUDA device list)
     pub ordinal: usize,
+    /// SM compute capability as (major, minor) -- e.g. (8, 6) for Ampere
     pub compute_capability: (usize, usize),
+    /// Total device memory in bytes
     pub total_memory: usize,
+    /// Number of streaming multiprocessors
     pub multiprocessor_count: usize,
+    /// Maximum threads per block (typically 1024)
     pub max_threads_per_block: usize,
+    /// Maximum resident threads per multiprocessor
     pub max_threads_per_multiprocessor: usize,
+    /// Core clock rate in kHz
     pub clock_rate_khz: usize,
+    /// Memory clock rate in kHz
     pub memory_clock_rate_khz: usize,
+    /// Memory bus width in bits (e.g. 384 for RTX 3090)
     pub memory_bus_width: usize,
 }
 

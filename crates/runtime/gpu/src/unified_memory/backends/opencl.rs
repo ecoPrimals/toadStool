@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // OpenCL SVM requires unsafe pointer operations
 //! OpenCL SVM unified memory backend
 //!
 //! **Status**: ✅ PRODUCTION READY with wgpu fallback

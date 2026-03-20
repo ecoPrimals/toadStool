@@ -57,6 +57,7 @@
 //! - **Energy**: 70-80% savings from pre-compression (NestGate)
 //! - **Latency**: Decompression ~5ms/MB, encryption ~2ms/MB
 
+#![deny(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![warn(missing_docs)]
 #![warn(clippy::all)]

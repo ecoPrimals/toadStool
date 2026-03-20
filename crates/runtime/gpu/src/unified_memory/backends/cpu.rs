@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // Aligned allocation via alloc::Layout for GPU-compatible buffers
 //! CPU fallback backend - Always available
 //!
 //! # Safety Evolution

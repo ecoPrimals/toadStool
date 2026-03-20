@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // Page-locked memory allocation requires mmap/mlock kernel FFI
 //! Pinned Host Memory for Fast GPU Transfers
 //!
 //! Page-locked (pinned) host memory enables:

@@ -13,6 +13,6 @@ pub mod doctor;
 mod mode;
 pub mod transport;
 
-// NPU commands require akida-driver (optional)
+/// NPU management commands (Akida hardware setup, status, listing)
 #[cfg(feature = "npu")]
 pub mod npu;

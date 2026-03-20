@@ -13,7 +13,7 @@
 //! Cross-platform resource monitoring with configurable granularity.
 
 // Module declarations
-mod platform;
+pub mod platform;
 pub mod process;
 pub mod thresholds;
 pub mod types;

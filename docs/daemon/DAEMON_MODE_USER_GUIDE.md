@@ -488,10 +488,8 @@ Key metrics:
 
 ## 📚 Next Steps
 
-- [API Reference](./API_REFERENCE.md)
 - [Architecture Deep Dive](../architecture/DAEMON_MODE_EVOLUTION.md)
-- [Integration Examples](./INTEGRATION_EXAMPLES.md)
-- [Production Deployment](./PRODUCTION_GUIDE.md)
+- [Production Deployment](../reference/PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ## 🎯 Summary
 
