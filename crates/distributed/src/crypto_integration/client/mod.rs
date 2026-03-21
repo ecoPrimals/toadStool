@@ -8,7 +8,8 @@
 //! - Zero hardcoding: Endpoints discovered at runtime by capability
 //! - Multi-vendor: Works with ANY crypto service (BearDog, Vault, KMS, etc.)
 //!
-//! Submodules: [`discovery`] for capability-based service lookup; [`operations`] for RPC calls;
+//! Submodules: [`CryptoServiceDiscovery`] for capability-based service lookup;
+//! [`CryptoServiceClient`] for RPC calls;
 //! the `tests` submodule (crate tests only) covers configuration and wire-format types.
 
 mod discovery;

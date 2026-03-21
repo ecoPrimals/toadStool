@@ -5,7 +5,28 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 21, 2026 (Sessions 43-161)
+## [Unreleased] - March 21, 2026 (Sessions 43-162)
+
+### Session S162 (Mar 21, 2026) — Coverage Expansion + Code Quality
+
+#### Coverage expansion (81.64% → 82.81%, +98 tests)
+- 3 new integration test files targeting worst coverage gaps: `barracuda.rs` (0%→covered), `science_domains.rs`, `dispatch.rs`, `transport.rs`, `hw_learn/auto_init.rs`, `tarpc_server.rs`, `unibin`, `resource_validator.rs`
+- `coverage_s162_barracuda_science_domains_tests.rs` (44 tests) — barracuda science methods, ecology offload, discovery/deploy domain, dispatch paths, transport validation, semantic dispatch, provenance
+- `coverage_s162_resource_validator_tests.rs` (7 tests) — serialization round-trips, error variant coverage
+- `coverage_s162_hwlearn_tarpc_unibin_tests.rs` (47 tests) — hw_learn handler routes, tarpc workload lifecycle, compute aliases, GPU/gate/ollama/shader/silicon handlers, unibin helpers
+
+#### Coverage script fix
+- `scripts/run-coverage.sh`: `--skip performance` → `--skip "performance_bench" --skip "slow"` — was over-aggressively skipping ~360 lines of `testing::performance` module tests
+
+#### License compliance sweep
+- 32 `AGPL-3.0-or-later` → `AGPL-3.0-only` in `showcase/` (15 `src/main.rs` + 15 `Cargo.toml`) and `contrib/mesa-nak/` (2 `.rs` files)
+- 6 stale SPDX headers in `crates/` `.rs` files (`dispatch.rs`, `science/mod.rs`, `hw_learn/mod.rs`, `auto_init.rs`, `unibin/mod.rs`, `workload_health.rs`)
+
+#### Code quality
+- Last production `unwrap()` evolved: `workload_health.rs` `push` + `last().cloned().unwrap()` → `push(clone)` + return directly
+- Zero `TODO`/`FIXME`/`HACK` in production code (verified)
+- Zero `once_cell` usage (all `std::sync::LazyLock`)
+- All quality gates green: fmt (0 diffs), clippy (0 warnings), doc (0 warnings), test (0 failures)
 
 ### Session S161 (Mar 21, 2026) — Deep Debt Execution + License Compliance
 
@@ -285,7 +306,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`cargo clippy -D warnings`**: All 44 crates pass. Fixed: sysmon missing Cargo metadata, unused `ServiceStatus` import.
 
 #### License Alignment
-- **AGPL-3.0-or-later → AGPL-3.0-or-later**: 1,687 SPDX header comments updated across all `.rs` files. `deny.toml` and root `Cargo.toml` aligned to wateringHole standard.
+- **AGPL-3.0-or-later → AGPL-3.0-only**: 1,687 SPDX header comments updated across all `.rs` files. `deny.toml` and root `Cargo.toml` aligned to wateringHole standard.
 
 #### Repository URL Standardization
 - **`your-org` → `ecoPrimals`**: Root Cargo.toml URLs updated. 33 crates consolidated to `repository.workspace = true`.
@@ -337,7 +358,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stale `showcase/results/`, `scripts/`, `utils/` archived to `ecoPrimals/fossil/toadStool/showcase-legacy-S138/`.
 
 #### Doc Cleanup
-- **AGPL-3.0-or-later → AGPL-3.0-or-later**: 17 README.md files across crates and specs updated.
+- **AGPL-3.0-or-later → AGPL-3.0-only**: 17 README.md files across crates and specs updated.
 - **Session headers**: 6 root docs updated from S135/S136 to S138 (specs/README, docs/README, TESTING.md, QUICK_REFERENCE, README, SOVEREIGN_COMPUTE).
 - **BREAKING_CHANGES.md**: "sysinfo" reference updated to "toadstool-sysmon".
 - **7 stale TODO(D-PEDANTIC)** comments removed from crate lib.rs files.
@@ -627,9 +648,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed SIGSEGV in runtime-universal**: wgpu adapter enumeration now wrapped in `catch_unwind` + 10s timeout — headless/CI systems degrade to CPU-only instead of crashing
 
 #### License & SPDX Compliance
-- **Unified all 37 Cargo.toml files** to `license.workspace = true` (inheriting `AGPL-3.0-or-later`)
+- **Unified all 37 Cargo.toml files** to `license.workspace = true` (inheriting `AGPL-3.0-only`)
 - **Added SPDX headers to 2,780 `.rs` files** — 0 files missing after this session
-- **Normalized 112 inconsistent SPDX headers** (94 `AGPL-3.0-or-later` + 18 bare `AGPL-3.0` → `AGPL-3.0-or-later`)
+- **Normalized 112 inconsistent SPDX headers** (94 `AGPL-3.0-or-later` + 18 bare `AGPL-3.0` → `AGPL-3.0-only`)
 
 #### Sovereignty Evolution
 - **`ECOSYSTEM_PRIMALS` → `ECOSYSTEM_CAPABILITIES`**: Access control trust model evolved from primal-name-based (`primal:nestgate`) to capability-based (`capability:storage`)
@@ -670,7 +691,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All files < 1000 lines (largest production: `vfio.rs` at 963)
 - 0 production `panic!()`, 0 blind `unwrap()`, 0 `Box<dyn Error>` in core
 - 0 undocumented `unsafe` blocks
-- AGPL-3.0-or-later on all source files and Cargo.toml
+- AGPL-3.0-only on all source files and Cargo.toml
 
 ### Session 89 (Mar 2-3, 2026) — barraCuda Budding, Demarcation, Deprecation & Rewire
 

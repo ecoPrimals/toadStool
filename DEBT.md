@@ -1,9 +1,24 @@
 # Active Technical Debt Register
 
-**Date**: March 21, 2026 — S161
+**Date**: March 21, 2026 — S162
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S162 Resolved Debt
+
+- **D-COV-BARRACUDA**: `barracuda.rs` coverage 0% → covered: 3 tests exercising `science_activations_list`, `science_rng_capabilities`, `science_special_functions` through full JSON-RPC handler dispatch.
+- **D-COV-SCIENCE-DOMAINS**: `science_domains.rs` coverage expanded: 14 ecology method variants, discovery (primals, health, direct_rpc, topology), deploy (capability_call flat + qualified_method + error paths, graph_status). All `forward_to_primal` error branches now covered via missing-socket paths.
+- **D-COV-DISPATCH**: `dispatch.rs` coverage expanded: submit (valid binary, missing binary, empty binary, coral-not-available vfio mode), forward (missing endpoint, unreachable, missing params), status/result (missing job_id), capabilities structure validation.
+- **D-COV-TRANSPORT**: `transport.rs` coverage expanded: discover, list, route (missing params/rx_id/tx_id), open (missing params/source_slot/target_slot, no PCIe link), stream (missing params, unregistered rx), status (no streams, unknown stream_id).
+- **D-COV-HWLEARN**: hw_learn handler routes coverage: observe/distill/apply/share_recipe param requirements, auto_init (no GPU error, dry_run param parsing), auto_init_all (empty GPUs, parallel flag), status, vfio_devices, GPU telemetry.
+- **D-COV-TARPC**: tarpc workload lifecycle: submit (JsonWorkloadSubmission format), query_status, list_workloads, cancel_workload, query_capabilities. compute.* aliases: submit → status → result → list → cancel.
+- **D-COV-UNIBIN**: unibin helper functions: resolve_family_id (default + override), resolve_node_id, exit_codes, ShutdownSignal variants (Debug, PartialEq, Clone, Copy), is_platform_constraint_str, is_selinux_enforcing, write_tcp_discovery_file, socket_filename_for_family, ensure_biomeos_directory.
+- **D-COV-RESOURCE-VALIDATOR**: resource_validator coverage: ResourceGap/SystemCapabilities/AvailabilityResult serialization round-trips (with gaps, without gaps), ValidationError variants (Display, Debug, Clone).
+- **D-COVERAGE-SCRIPT**: `run-coverage.sh` `--skip performance` was over-aggressively skipping all tests with "performance" in name (killing ~360 lines of `testing::performance` module coverage). Changed to `--skip "performance_bench" --skip "slow"`.
+- **D-UNWRAP-WORKLOAD-HEALTH**: Last production `unwrap()` in `workload_health.rs:186` evolved to `clone()` — `push(interrupt)` + `last().cloned().unwrap()` → `push(interrupt.clone())` + return `interrupt` directly.
+- **D-LICENSE-SHOWCASE**: 32 files across `showcase/` and `contrib/mesa-nak/` still had `AGPL-3.0-or-later` SPDX headers + Cargo.toml license fields. All updated to `AGPL-3.0-only`.
+- **D-SPDX-CRATE-RS**: 4 remaining `.rs` SPDX headers in `crates/` (dispatch.rs, science/mod.rs, hw_learn/mod.rs, auto_init.rs, unibin/mod.rs, workload_health.rs) fixed from `AGPL-3.0-or-later` to `AGPL-3.0-only`.
 
 ## S161 Resolved Debt
 

@@ -4,7 +4,7 @@
 **Source:** hotSpring / ToadStool joint analysis  
 **Context:** `NVK_EIGENSOLVE_PERF_ANALYSIS_FEB18_2026.md` + Jacobi eigensolve benchmarks  
 **Applies to:** Mesa NAK (NVIDIA Turing/Volta backend, SM70/SM75)  
-**License:** AGPL-3.0-or-later
+**License:** AGPL-3.0-only
 
 ---
 
@@ -239,4 +239,4 @@ Each patch should be validated with the `validate_nak_eigensolve` binary
 
 ---
 
-*License: AGPL-3.0-or-later. Sovereign community property.*
+*License: AGPL-3.0-only. Sovereign community property.*

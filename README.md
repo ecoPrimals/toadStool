@@ -42,11 +42,11 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,275 tests, 0 failures** (S160), 222 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,600+ tests, 0 failures** (S162), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
-| Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid + 20 deny** `unsafe_code` |
+| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
 | Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
@@ -57,7 +57,7 @@ Nest    = Tower  + NestGate           <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
+| License | AGPL-3.0-only -- root LICENSE file + SPDX headers on all files |
 | File size limit | All production files under 1000 lines (largest: 451; hw_learn/wgpu_backend refactored S155b) |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
@@ -335,4 +335,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 20, 2026 — S160. 21,275 workspace tests, 0 failures. ~83% line coverage (186K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 20, 2026 — S160. 21,275 workspace tests, 0 failures. ~83% line coverage (186K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. Rust 1.85+ (edition 2024, MSRV).

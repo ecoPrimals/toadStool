@@ -87,6 +87,6 @@ See `PURE_RUST_TRACKING.md` at the repo root for the pure Rust migration roadmap
 
 ## License
 
-Licensed under AGPL-3.0-or-later. See [LICENSE](../../../LICENSE) for details.
+Licensed under AGPL-3.0-only. See [LICENSE](../../../LICENSE) for details.
 
 This copyleft license ensures all derivative works remain open source, preventing corporate extend-and-extinguish tactics.

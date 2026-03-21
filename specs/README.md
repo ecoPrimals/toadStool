@@ -104,26 +104,26 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 | Gate | Standard | Status |
 |------|----------|--------|
 | `cargo fmt` | Clean | ✅ |
-| `cargo clippy --pedantic --nursery -D warnings` | 0 errors, 0 warnings | ✅ S159 |
-| `cargo doc --no-deps` | 0 warnings | ✅ S159 |
-| `#![warn(missing_docs)]` | All 58 crates | ✅ S159 |
-| License | AGPL-3.0-or-later (SPDX on all files) | ✅ |
-| Production `panic!()` / `.unwrap()` | 0 in non-test code | ✅ |
+| `cargo clippy --pedantic --nursery -D warnings` | 0 errors, 0 warnings | ✅ S162 |
+| `cargo doc --no-deps` | 0 warnings | ✅ S162 |
+| `#![warn(missing_docs)]` | All 58 crates | ✅ S162 |
+| License | AGPL-3.0-only (SPDX on all files) | ✅ |
+| Production `panic!()` / `.unwrap()` | 0 in non-test code | ✅ S162 |
 | Unsafe code | All documented with `// SAFETY:` | ✅ |
 | Files > 1000 lines | 0 | ✅ |
-| Hardcoded IPs/ports/primal names | 0 in production | ✅ S159 |
-| Test coverage | Target 90%, current ~85% | 🔄 D-COV |
+| Hardcoded IPs/ports/primal names | 0 in production | ✅ S162 |
+| Test coverage | Target 90%, current 82.81% (llvm-cov) | 🔄 D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
-### Key Numbers (S159)
+### Key Numbers (S162)
 
-- **58 workspace crates**, 1,896 `.rs` files, 565,323 lines
-- **11,956+ tests** (default features, 0 failures)
+- **58 workspace crates**, 1,933+ `.rs` files, ~570K lines
+- **21,600+ tests** (all features, 0 failures)
 - **96+ JSON-RPC methods** (`domain.operation` semantic naming)
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
 - **VFIO interface** — BAR0, DMA, power management (nvpmu)
 - **NPU dispatch** — Akida AKD1000/1500 (kernel, VFIO, userspace)
-- **29 crates** `#![forbid(unsafe_code)]`, remainder `#![deny(unsafe_code)]`
+- **23 crates** `#![forbid(unsafe_code)]`, **20 crates** `#![deny(unsafe_code)]` (43/43)
 - **ecoBin v3.0 certified** — pure Rust, zero C application deps
 - **Rust 2024 edition**, MSRV 1.85
 

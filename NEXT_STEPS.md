@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 21, 2026 -- S161 Deep Debt Execution + License Compliance
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,514+ tests (0 failures) | 1,852 `.rs` files, 570K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny)
-**Latest**: S161 — 10 large production files refactored (<800 lines); transport/emulator stubs evolved; `hosting/recursive` + `protocols/config` hardcoding reduced; `nvpmu/vfio` safe struct bytes; coverage expanded (byob_impl, agent_backend, auto_init); **AGPL-3.0-only** (1,901 SPDX + `Cargo.toml`); lint expectations + transport tests fixed. ecoBin v3.0 certified.
+**Updated**: March 21, 2026 -- S162 Coverage Expansion + Code Quality
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,600+ tests (0 failures) | 1,852 `.rs` files, 570K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny)
+**Latest**: S162 — Coverage 81.64% → 82.81% (+98 tests across barracuda, science_domains, dispatch, transport, hw_learn, tarpc, unibin, resource_validator); coverage script `--skip` pattern fixed; +32 SPDX headers (showcase/contrib); last production `unwrap` in `workload_health.rs` evolved to `clone`; remaining `AGPL-3.0-or-later` swept from all code.
 
 ---
 
@@ -31,9 +31,9 @@ parameter tuning.
 All `set_var`/`remove_var` calls wrapped in `unsafe {}` across 14 files. Mangled
 syntax fixed in 3 server files. Test suite fully unblocked.
 
-### P1: Test Coverage → 90% (D-COV) — Ongoing (S161)
+### P1: Test Coverage → 90% (D-COV) — Ongoing (S162)
 
-**~84–85% line coverage** (~187K lines instrumented, llvm-cov). **21,514+ tests** (0 failures). Target 90%. **S161** expanded coverage (`byob_impl`, `agent_backend`, `auto_init`) alongside large-file refactors. Push ongoing — hardware mocks for remaining gaps (e.g. `science_domains.rs`).
+**~82.81% line coverage** (186K lines instrumented, llvm-cov). **21,600+ tests** (0 failures). Target 90%. **S162** expanded coverage: 3 new test files (+98 tests) targeting barracuda (0%→covered), science_domains (51.89%→expanded), dispatch (67%→expanded), transport (58%→expanded), hw_learn/auto_init, tarpc workload lifecycle, unibin helpers, resource_validator. Coverage script `--skip performance` fixed to `--skip "performance_bench"` (was over-skipping ~360 lines of `testing::performance` module). Remaining gap: ~7.2% (~13,400 lines) — largest gaps in hardware-dependent paths, distributed modules, and runtime backends requiring integration-level testing.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 

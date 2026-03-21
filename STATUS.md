@@ -1,4 +1,4 @@
-# Status -- March 21, 2026 (S161 Deep Debt Execution + License Compliance)
+# Status -- March 21, 2026 (S162 Coverage Expansion + Code Quality)
 
 ## Quality Gates
 
@@ -8,10 +8,10 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 errors, 0 warnings across all 58 crates** |
 | `cargo doc --all-features --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **21,514+ tests, 0 failures**. S160: +267 coverage tests / 9 test fixes. S161: +coverage (byob_impl, agent_backend, auto_init), transport/jobs lint fixes. |
-| `cargo llvm-cov` | **~84% line** | 187K lines instrumented. Target 90%. S161: coverage push ongoing toward 90%. |
+| `cargo test --workspace` | PASS | **21,600+ tests, 0 failures**. S162: +98 coverage tests (barracuda, science_domains, dispatch, transport, hw_learn, tarpc, unibin, resource_validator). |
+| `cargo llvm-cov` | **~83% line** | 186K lines instrumented. Target 90%. S162: 81.64% → 82.81% (+1.17%); coverage script `--skip` pattern fixed to stop over-skipping `performance` tests. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
-| License compliance | PASS | **AGPL-3.0-only** (wateringHole STANDARDS): root `Cargo.toml` + **1,901** SPDX headers aligned; all crates inherit workspace license |
+| License compliance | PASS | **AGPL-3.0-only** (wateringHole STANDARDS): root `Cargo.toml` + **1,933+** SPDX headers aligned; S162: +32 showcase/contrib files fixed. All crates inherit workspace license |
 | Production panics | PASS | **0 production panic!()** |
 | Sovereignty | PASS | Capability-based discovery. Zero hardcoded primal names. |
 | ecoBin v3.0 | PASS | First primal certified. Zero infrastructure C. |

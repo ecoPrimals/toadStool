@@ -84,7 +84,7 @@ run_tier1() {
             --package "$crate" \
             --no-report \
             --ignore-filename-regex "tests/" \
-            -- --skip performance \
+            -- --skip "performance_bench" --skip "slow" \
             2>&1 | grep -E "test result|error" || true
     done
     

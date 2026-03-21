@@ -182,8 +182,8 @@ impl WorkloadHealthMonitor {
             timestamp_ms,
         };
 
-        self.interrupts.push(interrupt);
-        self.interrupts.last().cloned().unwrap()
+        self.interrupts.push(interrupt.clone());
+        interrupt
     }
 
     fn select_action(&self, anomaly: WorkloadAnomaly) -> InterruptAction {

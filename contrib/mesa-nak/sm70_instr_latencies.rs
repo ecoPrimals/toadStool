@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! SM70 (Volta) instruction latency tables for Mesa NAK.
 //!
 //! **This file is the prepared upstream contribution patch for Mesa's**

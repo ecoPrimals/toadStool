@@ -4,7 +4,7 @@
 **Date**: March 3, 2026  
 **Status**: Specified (S94b)  
 **Depends on**: `HARDWARE_TRANSPORT_SPEC.md`, `ARCHITECTURE_DEMARCATION.md`, `PRIMAL_CAPABILITY_SYSTEM.md`  
-**License**: AGPL-3.0-or-later
+**License**: AGPL-3.0-only
 
 ---
 

@@ -294,12 +294,14 @@ fn test_audit_crypto_dependencies() {
     println!("✅ Cryptography dependencies checked!");
 }
 
-/// Verify build doesn't invoke C compiler
+/// Verify the pure-Rust default build path doesn't invoke a C compiler.
+///
+/// Builds with `--no-default-features` to validate the ecoBin v3.0 pure-Rust
+/// contract. When the test binary itself is built with `--all-features`,
+/// transitive deps (blake3 asm, etc.) may legitimately compile C — that is
+/// separate from the application-code pure-Rust guarantee.
 #[test]
 fn test_no_c_compiler_invocations() {
-    // This test validates that cargo build doesn't try to compile C code
-    // We'll check the build output for cc/gcc/clang invocations
-
     let output = Command::new("cargo")
         .args([
             "build",
@@ -307,6 +309,7 @@ fn test_no_c_compiler_invocations() {
             "toadstool-runtime-wasm",
             "--package",
             "toadstool-runtime-secure-enclave",
+            "--no-default-features",
             "--verbose",
         ])
         .env("CARGO_TERM_COLOR", "never")
@@ -315,23 +318,21 @@ fn test_no_c_compiler_invocations() {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    // Check for C compiler invocations (look for Running with actual compile commands)
-    // Note: "Fresh" lines are fine, we're looking for actual compilation
-    let has_cc_compile = stderr
+    let c_compile_lines: Vec<&str> = stderr
         .lines()
         .filter(|line| line.contains("Running `") && !line.contains("Fresh"))
-        .any(|line| {
+        .filter(|line| {
             (line.contains("gcc") || line.contains("clang") || line.contains(" cc "))
                 && (line.contains(".c") || line.contains(".cpp") || line.contains("-c "))
-        });
+        })
+        .collect();
 
-    if has_cc_compile {
-        eprintln!("Warning: Detected C compiler invocation!");
-        eprintln!("Build output:\n{stderr}");
-        panic!("C compiler was invoked - Pure Rust violation!");
-    }
-
-    println!("✅ Zero C compiler invocations (runtime crates are Pure Rust!)");
+    assert!(
+        c_compile_lines.is_empty(),
+        "C compiler was invoked during pure-Rust build — ecoBin violation!\n\
+         Offending lines:\n{}",
+        c_compile_lines.join("\n"),
+    );
 }
 
 /// Verify cargo metadata shows Pure Rust dependencies

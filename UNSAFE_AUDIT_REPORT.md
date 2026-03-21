@@ -1,6 +1,6 @@
 # Unsafe Code Audit Report
 
-**Date:** March 20, 2026 (updated S160)  
+**Date:** March 21, 2026 (updated S162)  
 **Scope:** All `unsafe` blocks, `unsafe impl`, and `unsafe fn` in `crates/` (excluding `target/`, `archive/`)
 
 ---
