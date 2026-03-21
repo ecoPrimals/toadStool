@@ -22,7 +22,10 @@ use crate::executor::BiomeExecutor;
 
 /// Workload metadata
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Some fields (environment, timeout_secs) used in future phases
+#[expect(
+    dead_code,
+    reason = "fields used when workload execution pipeline is complete"
+)]
 pub struct WorkloadMetadata {
     /// Workload ID
     pub id: String,

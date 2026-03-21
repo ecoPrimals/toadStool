@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Protocol client implementation for service communication
 //!
 //! Domain modules:
@@ -31,13 +31,15 @@ pub use handler::SimpleMessageHandler;
 // Client struct and connection management
 // =============================================================================
 
+type HandlerMap = HashMap<Arc<str>, Box<dyn MessageHandler>>;
+
 /// Main protocol client for service communication
 pub struct ProtocolClient {
     config: ProtocolConfig,
     transport_manager: Arc<TransportManager>,
     /// Keyed by service id (`Arc<str>` = zero-copy clone)
     services: Arc<RwLock<HashMap<Arc<str>, ServiceInfo>>>,
-    message_handlers: Arc<RwLock<HashMap<String, Box<dyn MessageHandler>>>>,
+    message_handlers: Arc<RwLock<HandlerMap>>,
     event_bus: broadcast::Sender<ProtocolEvent>,
 }
 
@@ -87,7 +89,9 @@ impl ProtocolClient {
             .await
             .get(&service_id)
             .cloned()
-            .unwrap();
+            .ok_or_else(|| {
+                ProtocolError::Internal(format!("Service {service_id} missing after insert"))
+            })?;
 
         if let Some(ref discovery_config) = self.config.discovery_config
             && discovery_config.auto_register
@@ -227,7 +231,7 @@ impl ProtocolClient {
         self.message_handlers
             .write()
             .await
-            .insert(message_type.to_string(), handler);
+            .insert(Arc::from(message_type), handler);
         debug!("Registered handler for message type: {}", message_type);
     }
 

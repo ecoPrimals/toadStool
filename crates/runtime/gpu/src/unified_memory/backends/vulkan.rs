@@ -439,7 +439,6 @@ mod tests {
     async fn test_vulkan_initialization() {
         let result = VulkanBackend::try_init().await;
 
-        // Result depends on system - Vulkan may or may not be available
         match result {
             Ok(backend) => {
                 println!("Vulkan backend initialized successfully via wgpu");
@@ -447,11 +446,15 @@ mod tests {
                 assert!(backend.available);
             }
             Err(e) => {
-                println!("Vulkan not available: {}", e);
-                // Expected on systems without Vulkan
+                let msg = e.to_string();
+                println!("Vulkan not available: {msg}");
                 assert!(
-                    e.to_string().contains("not available")
-                        || e.to_string().contains("No Vulkan adapter")
+                    msg.contains("not available")
+                        || msg.contains("No Vulkan adapter")
+                        || msg.contains("Connection to device was lost")
+                        || msg.contains("device creation failed")
+                        || msg.contains("Device creation failed"),
+                    "unexpected Vulkan init error: {msg}",
                 );
             }
         }

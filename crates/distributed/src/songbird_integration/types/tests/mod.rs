@@ -4,7 +4,6 @@
 mod tests_core;
 mod tests_extra;
 
-use super::*;
 use crate::{DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJobType};
 use std::time::SystemTime;
 use uuid::Uuid;

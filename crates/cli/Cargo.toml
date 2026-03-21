@@ -102,8 +102,6 @@ toadstool-sysmon = { workspace = true }
 akida-driver = { path = "../neuromorphic/akida-driver", optional = true }
 
 # Terminal UI and formatting
-# EVOLVED: console removed (Mar 9, 2026) - unused import, libc dep eliminated (indicatif provides it transitively)
-indicatif = "0.17"
 colored = "2.0"
 # atty removed (Feb 14, 2026): use std::io::IsTerminal (Rust 1.70+)
 
@@ -119,11 +117,6 @@ hex = "0.4"
 # barracuda removed S94b: nautilus methods are now proxied to barraCuda via
 # capability-based IPC (JSON-RPC over Unix socket). Zero library coupling.
 
-# Template engine
-handlebars = "4.5"
-
-# Configuration management
-figment = { version = "0.10", features = ["toml", "yaml", "env"] }
 
 # HTTP client
 url = "2.5"
@@ -135,7 +128,7 @@ tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 
 [dev-dependencies]
 anyhow = "1"
-temp-env = "0.3"
+temp-env = { version = "0.3", features = ["async_closure"] }
 tempfile = "3.8"
 assert_cmd = "2.0"
 predicates = "3.0"

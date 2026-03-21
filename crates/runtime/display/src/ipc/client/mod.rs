@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Display IPC client — JSON-RPC over Unix or TCP with automatic discovery.
 //!
 //! **ISOMORPHIC IPC**: JSON-RPC client with automatic Unix/TCP discovery.
@@ -19,7 +19,7 @@ use tokio::net::{TcpStream, UnixStream};
 
 /// Default TCP address for display IPC fallback (tests and TCP mode).
 /// Used when Unix socket discovery fails; tests use this for mock endpoints.
-#[allow(dead_code)] // Used in #[cfg(test)] modules
+#[cfg(test)]
 const DEFAULT_IPC_TCP_ADDR: &str = "127.0.0.1:12345";
 
 /// IPC endpoint (polymorphic - Unix OR TCP)

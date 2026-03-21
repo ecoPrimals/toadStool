@@ -42,7 +42,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,600+ tests, 0 failures** (S162), 222 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,600+ tests, 0 failures** (S163), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid + 20 deny** `unsafe_code` |
@@ -50,10 +50,10 @@ Nest    = Tower  + NestGate           <- storage
 | Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
-| Dead code | ~400+ lines removed (REST, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
-| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` |
+| Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
+| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 more phantom deps (S163) |
 | Hardcoded primal names | 0 -- all capability-based discovery via `get_socket_path_for_capability()` |
-| `async-trait` migration | 5 crates migrated to native AFIT; remaining uses justified by `dyn Trait` dispatch |
+| `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
@@ -242,7 +242,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,275** (S160), 0 failures |
+| Workspace tests | **21,600+** (S163), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -252,7 +252,7 @@ toadStool/
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console` |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps (S163) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -263,11 +263,13 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,275 tests (S160); ~83% line (186K lines instrumented); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 21,600+ tests (S163); ~83% line (188K lines instrumented); focus on hardware-dependent code
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S163 (Mar 21, 2026)**: Deep code quality + dependency audit. 26 phantom deps removed across 10 crates (indicatif, figment, handlebars, nom, byteorder, csv, rand + 19 more). Zero-copy improvements: PrimalIdentity trait returns references not clones, PluginManager returns `&str` not `String`, protocol handler map uses `Arc<str>` keys, JSON payload serialization bypasses intermediate String. `#[allow(dead_code)]` evolved to `#[expect(dead_code, reason)]` or `#[cfg(test)]`. RUSTSEC-2025-0119 advisory eliminated (indicatif removed). Stale async-trait import removed. Clippy zero warnings. All tests pass.
+- **S162 (Mar 21, 2026)**: Coverage expansion (81.64%→82.81%). +98 tests across barracuda, science domains, dispatch, transport, hw_learn, tarpc, unibin. Coverage script fix. SPDX sweep (38 files). Last production unwrap evolved.
 - **S160 (Mar 20, 2026)**: Deep execution + coverage expansion. 9 broken tests fixed (neuromorphic detection, nested-runtime, transport assertions). +49 new tests across resource types, security policies/sandbox types, property-based testing. Hardcoded Akida specs → named constants. Dead `procfs` dep removed from 3 crates. 21,275 tests, 0 failures.
 - **S159 (Mar 18, 2026)**: Deep audit and execution. All 694+ missing_docs warnings filled across 58 crates. Clippy `--workspace -D warnings` passes (0 errors). 3 compilation errors fixed (MockNpuDispatch, Arc<str>/String, paths module). JSON-RPC methods standardized to `domain.verb`. Hardcoded localhost evolved to named constants. Primal names → capability-based in auto_config. Zero-copy expanded (workload IDs → Arc<str>). Production stubs eliminated. All unsafe env::set_var → temp_env. Nested-runtime anti-patterns fixed.
 - **S155b (Mar 15, 2026)**: Coverage expansion, clippy pedantic clean, dependency audit clean, unsafe audit clean. 21,156 tests. ~83% line coverage (182K lines instrumented). Next: push 83%→90% (hardware mocks), property-based testing for computation modules, multi-primal integration test infrastructure.
@@ -290,7 +292,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,275 tests (S160); ~83% line (186K instrumented); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S163); ~83% line (188K instrumented); focus on hardware-dependent code |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -335,4 +337,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 20, 2026 — S160. 21,275 workspace tests, 0 failures. ~83% line coverage (186K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 21, 2026 — S163. 21,600+ workspace tests, 0 failures. ~83% line coverage (188K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. 26 phantom deps eliminated (S163). Rust 1.85+ (edition 2024, MSRV).

@@ -751,11 +751,7 @@ fn test_plugin_manager_load_unload() {
     };
     manager.register_plugin(manifest).unwrap();
     manager.load_plugin("load-plugin").unwrap();
-    assert!(
-        manager
-            .active_plugins()
-            .contains(&"load-plugin".to_string())
-    );
+    assert!(manager.active_plugins().contains(&"load-plugin"));
     manager.unload_plugin("load-plugin").unwrap();
 }
 

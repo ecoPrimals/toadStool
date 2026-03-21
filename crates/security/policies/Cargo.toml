@@ -27,8 +27,6 @@ mutex_atomic = "warn"
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
-toadstool-config = { path = "../../core/config" }
-
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
@@ -45,13 +43,11 @@ hex = "0.4"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Collections and utilities
-indexmap = "2.0"
 regex = "1.0"
 toadstool-sysmon = { workspace = true }
 
 # Logging and tracing
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Error handling
 thiserror = { workspace = true }

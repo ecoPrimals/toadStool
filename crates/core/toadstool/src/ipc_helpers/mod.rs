@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! IPC helpers for primal-to-primal communication
 //!
 //! ## Deep Debt Principles
@@ -68,12 +68,8 @@ pub fn get_semantic_name(implementation: &str) -> Option<String> {
 }
 
 /// Get all registered semantic method names
-pub fn list_semantic_methods() -> Vec<String> {
-    get_registry()
-        .semantic_names()
-        .into_iter()
-        .map(String::from)
-        .collect()
+pub fn list_semantic_methods() -> Vec<&'static str> {
+    get_registry().semantic_names()
 }
 
 #[cfg(test)]

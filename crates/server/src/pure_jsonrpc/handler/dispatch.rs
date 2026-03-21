@@ -15,7 +15,10 @@ use tokio::sync::RwLock;
 /// Tracks an in-flight dispatch job.
 #[derive(Debug, Clone)]
 struct DispatchJob {
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "stored for logging/diagnostics in dispatch pipeline"
+    )]
     id: String,
     bdf: String,
     status: DispatchStatus,
@@ -27,7 +30,10 @@ struct DispatchJob {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum DispatchStatus {
     Submitted,
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "used once VFIO dispatch pipeline tracks in-flight jobs"
+    )]
     Running,
     Completed,
     Failed(String),

@@ -251,7 +251,10 @@ async fn list_workloads_handler(State(state): State<ServerState>) -> impl IntoRe
 /// API error types
 #[cfg(feature = "daemon")]
 #[derive(Debug)]
-#[allow(dead_code)] // Some variants used in later phases
+#[expect(
+    dead_code,
+    reason = "variants used once daemon API expands beyond status endpoint"
+)]
 enum ApiError {
     NotFound(String),
     BadRequest(String),

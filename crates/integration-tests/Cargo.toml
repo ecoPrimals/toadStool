@@ -15,7 +15,6 @@ publish = false
 
 [dependencies]
 toadstool         = { path = "../core/toadstool" }
-toadstool-common  = { path = "../core/common" }
 toadstool-config  = { path = "../core/config" }
 toadstool-testing = { path = "../testing" }
 # barracuda is a separate primal — zero library coupling. Interact via JSON-RPC IPC.
@@ -26,8 +25,6 @@ tokio = { version = "1.0", features = ["full"] }
 # Common test utilities
 uuid    = { version = "1.0", features = ["v4"] }
 serde   = { version = "1.0", features = ["derive"] }
-tracing = "0.1"
-async-trait = "0.1"
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

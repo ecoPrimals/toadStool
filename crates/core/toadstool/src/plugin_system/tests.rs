@@ -615,8 +615,8 @@ mod plugin_system_tests {
             .expect("register p2 should succeed");
         let names = manager.list_plugins();
         assert_eq!(names.len(), 2);
-        assert!(names.contains(&"p1".to_string()));
-        assert!(names.contains(&"p2".to_string()));
+        assert!(names.contains(&"p1"));
+        assert!(names.contains(&"p2"));
     }
 
     #[test]

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)]
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -14,7 +13,6 @@
 //!
 //! These tests verify that the new adapter system works correctly
 
-use std::env;
 use std::sync::Arc;
 use toadstool_cli::ecosystem::adapters::{
     CoordinationAdapter, CryptoAdapter, StorageAdapter, UniversalServiceAdapter,
@@ -42,25 +40,22 @@ fn test_adapter_instantiation() {
 /// Test environment variable configuration
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_env_var_discovery() {
-    // Set test environment variable
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
-    }
+    temp_env::async_with_vars(
+        [(
+            "TOADSTOOL_CRYPTO_SERVICE_URL",
+            Some("http://127.0.0.1:9876"),
+        )],
+        async {
+            let discovery = Arc::new(DiscoveryEngine::new());
+            let registry = Arc::new(CapabilityRegistry::new());
+            let resolver = Arc::new(CapabilityResolver::new(discovery, registry));
+            let _universal = Arc::new(UniversalServiceAdapter::new(resolver));
 
-    let discovery = Arc::new(DiscoveryEngine::new());
-    let registry = Arc::new(CapabilityRegistry::new());
-    let resolver = Arc::new(CapabilityResolver::new(discovery, registry));
-    let _universal = Arc::new(UniversalServiceAdapter::new(resolver));
-
-    // Note: Discovery is done internally via the resolver
-    println!("✅ Adapter created with environment variables configured");
-
-    // Cleanup
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
-    }
+            // Note: Discovery is done internally via the resolver
+            println!("✅ Adapter created with environment variables configured");
+        },
+    )
+    .await;
 }
 
 /// Test that missing services are handled gracefully
@@ -125,25 +120,22 @@ fn test_multiple_adapter_instances() {
 /// Test discovery priority chain
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_discovery_priority() {
-    // Test that environment variables take precedence
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9999");
-    }
+    temp_env::async_with_vars(
+        [(
+            "TOADSTOOL_CRYPTO_SERVICE_URL",
+            Some("http://127.0.0.1:9999"),
+        )],
+        async {
+            let discovery = Arc::new(DiscoveryEngine::new());
+            let registry = Arc::new(CapabilityRegistry::new());
+            let resolver = Arc::new(CapabilityResolver::new(discovery, registry));
+            let _universal = Arc::new(UniversalServiceAdapter::new(resolver));
 
-    let discovery = Arc::new(DiscoveryEngine::new());
-    let registry = Arc::new(CapabilityRegistry::new());
-    let resolver = Arc::new(CapabilityResolver::new(discovery, registry));
-    let _universal = Arc::new(UniversalServiceAdapter::new(resolver));
-
-    // Discovery happens internally when services are invoked
-    println!("✅ Discovery priority chain configured");
-
-    // Cleanup
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
-    }
+            // Discovery happens internally when services are invoked
+            println!("✅ Discovery priority chain configured");
+        },
+    )
+    .await;
 }
 
 /// Test that deprecated functions have clear migration notes
@@ -194,43 +186,43 @@ async fn test_error_messages() {
 /// Integration test: Complete workflow
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_complete_workflow() {
-    // Setup: Configure mock services via environment
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        env::set_var("TOADSTOOL_CRYPTO_SERVICE_URL", "http://127.0.0.1:9876");
-        env::set_var("TOADSTOOL_STORAGE_SERVICE_URL", "http://127.0.0.1:8082");
-        env::set_var(
-            "TOADSTOOL_COORDINATION_SERVICE_URL",
-            "http://127.0.0.1:8080",
-        );
-    }
+    temp_env::async_with_vars(
+        [
+            (
+                "TOADSTOOL_CRYPTO_SERVICE_URL",
+                Some("http://127.0.0.1:9876"),
+            ),
+            (
+                "TOADSTOOL_STORAGE_SERVICE_URL",
+                Some("http://127.0.0.1:8082"),
+            ),
+            (
+                "TOADSTOOL_COORDINATION_SERVICE_URL",
+                Some("http://127.0.0.1:8080"),
+            ),
+        ],
+        async {
+            // Create adapters (they require Arc for shared ownership)
+            let discovery = Arc::new(DiscoveryEngine::new());
+            let registry = Arc::new(CapabilityRegistry::new());
+            let resolver = Arc::new(CapabilityResolver::new(discovery, registry));
+            let universal = Arc::new(UniversalServiceAdapter::new(resolver));
+            let _crypto = CryptoAdapter::new(Arc::clone(&universal));
+            let _storage = StorageAdapter::new(Arc::clone(&universal));
+            let _coordination = CoordinationAdapter::new(Arc::clone(&universal));
 
-    // Create adapters (they require Arc for shared ownership)
-    let discovery = Arc::new(DiscoveryEngine::new());
-    let registry = Arc::new(CapabilityRegistry::new());
-    let resolver = Arc::new(CapabilityResolver::new(discovery, registry));
-    let universal = Arc::new(UniversalServiceAdapter::new(resolver));
-    let _crypto = CryptoAdapter::new(Arc::clone(&universal));
-    let _storage = StorageAdapter::new(Arc::clone(&universal));
-    let _coordination = CoordinationAdapter::new(Arc::clone(&universal));
+            // Test: Verify adapters were created
+            println!("✅ Step 1: Adapters created");
 
-    // Test: Verify adapters were created
-    println!("✅ Step 1: Adapters created");
+            // Test: Verify adapters work (services don't need to be running for this test)
+            // We're just testing that the adapter API is correct and compiles
+            println!("✅ Step 2: Adapters API verified");
+            println!("✅ Step 3: Integration test complete");
+            println!("   Note: Adapters use capability-based discovery");
+            println!("   Services are discovered dynamically at runtime");
 
-    // Test: Verify adapters work (services don't need to be running for this test)
-    // We're just testing that the adapter API is correct and compiles
-    println!("✅ Step 2: Adapters API verified");
-    println!("✅ Step 3: Integration test complete");
-    println!("   Note: Adapters use capability-based discovery");
-    println!("   Services are discovered dynamically at runtime");
-
-    // Cleanup
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        env::remove_var("TOADSTOOL_CRYPTO_SERVICE_URL");
-        env::remove_var("TOADSTOOL_STORAGE_SERVICE_URL");
-        env::remove_var("TOADSTOOL_COORDINATION_SERVICE_URL");
-    }
-
-    println!("✅ Complete workflow test passed!");
+            println!("✅ Complete workflow test passed!");
+        },
+    )
+    .await;
 }

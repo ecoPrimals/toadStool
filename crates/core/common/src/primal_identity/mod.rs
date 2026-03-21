@@ -27,14 +27,14 @@ pub trait PrimalIdentity: Send + Sync {
     /// Get the primal's version
     fn version(&self) -> &str;
 
-    /// Get the primal's capabilities
-    fn capabilities(&self) -> Vec<Capability>;
+    /// Get the primal's capabilities (borrowed to avoid per-call allocation)
+    fn capabilities(&self) -> &[Capability];
 
-    /// Get the primal's endpoints
-    fn endpoints(&self) -> Vec<ServiceEndpoint>;
+    /// Get the primal's endpoints (borrowed to avoid per-call allocation)
+    fn endpoints(&self) -> &[ServiceEndpoint];
 
-    /// Get additional metadata
-    fn metadata(&self) -> HashMap<String, String>;
+    /// Get additional metadata (borrowed to avoid per-call allocation)
+    fn metadata(&self) -> &HashMap<String, String>;
 }
 
 /// ToadStool's self-knowledge implementation
@@ -124,16 +124,16 @@ impl PrimalIdentity for ToadStoolIdentity {
         &self.version
     }
 
-    fn capabilities(&self) -> Vec<Capability> {
-        self.capabilities.clone()
+    fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
     }
 
-    fn endpoints(&self) -> Vec<ServiceEndpoint> {
-        self.endpoints.clone()
+    fn endpoints(&self) -> &[ServiceEndpoint] {
+        &self.endpoints
     }
 
-    fn metadata(&self) -> HashMap<String, String> {
-        self.metadata.clone()
+    fn metadata(&self) -> &HashMap<String, String> {
+        &self.metadata
     }
 }
 

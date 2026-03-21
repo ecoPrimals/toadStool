@@ -11,9 +11,8 @@ keywords = ["ml", "inference", "burn", "wgpu", "huggingface"]
 categories = ["science", "machine-learning"]
 
 [dependencies]
-# Burn ML framework with wgpu backend (GPU) and ndarray backend (CPU)
+# Burn ML framework with wgpu backend (GPU)
 burn = { version = "0.16", features = ["default"] }
-burn-ndarray = "0.16"
 burn-wgpu = "0.16"
 burn-tch = { version = "0.16", optional = true }
 

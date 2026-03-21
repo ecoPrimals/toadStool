@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! IPC helpers tests
 //!
 //! Uses `temp_env` for safe, isolated environment variable testing. No unsafe
@@ -152,11 +152,11 @@ fn test_get_semantic_name() {
 fn test_list_semantic_methods() {
     let methods = list_semantic_methods();
     assert!(methods.len() > 40);
-    assert!(methods.contains(&"compute.execute".to_string()));
-    assert!(methods.contains(&"resource.health.check".to_string()));
-    assert!(methods.contains(&"storage.artifact.store".to_string()));
-    assert!(methods.contains(&"network.configure".to_string()));
-    assert!(methods.contains(&"security.policy.apply".to_string()));
+    assert!(methods.contains(&"compute.execute"));
+    assert!(methods.contains(&"resource.health.check"));
+    assert!(methods.contains(&"storage.artifact.store"));
+    assert!(methods.contains(&"network.configure"));
+    assert!(methods.contains(&"security.policy.apply"));
 }
 
 #[test]
@@ -293,12 +293,12 @@ fn test_list_semantic_methods_count_and_contents() {
         methods.len() >= 100,
         "registry should have 100+ semantic methods"
     );
-    assert!(methods.contains(&"compute.execute".to_string()));
-    assert!(methods.contains(&"shader.compile.wgsl".to_string()));
-    assert!(methods.contains(&"provenance.query".to_string()));
-    assert!(methods.contains(&"ecology.et0_fao56".to_string()));
-    assert!(methods.contains(&"discovery.primals".to_string()));
-    assert!(methods.contains(&"deploy.capability_call".to_string()));
+    assert!(methods.contains(&"compute.execute"));
+    assert!(methods.contains(&"shader.compile.wgsl"));
+    assert!(methods.contains(&"provenance.query"));
+    assert!(methods.contains(&"ecology.et0_fao56"));
+    assert!(methods.contains(&"discovery.primals"));
+    assert!(methods.contains(&"deploy.capability_call"));
 }
 
 #[test]

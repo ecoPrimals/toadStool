@@ -333,13 +333,13 @@ impl PrimalCapabilitiesRegistry {
 
         // In development/local: use host:port
         // In production: should use real service discovery
-        let protocol = if primal.protocols.contains(&"http".to_string()) {
+        let protocol = if primal.protocols.iter().any(|p| p == "http") {
             "http"
         } else {
             "https"
         };
 
-        Ok(format!("{}://{}:{}", protocol, host, primal.default_port))
+        Ok(format!("{protocol}://{}:{}", host, primal.default_port))
     }
 
     /// Get migration fallback URL (deprecated)
@@ -359,14 +359,14 @@ impl PrimalCapabilitiesRegistry {
         self.primals
             .iter()
             .map(|(name, primal)| {
-                let protocol = if primal.protocols.contains(&"http".to_string()) {
+                let protocol = if primal.protocols.iter().any(|p| p == "http") {
                     "http"
                 } else {
                     "https"
                 };
                 (
                     name.clone(),
-                    format!("{}://{}:{}", protocol, host, primal.default_port),
+                    format!("{protocol}://{}:{}", host, primal.default_port),
                 )
             })
             .collect()

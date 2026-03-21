@@ -30,7 +30,6 @@ mutex_atomic = "warn"
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
-toadstool-common = { path = "../core/common" }
 hw-learn = { path = "../core/hw-learn" }
 
 # Testing framework
@@ -64,18 +63,12 @@ tempfile = "3.0"
 
 # Logging for tests
 tracing = "0.1"
-tracing-test = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Random data generation
 rand = "0.8"
 fake = { version = "2.0", features = ["derive", "uuid"] }
 
-# Async trait support
-async-trait = "0.1"
-
-# Error handling
-thiserror = "1.0"
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 

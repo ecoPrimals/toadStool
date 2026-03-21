@@ -34,8 +34,8 @@ allow = [
     "MPL-2.0",              # colored crate
     "BSD-3-Clause-Clear",   # tfhe (FHE) crates
     "AGPL-3.0",             # ToadStool own crates (deprecated SPDX form)
-    "AGPL-3.0-only",       # ToadStool own crates (legacy, being migrated)
-    "AGPL-3.0-or-later",   # ToadStool own crates — canonical per scyBorg trio
+    "AGPL-3.0-only",       # ToadStool own crates — canonical
+    "AGPL-3.0-or-later",   # scyBorg trio permits or-later; kept for compat
     "LGPL-2.0-or-later",   # wgpu indirect dep (optional)
     "LGPL-2.1-or-later",
 ]
@@ -58,8 +58,9 @@ version = 2
 # Block any crate with an active security advisory.
 # Exceptions may be added below with justification.
 ignore = [
-    # Example (uncomment and justify if needed):
-    # { id = "RUSTSEC-2023-XXXX", reason = "Not reachable in our usage" },
+    # Transitive unmaintained deps we cannot fix directly:
+    { id = "RUSTSEC-2024-0387", reason = "opentelemetry_api: transitive via tracing-opentelemetry, awaiting upstream merge into opentelemetry" },
+    { id = "RUSTSEC-2024-0436", reason = "paste: transitive via simba→nalgebra→statrs, no drop-in replacement available" },
 ]
 
 # ── Bans ──────────────────────────────────────────────────────────────────────

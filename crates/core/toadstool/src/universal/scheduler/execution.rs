@@ -1,10 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job execution backends for UniversalScheduler
 //!
 //! Handles execution routing for Native, WASM, Primal, and BiomeOS job types.
 
 use std::collections::HashMap;
 use std::time::Duration;
+
+use bytes::Bytes;
 
 use toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT;
 use tracing::{debug, info, warn};
@@ -134,7 +136,7 @@ impl UniversalScheduler {
                     }
                 },
                 output: crate::execution::ExecutionOutput {
-                    data: response.payload.to_string().into_bytes().into(),
+                    data: Bytes::from(serde_json::to_vec(&response.payload).unwrap_or_default()),
                     stdout: response
                         .payload
                         .get("stdout")
@@ -403,7 +405,9 @@ impl UniversalScheduler {
                         execution_id,
                         status,
                         output: crate::execution::ExecutionOutput {
-                            data: response.payload.to_string().into_bytes().into(),
+                            data: Bytes::from(
+                                serde_json::to_vec(&response.payload).unwrap_or_default(),
+                            ),
                             stdout: Some(format!("Primal '{primal_type}' executed successfully")),
                             stderr: None,
                             exit_code: Some(0),
@@ -547,7 +551,9 @@ impl UniversalScheduler {
                         execution_id,
                         status,
                         output: crate::execution::ExecutionOutput {
-                            data: response.payload.to_string().into_bytes().into(),
+                            data: Bytes::from(
+                                serde_json::to_vec(&response.payload).unwrap_or_default(),
+                            ),
                             stdout: Some(format!(
                                 "BiomeOS execution for team '{team_id}' completed"
                             )),

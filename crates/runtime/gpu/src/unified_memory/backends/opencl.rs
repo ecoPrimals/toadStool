@@ -452,7 +452,6 @@ mod tests {
     async fn test_opencl_initialization() {
         let result = OpenClBackend::try_init().await;
 
-        // Result depends on system - GPU may or may not be available
         match result {
             Ok(backend) => {
                 println!("OpenCL backend initialized successfully via wgpu");
@@ -460,10 +459,15 @@ mod tests {
                 assert!(backend.available);
             }
             Err(e) => {
-                println!("GPU not available: {}", e);
-                // Expected on systems without GPU
+                let msg = e.to_string();
+                println!("GPU not available: {msg}");
                 assert!(
-                    e.to_string().contains("not available") || e.to_string().contains("No GPU")
+                    msg.contains("not available")
+                        || msg.contains("No GPU")
+                        || msg.contains("Connection to device was lost")
+                        || msg.contains("device creation failed")
+                        || msg.contains("Device creation failed"),
+                    "unexpected OpenCL init error: {msg}",
                 );
             }
         }

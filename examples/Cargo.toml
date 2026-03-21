@@ -128,25 +128,16 @@ bytes = { workspace = true }
 toadstool = { path = "../crates/core/toadstool" }
 toadstool-common = { path = "../crates/core/common" }
 toadstool-config = { path = "../crates/core/config" }
-toadstool-auto-config = { path = "../crates/auto_config" }  # Re-enabled for zero-touch demo
-
 # Pure Ecosystem Runtime Engines (no external dependencies)
 toadstool-runtime-native = { path = "../crates/runtime/native" }
 toadstool-runtime-wasm = { path = "../crates/runtime/wasm" }
-toadstool-runtime-gpu = { path = "../crates/runtime/gpu" } # Re-enabled - architectural issues resolved
-# Note: Container runtime excluded for pure ecosystem
+toadstool-runtime-gpu = { path = "../crates/runtime/gpu" }
 
 # Ecosystem Integration
 toadstool-distributed = { path = "../crates/distributed" }
 
 # Management and Monitoring
 toadstool-management-monitoring = { path = "../crates/management/monitoring" }
-toadstool-management-resources = { path = "../crates/management/resources" }
-toadstool-management-performance = { path = "../crates/management/performance" }
-
-# Security (pure ecosystem)
-toadstool-security-policies = { path = "../crates/security/policies" }
-toadstool-security-sandbox = { path = "../crates/security/sandbox" }
 
 # Standard dependencies
 tokio = { workspace = true, features = ["full"] }
@@ -155,15 +146,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-
-# EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
-
-# Async utilities
-futures = { workspace = true }
-
-# CLI and UI
-clap = { workspace = true, features = ["derive"] }
-colored = "2.0"
 
 # Test utilities
 temp-env = "0.3"

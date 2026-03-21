@@ -36,7 +36,8 @@ tokio = { workspace = true, features = ["fs", "sync"] }
 thiserror = { workspace = true }
 # once_cell removed: evolved to std::sync::LazyLock (Rust 1.80+)
 tracing = { workspace = true }
-validator = { version = "0.18", features = ["derive"] }
+# validator removed: was declared but unused in source. If validation is
+# needed, use manual validation or add back as validator 0.20+ (fixes idna vuln).
 # notify removed: was unused (no Watcher implementation). When file watching is
 # needed, use rustix::fs::inotify directly (pure Rust, zero C FFI).
 # ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)

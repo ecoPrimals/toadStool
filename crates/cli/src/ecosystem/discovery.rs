@@ -137,8 +137,7 @@ pub fn discover_from_config(capability_category: &str) -> Option<String> {
 ///
 /// **Status**: Currently unused but part of capability-based architecture.
 /// Will be used when full capability routing is implemented.
-#[allow(dead_code)] // Future: full capability routing
-#[allow(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compat
+#[allow(deprecated)]
 pub async fn discover_service_by_capability(
     capability_category: &str,
 ) -> Result<Vec<ServiceEndpoint>> {
@@ -191,7 +190,6 @@ pub async fn discover_service_by_capability(
 ///
 /// Used by capability-based service discovery when converting discovered
 /// service URLs into socket addresses for connection.
-#[allow(dead_code)] // Reserved: used by discover_service_by_capability for capability routing
 fn parse_service_url(url: &str) -> Result<SocketAddr> {
     // Handle various URL formats
     let url = url.trim();
@@ -232,7 +230,6 @@ fn parse_service_url(url: &str) -> Result<SocketAddr> {
 ///
 /// Delegates to the production mDNS implementation in toadstool-core (uses mdns-sd).
 /// Discovery runs for 2 seconds, matching Bonjour browse behavior.
-#[allow(dead_code)] // Reserved: mDNS discovery for capability routing
 #[allow(deprecated)]
 async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpoint>> {
     let mdns = match toadstool::discovery::MdnsDiscoveryService::new() {

@@ -128,8 +128,8 @@ impl PluginManager {
     }
 
     /// List all plugins
-    pub fn list_plugins(&self) -> Vec<String> {
-        self.plugins.keys().cloned().collect()
+    pub fn list_plugins(&self) -> Vec<&str> {
+        self.plugins.keys().map(String::as_str).collect()
     }
 
     /// Get plugin info
@@ -138,20 +138,20 @@ impl PluginManager {
     }
 
     /// Get active plugins
-    pub fn active_plugins(&self) -> Vec<String> {
+    pub fn active_plugins(&self) -> Vec<&str> {
         self.plugins
             .iter()
             .filter(|(_, info)| info.state == PluginState::Active)
-            .map(|(name, _)| name.clone())
+            .map(|(name, _)| name.as_str())
             .collect()
     }
 
     /// Get plugins by type
-    pub fn plugins_by_type(&self, plugin_type: &str) -> Vec<String> {
+    pub fn plugins_by_type(&self, plugin_type: &str) -> Vec<&str> {
         self.plugins
             .iter()
             .filter(|(_, info)| info.manifest.plugin_type == plugin_type)
-            .map(|(name, _)| name.clone())
+            .map(|(name, _)| name.as_str())
             .collect()
     }
 

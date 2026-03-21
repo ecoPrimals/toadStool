@@ -72,19 +72,26 @@ impl PrimalType {
         }
     }
 
-    /// Parse a string into a `PrimalType`.
+    /// Parse a string into a `PrimalType` by **capability category**.
     ///
-    /// Accepts both capability names ("crypto", "storage") and legacy primal
-    /// names for backward compatibility when parsing manifests ("beardog",
-    /// "nestgate"). Legacy names map to their capability category.
+    /// Canonical names: "crypto", "storage", "discovery", "orchestration", "compute", "self".
+    /// Legacy primal names ("beardog", "nestgate", etc.) are accepted for manifest
+    /// backward compatibility but should be migrated to capability strings.
     pub fn parse_type(s: &str) -> Result<Self, String> {
         match s.to_lowercase().as_str() {
-            "crypto" | "beardog" | "pki" | "security" => Ok(Self::Crypto),
-            "storage" | "nestgate" => Ok(Self::Storage),
-            "discovery" | "songbird" | "coordination" => Ok(Self::Discovery),
-            "orchestration" | "biomeos" | "network" => Ok(Self::Orchestration),
-            "compute" | "squirrel" | "ai" | "ml" => Ok(Self::Compute),
+            // Canonical capability names
+            "crypto" | "pki" | "security" => Ok(Self::Crypto),
+            "storage" => Ok(Self::Storage),
+            "discovery" | "coordination" => Ok(Self::Discovery),
+            "orchestration" | "network" => Ok(Self::Orchestration),
+            "compute" | "ai" | "ml" => Ok(Self::Compute),
             "self" | "self_identity" | "toadstool" => Ok(Self::SelfIdentity),
+            // Legacy primal-name aliases (backward compat for existing manifests)
+            "beardog" => Ok(Self::Crypto),
+            "nestgate" => Ok(Self::Storage),
+            "songbird" => Ok(Self::Discovery),
+            "biomeos" => Ok(Self::Orchestration),
+            "squirrel" => Ok(Self::Compute),
             other => Ok(Self::Custom(other.to_string())),
         }
     }

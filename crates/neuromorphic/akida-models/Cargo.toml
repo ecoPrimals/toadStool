@@ -16,9 +16,6 @@ thiserror = { workspace = true }
 # Zero-copy binary data (Arc<[u8]>-style sharing for model weights)
 bytes = { workspace = true }
 
-# Binary parsing
-nom = "7"           # Parser combinators for binary formats
-byteorder = "1"     # Endian-aware reading
 
 # Logging
 tracing = "0.1"
