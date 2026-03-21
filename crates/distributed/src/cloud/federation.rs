@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Inter-cloud federation and coordination
 //!
 //! This module provides federation membership, heartbeats, and capability exchange.

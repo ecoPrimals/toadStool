@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Pure socket path resolution (no env access - inject `SocketPathEnv`)
 
 use std::path::PathBuf;

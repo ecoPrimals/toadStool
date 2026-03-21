@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability gap analysis — what's preventing compute on a GPU.
 
 use crate::distiller::{GpuArch, Vendor};

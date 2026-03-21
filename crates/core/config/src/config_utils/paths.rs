@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Path configuration utilities
 //!
 //! Config file paths, directory resolution, and XDG-compliant path helpers.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! PCI device discovery for NVIDIA GPUs via sysfs.
 //!
 //! Scans `/sys/bus/pci/devices/` for devices with PCI vendor ID `0x10de`

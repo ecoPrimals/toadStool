@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! JSON-RPC 2.0 wire types
 //!
 //! Pure data structures for the JSON-RPC 2.0 protocol.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Security Provider Abstraction
 //!
 //! Generic security provider interface that ANY primal or service can implement.

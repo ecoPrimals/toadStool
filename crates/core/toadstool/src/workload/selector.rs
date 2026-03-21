@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Backend selection logic for intelligent workload routing
 //!
 //! The `BackendSelector` analyzes workload characteristics and available hardware

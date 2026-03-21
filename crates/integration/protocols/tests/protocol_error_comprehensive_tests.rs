@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Protocol Errors
 //!
 //! This test suite provides extensive coverage of error types, error messages,
@@ -56,6 +56,22 @@ fn test_protocol_error_transport() {
     let message = format!("{error}");
     assert!(message.contains("Transport error"));
     assert!(message.contains("connection reset"));
+}
+
+#[test]
+fn test_protocol_error_http_transport_not_available() {
+    let error = ProtocolError::HttpTransportNotAvailable;
+    let message = format!("{error}");
+    assert!(message.contains("HTTP transport not available"));
+    assert!(message.contains("Songbird"));
+}
+
+#[test]
+fn test_protocol_error_trpc_transport_not_available() {
+    let error = ProtocolError::TRpcTransportNotAvailable;
+    let message = format!("{error}");
+    assert!(message.contains("tRPC transport not available"));
+    assert!(message.contains("pure_jsonrpc"));
 }
 
 #[test]

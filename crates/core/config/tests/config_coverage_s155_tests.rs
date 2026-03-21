@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive coverage tests for under-covered config modules
 //!
 //! Targets: `runtime_defaults/validation`, `runtime_defaults`, `discovery_integration`,

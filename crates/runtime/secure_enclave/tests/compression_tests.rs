@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive Pure Rust compression tests
 //!
 //! Tests for `lz4_flex` and `ruzstd` - 100% Pure Rust implementations!

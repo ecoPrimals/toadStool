@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Firmware inventory probing for NVIDIA GPU subsystems.
 //!
 //! Probes `/lib/firmware/nvidia/{chip}/` for each firmware component

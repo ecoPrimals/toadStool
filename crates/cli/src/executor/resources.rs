@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Resource management for biomes
 //!
 //! This module handles resource cleanup, PID tracking, and data management.

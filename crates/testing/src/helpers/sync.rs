@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Modern synchronization helpers for concurrent testing
 //!
 //! This module provides event-driven coordination primitives to replace

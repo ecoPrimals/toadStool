@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Classify trace events by register function.
 //!
 //! Uses known register offset ranges from envytools (NVIDIA),

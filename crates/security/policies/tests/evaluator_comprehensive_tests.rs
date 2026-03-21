@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for policy condition evaluator
 //! Addresses low-coverage file: security/policies/src/evaluator.rs (155 lines, 2.58% coverage)
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Disk monitoring via `/proc/mounts` + `statvfs`.
 
 use crate::error::{Result, SysmonError};

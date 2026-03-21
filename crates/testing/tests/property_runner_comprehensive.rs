@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for property test runner
 //!
 //! Expanding coverage for properties/runner.rs (current: 7.37%)

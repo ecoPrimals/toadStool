@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Socket path format and biomeOS directory layout
 //!
 //! Defines the standard socket path resolution and directory structure

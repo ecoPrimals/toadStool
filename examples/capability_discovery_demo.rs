@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Example: Capability-Based Discovery (wateringHole Standard)
 //!
 //! Demonstrates the correct pattern: discover primals by capability at runtime.

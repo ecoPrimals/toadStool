@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration tests targeting `universal::detection` behavior and substrate types produced by detection.
 //!
 //! Exercises `UniversalSubstrateCapabilities::detect_all` and serde, `Debug`, `Clone`, and helper APIs on

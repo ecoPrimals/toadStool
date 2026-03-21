@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Distributed GPU Scheduling - Multi-Tower Compute Coordination
 //!
 //! This module provides capability-based GPU resource discovery and scheduling

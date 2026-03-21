@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Client configuration types
 //!
 //! This module defines configuration structures for the ToadStool client,

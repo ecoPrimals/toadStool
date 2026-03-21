@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-Based Template Constants
 //!
 //! Modern, Deep Debt-compliant constants that use capabilities instead of primal names.

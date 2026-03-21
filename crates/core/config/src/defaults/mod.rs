@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Default Configuration Constants
 //!
 //! **Centralized** default values for all ToadStool configuration.

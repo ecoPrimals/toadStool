@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! NPU hardware setup and initialization
 //!
 //! This module provides pure Rust implementations for setting up Akida NPU hardware,

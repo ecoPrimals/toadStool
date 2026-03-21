@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Edge Platform Implementations
 //!
 //! Platform-specific adapters for various edge computing devices and IoT platforms.

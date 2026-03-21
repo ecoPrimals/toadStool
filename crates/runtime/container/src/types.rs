@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Container Runtime Configuration Types
 //!
 //! Configuration structs and enums for the container runtime engine

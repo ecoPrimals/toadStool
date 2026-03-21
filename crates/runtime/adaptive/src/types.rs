@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Common types for adaptive optimization system
 
 use serde::{Deserialize, Serialize};

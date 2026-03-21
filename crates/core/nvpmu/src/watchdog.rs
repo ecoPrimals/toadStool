@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Thermal watchdog: continuous monitoring with emergency shutdown.
 //!
 //! Phase 4 of the nvPmu plan. Polls hwmon sensors at a configurable

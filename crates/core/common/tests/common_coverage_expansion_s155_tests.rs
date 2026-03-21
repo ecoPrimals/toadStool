@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage expansion tests for under-covered modules in toadstool-common
 //!
 //! Tests public functions and types from:

@@ -5,7 +5,39 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 20, 2026 (Sessions 43-160)
+## [Unreleased] - March 21, 2026 (Sessions 43-161)
+
+### Session S161 (Mar 21, 2026) — Deep Debt Execution + License Compliance
+
+#### License
+- Workspace license: **`AGPL-3.0-only`** (was `AGPL-3.0-or-later`) in root `Cargo.toml`, per wateringHole `STANDARDS_AND_EXPECTATIONS.md`
+- **1,901** SPDX identifiers updated to `AGPL-3.0-only` across Rust sources
+
+#### Refactoring — large production files (10 modules, all under 800 lines)
+- `sysmon/gpu.rs`, `infant_discovery/sources.rs`, `crypto_integration/client.rs`, `unified_memory/buffer.rs`, `display/ipc/client.rs`, `biomeos_integration/agents.rs`, `agent_backend_evolved.rs`, `execution.rs`, `vector_ops.rs`, `distributed/types/jobs.rs` — split into coherent directory modules
+
+#### Stubs & errors
+- `emulator_impls.rs`: evolved to `SystemError::NotSupported`
+- `transport.rs`: `ProtocolError` variants for HTTP/tRPC; transport unit tests updated for evolved messages
+
+#### Hardcoding evolution
+- `hosting/recursive.rs`: URL construction via `http_url()` helper
+- `protocols/config.rs`: Consul and related URLs via named constants
+
+#### Unsafe reduction
+- `nvpmu/vfio.rs`: struct-to-bytes — replaced `from_raw_parts` slice with safe field-by-field `to_ne_bytes()` serialization
+
+#### Coverage
+- `byob_impl`: failure paths, health monitoring
+- `agent_backend`: CRUD, serde round-trips
+- `auto_init`: `dry_run`, edge cases
+
+#### Tests & lints
+- `distributed/types/jobs/tests.rs`: removed unfulfilled `float_cmp` lint expectations
+- Transport tests: assertions aligned with `ProtocolError` messages
+
+#### Quality gates
+- `cargo check`, `cargo fmt`, `cargo clippy` (0 warnings), `cargo doc`, `cargo test` (0 failures) — all PASS
 
 ### Session S160 (Mar 20, 2026) — Deep Execution + Coverage Expansion
 
@@ -183,7 +215,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Fixes
 - Flaky test `test_concurrent_resource_monitoring_events` — barrier synchronization with subscribe-before-start pattern
-- SPDX header: `examples/real_gpu_pool.rs` corrected from `AGPL-3.0-or-later` to `AGPL-3.0-or-later`
+- SPDX header: `examples/real_gpu_pool.rs` license identifier corrected to match workspace standard
 - Broken intra-doc link in `streaming_dispatch.rs` → `Self::record_dispatch_with_progress`
 
 #### Debris Cleanup

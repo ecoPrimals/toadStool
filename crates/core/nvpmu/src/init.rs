@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! PMU init sequence applicator.
 //!
 //! Replays hw-learn recipes via BAR0 MMIO to initialize the compute

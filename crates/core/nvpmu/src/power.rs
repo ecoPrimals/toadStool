@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! GPU power state and PCI reset management.
 //!
 //! Provides PCI-level control for GPU lifecycle management:

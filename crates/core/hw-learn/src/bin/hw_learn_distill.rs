@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! CLI tool: distill a PMU init recipe from two MMIO traces.
 //!
 //! Usage:

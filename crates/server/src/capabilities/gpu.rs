@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! GPU device detection via platform-specific self-knowledge
 //!
 //! Detects GPUs via:

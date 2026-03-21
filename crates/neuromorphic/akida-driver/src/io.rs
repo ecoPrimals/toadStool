@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Low-level I/O operations for Akida devices
 //!
 //! Handles direct read/write operations to device files with proper

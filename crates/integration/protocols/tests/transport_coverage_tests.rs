@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive Transport Coverage Tests
 //!
 //! This test suite provides thorough coverage of the transport module to improve
@@ -212,9 +212,7 @@ async fn test_trpc_transport_send_message_no_server() {
     if let Err(e) = result {
         let msg = e.to_string().to_ascii_lowercase();
         assert!(
-            msg.contains("pending phase 3")
-                || msg.contains("not yet implemented")
-                || msg.contains("not implemented"),
+            msg.contains("trpc transport not available") || msg.contains("pure_jsonrpc"),
             "unexpected error message: {msg}"
         );
     }

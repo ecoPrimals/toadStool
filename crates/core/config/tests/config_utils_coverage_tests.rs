@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration coverage for [`toadstool_config::config_utils::ConfigUtils`]: path helpers,
 //! network getters, environment flags, default-backed accessors, env edge cases, serde
 //! stability for env config structs, and [`EnvConfigLoader`]’s [`Default`] implementation.

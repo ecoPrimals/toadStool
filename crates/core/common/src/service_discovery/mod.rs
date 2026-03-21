@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Service Discovery - Capability-Based Runtime Discovery
 //!
 //! Discover services at runtime based on capabilities, not hardcoded names.

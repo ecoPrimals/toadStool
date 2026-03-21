@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Native and WASM workload builders
 //!
 //! This test suite provides extensive coverage for:

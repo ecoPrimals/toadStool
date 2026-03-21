@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration adapter between `primal_discovery` and mDNS
 //!
 //! This module provides mDNS-SD (multicast DNS service discovery) for finding

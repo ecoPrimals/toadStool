@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Process monitoring via `/proc/[pid]/stat` and `/proc/[pid]/status`.
 
 use crate::error::{Result, SysmonError};

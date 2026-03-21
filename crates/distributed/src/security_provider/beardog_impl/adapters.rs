@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Type Adapters for BearDog Integration
 //!
 //! Converts between generic SecurityProvider types and BearDog-specific types.

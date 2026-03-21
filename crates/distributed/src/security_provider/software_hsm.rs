@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Software HSM security provider.
 //!
 //! A pure-Rust in-process security provider using:

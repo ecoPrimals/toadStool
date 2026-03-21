@@ -32,6 +32,9 @@ run_tier1() {
         "toadstool-config"
         "toadstool"
         "toadstool-core"
+        "hw-learn"
+        "nvpmu"
+        "toadstool-sysmon"
         "toadstool-cli"
         "toadstool-client"
         "toadstool-server"
@@ -56,11 +59,19 @@ run_tier1() {
         "toadstool-runtime-secure-enclave"
         # toadstool-runtime-edge excluded (serialport→libudev C dep)
         "toadstool-runtime-specialty"
+        "akida-driver"
+        "akida-models"
+        "akida-reservoir-research"
+        "akida-setup"
+        "cross-substrate-validation"
+        "neurobench-runner"
         "toadstool-integration-beardog"
         "toadstool-integration-primals"
         "toadstool-integration-nestgate"
         "toadstool-integration-protocols"
         "toadstool-testing"
+        "toadstool-integration-tests"
+        "toadstool-examples"
     )
     
     # Clean previous coverage data

@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//! Capability-based agent deployment backend.
+//!
+//! Discovers AI/agent providers by capability, not by name. Uses runtime discovery
+//! via the capability provider and structured RPC calls (`ai.*`).
+
+mod backend;
+mod error;
+mod types;
+
+pub use backend::AgentBackend;
+pub use error::{AgentBackendError, Result};
+pub use types::{
+    AgentInfo, AgentStatus, DeployAgentRequest, LoadModelRequest, ModelInfo, ModelStatus,
+};

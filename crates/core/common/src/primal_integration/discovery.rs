@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-based service discovery.
 //!
 //! Discovers ecoPrimal services via env vars, mDNS, Kubernetes, Docker Compose, and registries.
@@ -513,7 +513,7 @@ fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> 
 
 #[cfg(test)]
 mod tests {
-    // SPDX-License-Identifier: AGPL-3.0-or-later
+    // SPDX-License-Identifier: AGPL-3.0-only
     use super::*;
 
     #[test]

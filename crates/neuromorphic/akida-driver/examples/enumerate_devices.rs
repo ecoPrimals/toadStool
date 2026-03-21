@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Enumerate all Akida devices on the system
 //!
 //! This example demonstrates runtime device discovery.

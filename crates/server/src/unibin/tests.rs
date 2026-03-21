@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! UniBin tests
 //!
 //! Covers configuration/parsing paths, validation, and logic that does not

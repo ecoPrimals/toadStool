@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Sovereign dispatch handler — accepts compiled GPU binaries from coralReef
 //! and routes them to the target GPU via VFIO or DRM.
 //!

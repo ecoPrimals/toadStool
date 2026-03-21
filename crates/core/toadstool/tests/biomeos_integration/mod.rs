@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BiomeOS Integration Tests Module
 //!
 //! This module organizes comprehensive integration tests for BiomeOS components.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Hardware transport layer for JSON-RPC handler.
 
 use std::collections::HashMap;

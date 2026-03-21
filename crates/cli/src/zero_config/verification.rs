@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Health verification functionality
 //!
 //! ✅ FULLY MODERNIZED (Dec 13, 2025):

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Parse nouveau GSP RPC debug messages from dmesg.
 //!
 //! When nouveau loads GSP firmware, it logs RPC exchanges:

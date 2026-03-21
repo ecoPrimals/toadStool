@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Type definitions for specialty hardware runtime engine
 //!
 //! This module contains all type definitions used by the specialty runtime,

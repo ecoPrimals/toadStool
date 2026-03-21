@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive coverage tests for `performance_hardening` module
 //!
 //! Exercises all struct constructors, Default impls, and public methods

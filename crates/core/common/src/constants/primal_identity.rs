@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Primal Identity Constants — Self-Knowledge Module
 //!
 //! ToadStool only has knowledge of itself. Other primals are discovered at

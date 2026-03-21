@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Configuration validation tests
 //!
 //! Tier 1 tests: Coverage-measured unit tests for config validation

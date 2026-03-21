@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration tests for `SecurityMonitor`
 //!
 //! Covers recording, querying, capacity bounds, concurrency, resource sampling,

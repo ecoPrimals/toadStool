@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // ToadStoolEvent tests - use JSON-RPC polling (no WebSocket)
 
 use std::collections::HashMap;

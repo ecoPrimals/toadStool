@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Backend Selection Strategy - Pragmatic now, Sovereign tomorrow
 //!
 //! This module implements intelligent GPU backend selection that prioritizes

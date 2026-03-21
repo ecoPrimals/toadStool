@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::float_cmp)]
 // ToadStool - Universal Compute Platform
 // Copyright (C) 2025 ToadStool Development Team

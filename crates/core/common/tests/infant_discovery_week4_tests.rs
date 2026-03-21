@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Infant Discovery System - Week 4 Test Coverage Expansion
 //!
 //! Tests for service discovery, capability detection, and health monitoring.

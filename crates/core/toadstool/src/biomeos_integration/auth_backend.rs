@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Authentication backend traits and implementations for BiomeOS/BearDog integration
 //!
 //! This module defines the trait interface for authentication backends and provides

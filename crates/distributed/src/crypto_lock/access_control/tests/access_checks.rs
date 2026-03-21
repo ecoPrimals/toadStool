@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Access check tests
 
 use crate::crypto_lock::access_control::{AccessResult, ToadStoolCryptoLock};

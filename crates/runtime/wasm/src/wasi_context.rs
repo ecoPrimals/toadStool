@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! WASI context management for wasmi
 //!
 //! Provides WASI (WebAssembly System Interface) support using `wasmi_wasi`.

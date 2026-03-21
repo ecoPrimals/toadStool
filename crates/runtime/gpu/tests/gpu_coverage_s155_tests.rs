@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Coverage tests for under-covered GPU runtime modules (S155)
 //!
 //! Tests type construction, config builders, scheduler, coordinator, strategy,

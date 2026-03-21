@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Auto-init handlers — auto-detect GPU, find best recipe, apply (single or all).
 
 use super::HwLearnHandler;
@@ -400,5 +400,75 @@ impl HwLearnHandler {
             "succeeded": succeeded,
             "failed": failed,
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::HwLearnHandler;
+    use hw_learn::distiller::{DriverKind, GpuArch, InitRecipe, Vendor};
+    use nvpmu::pci::NvidiaGpu;
+    use std::path::PathBuf;
+    use tempfile::tempdir;
+
+    fn minimal_recipe() -> InitRecipe {
+        InitRecipe {
+            source_arch: GpuArch {
+                vendor: Vendor::Nvidia,
+                generation: String::new(),
+                chip: "test-chip".to_string(),
+                compute_class: String::new(),
+            },
+            source_driver: DriverKind::Nouveau,
+            target_arch: GpuArch {
+                vendor: Vendor::Nvidia,
+                generation: String::new(),
+                chip: "test-chip".to_string(),
+                compute_class: String::new(),
+            },
+            steps: vec![],
+            confidence: 0.0,
+            description: "unit test recipe".to_string(),
+        }
+    }
+
+    fn dummy_gpu() -> NvidiaGpu {
+        NvidiaGpu {
+            bdf: "0000:01:00.0".to_string(),
+            vendor_id: 0x10de,
+            device_id: 0x1234,
+            class_code: 0x0003_0200,
+            sysfs_path: PathBuf::from("/sys/bus/pci/devices/0000:01:00.0"),
+            driver: Some("nouveau".to_string()),
+            chip: Some("test-chip".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_init_one_gpu_dry_run_returns_dry_run_status() {
+        let gpu = dummy_gpu();
+        let recipe = minimal_recipe();
+        let dir = tempdir().unwrap();
+        let v = super::init_one_gpu(&gpu, "/dev/dri/card0", &recipe, true, dir.path());
+        assert_eq!(v["status"], "dry_run");
+        assert_eq!(v["bdf"], "0000:01:00.0");
+        assert!(v.get("verdict").is_some());
+        assert!(v.get("steps_total").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_hw_learn_auto_init_all_empty_result_shape() {
+        let handler = HwLearnHandler::new();
+        let v = handler.hw_learn_auto_init_all(None).await.unwrap();
+        assert_eq!(v["domain"], "compute.hardware");
+        assert_eq!(v["operation"], "auto_init_all");
+        assert!(v["gpus"].is_array());
+    }
+
+    #[tokio::test]
+    async fn test_hw_learn_auto_init_errors_without_hardware_or_recipe() {
+        let handler = HwLearnHandler::new();
+        let r = handler.hw_learn_auto_init(None).await;
+        assert!(r.is_err());
     }
 }

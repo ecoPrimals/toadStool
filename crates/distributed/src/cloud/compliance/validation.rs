@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Compliance checking logic: certifications, data sovereignty, security tier, resource isolation.
 //!
 //! Produces structured compliance reports with pass/fail per check.

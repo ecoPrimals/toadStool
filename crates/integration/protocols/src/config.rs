@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Configuration structures for protocol integration
 
 use std::sync::Arc;
@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use crate::types::{MessageFormat, TransportType};
 use toadstool_common::auth::ServiceAuthConfig;
+use toadstool_common::constants::http_url;
 
 /// Protocol client configuration
 #[derive(Debug, Clone)]
@@ -81,6 +82,24 @@ impl Default for ConnectionPoolConfig {
             max_concurrent_requests: 100,
         }
     }
+}
+
+/// Example Consul registry hostname for documentation and tests only.
+///
+/// Production and integration tests that need a real endpoint must use
+/// `service_registry_url()` or set `SERVICE_REGISTRY_URL` / `CONSUL_HTTP_ADDR`.
+pub const SAMPLE_CONSUL_REGISTRY_HOST: &str = "consul.local";
+
+/// Example Consul HTTP API port paired with [`SAMPLE_CONSUL_REGISTRY_HOST`].
+pub const SAMPLE_CONSUL_REGISTRY_HTTP_PORT: u16 = 8500;
+
+/// Build the sample Consul registry URL (documentation/tests; not a deployment default).
+#[must_use]
+pub fn sample_consul_registry_url() -> String {
+    http_url(
+        SAMPLE_CONSUL_REGISTRY_HOST,
+        SAMPLE_CONSUL_REGISTRY_HTTP_PORT,
+    )
 }
 
 /// Get service registry URL from environment or capability discovery.
@@ -352,19 +371,17 @@ mod tests {
 
     #[test]
     fn test_service_discovery_config() {
+        let expected_endpoint = sample_consul_registry_url();
         let config = ServiceDiscoveryConfig {
             discovery_type: DiscoveryType::Consul,
-            registry_endpoint: Some("http://consul.local:8500".to_string()),
+            registry_endpoint: Some(expected_endpoint.clone()),
             registration_ttl: Duration::from_secs(300),
             refresh_interval: Duration::from_secs(60),
             auto_register: true,
         };
 
         assert!(matches!(config.discovery_type, DiscoveryType::Consul));
-        assert_eq!(
-            config.registry_endpoint,
-            Some("http://consul.local:8500".to_string())
-        );
+        assert_eq!(config.registry_endpoint, Some(expected_endpoint));
         assert!(config.auto_register);
     }
 

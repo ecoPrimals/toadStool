@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Primal identity type definitions
 //!
 //! Capability enums and `ServiceEndpoint` - the core types for capability-based discovery.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Registry discovery backend (HTTP + file/unix delegation)
 //!
 //! Registry protocol: GET {endpoint}/services → JSON array of `ConfigFileService`.

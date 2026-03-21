@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Chaos engineering tests for ToadStool Universal Compute Platform
 //!
 //! These tests validate system resilience by introducing controlled failures

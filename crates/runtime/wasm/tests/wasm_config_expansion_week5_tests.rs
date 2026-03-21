@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::float_cmp)]
 //! WASM Runtime Configuration Tests - Week 5
 //! Comprehensive tests for WebAssembly runtime configuration

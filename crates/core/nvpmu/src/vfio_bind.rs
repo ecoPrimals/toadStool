@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! VFIO bind/unbind automation for NVIDIA GPUs.
 //!
 //! Safely rebinds a PCI device from its current driver (nouveau, nvidia)

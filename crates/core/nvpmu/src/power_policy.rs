@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Autonomous GPU power policy engine.
 //!
 //! Wraps [`PowerManager`] with configurable policies that govern

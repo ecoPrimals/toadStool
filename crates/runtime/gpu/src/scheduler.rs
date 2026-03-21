@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal Compute Scheduler
 //!
 //! Matches workloads to compute resources based on capabilities

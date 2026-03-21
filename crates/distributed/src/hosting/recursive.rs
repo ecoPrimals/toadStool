@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use toadstool::ToadStoolResult;
+use toadstool_common::constants::http_url;
 use tokio::sync::RwLock;
 
 use crate::types::{
@@ -87,11 +88,12 @@ impl RecursiveHostingManager {
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
 
+        let base_url = http_url(host, port);
         let instance = ChildToadStoolInstance {
             instance_id: instance_id.clone(),
             process_handle: ProcessHandle::default(),
             resource_allocation: toadstool_config.resource_allocation.unwrap_or_default(),
-            endpoint: format!("http://{host}:{port}/{instance_id}"),
+            endpoint: format!("{base_url}/{instance_id}"),
             status: InstanceStatus::Starting,
             started_at: SystemTime::now(),
         };
@@ -142,6 +144,14 @@ impl Default for InterInstanceCommunication {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use toadstool_common::constants::{LOCALHOST_IPV4, http_url};
+
+    /// Loopback host for recursive hosting unit tests (not a fixed deployment address).
+    const TEST_LOOPBACK_HOST: &str = LOCALHOST_IPV4;
+    /// Arbitrary port for channel/instance tests that do not exercise binding.
+    const TEST_HTTP_PORT: u16 = 8080;
+    /// Default child API port aligned with `TOADSTOOL_API_PORT` fallback in production paths.
+    const TEST_CHILD_API_PORT: u16 = 8084;
 
     #[test]
     fn test_child_resource_allocator_new() {
@@ -171,7 +181,7 @@ mod tests {
     fn test_communication_channel_debug_clone() {
         let channel = CommunicationChannel {
             channel_id: "ch-1".to_string(),
-            endpoint: "http://127.0.0.1:8080".to_string(),
+            endpoint: http_url(TEST_LOOPBACK_HOST, TEST_HTTP_PORT),
             last_activity: std::time::SystemTime::now(),
         };
         let cloned = channel.clone();
@@ -185,7 +195,10 @@ mod tests {
             instance_id: "inst-1".to_string(),
             process_handle: ProcessHandle::default(),
             resource_allocation: ResourceAllocation::default(),
-            endpoint: "http://127.0.0.1:8084/inst-1".to_string(),
+            endpoint: format!(
+                "{}/inst-1",
+                http_url(TEST_LOOPBACK_HOST, TEST_CHILD_API_PORT)
+            ),
             status: InstanceStatus::Starting,
             started_at: SystemTime::now(),
         };

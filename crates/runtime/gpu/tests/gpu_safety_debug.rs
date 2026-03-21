@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Debug test to isolate GPU safety issue
 
 use toadstool_runtime_gpu::unified_memory::*;

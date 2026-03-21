@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Mock VFIO BAR0 access for headless CI testing.
 //!
 //! Simulates a VFIO-attached GPU's BAR0 register space with configurable

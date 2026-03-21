@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Generate reservoir models with random weights
 //!
 //! Creates .fbz models suitable for reservoir computing with different seeds.

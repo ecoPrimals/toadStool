@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Shared test helpers and mocks for cloud orchestrator tests
 
 use async_trait::async_trait;

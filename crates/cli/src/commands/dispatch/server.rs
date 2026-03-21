@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Server and daemon command handlers
 //!
 //! Server, Daemon, ByobServer - long-running service modes.

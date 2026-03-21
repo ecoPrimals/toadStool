@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! VFIO-based BAR0 access for NVIDIA GPUs.
 //!
 //! Alternative to sysfs-based `Bar0Access` that works through VFIO's
@@ -428,13 +428,11 @@ impl VfioMsixInterrupt {
             count: 1,
         };
 
-        // SAFETY: VfioIrqSet is repr(C); we're copying its bytes.
-        payload.extend_from_slice(unsafe {
-            std::slice::from_raw_parts(
-                std::ptr::from_ref(&irq_set).cast::<u8>(),
-                std::mem::size_of::<VfioIrqSet>(),
-            )
-        });
+        payload.extend_from_slice(&irq_set.argsz.to_ne_bytes());
+        payload.extend_from_slice(&irq_set.flags.to_ne_bytes());
+        payload.extend_from_slice(&irq_set.index.to_ne_bytes());
+        payload.extend_from_slice(&irq_set.start.to_ne_bytes());
+        payload.extend_from_slice(&irq_set.count.to_ne_bytes());
         payload.extend_from_slice(&fd_val.to_ne_bytes());
 
         #[allow(

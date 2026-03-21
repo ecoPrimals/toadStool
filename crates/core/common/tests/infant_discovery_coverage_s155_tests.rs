@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2025 ecoPrimals
 
 //! Coverage expansion tests for `infant_discovery` module (S155)
 //!
 //! Tests public API of:
 //! - engine.rs: `DiscoveryEngine`, `DiscoveryEngineBuilder`, discovery flow
-//! - sources.rs: `EnvironmentSource`, `FallbackSource`, `MDNSSource`, `ConfigFileSource`, etc.
+//! - `infant_discovery::sources`: `EnvironmentSource`, `FallbackSource`, `MDNSSource`, `ConfigFileSource`, etc.
 //! - capabilities.rs: types, traits, capability constants
 //! - detectors.rs: `BareMetalDetector`, `HardwareEnvironment`, `standard_detectors`
 

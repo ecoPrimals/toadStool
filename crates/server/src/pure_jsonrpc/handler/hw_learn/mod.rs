@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Hardware learning JSON-RPC handlers.
 //!
 //! Exposes the hw-learn pipeline (observe → distill → apply → share) as

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Security Context and Policies
 //!
 //! Week 17 Sprint: Security module expansion (12% → 30%)

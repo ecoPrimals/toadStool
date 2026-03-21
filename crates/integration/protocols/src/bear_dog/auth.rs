@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BearDog authentication and authorization request/response types
 
 use serde::{Deserialize, Serialize};

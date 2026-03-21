@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Firmware inventory probing — re-exports from toadstool-sysmon.
 //!
 //! The actual probing lives in sysmon (where filesystem access belongs).

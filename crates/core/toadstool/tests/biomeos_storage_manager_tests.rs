@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Storage provisioning manager tests
 //!
 //! Tests ToadStool's local storage management capabilities (in-memory fallback).

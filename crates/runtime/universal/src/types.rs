@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Core types for universal compute
 //!
 //! This module defines the fundamental abstractions that unify CPU, GPU,

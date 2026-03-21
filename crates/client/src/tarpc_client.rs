@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # ToadStool tarpc Client Implementation
 //!
 //! Type-safe client for communicating with ToadStool compute services.

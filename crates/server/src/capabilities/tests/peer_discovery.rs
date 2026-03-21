@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Announce, find_peer, find_all_peers, cleanup tests.
 use super::*;
 

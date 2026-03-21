@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Akida device handle and operations
 //!
 //! # Evolution (Feb 12, 2026)

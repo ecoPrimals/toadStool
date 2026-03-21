@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Workload analysis and characterization
 //!
 //! Analyzes workload characteristics to enable intelligent backend selection.

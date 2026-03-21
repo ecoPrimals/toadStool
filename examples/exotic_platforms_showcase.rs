@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // ToadStool Exotic Platforms Showcase Demo
 // Demonstrates universal compute bridge capabilities across exotic computing paradigms
 

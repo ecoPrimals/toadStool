@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Transport layer tests for protocol communication
 //!
 //! Tests for HTTP transport, message routing, and protocol handling.
@@ -693,7 +693,7 @@ async fn test_trpc_transport_send_message_returns_error() {
     let err = result.unwrap_err();
     let err_msg = err.to_string().to_ascii_lowercase();
     assert!(
-        err_msg.contains("pending phase 3") || err_msg.contains("not yet implemented"),
+        err_msg.contains("not available") || err_msg.contains("json-rpc"),
         "unexpected error message: {err_msg}"
     );
 }

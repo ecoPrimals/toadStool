@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Auth module tests - uses well_known for IPC addressing in test fixtures
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 

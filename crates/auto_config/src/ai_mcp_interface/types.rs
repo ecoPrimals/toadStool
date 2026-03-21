@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # MCP Protocol Message Types
 //!
 //! Request/response structures for the Model Context Protocol (MCP).

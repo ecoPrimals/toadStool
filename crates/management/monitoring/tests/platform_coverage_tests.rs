@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration coverage for [`toadstool_management_monitoring::platform`] and related public types
 //! used by platform resource measurement.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Expanded tests for `self_identity` module
 //!
 //! Coverage expansion: `self_identity.rs` had minimal test coverage

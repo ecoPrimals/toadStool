@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Core types and data structures for protocol integration
 
 use std::collections::HashMap;
@@ -34,6 +34,14 @@ pub enum ProtocolError {
     /// Transport layer error
     #[error("Transport error: {0}")]
     Transport(String),
+
+    /// HTTP transport is not available in this deployment (use JSON-RPC over Unix socket to Songbird).
+    #[error("HTTP transport not available: use JSON-RPC over Unix socket to Songbird for IPC")]
+    HttpTransportNotAvailable,
+
+    /// tRPC transport is not wired; use JSON-RPC for IPC until Phase 3.
+    #[error("tRPC transport not available: use JSON-RPC via pure_jsonrpc for IPC")]
+    TRpcTransportNotAvailable,
 
     /// Service discovery failed
     #[error("Service discovery error: {0}")]

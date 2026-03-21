@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Transport implementations for protocol communication
 
 use std::collections::HashMap;
@@ -65,12 +65,10 @@ impl Transport {
 
 /// HTTP transport implementation
 ///
-/// EVOLVED: Deprecated! HTTP is handled by Songbird (architectural inversion!)
-/// ToadStool uses Unix sockets for inter-primal communication.
+/// HTTP is not implemented in this crate; external HTTP is delegated to Songbird.
+/// Prefer JSON-RPC over Unix sockets for IPC.
 #[derive(Debug, Clone)]
-pub struct HttpTransport {
-    // No HTTP client! Delegated to Songbird! ✅
-}
+pub struct HttpTransport {}
 
 impl Default for HttpTransport {
     fn default() -> Self {
@@ -79,23 +77,18 @@ impl Default for HttpTransport {
 }
 
 impl HttpTransport {
-    /// Create a new HTTP transport placeholder
+    /// Create HTTP transport handle (`send_message` returns `HttpTransportNotAvailable`).
     pub const fn new() -> Self {
         Self {}
     }
 
-    /// Send message (placeholder; HTTP delegated to Songbird)
+    /// Send message (HTTP path not implemented here; external HTTP is delegated to Songbird).
     pub async fn send_message(
         &self,
         _message: &ProtocolMessage,
         _endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        // EVOLVED: HTTP delegated to Songbird!
-        // ToadStool communicates with Songbird via Unix socket
-        // Songbird handles external HTTP
-        Err(ProtocolError::Transport(
-            "HTTP transport deprecated - use Unix sockets to Songbird".to_string(),
-        ))
+        Err(ProtocolError::HttpTransportNotAvailable)
     }
 
     /// Check if endpoint uses HTTP transport
@@ -139,9 +132,7 @@ impl TRpcTransport {
         _message: &ProtocolMessage,
         _endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        Err(ProtocolError::Transport(
-            "tarpc transport pending Phase 3 — use JSON-RPC via pure_jsonrpc for IPC".to_string(),
-        ))
+        Err(ProtocolError::TRpcTransportNotAvailable)
     }
 
     /// Check if endpoint uses tRPC transport

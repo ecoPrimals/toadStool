@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive logic tests for ecosystem.rs
 //!
 //! This test file focuses on the actual business logic and behavior

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Mock V4L2 capture device for headless CI testing.
 //!
 //! Simulates a V4L2 camera device without requiring actual hardware or

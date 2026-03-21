@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Language runtime platforms
 //!
 //! Support for various programming language runtimes including systems languages,

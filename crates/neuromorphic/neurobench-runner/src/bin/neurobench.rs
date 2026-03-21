@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `NeuroBench` CLI Runner
 //!
 //! Run `NeuroBench` benchmarks on Akida `NPU` hardware.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Centralized Constants Module
 //!
 //! This module provides a single source of truth for all hardcoded values

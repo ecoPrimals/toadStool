@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Ollama client integration for JSON-RPC handler.
 
 use crate::ollama::{OllamaClient, OllamaConfig};

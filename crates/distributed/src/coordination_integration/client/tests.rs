@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Coordination client tests - Discovery, RPC, and type serialization
 
 use std::collections::HashMap;

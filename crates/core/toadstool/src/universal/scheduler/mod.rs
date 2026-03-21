@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Universal Scheduler for cross-platform job execution
 //!
 //! The scheduler routes jobs to appropriate execution backends:

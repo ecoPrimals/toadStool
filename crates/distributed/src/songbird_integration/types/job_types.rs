@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Job request/response, complexity, subtask, and coordination types
 
 use bytes::Bytes;

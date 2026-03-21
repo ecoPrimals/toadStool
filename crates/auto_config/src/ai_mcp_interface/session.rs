@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # AI Session & Preferences
 //!
 //! Session tracking and AI preference types for the MCP interface.

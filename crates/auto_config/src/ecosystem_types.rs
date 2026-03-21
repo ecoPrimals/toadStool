@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Ecosystem discovery types
 //!
 //! Type definitions for service discovery, patterns, and discovery summaries.

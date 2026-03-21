@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! GV100 (Volta) BAR0 register offsets and known values.
 //!
 //! Sourced from hotSpring VFIO experiments (Exp 058-060) and nouveau

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Zero-leakage secret value wrapper.
 //!
 //! [`SecretString`] holds credentials, tokens, and API keys in memory with

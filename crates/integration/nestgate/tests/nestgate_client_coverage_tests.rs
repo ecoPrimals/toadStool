@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for NestGate `StorageClient` (client.rs)
 //!
 //! Target: crates/integration/nestgate/src/client.rs — 90% coverage

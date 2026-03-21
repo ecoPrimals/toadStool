@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! ML/Science domain templates: Science, AI Research, Quantum, Genomics, Vision
 //!
 //! Data science and research workflow templates that extend the base science template

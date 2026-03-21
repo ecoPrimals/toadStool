@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Unit tests for primal socket path resolution
 //!
 //! Extracted from `primal_sockets.rs` to reduce file size.

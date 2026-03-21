@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Cross-vendor knowledge store for GPU init recipes.
 //!
 //! Stores validated recipes indexed by architecture, making them

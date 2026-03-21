@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BYOB compute executor implementation
 
 use async_trait::async_trait;
@@ -262,8 +262,8 @@ impl ByobComputeExecutor {
         }
     }
 
-    /// Monitor deployment health
-    #[expect(dead_code, reason = "Phase 2+: background health monitoring loop")]
+    /// Monitor deployment health (background loop in production is phase 2+; covered by unit tests today).
+    #[cfg_attr(not(test), allow(dead_code))]
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 
@@ -325,6 +325,7 @@ impl ByobComputeExecutor {
     }
 
     /// Perform health check for a specific service
+    #[cfg_attr(not(test), allow(dead_code))]
     fn perform_health_check(
         &self,
         service_name: &str,

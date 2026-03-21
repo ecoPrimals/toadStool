@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Distributed Job State Tracking
 //!
 //! Manages the lifecycle and state of distributed GPU jobs across multiple towers.

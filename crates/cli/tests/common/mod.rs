@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(dead_code)]
 //! Shared test helpers and mocks for CLI monitoring tests
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Hardware and compute constants
 
 /// Default GPU max parallel compute invocations per workgroup dimension

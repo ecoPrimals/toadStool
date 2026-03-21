@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Core evaluator tests for security policy condition evaluation
 //!
 //! This test module provides comprehensive coverage of the `ConditionEvaluator`,

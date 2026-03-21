@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Supporting types for cloud integration
 //!
 //! This module contains all the shared types, enums, and configuration structs

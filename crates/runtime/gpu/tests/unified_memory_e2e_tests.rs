@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 //! End-to-End tests for Universal Unified Memory
 //!

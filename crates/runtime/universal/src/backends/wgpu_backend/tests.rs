@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! wgpu_backend unit tests — adapter info, fingerprint, precision routing.
 
 #[cfg(test)]

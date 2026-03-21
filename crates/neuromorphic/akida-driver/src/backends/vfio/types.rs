@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! VFIO kernel ABI types and ioctl opcodes
 //!
 //! Linux VFIO ioctl numbers (from kernel headers) and repr(C) structures

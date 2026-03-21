@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! OpenCL kernel helpers - built-in kernel selection and work size calculation
 
 use crate::universal::Operation;

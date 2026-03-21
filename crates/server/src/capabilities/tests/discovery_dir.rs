@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! discovery_directory and default_socket_path tests.
 use super::super::paths::{default_socket_path, discovery_directory};
 use super::*;

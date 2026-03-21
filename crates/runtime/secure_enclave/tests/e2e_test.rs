@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! End-to-end tests for secure enclave workflows
 //!
 //! These tests demonstrate complete workflows including:

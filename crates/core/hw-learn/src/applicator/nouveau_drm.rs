@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(unsafe_code)] // DRM kernel ioctls require unsafe FFI via rustix
 //! Apply recipe steps via nouveau DRM ioctls.
 //!

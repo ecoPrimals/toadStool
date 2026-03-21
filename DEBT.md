@@ -1,9 +1,23 @@
 # Active Technical Debt Register
 
-**Date**: March 20, 2026 — S160
+**Date**: March 21, 2026 — S161
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S161 Resolved Debt
+
+- **D-LARGE-FILES-2**: 10 large production files (>750 lines) smart-refactored into coherent directory modules — `sysmon/gpu.rs`, `infant_discovery/sources.rs`, `crypto_integration/client.rs`, `unified_memory/buffer.rs`, `display/ipc/client.rs`, `biomeos_integration/agents.rs`, `agent_backend_evolved.rs`, `execution.rs`, `vector_ops.rs`, `distributed/types/jobs.rs`.
+- **D-STUBS-TRANSPORT**: Transport stubs evolved to typed `ProtocolError` variants (HTTP/tRPC); transport tests updated for evolved messages.
+- **D-STUBS-EMULATOR**: Emulator stubs evolved to `SystemError::NotSupported`.
+- **D-HARDCODE-RECURSIVE**: `hosting/recursive.rs` URL construction evolved to `http_url()` helper.
+- **D-HARDCODE-CONSUL**: `protocols/config.rs` Consul URL evolved to named constants.
+- **D-UNSAFE-VFIO-BYTES**: `nvpmu/vfio.rs` unsafe struct-to-bytes (`from_raw_parts`) evolved to safe field-by-field `to_ne_bytes()` serialization.
+- **D-LICENSE**: `AGPL-3.0-or-later` → **`AGPL-3.0-only`** per wateringHole `STANDARDS_AND_EXPECTATIONS.md` — root `Cargo.toml` + **1,901** SPDX headers updated.
+- **D-COV-BYOB**: `byob_impl` coverage expansion — failure paths, health monitoring.
+- **D-COV-AGENT-BACKEND**: `agent_backend` coverage — CRUD, serde round-trips.
+- **D-COV-AUTO-INIT**: `auto_init` coverage — `dry_run`, edge cases.
+- **D-LINT-EXPECT**: Unfulfilled `float_cmp` lint expectations removed from `distributed/types/jobs/tests.rs`.
 
 ## S160 Resolved Debt
 
@@ -66,8 +80,8 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 - **D-SIGSEGV-SELFID**: `self_identity_expanded_tests` SIGSEGV fixed. `detect_gpu()` now uses `OnceLock` — single wgpu instance probe per process, eliminating concurrent GPU driver crashes.
 - **D-CLIPPY-PEDANTIC**: Clippy pedantic errors resolved — 0 errors across all 56 crates.
-- **D-LICENSE-CARGO**: 17 Cargo.toml files evolved to `license.workspace = true`. All workspace crates now inherit AGPL-3.0-or-later consistently.
-- **D-SPDX-MISMATCH**: SPDX header mismatch resolved — license aligned to AGPL-3.0-or-later.
+- **D-LICENSE-CARGO**: 17 Cargo.toml files evolved to `license.workspace = true`. All workspace crates inherit workspace license (**AGPL-3.0-only** per S161 mandate).
+- **D-SPDX-MISMATCH**: SPDX header mismatch resolved — license aligned to **AGPL-3.0-only** (S161).
 - **D-SPDX-MISSING**: Missing SPDX on 35 files — all resolved.
 - **D-FORBID-UNSAFE**: 9 crates upgraded `deny(unsafe_code)` → `forbid(unsafe_code)` (client, cli, integration-tests, server, testing, toadstool-core, core/common, core/config, core/toadstool). Total: 29 forbid + ~10 deny.
 - **D-HARDCODE-TEST**: Hardcoded IPs centralized. `TestConstants` expanded with network fixtures. 5 files with production-adjacent hardcoded ports/IPs/endpoints evolved to named constants.
@@ -77,7 +91,7 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 - **temp_env migration**: ✅ Resolved S158b — 3 files migrated from `unsafe { env::set_var }` to `temp_env` (format.rs, discovery_dir.rs, discovery_defaults.rs).
 - **Zero-copy expansion**: `Arc<str>` in protocols, nestgate, cli — hot-path clone reduction.
 - **stub_external_services**: Dead code confirmed gone.
-- **SPDX final sweep**: ✅ Resolved S158b — all remaining `AGPL-3.0-or-later` SPDX headers (47 .rs files) aligned to `AGPL-3.0-or-later`.
+- **SPDX final sweep**: ✅ Resolved S158b — 47 .rs files aligned; **S161** completed workspace-wide **AGPL-3.0-only** (1,901 headers + `Cargo.toml`).
 
 ## S157b Resolved Debt
 
@@ -169,7 +183,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (187K lines, llvm-cov S160). **21,514+ tests passing** (267 new S160 across 10 test files). Target 90%. Top remaining gaps: `byob_impl/mod.rs`, `agent_backend.rs`, `hw_learn/auto_init.rs`, `science_domains.rs`. Push ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (187K lines, llvm-cov). **21,514+ tests passing**. Target 90%. **S161**: +10 large file refactors, stubs evolved, unsafe reduced; expanded coverage for `byob_impl`, `agent_backend`, `auto_init`. Remaining gaps e.g. `science_domains.rs`. Push ongoing. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
@@ -252,7 +266,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | Clippy pedantic (`toadstool-display`) | `map().unwrap_or_else()` → `map_or_else()` in PCIe transport. Case-sensitive `.sock` extension → `Path::extension().eq_ignore_ascii_case()`. |
 | Clippy pedantic (`nvpmu-monitor`) | `#[expect(clippy::cast_precision_loss)]` for millidegree i64→f64 temperature conversion. |
 | Clippy pedantic (`toadstool-server`) | `RemoteDispatcher::forward` `# Errors` doc section. Needless `continue` in background test loops. |
-| Clippy pedantic (examples) | `config_management_demo` underscore-prefixed used bindings cleaned. `production_universal_demo` items-after-statements allowed. SPDX header fixed (`AGPL-3.0-or-later` → `AGPL-3.0-or-later`). |
+| Clippy pedantic (examples) | `config_management_demo` underscore-prefixed used bindings cleaned. `production_universal_demo` items-after-statements allowed. SPDX aligned to **AGPL-3.0-only** (S161). |
 | Full codebase audit: production unwraps | **VERIFIED CLEAN**: all `unwrap()`/`expect()` confirmed in test code, SAFETY-justified hardware drivers, compile-time constants, or `Default` impls with intentional panics. DEBT.md claim accurate. |
 | Full codebase audit: production panics | **VERIFIED CLEAN**: all `panic!()` confirmed in `#[cfg(test)]` modules. CPU backend type-mismatch panics are test-only assertions. |
 | Full codebase audit: sovereignty | **VERIFIED**: capability-based architecture correct. `capability_helpers.rs` is intentional migration bridge. `SongbirdAdapter` uses `get_socket_path_for_capability(capabilities::COORDINATION)`. ~50 primal name strings are in test code, deprecated constants, or translation layers. |
@@ -289,7 +303,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | Clippy pedantic `--all-targets` | 120+ fixes across 10 crates. Now passes `--all-targets` including test code. All `#[expect(..., reason = "...")]` pattern. |
 | Sovereignty: hardcoded primal names in science handlers | `deploy_graph_status` → runtime socket discovery. `ecology_offload` → capability-based. `"barracuda::*"` → `capabilities::*`. Shader pipeline → `capabilities::SHADER_COMPILE_NATIVE`. |
 | Zero-copy: `Vec<u8>` in GPU types | 6 types evolved to `bytes::Bytes` (zero-copy clone via refcount): `ComputeBuffer`, `UniversalKernel::Binary`, `WorkloadResult`, `CompiledKernel`, `KernelInput`, `KernelOutput`. |
-| SPDX: examples | ✅ `examples/real_gpu_pool.rs` aligned to `AGPL-3.0-or-later` (S158). |
+| SPDX: examples | ✅ `examples/real_gpu_pool.rs` aligned to workspace license (S158; **AGPL-3.0-only** S161). |
 | Broken doc link | `streaming_dispatch.rs:150` → `Self::record_dispatch_with_progress`. |
 | Flaky test | `test_concurrent_resource_monitoring_events` — subscribe-before-start barrier pattern. |
 | Stale doc references | `QUICK_REFERENCE.md`, neuromorphic READMEs, `NAK_DEFICIENCIES.md`, CI paths cleaned. |
@@ -300,7 +314,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |------|-----------|
 | `cargo fmt` 21 diffs | All 13 files formatted (sysmon, cli, server, security, gpu) |
 | Clippy `-D warnings` fail | `toadstool-sysmon` missing Cargo metadata (repository, readme, keywords, categories) added. Unused `ServiceStatus` import removed. All 44 crates now pass `clippy -D warnings`. |
-| License alignment | `AGPL-3.0-or-later` canonical (per wateringHole standard). 1,687 SPDX headers updated S138; remaining 47 aligned S158b. `deny.toml` updated. |
+| License alignment | Per wateringHole: 1,687 SPDX headers (S138); 47 files (S158b). **Canonical license (S161): AGPL-3.0-only** — 1,901 SPDX + root `Cargo.toml`. `deny.toml` updated. |
 | Placeholder URLs | `your-org` → `ecoPrimals` in root Cargo.toml. 33 crates with divergent repository URLs consolidated to `repository.workspace = true`. |
 | Hardcoded primal names | `core/config/constants::primals` and `cli/templates/constants::service_names` evolved to re-export from `interned_strings::primals`. `capability_helpers`, `graph_node`, `beardog/discovery`, `nestgate/client`, `distributed/adapters` evolved to interned constants. |
 | Production unwrap() audit | Confirmed CLEAN: all 2,044 unwrap() calls are in test code, doc examples, or testing helpers. Zero production unwraps. |

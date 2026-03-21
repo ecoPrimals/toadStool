@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Architecture register mapping — translate register offsets between GPU generations.
 //!
 //! When a recipe is learned on one GPU arch (e.g., Ada/AD104) and applied to another

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 // Core EcosystemIntegrator implementation - refactored by protocol
 //
 // ⚠️ LEGACY INTEGRATION LAYER

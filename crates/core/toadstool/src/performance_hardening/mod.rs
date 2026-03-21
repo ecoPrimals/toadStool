@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Performance Hardening Module
 //!
 //! This module provides performance optimization features for `ToadStool`:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Generic NPU Dispatch — vendor-agnostic neuromorphic compute interface.
 //!
 //! `NpuDispatch` is toadStool's hardware-layer abstraction for neuromorphic

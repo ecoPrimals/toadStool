@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! RuntimeEngine trait implementation - bridges ExecutionRequest/Response to legacy jobs
 
 use std::borrow::Cow;

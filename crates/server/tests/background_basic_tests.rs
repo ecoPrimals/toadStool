@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Background Task Management Tests
 //!
 //! Target: `crates/server/src/background.rs`

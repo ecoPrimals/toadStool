@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Concurrent operations tests
 //!
 //! Tests for concurrency, race conditions, and stress testing.

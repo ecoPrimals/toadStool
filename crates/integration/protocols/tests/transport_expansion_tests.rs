@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Additional transport layer tests for comprehensive coverage
 //!
 //! This file expands test coverage for transport functionality including:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Error handling integration tests
 //!
 //! Tests error scenarios and recovery behavior across distributed components

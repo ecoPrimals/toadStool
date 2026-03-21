@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Runtime profiler for GPU operation benchmarking
 //!
 //! Measures operation performance to learn optimal workgroup sizes.

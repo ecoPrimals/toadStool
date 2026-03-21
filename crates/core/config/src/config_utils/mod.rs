@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Configuration Utilities
 //!
 //! This module provides utility functions to replace hardcoded values with

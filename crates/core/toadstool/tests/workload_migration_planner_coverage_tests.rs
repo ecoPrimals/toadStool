@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Targeted tests for `workload_migration/planner.rs` coverage expansion
 //! Covers: empty workloads, `MinimizeCost`, untracked workload, all branches
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Error type definitions for ToadStool platform
 //!
 //! This module contains all error enum definitions organized by domain.

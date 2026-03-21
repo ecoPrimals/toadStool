@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Additional tests for self-identity module
 //!
 //! Expanding test coverage for the self-identity system.

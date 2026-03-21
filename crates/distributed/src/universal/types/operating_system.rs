@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Operating system support
 //!
 //! Support for various operating systems including Unix-like, Windows, mobile,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Integration tests for Sandbox isolation
 //!
 //! These tests verify sandbox creation, resource limits, and isolation.

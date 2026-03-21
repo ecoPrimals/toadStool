@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Simple wasmi execution test
 //!
 //! Tests basic WASM module loading and execution with wasmi runtime.

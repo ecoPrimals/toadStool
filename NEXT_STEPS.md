@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 20, 2026 -- S160 Deep Audit + Coverage Expansion
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | AGPL-3.0-or-later | **All 4 quality gates green** | 0 clippy pedantic+nursery (58 crates) | 21,514+ tests (0 failures) | 1,852 `.rs` files, 570K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny)
-**Latest**: S160 — Full codebase audit against wateringHole standards. 22 clippy errors resolved. `#![deny(unsafe_code)]` on all remaining crates. 267 new coverage tests across 10 files. Coverage ~84-85% (target 90%). SPDX 100%. ecoBin v3.0 certified.
+**Updated**: March 21, 2026 -- S161 Deep Debt Execution + License Compliance
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,514+ tests (0 failures) | 1,852 `.rs` files, 570K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny)
+**Latest**: S161 — 10 large production files refactored (<800 lines); transport/emulator stubs evolved; `hosting/recursive` + `protocols/config` hardcoding reduced; `nvpmu/vfio` safe struct bytes; coverage expanded (byob_impl, agent_backend, auto_init); **AGPL-3.0-only** (1,901 SPDX + `Cargo.toml`); lint expectations + transport tests fixed. ecoBin v3.0 certified.
 
 ---
 
@@ -31,9 +31,9 @@ parameter tuning.
 All `set_var`/`remove_var` calls wrapped in `unsafe {}` across 14 files. Mangled
 syntax fixed in 3 server files. Test suite fully unblocked.
 
-### P1: Test Coverage → 90% (D-COV) — Ongoing (S158)
+### P1: Test Coverage → 90% (D-COV) — Ongoing (S161)
 
-**~85% line coverage** (~182K lines instrumented). **11,956+ tests** (default features). Target 90%. Coverage push to 90% ongoing — hardware mocks needed for remaining gaps.
+**~84–85% line coverage** (~187K lines instrumented, llvm-cov). **21,514+ tests** (0 failures). Target 90%. **S161** expanded coverage (`byob_impl`, `agent_backend`, `auto_init`) alongside large-file refactors. Push ongoing — hardware mocks for remaining gaps (e.g. `science_domains.rs`).
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 
@@ -59,7 +59,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | Phase D mixed command streams | Planned — requires Phase A (VFIO) + coralReef |
 | VFIO PBDMA dispatch | Blocked on coralReef (USERD_TARGET encoding fix) |
 | E2E sovereign pipeline test | Blocked on VFIO dispatch |
-| Phase 2 dep migration: procfs → toadstool-sysmon | Pending |
+| Phase 2 dep migration: procfs → toadstool-sysmon | **RESOLVED** — `procfs` default features disabled (S129); dead `procfs` dep removed where unused (S160); runtime discovery uses `toadstool-sysmon` where applicable |
 | Phase 3: tarpc binary transport | Pending |
 | Property-based testing for computation modules | Pending |
 | Multi-primal integration test infrastructure | Pending |

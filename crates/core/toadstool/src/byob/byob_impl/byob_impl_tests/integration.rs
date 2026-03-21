@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! ByobExecutor trait integration tests
 
 use super::super::*;
@@ -127,6 +127,26 @@ async fn test_deploy_biome_max_concurrent_limit() {
     let result = executor.deploy_biome(req2).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("concurrent"));
+}
+
+#[tokio::test]
+async fn test_monitor_deployment_health_after_successful_deploy() {
+    let engine = create_test_runtime_engine();
+    let executor = ByobComputeExecutor::new(engine, create_test_config(8080, vec![80]));
+    let request = create_test_deployment_request();
+    let id = request.deployment_id;
+    executor.deploy_biome(request).await.unwrap();
+    executor.monitor_deployment_health(id).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_monitor_deployment_health_unknown_deployment_is_noop() {
+    let engine = create_test_runtime_engine();
+    let executor = ByobComputeExecutor::new(engine, create_test_config(8080, vec![80]));
+    executor
+        .monitor_deployment_health(Uuid::new_v4())
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Model loaders for various formats
 //!
 //! Supports loading models from `HuggingFace` Hub (safetensors) and llama.cpp (GGUF).

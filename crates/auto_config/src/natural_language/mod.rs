@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Natural Language Configuration Interface
 //!
 //! Enables configuration of `ToadStool` through natural language descriptions.

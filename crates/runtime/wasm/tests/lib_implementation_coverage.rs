@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Tests for WASM Runtime Implementation in lib.rs
 //!
 //! Target: Cover the actual implementation in lib.rs (currently 0/289 lines)

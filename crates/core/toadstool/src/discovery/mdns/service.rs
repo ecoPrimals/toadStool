@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! mDNS-based discovery service.
 //!
 //! Advertises and discovers ToadStool primals via mDNS/DNS-SD.

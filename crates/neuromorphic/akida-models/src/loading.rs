@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Model-to-device loading integration
 //!
 //! Bridges the model parser with the device driver for loading models to hardware.

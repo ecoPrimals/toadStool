@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Security Hardening Functional Tests - Week 19 Sprint 11
 //!
 //! Focus: Actual behavior testing (not just types)

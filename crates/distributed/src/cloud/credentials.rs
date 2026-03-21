@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Cloud credentials and authentication
 //!
 //! Secret fields use [`toadstool_common::SecretString`] so they are

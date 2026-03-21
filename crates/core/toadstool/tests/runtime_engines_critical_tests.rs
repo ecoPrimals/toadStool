@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Critical Path Tests for Runtime Engines
 //!
 //! Tests for runtime engine functionality identified in audit:

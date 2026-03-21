@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Dual-chip ensemble reservoir implementation
 //!
 //! Coordinates two Akida chips running different reservoirs in parallel.

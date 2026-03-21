@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Universal Federation Operations
 //!
 //! Tests for federation functionality in universal compute manager.

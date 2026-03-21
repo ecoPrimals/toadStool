@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Hybrid cloud scheduling
 //!
 //! This module contains the hybrid cloud scheduler and related strategies.

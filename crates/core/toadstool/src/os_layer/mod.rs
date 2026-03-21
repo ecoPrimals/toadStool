@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! OS layer abstraction for biomeOS and platform compatibility.
 
 /// BiomeOS integration and orchestration.

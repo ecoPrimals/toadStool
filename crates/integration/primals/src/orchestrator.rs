@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 use crate::client::{PrimalClient, PrimalRequest};
 use crate::error::{PrimalError, PrimalResult};
 use crate::manifest::BiomeManifest;

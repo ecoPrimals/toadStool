@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Specialty runtime engine - orchestrates legacy adapters and job execution
 
 use std::collections::HashMap;

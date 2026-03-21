@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # mDNS Discovery Service
 //!
 //! Implements automatic service discovery using mDNS/DNS-SD (Multicast DNS).

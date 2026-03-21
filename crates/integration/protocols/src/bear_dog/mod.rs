@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! BearDog / PKI security service integration.
 //!
 //! Capability-based integration with ecosystem security services.

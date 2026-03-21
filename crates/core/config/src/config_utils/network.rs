@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Network configuration utilities
 //!
 //! Port constants, network configuration helpers, endpoints, and connection settings.

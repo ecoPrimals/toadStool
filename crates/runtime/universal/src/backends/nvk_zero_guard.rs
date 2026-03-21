@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! NVK zero-output guard and device health checks.
 //!
 //! NVK on certain architectures (Volta SM70) produces all-zeros for f64

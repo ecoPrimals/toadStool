@@ -1,5 +1,5 @@
 #!/usr/bin/env cargo +nightly -Zscript
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Real GPU + CPU Pool with Universal Abstraction
 //!
 //! Uses ToadStool's universal compute interface - works with CUDA, `OpenCL`, Vulkan, or CPU

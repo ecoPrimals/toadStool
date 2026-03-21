@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Shader compilation pipeline IPC for coralReef.
 //!
 //! Proxies WGSL/SPIR-V compilation requests to coralReef when available.

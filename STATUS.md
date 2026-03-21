@@ -1,4 +1,4 @@
-# Status -- March 20, 2026 (S160 Deep Execution + Coverage Expansion)
+# Status -- March 21, 2026 (S161 Deep Debt Execution + License Compliance)
 
 ## Quality Gates
 
@@ -8,10 +8,10 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 errors, 0 warnings across all 58 crates** |
 | `cargo doc --all-features --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **21,514+ tests, 0 failures**. S160: +267 new coverage tests across 10 files, 9 broken tests fixed. |
-| `cargo llvm-cov` | **~84% line** | 187K lines instrumented. Target 90%. S160: +267 new tests, coverage push ongoing. |
+| `cargo test --workspace` | PASS | **21,514+ tests, 0 failures**. S160: +267 coverage tests / 9 test fixes. S161: +coverage (byob_impl, agent_backend, auto_init), transport/jobs lint fixes. |
+| `cargo llvm-cov` | **~84% line** | 187K lines instrumented. Target 90%. S161: coverage push ongoing toward 90%. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
-| License compliance | PASS | **AGPL-3.0-or-later**: all Cargo.toml have `license.workspace = true` + all .rs files have SPDX headers |
+| License compliance | PASS | **AGPL-3.0-only** (wateringHole STANDARDS): root `Cargo.toml` + **1,901** SPDX headers aligned; all crates inherit workspace license |
 | Production panics | PASS | **0 production panic!()** |
 | Sovereignty | PASS | Capability-based discovery. Zero hardcoded primal names. |
 | ecoBin v3.0 | PASS | First primal certified. Zero infrastructure C. |
@@ -28,7 +28,7 @@
 | Clippy lints | **pedantic + nursery** — both enabled at workspace level (S157) |
 | `unsafe` blocks | **~70+** (all SAFETY-documented; hardware-justified only) |
 | `#![forbid(unsafe_code)]` | **29 crates forbid, ~10 deny** (S158: +9 upgraded from deny) |
-| File size limit | **All < 1000 lines** (largest production: 832; all test files < 927) |
+| File size limit | **All < 800 lines** — production refactored (was largest 832); test files remain within prior limits |
 | Zero-copy | **`bytes::Bytes`** in GPU buffers, tarpc payloads, neuromorphic weights, WASM modules |
 | JSON-RPC methods | **96+** (semantic `domain.verb` naming per wateringHole standard) |
 | Production `todo!()`/`unimplemented!()` | **0** |
@@ -77,6 +77,16 @@
 
 ## Session History (Recent)
 
+### S161: Deep Debt Execution + License Compliance (Mar 21, 2026)
+- **Large-file refactors (10)**: Smart-split into directory modules — `sysmon/gpu.rs`, `infant_discovery/sources.rs`, `crypto_integration/client.rs`, `unified_memory/buffer.rs`, `display/ipc/client.rs`, `biomeos_integration/agents.rs`, `agent_backend_evolved.rs`, `execution.rs`, `vector_ops.rs`, `distributed/types/jobs.rs` (all production **< 800 lines**).
+- **Stub evolution**: `emulator_impls.rs` → `SystemError::NotSupported`; `transport.rs` → typed `ProtocolError` variants (HTTP/tRPC); transport tests updated for evolved messages.
+- **Hardcoding**: `hosting/recursive.rs` → `http_url()` helper; `protocols/config.rs` → named constants (e.g. Consul URL).
+- **Unsafe reduction**: `nvpmu/vfio.rs` struct serialization — `from_raw_parts` → safe field-by-field `to_ne_bytes()`.
+- **Coverage**: `byob_impl` (failure paths, health monitoring), `agent_backend` (CRUD, serde), `auto_init` (dry_run, edge cases).
+- **License**: **AGPL-3.0-only** per wateringHole `STANDARDS_AND_EXPECTATIONS.md` — root `Cargo.toml` + **1,901** SPDX headers (was `AGPL-3.0-or-later`).
+- **Lint/tests**: Removed unfulfilled `float_cmp` expectations in `distributed/types/jobs/tests.rs`; transport assertion aligned with `ProtocolError` messages.
+- **Quality gates**: `cargo check`, `fmt`, `clippy` (0 warnings), `doc`, `test` (0 failures) — all PASS.
+
 ### S158b: Scope Documentation + Deep Debt Execution (Mar 18, 2026)
 - **specs/README.md rewritten**: Comprehensive scope and aims section. Core principles: hardware atheism, self-knowledge only, tolerance-based routing, sovereign pipeline, ecoBin v3.0, deep debt resolution. Quality gates table. Key numbers table.
 - **Build fix**: 5 compilation errors in `toadstool-integration-protocols` resolved — `Arc<str>` ↔ `String` mismatches and unstable `str_as_str` API.
@@ -87,9 +97,9 @@
 - All quality gates green: workspace builds clean, 0 clippy code errors, tests pass.
 
 ### S158: Comprehensive Audit + Deep Debt Execution (Mar 17, 2026)
-- **Audit findings summary**: Full wateringHole standards audit. Clippy pedantic 0 errors post-fix. License aligned to AGPL-3.0-or-later. `missing_docs` enabled on 38 crates (694+ warnings to fill). Coverage target 90%, currently ~83%.
+- **Audit findings summary**: Full wateringHole standards audit. Clippy pedantic 0 errors post-fix. License aligned to AGPL-3.0-only (S161). `missing_docs` enabled on 38 crates (694+ warnings to fill). Coverage target 90%, currently ~83%.
 - **SIGSEGV fixed**: `self_identity_expanded_tests` crash resolved. Root cause: `detect_gpu()` created a new `wgpu::Instance` per `SelfIdentity::new()` call; 35 concurrent tests hammered GPU driver. Fix: `OnceLock`-cached GPU detection — GPU availability doesn't change during process lifetime.
-- **License compliance**: 17 Cargo.toml files evolved to `license.workspace = true` (hw-learn, nvpmu, 15 showcase packages). All workspace crates now inherit AGPL-3.0-or-later from root.
+- **License compliance**: 17 Cargo.toml files evolved to `license.workspace = true` (hw-learn, nvpmu, 15 showcase packages). All workspace crates now inherit AGPL-3.0-only from root (S161: SPDX + workspace string unified).
 - **`#![forbid(unsafe_code)]` expansion**: 9 crates upgraded from `deny` to `forbid` (client, cli, integration-tests, server, testing, toadstool-core, core/common, core/config, core/toadstool). 3 crates correctly kept at `deny` (auto_config, core/common, distributed) due to `unsafe { env::set_var() }` in test code.
 - **`#![warn(missing_docs)]`**: Enabled on 38 crates. 694+ missing doc warnings now visible; fill-in ongoing.
 - **Hardcoding evolution**: `TestConstants` expanded with `TEST_HOST`, `TEST_ENDPOINT`, `TEST_REMOTE_ENDPOINT`, `TEST_REGISTRY_ENDPOINT`. Hardcoded ports/IPs/endpoints evolved in 5 production-adjacent files: `auto_config` test endpoints, `ollama` named constants (`DEFAULT_OLLAMA_PORT`, `TEST_OLLAMA_UNUSED_PORT`), `distributed/songbird_integration` test constants, `gpu/tower_manager` test constants.
@@ -236,7 +246,7 @@
 - **Sovereignty evolution**: `deploy_graph_status` evolved from hardcoded 5-primal array to runtime socket discovery. `ecology_offload` evolved to `get_socket_path_for_capability(ECOLOGY)`. `"barracuda::*"` API metadata evolved to `capabilities::*` constants. Shader pipeline responses evolved from `"coralreef_native"` / `"coral_reef_available"` to `capabilities::SHADER_COMPILE_NATIVE` / `"native_compiler_available"`. 6 new capability constants added to `interned_strings`.
 - **Zero-copy evolution**: `Vec<u8>` → `bytes::Bytes` in 6 GPU/runtime types (`ComputeBuffer::data`, `UniversalKernel::Binary::data`, `WorkloadResult::outputs`, `CompiledKernel::binary`, `KernelInput::data`, `KernelOutput::buffers`). All callers updated (cpu_resource, compiler, frameworks, examples).
 - **Flaky test fixed**: `test_concurrent_resource_monitoring_events` — restructured barrier synchronization: subscribe-before-start pattern with 500ms timeout.
-- **SPDX alignment**: All files aligned to `AGPL-3.0-or-later` (S158b: final 47 .rs files + all .md files).
+- **SPDX alignment**: All files aligned to workspace license (S158b: 47 .rs; **S161: AGPL-3.0-only** sweep — 1,901 headers + Cargo.toml).
 - **Doc link fixed**: `streaming_dispatch.rs:150` broken intra-doc link → `Self::record_dispatch_with_progress`.
 - **Debris cleanup**: Stale showcase references removed from `QUICK_REFERENCE.md`. Broken neuromorphic README links fixed. `NAK_DEFICIENCIES.md` paths updated. CI stale paths cleaned.
 - All quality gates green: 0 fmt, 0 clippy pedantic (all-targets), 0 doc warnings, all tests compile.

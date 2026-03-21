@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! GPU init observation — vendor-neutral trace capture.
 //!
 //! Parses output from kernel tracing facilities (mmiotrace, strace, dmesg)

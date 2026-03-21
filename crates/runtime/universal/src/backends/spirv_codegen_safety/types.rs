@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 
 /// NVVM poisoning risk classification inferred from driver identity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

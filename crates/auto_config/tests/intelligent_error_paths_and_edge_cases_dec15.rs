@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(clippy::float_cmp)]
 //! Comprehensive Error Path and Edge Case Coverage for Intelligent Auto-Configuration
 //!

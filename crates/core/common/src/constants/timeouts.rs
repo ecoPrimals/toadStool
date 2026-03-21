@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Timeout constants
 //!
 //! Centralized timeout values for various operations across ToadStool.

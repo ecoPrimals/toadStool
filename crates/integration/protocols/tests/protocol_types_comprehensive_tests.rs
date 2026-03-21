@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for Integration Protocol types
 //!
 //! Week 17 Sprint 5: Integration Protocol types and structures tests

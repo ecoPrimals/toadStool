@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! System management configuration types for legacy systems
 
 use serde::{Deserialize, Serialize};

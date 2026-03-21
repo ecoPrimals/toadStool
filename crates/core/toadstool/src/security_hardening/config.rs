@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Security hardening configuration types
 //!
 //! Extracted from security_hardening.rs for modularity (Feb 14, 2026).

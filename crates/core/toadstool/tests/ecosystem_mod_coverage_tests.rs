@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Targeted tests for ecosystem/mod.rs coverage expansion
 //! Covers: `DiscoveryMethodConfig` variants, `integrate_services`, error paths, deprecated APIs
 

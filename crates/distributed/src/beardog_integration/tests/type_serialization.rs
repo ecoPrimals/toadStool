@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Serialization roundtrip tests for BearDog integration types
 
 use crate::beardog_integration::ServiceLocation;

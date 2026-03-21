@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Vision models (YOLO, `ResNet`, etc.)
 //!
 //! Type-safe API surface for computer vision inference.

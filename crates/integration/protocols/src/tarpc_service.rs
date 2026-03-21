@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # ToadStool Compute RPC Service (tarpc)
 //!
 //! High-performance, type-safe binary RPC protocol for primal-to-primal communication.

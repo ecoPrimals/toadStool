@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Biome lifecycle command handlers
 //!
 //! Run, Up, Down, Ps, Logs - foreground/background execution and monitoring.

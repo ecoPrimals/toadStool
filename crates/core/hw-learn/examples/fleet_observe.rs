@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Fleet observation tool — discover GPUs, probe firmware, identify learning pairs.
 //!
 //! Run on any machine to:

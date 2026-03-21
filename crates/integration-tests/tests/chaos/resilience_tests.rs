@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Resilience tests
 //!
 //! Verify that ToadStool's subsystems recover predictably from faults,

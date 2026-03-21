@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Test Environment Fixture - Enables Parallel Testing
 //!
 //! This module provides isolated environment variable management for tests,

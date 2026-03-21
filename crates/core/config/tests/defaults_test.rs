@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for default configuration constants
 //!
 //! Coverage target: Test all default values are sensible (15 tests)

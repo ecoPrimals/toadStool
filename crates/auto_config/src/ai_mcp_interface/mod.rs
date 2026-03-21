@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # AI/MCP Interface
 //!
 //! Universal interface for ANY AI service using Model Context Protocol (MCP).

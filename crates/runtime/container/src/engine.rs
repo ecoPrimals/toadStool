@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! `RuntimeEngine` trait implementation for the container runtime.
 //!
 //! Execution, metrics, shutdown, and resource validation.

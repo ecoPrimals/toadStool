@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 #![allow(unsafe_code)] // Memory isolation requires mlock/madvise kernel FFI via rustix
 //! Isolated memory region for secure computation
 //!

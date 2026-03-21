@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Capability Display Operations
 //!
 //! Extension trait for displaying platform capabilities and summaries.
