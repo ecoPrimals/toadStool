@@ -167,6 +167,7 @@ pub mod ollama;
 pub mod mocks;
 
 pub mod coral_reef_client; // coralReef shader compiler IPC client
+pub mod glowplug_client; // coral-ember VFIO passthrough IPC client
 
 // ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
 pub mod lifecycle; // Server startup and shutdown
