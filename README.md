@@ -268,6 +268,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S163+ (Mar 22, 2026)**: GlowPlug ember client stub (`glowplug_client.rs`) — lazy Unix socket discovery (env var / XDG runtime / default), JSON-RPC RPCs (`ember.list`, `ember.status`, `ember.swap`, `ember.reacquire`), `SharedGlowPlugClient` via `Arc<GlowPlugClient>`. Wires toadStool into coral-ember device lifecycle. Via hotSpring Full Sweep Evolution Sprint.
 - **S163 (Mar 21, 2026)**: Deep code quality + dependency audit. 26 phantom deps removed across 10 crates (indicatif, figment, handlebars, nom, byteorder, csv, rand + 19 more). Zero-copy improvements: PrimalIdentity trait returns references not clones, PluginManager returns `&str` not `String`, protocol handler map uses `Arc<str>` keys, JSON payload serialization bypasses intermediate String. `#[allow(dead_code)]` evolved to `#[expect(dead_code, reason)]` or `#[cfg(test)]`. RUSTSEC-2025-0119 advisory eliminated (indicatif removed). Stale async-trait import removed. Clippy zero warnings. All tests pass.
 - **S162 (Mar 21, 2026)**: Coverage expansion (81.64%→82.81%). +98 tests across barracuda, science domains, dispatch, transport, hw_learn, tarpc, unibin. Coverage script fix. SPDX sweep (38 files). Last production unwrap evolved.
 - **S160 (Mar 20, 2026)**: Deep execution + coverage expansion. 9 broken tests fixed (neuromorphic detection, nested-runtime, transport assertions). +49 new tests across resource types, security policies/sandbox types, property-based testing. Hardcoded Akida specs → named constants. Dead `procfs` dep removed from 3 crates. 21,275 tests, 0 failures.
@@ -337,4 +338,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 21, 2026 — S163. 21,600+ workspace tests, 0 failures. ~83% line coverage (188K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. 26 phantom deps eliminated (S163). Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 22, 2026 — S163+. 21,600+ workspace tests, 0 failures. ~83% line coverage (188K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. 26 phantom deps eliminated (S163). GlowPlug ember client stub (`glowplug_client.rs`) with lazy socket discovery and JSON-RPC RPCs for device lifecycle management. Rust 1.85+ (edition 2024, MSRV).
