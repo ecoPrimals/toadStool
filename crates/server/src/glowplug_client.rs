@@ -179,10 +179,7 @@ impl GlowPlugClient {
     pub async fn reacquire(&self, bdf: &str) -> Option<EmberReacquireResult> {
         let client = self.client().await?;
         match client
-            .call_typed::<EmberReacquireResult>(
-                "ember.reacquire",
-                serde_json::json!({"bdf": bdf}),
-            )
+            .call_typed::<EmberReacquireResult>("ember.reacquire", serde_json::json!({"bdf": bdf}))
             .await
         {
             Ok(result) => Some(result),
@@ -239,7 +236,12 @@ mod tests {
     #[tokio::test]
     async fn swap_returns_none_without_ember() {
         let client = GlowPlugClient::new();
-        assert!(client.swap_device("0000:01:00.0", "nouveau").await.is_none());
+        assert!(
+            client
+                .swap_device("0000:01:00.0", "nouveau")
+                .await
+                .is_none()
+        );
     }
 
     #[tokio::test]

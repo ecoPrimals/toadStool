@@ -289,6 +289,23 @@ Barracuda god files (wgpu_device, driver_profile, probe, capabilities, etc.) tra
 | coralReef milestone | First E2E sovereign GPU dispatch on AMD RX 6950 XT (pure Rust WGSL→PM4→readback) |
 | Coverage | ~86% line coverage (121K production lines) |
 
+### hotSpring Integration Sprint (Mar 26, 2026)
+
+| Category | Change |
+|----------|--------|
+| **Socket discovery** | hotSpring now discovers `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock` (toadStool's actual path). Previous code only checked flat layout. |
+| **Wire format** | Fixed `silicon_unit` mismatch: hotSpring was sending `"shader"` but toadStool `SiliconUnit` deserializes as `"shader_core"` (snake_case enum). All report paths now use correct wire names. |
+| **Precision matrix** | `validate_precision_matrix` now reports to `compute.performance_surface.report` with `math.*` operation IDs (`math.arith.mul.df64`, `math.reduce.sum.fp32`, etc.), proper `silicon_unit: "shader_core"`, and measured tolerance. |
+| **SPIR-V bridge** | New `barracuda-spirv` crate in barraCuda workspace — isolates the single `unsafe` call to `create_shader_module_passthrough`. Enables Tier 1 sovereign SPIR-V (naga IR → SPIR-V → GPU, bypasses WGSL re-emission). Gated behind `spirv-passthrough` feature flag. |
+
+**Evolution priorities for toadStool team:**
+
+1. **Performance surface persistence** — in-memory `RwLock<Vec<>>` is lost on restart. Needs JSON-lines or SQLite backing so silicon characterization accumulates across sessions.
+2. **Socket path standardization** — all primals should agree on `$XDG_RUNTIME_DIR/biomeos/` layout. Document in wateringHole.
+3. **Precision routing bridge** — expose `gpu.precision_routing` method combining toadStool's hardware truth with barraCuda's `PrecisionRoutingAdvice` for one-call routing.
+4. **hw-learn recipes** — observe/distill/apply pipeline needs real init traces from NVIDIA and AMD to populate the knowledge store.
+5. **SPIR-V compile proxy** — when coralReef native compilation is ready (biomegate), `shader.compile.spirv` should route through coralReef for sovereign SPIR-V, eliminating naga dependency long-term.
+
 ### Sessions S95–S96 (Mar 6, 2026)
 
 | Category | Change |
