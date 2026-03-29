@@ -124,10 +124,15 @@ impl HybridCloudScheduler {
     pub async fn select_providers(
         &self,
         _job: &UniversalJob,
-        _available_providers: &[String],
+        available_providers: &[String],
     ) -> ToadStoolResult<Vec<String>> {
-        // Simple implementation for now
-        Ok(vec!["aws".to_string()])
+        if available_providers.is_empty() {
+            return Ok(vec![]);
+        }
+        if available_providers.len() >= 2 {
+            return Ok(available_providers.to_vec());
+        }
+        Ok(vec![available_providers[0].clone()])
     }
 }
 
@@ -279,7 +284,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_select_providers_returns_aws() {
+    async fn test_select_providers_returns_all_when_multiple_registered() {
         let scheduler = HybridCloudScheduler::new(HybridSchedulingStrategy::CostOptimized)
             .await
             .unwrap();
@@ -288,7 +293,17 @@ mod tests {
             .select_providers(&job, &["aws".to_string(), "gcp".to_string()])
             .await
             .unwrap();
-        assert_eq!(providers, vec!["aws".to_string()]);
+        assert_eq!(providers, vec!["aws".to_string(), "gcp".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn test_select_providers_empty_when_none_registered() {
+        let scheduler = HybridCloudScheduler::new(HybridSchedulingStrategy::CostOptimized)
+            .await
+            .unwrap();
+        let job = make_test_job(Some(UniversalJobType::ComputeIntensive));
+        let providers = scheduler.select_providers(&job, &[]).await.unwrap();
+        assert!(providers.is_empty());
     }
 
     #[tokio::test]

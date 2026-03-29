@@ -1,0 +1,698 @@
+use super::*;
+use uuid::Uuid;
+
+/// ✅ MIGRATED: Replaced EcosystemService enum with ServiceType
+/// Old test: test_ecosystem_service_variants
+/// New test: test_service_type_capabilities
+#[test]
+fn test_service_type_capabilities() {
+    use crate::ecosystem::capabilities::StandardCapability;
+    use crate::ecosystem::service_type::ServiceType;
+
+    // Test crypto service type (replaces EcosystemService::BearDog)
+    let crypto_caps = vec![StandardCapability::CryptoSignatureEd25519.id()];
+    let crypto_service = ServiceType::from_capability_list(crypto_caps);
+    assert!(crypto_service.provides_crypto());
+    assert!(!crypto_service.provides_coordination());
+    assert!(!crypto_service.provides_storage());
+
+    // Test coordination service type (replaces EcosystemService::Songbird)
+    let coord_caps = vec![StandardCapability::CoordinationServiceRegistry.id()];
+    let coord_service = ServiceType::from_capability_list(coord_caps);
+    assert!(!coord_service.provides_crypto());
+    assert!(coord_service.provides_coordination());
+    assert!(!coord_service.provides_storage());
+
+    // Test storage service type (replaces EcosystemService::NestGate)
+    let storage_caps = vec![StandardCapability::StorageDistributedFilesystem.id()];
+    let storage_service = ServiceType::from_capability_list(storage_caps);
+    assert!(!storage_service.provides_crypto());
+    assert!(!storage_service.provides_coordination());
+    assert!(storage_service.provides_storage());
+
+    // Test custom service type (replaces EcosystemService::Unknown)
+    let custom_service = ServiceType::default().with_legacy_name("custom");
+    assert_eq!(custom_service.legacy_name(), Some("custom"));
+}
+
+/// ✅ MIGRATED: Replaced EcosystemService::name() with ServiceType::display_name()
+/// Old test: test_ecosystem_service_name
+/// New test: test_service_type_names
+#[test]
+fn test_service_type_names() {
+    use crate::ecosystem::capabilities::StandardCapability;
+    use crate::ecosystem::service_type::ServiceType;
+
+    // Test crypto service display name (replaces "beardog")
+    let crypto_caps = vec![StandardCapability::CryptoSignatureEd25519.id()];
+    let crypto_service = ServiceType::from_capability_list(crypto_caps);
+    assert_eq!(crypto_service.display_name(), "crypto-service");
+
+    // Test coordination service display name (replaces "songbird")
+    let coord_caps = vec![StandardCapability::CoordinationServiceRegistry.id()];
+    let coord_service = ServiceType::from_capability_list(coord_caps);
+    assert_eq!(coord_service.display_name(), "coordination-service");
+
+    // Test storage service display name (replaces "nestgate")
+    let storage_caps = vec![StandardCapability::StorageDistributedFilesystem.id()];
+    let storage_service = ServiceType::from_capability_list(storage_caps);
+    assert_eq!(storage_service.display_name(), "storage-service");
+
+    // Test custom legacy name
+    let custom_service = ServiceType::default().with_legacy_name("test");
+    assert_eq!(custom_service.display_name(), "test");
+}
+
+#[test]
+fn test_trust_level_variants() {
+    assert!(matches!(TrustLevel::Unknown, TrustLevel::Unknown));
+    assert!(matches!(TrustLevel::Discovered, TrustLevel::Discovered));
+    assert!(matches!(TrustLevel::Advertised, TrustLevel::Advertised));
+    assert!(matches!(TrustLevel::Verified, TrustLevel::Verified));
+    assert!(matches!(TrustLevel::Sovereign, TrustLevel::Sovereign));
+}
+
+#[test]
+#[allow(deprecated)] // Testing deprecated ServiceType during migration
+fn test_service_type_variants() {
+    assert!(matches!(ServiceType::Discovery, ServiceType::Discovery));
+    assert!(matches!(ServiceType::Crypto, ServiceType::Crypto));
+    assert!(matches!(ServiceType::Storage, ServiceType::Storage));
+    assert!(matches!(ServiceType::Compute, ServiceType::Compute));
+    assert!(matches!(ServiceType::Generic, ServiceType::Generic));
+
+    // Test capability mapping
+    assert_eq!(ServiceType::Discovery.to_capability(), "discovery");
+    assert_eq!(ServiceType::Crypto.to_capability(), "crypto");
+    assert_eq!(ServiceType::Storage.to_capability(), "storage");
+
+    // Test from_name migration helper (legacy primal names -> capability)
+    assert!(matches!(
+        ServiceType::from_name("songbird"),
+        ServiceType::Discovery
+    ));
+    assert!(matches!(
+        ServiceType::from_name("orchestration"),
+        ServiceType::Discovery
+    ));
+    assert!(matches!(
+        ServiceType::from_name("beardog"),
+        ServiceType::Crypto
+    ));
+    assert!(matches!(
+        ServiceType::from_name("unknown"),
+        ServiceType::Generic
+    ));
+}
+
+#[test]
+#[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+fn test_service_endpoint_creation() {
+    let endpoint = ServiceEndpoint {
+        service_type: EcosystemService::Discovery,
+        address: "127.0.0.1:8080".parse().unwrap(),
+        version: Arc::from("1.0.0"),
+        capabilities: vec!["discovery".to_string(), "coordination".to_string()],
+        trust_level: TrustLevel::Verified,
+    };
+
+    assert!(matches!(endpoint.service_type, EcosystemService::Discovery));
+    assert_eq!(endpoint.version.as_ref(), "1.0.0");
+    assert_eq!(endpoint.capabilities.len(), 2);
+    assert!(matches!(endpoint.trust_level, TrustLevel::Verified));
+}
+
+#[test]
+#[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+fn test_service_endpoint_serialization() {
+    let endpoint = ServiceEndpoint {
+        service_type: EcosystemService::Crypto,
+        address: format!(
+            "{}:{}",
+            toadstool_common::constants::LOCALHOST_IPV4,
+            6000 // Test fixture: deterministic port for serialization round-trip test
+        )
+        .parse()
+        .unwrap(),
+        version: Arc::from("2.0.0"),
+        capabilities: vec!["auth".to_string()],
+        trust_level: TrustLevel::Sovereign,
+    };
+
+    let json = serde_json::to_string(&endpoint).unwrap();
+    let deserialized: ServiceEndpoint = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(deserialized.version.as_ref(), "2.0.0");
+    assert!(matches!(deserialized.trust_level, TrustLevel::Sovereign));
+}
+
+#[test]
+fn test_discovery_result_creation() {
+    let result = DiscoveryResult {
+        services: vec![],
+        scan_duration: Duration::from_secs(5),
+        total_discovered: 10,
+        verified_count: 7,
+    };
+
+    assert_eq!(result.total_discovered, 10);
+    assert_eq!(result.verified_count, 7);
+    assert_eq!(result.scan_duration.as_secs(), 5);
+}
+
+#[test]
+fn test_beardog_permission_creation() {
+    let permission = BearDogPermission {
+        permission_id: Uuid::new_v4(),
+        granted_to: "test-service".to_string(),
+        capabilities: vec!["read".to_string(), "write".to_string()],
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
+        signature: "test-signature".to_string(),
+    };
+
+    assert_eq!(permission.granted_to, "test-service");
+    assert_eq!(permission.capabilities.len(), 2);
+    assert!(!permission.signature.is_empty());
+}
+
+#[test]
+fn test_nestgate_mount_creation() {
+    let mount = NestGateMount {
+        dataset_name: "research-data".to_string(),
+        mount_point: PathBuf::from("/mnt/data"),
+        endpoint: "127.0.0.1:9000".to_string(),
+        zfs_dataset: Some("tank/research".to_string()),
+        access_mode: "read".to_string(),
+        encryption_key: Some("key123".to_string()),
+    };
+
+    assert_eq!(mount.dataset_name, "research-data");
+    assert_eq!(mount.access_mode, "read");
+    assert!(mount.zfs_dataset.is_some());
+}
+
+#[allow(deprecated)] // Using ServiceType during migration
+#[test]
+fn test_discovered_service_creation() {
+    let mut capabilities = HashMap::new();
+    capabilities.insert("version".to_string(), "1.0.0".to_string());
+
+    let service = DiscoveredService {
+        service_type: ServiceType::Discovery,
+        address: "127.0.0.1:8080".parse().unwrap(),
+        trust_level: TrustLevel::Verified,
+        capabilities,
+        last_seen: std::time::SystemTime::now(),
+    };
+
+    assert!(matches!(service.service_type, ServiceType::Discovery));
+    assert_eq!(service.capabilities.len(), 1);
+}
+
+#[test]
+fn test_service_signature_creation() {
+    let signature = ServiceSignature {
+        algorithm: "ed25519".to_string(),
+        signature: "base64-signature".to_string(),
+        public_key: "base64-public-key".to_string(),
+        timestamp: std::time::SystemTime::now(),
+        nonce: "random-nonce".to_string(),
+    };
+
+    assert_eq!(signature.algorithm, "ed25519");
+    assert!(!signature.nonce.is_empty());
+}
+
+#[test]
+fn test_signed_service_response_creation() {
+    let signature = ServiceSignature {
+        algorithm: "ed25519".to_string(),
+        signature: "sig123".to_string(),
+        public_key: "key123".to_string(),
+        timestamp: std::time::SystemTime::now(),
+        nonce: "nonce123".to_string(),
+    };
+
+    let response = SignedServiceResponse {
+        service_id: "songbird-001".to_string(),
+        service_type: "songbird".to_string(),
+        status: "active".to_string(),
+        capabilities: vec!["discovery".to_string()],
+        timestamp: std::time::SystemTime::now(),
+        signature,
+    };
+
+    assert_eq!(response.service_id, "songbird-001");
+    assert_eq!(response.status, "active");
+    assert_eq!(response.capabilities.len(), 1);
+}
+
+#[test]
+fn test_crypto_verification_context_default() {
+    let context = CryptoVerificationContext::default();
+
+    // Should have empty trusted keys if no env vars set
+    assert_eq!(context.revoked_keys.len(), 0);
+    assert_eq!(context.max_age_minutes, 5);
+}
+
+#[test]
+fn test_crypto_verification_context_with_key() {
+    let context = CryptoVerificationContext::new().with_trusted_key("songbird", "test-key");
+
+    assert!(context.trusted_public_keys.contains_key("songbird"));
+    assert_eq!(
+        context.trusted_public_keys.get("songbird"),
+        Some(&"test-key".to_string())
+    );
+}
+
+#[test]
+fn test_crypto_verification_context_multiple_keys() {
+    let context = CryptoVerificationContext::new()
+        .with_trusted_key("songbird", "key1")
+        .with_trusted_key("beardog", "key2");
+
+    assert_eq!(context.trusted_public_keys.len(), 2);
+    assert!(context.trusted_public_keys.contains_key("songbird"));
+    assert!(context.trusted_public_keys.contains_key("beardog"));
+}
+
+#[test]
+fn test_crypto_verification_context_custom_config() {
+    let mut trusted_keys = HashMap::new();
+    trusted_keys.insert("songbird".to_string(), "test-key-1".to_string());
+    trusted_keys.insert("beardog".to_string(), "test-key-2".to_string());
+
+    let context = CryptoVerificationContext {
+        trusted_public_keys: trusted_keys,
+        verification_timestamp: std::time::SystemTime::now(),
+        revoked_keys: vec![],
+        max_age_minutes: 60,
+    };
+
+    assert_eq!(context.trusted_public_keys.len(), 2);
+    assert!(context.trusted_public_keys.contains_key("songbird"));
+    assert_eq!(context.max_age_minutes, 60);
+}
+
+// ========================================================================
+// Implementation Function Tests
+// ========================================================================
+
+#[test]
+fn test_ecosystem_integrator_new() {
+    let integrator = EcosystemIntegrator::new();
+    assert!(integrator.endpoints.is_empty());
+    assert!(integrator.connections.is_empty());
+    assert!(integrator.credentials.is_none());
+}
+
+#[test]
+fn test_ecosystem_integrator_default() {
+    let integrator = EcosystemIntegrator::default();
+    assert!(integrator.endpoints.is_empty());
+    assert!(integrator.connections.is_empty());
+}
+
+// ✅ REMOVED: test_get_standard_service_ports_legacy (December 2, 2025)
+// The deprecated get_standard_service_ports() function has been removed.
+// Service discovery now uses PortRegistry and ServiceRegistry for dynamic configuration.
+
+#[test]
+fn test_create_permission_message() {
+    // NOTE: This test is kept for backward compatibility but the underlying
+    // implementation now uses capability-based crypto adapters.
+    // The `BearDogPermission` type is maintained for legacy compatibility.
+
+    let permission = BearDogPermission {
+        permission_id: Uuid::new_v4(),
+        granted_to: "test-service".to_string(),
+        capabilities: vec!["read".to_string(), "write".to_string()],
+        valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(3600),
+        signature: "test-signature".to_string(),
+    };
+
+    // Create canonical message (service-agnostic format)
+    let mut data = std::collections::BTreeMap::new();
+    data.insert("permission_id", permission.permission_id.to_string());
+    data.insert("granted_to", permission.granted_to.clone());
+    data.insert(
+        "valid_until",
+        toadstool_common::system_time_serde::format_rfc3339(permission.valid_until),
+    );
+
+    let capabilities_json = serde_json::to_string(&permission.capabilities).unwrap();
+    data.insert("capabilities", capabilities_json);
+
+    let canonical_json = serde_json::to_string(&data).unwrap();
+    let message = canonical_json.into_bytes();
+
+    assert!(!message.is_empty());
+
+    // Verify message contains expected fields
+    let parsed: serde_json::Value = serde_json::from_slice(&message).unwrap();
+    assert!(parsed.get("permission_id").is_some());
+    assert!(parsed.get("granted_to").is_some());
+    assert!(parsed.get("capabilities").is_some());
+    assert!(parsed.get("valid_until").is_some());
+}
+
+#[test]
+#[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+fn test_discovery_result_with_services() {
+    let endpoint = ServiceEndpoint {
+        service_type: EcosystemService::Discovery,
+        address: "127.0.0.1:8080".parse().unwrap(),
+        version: Arc::from("1.0.0"),
+        capabilities: vec!["discovery".to_string()],
+        trust_level: TrustLevel::Verified,
+    };
+
+    let result = DiscoveryResult {
+        services: vec![endpoint],
+        scan_duration: Duration::from_secs(3),
+        total_discovered: 1,
+        verified_count: 1,
+    };
+
+    assert_eq!(result.services.len(), 1);
+    assert_eq!(result.total_discovered, 1);
+    assert_eq!(result.verified_count, 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_discover_services_empty() {
+    let mut integrator = EcosystemIntegrator::new();
+
+    // With 1 second timeout, should quickly return no services
+    let result = integrator.discover_services(vec![], 1).await;
+
+    // May timeout or succeed with empty list depending on network
+    if let Ok(discovery) = result {
+        assert!(discovery.services.is_empty() || !discovery.services.is_empty());
+        assert_eq!(discovery.total_discovered, discovery.services.len());
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_discover_services_with_legacy_names() {
+    let mut integrator = EcosystemIntegrator::new();
+    // Test migration bridge: songbird -> network, beardog -> crypto, nestgate -> storage
+    let result = integrator
+        .discover_services(vec!["songbird".to_string(), "beardog".to_string()], 1)
+        .await;
+    if let Ok(discovery) = result {
+        assert!(discovery.scan_duration.as_secs() <= 2);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_discover_services_with_capability_names() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator
+        .discover_services(vec!["network".to_string(), "crypto".to_string()], 1)
+        .await;
+    if let Ok(discovery) = result {
+        assert!(discovery.verified_count <= discovery.total_discovered);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_show_ecosystem_status_with_endpoints() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator.discover_services(vec![], 1).await;
+    if let Ok(discovery) = result {
+        if !discovery.services.is_empty() {
+            let status_result = integrator.show_ecosystem_status("table").await;
+            assert!(status_result.is_ok());
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_connect_nestgate_storage_invalid_endpoint() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator
+        .connect_nestgate_storage(
+            "not-a-valid-address".to_string(),
+            std::path::PathBuf::from("/tmp/test-mount"),
+            None,
+        )
+        .await;
+    assert!(result.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_install_crypto_permissions_validate_only() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator
+        .install_crypto_permissions(PathBuf::from("/nonexistent/perms"), true)
+        .await;
+    assert!(result.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_register_with_orchestrator_invalid_endpoint() {
+    let mut integrator = EcosystemIntegrator::new();
+
+    // Invalid endpoint format
+    let result = integrator
+        .register_with_orchestrator("invalid-endpoint".to_string(), None)
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_install_crypto_permissions_nonexistent_file() {
+    let mut integrator = EcosystemIntegrator::new();
+
+    // Nonexistent file should return error
+    let result = integrator
+        .install_crypto_permissions(PathBuf::from("/nonexistent/permissions.json"), false)
+        .await;
+
+    assert!(result.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_show_ecosystem_status_json_empty() {
+    let integrator = EcosystemIntegrator::new();
+    let result = integrator.show_ecosystem_status("json").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_show_ecosystem_status_table_empty() {
+    let integrator = EcosystemIntegrator::new();
+    let result = integrator.show_ecosystem_status("table").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_show_ecosystem_status_default_format() {
+    let integrator = EcosystemIntegrator::new();
+    let result = integrator.show_ecosystem_status("text").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_connect_nestgate_storage_no_service() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator
+        .connect_nestgate_storage(
+            "127.0.0.1:1".to_string(),
+            PathBuf::from("/tmp/test-mount"),
+            None,
+        )
+        .await;
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_beardog_permission_expiration() {
+    let now = std::time::SystemTime::now();
+    let future = now + std::time::Duration::from_secs(2 * 3600);
+
+    let permission = BearDogPermission {
+        permission_id: Uuid::new_v4(),
+        granted_to: "test".to_string(),
+        capabilities: vec!["read".to_string()],
+        valid_until: future,
+        signature: "sig".to_string(),
+    };
+
+    assert!(permission.valid_until > now);
+    assert!(permission.valid_until > std::time::SystemTime::now());
+}
+
+#[test]
+fn test_nestgate_mount_with_encryption() {
+    let mount = NestGateMount {
+        dataset_name: "encrypted-data".to_string(),
+        mount_point: PathBuf::from("/mnt/secure"),
+        endpoint: "127.0.0.1:9000".to_string(),
+        zfs_dataset: Some("tank/encrypted".to_string()),
+        access_mode: "readwrite".to_string(),
+        encryption_key: Some("super-secret-key-123".to_string()),
+    };
+
+    assert!(mount.encryption_key.is_some());
+    assert_eq!(mount.access_mode, "readwrite");
+    assert!(mount.zfs_dataset.is_some());
+}
+
+#[test]
+fn test_nestgate_mount_without_encryption() {
+    let mount = NestGateMount {
+        dataset_name: "public-data".to_string(),
+        mount_point: PathBuf::from("/mnt/public"),
+        endpoint: "127.0.0.1:9001".to_string(),
+        zfs_dataset: None,
+        access_mode: "read".to_string(),
+        encryption_key: None,
+    };
+
+    assert!(mount.encryption_key.is_none());
+    assert_eq!(mount.access_mode, "read");
+}
+
+#[test]
+fn test_service_signature_timestamp_validation() {
+    let old_time = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    let signature = ServiceSignature {
+        algorithm: "ed25519".to_string(),
+        signature: "sig".to_string(),
+        public_key: "key".to_string(),
+        timestamp: old_time,
+        nonce: "nonce".to_string(),
+    };
+
+    let age_minutes = std::time::SystemTime::now()
+        .duration_since(signature.timestamp)
+        .map(|d| d.as_secs() / 60)
+        .unwrap_or(0);
+    assert!(age_minutes >= 59); // Should be about an hour old
+}
+
+#[test]
+fn test_discovery_result_verification_ratio() {
+    let result = DiscoveryResult {
+        services: vec![],
+        scan_duration: Duration::from_secs(10),
+        total_discovered: 10,
+        verified_count: 7,
+    };
+
+    let ratio = result.verified_count as f64 / result.total_discovered as f64;
+    assert!((ratio - 0.7).abs() < f64::EPSILON); // 70% verification rate
+}
+
+#[test]
+fn test_discovery_result_all_verified() {
+    let result = DiscoveryResult {
+        services: vec![],
+        scan_duration: Duration::from_secs(5),
+        total_discovered: 5,
+        verified_count: 5,
+    };
+
+    assert_eq!(result.verified_count, result.total_discovered);
+}
+
+#[test]
+fn test_discovery_result_none_verified() {
+    let result = DiscoveryResult {
+        services: vec![],
+        scan_duration: Duration::from_secs(30),
+        total_discovered: 10,
+        verified_count: 0,
+    };
+
+    assert_eq!(result.verified_count, 0);
+    assert!(result.total_discovered > 0);
+}
+
+// ─── Integrator print_ecosystem_table with mock data ─────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[allow(deprecated)]
+async fn test_print_ecosystem_table_with_endpoints() {
+    let mut integrator = EcosystemIntegrator::new();
+    integrator.endpoints.insert(
+        "discovery:127.0.0.1:8080".to_string(),
+        ServiceEndpoint {
+            service_type: EcosystemService::Discovery,
+            address: "127.0.0.1:8080".parse().unwrap(),
+            version: Arc::from("1.0.0"),
+            capabilities: vec!["discovery".to_string(), "coordination".to_string()],
+            trust_level: TrustLevel::Verified,
+        },
+    );
+    let result = integrator.show_ecosystem_status("table").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[allow(deprecated)]
+async fn test_print_ecosystem_table_with_connections() {
+    let mut integrator = EcosystemIntegrator::new();
+    integrator.connections.insert(
+        "coordination".to_string(),
+        ServiceConnection {
+            endpoint: ServiceEndpoint {
+                service_type: EcosystemService::Discovery,
+                address: "127.0.0.1:6061".parse().unwrap(),
+                version: Arc::from("1.0"),
+                capabilities: vec!["discovery".to_string()],
+                trust_level: TrustLevel::Verified,
+            },
+            status: ConnectionStatus::Connected,
+            last_heartbeat: std::time::SystemTime::now(),
+            _auth_token: Some("token".to_string()),
+        },
+    );
+    let result = integrator.show_ecosystem_status("table").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[allow(deprecated)]
+async fn test_show_ecosystem_status_json_with_endpoints() {
+    let mut integrator = EcosystemIntegrator::new();
+    integrator.endpoints.insert(
+        "crypto:127.0.0.1:6060".to_string(),
+        ServiceEndpoint {
+            service_type: EcosystemService::Crypto,
+            address: "127.0.0.1:6060".parse().unwrap(),
+            version: Arc::from("2.0"),
+            capabilities: vec!["crypto".to_string()],
+            trust_level: TrustLevel::Discovered,
+        },
+    );
+    let result = integrator.show_ecosystem_status("json").await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_services_capability_mapping_pki() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator
+        .discover_services(vec!["pki".to_string()], 1)
+        .await;
+    if let Ok(discovery) = result {
+        assert!(discovery.scan_duration.as_secs() <= 2);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_discover_services_capability_mapping_security() {
+    let mut integrator = EcosystemIntegrator::new();
+    let result = integrator
+        .discover_services(vec!["security".to_string()], 1)
+        .await;
+    if let Ok(discovery) = result {
+        assert!(discovery.verified_count <= discovery.total_discovered);
+    }
+}

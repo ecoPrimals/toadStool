@@ -490,9 +490,42 @@ pub enum ValidationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph_types::{GraphNode, NodeResourceRequirements};
+    use crate::graph_types::{EdgeType, GraphEdge, GraphNode, NodeResourceRequirements};
     use std::collections::HashMap;
+    use std::time::Duration;
     use toadstool::resources::{CpuRequirements, MemoryRequirements};
+
+    fn base_estimate() -> ResourceEstimate {
+        ResourceEstimate {
+            graph_id: "test-graph".to_string(),
+            cpu_cores: 4,
+            memory_bytes: 4 * 1024 * 1024 * 1024,
+            gpu_memory_bytes: 0,
+            storage_bytes: 1024,
+            network_bandwidth_mbps: 100,
+            estimated_duration: Duration::from_secs(1),
+            max_parallelism: 1,
+            critical_path_length: 1,
+            node_estimates: HashMap::new(),
+            warnings: vec![],
+        }
+    }
+
+    fn base_capabilities() -> SystemCapabilities {
+        SystemCapabilities {
+            total_cpu_cores: 16,
+            available_cpu_cores: 16,
+            total_memory_bytes: 32 * 1024 * 1024 * 1024,
+            available_memory_bytes: 32 * 1024 * 1024 * 1024,
+            total_gpu_memory_bytes: 8 * 1024 * 1024 * 1024,
+            available_gpu_memory_bytes: 8 * 1024 * 1024 * 1024,
+            total_storage_bytes: 1024 * 1024 * 1024 * 1024,
+            available_storage_bytes: 1024 * 1024 * 1024 * 1024,
+            network_bandwidth_mbps: 1000,
+            gpu_count: 1,
+            gpu_types: vec!["Test GPU".to_string()],
+        }
+    }
 
     fn wgpu_safe_or_skip() -> bool {
         if toadstool_testing::gpu_guards::is_wgpu_safe() {
@@ -637,5 +670,317 @@ mod tests {
     fn test_resource_validator_default() {
         let _v = ResourceValidator::default();
         let _v2 = ResourceValidator::new();
+    }
+
+    // --- identify_gaps ---
+
+    #[test]
+    fn identify_gaps_cpu_shortage() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.cpu_cores = 100;
+        let mut caps = base_capabilities();
+        caps.available_cpu_cores = 4;
+        let gaps = v.identify_gaps(&est, &caps);
+        assert_eq!(gaps.len(), 1);
+        assert_eq!(gaps[0].resource_type, "cpu_cores");
+        assert_eq!(gaps[0].required, 100);
+        assert_eq!(gaps[0].available, 4);
+        assert_eq!(gaps[0].shortage, 96);
+        assert!(gaps[0].suggestion.contains("96"));
+    }
+
+    #[test]
+    fn identify_gaps_cpu_exact_fit_no_gap() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.cpu_cores = 8;
+        let mut caps = base_capabilities();
+        caps.available_cpu_cores = 8;
+        assert!(v.identify_gaps(&est, &caps).is_empty());
+    }
+
+    #[test]
+    fn identify_gaps_memory_shortage() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.memory_bytes = 64 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.available_memory_bytes = 8 * 1024 * 1024 * 1024;
+        let gaps = v.identify_gaps(&est, &caps);
+        let m = gaps.iter().find(|g| g.resource_type == "memory").unwrap();
+        assert_eq!(m.shortage, 56 * 1024 * 1024 * 1024);
+        assert!(m.suggestion.contains("56"));
+    }
+
+    #[test]
+    fn identify_gaps_storage_shortage() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.storage_bytes = 500 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.available_storage_bytes = 100 * 1024 * 1024 * 1024;
+        let gaps = v.identify_gaps(&est, &caps);
+        assert!(gaps.iter().any(|g| g.resource_type == "storage"));
+        let s = gaps.iter().find(|g| g.resource_type == "storage").unwrap();
+        assert_eq!(s.shortage, 400 * 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn identify_gaps_gpu_zero_estimate_skips_gpu_branch() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.gpu_memory_bytes = 0;
+        let mut caps = base_capabilities();
+        caps.available_gpu_memory_bytes = 0;
+        caps.total_gpu_memory_bytes = 0;
+        caps.gpu_count = 0;
+        caps.gpu_types.clear();
+        let gaps = v.identify_gaps(&est, &caps);
+        assert!(!gaps.iter().any(|g| g.resource_type == "gpu_memory"));
+    }
+
+    #[test]
+    fn identify_gaps_gpu_no_hardware_uses_fallback_suggestion() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.gpu_memory_bytes = 8 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.available_gpu_memory_bytes = 0;
+        caps.total_gpu_memory_bytes = 0;
+        caps.gpu_count = 0;
+        caps.gpu_types.clear();
+        let gaps = v.identify_gaps(&est, &caps);
+        let g = gaps
+            .iter()
+            .find(|g| g.resource_type == "gpu_memory")
+            .unwrap();
+        assert!(g.suggestion.contains("No GPU detected"));
+    }
+
+    #[test]
+    fn identify_gaps_gpu_shortage_with_gpu_present() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.gpu_memory_bytes = 32 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.available_gpu_memory_bytes = 8 * 1024 * 1024 * 1024;
+        caps.total_gpu_memory_bytes = 16 * 1024 * 1024 * 1024;
+        caps.gpu_count = 1;
+        let gaps = v.identify_gaps(&est, &caps);
+        let g = gaps
+            .iter()
+            .find(|g| g.resource_type == "gpu_memory")
+            .unwrap();
+        assert!(g.suggestion.contains("quantization") || g.suggestion.contains("GB"));
+    }
+
+    #[test]
+    fn identify_gaps_multiple_resource_types() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.cpu_cores = 64;
+        est.memory_bytes = 128 * 1024 * 1024 * 1024;
+        est.storage_bytes = 2 * 1024 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.available_cpu_cores = 2;
+        caps.available_memory_bytes = 1024;
+        caps.available_storage_bytes = 1024;
+        let gaps = v.identify_gaps(&est, &caps);
+        let types: Vec<_> = gaps.iter().map(|g| g.resource_type.as_str()).collect();
+        assert!(types.contains(&"cpu_cores"));
+        assert!(types.contains(&"memory"));
+        assert!(types.contains(&"storage"));
+    }
+
+    // --- generate_warnings ---
+
+    #[test]
+    fn generate_warnings_high_cpu_not_at_exact_70_percent() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.cpu_cores = 71;
+        let mut caps = base_capabilities();
+        caps.available_cpu_cores = 100;
+        let w = v.generate_warnings(&est, &caps);
+        assert_eq!(w.len(), 1);
+        assert!(w[0].contains("CPU"));
+    }
+
+    #[test]
+    fn generate_warnings_cpu_exactly_70_percent_no_warning() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.cpu_cores = 70;
+        let mut caps = base_capabilities();
+        caps.available_cpu_cores = 100;
+        assert!(v.generate_warnings(&est, &caps).is_empty());
+    }
+
+    #[test]
+    fn generate_warnings_cpu_overcommit_no_warning() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.cpu_cores = 200;
+        let mut caps = base_capabilities();
+        caps.available_cpu_cores = 100;
+        assert!(v.generate_warnings(&est, &caps).is_empty());
+    }
+
+    #[test]
+    fn generate_warnings_high_memory() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.memory_bytes = 75 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.available_memory_bytes = 100 * 1024 * 1024;
+        let w = v.generate_warnings(&est, &caps);
+        assert!(w.iter().any(|s| s.contains("memory")));
+    }
+
+    #[test]
+    fn generate_warnings_gpu_branch_skipped_when_no_gpu() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.gpu_memory_bytes = 8 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.total_gpu_memory_bytes = 0;
+        caps.available_gpu_memory_bytes = 0;
+        let w = v.generate_warnings(&est, &caps);
+        assert!(!w.iter().any(|s| s.contains("GPU")));
+    }
+
+    #[test]
+    fn generate_warnings_high_gpu_memory() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.gpu_memory_bytes = 8 * 1024 * 1024 * 1024;
+        let mut caps = base_capabilities();
+        caps.total_gpu_memory_bytes = 10 * 1024 * 1024 * 1024;
+        caps.available_gpu_memory_bytes = 10 * 1024 * 1024 * 1024;
+        let w = v.generate_warnings(&est, &caps);
+        assert!(w.iter().any(|s| s.contains("GPU")));
+    }
+
+    #[test]
+    fn generate_warnings_high_storage_above_80_percent() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.storage_bytes = 900;
+        let mut caps = base_capabilities();
+        caps.available_storage_bytes = 1000;
+        let w = v.generate_warnings(&est, &caps);
+        assert!(
+            w.iter()
+                .any(|s| s.contains("storage") || s.contains("Storage"))
+        );
+    }
+
+    #[test]
+    fn generate_warnings_storage_at_80_percent_no_warning() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.storage_bytes = 800;
+        let mut caps = base_capabilities();
+        caps.available_storage_bytes = 1000;
+        assert!(
+            !v.generate_warnings(&est, &caps)
+                .iter()
+                .any(|s| s.contains("storage") || s.contains("Storage"))
+        );
+    }
+
+    #[test]
+    fn generate_warnings_storage_over_100_percent_no_warning() {
+        let v = ResourceValidator::new();
+        let mut est = base_estimate();
+        est.storage_bytes = 2000;
+        let mut caps = base_capabilities();
+        caps.available_storage_bytes = 1000;
+        assert!(
+            !v.generate_warnings(&est, &caps)
+                .iter()
+                .any(|s| s.contains("cleanup"))
+        );
+    }
+
+    // --- query_system_capabilities ---
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn query_system_capabilities_returns_nonzero_cpu() {
+        let v = ResourceValidator::new();
+        let caps = v.query_system_capabilities().await.unwrap();
+        assert!(caps.total_cpu_cores > 0);
+        assert!(caps.available_cpu_cores <= caps.total_cpu_cores);
+    }
+
+    // --- validate_availability errors & result shape ---
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn validate_availability_fails_on_cyclic_graph() {
+        let validator = ResourceValidator::new();
+        let graph = ExecutionGraph {
+            id: "cycle-graph".to_string(),
+            nodes: vec![
+                GraphNode {
+                    id: "a".to_string(),
+                    primal: "toadstool".to_string(),
+                    operation: "cpu_compute".to_string(),
+                    duration: None,
+                    requirements: NodeResourceRequirements::default(),
+                    metadata: HashMap::new(),
+                },
+                GraphNode {
+                    id: "b".to_string(),
+                    primal: "toadstool".to_string(),
+                    operation: "cpu_compute".to_string(),
+                    duration: None,
+                    requirements: NodeResourceRequirements::default(),
+                    metadata: HashMap::new(),
+                },
+            ],
+            edges: vec![
+                GraphEdge {
+                    from: "a".to_string(),
+                    to: "b".to_string(),
+                    edge_type: EdgeType::DataFlow,
+                    metadata: HashMap::new(),
+                },
+                GraphEdge {
+                    from: "b".to_string(),
+                    to: "a".to_string(),
+                    edge_type: EdgeType::DataFlow,
+                    metadata: HashMap::new(),
+                },
+            ],
+            metadata: HashMap::new(),
+        };
+        let err = validator.validate_availability(&graph).await.unwrap_err();
+        assert!(matches!(err, ValidationError::EstimationFailed(_)));
+    }
+
+    #[test]
+    fn availability_result_serialization_roundtrip() {
+        let r = AvailabilityResult {
+            graph_id: "g".to_string(),
+            available: true,
+            gaps: vec![],
+            warnings: vec![],
+            system_capabilities: base_capabilities(),
+            estimated_requirements: base_estimate(),
+        };
+        let json = serde_json::to_string(&r).unwrap();
+        let back: AvailabilityResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.graph_id, "g");
+        assert!(back.available);
+    }
+
+    #[test]
+    fn validation_error_from_estimation_error() {
+        let e: ValidationError = EstimationError::CyclicGraph.into();
+        assert!(matches!(
+            e,
+            ValidationError::EstimationFailed(EstimationError::CyclicGraph)
+        ));
     }
 }

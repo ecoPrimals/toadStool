@@ -5,7 +5,35 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 21, 2026 (Sessions 43-162)
+## [Unreleased] - March 29, 2026 (Sessions 43-164)
+
+### Session S164 (Mar 29, 2026) — Dependency Dedup + Coverage Expansion + Smart Refactoring
+
+#### Dependency deduplication (build time reduction)
+- `linfa` 0.7 → 0.8, `ndarray` 0.15 → 0.16 in management/performance and management/analytics — eliminates ndarray/approx duplicate compilations
+- `mockall` 0.11 → 0.12 in integration/primals — eliminates mockall duplicate
+- `env_logger` 0.10 → 0.11 in 3 dev-deps (management/performance, security/sandbox, security/policies) — eliminates env_logger duplicate
+
+#### Smart refactoring (5 files → directory modules)
+- `execution.rs` (766L) → `execution/mod.rs` (519L prod) + `execution/tests.rs` (247L). 17 tests pass
+- `capabilities.rs` (767L) → `capabilities/mod.rs` (591L prod) + `capabilities/tests.rs` (176L). 92 tests pass
+- `beardog_integration/client.rs` (744L) → `client/mod.rs` (504L prod) + `client/tests.rs` (240L). 19 tests pass
+- `ecosystem/mod.rs` (751L) → `mod.rs` (52L prod) + `tests.rs` (701L). 44 tests pass
+- `integration_impl.rs` (854L) → 734L prod + `integration_impl_tests.rs` (121L). 4 tests pass
+
+#### Coverage expansion (+94 new tests across 7 modules)
+- `resource_validator.rs` 20% → ~75%: 19 new tests (identify_gaps, generate_warnings, query_system_capabilities, validate_availability)
+- `primal_integration/discovery.rs` 57% → 88%: 21 new tests (filesystem, kubernetes, docker-compose, registry, mdns discovery paths)
+- `universal/scheduler/execution.rs` 45% → 99%: 25 new tests (execute_native, execute_wasm, execute_primal, execute_biome_os, discover_self_ip)
+- `cloud/orchestrator/mod.rs` 43% → 100%: 6 new tests (multi-cloud, cloud-burst, federation, HIPAA compliance fallback)
+- `auto_config/ecosystem.rs` 68% → ~85%: 17 new tests (capability endpoints, assemble_discovered_services, local/wellknown discovery)
+- `client/core.rs` 54% → ~85%: 18 new tests (health_check, get_cluster_status, cancel_execution, wait_for_completion, auth headers)
+- `pure_jsonrpc/handler/dispatch.rs` 40% → ~70%: 13 new tests (dispatch_capabilities, submit modes, status/result, forward)
+
+#### Quality gates
+- `cargo fmt --all -- --check`: 0 diffs
+- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings
+- All tests passing
 
 ### Session S162 (Mar 21, 2026) — Coverage Expansion + Code Quality
 

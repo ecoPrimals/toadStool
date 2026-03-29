@@ -624,3 +624,7 @@ impl UniversalScheduler {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "discover_self_ip_tests.rs"]
+mod discover_self_ip_tests;

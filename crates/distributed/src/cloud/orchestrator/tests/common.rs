@@ -120,6 +120,8 @@ pub fn make_mock_metadata(name: &str) -> crate::cloud::types::CloudProviderMetad
 pub struct MockCloudProvider {
     pub name: String,
     pub availability: AvailabilityInfo,
+    /// When set, returned from [`CloudProviderInterface::get_capabilities`] instead of [`make_mock_capabilities`].
+    pub capabilities_override: Option<crate::cloud::types::CloudCapabilities>,
 }
 
 #[async_trait]
@@ -186,7 +188,9 @@ impl CloudProviderInterface for MockCloudProvider {
     }
 
     fn get_capabilities(&self) -> crate::cloud::types::CloudCapabilities {
-        make_mock_capabilities()
+        self.capabilities_override
+            .clone()
+            .unwrap_or_else(make_mock_capabilities)
     }
 
     fn get_metadata(&self) -> crate::cloud::types::CloudProviderMetadata {

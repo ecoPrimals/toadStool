@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 21, 2026 — S162
+**Last Updated**: March 29, 2026 — S164
 
 ---
 
@@ -86,7 +86,7 @@
 
 **[docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)** -- NPU driver deployment.
 
-BarraCuda guides have been fossilized to `ecoPrimals/fossil/toadStool/docs-S94b/`. See the barraCuda primal for current docs.
+BarraCuda guides have been fossilized to `ecoPrimals/infra/wateringHole/fossilRecord/`. See the barraCuda primal for current docs.
 
 ---
 

@@ -28,8 +28,8 @@ serde_yaml_ng = "0.10"
 
 # Statistics and machine learning
 statrs = "0.16"
-linfa = { version = "0.7", features = ["serde"] }
-ndarray = { version = "0.15", features = ["serde"] }
+linfa = { version = "0.8", features = ["serde"] }
+ndarray = { version = "0.16", features = ["serde"] }
 
 # Collections and utilities
 indexmap = "2.0"
@@ -49,4 +49,4 @@ thiserror = { workspace = true }
 [dev-dependencies]
 tempfile = "3.0"
 test-log = "0.2"
-env_logger = "0.10"
+env_logger = "0.11"

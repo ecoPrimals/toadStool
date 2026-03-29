@@ -85,7 +85,16 @@ impl UniversalCloudOrchestrator {
         );
 
         let deployment_strategy = self.analyze_deployment_requirements(job).await?;
+        self.dispatch_deployment_strategy(job, deployment_strategy)
+            .await
+    }
 
+    /// Route a resolved [`DeploymentStrategy`] to the corresponding deploy path.
+    async fn dispatch_deployment_strategy(
+        &self,
+        job: &UniversalJob,
+        deployment_strategy: DeploymentStrategy,
+    ) -> ToadStoolResult<CloudDeploymentResult> {
         match deployment_strategy {
             DeploymentStrategy::SingleCloud { provider_name } => {
                 self.deploy_to_single_cloud(job, &provider_name).await

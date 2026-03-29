@@ -42,16 +42,16 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,600+ tests, 0 failures** (S163), 222 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,700+ tests, 0 failures** (S164), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid + 20 deny** `unsafe_code` |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
 | Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
-| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 more phantom deps (S163) |
+| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger) |
 | Hardcoded primal names | 0 -- all capability-based discovery via `get_socket_path_for_capability()` |
 | `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
@@ -211,7 +211,7 @@ toadStool/
 |   +-- security/                  Sandbox, policies, monitoring
 |   +-- testing/                   Chaos, fault, property-based testing (proptest)
 |   +-- management/                Analytics, monitoring, resources (real ResourceManager with toadstool-sysmon)
-+-- (fossil at ecoPrimals/fossil/toadStool/)
++-- (fossils at ecoPrimals/infra/wateringHole/fossilRecord/)
 +-- showcase/                      Demos (RBF, neuromorphic, GPU, FHE)
 +-- docs/                          Architecture, guides, audits, ADRs
 +-- specs/                         Technical specifications
@@ -244,7 +244,7 @@ toadStool/
 | Build warnings | 0 |
 | Workspace tests | **21,600+** (S163), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **29 crates** `#![forbid(unsafe_code)]` |
+| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
@@ -252,7 +252,7 @@ toadStool/
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps (S163) |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -263,11 +263,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,600+ tests (S163); ~83% line (188K lines instrumented); focus on hardware-dependent code
+- **Test coverage** -- pushing toward 90% target; 21,700+ tests (S164); ~80% lib-only line (185K lines instrumented); S164: +94 tests targeting 7 lowest-coverage files; remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S164 (Mar 29, 2026)**: Dependency deduplication (linfa 0.7→0.8, ndarray 0.15→0.16, mockall 0.11→0.12, env_logger 0.10→0.11). Smart-refactored 5 large files into directory modules (execution.rs, capabilities.rs, client.rs, ecosystem/mod.rs, integration_impl.rs). +94 new tests across 7 lowest-coverage files (resource_validator 20→75%, discovery 57→88%, scheduler/execution 45→99%, orchestrator 43→100%, ecosystem 68→85%, client/core 54→85%, dispatch 40→70%). All quality gates green.
 - **S163+ (Mar 22, 2026)**: GlowPlug ember client stub (`glowplug_client.rs`) — lazy Unix socket discovery (env var / XDG runtime / default), JSON-RPC RPCs (`ember.list`, `ember.status`, `ember.swap`, `ember.reacquire`), `SharedGlowPlugClient` via `Arc<GlowPlugClient>`. Wires toadStool into coral-ember device lifecycle. Via hotSpring Full Sweep Evolution Sprint.
 - **S163 (Mar 21, 2026)**: Deep code quality + dependency audit. 26 phantom deps removed across 10 crates (indicatif, figment, handlebars, nom, byteorder, csv, rand + 19 more). Zero-copy improvements: PrimalIdentity trait returns references not clones, PluginManager returns `&str` not `String`, protocol handler map uses `Arc<str>` keys, JSON payload serialization bypasses intermediate String. `#[allow(dead_code)]` evolved to `#[expect(dead_code, reason)]` or `#[cfg(test)]`. RUSTSEC-2025-0119 advisory eliminated (indicatif removed). Stale async-trait import removed. Clippy zero warnings. All tests pass.
 - **S162 (Mar 21, 2026)**: Coverage expansion (81.64%→82.81%). +98 tests across barracuda, science domains, dispatch, transport, hw_learn, tarpc, unibin. Coverage script fix. SPDX sweep (38 files). Last production unwrap evolved.
@@ -293,7 +294,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S163); ~83% line (188K instrumented); focus on hardware-dependent code |
+| D-COV | Test coverage → 90% | Active -- 21,700+ tests (S164); ~80% lib-only line (185K instrumented); S164: +94 tests targeting 7 lowest-coverage files; remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -338,4 +339,4 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 22, 2026 — S163+. 21,600+ workspace tests, 0 failures. ~83% line coverage (188K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **29 crates** `#![forbid(unsafe_code)]`. Clippy pedantic zero across all 58 crates. 26 phantom deps eliminated (S163). GlowPlug ember client stub (`glowplug_client.rs`) with lazy socket discovery and JSON-RPC RPCs for device lifecycle management. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 29, 2026 — S164. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **23 crates forbid, 20 deny** `unsafe_code`. Clippy pedantic zero across all 58 crates. Dep dedup: linfa/ndarray/mockall/env_logger upgraded. 5 files smart-refactored, +94 tests across 7 modules. Rust 1.85+ (edition 2024, MSRV).

@@ -1,9 +1,40 @@
 # Active Technical Debt Register
 
-**Date**: March 21, 2026 — S162
+**Date**: March 29, 2026 — S164
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S164 Resolved Debt
+
+### Dependency Deduplication
+- **D-DEP-LINFA**: `linfa` 0.7 → 0.8, `ndarray` 0.15 → 0.16 in `management/performance` and `management/analytics` — eliminates `ndarray`/`approx` duplicate compilations.
+- **D-DEP-MOCKALL**: `mockall` 0.11 → 0.12 in `integration/primals` — eliminates mockall duplicate compilation.
+- **D-DEP-ENVLOGGER**: `env_logger` 0.10 → 0.11 in 3 dev-dependencies (`management/performance`, `security/sandbox`, `security/policies`) — eliminates env_logger duplicate.
+
+### Smart Refactoring (Test Extraction)
+- **D-LARGE-EXECUTION**: `execution.rs` (766L) → `execution/mod.rs` (519L) + `execution/tests.rs` (247L). 17 tests pass.
+- **D-LARGE-CAPABILITIES**: `capabilities.rs` (767L) → `capabilities/mod.rs` (591L) + `capabilities/tests.rs` (176L). 92 tests pass.
+- **D-LARGE-CLIENT-BEARDOG**: `beardog_integration/client.rs` (744L) → `client/mod.rs` (504L) + `client/tests.rs` (240L). 19 tests pass.
+- **D-LARGE-ECOSYSTEM-MOD**: `ecosystem/mod.rs` (751L) → `mod.rs` (52L production) + `tests.rs` (701L). 44 tests pass.
+- **D-LARGE-INTEGRATION-IMPL**: `integration_impl.rs` (854L) → 734L production + `integration_impl_tests.rs` (121L). 4 tests pass.
+
+### Coverage Expansion (+94 new tests)
+- **D-COV-RESOURCE-VALIDATOR-S164**: `resource_validator.rs` 20% → ~75%+: 19 new tests (identify_gaps, generate_warnings, query_system_capabilities, validate_availability, type serde).
+- **D-COV-DISCOVERY-S164**: `primal_integration/discovery.rs` 57% → 88%: 21 new tests (filesystem, kubernetes, docker-compose, registry, mdns discovery paths).
+- **D-COV-SCHEDULER-EXEC-S164**: `universal/scheduler/execution.rs` 45% → 99%: 25 new tests (execute_native, execute_wasm, execute_primal, execute_biome_os, discover_self_ip).
+- **D-COV-ORCHESTRATOR-S164**: `cloud/orchestrator/mod.rs` 43% → 100%: 6 new tests (multi-cloud, cloud-burst, federation, scheduling, HIPAA compliance fallback).
+- **D-COV-ECOSYSTEM-S164**: `auto_config/ecosystem.rs` 68% → ~85%: 17 new tests (capability endpoints, assemble_discovered_services, local/wellknown discovery, patterns).
+- **D-COV-CLIENT-CORE-S164**: `client/core.rs` 54% → ~85%: 18 new tests (health_check, get_cluster_status, cancel_execution, wait_for_completion, auth headers).
+- **D-COV-DISPATCH-S164**: `pure_jsonrpc/handler/dispatch.rs` 40% → ~70%: 13 new tests (dispatch_capabilities, submit modes, status/result, forward).
+
+## S163 Resolved Debt
+
+- **D-LARGE-ERROR-TYPES**: `error/types.rs` (860L) smart-refactored into `error/types/` directory module — `mod.rs` (523L production) + `tests.rs` (334L tests). 28 tests pass.
+- **D-LARGE-AGENT-BACKEND**: `biomeos_integration/agent_backend.rs` (824L) smart-refactored into `agent_backend/` directory module — `mod.rs` (98L) + `types.rs` (121L) + `squirrel.rs` (242L) + `inmemory.rs` (177L) + `tests.rs` (219L). 15 tests pass.
+- **D-HARDCODE-NETWORK-AUDIT**: Full audit of `"localhost"`, `"127.0.0.1"`, `"0.0.0.0"` string literals across all production `src/` files. Result: **all production code already uses named constants** (`LOCALHOST_IPV4`, `BIND_ALL_IPV4`, `DEFAULT_HOSTNAME`). Remaining literals are exclusively in test code, doc comments, and constant definitions.
+- **D-MOCK-PROD-AUDIT**: Full audit of `mock`/`Mock` references in production `src/` files. Result: **all mock types are correctly gated** behind `#[cfg(test)]`, in test-only modules, in doc comments, or in the `testing` crate. Zero production mock leakage.
+- **D-UNSAFE-AUDIT-S163**: Full audit of all 21 files containing `unsafe { ... }` blocks in production code. Result: **all ~70+ blocks are irreducible hardware/kernel FFI** (V4L2, VFIO ioctls, DRM, MMIO volatile access, DMA allocation, GPU memory mapping, page-locked allocations). Each has `// SAFETY:` documentation. No further evolution possible — these are the minimum unsafe surface for hardware access. Already evolved: `libc::getuid()` → pure Rust, VFIO struct serialization → safe `to_ne_bytes()`, `env::set_var` → `temp_env` in tests.
 
 ## S162 Resolved Debt
 

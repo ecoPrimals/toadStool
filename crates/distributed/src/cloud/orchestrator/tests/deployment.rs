@@ -49,6 +49,7 @@ async fn test_job_scheduling_across_providers_with_mock() {
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
     let mock = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
@@ -196,10 +197,12 @@ async fn test_deploy_local_job_with_multi_cloud_fails_split() {
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
     let mock1 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
     let mock2 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "gcp".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
@@ -244,10 +247,12 @@ async fn test_deploy_multi_cloud_remote_toadstool() {
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
     let mock1 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
     let mock2 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "gcp".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
@@ -292,10 +297,12 @@ async fn test_deploy_ecosystem_tool_multi_cloud() {
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
     let mock1 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
     let mock2 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "gcp".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
@@ -343,6 +350,7 @@ async fn test_deploy_federated_deployment() {
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
     let mock = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
@@ -376,6 +384,7 @@ async fn test_register_provider_twice_overwrites() {
         .await
         .unwrap();
     let mock1 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "dup".to_string(),
         availability: make_availability(4.0, 8.0, 50.0),
     });
@@ -383,6 +392,7 @@ async fn test_register_provider_twice_overwrites() {
         .await
         .unwrap();
     let mock2 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "dup".to_string(),
         availability: make_availability(8.0, 16.0, 100.0),
     });
@@ -396,10 +406,12 @@ async fn test_split_job_for_multi_cloud_replication() {
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
 
     let mock1 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });
     let mock2 = Box::new(MockCloudProvider {
+        capabilities_override: None,
         name: "gcp".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
     });

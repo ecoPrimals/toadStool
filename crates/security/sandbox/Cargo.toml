@@ -73,4 +73,4 @@ macos-sandbox = ["core-foundation", "core-foundation-sys"]
 toadstool-testing = { path = "../../testing" }
 tempfile = "3.0"
 test-log = "0.2"
-env_logger = "0.10"
+env_logger = "0.11"

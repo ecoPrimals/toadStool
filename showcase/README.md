@@ -2,7 +2,7 @@
 
 **Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
 
-**Status**: Active | **Updated**: March 20, 2026 -- S160
+**Status**: Active | **Updated**: March 29, 2026 -- S164
 **License**: AGPL-3.0-only
 
 ---
@@ -80,7 +80,7 @@ Demonstrates toadStool interacting with the broader ecoPrimals ecosystem.
 
 ## Archived Hardware Showcases
 
-Pre-progressive hardware showcases archived to `ecoPrimals/fossil/toadStool/showcase-hardware-S139/` (S139).
+Pre-progressive hardware showcases archived to `ecoPrimals/infra/wateringHole/fossilRecord/` (S139).
 These predate the progressive showcase and required specialized hardware: neuromorphic, gpu-universal, homomorphic-computing, akida-characterization, barracuda-validation, whitePaper.
 
 ---
