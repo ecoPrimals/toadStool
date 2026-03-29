@@ -291,7 +291,7 @@ fn run_server_main_fails_when_socket_path_unavailable() {
         ],
         || {
             let rt = tokio::runtime::Runtime::new().expect("runtime");
-            let result = rt.block_on(super::run_server_main(None));
+            let result = rt.block_on(super::run_server_main(None, None));
             assert!(
                 result.is_err(),
                 "run_server_main should fail when socket path unavailable"

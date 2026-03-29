@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(clippy::missing_errors_doc)]
 
 //! # ToadStool Client Library
 //!

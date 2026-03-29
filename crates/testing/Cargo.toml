@@ -13,20 +13,6 @@ keywords = ["testing", "mocks", "utilities", "toadstool"]
 categories = ["development-tools::testing"]
 readme = "README.md"
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-# Test infrastructure may use expect/panic for assertion failures
-expect_used = "warn"  
-panic = "warn"  # Test assertions may panic
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
@@ -84,4 +70,7 @@ harness = false
 default = []
 integration-tests = ["wiremock"] # Pure Rust: removed libc (unix sockets via std)
 benchmarks = []
-slow-tests = [] 
+slow-tests = []
+
+[lints]
+workspace = true

@@ -111,11 +111,11 @@ pub fn capability_to_biomeos_fallback(
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::primal_identity::Capability;
 
-    let (env_var, category_name) = match capability {
-        Capability::Crypto(_) => ("BIOMEOS_CRYPTO_SOCKET", "crypto"),
-        Capability::Storage(_) => ("BIOMEOS_STORAGE_SOCKET", "storage"),
-        Capability::Coordination(_) => ("BIOMEOS_COORDINATION_SOCKET", "coordination"),
-        Capability::Compute(_) => ("BIOMEOS_COMPUTE_SOCKET", "compute"),
+    let category_name = match capability {
+        Capability::Crypto(_) => "crypto",
+        Capability::Storage(_) => "storage",
+        Capability::Coordination(_) => "coordination",
+        Capability::Compute(_) => "compute",
         _ => {
             return Err(SocketDiscoveryError::NoSocketFound(format!(
                 "No fallback path for capability: {capability:?}"
@@ -123,15 +123,10 @@ pub fn capability_to_biomeos_fallback(
         }
     };
 
-    if let Ok(explicit_path) = std::env::var(env_var) {
-        return Ok(PathBuf::from(explicit_path));
-    }
-
     let env = SocketPathEnv::from_env();
-    Ok(paths::resolve_socket_path_for_service(
+    Ok(paths::resolve_capability_socket_fallback(
         category_name,
         &env,
-        None,
     ))
 }
 

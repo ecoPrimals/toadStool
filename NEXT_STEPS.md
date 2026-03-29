@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 29, 2026 -- S164 Dependency Dedup + Coverage Expansion + Refactoring
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,700+ tests (0 failures) | 1,900+ `.rs` files, 577K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero production mocks | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 600L
-**Latest**: S164 — Eliminated 4 duplicate dependency pairs (linfa/ndarray/mockall/env_logger); smart-refactored 5 files into directory modules; +94 new tests across 7 modules targeting lowest coverage files (20-68% → 70-99%); all quality gates green.
+**Updated**: March 29, 2026 -- S166 Deep Debt Execution + Capability-Based Evolution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,700+ tests (0 failures) | 1,900+ `.rs` files, 577K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero production mocks | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L
+**Latest**: S166 — Lint allow cleanup (29 `lib.rs`); capability IDs + `resolve_capability_socket_fallback()` + deprecated legacy names; crypto_lock + substrate validation completed; seven large files split to module dirs (<400L each); `md5`→`md-5`, `bollard` 0.18; orchestrator provider selection deterministic; net 123 files, +1145/−8334 lines.
 
 ---
 

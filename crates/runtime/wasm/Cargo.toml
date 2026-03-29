@@ -9,19 +9,6 @@ readme = "README.md"
 keywords = ["wasm", "webassembly", "wasmtime", "wasi"]
 categories = ["wasm", "development-tools"]
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
@@ -72,7 +59,6 @@ tracing = "0.1"
 thiserror = { workspace = true }
 # System integration
 tempfile = { workspace = true }
-md5 = "0.7"
 sha2 = "0.10"
 hex = "0.4"
 
@@ -92,3 +78,7 @@ toadstool-testing = { path = "../../testing" }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 # wat moved to main dependencies (needed for wasmi parsing)
+
+[lints]
+workspace = true
+

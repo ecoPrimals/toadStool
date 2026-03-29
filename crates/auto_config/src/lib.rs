@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::must_use_candidate,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation
-)]
+#![allow(clippy::must_use_candidate)]
 
 //! # `ToadStool` Auto-Configuration Library
 //!

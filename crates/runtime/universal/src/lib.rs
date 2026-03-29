@@ -2,14 +2,7 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
-    clippy::doc_markdown,
-    clippy::wildcard_imports,
-    clippy::cast_possible_wrap,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
     clippy::cast_lossless,
-    clippy::missing_errors_doc,
     clippy::must_use_candidate,
     clippy::return_self_not_must_use,
     clippy::match_same_arms,

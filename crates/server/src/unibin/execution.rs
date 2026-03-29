@@ -85,7 +85,19 @@ pub async fn start_servers_with_fallback(
     jsonrpc_handler: Arc<JsonRpcHandler>,
     socket_path: PathBuf,
     jsonrpc_socket: PathBuf,
+    tcp_port: Option<u16>,
 ) -> ServerResult<()> {
+    // When --port is explicitly provided, always start TCP alongside Unix sockets (UniBin std).
+    if let Some(port) = tcp_port {
+        info!("   --port {port} specified: starting TCP JSON-RPC (UniBin standard)");
+        let tcp_handler = Arc::clone(&jsonrpc_handler);
+        tokio::spawn(async move {
+            if let Err(e) = start_tcp_jsonrpc_on_port(tcp_handler, port).await {
+                error!("TCP JSON-RPC on port {port} failed: {e}");
+            }
+        });
+    }
+
     info!("   Trying Unix socket IPC (optimal)...");
 
     match try_unix_servers(&server, &jsonrpc_handler, &socket_path, &jsonrpc_socket).await {
@@ -184,6 +196,26 @@ async fn start_tcp_servers(
 
     server.clone().serve_tcp(tarpc_listener).await?;
     Ok(())
+}
+
+/// Start a TCP JSON-RPC listener bound to a specific port (UniBin `--port` support).
+///
+/// Newline-delimited JSON-RPC on `0.0.0.0:<port>` per `PRIMAL_IPC_PROTOCOL.md`.
+async fn start_tcp_jsonrpc_on_port(handler: Arc<JsonRpcHandler>, port: u16) -> ServerResult<()> {
+    use tokio::net::TcpListener;
+
+    let addr = format!("0.0.0.0:{port}");
+    let listener = TcpListener::bind(&addr)
+        .await
+        .map_err(|e| ServerError::Network(format!("--port {port} bind failed: {e}")))?;
+    let local = listener
+        .local_addr()
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+
+    info!("✅ TCP JSON-RPC (--port): {local}");
+    write_tcp_discovery_file("toadstool-jsonrpc-port", &local)?;
+
+    serve_tcp(handler, listener).await
 }
 
 /// Returns true if the error string indicates a platform constraint (e.g. SELinux, unsupported sockets).

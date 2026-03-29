@@ -12,19 +12,6 @@ readme = "README.md"
 keywords = ["client", "compute", "distributed", "rpc"]
 categories = ["api-bindings", "network-programming"]
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core dependencies
 toadstool = { path = "../core/toadstool" }
@@ -66,3 +53,7 @@ tarpc = ["dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-
 [dev-dependencies]
 tokio-test = "0.4"
 temp-env = "0.3"
+
+[lints]
+workspace = true
+

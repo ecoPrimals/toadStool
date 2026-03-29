@@ -42,7 +42,7 @@ impl CoordinationClient {
         let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir().join("songbird.sock")
+                toadstool_common::primal_sockets::get_biomeos_dir().join("coordination.sock")
             });
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 

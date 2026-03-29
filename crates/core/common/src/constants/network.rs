@@ -69,8 +69,19 @@ pub const BIND_ALL_IPV6: &str = "::";
 /// Default hostname
 pub const DEFAULT_HOSTNAME: &str = "localhost";
 
-/// Default coordination endpoint URL (fallback when discovery unavailable).
-/// Used by clients/tests when connecting to coordination services.
+// ============================================================================
+// Unconfigured defaults (development / tests only)
+// ============================================================================
+//
+// The constants below are **not** a production topology. They exist so unit tests
+// and local tools have a deterministic URL when no config is loaded.
+//
+// **Production deployments must** obtain coordination (and other) endpoints from
+// service discovery, explicit configuration, or environment variables — not these literals.
+
+/// Default coordination endpoint URL when nothing is configured (localhost bootstrap).
+///
+/// Prefer `TOADSTOOL_COORDINATION_ENDPOINT` or runtime discovery in real deployments.
 pub const DEFAULT_COORDINATION_ENDPOINT: &str = "http://127.0.0.1:8080";
 
 // ============================================================================

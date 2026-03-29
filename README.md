@@ -42,7 +42,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,700+ tests, 0 failures** (S164), 222 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,700+ tests, 0 failures** (S166), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
@@ -58,7 +58,7 @@ Nest    = Tower  + NestGate           <- storage
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-only -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files under 1000 lines (largest: 451; hw_learn/wgpu_backend refactored S155b) |
+| File size limit | All production files **< 400 lines** (S166: seven former monoliths split into module dirs) |
 | Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -252,7 +252,7 @@ toadStool/
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger) |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `md5`→`md-5`, `bollard` 0.18 |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -268,6 +268,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S166 (Mar 29, 2026)**: Deep debt execution + capability-based evolution. Redundant `#![allow]` cleanup (29 `lib.rs` files; blanket `clippy::nursery` removed from server + cross-substrate-validation). Discovery: hardcoded primal names → capability IDs (`crypto`, `coordination`, `storage`, `routing`); `resolve_capability_socket_fallback()`; legacy names `#[deprecated]`; `ecosystem::capabilities` module. Production stubs: `crypto_lock` JSON permissions + delegation validation; `SubstrateConfig::validate()` (power budget, fallback order, capabilities). Smart-split 7 large files into module dirs (all production **< 400 lines**). `md5` → `md-5`; `bollard` 0.18 workspace-wide; orchestrator provider selection intersects compliance + sorts deterministically. Net: 123 files changed, +1145/-8334 lines.
 - **S164 (Mar 29, 2026)**: Dependency deduplication (linfa 0.7→0.8, ndarray 0.15→0.16, mockall 0.11→0.12, env_logger 0.10→0.11). Smart-refactored 5 large files into directory modules (execution.rs, capabilities.rs, client.rs, ecosystem/mod.rs, integration_impl.rs). +94 new tests across 7 lowest-coverage files (resource_validator 20→75%, discovery 57→88%, scheduler/execution 45→99%, orchestrator 43→100%, ecosystem 68→85%, client/core 54→85%, dispatch 40→70%). All quality gates green.
 - **S163+ (Mar 22, 2026)**: GlowPlug ember client stub (`glowplug_client.rs`) — lazy Unix socket discovery (env var / XDG runtime / default), JSON-RPC RPCs (`ember.list`, `ember.status`, `ember.swap`, `ember.reacquire`), `SharedGlowPlugClient` via `Arc<GlowPlugClient>`. Wires toadStool into coral-ember device lifecycle. Via hotSpring Full Sweep Evolution Sprint.
 - **S163 (Mar 21, 2026)**: Deep code quality + dependency audit. 26 phantom deps removed across 10 crates (indicatif, figment, handlebars, nom, byteorder, csv, rand + 19 more). Zero-copy improvements: PrimalIdentity trait returns references not clones, PluginManager returns `&str` not `String`, protocol handler map uses `Arc<str>` keys, JSON payload serialization bypasses intermediate String. `#[allow(dead_code)]` evolved to `#[expect(dead_code, reason)]` or `#[cfg(test)]`. RUSTSEC-2025-0119 advisory eliminated (indicatif removed). Stale async-trait import removed. Clippy zero warnings. All tests pass.
@@ -337,6 +338,12 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 | [CHANGELOG.md](CHANGELOG.md) | Full session-by-session evolution history |
 | [SOVEREIGN_COMPUTE.md](SOVEREIGN_COMPUTE.md) | Sovereign compute phases and Mesa NAK roadmap |
 
+**Fossil record (S166)** — The following root trackers were resolved and archived under wateringHole (not removed from history; copies live in the ecoPrimals workspace): [`UNSAFE_AUDIT_REPORT_S166.md`](../../infra/wateringHole/fossilRecord/toadstool/UNSAFE_AUDIT_REPORT_S166.md), [`SOVEREIGN_COMPUTE_GAPS_S166.md`](../../infra/wateringHole/fossilRecord/toadstool/SOVEREIGN_COMPUTE_GAPS_S166.md), [`PURE_RUST_TRACKING_S166.md`](../../infra/wateringHole/fossilRecord/toadstool/PURE_RUST_TRACKING_S166.md).
+
 ---
 
-**Last Updated**: March 29, 2026 — S164. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). 96+ JSON-RPC methods. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **23 crates forbid, 20 deny** `unsafe_code`. Clippy pedantic zero across all 58 crates. Dep dedup: linfa/ndarray/mockall/env_logger upgraded. 5 files smart-refactored, +94 tests across 7 modules. Rust 1.85+ (edition 2024, MSRV).
+**Last Updated**: March 29, 2026 — S166. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). 100+ JSON-RPC methods (incl. `health.liveness`/`capabilities.list` per semantic standard). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **42 crates** inherit workspace `clippy::pedantic + nursery` lints. `--port` wired to TCP JSON-RPC (UniBin compliant). Rust 1.85+ (edition 2024, MSRV).
+
+---
+
+Part of [ecoPrimals](https://github.com/ecoPrimals) — sovereign compute for science and human dignity.

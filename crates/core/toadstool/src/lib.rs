@@ -18,9 +18,7 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
-    clippy::missing_errors_doc,
     clippy::must_use_candidate,
-    clippy::doc_markdown,
     clippy::return_self_not_must_use,
     clippy::redundant_closure_for_method_calls,
     clippy::map_unwrap_or,
@@ -28,13 +26,8 @@
     clippy::unnecessary_wraps,
     clippy::semicolon_if_nothing_returned,
     clippy::needless_pass_by_value,
-    clippy::wildcard_imports,
     clippy::similar_names,
     clippy::if_not_else,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
     clippy::unnested_or_patterns,
     clippy::items_after_statements,
     clippy::match_same_arms,

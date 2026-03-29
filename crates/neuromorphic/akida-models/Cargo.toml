@@ -58,3 +58,7 @@ path = "examples/run_inference.rs"
 [[example]]
 name = "benchmark_inference"
 path = "examples/benchmark_inference.rs"
+
+[lints]
+workspace = true
+

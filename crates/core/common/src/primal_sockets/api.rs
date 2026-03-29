@@ -63,7 +63,7 @@ pub fn get_beardog_socket_path() -> PathBuf {
     if let Some(path) = discovery_result {
         return path;
     }
-    paths::resolve_beardog_socket_fallback(&SocketPathEnv::from_env())
+    paths::resolve_capability_socket_fallback("crypto", &SocketPathEnv::from_env())
 }
 
 /// Get songbird (coordination) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("coordination").
@@ -83,7 +83,7 @@ pub fn get_songbird_socket_path() -> PathBuf {
     if let Some(path) = discovery_result {
         return path;
     }
-    paths::resolve_songbird_socket_fallback(&SocketPathEnv::from_env())
+    paths::resolve_capability_socket_fallback("coordination", &SocketPathEnv::from_env())
 }
 
 /// Get nestgate (storage) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("storage").
@@ -103,14 +103,14 @@ pub fn get_nestgate_socket_path() -> PathBuf {
     if let Some(path) = discovery_result {
         return path;
     }
-    paths::resolve_nestgate_socket_fallback(&SocketPathEnv::from_env())
+    paths::resolve_capability_socket_fallback("storage", &SocketPathEnv::from_env())
 }
 
 /// Get squirrel (AI) socket path.
 #[allow(deprecated)]
 #[must_use]
 pub fn get_squirrel_socket_path() -> PathBuf {
-    paths::resolve_squirrel_socket(&SocketPathEnv::from_env())
+    paths::resolve_routing_socket(&SocketPathEnv::from_env())
 }
 
 /// Get Nucleus (biomeOS) socket path.
@@ -134,24 +134,22 @@ pub fn get_toadstool_socket_path() -> PathBuf {
 pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
     let normalized = service_name.to_lowercase();
     let s = normalized.as_str();
-    if s == "beardog" || s == "bear-dog" {
-        get_beardog_socket_path()
-    } else if s == "songbird" || s == "song-bird" {
-        get_songbird_socket_path()
-    } else if s == "nestgate" || s == "nest-gate" {
-        get_nestgate_socket_path()
-    } else if s == "squirrel" {
-        get_squirrel_socket_path()
-    } else if s == PRIMAL_NAME || s == "toad-stool" {
-        get_toadstool_socket_path()
-    } else if s == "nucleus" || s == BIOMEOS {
-        get_nucleus_socket_path()
-    } else {
-        let env = SocketPathEnv::from_env();
-        let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
-        let override_path = std::env::var(&env_var).ok().map(PathBuf::from);
-        paths::resolve_socket_path_for_service(service_name, &env, override_path)
+
+    if let Some(cap) = paths::service_label_to_capability_id(s) {
+        return get_socket_path_for_capability(cap);
     }
+
+    if s == PRIMAL_NAME || s == "toad-stool" {
+        return get_toadstool_socket_path();
+    }
+    if s == "nucleus" || s == BIOMEOS {
+        return get_nucleus_socket_path();
+    }
+
+    let env = SocketPathEnv::from_env();
+    let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
+    let override_path = std::env::var(&env_var).ok().map(PathBuf::from);
+    paths::resolve_socket_path_for_service(service_name, &env, override_path)
 }
 
 /// Resolve socket path by capability rather than primal name.
@@ -161,18 +159,10 @@ pub fn get_socket_path_for_service(service_name: &str) -> PathBuf {
 /// from the environment variable `BIOMEOS_{CAPABILITY}_SOCKET`, falling back
 /// to a conventional path under the biomeos runtime directory.
 ///
-/// Supported capabilities: `coordination`, `crypto`, `storage`, `ai`, `compute`.
+/// Supported capabilities: `coordination`, `crypto`, `storage`, `routing`, `compute`, …
 #[must_use]
 pub fn get_socket_path_for_capability(capability: &str) -> PathBuf {
-    let env_var = format!(
-        "BIOMEOS_{}_SOCKET",
-        capability.to_uppercase().replace('-', "_")
-    );
-    if let Ok(path) = std::env::var(&env_var) {
-        return PathBuf::from(path);
-    }
-    let biomeos_dir = get_biomeos_dir();
-    biomeos_dir.join(format!("{capability}.sock"))
+    paths::resolve_capability_socket_fallback(capability, &SocketPathEnv::from_env())
 }
 
 #[cfg(test)]
@@ -256,7 +246,7 @@ mod tests {
     fn test_get_socket_path_for_service_song_bird_alias() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/1000"), || {
             let path = get_socket_path_for_service("song-bird");
-            assert!(path.to_string_lossy().contains("songbird"));
+            assert!(path.to_string_lossy().contains("coordination"));
         });
     }
 
@@ -265,7 +255,7 @@ mod tests {
     fn test_get_socket_path_for_service_nest_gate_alias() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/1000"), || {
             let path = get_socket_path_for_service("nest-gate");
-            assert!(path.to_string_lossy().contains("nestgate"));
+            assert!(path.to_string_lossy().contains("storage"));
         });
     }
 
@@ -278,9 +268,11 @@ mod tests {
     fn test_get_beardog_socket_path_with_xdg() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/9999"), || {
             temp_env::with_var_unset("BEARDOG_SOCKET", || {
-                let path = get_beardog_socket_path();
-                assert!(path.to_string_lossy().contains("beardog"));
-                assert!(path.to_string_lossy().contains("biomeos"));
+                temp_env::with_var_unset("BIOMEOS_CRYPTO_SOCKET", || {
+                    let path = get_beardog_socket_path();
+                    assert!(path.to_string_lossy().contains("crypto"));
+                    assert!(path.to_string_lossy().contains("biomeos"));
+                });
             });
         });
     }
@@ -290,8 +282,10 @@ mod tests {
     fn test_get_songbird_socket_path_with_xdg() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/8888"), || {
             temp_env::with_var_unset("SONGBIRD_SOCKET", || {
-                let path = get_songbird_socket_path();
-                assert!(path.to_string_lossy().contains("songbird"));
+                temp_env::with_var_unset("BIOMEOS_COORDINATION_SOCKET", || {
+                    let path = get_songbird_socket_path();
+                    assert!(path.to_string_lossy().contains("coordination"));
+                });
             });
         });
     }
@@ -301,8 +295,10 @@ mod tests {
     fn test_get_nestgate_socket_path_with_xdg() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/7777"), || {
             temp_env::with_var_unset("NESTGATE_SOCKET", || {
-                let path = get_nestgate_socket_path();
-                assert!(path.to_string_lossy().contains("nestgate"));
+                temp_env::with_var_unset("BIOMEOS_STORAGE_SOCKET", || {
+                    let path = get_nestgate_socket_path();
+                    assert!(path.to_string_lossy().contains("storage"));
+                });
             });
         });
     }
@@ -311,11 +307,11 @@ mod tests {
     fn test_get_squirrel_socket_path_with_xdg() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/squirrel-runtime"), || {
             temp_env::with_var_unset("SQUIRREL_SOCKET", || {
-                let path = get_squirrel_socket_path();
-                assert!(path.to_string_lossy().contains("squirrel"));
-                assert!(
-                    path.ends_with("squirrel.sock") || path.to_string_lossy().contains("squirrel")
-                );
+                temp_env::with_var_unset("BIOMEOS_ROUTING_SOCKET", || {
+                    let path = get_squirrel_socket_path();
+                    assert!(path.to_string_lossy().contains("routing"));
+                    assert!(path.ends_with("routing.sock"));
+                });
             });
         });
     }
@@ -349,7 +345,7 @@ mod tests {
     fn test_get_socket_path_for_service_beardog() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/1000"), || {
             let path = get_socket_path_for_service("beardog");
-            assert!(path.to_string_lossy().contains("beardog"));
+            assert!(path.to_string_lossy().contains("crypto"));
         });
     }
 
@@ -358,7 +354,7 @@ mod tests {
     fn test_get_socket_path_for_service_bear_dog_alias() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/1000"), || {
             let path = get_socket_path_for_service("bear-dog");
-            assert!(path.to_string_lossy().contains("beardog"));
+            assert!(path.to_string_lossy().contains("crypto"));
         });
     }
 
@@ -367,7 +363,7 @@ mod tests {
     fn test_get_socket_path_for_service_squirrel() {
         temp_env::with_var("XDG_RUNTIME_DIR", Some("/run/user/1000"), || {
             let path = get_socket_path_for_service("squirrel");
-            assert!(path.to_string_lossy().contains("squirrel"));
+            assert!(path.to_string_lossy().contains("routing"));
         });
     }
 
@@ -464,6 +460,16 @@ mod tests {
                     path,
                     PathBuf::from("/tmp/test-rt/biomeos/coordination.sock")
                 );
+            });
+        });
+    }
+
+    #[test]
+    fn test_get_socket_path_for_capability_routing() {
+        temp_env::with_var_unset("BIOMEOS_ROUTING_SOCKET", || {
+            temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/test-rt"), || {
+                let path = get_socket_path_for_capability("routing");
+                assert_eq!(path, PathBuf::from("/tmp/test-rt/biomeos/routing.sock"));
             });
         });
     }

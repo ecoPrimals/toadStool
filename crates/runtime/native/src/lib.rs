@@ -3,11 +3,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::no_effect_underscore_binding
-)]
+#![allow(clippy::no_effect_underscore_binding)]
 
 mod capabilities;
 mod engine;

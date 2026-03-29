@@ -126,7 +126,7 @@ pub enum OrganizationType {
 }
 
 /// Delegation scope for permission lending.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DelegationScope {
     /// Resource limits for delegation.
     pub resource_limits: Option<ResourceLimits>,
@@ -139,7 +139,7 @@ pub struct DelegationScope {
 }
 
 /// Resource limits for crypto lock permissions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResourceLimits {
     /// Max CPU cores.
     pub max_cpu_cores: Option<f64>,

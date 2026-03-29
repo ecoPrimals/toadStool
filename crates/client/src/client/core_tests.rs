@@ -95,3 +95,6 @@ fn test_client_config_api_url_with_path() {
 
 // Note: Integration tests that actually connect to a server
 // should be in tests/ directory with #[tokio::test]
+
+#[path = "toadstool_client_impl_tests.rs"]
+mod toadstool_client_impl_tests;

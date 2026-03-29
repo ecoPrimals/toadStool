@@ -4,7 +4,7 @@
 //! This module contains the main implementation of the UniversalCloudOrchestrator,
 //! including job deployment, multi-cloud strategies, and resource management.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -133,11 +133,9 @@ impl UniversalCloudOrchestrator {
 
         let _performance_estimates = self.hybrid_scheduler.get_performance_estimates(job).await?;
 
-        let _availability = self.get_multi_cloud_availability().await?;
+        let availability = self.get_multi_cloud_availability().await?;
 
-        let providers = self.providers.read().await;
-        let available_providers: Vec<String> = providers.keys().cloned().collect();
-        drop(providers);
+        let available_providers = availability.available_provider_names();
 
         let selected_providers = self
             .hybrid_scheduler
@@ -163,8 +161,20 @@ impl UniversalCloudOrchestrator {
                 },
             })
         } else {
+            // `selected_providers` follows availability map iteration order; prefer providers
+            // that pass compliance and sort for deterministic choice when several are listed.
+            let allowed: HashSet<_> = compliance_constraints.allowed_providers.iter().collect();
+            let mut compliant_selected: Vec<String> = selected_providers
+                .iter()
+                .filter(|p| allowed.contains(p))
+                .cloned()
+                .collect();
+            if compliant_selected.is_empty() {
+                compliant_selected.clone_from(&selected_providers);
+            }
+            compliant_selected.sort();
             Ok(DeploymentStrategy::SingleCloud {
-                provider_name: selected_providers[0].clone(),
+                provider_name: compliant_selected[0].clone(),
             })
         }
     }

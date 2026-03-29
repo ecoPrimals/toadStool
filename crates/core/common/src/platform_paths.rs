@@ -561,8 +561,8 @@ mod tests {
         };
         let paths = PlatformPaths::new(&env);
         assert_eq!(
-            paths.primal_socket("beardog"),
-            PathBuf::from("/run/user/1000/biomeos/beardog.sock")
+            paths.primal_socket("crypto"),
+            PathBuf::from("/run/user/1000/biomeos/crypto.sock")
         );
     }
 

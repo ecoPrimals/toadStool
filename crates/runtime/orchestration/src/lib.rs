@@ -2,17 +2,13 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
     clippy::match_same_arms,
-    clippy::missing_errors_doc,
     clippy::must_use_candidate,
     clippy::needless_continue,
     clippy::return_self_not_must_use,
     clippy::unnecessary_wraps,
     clippy::unused_async,
-    clippy::unused_self,
-    clippy::wildcard_imports
+    clippy::unused_self
 )]
 
 //! Workload Orchestration System

@@ -8,10 +8,10 @@ use tracing::info;
 use crate::{CliError, Result};
 
 /// Run ToadStool in server/daemon mode (UniBin compliant)
-pub async fn run_server_daemon(family_id: Option<String>) -> Result<()> {
+pub async fn run_server_daemon(family_id: Option<String>, port: Option<u16>) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
 
-    toadstool_server::run_server_main(family_id)
+    toadstool_server::run_server_main(family_id, port)
         .await
         .map_err(|e| CliError::Other(format!("Server failed: {e}")))?;
 

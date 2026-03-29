@@ -2,12 +2,6 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(async_fn_in_trait)]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-)]
 
 //! `ToadStool` Advanced Analytics Engine
 //!

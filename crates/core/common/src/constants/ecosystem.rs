@@ -11,6 +11,20 @@
 //! points (e.g., parsing manifest files, protocol strings) where knowing the
 //! conventional names is unavoidable.
 
+/// Canonical capability identifier strings for ecosystem integration.
+///
+/// Use these for discovery, config keys, and socket basename resolution — not legacy primal names.
+pub mod capabilities {
+    /// Coordination / discovery / mesh
+    pub const COORDINATION: &str = "coordination";
+    /// Cryptography / signing / PKI
+    pub const CRYPTO: &str = "crypto";
+    /// Storage / artifacts / pipelines
+    pub const STORAGE: &str = "storage";
+    /// Routing / MCP-style AI workloads
+    pub const ROUTING: &str = "routing";
+}
+
 /// Well-known primal service names used in integration modules.
 /// Core logic should discover by capability, not by name.
 ///

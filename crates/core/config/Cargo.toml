@@ -13,19 +13,6 @@ keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
 
-[lints.clippy]
-# Production-grade safety lints  
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core dependencies
 serde = { workspace = true }
@@ -65,4 +52,8 @@ approx = "0.5"
 # num_cpus removed: use std::thread::available_parallelism() instead (pure Rust, no FFI)
 
 [features]
-default = [] 
+default = []
+
+[lints]
+workspace = true
+

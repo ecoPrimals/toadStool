@@ -37,11 +37,7 @@
 #![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![warn(clippy::pedantic, clippy::cargo)]
 // Transitive deps (e.g. windows_*) have multiple versions; we cannot control that.
-#![allow(
-    clippy::multiple_crate_versions,
-    clippy::module_name_repetitions,
-    clippy::missing_errors_doc
-)]
+#![allow(clippy::multiple_crate_versions)]
 
 mod discovery;
 mod error;

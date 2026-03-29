@@ -280,7 +280,8 @@ async fn start_servers_with_fallback_fails_on_non_platform_error() {
     ));
 
     let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket).await;
+        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
+            .await;
 
     assert!(result.is_err());
     let err_str = result.unwrap_err().to_string();
@@ -532,7 +533,8 @@ async fn start_servers_platform_constraint_triggers_tcp_fallback() {
         None,
     ));
     let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket).await;
+        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
+            .await;
     assert!(result.is_err());
 }
 

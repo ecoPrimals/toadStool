@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Tests for the display IPC client.
 
-use super::{DEFAULT_IPC_TCP_ADDR, DisplayClient, IpcEndpoint};
+use super::{DisplayClient, IpcEndpoint, default_display_ipc_tcp_addr};
 use crate::ipc::types::{JsonRpcRequest, JsonRpcResponse};
 use crate::window::WindowId;
 use std::path::PathBuf;
@@ -25,7 +25,7 @@ fn test_ipc_endpoint_unix_variant() {
 #[test]
 fn test_ipc_endpoint_tcp_variant() {
     use std::net::SocketAddr;
-    let addr: SocketAddr = DEFAULT_IPC_TCP_ADDR.parse().unwrap();
+    let addr: SocketAddr = default_display_ipc_tcp_addr().parse().unwrap();
     let ep = IpcEndpoint::TcpLocal(addr);
     let s = format!("{ep:?}");
     assert!(s.contains("TcpLocal") || s.contains("127"));
@@ -120,7 +120,7 @@ fn test_endpoint_string_unix() {
 fn test_endpoint_string_tcp() {
     use std::net::SocketAddr;
     let (client_half, _server_half) = tokio::io::duplex(1024);
-    let addr: SocketAddr = DEFAULT_IPC_TCP_ADDR.parse().unwrap();
+    let addr: SocketAddr = default_display_ipc_tcp_addr().parse().unwrap();
     let ep = IpcEndpoint::TcpLocal(addr);
     let client = DisplayClient::new_for_test(client_half, ep);
     let s = client.endpoint_string();

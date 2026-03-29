@@ -34,7 +34,6 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
 #![allow(clippy::must_use_candidate)]
 
 mod error;

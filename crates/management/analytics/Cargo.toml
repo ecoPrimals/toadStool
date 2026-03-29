@@ -42,4 +42,8 @@ tracing = "0.1"
 thiserror = { workspace = true }
 
 # Configuration
-config = "0.14" 
+config = "0.14"
+
+[lints]
+workspace = true
+

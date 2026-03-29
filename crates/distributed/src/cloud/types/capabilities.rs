@@ -127,6 +127,16 @@ impl MultiCloudAvailability {
     pub fn mark_provider_unavailable(&mut self, name: impl Into<String>) {
         self.unavailable_providers.push(name.into());
     }
+
+    /// Returns the names of providers that reported availability successfully.
+    pub fn available_provider_names(&self) -> Vec<String> {
+        self.providers.keys().cloned().collect()
+    }
+
+    /// Returns the names of providers that failed availability checks.
+    pub fn unavailable_provider_names(&self) -> &[String] {
+        &self.unavailable_providers
+    }
 }
 
 /// Cloud region information.

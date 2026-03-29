@@ -3,12 +3,7 @@
 #![warn(missing_docs)]
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 #![allow(
-    clippy::doc_markdown,
-    clippy::missing_errors_doc,
     clippy::must_use_candidate,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::wildcard_imports,
     clippy::items_after_statements,
     clippy::map_unwrap_or,
     clippy::redundant_closure_for_method_calls,
@@ -20,7 +15,6 @@
     clippy::return_self_not_must_use,
     clippy::match_same_arms,
     clippy::unused_async,
-    clippy::uninlined_format_args,
     clippy::format_push_string,
     clippy::used_underscore_binding,
     clippy::unnecessary_wraps,
@@ -30,7 +24,6 @@
     clippy::manual_let_else,
     clippy::needless_pass_by_value,
     clippy::similar_names,
-    clippy::cast_sign_loss,
     clippy::cast_lossless,
     clippy::implicit_clone,
     clippy::implicit_hasher,

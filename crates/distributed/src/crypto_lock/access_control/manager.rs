@@ -2,12 +2,15 @@
 //! ToadStool Crypto Lock Manager - policy enforcement and access control
 
 use std::collections::HashMap;
+use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 
 use super::super::cache::PermissionCache;
 use super::super::permissions::{
@@ -36,7 +39,7 @@ impl ToadStoolCryptoLock {
         let permission_cache = PermissionCache::new();
         let access_policies = AccessPolicies;
 
-        let crypto_lock = Self {
+        let mut crypto_lock = Self {
             permission_validator,
             active_permissions,
             permission_cache,
@@ -224,8 +227,13 @@ impl ToadStoolCryptoLock {
             .find_delegatable_permission(from_holder, target)
             .await?;
 
-        self.validate_delegation_request(&base_permission, &delegation_scope)
-            .await?;
+        self.validate_delegation_request(
+            from_holder,
+            &base_permission,
+            &delegation_scope,
+            duration,
+        )
+        .await?;
 
         let delegation_request = DelegationRequest {
             request_id: Uuid::new_v4(),
@@ -397,8 +405,50 @@ impl ToadStoolCryptoLock {
         }
     }
 
-    #[allow(clippy::missing_const_for_fn)] // Stub; ToadStoolResult not const
-    fn load_permissions(&self) -> ToadStoolResult<()> {
+    /// Load persisted permissions into [`Self::active_permissions`] (the in-memory permission store).
+    ///
+    /// Reads JSON array of [`SecurityProviderPermission`] from:
+    /// - `TOADSTOOL_CRYPTO_PERMISSIONS_STORE` if set, otherwise
+    /// - `{toadstool_data_dir}/crypto_permissions.json` (see [`PlatformPaths::toadstool_data_dir`]).
+    ///
+    /// Missing file or empty file is treated as an empty store (not an error).
+    fn load_permissions(&mut self) -> ToadStoolResult<()> {
+        let path = std::env::var("TOADSTOOL_CRYPTO_PERMISSIONS_STORE")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| {
+                let env = PathEnv::from_env();
+                let paths = PlatformPaths::new(&env);
+                paths.toadstool_data_dir().join("crypto_permissions.json")
+            });
+
+        let contents = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(e) if e.kind() == ErrorKind::NotFound => {
+                debug!(
+                    path = %path.display(),
+                    "No persisted crypto permissions file; starting with empty permission store"
+                );
+                return Ok(());
+            }
+            Err(e) => return Err(e.into()),
+        };
+
+        if contents.trim().is_empty() {
+            return Ok(());
+        }
+
+        let loaded: Vec<SecurityProviderPermission> = serde_json::from_str(&contents)?;
+        let count = loaded.len();
+        for p in loaded {
+            self.active_permissions.insert(p.external_target.clone(), p);
+        }
+        if count > 0 {
+            info!(
+                count,
+                path = %path.display(),
+                "Loaded persisted crypto permissions into permission store"
+            );
+        }
         Ok(())
     }
 
@@ -429,9 +479,123 @@ impl ToadStoolCryptoLock {
 
     async fn validate_delegation_request(
         &self,
-        _permission: &SecurityProviderPermission,
-        _scope: &DelegationScope,
+        from_holder: &PermissionHolder,
+        permission: &SecurityProviderPermission,
+        scope: &DelegationScope,
+        delegation_duration: Duration,
     ) -> ToadStoolResult<()> {
+        if !permission_holder_matches(from_holder, &permission.holder) {
+            return Err(ToadStoolError::security(
+                "Delegator does not hold the base permission for this target",
+            ));
+        }
+
+        if let Some(chain) = &permission.delegation_chain
+            && chain.delegation_level >= chain.max_delegation_depth
+        {
+            return Err(ToadStoolError::security(
+                "Maximum delegation depth reached for this permission",
+            ));
+        }
+
+        let now = SystemTime::now();
+        let expiry = now
+            .checked_add(delegation_duration)
+            .ok_or_else(|| ToadStoolError::security("Delegation duration overflow"))?;
+        if expiry > permission.valid_until {
+            return Err(ToadStoolError::security(
+                "Delegation would outlive the base permission validity",
+            ));
+        }
+
+        if let Some(limit) = scope.time_limits
+            && delegation_duration > limit
+        {
+            return Err(ToadStoolError::security(
+                "Delegation duration exceeds the delegation scope time limit",
+            ));
+        }
+
+        if !scope.feature_subset.is_empty() && !permission.scope.feature_restrictions.is_empty() {
+            for f in &scope.feature_subset {
+                if !permission.scope.feature_restrictions.contains(f) {
+                    return Err(ToadStoolError::security(
+                        "Delegation feature not permitted by base permission scope",
+                    ));
+                }
+            }
+        }
+
+        if !scope.geographic_subset.is_empty() && !permission.scope.geographic_limits.is_empty() {
+            for g in &scope.geographic_subset {
+                if !permission.scope.geographic_limits.contains(g) {
+                    return Err(ToadStoolError::security(
+                        "Delegation geography not permitted by base permission scope",
+                    ));
+                }
+            }
+        }
+
+        validate_delegation_resource_limits(&permission.scope, scope)?;
+
         Ok(())
     }
+}
+
+/// Compares two [`PermissionHolder`] values for delegation (identity of the delegator).
+fn permission_holder_matches(a: &PermissionHolder, b: &PermissionHolder) -> bool {
+    match (a, b) {
+        (
+            PermissionHolder::Individual {
+                user_id: u1,
+                public_key: pk1,
+                ..
+            },
+            PermissionHolder::Individual {
+                user_id: u2,
+                public_key: pk2,
+                ..
+            },
+        ) => u1 == u2 && pk1 == pk2,
+        (
+            PermissionHolder::Organization { org_id: o1, .. },
+            PermissionHolder::Organization { org_id: o2, .. },
+        ) => o1 == o2,
+        (
+            PermissionHolder::Delegated {
+                original_holder: oh1,
+                delegated_to: d1,
+                delegation_scope: s1,
+            },
+            PermissionHolder::Delegated {
+                original_holder: oh2,
+                delegated_to: d2,
+                delegation_scope: s2,
+            },
+        ) => d1 == d2 && s1 == s2 && permission_holder_matches(oh1, oh2),
+        _ => false,
+    }
+}
+
+fn validate_delegation_resource_limits(
+    base_scope: &PermissionScope,
+    delegation: &DelegationScope,
+) -> ToadStoolResult<()> {
+    let Some(dlimits) = &delegation.resource_limits else {
+        return Ok(());
+    };
+    let b = &base_scope.resource_limits;
+    fn check(opt_del: Option<f64>, opt_base: Option<f64>) -> ToadStoolResult<()> {
+        match (opt_del, opt_base) {
+            (Some(d), Some(bv)) if d > bv => Err(ToadStoolError::security(
+                "Delegated resource limit exceeds base permission",
+            )),
+            _ => Ok(()),
+        }
+    }
+    check(dlimits.max_cpu_cores, b.max_cpu_cores)?;
+    check(dlimits.max_memory_gb, b.max_memory_gb)?;
+    check(dlimits.max_storage_gb, b.max_storage_gb)?;
+    check(dlimits.max_network_bandwidth, b.max_network_bandwidth)?;
+    Ok(())
 }

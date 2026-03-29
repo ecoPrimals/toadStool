@@ -35,11 +35,11 @@ fn get_runtime_dir() -> String {
         })
 }
 
-/// Get default Songbird socket path using biomeOS standard.
+/// Default coordination-capability socket path (legacy callers said “Songbird”).
 ///
-/// biomeOS socket standard: `$XDG_RUNTIME_DIR/biomeos/songbird.sock`
+/// biomeOS convention: `$XDG_RUNTIME_DIR/biomeos/coordination.sock`
 pub fn get_default_songbird_socket() -> String {
-    format!("{}/biomeos/songbird.sock", get_runtime_dir())
+    format!("{}/biomeos/coordination.sock", get_runtime_dir())
 }
 
 /// Register ToadStool with Songbird discovery service
@@ -235,7 +235,7 @@ mod tests {
     fn test_get_default_songbird_socket_format() {
         let socket = get_default_songbird_socket();
         assert!(socket.contains("biomeos"));
-        assert!(socket.ends_with("songbird.sock"));
+        assert!(socket.ends_with("coordination.sock"));
         assert!(!socket.is_empty());
     }
 

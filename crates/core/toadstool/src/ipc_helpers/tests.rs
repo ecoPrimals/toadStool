@@ -332,8 +332,8 @@ fn test_edge_cases_semantic_resolution() {
 fn test_get_default_songbird_socket_contains_songbird_sock() {
     let path = get_default_songbird_socket();
     assert!(
-        path.ends_with("songbird.sock"),
-        "socket path should end with songbird.sock, got: {path}"
+        path.ends_with("coordination.sock"),
+        "socket path should end with coordination.sock, got: {path}"
     );
 }
 
@@ -342,7 +342,7 @@ fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
     temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/test-xdg-runtime"), || {
         let path = get_default_songbird_socket();
         assert!(path.starts_with("/tmp/test-xdg-runtime"));
-        assert!(path.ends_with("songbird.sock"));
+        assert!(path.ends_with("coordination.sock"));
     });
 }
 
@@ -449,7 +449,7 @@ fn test_resolve_primal_success_via_mock() {
 
     let reply = json!({
         "jsonrpc": "2.0",
-        "result": {"endpoint": "/run/user/1000/biomeos/beardog.sock"},
+        "result": {"endpoint": "/run/user/1000/biomeos/crypto.sock"},
         "id": 1
     });
 
@@ -466,7 +466,7 @@ fn test_resolve_primal_success_via_mock() {
                 let result = resolve_primal("beardog").await;
                 handle.abort();
                 assert!(result.is_ok());
-                assert!(result.unwrap().contains("beardog.sock"));
+                assert!(result.unwrap().contains("crypto.sock"));
             });
         })
         .join()

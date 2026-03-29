@@ -74,10 +74,15 @@ pub enum ShutdownSignal {
 
 /// Run ToadStool in server/daemon mode
 ///
+/// `tcp_port` enables newline-delimited JSON-RPC on the given TCP port (UniBin `--port`).
+///
 /// # Errors
 ///
 /// Returns [`ServerError`] if socket path resolution, executor creation, or server startup fails.
-pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), ServerError> {
+pub async fn run_server_main(
+    family_id_override: Option<String>,
+    tcp_port: Option<u16>,
+) -> Result<(), ServerError> {
     info!(
         "🍄 ToadStool Universal Compute Server v{}",
         env!("CARGO_PKG_VERSION")
@@ -177,6 +182,7 @@ pub async fn run_server_main(family_id_override: Option<String>) -> Result<(), S
             jsonrpc_handler,
             socket_path_for_server,
             jsonrpc_socket_for_server,
+            tcp_port,
         )
         .await
         {

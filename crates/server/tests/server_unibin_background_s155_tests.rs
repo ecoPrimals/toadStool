@@ -199,7 +199,8 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
     ));
 
     let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket).await;
+        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
+            .await;
 
     assert!(result.is_err());
 }

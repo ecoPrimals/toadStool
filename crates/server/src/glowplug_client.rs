@@ -16,8 +16,12 @@ use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
 use tokio::sync::OnceCell;
 use tracing::{debug, warn};
 
-/// Default ember socket path (matches coral-ember's default).
-const DEFAULT_EMBER_SOCKET: &str = "/run/coralreef/ember.sock";
+/// Fallback ember socket path when no env or XDG candidate exists (override with `CORALREEF_EMBER_DEFAULT_SOCKET`).
+fn fallback_ember_socket_path() -> PathBuf {
+    std::env::var("CORALREEF_EMBER_DEFAULT_SOCKET")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/run/coralreef/ember.sock"))
+}
 
 /// Device entry returned by `ember.list`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,7 +82,7 @@ impl GlowPlugClient {
     /// Discovery order:
     /// 1. `CORALREEF_EMBER_SOCKET` env var (explicit socket path)
     /// 2. XDG runtime dir: `$XDG_RUNTIME_DIR/coralreef/ember.sock`
-    /// 3. Default system path: `/run/coralreef/ember.sock`
+    /// 3. `CORALREEF_EMBER_DEFAULT_SOCKET` or built-in fallback path (last resort)
     async fn discover() -> Option<UnixJsonRpcClient> {
         if let Ok(addr) = std::env::var("CORALREEF_EMBER_SOCKET") {
             let path = PathBuf::from(&addr);
@@ -98,7 +102,7 @@ impl GlowPlugClient {
             }
         }
 
-        let default = PathBuf::from(DEFAULT_EMBER_SOCKET);
+        let default = fallback_ember_socket_path();
         if default.exists() {
             debug!(path = %default.display(), "coral-ember discovered at default path");
             return Some(UnixJsonRpcClient::new(default));

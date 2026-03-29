@@ -149,7 +149,7 @@ impl JsonRpcHandler {
             "toadstool.cancel_workload" => return self.workload.cancel_workload(params).await,
             "toadstool.list_workloads" => return self.job.list_workloads(params).await,
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
-            "toadstool.health" => {
+            "toadstool.health" | "health.liveness" | "health.readiness" | "health.check" => {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
             }
             "toadstool.version" => return core::version_info(&self.version).await,
@@ -172,7 +172,10 @@ impl JsonRpcHandler {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
             }
             "compute.version" => return core::version_info(&self.version).await,
-            "compute.capabilities" => return self.workload.query_capabilities().await,
+            "compute.capabilities"
+            | "capabilities.list"
+            | "capability.list"
+            | "primal.capabilities" => return self.workload.query_capabilities().await,
             "compute.discover_capabilities" => {
                 return core::discover_capabilities(&self.semantic_registry, &self.version).await;
             }
@@ -320,6 +323,7 @@ impl JsonRpcHandler {
             "cancel_workload" => self.workload.cancel_workload(params).await,
             "list_workloads" => self.job.list_workloads(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
+            "check_health" => core::health(&self.version, self.start_time, &self.error_count).await,
             "science_compute_submit" => science::science_compute_submit(&self.job, params).await,
             "science_compute_status" => science::science_compute_status(&self.job, params).await,
             "science_compute_result" => science::science_compute_result(&self.job, params).await,

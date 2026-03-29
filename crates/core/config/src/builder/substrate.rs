@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Result, ToadStoolConfigTrait};
+use super::{ConfigError, Result, ToadStoolConfigTrait};
 
 /// Substrate selection configuration
 ///
@@ -115,6 +115,29 @@ impl ToadStoolConfigTrait for SubstrateConfig {
                 .unwrap_or(true),
         })
     }
+
+    fn validate(&self) -> Result<()> {
+        if let Some(w) = self.power_budget_watts {
+            if !w.is_finite() || w <= 0.0 {
+                return Err(ConfigError::Validation(
+                    "power_budget_watts must be positive and finite when set".to_string(),
+                ));
+            }
+        }
+        if self.fallback_order.is_empty() {
+            return Err(ConfigError::Validation(
+                "fallback_order must not be empty".to_string(),
+            ));
+        }
+        if let SubstratePreference::ByCapability(caps) = &self.preferred
+            && caps.is_empty()
+        {
+            return Err(ConfigError::Validation(
+                "ByCapability preference requires at least one capability name".to_string(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl SubstrateConfig {
@@ -215,9 +238,19 @@ impl SubstrateConfigBuilder {
         self
     }
 
-    /// Build the substrate configuration.
+    /// Build and validate the substrate configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError`] if validation fails.
+    pub fn build(self) -> Result<SubstrateConfig> {
+        self.config.validate()?;
+        Ok(self.config)
+    }
+
+    /// Build without validation (may produce invalid config).
     #[must_use]
-    pub fn build(self) -> SubstrateConfig {
+    pub fn build_unchecked(self) -> SubstrateConfig {
         self.config
     }
 }
@@ -248,7 +281,8 @@ mod tests {
             .prefer_npu()
             .power_budget_watts(5.0)
             .target_energy()
-            .build();
+            .build()
+            .expect("valid config");
 
         assert_eq!(
             config.preferred,
@@ -263,13 +297,17 @@ mod tests {
         let config = SubstrateConfigBuilder::new()
             .prefer_gpu()
             .prefer_auto()
-            .build();
+            .build()
+            .expect("valid config");
         assert!(matches!(config.preferred, SubstratePreference::Auto));
     }
 
     #[test]
     fn test_substrate_config_builder_prefer_cpu() {
-        let config = SubstrateConfigBuilder::new().prefer_cpu().build();
+        let config = SubstrateConfigBuilder::new()
+            .prefer_cpu()
+            .build()
+            .expect("valid config");
         assert_eq!(
             config.preferred,
             SubstratePreference::Specific(SubstrateType::Cpu)
@@ -278,7 +316,10 @@ mod tests {
 
     #[test]
     fn test_substrate_config_builder_prefer_gpu() {
-        let config = SubstrateConfigBuilder::new().prefer_gpu().build();
+        let config = SubstrateConfigBuilder::new()
+            .prefer_gpu()
+            .build()
+            .expect("valid config");
         assert_eq!(
             config.preferred,
             SubstratePreference::Specific(SubstrateType::Gpu)
@@ -287,19 +328,27 @@ mod tests {
 
     #[test]
     fn test_substrate_config_builder_target_latency() {
-        let config = SubstrateConfigBuilder::new().target_latency().build();
+        let config = SubstrateConfigBuilder::new()
+            .target_latency()
+            .build()
+            .expect("valid config");
         assert_eq!(config.performance_target, PerformanceTarget::Latency);
     }
 
     #[test]
     fn test_substrate_config_builder_target_throughput() {
-        let config = SubstrateConfigBuilder::new().target_throughput().build();
+        let config = SubstrateConfigBuilder::new()
+            .target_throughput()
+            .build()
+            .expect("valid config");
         assert_eq!(config.performance_target, PerformanceTarget::Throughput);
     }
 
     #[test]
     fn test_substrate_config_builder_default() {
-        let config = SubstrateConfigBuilder::default().build();
+        let config = SubstrateConfigBuilder::default()
+            .build()
+            .expect("valid config");
         assert!(matches!(config.preferred, SubstratePreference::Auto));
         assert_eq!(config.performance_target, PerformanceTarget::Balanced);
     }
@@ -310,7 +359,8 @@ mod tests {
             .prefer_npu()
             .power_budget_watts(10.0)
             .target_throughput()
-            .build();
+            .build()
+            .expect("valid config");
         assert_eq!(
             config.preferred,
             SubstratePreference::Specific(SubstrateType::Npu)
@@ -353,12 +403,55 @@ mod tests {
             .power_budget_watts(10.0)
             .target_latency()
             .target_throughput()
-            .build();
+            .build()
+            .expect("valid config");
         assert_eq!(
             config.preferred,
             SubstratePreference::Specific(SubstrateType::Npu)
         );
         assert_eq!(config.power_budget_watts, Some(10.0));
         assert_eq!(config.performance_target, PerformanceTarget::Throughput);
+    }
+
+    #[test]
+    fn test_substrate_config_validate_empty_fallback() {
+        let config = SubstrateConfig {
+            fallback_order: vec![],
+            ..SubstrateConfig::default()
+        };
+        let err = config.validate().expect_err("empty fallback_order");
+        assert!(matches!(err, ConfigError::Validation(s) if s.contains("fallback_order")));
+    }
+
+    #[test]
+    fn test_substrate_config_validate_by_capability_empty() {
+        let config = SubstrateConfig {
+            preferred: SubstratePreference::ByCapability(vec![]),
+            ..SubstrateConfig::default()
+        };
+        let err = config.validate().expect_err("empty ByCapability");
+        assert!(matches!(err, ConfigError::Validation(s) if s.contains("ByCapability")));
+    }
+
+    #[test]
+    fn test_substrate_config_validate_bad_power_budget() {
+        let config = SubstrateConfig {
+            power_budget_watts: Some(-1.0),
+            ..SubstrateConfig::default()
+        };
+        config.validate().expect_err("negative power budget");
+    }
+
+    #[test]
+    fn test_substrate_config_validate_default_ok() {
+        SubstrateConfig::default()
+            .validate()
+            .expect("default substrate config valid");
+    }
+
+    #[test]
+    fn test_substrate_builder_build_unchecked() {
+        let config = SubstrateConfigBuilder::new().build_unchecked();
+        assert!(!config.fallback_order.is_empty());
     }
 }

@@ -9,19 +9,6 @@ repository.workspace = true
 keywords = ["distributed", "compute", "orchestration", "coordination"]
 categories = ["asynchronous", "network-programming"]
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [features]
 default = []
 channels = []
@@ -96,3 +83,6 @@ temp-env = "0.3"
 toml = "0.8"
 anyhow = "1"
 proptest = { workspace = true }
+
+[lints]
+workspace = true

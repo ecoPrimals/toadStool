@@ -1,6 +1,12 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 29, 2026 — S164
+**Last Updated**: March 29, 2026 — S166
+
+---
+
+## Fossil record (S166)
+
+These root documents were **fully resolved** and **fossilized** in wateringHole (see `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`): **UNSAFE_AUDIT_REPORT**, **SOVEREIGN_COMPUTE_GAPS**, **PURE_RUST_TRACKING** — renamed with `_S166` suffix. Use those paths when citing historical audit, sovereign-gap, or pure-Rust tracking content.
 
 ---
 

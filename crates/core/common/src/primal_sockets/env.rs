@@ -13,13 +13,21 @@ pub struct SocketPathEnv {
     pub user: Option<String>,
     /// `BIOMEOS_FAMILY_ID` or `TOADSTOOL_FAMILY` for family-scoped paths
     pub biomeos_family_id: Option<String>,
-    /// `BEARDOG_SOCKET` override for crypto capability
+    /// `BIOMEOS_CRYPTO_SOCKET` explicit path for the crypto capability
+    pub biomeos_crypto_socket: Option<String>,
+    /// `BIOMEOS_COORDINATION_SOCKET` explicit path for the coordination capability
+    pub biomeos_coordination_socket: Option<String>,
+    /// `BIOMEOS_STORAGE_SOCKET` explicit path for the storage capability
+    pub biomeos_storage_socket: Option<String>,
+    /// `BIOMEOS_ROUTING_SOCKET` explicit path for routing / MCP-style workloads
+    pub biomeos_routing_socket: Option<String>,
+    /// `BEARDOG_SOCKET` legacy override (same effective target as crypto capability)
     pub beardog_socket: Option<String>,
-    /// `SONGBIRD_SOCKET` override for coordination capability
+    /// `SONGBIRD_SOCKET` legacy override (same effective target as coordination capability)
     pub songbird_socket: Option<String>,
-    /// `NESTGATE_SOCKET` override for storage capability
+    /// `NESTGATE_SOCKET` legacy override (same effective target as storage capability)
     pub nestgate_socket: Option<String>,
-    /// `SQUIRREL_SOCKET` override for AI capability
+    /// `SQUIRREL_SOCKET` legacy override (same effective target as routing capability)
     pub squirrel_socket: Option<String>,
     /// `TOADSTOOL_SOCKET` override for ToadStool main socket
     pub toadstool_socket: Option<String>,
@@ -39,6 +47,10 @@ impl SocketPathEnv {
             biomeos_family_id: std::env::var("BIOMEOS_FAMILY_ID")
                 .or_else(|_| std::env::var("TOADSTOOL_FAMILY"))
                 .ok(),
+            biomeos_crypto_socket: std::env::var("BIOMEOS_CRYPTO_SOCKET").ok(),
+            biomeos_coordination_socket: std::env::var("BIOMEOS_COORDINATION_SOCKET").ok(),
+            biomeos_storage_socket: std::env::var("BIOMEOS_STORAGE_SOCKET").ok(),
+            biomeos_routing_socket: std::env::var("BIOMEOS_ROUTING_SOCKET").ok(),
             beardog_socket: std::env::var("BEARDOG_SOCKET").ok(),
             songbird_socket: std::env::var("SONGBIRD_SOCKET").ok(),
             nestgate_socket: std::env::var("NESTGATE_SOCKET").ok(),

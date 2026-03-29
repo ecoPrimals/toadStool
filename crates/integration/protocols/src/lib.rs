@@ -2,9 +2,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
-    clippy::missing_errors_doc,
     clippy::must_use_candidate,
-    clippy::doc_markdown,
     clippy::unused_async,
     clippy::needless_pass_by_value,
     clippy::assigning_clones,

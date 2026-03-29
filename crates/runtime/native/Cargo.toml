@@ -10,19 +10,6 @@ readme = "README.md"
 keywords = ["runtime", "native", "execution", "sandboxing"]
 categories = ["os", "development-tools"]
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 toadstool = { path = "../../core/toadstool" }
 bytes = { workspace = true }
@@ -32,3 +19,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 async-trait = { workspace = true }
+
+[lints]
+workspace = true
+

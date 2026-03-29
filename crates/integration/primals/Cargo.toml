@@ -40,4 +40,7 @@ default = ["full"]
 full = ["beardog", "squirrel", "nestgate"]
 beardog = []
 squirrel = []
-nestgate = [] 
+nestgate = []
+
+[lints]
+workspace = true

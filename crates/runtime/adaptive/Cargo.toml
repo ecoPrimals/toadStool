@@ -46,3 +46,7 @@ testing = []
 # [[bench]]
 # name = "adaptive_benchmarks"
 # harness = false
+
+[lints]
+workspace = true
+

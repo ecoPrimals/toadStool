@@ -63,6 +63,9 @@ pub mod capabilities {
     /// Coordination capabilities (service mesh, discovery, orchestration)
     pub const COORDINATION: &str = "coordination";
 
+    /// Workload routing / MCP-style agent IPC (replaces legacy “squirrel” name in discovery)
+    pub const ROUTING: &str = "routing";
+
     /// AI/ML capabilities (inference, training, natural language)
     pub const INTELLIGENCE: &str = "intelligence";
 
@@ -229,8 +232,8 @@ pub mod primals {
     /// **DEPRECATED**: Use `capabilities::STORAGE` instead
     pub const NESTGATE: &str = "nestgate";
 
-    /// Squirrel AI service identifier
-    /// **DEPRECATED**: Use `capabilities::INTELLIGENCE` instead
+    /// Squirrel AI service identifier (legacy addressing only)
+    /// **DEPRECATED**: Use `capabilities::ROUTING` or `capabilities::INTELLIGENCE` for discovery
     pub const SQUIRREL: &str = "squirrel";
 
     /// ToadStool compute service identifier
@@ -331,6 +334,7 @@ mod tests {
         assert_eq!(capabilities::CRYPTO, "crypto");
         assert_eq!(capabilities::STORAGE, "storage");
         assert_eq!(capabilities::COORDINATION, "coordination");
+        assert_eq!(capabilities::ROUTING, "routing");
         assert_eq!(capabilities::ENCRYPTION, "encryption");
         assert_eq!(capabilities::GPU_DISPATCH, "gpu.dispatch");
         assert_eq!(capabilities::SCIENCE_GPU_DISPATCH, "science.gpu.dispatch");

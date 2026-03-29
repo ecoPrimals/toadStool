@@ -1,49 +1,73 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Capability-based template helpers
 //!
-//! This module provides helpers for migrating from hardcoded service names
-//! to capability-based service dependencies in templates.
+//! This module provides helpers for capability-first service dependencies in templates.
+//! Legacy primal names are accepted only as a compatibility shim.
 
 use std::collections::HashMap;
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::interned_strings::runtime_types;
 
-/// Map service names to their primary capabilities
+/// Resolve a manifest or template dependency label to a canonical capability id.
 ///
-/// This is used during the migration period to translate between legacy
-/// service names and capability-based discovery.
-pub fn service_to_capability(service_name: &str) -> &'static str {
-    match service_name.to_lowercase().as_str() {
+/// Capability strings are primary; legacy primal names map to their historical capability.
+#[must_use]
+pub fn dependency_label_to_capability(label: &str) -> &'static str {
+    match label.to_lowercase().as_str() {
         "beardog" => capabilities::CRYPTO,
         "songbird" => capabilities::COORDINATION,
         "nestgate" => capabilities::STORAGE,
-        "squirrel" => capabilities::INTELLIGENCE,
+        "squirrel" => capabilities::ROUTING,
         "toadstool" => capabilities::COMPUTE,
         capabilities::CRYPTO => capabilities::CRYPTO,
+        capabilities::SECURITY => capabilities::SECURITY,
         capabilities::COORDINATION => capabilities::COORDINATION,
         capabilities::STORAGE => capabilities::STORAGE,
         capabilities::INTELLIGENCE => capabilities::INTELLIGENCE,
+        capabilities::ROUTING => capabilities::ROUTING,
         capabilities::COMPUTE => capabilities::COMPUTE,
         runtime_types::BIOMEOS => "os",
         _ => "unknown",
     }
 }
 
-/// Map capabilities to default service names (for backward compatibility)
-pub fn capability_to_service(capability: &str) -> &'static str {
-    match capability {
-        capabilities::CRYPTO => "beardog",
-        capabilities::COORDINATION => "songbird",
-        capabilities::STORAGE => "nestgate",
-        capabilities::INTELLIGENCE => "squirrel",
-        capabilities::COMPUTE => PRIMAL_NAME,
-        "os" => runtime_types::BIOMEOS,
-        _ => "unknown",
-    }
+/// Legacy alias for [`dependency_label_to_capability`].
+#[deprecated(note = "Use dependency_label_to_capability — capabilities are primary.")]
+#[must_use]
+pub fn service_to_capability(service_name: &str) -> &'static str {
+    dependency_label_to_capability(service_name)
 }
 
-/// Convert legacy service dependencies to capability-based
+/// Capability-first map: canonical capability id → optional legacy orchestrator label.
+#[must_use]
+pub fn get_capability_to_legacy_map() -> HashMap<&'static str, &'static str> {
+    let mut map = HashMap::new();
+    map.insert(capabilities::CRYPTO, "beardog");
+    map.insert(capabilities::COORDINATION, "songbird");
+    map.insert(capabilities::STORAGE, "nestgate");
+    map.insert(capabilities::INTELLIGENCE, "squirrel");
+    map.insert(capabilities::ROUTING, "squirrel");
+    map.insert(capabilities::COMPUTE, PRIMAL_NAME);
+    map.insert("os", runtime_types::BIOMEOS);
+    map
+}
+
+/// Optional legacy orchestrator service name for a capability (compatibility only).
+#[deprecated(note = "Prefer capability ids in manifests; primal names are not stable identities.")]
+#[must_use]
+pub fn legacy_service_name_for_capability(capability: &str) -> Option<&'static str> {
+    get_capability_to_legacy_map().get(capability).copied()
+}
+
+/// Legacy: map capability → default service name string (inverse of [`dependency_label_to_capability`]).
+#[deprecated(note = "Use capability ids; see get_capability_to_legacy_map if required.")]
+#[must_use]
+pub fn capability_to_service(capability: &str) -> &'static str {
+    legacy_service_name_for_capability(capability).unwrap_or("unknown")
+}
+
+/// Convert legacy service dependencies to capability ids
 ///
 /// # Example
 /// ```
@@ -56,27 +80,32 @@ pub fn capability_to_service(capability: &str) -> &'static str {
 pub fn dependencies_to_capabilities(service_names: &[String]) -> Vec<&'static str> {
     service_names
         .iter()
-        .map(|name| service_to_capability(name))
+        .map(|name| dependency_label_to_capability(name))
         .collect()
 }
 
-/// Convert capability-based dependencies to legacy service names
-///
-/// Used for backward compatibility with orchestrators that expect service names.
+/// Convert capability ids to legacy service names for older orchestrators
 pub fn capabilities_to_dependencies(capabilities: &[&str]) -> Vec<String> {
+    let m = get_capability_to_legacy_map();
     capabilities
         .iter()
-        .map(|cap| capability_to_service(cap).to_string())
+        .map(|cap| {
+            m.get(cap)
+                .map(|s| (*s).to_string())
+                .unwrap_or_else(|| (*cap).to_string())
+        })
         .collect()
 }
 
-/// Get all known capability mappings
+/// Legacy: primal name → capability (use [`get_capability_to_legacy_map`] and invert).
+#[deprecated(note = "Use get_capability_to_legacy_map (capability-first).")]
+#[must_use]
 pub fn get_capability_mappings() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     map.insert("beardog", capabilities::CRYPTO);
     map.insert("songbird", capabilities::COORDINATION);
     map.insert("nestgate", capabilities::STORAGE);
-    map.insert("squirrel", capabilities::INTELLIGENCE);
+    map.insert("squirrel", capabilities::ROUTING);
     map.insert(PRIMAL_NAME, capabilities::COMPUTE);
     map.insert(runtime_types::BIOMEOS, "os");
     map
@@ -87,19 +116,43 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_service_to_capability() {
-        assert_eq!(service_to_capability("beardog"), "crypto");
-        assert_eq!(service_to_capability("songbird"), "coordination");
-        assert_eq!(service_to_capability("nestgate"), "storage");
-        assert_eq!(service_to_capability("squirrel"), "intelligence");
+    fn test_dependency_label_to_capability() {
+        assert_eq!(dependency_label_to_capability("beardog"), "crypto");
+        assert_eq!(dependency_label_to_capability("crypto"), "crypto");
+        assert_eq!(dependency_label_to_capability("songbird"), "coordination");
+        assert_eq!(
+            dependency_label_to_capability("coordination"),
+            "coordination"
+        );
+        assert_eq!(dependency_label_to_capability("nestgate"), "storage");
+        assert_eq!(dependency_label_to_capability("squirrel"), "routing");
+        assert_eq!(dependency_label_to_capability("routing"), "routing");
     }
 
     #[test]
+    #[allow(deprecated)]
+    fn test_legacy_service_name_for_capability() {
+        assert_eq!(
+            legacy_service_name_for_capability("crypto"),
+            Some("beardog")
+        );
+        assert_eq!(
+            legacy_service_name_for_capability("coordination"),
+            Some("songbird")
+        );
+        assert_eq!(
+            legacy_service_name_for_capability("routing"),
+            Some("squirrel")
+        );
+    }
+
+    #[test]
+    #[allow(deprecated)]
     fn test_capability_to_service() {
         assert_eq!(capability_to_service("crypto"), "beardog");
         assert_eq!(capability_to_service("coordination"), "songbird");
         assert_eq!(capability_to_service("storage"), "nestgate");
-        assert_eq!(capability_to_service("intelligence"), "squirrel");
+        assert_eq!(capability_to_service("routing"), "squirrel");
     }
 
     #[test]
@@ -109,10 +162,19 @@ mod tests {
         assert_eq!(caps, vec!["crypto", "storage"]);
 
         let back = capabilities_to_dependencies(&caps);
-        assert_eq!(back, deps);
+        assert_eq!(back, vec!["beardog", "nestgate"]);
     }
 
     #[test]
+    fn test_get_capability_to_legacy_map() {
+        let mappings = get_capability_to_legacy_map();
+        assert_eq!(mappings.get("crypto"), Some(&"beardog"));
+        assert_eq!(mappings.get("coordination"), Some(&"songbird"));
+        assert!(mappings.len() >= 6);
+    }
+
+    #[test]
+    #[allow(deprecated)]
     fn test_get_capability_mappings() {
         let mappings = get_capability_mappings();
         assert_eq!(mappings.get("beardog"), Some(&"crypto"));

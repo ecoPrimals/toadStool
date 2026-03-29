@@ -12,3 +12,7 @@ categories = ["development-tools"]
 [dependencies]
 serde = { workspace = true }
 toadstool-sysmon = { workspace = true }
+
+[lints]
+workspace = true
+

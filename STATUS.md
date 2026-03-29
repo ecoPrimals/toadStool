@@ -1,4 +1,4 @@
-# Status -- March 29, 2026 (S164 Dependency Dedup + Coverage Expansion + Refactoring)
+# Status -- March 29, 2026 (S166 Deep Debt Execution + Capability-Based Evolution)
 
 ## Quality Gates
 
@@ -8,7 +8,7 @@
 | `cargo fmt --all -- --check` | PASS | 0 diffs |
 | `cargo clippy --all-features --all-targets -- -D warnings` | PASS | **Pedantic + Nursery clean — 0 errors, 0 warnings across all 58 crates** |
 | `cargo doc --all-features --no-deps` | PASS | 0 warnings |
-| `cargo test --workspace` | PASS | **21,700+ tests, 0 failures**. S164: +94 new tests across 7 modules. |
+| `cargo test --workspace` | PASS | **21,700+ tests, 0 failures**. S166: net refactor + debt execution (123 files). |
 | `cargo llvm-cov` | **~80% line (lib)** | 185K lines instrumented. Target 90%. S164: 7 lowest-coverage files targeted (20-68% → 70-99%). Remaining gap: hardware-dependent paths, specialty runtimes, neuromorphic drivers. |
 | `cargo build --no-default-features --features pure-rust` | PASS | **Zero C FFI deps** — ecoBin verified |
 | License compliance | PASS | **AGPL-3.0-only** (wateringHole STANDARDS): root `Cargo.toml` + **1,933+** SPDX headers aligned. All crates inherit workspace license |
@@ -32,7 +32,7 @@
 | Clippy lints | **pedantic + nursery** — both enabled at workspace level (S157) |
 | `unsafe` blocks | **~70+** (all SAFETY-documented; hardware-justified only; S163: re-audited) |
 | `#![forbid(unsafe_code)]` | **23 crates forbid, 20 deny** — 43/43 crates covered |
-| File size limit | **All production < 600 lines** — S164: 5 additional files smart-refactored (execution.rs 766L, capabilities.rs 767L, client.rs 744L, ecosystem/mod.rs 751L, integration_impl.rs 854L) |
+| File size limit | **All production < 400 lines** — S166: 7 large files split into module dirs (resource_validator, ecosystem, gpu/engine, display/capabilities, distributed/types/resources, infant_discovery/engine, universal/substrate); redundant lint allows cleaned (29 `lib.rs`) |
 | Zero-copy | **`bytes::Bytes`** in GPU buffers, tarpc payloads, neuromorphic weights, WASM modules |
 | JSON-RPC methods | **96+** (semantic `domain.verb` naming per wateringHole standard) |
 | Production `todo!()`/`unimplemented!()` | **0** |
@@ -40,7 +40,7 @@
 | Production unwraps | **0** in library code (test-only via `.clippy.toml` `allow-unwrap-in-tests`) |
 | Production mocks | **0** — all gated behind `#[cfg(test)]` or in `testing` crate |
 | Hardcoded IPs/ports | **0** — all config constants + capability-based discovery (S163: re-audited) |
-| External dep debt | Zero chrono, anyhow, log, once_cell, num_cpus, pollster, serde_yaml, notify, sysinfo, caps. S164: linfa 0.7→0.8, ndarray 0.15→0.16, mockall 0.11→0.12, env_logger 0.10→0.11 |
+| External dep debt | Zero chrono, anyhow, log, once_cell, num_cpus, pollster, serde_yaml, notify, sysinfo, caps. S164: linfa 0.7→0.8, ndarray 0.15→0.16, mockall 0.11→0.12, env_logger 0.10→0.11. S166: `md5`→`md-5`, `bollard` 0.18 |
 | SPDX headers | **100%** |
 | Profraw debris | **0** (S157: cleaned 271 stale .profraw files) |
 
@@ -90,6 +90,15 @@
 - **Unsafe audit**: Full audit of 21 files with `unsafe { }` blocks. Result: **all ~70+ blocks irreducible** — V4L2, VFIO, DRM, MMIO volatile access, DMA allocation, GPU memory mapping, page-locked allocations. Each has `// SAFETY:` documentation. No safe alternatives exist.
 - **Quality gates**: `cargo fmt` (0 diffs), `cargo clippy --workspace --all-targets -- -D warnings` (0 warnings across 58 crates), `cargo doc --workspace --no-deps` (0 warnings). 28 error + 15 agent_backend tests verified post-refactoring.
 - **Standards compliance verified**: JSON-RPC + tarpc first (REST removed S90); AGPL-3.0-only license; uniBin architecture (single binary, `--port`, `--help`/`--version`); ecoBin v3.0 (zero infrastructure C); capability-based discovery (primal self-knowledge only); semantic method naming (`domain.verb`); zero-copy (`bytes::Bytes`, `Arc<str>`); sovereignty (no cloud dependency).
+
+### S166: Deep Debt Execution + Capability-Based Evolution (Mar 29, 2026)
+- **Lint cleanup**: Redundant `#![allow]` removed from **29** `lib.rs` files; blanket `#![allow(clippy::nursery)]` removed from `server` and `cross-substrate-validation` (workspace lints apply).
+- **Capability-based discovery**: Hardcoded primal names → capability IDs (`crypto`, `coordination`, `storage`, `routing`); `resolve_capability_socket_fallback()`; legacy primal names `#[deprecated]`; new `ecosystem::capabilities` module.
+- **Production stubs**: `crypto_lock/access_control/manager.rs` — `load_permissions` from JSON store; `validate_delegation_request` enforces holder match, delegation depth, time bounds, geographic/feature subset, resource limits. `config/builder/substrate.rs` — `SubstrateConfig::validate()` checks power budget, fallback order, capability lists.
+- **Smart refactoring (7 → module dirs, all production < 400L)**: `resource_validator`, `ecosystem`, `gpu/engine`, `display/capabilities`, `distributed/types/resources`, `infant_discovery/engine`, `universal/substrate`.
+- **Dependencies**: `md5` → `md-5` (RustCrypto); `bollard` aligned to **0.18** workspace-wide.
+- **Orchestrator**: `analyze_deployment_requirements` provider selection intersects compliance-allowed providers and sorts deterministically.
+- **Net**: 123 files changed, +1145 / −8334 lines.
 
 ### S161: Deep Debt Execution + License Compliance (Mar 21, 2026)
 - **Large-file refactors (10)**: Smart-split into directory modules — `sysmon/gpu.rs`, `infant_discovery/sources.rs`, `crypto_integration/client.rs`, `unified_memory/buffer.rs`, `display/ipc/client.rs`, `biomeos_integration/agents.rs`, `agent_backend_evolved.rs`, `execution.rs`, `vector_ops.rs`, `distributed/types/jobs.rs` (all production **< 800 lines**).

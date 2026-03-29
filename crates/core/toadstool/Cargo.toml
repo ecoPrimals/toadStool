@@ -76,3 +76,7 @@ wgpu = ["dep:wgpu"]
 # Development mock auth - allows mock signatures when no signing key configured
 # WARNING: Do not enable in production builds
 dev-mock-auth = []
+
+[lints]
+workspace = true
+

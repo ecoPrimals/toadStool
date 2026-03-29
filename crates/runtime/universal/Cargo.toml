@@ -49,3 +49,5 @@ all = ["cpu", "opencl", "wgpu-backend", "hardware-learning"]
 [dev-dependencies]
 criterion = "0.5"
 
+[lints]
+workspace = true

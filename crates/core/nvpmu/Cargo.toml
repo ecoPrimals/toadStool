@@ -27,3 +27,7 @@ path = "src/bin/nvpmu_monitor.rs"
 
 [dev-dependencies]
 tempfile = "3"
+
+[lints]
+workspace = true
+

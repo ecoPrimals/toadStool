@@ -36,8 +36,13 @@ pub mod toadstool {
 
 /// Capability-based fallback ports for cold-start bootstrap.
 ///
-/// These are fallback defaults used ONLY before runtime discovery is available.
-/// Production systems use `RuntimeDiscovery::discover_capability()` instead.
+/// # When these apply
+///
+/// Values here are **only** defaults when no discovery is available and no
+/// `TOADSTOOL_{CAPABILITY}_PORT` (or related) environment override is set.
+///
+/// **Production deployments must not rely on these literals** — use
+/// `RuntimeDiscovery::discover_capability()`, explicit endpoints, or config.
 ///
 /// Capabilities map to port ranges rather than primal-specific assignments.
 /// Each capability resolves via: env var → config file → this fallback.
@@ -62,6 +67,29 @@ pub mod capability_fallback {
 
     /// Shader compiler capability (WGSL/SPIR-V → native binary) — e.g. coralReef
     pub const SHADER_COMPILER: u16 = 8090;
+}
+
+/// Map a capability id string to the cold-start port literal from [`capability_fallback`].
+///
+/// **Deprecated**: Prefer [`get_capability_port`] or runtime discovery. This function exists
+/// only to mark the bootstrap port table as a transitional API; the numeric defaults are
+/// unchanged but should not be depended on in production.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use get_capability_port(capability, capability_fallback::…) or runtime discovery; literals are bootstrap-only."
+)]
+#[must_use]
+pub fn bootstrap_capability_port(capability: &str) -> Option<u16> {
+    match capability.to_lowercase().as_str() {
+        "coordination" => Some(capability_fallback::COORDINATION),
+        "security" | "crypto" => Some(capability_fallback::SECURITY),
+        "storage" => Some(capability_fallback::STORAGE),
+        "platform" | "intelligence" | "routing" | "ai" => Some(capability_fallback::PLATFORM),
+        "ecosystem" => Some(capability_fallback::ECOSYSTEM),
+        "ecosystem_primary" | "ecosystem-primary" => Some(capability_fallback::ECOSYSTEM_PRIMARY),
+        "shader_compiler" | "shader-compile" => Some(capability_fallback::SHADER_COMPILER),
+        _ => None,
+    }
 }
 
 /// Legacy primal-name aliases for backward compatibility during migration.

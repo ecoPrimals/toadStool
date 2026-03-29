@@ -3,15 +3,8 @@
 #![warn(missing_docs)]
 #![allow(
     async_fn_in_trait,
-    clippy::doc_markdown,
     clippy::must_use_candidate,
-    clippy::missing_errors_doc,
-    clippy::wildcard_imports,
-    // GPU/low-level code: casts required for vendor APIs, buffer sizes, memory offsets
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
     clippy::cast_lossless,
-    clippy::cast_sign_loss,
     // Trait impls require async for API consistency even when body is sync
     clippy::unused_async,
     // Low-frequency pedantic lints; fixing would add noise without clear benefit

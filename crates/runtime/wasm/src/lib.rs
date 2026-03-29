@@ -2,13 +2,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(async_fn_in_trait)]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::must_use_candidate,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-)]
+#![allow(clippy::must_use_candidate)]
 
 //! ToadStool - Universal Compute Platform
 //! Copyright (C) 2025 ToadStool Development Team

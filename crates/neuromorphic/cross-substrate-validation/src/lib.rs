@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
-    clippy::nursery,
-    clippy::cast_precision_loss,
-    clippy::map_unwrap_or,
-    clippy::must_use_candidate
-)]
+#![allow(clippy::map_unwrap_or, clippy::must_use_candidate)]
 
 //! Cross-substrate validation and benchmarking library
 

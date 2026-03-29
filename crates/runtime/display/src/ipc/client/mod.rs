@@ -17,10 +17,11 @@ use std::path::PathBuf;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpStream, UnixStream};
 
-/// Default TCP address for display IPC fallback (tests and TCP mode).
-/// Used when Unix socket discovery fails; tests use this for mock endpoints.
-#[cfg(test)]
-const DEFAULT_IPC_TCP_ADDR: &str = "127.0.0.1:12345";
+/// Default TCP address for display IPC fallback (override with `TOADSTOOL_DISPLAY_IPC_ADDR`).
+#[must_use]
+pub fn default_display_ipc_tcp_addr() -> String {
+    std::env::var("TOADSTOOL_DISPLAY_IPC_ADDR").unwrap_or_else(|_| "127.0.0.1:12345".to_string())
+}
 
 /// IPC endpoint (polymorphic - Unix OR TCP)
 #[derive(Debug, Clone)]

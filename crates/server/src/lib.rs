@@ -3,13 +3,8 @@
 #![warn(missing_docs)]
 #![cfg_attr(test, allow(deprecated))]
 #![allow(
-    clippy::nursery,
-    clippy::cast_precision_loss,
     clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     clippy::doc_comment_double_space_linebreaks,
-    clippy::doc_markdown,
     clippy::if_not_else,
     clippy::items_after_statements,
     clippy::manual_is_variant_and,

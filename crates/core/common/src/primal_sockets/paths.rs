@@ -5,11 +5,19 @@ use std::path::PathBuf;
 
 use super::env::SocketPathEnv;
 
-pub(super) const FALLBACK_CRYPTO_SOCKET: &str = "beardog.sock";
-pub(super) const FALLBACK_COORDINATION_SOCKET: &str = "songbird.sock";
-pub(super) const FALLBACK_STORAGE_SOCKET: &str = "nestgate.sock";
-pub(super) const FALLBACK_MCP_SOCKET: &str = "squirrel.sock";
 pub(super) const SELF_SOCKET: &str = "toadstool.sock";
+
+/// Map a service label (legacy primal name or capability ID) to a canonical capability id.
+#[must_use]
+pub fn service_label_to_capability_id(label: &str) -> Option<&'static str> {
+    match label.to_lowercase().as_str() {
+        "crypto" | "security" | "beardog" | "bear-dog" => Some("crypto"),
+        "coordination" | "songbird" | "song-bird" => Some("coordination"),
+        "storage" | "nestgate" | "nest-gate" => Some("storage"),
+        "routing" | "intelligence" | "squirrel" | "ai" => Some("routing"),
+        _ => None,
+    }
+}
 
 /// Pure logic: resolve runtime dir from environment snapshot
 #[must_use]
@@ -39,40 +47,82 @@ pub fn resolve_family_id(env: &SocketPathEnv) -> String {
         .unwrap_or_else(|| "default".to_string())
 }
 
-/// Pure logic: resolve beardog socket fallback (non-discovery path)
+/// Pure logic: resolve socket path for a capability id (`crypto`, `coordination`, …).
+///
+/// Precedence: `BIOMEOS_{CAP}_SOCKET` → legacy `BEARDOG_SOCKET` / `SONGBIRD_SOCKET` / … →
+/// `{capability}.sock` under the biomeOS runtime directory (never primal-name filenames).
+#[must_use]
+pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv) -> PathBuf {
+    let cap = capability.to_lowercase();
+    let cap = cap.as_str();
+
+    if let Some(p) = match cap {
+        "crypto" | "security" => env.biomeos_crypto_socket.as_ref(),
+        "coordination" => env.biomeos_coordination_socket.as_ref(),
+        "storage" => env.biomeos_storage_socket.as_ref(),
+        "routing" | "intelligence" | "ai" => env.biomeos_routing_socket.as_ref(),
+        _ => None,
+    } {
+        return PathBuf::from(p);
+    }
+
+    if let Some(p) = match cap {
+        "crypto" | "security" => env.beardog_socket.as_ref(),
+        "coordination" => env.songbird_socket.as_ref(),
+        "storage" => env.nestgate_socket.as_ref(),
+        "routing" | "intelligence" | "ai" => env.squirrel_socket.as_ref(),
+        _ => None,
+    } {
+        return PathBuf::from(p);
+    }
+
+    resolve_biomeos_dir(env).join(format!("{cap}.sock"))
+}
+
+/// Pure logic: resolve crypto capability socket fallback (non-discovery path).
+#[deprecated(
+    since = "0.92.0",
+    note = "Use resolve_capability_socket_fallback(\"crypto\", env)"
+)]
 #[must_use]
 pub fn resolve_beardog_socket_fallback(env: &SocketPathEnv) -> PathBuf {
-    if let Some(ref socket) = env.beardog_socket {
-        return PathBuf::from(socket);
-    }
-    resolve_biomeos_dir(env).join(FALLBACK_CRYPTO_SOCKET)
+    resolve_capability_socket_fallback("crypto", env)
 }
 
-/// Pure logic: resolve songbird socket fallback (non-discovery path)
+/// Pure logic: resolve coordination capability socket fallback (non-discovery path).
+#[deprecated(
+    since = "0.92.0",
+    note = "Use resolve_capability_socket_fallback(\"coordination\", env)"
+)]
 #[must_use]
 pub fn resolve_songbird_socket_fallback(env: &SocketPathEnv) -> PathBuf {
-    if let Some(ref socket) = env.songbird_socket {
-        return PathBuf::from(socket);
-    }
-    resolve_biomeos_dir(env).join(FALLBACK_COORDINATION_SOCKET)
+    resolve_capability_socket_fallback("coordination", env)
 }
 
-/// Pure logic: resolve nestgate socket fallback (non-discovery path)
+/// Pure logic: resolve storage capability socket fallback (non-discovery path).
+#[deprecated(
+    since = "0.92.0",
+    note = "Use resolve_capability_socket_fallback(\"storage\", env)"
+)]
 #[must_use]
 pub fn resolve_nestgate_socket_fallback(env: &SocketPathEnv) -> PathBuf {
-    if let Some(ref socket) = env.nestgate_socket {
-        return PathBuf::from(socket);
-    }
-    resolve_biomeos_dir(env).join(FALLBACK_STORAGE_SOCKET)
+    resolve_capability_socket_fallback("storage", env)
 }
 
-/// Pure logic: resolve squirrel socket
+/// Pure logic: resolve routing capability socket (non-discovery path).
+#[must_use]
+pub fn resolve_routing_socket(env: &SocketPathEnv) -> PathBuf {
+    resolve_capability_socket_fallback("routing", env)
+}
+
+/// Pure logic: resolve legacy “squirrel” routing socket — same as [`resolve_routing_socket`].
+#[deprecated(
+    since = "0.92.0",
+    note = "Use resolve_routing_socket(env) or resolve_capability_socket_fallback(\"routing\", env)"
+)]
 #[must_use]
 pub fn resolve_squirrel_socket(env: &SocketPathEnv) -> PathBuf {
-    if let Some(ref socket) = env.squirrel_socket {
-        return PathBuf::from(socket);
-    }
-    resolve_biomeos_dir(env).join(FALLBACK_MCP_SOCKET)
+    resolve_routing_socket(env)
 }
 
 /// Pure logic: resolve nucleus socket
@@ -99,7 +149,7 @@ pub fn resolve_toadstool_socket(env: &SocketPathEnv) -> PathBuf {
     resolve_biomeos_dir(env).join(SELF_SOCKET)
 }
 
-/// Pure logic: resolve socket path for any service by name
+/// Pure logic: resolve socket path for any service label (capability id or legacy primal alias).
 #[must_use]
 pub fn resolve_socket_path_for_service(
     service_name: &str,
@@ -109,14 +159,17 @@ pub fn resolve_socket_path_for_service(
     if let Some(path) = service_socket_override {
         return path;
     }
-    match service_name.to_lowercase().as_str() {
-        "beardog" | "bear-dog" => resolve_beardog_socket_fallback(env),
-        "songbird" | "song-bird" => resolve_songbird_socket_fallback(env),
-        "nestgate" | "nest-gate" => resolve_nestgate_socket_fallback(env),
-        "squirrel" => resolve_squirrel_socket(env),
+    let lower = service_name.to_lowercase();
+    let s = lower.as_str();
+
+    if let Some(cap) = service_label_to_capability_id(s) {
+        return resolve_capability_socket_fallback(cap, env);
+    }
+
+    match s {
         "toadstool" | "toad-stool" => resolve_toadstool_socket(env),
         "nucleus" | "biomeos" => resolve_nucleus_socket(env),
-        _ => resolve_biomeos_dir(env).join(format!("{}.sock", service_name.to_lowercase())),
+        _ => resolve_biomeos_dir(env).join(format!("{s}.sock")),
     }
 }
 
@@ -192,6 +245,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_resolve_beardog_socket_with_env_override() {
         let env = SocketPathEnv {
             beardog_socket: Some("/custom/beardog.sock".to_string()),
@@ -202,6 +256,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_resolve_songbird_socket_with_env_override() {
         let env = SocketPathEnv {
             songbird_socket: Some("/custom/songbird.sock".to_string()),
@@ -212,6 +267,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_resolve_nestgate_socket_with_env_override() {
         let env = SocketPathEnv {
             nestgate_socket: Some("/custom/nestgate.sock".to_string()),
@@ -222,12 +278,12 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_squirrel_socket_with_env_override() {
+    fn test_resolve_routing_socket_with_env_override() {
         let env = SocketPathEnv {
             squirrel_socket: Some("/custom/squirrel.sock".to_string()),
             ..test_env()
         };
-        let path = resolve_squirrel_socket(&env);
+        let path = resolve_routing_socket(&env);
         assert_eq!(path, PathBuf::from("/custom/squirrel.sock"));
     }
 
@@ -264,11 +320,12 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_socket_path_service_aliases() {
+    fn test_resolve_socket_path_capability_and_legacy_aliases() {
         let env = test_env();
         let bear_dog_aliased = resolve_socket_path_for_service("bear-dog", &env, None);
-        let beardog = resolve_socket_path_for_service("beardog", &env, None);
-        assert_eq!(bear_dog_aliased, beardog);
+        let crypto = resolve_socket_path_for_service("crypto", &env, None);
+        assert_eq!(bear_dog_aliased, crypto);
+        assert!(crypto.to_string_lossy().ends_with("crypto.sock"));
 
         let path = resolve_socket_path_for_service("toad-stool", &env, None);
         assert!(path.to_string_lossy().contains("toadstool"));
@@ -297,5 +354,16 @@ mod tests {
             ..test_env()
         };
         assert_eq!(resolve_family_id(&env), "custom-family");
+    }
+
+    #[test]
+    fn test_biomeos_crypto_socket_precedence_over_legacy() {
+        let env = SocketPathEnv {
+            biomeos_crypto_socket: Some("/via/biomeos/crypto.sock".to_string()),
+            beardog_socket: Some("/legacy/beardog.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_capability_socket_fallback("crypto", &env);
+        assert_eq!(path, PathBuf::from("/via/biomeos/crypto.sock"));
     }
 }

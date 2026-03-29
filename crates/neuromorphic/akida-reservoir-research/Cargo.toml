@@ -35,3 +35,7 @@ path = "src/bin/generate_reservoir.rs"
 [[bin]]
 name = "dual-chip-ensemble"
 path = "src/bin/dual_chip_ensemble.rs"
+
+[lints]
+workspace = true
+

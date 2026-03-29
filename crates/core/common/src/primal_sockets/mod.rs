@@ -3,12 +3,11 @@
 //!
 //! Pure Rust unix socket path resolution for primal-to-primal communication.
 //!
-//! ## Fallback Constants (Transition Period)
+//! ## Fallback filenames (cold start)
 //!
-//! The `resolve_*_socket_fallback` and `resolve_socket_path_for_service` functions
-//! use biomeOS standard socket filenames (e.g. `beardog.sock`, `songbird.sock`).
-//! These are **fallback constants** for the transition period until full
-//! capability-based discovery is deployed.
+//! When discovery is unavailable, Unix socket paths fall back to capability-named
+//! files under the biomeOS runtime directory (e.g. `crypto.sock`, `coordination.sock`).
+//! Legacy environment variables (`BEARDOG_SOCKET`, …) remain supported as aliases.
 //!
 //! ## TRUE PRIMAL Architecture
 //!
@@ -36,9 +35,11 @@ pub use discovery::{
     discover_socket_for_capability, discover_storage_socket,
 };
 pub use env::SocketPathEnv;
+#[allow(deprecated)]
 pub use paths::{
-    resolve_beardog_socket_fallback, resolve_biomeos_dir, resolve_family_id,
-    resolve_nestgate_socket_fallback, resolve_nucleus_socket, resolve_runtime_dir,
-    resolve_socket_path_for_service, resolve_songbird_socket_fallback, resolve_squirrel_socket,
-    resolve_toadstool_socket,
+    resolve_beardog_socket_fallback, resolve_biomeos_dir, resolve_capability_socket_fallback,
+    resolve_family_id, resolve_nestgate_socket_fallback, resolve_nucleus_socket,
+    resolve_routing_socket, resolve_runtime_dir, resolve_socket_path_for_service,
+    resolve_songbird_socket_fallback, resolve_squirrel_socket, resolve_toadstool_socket,
+    service_label_to_capability_id,
 };

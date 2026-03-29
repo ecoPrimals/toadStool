@@ -33,3 +33,5 @@ toml       = "0.8"
 tempfile   = "3.8"
 temp-env   = "0.3"
 
+[lints]
+workspace = true

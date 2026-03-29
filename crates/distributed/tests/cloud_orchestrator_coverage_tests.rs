@@ -558,16 +558,16 @@ async fn test_deploy_over_provisioned_resources() {
 // Provider not found - scheduler returns "aws" but we register "gcp" only
 // ============================================================================
 
+/// When all registered providers fail availability, deploy returns an error
+/// because no compliant providers remain after filtering.
 #[tokio::test]
-async fn test_deploy_provider_not_found_scheduler_mismatch() {
+async fn test_deploy_all_providers_unavailable() {
     let config = make_orchestrator_config();
     let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
-    // Scheduler returns "aws" but we only register "gcp" - provider lookup fails
-    let mock = Box::new(MockCloudProvider {
-        name: "gcp".to_string(),
-        availability: make_availability(16.0, 32.0, 200.0),
+    let failing = Box::new(FailingAvailabilityProvider {
+        name: "only-provider".to_string(),
     });
-    orch.register_provider("gcp".to_string(), mock)
+    orch.register_provider("only-provider".to_string(), failing)
         .await
         .unwrap();
     let job = make_job(UniversalJobType::ComputeIntensive);
@@ -575,9 +575,8 @@ async fn test_deploy_provider_not_found_scheduler_mismatch() {
     assert!(result.is_err());
     let err_msg = result.unwrap_err().to_string();
     assert!(
-        err_msg.contains("not found") || err_msg.contains("Cloud provider"),
-        "expected provider not found error, got: {}",
-        err_msg
+        err_msg.contains("No compliant providers"),
+        "expected no-compliant-providers error, got: {err_msg}",
     );
 }
 

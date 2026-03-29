@@ -293,7 +293,7 @@ mod tests {
     #[tokio::test]
     async fn test_entropy_client_discovery() {
         // Test client construction without live discovery (avoids nested runtime)
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
             endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
@@ -315,7 +315,7 @@ mod tests {
     #[tokio::test]
     async fn test_generate_seed_fallback() {
         // Use biomeOS standard path directly (discovery requires network)
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
 
         let client = EntropyClient {
             endpoint: None,
@@ -341,7 +341,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_entropy_client_is_available() {
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
             endpoint: Some("unix:///tmp/beardog.sock".to_string()),
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
@@ -352,7 +352,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_entropy_client_not_available() {
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
             endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
@@ -363,7 +363,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_generate_seed_with_request() {
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("beardog.sock");
+        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
             endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),

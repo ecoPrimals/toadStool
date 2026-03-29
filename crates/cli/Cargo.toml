@@ -13,19 +13,6 @@ keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [[bin]]
 name = "toadstool"
 path = "src/main.rs"
@@ -163,3 +150,7 @@ nautilus = []
 
 # PURE RUST: Build without C dependencies (no WASM, minimal features)
 pure-rust = ["ecosystem", "universal", "monitoring"]
+
+[lints]
+workspace = true
+

@@ -132,7 +132,7 @@ tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
 url = "2.5"
 
 # Container runtimes
-bollard = "0.15" # Docker API
+bollard = "0.18" # Docker API
 # containerd-client = "0.4" # Containerd - REMOVED: protobuf dependency
 
 # WebAssembly

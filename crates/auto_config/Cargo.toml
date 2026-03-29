@@ -12,19 +12,6 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../core/toadstool" }
@@ -59,4 +46,8 @@ gpu = []
 ml-optimization = []
 enterprise-features = []
 test-mocks = []  # Enable mock implementations for testing
-slow-tests = []  # Enable slow integration tests (hardware detection, NL processing) 
+slow-tests = []  # Enable slow integration tests (hardware detection, NL processing)
+
+[lints]
+workspace = true
+

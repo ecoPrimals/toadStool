@@ -59,3 +59,7 @@ path = "examples/setup_npu.rs"
 
 [lib]
 crate-type = ["rlib"]
+
+[lints]
+workspace = true
+

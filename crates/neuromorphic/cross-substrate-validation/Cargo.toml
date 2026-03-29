@@ -33,3 +33,7 @@ path = "src/main.rs"
 [[bin]]
 name = "cross-substrate-comprehensive"
 path = "src/bin/comprehensive_benchmark.rs"
+
+[lints]
+workspace = true
+

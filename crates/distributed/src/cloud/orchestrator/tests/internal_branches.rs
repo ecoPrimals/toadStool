@@ -530,6 +530,8 @@ async fn test_analyze_deployment_requirements_multi_selected_single_compliant_fa
 
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));
     let strategy = orch.analyze_deployment_requirements(&job).await.unwrap();
+    // Scheduler may list both providers; only `aws` carries HIPAA in this fixture, so the
+    // single-cloud choice must be that compliant provider (not `selected_providers[0]` order).
     assert!(matches!(
         strategy,
         DeploymentStrategy::SingleCloud { ref provider_name } if provider_name == "aws"

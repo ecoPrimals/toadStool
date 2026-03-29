@@ -38,12 +38,7 @@
 #![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #![warn(clippy::pedantic, clippy::cargo, clippy::nursery)]
 // Transitive deps (wgpu, ash, etc.) have multiple versions; we cannot control that.
-#![allow(
-    clippy::multiple_crate_versions,
-    clippy::module_name_repetitions,
-    clippy::missing_errors_doc,
-    clippy::missing_panics_doc
-)]
+#![allow(clippy::multiple_crate_versions)]
 
 pub mod cache;
 pub mod error;

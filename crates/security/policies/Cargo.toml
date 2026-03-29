@@ -10,19 +10,6 @@ readme = "README.md"
 keywords = ["security", "policy", "access-control", "rbac"]
 categories = ["authentication"]
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
@@ -71,3 +58,7 @@ toadstool-testing = { path = "../../testing" }
 tempfile = "3.0"
 test-log = "0.2"
 env_logger = "0.11"
+
+[lints]
+workspace = true
+

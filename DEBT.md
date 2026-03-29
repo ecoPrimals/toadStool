@@ -1,9 +1,27 @@
 # Active Technical Debt Register
 
-**Date**: March 29, 2026 — S164
+**Date**: March 29, 2026 — S166
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S166 Resolved Debt
+
+### Lint and dependency hygiene
+- **D-LINT-REDUNDANT-ALLOW**: Workspace-redundant `#![allow]` cleaned from **29** `lib.rs` files; blanket `#![allow(clippy::nursery)]` removed from `server` and `cross-substrate-validation`.
+- **D-DEP-MD5**: `md5` crate replaced with **`md-5`** (RustCrypto family).
+- **D-DEP-BOLLARD**: **`bollard`** aligned to **0.18** across the workspace.
+
+### Capability discovery and configuration
+- **D-DISCOVERY-CAPABILITY-IDS**: Hardcoded primal names evolved to capability IDs (`crypto`, `coordination`, `storage`, `routing`); **`resolve_capability_socket_fallback()`**; legacy name APIs **`#[deprecated]`**; **`ecosystem::capabilities`** module.
+- **D-STUB-CRYPTO-LOCK-AC**: **`load_permissions`** reads JSON store; **`validate_delegation_request`** enforces holder, delegation depth, time bounds, geographic/feature subset, resource limits.
+- **D-CONFIG-SUBSTRATE-VALIDATE**: **`SubstrateConfig::validate()`** — power budget, fallback order, capability lists.
+
+### Large-file decomposition (< 400 lines production each)
+- **D-LARGE-RESOURCE-VALIDATOR**, **D-LARGE-ECOSYSTEM**, **D-LARGE-GPU-ENGINE**, **D-LARGE-DISPLAY-CAPS**, **D-LARGE-DIST-RESOURCES**, **D-LARGE-INFANT-ENGINE**, **D-LARGE-UNIVERSAL-SUBSTRATE**: seven former monoliths split into module directories (per-session line counts in changelog narrative).
+
+### Orchestrator
+- **D-ORCH-DETERMINISM**: Provider selection in **`analyze_deployment_requirements`** intersects compliance-allowed providers and sorts deterministically.
 
 ## S164 Resolved Debt
 

@@ -9,19 +9,6 @@ readme = "README.md"
 keywords = ["gpu", "compute", "cuda", "opencl", "webgpu"]
 categories = ["hardware-support", "science"]
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [dependencies]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
@@ -131,3 +118,7 @@ path = "examples/universal_compute_demo.rs"
 required-features = [] # Can run with just detection, no actual GPU needed
 
 # Bench configuration removed - benches directory not yet implemented
+
+[lints]
+workspace = true
+

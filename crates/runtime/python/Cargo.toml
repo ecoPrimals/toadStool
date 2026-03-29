@@ -11,19 +11,6 @@ homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
-[lints.clippy]
-# Production-grade safety lints
-unwrap_used = "deny"
-expect_used = "warn"
-panic = "deny"
-unimplemented = "deny"
-unreachable = "deny"
-# Performance lints
-clone_on_ref_ptr = "warn"
-large_enum_variant = "warn"
-# Concurrency lints
-mutex_atomic = "warn"
-
 [lib]
 name = "toadstool_runtime_python"
 crate-type = ["rlib"]  # Only Rust library (subprocess execution, no embedded PyO3)
@@ -63,3 +50,6 @@ squirrel-preparation = []
 
 [build-dependencies]
 pyo3-build-config = { version = "0.20", optional = true }
+
+[lints]
+workspace = true

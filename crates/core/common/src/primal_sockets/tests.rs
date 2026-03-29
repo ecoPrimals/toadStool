@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Primal sockets tests
+#![allow(deprecated)]
 
 use std::path::PathBuf;
 
@@ -9,14 +10,7 @@ fn test_env() -> SocketPathEnv {
     SocketPathEnv {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         user: Some("testuser".to_string()),
-        biomeos_family_id: None,
-        beardog_socket: None,
-        songbird_socket: None,
-        nestgate_socket: None,
-        squirrel_socket: None,
-        toadstool_socket: None,
-        biomeos_socket_path: None,
-        nucleus_socket: None,
+        ..Default::default()
     }
 }
 
@@ -107,7 +101,7 @@ fn resolve_beardog_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
         resolve_beardog_socket_fallback(&env),
-        PathBuf::from("/run/user/1000/biomeos/beardog.sock")
+        PathBuf::from("/run/user/1000/biomeos/crypto.sock")
     );
 }
 
@@ -128,7 +122,7 @@ fn resolve_songbird_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
         resolve_songbird_socket_fallback(&env),
-        PathBuf::from("/run/user/1000/biomeos/songbird.sock")
+        PathBuf::from("/run/user/1000/biomeos/coordination.sock")
     );
 }
 
@@ -149,7 +143,7 @@ fn resolve_nestgate_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
         resolve_nestgate_socket_fallback(&env),
-        PathBuf::from("/run/user/1000/biomeos/nestgate.sock")
+        PathBuf::from("/run/user/1000/biomeos/storage.sock")
     );
 }
 
@@ -170,7 +164,7 @@ fn resolve_squirrel_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
         resolve_squirrel_socket(&env),
-        PathBuf::from("/run/user/1000/biomeos/squirrel.sock")
+        PathBuf::from("/run/user/1000/biomeos/routing.sock")
     );
 }
 
@@ -254,7 +248,7 @@ fn resolve_service_socket_override_takes_precedence() {
 fn resolve_service_socket_beardog() {
     let env = test_env();
     let result = resolve_socket_path_for_service("beardog", &env, None);
-    assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
 }
 
 #[test]
@@ -262,7 +256,7 @@ fn resolve_service_socket_beardog() {
 fn resolve_service_socket_beardog_alias() {
     let env = test_env();
     let result = resolve_socket_path_for_service("bear-dog", &env, None);
-    assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
 }
 
 #[test]
@@ -272,7 +266,7 @@ fn resolve_service_socket_songbird() {
     let result = resolve_socket_path_for_service("songbird", &env, None);
     assert_eq!(
         result,
-        PathBuf::from("/run/user/1000/biomeos/songbird.sock")
+        PathBuf::from("/run/user/1000/biomeos/coordination.sock")
     );
 }
 
@@ -311,7 +305,7 @@ fn resolve_service_socket_unknown_falls_through() {
 fn resolve_service_socket_case_insensitive() {
     let env = test_env();
     let result = resolve_socket_path_for_service("BearDog", &env, None);
-    assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    assert_eq!(result, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
 }
 
 #[test]
@@ -336,27 +330,27 @@ fn get_family_id_returns_string() {
 #[allow(deprecated)]
 fn get_beardog_socket_path_is_path() {
     let path = get_beardog_socket_path();
-    assert!(path.to_string_lossy().contains("beardog"));
+    assert!(path.to_string_lossy().contains("crypto"));
 }
 
 #[test]
 #[allow(deprecated)]
 fn get_songbird_socket_path_is_path() {
     let path = get_songbird_socket_path();
-    assert!(path.to_string_lossy().contains("songbird"));
+    assert!(path.to_string_lossy().contains("coordination"));
 }
 
 #[test]
 #[allow(deprecated)]
 fn get_nestgate_socket_path_is_path() {
     let path = get_nestgate_socket_path();
-    assert!(path.to_string_lossy().contains("nestgate"));
+    assert!(path.to_string_lossy().contains("storage"));
 }
 
 #[test]
 fn get_squirrel_socket_path_is_path() {
     let path = get_squirrel_socket_path();
-    assert!(path.to_string_lossy().contains("squirrel"));
+    assert!(path.to_string_lossy().contains("routing"));
 }
 
 #[test]

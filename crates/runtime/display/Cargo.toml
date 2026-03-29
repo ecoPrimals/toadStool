@@ -68,3 +68,7 @@ default = []
 rustix-backend = []
 # Enable serial transport (USB/UART) for edge device bridging
 serial-transport = ["serialport"]
+
+[lints]
+workspace = true
+

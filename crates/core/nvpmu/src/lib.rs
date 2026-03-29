@@ -2,7 +2,6 @@
 #![deny(unsafe_code)] // overridden per-module for bar0
 #![warn(missing_docs)]
 #![warn(clippy::all, clippy::pedantic)]
-#![allow(clippy::module_name_repetitions)]
 
 //! Sovereign GPU power management for NVIDIA GPUs.
 //!

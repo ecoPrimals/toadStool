@@ -3,9 +3,6 @@
 #![warn(missing_docs)]
 #![allow(
     async_fn_in_trait,
-    clippy::doc_markdown,
-    clippy::wildcard_imports,
-    clippy::missing_errors_doc,
     clippy::must_use_candidate,
     clippy::struct_excessive_bools,
     clippy::map_unwrap_or,

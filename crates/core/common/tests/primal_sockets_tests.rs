@@ -54,7 +54,7 @@ fn test_beardog_socket_default() {
         ..Default::default()
     };
     let path = resolve_beardog_socket_fallback(&env);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
 }
 
 #[test]
@@ -64,7 +64,10 @@ fn test_songbird_socket_biomeos_standard() {
         ..Default::default()
     };
     let path = resolve_songbird_socket_fallback(&env);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/songbird.sock"));
+    assert_eq!(
+        path,
+        PathBuf::from("/run/user/1000/biomeos/coordination.sock")
+    );
 }
 
 #[test]
@@ -184,7 +187,7 @@ fn test_nestgate_socket_default() {
         ..Default::default()
     };
     let path = resolve_nestgate_socket_fallback(&env);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/nestgate.sock"));
+    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/storage.sock"));
 }
 
 #[test]
@@ -206,7 +209,7 @@ fn test_squirrel_socket_default() {
         ..Default::default()
     };
     let path = resolve_squirrel_socket(&env);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/squirrel.sock"));
+    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/routing.sock"));
 }
 
 #[test]
@@ -304,7 +307,7 @@ fn test_socket_path_service_name_lowercase() {
         ..Default::default()
     };
     let path = resolve_socket_path_for_service("BearDog", &env, None);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/beardog.sock"));
+    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
 }
 
 #[test]

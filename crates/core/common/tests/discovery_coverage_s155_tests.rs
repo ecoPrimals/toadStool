@@ -311,21 +311,21 @@ fn test_resolve_beardog_socket() {
 fn test_resolve_songbird_socket() {
     let env = test_socket_env();
     let path = resolve_songbird_socket_fallback(&env);
-    assert!(path.to_string_lossy().contains("songbird"));
+    assert!(path.to_string_lossy().contains("coordination"));
 }
 
 #[test]
 fn test_resolve_nestgate_socket() {
     let env = test_socket_env();
     let path = resolve_nestgate_socket_fallback(&env);
-    assert!(path.to_string_lossy().contains("nestgate"));
+    assert!(path.to_string_lossy().contains("storage"));
 }
 
 #[test]
 fn test_resolve_squirrel_socket() {
     let env = test_socket_env();
     let path = resolve_squirrel_socket(&env);
-    assert!(path.to_string_lossy().contains("squirrel"));
+    assert!(path.to_string_lossy().contains("routing"));
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn test_resolve_toadstool_socket() {
 fn test_resolve_socket_path_for_service() {
     let env = test_socket_env();
     let path = resolve_socket_path_for_service("beardog", &env, None);
-    assert!(path.to_string_lossy().contains("beardog"));
+    assert!(path.to_string_lossy().contains("crypto"));
 
     let override_path = PathBuf::from("/override/custom.sock");
     let path = resolve_socket_path_for_service("songbird", &env, Some(override_path.clone()));
