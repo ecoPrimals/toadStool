@@ -50,7 +50,7 @@ pub(super) fn find_iommu_group(device_path: &Path) -> Option<u32> {
     name.parse().ok()
 }
 
-pub(crate) fn parse_pcie_gen(speed_str: &str) -> Option<u32> {
+pub fn parse_pcie_gen(speed_str: &str) -> Option<u32> {
     let s = speed_str.trim();
     if s.contains("32.0") || s.contains("32 GT") {
         Some(5)

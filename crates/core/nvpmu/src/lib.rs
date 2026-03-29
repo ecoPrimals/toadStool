@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![deny(unsafe_code)] // overridden per-module for bar0
 #![warn(missing_docs)]
-#![warn(clippy::all, clippy::pedantic)]
 
 //! Sovereign GPU power management for NVIDIA GPUs.
 //!

@@ -95,8 +95,7 @@ colored = "2.0"
 # Process management
 # which removed: CLI uses Command::new("which"), not the crate
 
-# Cryptography (for BearDog integration) - Pure Rust (RustCrypto)
-ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+# Encoding
 base64 = "0.22"
 sha2 = "0.10"
 hex = "0.4"

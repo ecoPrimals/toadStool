@@ -28,9 +28,11 @@
 //!          └──→ RuntimeDiscovery ──→ Find by capability
 //! ```
 
+#[cfg(feature = "mdns")]
 pub mod mdns;
 pub mod orchestration;
 
+#[cfg(feature = "mdns")]
 pub use mdns::{MdnsDiscoveryService, TOADSTOOL_SERVICE_TYPE};
 pub use orchestration::{OrchestrationClient, discover_orchestration};
 

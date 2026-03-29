@@ -63,10 +63,12 @@ impl Transport {
     }
 }
 
-/// HTTP transport implementation
+/// HTTP transport — delegates to the Songbird coordination primal.
 ///
-/// HTTP is not implemented in this crate; external HTTP is delegated to Songbird.
-/// Prefer JSON-RPC over Unix sockets for IPC.
+/// ToadStool does not perform outbound HTTP itself. When a message needs
+/// HTTP transport, we forward it to Songbird's `comms.http_forward` method
+/// over the coordination Unix socket. This keeps all network I/O behind
+/// the network primal's sovereignty boundary.
 #[derive(Debug, Clone)]
 pub struct HttpTransport {}
 
@@ -77,18 +79,57 @@ impl Default for HttpTransport {
 }
 
 impl HttpTransport {
-    /// Create HTTP transport handle (`send_message` returns `HttpTransportNotAvailable`).
+    /// Create HTTP transport handle.
     pub const fn new() -> Self {
         Self {}
     }
 
-    /// Send message (HTTP path not implemented here; external HTTP is delegated to Songbird).
+    /// Forward message to Songbird for HTTP delivery.
+    ///
+    /// Returns `HttpTransportNotAvailable` when Songbird's coordination
+    /// socket cannot be discovered at runtime.
     pub async fn send_message(
         &self,
-        _message: &ProtocolMessage,
-        _endpoint: &ServiceEndpoint,
+        message: &ProtocolMessage,
+        endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        Err(ProtocolError::HttpTransportNotAvailable)
+        use toadstool_common::primal_sockets::get_socket_path_for_capability;
+        use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+
+        let socket = get_socket_path_for_capability("coordination");
+        if !socket.exists() {
+            tracing::debug!(
+                "No coordination primal socket at {}, HTTP transport unavailable",
+                socket.display(),
+            );
+            return Err(ProtocolError::HttpTransportNotAvailable);
+        }
+
+        let client = UnixJsonRpcClient::new(socket);
+
+        let url = if let Some(ref path) = endpoint.path {
+            format!("http://{}:{}{path}", endpoint.address, endpoint.port)
+        } else {
+            format!("http://{}:{}", endpoint.address, endpoint.port)
+        };
+
+        let params = serde_json::json!({
+            "url": url,
+            "method": "POST",
+            "body": serde_json::to_value(message)
+                .map_err(|e| ProtocolError::Transport(format!("serialization: {e}")))?,
+            "headers": {
+                "Content-Type": "application/json",
+            },
+        });
+
+        let response = client
+            .call("comms.http_forward", params)
+            .await
+            .map_err(|e| ProtocolError::Transport(format!("Songbird comms.http_forward: {e}")))?;
+
+        serde_json::from_value(response)
+            .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))
     }
 
     /// Check if endpoint uses HTTP transport

@@ -84,7 +84,7 @@ impl RecursiveHostingManager {
         let port: u16 = std::env::var("TOADSTOOL_API_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8084);
+            .unwrap_or(toadstool_config::ports::toadstool::DAEMON_API);
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
 

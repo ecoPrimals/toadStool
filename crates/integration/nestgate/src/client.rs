@@ -253,11 +253,11 @@ mod tests {
         assert_eq!(client.config.max_retries, 2);
     }
 
-    #[test]
-    fn test_store_artifact_returns_result() {
+    #[tokio::test]
+    async fn test_store_artifact_returns_result() {
         let client = test_client();
         let data = b"hello world";
-        let result = client.store_artifact("test.bin", data).unwrap();
+        let result = client.store_artifact("test.bin", data).await.unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
         assert!(
             result.message.contains("test.bin"),
@@ -266,58 +266,67 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_store_artifact_checksum() {
+    #[tokio::test]
+    async fn test_store_artifact_checksum() {
         let client = test_client();
         let data = b"consistent data for checksum";
-        let r1 = client.store_artifact("a", data).unwrap();
-        let r2 = client.store_artifact("b", data).unwrap();
+        let r1 = client.store_artifact("a", data).await.unwrap();
+        let r2 = client.store_artifact("b", data).await.unwrap();
         assert!(matches!(r1.status, StorageStatus::Success));
         assert!(matches!(r2.status, StorageStatus::Success));
     }
 
-    #[test]
-    fn test_store_artifact_content_type_zip() {
+    #[tokio::test]
+    async fn test_store_artifact_content_type_zip() {
         let client = test_client();
         let zip_magic = [0x50, 0x4B, 0x03, 0x04]; // PK..
-        let result = client.store_artifact("archive.zip", &zip_magic).unwrap();
+        let result = client
+            .store_artifact("archive.zip", &zip_magic)
+            .await
+            .unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
     }
 
-    #[test]
-    fn test_store_artifact_content_type_png() {
+    #[tokio::test]
+    async fn test_store_artifact_content_type_png() {
         let client = test_client();
         let png_magic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-        let result = client.store_artifact("image.png", &png_magic).unwrap();
+        let result = client
+            .store_artifact("image.png", &png_magic)
+            .await
+            .unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
     }
 
-    #[test]
-    fn test_store_artifact_content_type_jpeg() {
+    #[tokio::test]
+    async fn test_store_artifact_content_type_jpeg() {
         let client = test_client();
         let jpeg_magic = [0xFF, 0xD8, 0xFF];
-        let result = client.store_artifact("photo.jpg", &jpeg_magic).unwrap();
+        let result = client
+            .store_artifact("photo.jpg", &jpeg_magic)
+            .await
+            .unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
     }
 
-    #[test]
-    fn test_store_artifact_content_type_octet_stream() {
+    #[tokio::test]
+    async fn test_store_artifact_content_type_octet_stream() {
         let client = test_client();
         let data = b"generic binary";
-        let result = client.store_artifact("data.bin", data).unwrap();
+        let result = client.store_artifact("data.bin", data).await.unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
     }
 
-    #[test]
-    fn test_retrieve_artifact_not_in_cache() {
+    #[tokio::test]
+    async fn test_retrieve_artifact_not_in_cache() {
         let client = test_client();
         let id = uuid::Uuid::new_v4();
-        let result = client.retrieve_artifact(id).unwrap();
+        let result = client.retrieve_artifact(id).await.unwrap();
         assert!(result.is_none());
     }
 
-    #[test]
-    fn test_retrieve_artifact_with_cache_disabled() {
+    #[tokio::test]
+    async fn test_retrieve_artifact_with_cache_disabled() {
         let config = NestGateConfig {
             endpoint: "unix://test".to_string(),
             timeout: Duration::from_secs(5),
@@ -331,7 +340,10 @@ mod tests {
             }),
         };
         let client = StorageClient::new_for_testing(config, "test".to_string());
-        let result = client.retrieve_artifact(uuid::Uuid::new_v4()).unwrap();
+        let result = client
+            .retrieve_artifact(uuid::Uuid::new_v4())
+            .await
+            .unwrap();
         assert!(result.is_none());
     }
 
@@ -411,26 +423,26 @@ mod tests {
         assert!(json.get("artifact_type").is_some());
     }
 
-    #[test]
-    fn test_store_artifact_different_content_types() {
+    #[tokio::test]
+    async fn test_store_artifact_different_content_types() {
         let client = test_client();
         let zip = [0x50, 0x4B, 0x03, 0x04];
         let png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
         let jpeg = [0xFF, 0xD8, 0xFF];
-        let r1 = client.store_artifact("a.zip", &zip).unwrap();
-        let r2 = client.store_artifact("b.png", &png).unwrap();
-        let r3 = client.store_artifact("c.jpg", &jpeg).unwrap();
-        let r4 = client.store_artifact("d.bin", b"raw").unwrap();
+        let r1 = client.store_artifact("a.zip", &zip).await.unwrap();
+        let r2 = client.store_artifact("b.png", &png).await.unwrap();
+        let r3 = client.store_artifact("c.jpg", &jpeg).await.unwrap();
+        let r4 = client.store_artifact("d.bin", b"raw").await.unwrap();
         assert!(matches!(r1.status, StorageStatus::Success));
         assert!(matches!(r2.status, StorageStatus::Success));
         assert!(matches!(r3.status, StorageStatus::Success));
         assert!(matches!(r4.status, StorageStatus::Success));
     }
 
-    #[test]
-    fn test_store_artifact_returns_uuid() {
+    #[tokio::test]
+    async fn test_store_artifact_returns_uuid() {
         let client = test_client();
-        let result = client.store_artifact("test", b"data").unwrap();
+        let result = client.store_artifact("test", b"data").await.unwrap();
         assert!(matches!(result.status, StorageStatus::Success));
         assert!(!result.id.is_nil());
     }

@@ -40,7 +40,7 @@ macro_rules! impl_emulator_stub {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl EmulatorTrait for $emulator {
-            fn name(&self) -> &str {
+            fn name(&self) -> &'static str {
                 $name
             }
 

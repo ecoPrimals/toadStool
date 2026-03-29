@@ -34,29 +34,28 @@ impl SquirrelBackend {
     ) -> ToadStoolResult<Self> {
         use toadstool_common::primal_identity::Capability;
 
-        // CAPABILITY-BASED: Discover ANY ML service (not hardcoded "squirrel")
-        let socket_path =
-            toadstool_common::primal_sockets::discover_socket_for_capability(Capability::Custom {
+        let socket_path = match toadstool_common::primal_sockets::discover_socket_for_capability(
+            Capability::Custom {
                 name: "ml.agent".to_string(),
                 version: "1.0".to_string(),
-            })
+            },
+        )
+        .await
+        {
+            Ok(path) => path,
+            Err(_) => toadstool_common::primal_sockets::discover_socket_for_capability(
+                Capability::Custom {
+                    name: "mcp".to_string(),
+                    version: "1.0".to_string(),
+                },
+            )
             .await
-            .or_else(|_| {
-                // Fallback: Try MCP capability
-                futures::executor::block_on(
-                    toadstool_common::primal_sockets::discover_socket_for_capability(
-                        Capability::Custom {
-                            name: "mcp".to_string(),
-                            version: "1.0".to_string(),
-                        },
-                    ),
-                )
-            })
             .map_err(|e| {
                 ToadStoolError::configuration(format!(
                     "No ML/MCP service discovered: {e}. Ensure a ML provider is running."
                 ))
-            })?;
+            })?,
+        };
 
         Ok(Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),

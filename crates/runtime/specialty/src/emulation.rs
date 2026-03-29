@@ -17,7 +17,7 @@ use crate::{LegacyEmulator, LegacySystemType, ToadStoolResult};
 /// PDP-11 Emulator
 #[derive(Debug)]
 pub struct PDP11Emulator {
-    name: String,
+    name: &'static str,
     config: Option<EmulationConfig>,
     running: bool,
 }
@@ -25,7 +25,7 @@ pub struct PDP11Emulator {
 /// Apple II Emulator
 #[derive(Debug)]
 pub struct Apple2Emulator {
-    name: String,
+    name: &'static str,
     config: Option<EmulationConfig>,
     running: bool,
 }
@@ -33,7 +33,7 @@ pub struct Apple2Emulator {
 impl Default for PDP11Emulator {
     fn default() -> Self {
         Self {
-            name: "PDP-11 Emulator".to_string(),
+            name: "PDP-11 Emulator",
             config: None,
             running: false,
         }
@@ -50,7 +50,7 @@ impl PDP11Emulator {
 impl Default for Apple2Emulator {
     fn default() -> Self {
         Self {
-            name: "Apple II Emulator".to_string(),
+            name: "Apple II Emulator",
             config: None,
             running: false,
         }
@@ -66,8 +66,8 @@ impl Apple2Emulator {
 
 #[async_trait::async_trait]
 impl LegacyEmulator for PDP11Emulator {
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn supported_systems(&self) -> Vec<LegacySystemType> {
@@ -123,8 +123,8 @@ impl LegacyEmulator for PDP11Emulator {
 
 #[async_trait::async_trait]
 impl LegacyEmulator for Apple2Emulator {
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn supported_systems(&self) -> Vec<LegacySystemType> {

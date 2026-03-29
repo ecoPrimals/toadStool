@@ -272,7 +272,7 @@ pub enum OutputFileType {
 #[async_trait::async_trait]
 pub trait EmbeddedToolchain: Send + Sync + std::fmt::Debug {
     /// Get toolchain name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get supported architectures
     fn supported_architectures(&self) -> Vec<LegacyArchitecture>;
@@ -511,7 +511,7 @@ pub enum SectionType {
 #[async_trait::async_trait]
 pub trait ProgrammerInterface: Send + Sync + std::fmt::Debug {
     /// Get programmer name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get supported interfaces
     fn supported_interfaces(&self) -> Vec<ProgrammingInterfaceType>;
@@ -564,7 +564,7 @@ pub struct TargetInfo {
 #[async_trait::async_trait]
 pub trait EmbeddedEmulator: Send + Sync + std::fmt::Debug {
     /// Get emulator name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get supported architectures
     fn supported_architectures(&self) -> Vec<LegacyArchitecture>;
@@ -644,7 +644,7 @@ pub enum EmulationStatus {
 #[async_trait::async_trait]
 pub trait PeripheralInterface: Send + Sync + std::fmt::Debug {
     /// Get peripheral name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get peripheral type
     fn peripheral_type(&self) -> PeripheralType;

@@ -19,10 +19,10 @@ toadstool-common = { path = "../core/common" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols" }
 
-# HTTP server framework (optional)
-axum = { version = "0.7", optional = true }
-tower = { version = "0.4", optional = true }
-tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
+# HTTP server framework (always compiled; `api` feature retained as a no-op for compatibility)
+axum = { version = "0.7" }
+tower = { version = "0.4" }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
 
 # JSON-RPC server
 # jsonrpsee removed (pulls ring C dependency). pure_jsonrpc is canonical (Pure Rust).
@@ -82,7 +82,7 @@ futures = "0.3"
 
 [features]
 default = ["api", "gpu-discovery"]
-api = ["axum", "tower", "tower-http"]
+api = []
 gpu-discovery = ["wgpu"]
 
 # UNIBIN EVOLUTION (Feb 2, 2026):

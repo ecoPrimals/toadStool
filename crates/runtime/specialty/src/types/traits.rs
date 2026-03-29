@@ -48,7 +48,7 @@ pub struct SpecialtyRuntimeMetrics {
 #[async_trait::async_trait]
 pub trait LegacyAdapter: Send + Sync {
     /// Get the adapter name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get supported legacy system types
     fn supported_systems(&self) -> Vec<LegacySystemType>;

@@ -14,14 +14,14 @@ mod backends;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use backends::{
+pub use backends::{
     builtin_default_endpoint, try_discover_via_docker_compose, try_discover_via_filesystem,
     try_discover_via_kubernetes, try_discover_via_mdns, try_discover_via_registry,
 };
 
 /// Port for capability-based service discovery (K8s, Docker Compose).
 /// Overridable via `TOADSTOOL_DISCOVERY_HTTP_PORT` environment variable.
-pub(crate) fn discovery_http_port() -> u16 {
+pub fn discovery_http_port() -> u16 {
     std::env::var("TOADSTOOL_DISCOVERY_HTTP_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -231,4 +231,26 @@ pub fn discover_database_service() -> DiscoveryResult {
 /// Returns error if no object storage service can be discovered
 pub fn discover_object_storage() -> DiscoveryResult {
     discover_service_by_capability("object-storage")
+}
+
+// ---------------------------------------------------------------------------
+// Async discovery (non-blocking wrappers)
+// ---------------------------------------------------------------------------
+
+/// Async version of [`discover_service_by_capability`].
+///
+/// Offloads the blocking discovery backends (mDNS probe, DNS resolution,
+/// TCP registry query) to a blocking thread pool via `spawn_blocking`,
+/// keeping the async executor free.
+///
+/// # Errors
+///
+/// Returns error if no service with the requested capability can be discovered.
+pub async fn discover_service_by_capability_async(capability: &str) -> DiscoveryResult {
+    let cap = capability.to_string();
+    tokio::task::spawn_blocking(move || discover_service_by_capability(&cap))
+        .await
+        .map_err(|e| DiscoveryError::NoServiceFound {
+            capability: format!("{capability} (task join: {e})"),
+        })?
 }

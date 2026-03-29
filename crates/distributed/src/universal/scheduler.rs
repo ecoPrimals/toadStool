@@ -270,7 +270,7 @@ impl Default for SongbirdIntegrationConfig {
             .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_PORT"))
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(8081);
+            .unwrap_or(toadstool_config::ports::capability_fallback::COORDINATION);
 
         let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
             .unwrap_or_else(|_| String::from(toadstool_config::defaults::network::LOCALHOST));

@@ -91,7 +91,7 @@ impl SCADAAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for PLCAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "PLC Adapter"
     }
 
@@ -203,7 +203,7 @@ impl LegacyAdapter for PLCAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for SCADAAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "SCADA Adapter"
     }
 

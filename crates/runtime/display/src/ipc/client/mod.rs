@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Display IPC client — JSON-RPC over Unix or TCP with automatic discovery.
 //!
 //! **ISOMORPHIC IPC**: JSON-RPC client with automatic Unix/TCP discovery.
@@ -17,10 +17,26 @@ use std::path::PathBuf;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpStream, UnixStream};
 
-/// Default TCP address for display IPC fallback (override with `TOADSTOOL_DISPLAY_IPC_ADDR`).
+/// Cold-start fallback port for display IPC TCP transport.
+/// Mirrors `toadstool_config::ports::capability_fallback::DISPLAY_IPC`.
+const DISPLAY_IPC_FALLBACK_PORT: u16 = 8091;
+
+/// Default TCP address for display IPC fallback.
+///
+/// Resolution order:
+/// 1. `TOADSTOOL_DISPLAY_IPC_ADDR` environment variable (full `host:port`)
+/// 2. `TOADSTOOL_DISPLAY_IPC_PORT` environment variable (port only, binds localhost)
+/// 3. Capability fallback port on localhost
 #[must_use]
 pub fn default_display_ipc_tcp_addr() -> String {
-    std::env::var("TOADSTOOL_DISPLAY_IPC_ADDR").unwrap_or_else(|_| "127.0.0.1:12345".to_string())
+    if let Ok(addr) = std::env::var("TOADSTOOL_DISPLAY_IPC_ADDR") {
+        return addr;
+    }
+    let port = std::env::var("TOADSTOOL_DISPLAY_IPC_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(DISPLAY_IPC_FALLBACK_PORT);
+    format!("127.0.0.1:{port}")
 }
 
 /// IPC endpoint (polymorphic - Unix OR TCP)

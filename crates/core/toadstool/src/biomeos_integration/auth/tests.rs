@@ -29,15 +29,13 @@ fn test_config() -> AuthManagerConfig {
 }
 
 fn test_config_with_signing_key() -> AuthManagerConfig {
-    use base64::{Engine as _, engine::general_purpose};
-    let seed = [0u8; 32];
     AuthManagerConfig {
         beardog_endpoint: "http://localhost:9090".to_string(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
         signature_validation: true,
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
         replay_protection: true,
-        signing_key_seed: Some(general_purpose::STANDARD.encode(seed)),
+        signing_key_seed: Some("configured-but-unused-locally".to_string()),
         token_audience: vec![
             well_known::SONGBIRD.to_string(),
             well_known::NESTGATE.to_string(),
@@ -106,23 +104,19 @@ async fn test_sign_token_request_mock() {
 }
 
 #[test]
-fn test_get_public_key_none_when_no_signing_key() {
+fn test_get_public_key_from_backend() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
-    assert!(manager.get_public_key().is_none());
+    // InMemoryAuthBackend always returns a test key
+    assert!(manager.get_public_key().is_some());
 }
 
 #[test]
-fn test_get_public_key_with_signing_key() {
+fn test_get_public_key_delegates_to_backend() {
     let config = test_config_with_signing_key();
     let manager = AuthenticationManager::with_inmemory(config);
     let public_key = manager.get_public_key();
     assert!(public_key.is_some());
-    use base64::{Engine as _, engine::general_purpose};
-    let pk_bytes = general_purpose::STANDARD
-        .decode(public_key.unwrap())
-        .expect("Valid base64");
-    assert_eq!(pk_bytes.len(), 32);
 }
 
 #[test]
@@ -176,71 +170,21 @@ async fn test_sign_verification_request_disabled_returns_signature_disabled() {
 }
 
 #[test]
-fn test_get_public_key_invalid_base64_returns_none() {
-    let config = AuthManagerConfig {
-        beardog_endpoint: String::new(),
-        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
-        signature_validation: true,
-        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
-        replay_protection: true,
-        signing_key_seed: Some("!!!invalid-base64!!!".to_string()),
-        token_audience: vec![],
-    };
+fn test_get_public_key_returns_backend_key() {
+    let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
-    assert!(manager.get_public_key().is_none());
-}
-
-#[test]
-fn test_get_public_key_wrong_length_returns_none() {
-    use base64::{Engine as _, engine::general_purpose};
-    let short = general_purpose::STANDARD.encode([1u8; 16]);
-    let config = AuthManagerConfig {
-        beardog_endpoint: String::new(),
-        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
-        signature_validation: true,
-        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
-        replay_protection: true,
-        signing_key_seed: Some(short),
-        token_audience: vec![],
-    };
-    let manager = AuthenticationManager::with_inmemory(config);
-    assert!(manager.get_public_key().is_none());
+    // InMemoryAuthBackend always returns a public key for testing
+    assert!(manager.get_public_key().is_some());
 }
 
 #[tokio::test(flavor = "current_thread")]
-async fn test_sign_payload_invalid_base64_returns_error() {
-    let config = AuthManagerConfig {
-        beardog_endpoint: String::new(),
-        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
-        signature_validation: true,
-        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
-        replay_protection: true,
-        signing_key_seed: Some("not-valid-base64!!!".to_string()),
-        token_audience: vec![],
-    };
+async fn test_sign_payload_delegates_to_backend() {
+    let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
     let result = manager.sign_token_request(&token, well_known::SONGBIRD);
-    assert!(result.is_err());
-}
-
-#[tokio::test(flavor = "current_thread")]
-async fn test_sign_payload_wrong_key_length_returns_error() {
-    use base64::{Engine as _, engine::general_purpose};
-    let bad_len = general_purpose::STANDARD.encode([0u8; 64]);
-    let config = AuthManagerConfig {
-        beardog_endpoint: String::new(),
-        token_refresh_interval: TOKEN_REFRESH_INTERVAL,
-        signature_validation: true,
-        timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
-        replay_protection: true,
-        signing_key_seed: Some(bad_len),
-        token_audience: vec![],
-    };
-    let manager = AuthenticationManager::with_inmemory(config);
-    let token = manager.get_current_token().await.expect("token");
-    let result = manager.sign_token_request(&token, well_known::SONGBIRD);
-    assert!(result.is_err());
+    assert!(result.is_ok());
+    assert!(result.unwrap().starts_with("ed25519:mock:"));
 }
 
 #[test]

@@ -50,11 +50,12 @@ impl DiscoveryEngine {
     ///
     /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn with_defaults() -> ToadStoolResult<Self> {
-        let sources: Vec<Box<dyn DiscoverySource>> = vec![
-            Box::new(MDnsSource::new()),
-            Box::new(EnvironmentSource::new()),
-            Box::new(LocalRegistrySource::new()),
-        ];
+        let mut sources: Vec<Box<dyn DiscoverySource>> = Vec::new();
+        #[cfg(feature = "mdns")]
+        sources.push(Box::new(MDnsSource::new()));
+        sources.push(Box::new(EnvironmentSource::new()));
+        sources.push(Box::new(LocalRegistrySource::new()));
+        let sources = sources;
         Ok(Self {
             sources,
             timeout: Duration::from_secs(5),
@@ -125,10 +126,12 @@ pub trait DiscoverySource: Send + Sync {
 }
 
 /// mDNS/DNS-SD discovery source for local network capability providers.
+#[cfg(feature = "mdns")]
 pub struct MDnsSource {
     browse_timeout_secs: u64,
 }
 
+#[cfg(feature = "mdns")]
 impl Default for MDnsSource {
     fn default() -> Self {
         Self {
@@ -137,6 +140,7 @@ impl Default for MDnsSource {
     }
 }
 
+#[cfg(feature = "mdns")]
 impl MDnsSource {
     /// Create mDNS source with default browse timeout.
     #[must_use]
@@ -191,7 +195,7 @@ impl MDnsSource {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
+#[cfg(feature = "mdns")]
 #[async_trait]
 impl DiscoverySource for MDnsSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {

@@ -32,20 +32,26 @@ fn test_client() -> StorageClient {
 // store_artifact tests
 // ============================================================================
 
-#[test]
-fn store_artifact_returns_success_with_uuid() {
+#[tokio::test]
+async fn store_artifact_returns_success_with_uuid() {
     let client = test_client();
     let data = b"coverage test data";
-    let result = client.store_artifact("coverage-test.bin", data).unwrap();
+    let result = client
+        .store_artifact("coverage-test.bin", data)
+        .await
+        .unwrap();
     assert!(matches!(result.status, StorageStatus::Success));
     assert!(!result.id.is_nil());
     assert!(result.message.contains("coverage-test.bin"));
 }
 
-#[test]
-fn store_artifact_fallback_message_when_no_server() {
+#[tokio::test]
+async fn store_artifact_fallback_message_when_no_server() {
     let client = test_client();
-    let result = client.store_artifact("fallback.bin", b"data").unwrap();
+    let result = client
+        .store_artifact("fallback.bin", b"data")
+        .await
+        .unwrap();
     assert!(matches!(result.status, StorageStatus::Success));
     assert!(
         result.message.contains("locally") || result.message.contains("fallback.bin"),
@@ -54,34 +60,46 @@ fn store_artifact_fallback_message_when_no_server() {
     );
 }
 
-#[test]
-fn store_artifact_content_type_zip() {
+#[tokio::test]
+async fn store_artifact_content_type_zip() {
     let client = test_client();
     let zip_magic = [0x50, 0x4B, 0x03, 0x04];
-    let result = client.store_artifact("archive.zip", &zip_magic).unwrap();
+    let result = client
+        .store_artifact("archive.zip", &zip_magic)
+        .await
+        .unwrap();
     assert!(matches!(result.status, StorageStatus::Success));
 }
 
-#[test]
-fn store_artifact_content_type_png() {
+#[tokio::test]
+async fn store_artifact_content_type_png() {
     let client = test_client();
     let png_magic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-    let result = client.store_artifact("image.png", &png_magic).unwrap();
+    let result = client
+        .store_artifact("image.png", &png_magic)
+        .await
+        .unwrap();
     assert!(matches!(result.status, StorageStatus::Success));
 }
 
-#[test]
-fn store_artifact_content_type_jpeg() {
+#[tokio::test]
+async fn store_artifact_content_type_jpeg() {
     let client = test_client();
     let jpeg_magic = [0xFF, 0xD8, 0xFF];
-    let result = client.store_artifact("photo.jpg", &jpeg_magic).unwrap();
+    let result = client
+        .store_artifact("photo.jpg", &jpeg_magic)
+        .await
+        .unwrap();
     assert!(matches!(result.status, StorageStatus::Success));
 }
 
-#[test]
-fn store_artifact_content_type_octet_stream() {
+#[tokio::test]
+async fn store_artifact_content_type_octet_stream() {
     let client = test_client();
-    let result = client.store_artifact("binary.bin", b"raw bytes").unwrap();
+    let result = client
+        .store_artifact("binary.bin", b"raw bytes")
+        .await
+        .unwrap();
     assert!(matches!(result.status, StorageStatus::Success));
 }
 
@@ -89,11 +107,11 @@ fn store_artifact_content_type_octet_stream() {
 // retrieve_artifact tests
 // ============================================================================
 
-#[test]
-fn retrieve_artifact_returns_none_when_unavailable() {
+#[tokio::test]
+async fn retrieve_artifact_returns_none_when_unavailable() {
     let client = test_client();
     let id = uuid::Uuid::new_v4();
-    let result = client.retrieve_artifact(id).unwrap();
+    let result = client.retrieve_artifact(id).await.unwrap();
     assert!(result.is_none());
 }
 

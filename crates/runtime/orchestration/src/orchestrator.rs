@@ -4,8 +4,7 @@
 //! **Deep Debt**: Runtime discovery, intelligent selection, automatic fallback
 
 use crate::error::OrchestrationError;
-use parking_lot::RwLock;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use toadstool_runtime_universal::substrate::*;
 
@@ -52,12 +51,12 @@ impl WorkloadOrchestrator {
 
     /// Register a substrate
     pub fn register_substrate(&self, substrate: SubstrateHandle) {
-        self.substrates.write().push(substrate);
+        self.substrates.write().expect("lock poisoned").push(substrate);
     }
 
     /// Get number of available substrates
     pub fn num_substrates(&self) -> usize {
-        self.substrates.read().len()
+        self.substrates.read().expect("lock poisoned").len()
     }
 
     /// Execute a workload on optimal substrate
@@ -92,6 +91,7 @@ impl WorkloadOrchestrator {
         // Update history
         self.history
             .write()
+            .expect("lock poisoned")
             .record(substrate.substrate_type(), &result);
 
         Ok(result)
@@ -123,14 +123,13 @@ impl WorkloadOrchestrator {
         &self,
         request: &WorkloadRequest,
     ) -> Result<SubstrateHandle, OrchestrationError> {
-        let substrates = self.substrates.read();
+        let substrates = self.substrates.read().expect("lock poisoned");
 
         if substrates.is_empty() {
             return Err(OrchestrationError::NoSubstrates);
         }
 
-        // Apply selection policy
-        let history = self.history.read();
+        let history = self.history.read().expect("lock poisoned");
         let selected = self.policy.select(&substrates, request, &history)?;
 
         Ok(selected)
@@ -142,8 +141,8 @@ impl WorkloadOrchestrator {
         &self,
         request: &WorkloadRequest,
     ) -> Result<Vec<SubstrateHandle>, OrchestrationError> {
-        let substrates = self.substrates.read();
-        let history = self.history.read();
+        let substrates = self.substrates.read().expect("lock poisoned");
+        let history = self.history.read().expect("lock poisoned");
 
         let mut ranked = self.policy.rank_all(&substrates, request, &history)?;
         ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -191,7 +190,7 @@ impl WorkloadOrchestrator {
 
     /// Get performance statistics
     pub fn stats(&self) -> OrchestratorStats {
-        let history = self.history.read();
+        let history = self.history.read().expect("lock poisoned");
         OrchestratorStats {
             total_executions: history.total_executions(),
             substrates_available: self.num_substrates(),

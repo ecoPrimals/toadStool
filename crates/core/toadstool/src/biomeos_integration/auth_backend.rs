@@ -45,6 +45,28 @@ pub trait AuthBackend: Send + Sync {
         request: &TokenRefreshRequest,
     ) -> ToadStoolResult<AuthenticationToken>;
 
+    /// Sign a payload and return a signature string.
+    ///
+    /// Production backends delegate to BearDog via JSON-RPC (`crypto.sign`).
+    /// The in-memory backend returns mock signatures for testing.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if no signing capability is available.
+    fn sign_payload(&self, _payload: &str) -> ToadStoolResult<String> {
+        Err(ToadStoolError::configuration(
+            "Signing not available. Ensure a crypto provider (BearDog) is running.",
+        ))
+    }
+
+    /// Export the public key for signature verification, if available.
+    ///
+    /// Returns `None` when no signing key is configured or the backend
+    /// does not support local key export.
+    fn public_key(&self) -> Option<String> {
+        None
+    }
+
     /// Validate a token (optional, default implementation)
     ///
     /// # Errors
@@ -144,9 +166,51 @@ impl BearDogBackend {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl AuthBackend for BearDogBackend {
+    fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
+        let client = self.rpc_client.clone();
+        let params = serde_json::json!({ "payload": payload });
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|e| {
+                        ToadStoolError::runtime(format!("Failed to create runtime: {e}"))
+                    })?;
+                rt.block_on(client.call_typed::<String>("crypto.sign", params))
+                    .map_err(|e| {
+                        ToadStoolError::runtime(format!("BearDog sign failed: {e}"))
+                    })
+            })
+            .join()
+            .map_err(|_| ToadStoolError::runtime("sign thread panicked"))?
+        })
+    }
+
+    fn public_key(&self) -> Option<String> {
+        let client = self.rpc_client.clone();
+        let params = serde_json::json!({});
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .ok()?;
+                let value: serde_json::Value =
+                    rt.block_on(client.call("crypto.public_key", params)).ok()?;
+                value
+                    .get("public_key")
+                    .and_then(|v| v.as_str())
+                    .map(String::from)
+            })
+            .join()
+            .ok()
+            .flatten()
+        })
+    }
+
     async fn initialize(&self) -> ToadStoolResult<()> {
         // Health check via JSON-RPC over unix socket
         let _health: serde_json::Value = self
@@ -238,9 +302,23 @@ impl Default for InMemoryAuthBackend {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl AuthBackend for InMemoryAuthBackend {
+    fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
+        use base64::{Engine as _, engine::general_purpose};
+        tracing::warn!(
+            "INSECURE: In-memory mock signature. Acceptable ONLY in tests."
+        );
+        Ok(format!(
+            "ed25519:mock:{}",
+            general_purpose::STANDARD.encode(payload.as_bytes())
+        ))
+    }
+
+    fn public_key(&self) -> Option<String> {
+        Some("test-public-key".to_string())
+    }
+
     async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {
         let token = Self::generate_test_token(&request.requesting_primal);
 

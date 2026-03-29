@@ -12,7 +12,7 @@
 //!
 //! ## Selection Priority
 //! 1. WebGPU (pure Rust, universal) ✅ Always prefer
-//! 2. CUDA (vendor-specific) ⚠️ Python AI compatibility (temporary)
+//! 2. CUDA (vendor-specific) ⚠️ Python AI compatibility (interim; migrate when WebGPU covers stacks)
 //! 3. OpenCL (legacy) ⚠️ Fallback only
 //! 4. CPU Compute (always available) ✅ Safe fallback
 
@@ -83,7 +83,7 @@ impl BackendSelectionStrategy {
             && Self::workload_needs_cuda(workload_type)
             && available.contains(&GpuFramework::Cuda)
         {
-            info!("⚠️  Selected CUDA (vendor-specific, temporary)");
+            info!("⚠️  Selected CUDA (vendor-specific, interim choice for Python AI stacks)");
             info!("   Evolution status: Using CUDA for Python AI compatibility");
             info!("   Future: Will migrate to WebGPU when ecosystem ready");
             return Some(GpuFramework::Cuda);

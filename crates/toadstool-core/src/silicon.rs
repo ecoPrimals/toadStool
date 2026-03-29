@@ -214,7 +214,7 @@ impl SiliconCapabilities {
 
     /// Count of available silicon units.
     #[must_use]
-    pub fn unit_count(&self) -> usize {
+    pub const fn unit_count(&self) -> usize {
         self.available_units.len()
     }
 }
@@ -285,7 +285,7 @@ pub struct RoutedOperation {
     /// Human-readable reason for this routing decision.
     pub reason: String,
     /// Fallback if the selected unit is unavailable.
-    pub fallback: Option<Box<RoutedOperation>>,
+    pub fallback: Option<Box<Self>>,
 }
 
 /// A complete multi-unit routing plan for a compound workload.

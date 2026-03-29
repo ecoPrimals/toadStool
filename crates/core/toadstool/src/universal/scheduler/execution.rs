@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Job execution backends for UniversalScheduler
 //!
 //! Handles execution routing for Native, WASM, Primal, and BiomeOS job types.

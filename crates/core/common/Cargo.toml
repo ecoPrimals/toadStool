@@ -34,8 +34,8 @@ toml = "0.8"
 base64 = "0.22"
 semver = { version = "1.0.27", features = ["serde"] }
 
-# mDNS discovery (pure Rust, cross-platform)
-mdns-sd = "0.10"
+# mDNS bootstrap discovery (Songbird's domain; cold-start only)
+mdns-sd = { version = "0.10", optional = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
@@ -45,7 +45,9 @@ tempfile = "3"
 temp-env = "0.3"
 
 [features]
-default = []
+default = ["mdns"]
+# mDNS bootstrap discovery (Songbird's domain; use for cold-start only)
+mdns = ["dep:mdns-sd"]
 
 [lints]
 workspace = true

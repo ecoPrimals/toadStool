@@ -114,7 +114,7 @@ impl<T: Send + Sync + 'static> PooledObject<T> {
     }
 
     /// Get mutable reference to the object
-    pub fn get_mut(&mut self) -> Option<&mut T> {
+    pub const fn get_mut(&mut self) -> Option<&mut T> {
         self.object.as_mut()
     }
 }

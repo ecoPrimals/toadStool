@@ -129,8 +129,8 @@ impl Drop for UnifiedBuffer {
             let size = self.size;
             let id = self.id;
 
-            // Try to get or create a runtime for async free
-            // This is a temporary solution until we have proper RAII
+            // Drop cannot await: schedule async `free_unified` on the current runtime when present,
+            // otherwise run it on a one-shot runtime in a dedicated thread.
             match tokio::runtime::Handle::try_current() {
                 Ok(handle) => {
                     // We're in a tokio runtime, spawn a blocking task
@@ -151,7 +151,7 @@ impl Drop for UnifiedBuffer {
                     // No runtime available, try to create one for cleanup
                     // This is expensive but better than leaking
                     tracing::warn!(
-                        "No tokio runtime available for buffer {} cleanup, creating temporary runtime",
+                        "No tokio runtime available for buffer {} cleanup, creating one-shot runtime",
                         id
                     );
 
@@ -176,7 +176,7 @@ impl Drop for UnifiedBuffer {
                                 );
                             } else {
                                 tracing::debug!(
-                                    "Successfully freed buffer {} ({} bytes) via temporary runtime",
+                                    "Successfully freed buffer {} ({} bytes) via one-shot runtime",
                                     id,
                                     size
                                 );

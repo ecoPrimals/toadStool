@@ -11,7 +11,7 @@ use toadstool_core::silicon::{RtCoreGen, SiliconCapabilities, SiliconUnit, Tenso
 ///
 /// Covers Volta, Turing, Ampere, Ada families. TMU and ROP counts
 /// come from published GPU specs (not estimated from name strings).
-pub(crate) fn nvidia_silicon(device_id: u32) -> SiliconCapabilities {
+pub fn nvidia_silicon(device_id: u32) -> SiliconCapabilities {
     let (tensor_gen, rt_gen, tmu, rop) = match device_id {
         // Volta (GV100): Titan V, Tesla V100
         0x1D81 | 0x1DB1 | 0x1DB4..=0x1DBA => (Some(TensorCoreGen::Volta), None, 320_u32, 96_u32),
@@ -105,7 +105,7 @@ pub(crate) fn nvidia_silicon(device_id: u32) -> SiliconCapabilities {
 }
 
 /// AMD silicon capabilities by device ID.
-pub(crate) fn amd_silicon(device_id: u32) -> SiliconCapabilities {
+pub fn amd_silicon(device_id: u32) -> SiliconCapabilities {
     let (rt_gen, tmu, rop) = match device_id {
         // RDNA 3: Navi 31 (RX 7900 XTX/XT)
         0x744C | 0x7448 => (Some(RtCoreGen::Ampere), 384, 192),
@@ -149,7 +149,7 @@ pub(crate) fn amd_silicon(device_id: u32) -> SiliconCapabilities {
 }
 
 /// Intel GPU silicon — conservative baseline (no tensor/RT).
-pub(crate) fn intel_silicon() -> SiliconCapabilities {
+pub fn intel_silicon() -> SiliconCapabilities {
     SiliconCapabilities {
         tensor_cores: None,
         rt_cores: None,

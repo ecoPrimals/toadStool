@@ -231,7 +231,7 @@ nursery = { level = "warn", priority = -1 }
 missing_errors_doc = "allow"       # Too verbose for every Result
 missing_panics_doc = "allow"       # Most panics are obvious
 module_name_repetitions = "allow"  # Common in domain modeling
-must_use_candidate = "warn"        # Catch builder methods without #[must_use]
+must_use_candidate = "allow"        # Too noisy at workspace scale; add #[must_use] intentionally
 doc_markdown = "allow"             # Too strict about backticks
 wildcard_imports = "allow"         # Useful for test prelude
 uninlined_format_args = "allow"    # Sometimes clearer explicit
@@ -239,3 +239,13 @@ cast_precision_loss = "allow"      # Explicit casts are intentional
 cast_possible_truncation = "allow" # Explicit casts are intentional
 cast_sign_loss = "allow"           # Explicit casts are intentional
 cast_possible_wrap = "allow"       # Explicit casts are intentional
+
+# Nursery lint exceptions — these fire at high volume without catching real bugs
+use_self = "allow"                 # Noisy on struct impls; Self is optional style
+redundant_pub_crate = "allow"      # Private-mod pub(crate) is intentional visibility layering
+missing_const_for_fn = "allow"     # Compiler will inline regardless; const adds API commitment
+option_if_let_else = "allow"       # match/if-let is often clearer than map_or
+significant_drop_tightening = "allow" # False positives on lock guards
+
+# Pedantic lint exceptions — match_same_arms is common in dispatch tables
+match_same_arms = "allow"          # Dispatch tables intentionally share arms for clarity

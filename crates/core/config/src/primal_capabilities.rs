@@ -147,7 +147,7 @@ pub struct PrimalDefinition {
 /// Discovery configuration for finding primals at runtime.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DiscoveryConfig {
-    /// Discovery methods in priority order (e.g. ["mdns", "environment"]).
+    /// Discovery methods in priority order (e.g. `["mdns", "environment"]`).
     #[serde(default)]
     pub methods: Vec<String>,
 

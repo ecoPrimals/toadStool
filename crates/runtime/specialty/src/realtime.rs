@@ -84,7 +84,7 @@ impl QNXAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for VxWorksAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "VxWorks Adapter"
     }
 
@@ -194,7 +194,7 @@ impl LegacyAdapter for VxWorksAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for QNXAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "QNX Adapter"
     }
 

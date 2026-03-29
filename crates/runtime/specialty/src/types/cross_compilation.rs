@@ -12,7 +12,7 @@ use crate::ToadStoolResult;
 #[async_trait::async_trait]
 pub trait CrossCompilationToolchain: Send + Sync {
     /// Get the toolchain name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get supported architectures
     fn supported_architectures(&self) -> Vec<LegacyArchitecture>;

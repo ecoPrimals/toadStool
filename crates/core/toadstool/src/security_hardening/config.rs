@@ -149,26 +149,34 @@ impl Default for ValidationRules {
             max_input_length: 1024 * 1024, // 1MB
             allowed_characters: None,
             blocked_patterns: vec![
-                r"<script".to_string(),
-                r"javascript:".to_string(),
-                r"vbscript:".to_string(),
-                r"on\w+\s*=".to_string(),
+                "<script".to_string(),
+                "javascript:".to_string(),
+                "vbscript:".to_string(),
             ],
             sql_injection_patterns: vec![
-                r"(?i)(union|select|insert|update|delete|drop|create|alter|exec|execute)"
-                    .to_string(),
-                r"(?i)(or|and)\s+\d+\s*=\s*\d+".to_string(),
-                r"(?i)'\s*(or|and)\s*'".to_string(),
+                "union".to_string(),
+                "select".to_string(),
+                "insert into".to_string(),
+                "update ".to_string(),
+                "delete from".to_string(),
+                "drop ".to_string(),
+                "create ".to_string(),
+                "alter ".to_string(),
+                "exec ".to_string(),
+                "execute ".to_string(),
+                "' or '".to_string(),
+                "' and '".to_string(),
             ],
             xss_patterns: vec![
-                r"(?i)<script".to_string(),
-                r"(?i)javascript:".to_string(),
-                r"(?i)on\w+\s*=".to_string(),
+                "<script".to_string(),
+                "javascript:".to_string(),
             ],
             command_injection_patterns: vec![
-                r"[;&|`]".to_string(),
-                r"\$\(".to_string(),
-                r">\s*/".to_string(),
+                ";".to_string(),
+                "&".to_string(),
+                "|".to_string(),
+                "`".to_string(),
+                "$(".to_string(),
             ],
         }
     }

@@ -13,7 +13,7 @@ categories = ["asynchronous", "network-programming"]
 default = []
 channels = []
 testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
-dev-crypto = ["dep:aes-gcm"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
+dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
 
 [dependencies]
 # Core ToadStool dependencies
@@ -45,8 +45,7 @@ tower = "0.4"
 # Clustering and load balancing
 rand = "0.8"
 aes-gcm = { workspace = true, optional = true }
-ed25519-dalek = { workspace = true }
-hmac = { workspace = true }
+ed25519-dalek = { workspace = true, optional = true }
 sha2 = { workspace = true }
 
 # Database - REMOVED: Unused dependency with ring/TLS

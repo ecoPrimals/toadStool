@@ -17,8 +17,11 @@ use super::discovery_http_port;
 /// Browses for `_toadstool._tcp.local.` and filters by capability in TXT records
 /// (`cap_{name}`). Uses `mdns-sd` crate. Returns `None` when mDNS daemon is
 /// unavailable or no matching services are found within the probe timeout.
+///
+/// When compiled without the `mdns` feature, always returns `None`.
 #[must_use]
-pub(crate) fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+#[cfg(feature = "mdns")]
+pub fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing mDNS for capability '{}'", capability);
 
     let mdns = mdns_sd::ServiceDaemon::new().ok()?;
@@ -77,6 +80,13 @@ pub(crate) fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoi
     }
 }
 
+/// Stub when `mdns` feature is disabled.
+#[must_use]
+#[cfg(not(feature = "mdns"))]
+pub fn try_discover_via_mdns(_capability: &str) -> Option<Vec<PrimalEndpoint>> {
+    None
+}
+
 /// Probe Kubernetes DNS for a service with the given capability.
 ///
 /// Checks `KUBERNETES_SERVICE_HOST` to detect K8s environment, then attempts
@@ -84,7 +94,7 @@ pub(crate) fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoi
 /// from `POD_NAMESPACE` or `default`. Returns `None` when not in Kubernetes or
 /// when the capability-based service name does not resolve.
 #[must_use]
-pub(crate) fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+pub fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing Kubernetes DNS for capability '{}'", capability);
 
     let _k8s_host = std::env::var("KUBERNETES_SERVICE_HOST").ok()?;
@@ -113,7 +123,7 @@ pub(crate) fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<Primal
 /// `TOADSTOOL_DISCOVERY_HTTP_PORT` (default: 8080). Returns `None` when
 /// not in a Compose environment or when the service name does not resolve.
 #[must_use]
-pub(crate) fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+pub fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing Docker Compose for capability '{}'", capability);
 
     let in_compose = std::env::var("COMPOSE_PROJECT_NAME").is_ok()
@@ -151,7 +161,7 @@ pub(crate) fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<Pr
 /// to find services advertising the capability. Returns `None` when no registry is
 /// configured, when the registry is unreachable, or when no matching service is found.
 #[must_use]
-pub(crate) fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+pub fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     #[derive(serde::Deserialize)]
     struct RegistryServices {
         #[serde(default)]
@@ -255,7 +265,7 @@ pub(crate) fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEn
 /// Built-in default endpoints for known capabilities.
 /// Returns `None` for all capabilities — discovered via capability resolution at runtime.
 /// Caller sets `TOADSTOOL_{CAPABILITY}_ENDPOINT` or discovers via mDNS/registry.
-pub(crate) const fn builtin_default_endpoint(_capability: &str) -> Option<String> {
+pub const fn builtin_default_endpoint(_capability: &str) -> Option<String> {
     None
 }
 
@@ -265,7 +275,7 @@ pub(crate) const fn builtin_default_endpoint(_capability: &str) -> Option<String
 /// subdirectory named after the capability. This allows zero-config local
 /// development when primals are co-located on the same filesystem.
 #[must_use]
-pub(crate) fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+pub fn try_discover_via_filesystem(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     debug!("Probing filesystem for capability '{}'", capability);
 
     let base = std::env::var("TOADSTOOL_SERVICE_DIR").ok().or_else(|| {

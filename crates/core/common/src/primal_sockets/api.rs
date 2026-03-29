@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use crate::constants::ecosystem::well_known::BIOMEOS;
 use crate::constants::primal_identity::PRIMAL_NAME;
 
-use super::discovery;
 use super::env::SocketPathEnv;
 use super::paths;
 
@@ -46,64 +45,34 @@ pub fn get_family_id() -> String {
     paths::resolve_family_id(&SocketPathEnv::from_env())
 }
 
-/// Get beardog (crypto) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("crypto").
+/// Get beardog (crypto) socket path. Prefer [`get_socket_path_for_capability`]("crypto").
 #[deprecated(
     since = "0.2.0",
-    note = "Use discover_crypto_socket() for capability-based discovery. See docs for migration."
+    note = "Use get_socket_path_for_capability(\"crypto\") or discover_crypto_socket().await"
 )]
 #[must_use]
 pub fn get_beardog_socket_path() -> PathBuf {
-    let discovery_result = std::thread::spawn(|| {
-        let rt = tokio::runtime::Runtime::new().ok()?;
-        rt.block_on(discovery::discover_crypto_socket()).ok()
-    })
-    .join()
-    .ok()
-    .flatten();
-    if let Some(path) = discovery_result {
-        return path;
-    }
-    paths::resolve_capability_socket_fallback("crypto", &SocketPathEnv::from_env())
+    get_socket_path_for_capability("crypto")
 }
 
-/// Get songbird (coordination) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("coordination").
+/// Get songbird (coordination) socket path. Prefer [`get_socket_path_for_capability`]("coordination").
 #[deprecated(
     since = "0.2.0",
-    note = "Use discover_coordination_socket() for capability-based discovery. See docs for migration."
+    note = "Use get_socket_path_for_capability(\"coordination\") or discover_coordination_socket().await"
 )]
 #[must_use]
 pub fn get_songbird_socket_path() -> PathBuf {
-    let discovery_result = std::thread::spawn(|| {
-        let rt = tokio::runtime::Runtime::new().ok()?;
-        rt.block_on(discovery::discover_coordination_socket()).ok()
-    })
-    .join()
-    .ok()
-    .flatten();
-    if let Some(path) = discovery_result {
-        return path;
-    }
-    paths::resolve_capability_socket_fallback("coordination", &SocketPathEnv::from_env())
+    get_socket_path_for_capability("coordination")
 }
 
-/// Get nestgate (storage) socket path. Prefer [`get_socket_path_for_capability`](`get_socket_path_for_capability`)("storage").
+/// Get nestgate (storage) socket path. Prefer [`get_socket_path_for_capability`]("storage").
 #[deprecated(
     since = "0.2.0",
-    note = "Use discover_storage_socket() for capability-based discovery. See docs for migration."
+    note = "Use get_socket_path_for_capability(\"storage\") or discover_storage_socket().await"
 )]
 #[must_use]
 pub fn get_nestgate_socket_path() -> PathBuf {
-    let discovery_result = std::thread::spawn(|| {
-        let rt = tokio::runtime::Runtime::new().ok()?;
-        rt.block_on(discovery::discover_storage_socket()).ok()
-    })
-    .join()
-    .ok()
-    .flatten();
-    if let Some(path) = discovery_result {
-        return path;
-    }
-    paths::resolve_capability_socket_fallback("storage", &SocketPathEnv::from_env())
+    get_socket_path_for_capability("storage")
 }
 
 /// Get squirrel (AI) socket path.

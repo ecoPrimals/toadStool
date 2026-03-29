@@ -60,10 +60,7 @@
 #![deny(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![warn(missing_docs)]
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::cargo)]
-#![allow(clippy::multiple_crate_versions)] // Transitive dep conflicts not actionable
+#![allow(clippy::multiple_crate_versions)]
 
 // Public modules
 pub mod audit;

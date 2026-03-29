@@ -168,23 +168,25 @@ impl TouchTracker {
 
             // Handle position updates (touch moved)
             if let Some(touch) = self.slots.get_mut(&slot) {
-                let mut moved = false;
-
-                if let Some(x) = update.x
+                let moved_x = if let Some(x) = update.x
                     && x != touch.x
                 {
                     touch.x = x;
-                    moved = true;
-                }
+                    true
+                } else {
+                    false
+                };
 
-                if let Some(y) = update.y
+                let moved_y = if let Some(y) = update.y
                     && y != touch.y
                 {
                     touch.y = y;
-                    moved = true;
-                }
+                    true
+                } else {
+                    false
+                };
 
-                if moved {
+                if moved_x || moved_y {
                     touch.phase = TouchPhase::Moved;
                     events.push((touch.touch_id, TouchPhase::Moved, touch.x, touch.y));
                 }

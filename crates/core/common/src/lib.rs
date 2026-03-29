@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 //! # `ToadStool` Common Utilities
@@ -34,8 +34,10 @@ pub mod pci_discovery; // Unified PCI sysfs scanner (GPU + NPU + any accelerator
 pub mod platform_paths; // NEW: Platform-agnostic path resolution (ecoBin v2.0)
 pub mod primal_capabilities; // Capability-to-primal reference mapping
 pub mod primal_discovery; // NEW: Runtime capability-based primal discovery
-pub mod primal_discovery_complete; // NEW: Complete capability-based discovery with mDNS
-pub mod primal_discovery_mdns; // NEW: mDNS integration adapter
+#[cfg(feature = "mdns")]
+pub mod primal_discovery_complete; // Complete capability-based discovery with mDNS
+#[cfg(feature = "mdns")]
+pub mod primal_discovery_mdns; // mDNS integration adapter
 pub mod primal_identity;
 pub mod primal_integration; // NEW: Self-knowledge only architecture
 pub mod primal_sockets;

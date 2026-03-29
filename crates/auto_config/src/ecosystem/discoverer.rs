@@ -279,22 +279,41 @@ impl EcosystemDiscoverer {
         Ok(services)
     }
 
-    /// Discover services using mDNS/Zeroconf
+    /// Discover services using mDNS/Zeroconf.
+    ///
+    /// Delegates to `toadstool_common::primal_integration::try_discover_via_mdns`
+    /// which probes `_toadstool._tcp.local.` and filters by capability TXT records.
     pub(crate) fn discover_mdns_services() -> HashMap<String, ServiceInfo> {
-        let services = HashMap::new();
+        use toadstool_common::primal_integration::try_discover_via_mdns;
 
-        debug!("mDNS discovery not fully implemented, using fallback");
+        let mut services = HashMap::new();
 
-        let mdns_capability_types = vec![
-            "_discovery._tcp.local",
-            "_crypto._tcp.local",
-            "_storage._tcp.local",
-            "_compute._tcp.local",
-            "_orchestration._tcp.local",
-        ];
+        let capability_keys = ["discovery", "crypto", "storage", "compute", "orchestration"];
 
-        for service_type in mdns_capability_types {
-            debug!("Would query mDNS for capability: {}", service_type);
+        for capability in capability_keys {
+            debug!("Probing mDNS for capability: {}", capability);
+            if let Some(endpoints) = try_discover_via_mdns(capability) {
+                for endpoint in endpoints {
+                    let status = if endpoint.healthy {
+                        crate::ecosystem_types::ServiceStatus::Healthy
+                    } else {
+                        crate::ecosystem_types::ServiceStatus::Unknown
+                    };
+                    services.insert(
+                        endpoint.service_id.clone(),
+                        ServiceInfo {
+                            name: endpoint.service_id.clone(),
+                            endpoint: endpoint.url,
+                            service_type: capability.to_string(),
+                            version: String::new(),
+                            capabilities: endpoint.capabilities,
+                            status,
+                            discovered_via: "mdns".to_string(),
+                            response_time_ms: 0,
+                        },
+                    );
+                }
+            }
         }
 
         debug!("mDNS discovery found {} services", services.len());

@@ -56,7 +56,7 @@ impl VAXVMSAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for VAXVMSAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "VAX/VMS Adapter"
     }
 

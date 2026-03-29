@@ -125,7 +125,7 @@ fn test_endpoint_string_tcp() {
     let client = DisplayClient::new_for_test(client_half, ep);
     let s = client.endpoint_string();
     assert!(s.contains("127.0.0.1"));
-    assert!(s.contains("12345"));
+    assert!(s.contains("8091"));
 }
 
 #[test]

@@ -32,7 +32,8 @@ pub async fn discover_socket_for_capability(
 ) -> Result<PathBuf, SocketDiscoveryError> {
     use crate::capability_discovery::CapabilityDiscovery;
 
-    let discovery = CapabilityDiscovery::new()
+    let discovery = CapabilityDiscovery::new_async()
+        .await
         .map_err(|e| SocketDiscoveryError::DiscoveryFailed(e.to_string()))?;
 
     let services = discovery

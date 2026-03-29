@@ -12,6 +12,7 @@ use crate::types::systems::{LegacyArchitecture, LegacySystemType};
 
 /// Configuration for the specialty hardware runtime engine.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct SpecialtyRuntimeConfig {
     /// Whether mainframe system support is enabled.
     pub mainframe_enabled: bool,

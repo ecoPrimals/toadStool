@@ -171,7 +171,7 @@ impl MassiveJobDistributor {
                     UniversalJobType::ComputeIntensive
                 }
             },
-            |job_type| job_type.clone(),
+            Clone::clone,
         )
     }
 

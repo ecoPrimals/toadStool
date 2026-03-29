@@ -13,7 +13,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use parking_lot::RwLock;
+use std::sync::RwLock;
+
 use serde::{Deserialize, Serialize};
 
 use crate::OrchestrationError;
@@ -144,8 +145,8 @@ impl ResourceOrchestrator {
 
     /// Register a tenant with resource quotas.
     pub fn register_tenant(&self, tenant_id: &str, quota: TenantQuota) {
-        self.quotas.write().insert(tenant_id.to_string(), quota);
-        self.usage.write().entry(tenant_id.to_string()).or_default();
+        self.quotas.write().expect("lock poisoned").insert(tenant_id.to_string(), quota);
+        self.usage.write().expect("lock poisoned").entry(tenant_id.to_string()).or_default();
     }
 
     /// Request resource allocation for a tenant.
@@ -168,7 +169,7 @@ impl ResourceOrchestrator {
     /// Release a device allocation for a tenant.
     pub fn release(&self, tenant_id: &str, device_index: u32) {
         {
-            let mut devices = self.devices.write();
+            let mut devices = self.devices.write().expect("lock poisoned");
             if let Some(dev) = devices.iter_mut().find(|d| d.index == device_index)
                 && dev.current_tenant.as_deref() == Some(tenant_id)
             {
@@ -177,7 +178,7 @@ impl ResourceOrchestrator {
             }
         }
 
-        let mut usage = self.usage.write();
+        let mut usage = self.usage.write().expect("lock poisoned");
         if let Some(tenant_usage) = usage.get_mut(tenant_id) {
             tenant_usage.device_allocations.remove(&device_index);
             tenant_usage.active_workloads = tenant_usage.active_workloads.saturating_sub(1);
@@ -187,13 +188,13 @@ impl ResourceOrchestrator {
     /// Get current usage for a tenant.
     #[must_use]
     pub fn tenant_usage(&self, tenant_id: &str) -> Option<TenantUsage> {
-        self.usage.read().get(tenant_id).cloned()
+        self.usage.read().expect("lock poisoned").get(tenant_id).cloned()
     }
 
     /// Get all tenant usage stats.
     #[must_use]
     pub fn all_usage(&self) -> HashMap<String, TenantUsage> {
-        self.usage.read().clone()
+        self.usage.read().expect("lock poisoned").clone()
     }
 
     /// Current deployment model.
@@ -206,7 +207,7 @@ impl ResourceOrchestrator {
     #[must_use]
     #[allow(clippy::missing_const_for_fn)] // Uses RwLock
     pub fn device_count(&self) -> usize {
-        self.devices.read().len()
+        self.devices.read().expect("lock poisoned").len()
     }
 
     // --- allocation strategies ---
@@ -216,7 +217,7 @@ impl ResourceOrchestrator {
         &self,
         request: &ResourceRequest,
     ) -> Result<ResourceAllocation, OrchestrationError> {
-        let devices = self.devices.read();
+        let devices = self.devices.read().expect("lock poisoned");
         let device = if request.preferred_devices.is_empty() {
             devices.iter().max_by_key(|d| d.free_vram_bytes())
         } else {
@@ -247,7 +248,7 @@ impl ResourceOrchestrator {
     ) -> Result<ResourceAllocation, OrchestrationError> {
         self.check_quota(request)?;
 
-        let mut devices = self.devices.write();
+        let mut devices = self.devices.write().expect("lock poisoned");
         let device = devices
             .iter_mut()
             .filter(|d| {
@@ -270,7 +271,7 @@ impl ResourceOrchestrator {
 
         drop(devices);
 
-        let mut usage = self.usage.write();
+        let mut usage = self.usage.write().expect("lock poisoned");
         let tenant_usage = usage.entry(request.tenant_id.clone()).or_default();
         tenant_usage.device_allocations.insert(idx, allocated);
         tenant_usage.active_workloads += 1;
@@ -294,12 +295,12 @@ impl ResourceOrchestrator {
 
     #[allow(clippy::significant_drop_tightening)] // need both quotas and usage for check
     fn check_quota(&self, request: &ResourceRequest) -> Result<(), OrchestrationError> {
-        let quotas = self.quotas.read();
+        let quotas = self.quotas.read().expect("lock poisoned");
         let Some(quota) = quotas.get(&request.tenant_id) else {
             return Ok(());
         };
 
-        let usage = self.usage.read();
+        let usage = self.usage.read().expect("lock poisoned");
         let current = usage.get(&request.tenant_id);
 
         if let Some(current) = current {

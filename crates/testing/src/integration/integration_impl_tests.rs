@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 use super::*;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

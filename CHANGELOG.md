@@ -5,7 +5,45 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 29, 2026 (Sessions 43-164)
+## [Unreleased] - March 29, 2026 (Sessions 43-166)
+
+### Session S166 (Mar 29, 2026) — Deep Debt Evolution + Dependency Sovereignty
+
+#### Capability-based discovery (breaking pattern change)
+- All hardcoded primal names (`beardog`, `songbird`, `nestgate`, `squirrel`) deprecated in favor of capability IDs (`crypto`, `coordination`, `storage`, `routing`)
+- New `resolve_capability_socket_fallback(capability, env)` with precedence: `BIOMEOS_{CAP}_SOCKET` → legacy env → `{capability}.sock`
+- `ecosystem::capabilities` module with `COORDINATION`, `CRYPTO`, `STORAGE`, `ROUTING` constants
+
+#### Dependency sovereignty (crypto → BearDog, HTTP → Songbird)
+- `ed25519-dalek` removed from `toadstool` core and `toadstool-cli` — signing delegated to BearDog via `crypto.sign` JSON-RPC, verification via `crypto.verify`, public key via `crypto.public_key`
+- `AuthBackend` trait extended with `sign_payload()` and `public_key()` methods; `BearDogBackend` implements via RPC, `InMemoryAuthBackend` provides test mocks
+- `regex` removed from `toadstool` core — `check_patterns()` uses case-insensitive `str::contains()`; default `ValidationRules` patterns converted from regex to literal strings
+- `parking_lot` removed from `toadstool-runtime-orchestration` — replaced with `std::sync::RwLock`
+- `hmac` removed from `toadstool-distributed` (unused)
+- HTTP transport (`HttpTransport::send_message`) delegates to Songbird via `comms.http_forward` JSON-RPC over coordination socket
+- `mdns-sd` retained as feature-gated (`mdns`) cold-start discovery — appropriate for bootstrap
+
+#### Workspace lint cleanup
+- 29 `lib.rs` files cleaned of redundant `#![allow(clippy::...)]` duplicating workspace `[lints]`
+- Blanket `#![allow(clippy::nursery)]` removed from `server` and `cross-substrate-validation`
+
+#### Production stub completion
+- `crypto_lock/access_control/manager.rs`: `load_permissions()` reads from JSON, `validate_delegation_request()` enforces holder match, delegation depth, time bounds, feature/geography subsets, resource limits
+- `SubstrateConfig::validate()` checks power budget, fallback order, capability lists; `build()` returns `Result`
+
+#### Smart refactoring (7 production files → module directories)
+- `server/resource_validator.rs` (986L), `auto_config/ecosystem.rs` (851L), `gpu/engine/mod.rs` (744L), `display/capabilities.rs` (735L), `distributed/types/resources.rs` (725L), `infant_discovery/engine.rs` (715L), `universal/substrate.rs` (717L) — all new files under 400 lines
+
+#### Documentation cleanup
+- 6 root session trackers archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/` with `_S166` suffix (STATUS, EVOLUTION_TRACKER, QUICK_REFERENCE, SOVEREIGN_COMPUTE, SPRING_ABSORPTION_TRACKER, BREAKING_CHANGES)
+- Root docs reduced to: README, CHANGELOG, CONTEXT, DOCUMENTATION, DEBT, NEXT_STEPS, LICENSE
+- Stale `[[bench]]` stanzas removed (testing, secure_enclave)
+
+#### Quality gates
+- `cargo check --workspace --all-targets`: Clean
+- `cargo fmt --all`: Clean
+- `cargo clippy --workspace --all-targets`: 0 new warnings
+- All tests passing, 0 failures
 
 ### Session S164 (Mar 29, 2026) — Dependency Dedup + Coverage Expansion + Smart Refactoring
 

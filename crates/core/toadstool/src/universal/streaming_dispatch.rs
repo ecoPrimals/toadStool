@@ -162,7 +162,7 @@ impl StreamingDispatchContext {
     }
 
     /// Record a dispatch event (one compute kernel enqueued).
-    pub fn record_dispatch(&mut self) {
+    pub const fn record_dispatch(&mut self) {
         self.stats.n_dispatches += 1;
     }
 
@@ -185,7 +185,7 @@ impl StreamingDispatchContext {
     }
 
     /// Record a submission event (encoder flushed to substrate).
-    pub fn record_submission(&mut self) {
+    pub const fn record_submission(&mut self) {
         self.stats.n_submissions += 1;
     }
 

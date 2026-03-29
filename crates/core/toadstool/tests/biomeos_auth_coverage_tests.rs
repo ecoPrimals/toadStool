@@ -116,9 +116,10 @@ async fn sign_verification_request_disabled_returns_literal() {
 // ─── get_public_key ─────────────────────────────────────────────────────────
 
 #[test]
-fn get_public_key_none_when_no_signing_key() {
+fn get_public_key_delegates_to_backend() {
     let manager = AuthenticationManager::with_inmemory(base_config());
-    assert!(manager.get_public_key().is_none());
+    // InMemoryAuthBackend always provides a test public key
+    assert!(manager.get_public_key().is_some());
 }
 
 // ─── start_token_refresh and stop ──────────────────────────────────────────

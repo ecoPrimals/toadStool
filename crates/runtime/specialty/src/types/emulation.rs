@@ -13,7 +13,7 @@ use crate::ToadStoolResult;
 #[async_trait::async_trait]
 pub trait LegacyEmulator: Send + Sync {
     /// Get emulator name
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Get supported systems
     fn supported_systems(&self) -> Vec<LegacySystemType>;

@@ -174,7 +174,9 @@ mod socket;
 pub use discovery::{
     discover_cache_service, discover_coordination_service, discover_database_service,
     discover_encryption_service, discover_mcp_service, discover_object_storage,
-    discover_service_by_capability, discover_storage_service,
+    discover_service_by_capability, discover_service_by_capability_async, discover_storage_service,
+    try_discover_via_docker_compose, try_discover_via_filesystem, try_discover_via_kubernetes,
+    try_discover_via_mdns, try_discover_via_registry,
 };
 pub use socket::discover_service_socket_by_capability;
 

@@ -140,7 +140,7 @@ impl Microcontroller8BitAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for Microcontroller8BitAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "8-bit Microcontroller Adapter"
     }
 
@@ -361,7 +361,7 @@ impl System16BitAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for System16BitAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "16-bit System Adapter"
     }
 

@@ -68,14 +68,13 @@ pub struct CpuFeatures {
 
 /// Detect CPU capabilities and characteristics
 pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo> {
-    let mut cpu_info = CpuInfo::default();
-
-    // Try to read CPU info from /proc/cpuinfo on Linux
-    if cfg!(target_os = "linux")
+    let mut cpu_info = if cfg!(target_os = "linux")
         && let Ok(cpuinfo) = tokio::fs::read_to_string("/proc/cpuinfo").await
     {
-        cpu_info = parse_linux_cpuinfo(&cpuinfo);
-    }
+        parse_linux_cpuinfo(&cpuinfo)
+    } else {
+        CpuInfo::default()
+    };
 
     // Try to get CPU info from sysctl on macOS
     #[cfg(target_os = "macos")]

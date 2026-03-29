@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
+#![allow(clippy::unused_async)] // Async stubs for future I/O implementation
 
 //! # ToadStool Specialty Hardware Runtime Engine
 //!

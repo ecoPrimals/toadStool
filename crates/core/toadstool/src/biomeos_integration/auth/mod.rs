@@ -271,71 +271,13 @@ impl AuthenticationManager {
     }
 
     fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
-        use base64::{Engine as _, engine::general_purpose};
-        use ed25519_dalek::Signer;
-
-        if let Some(ref seed_b64) = self.config.signing_key_seed {
-            let seed_bytes = general_purpose::STANDARD.decode(seed_b64).map_err(|e| {
-                crate::ToadStoolError::configuration(format!(
-                    "Invalid signing key seed (base64 decode error): {e}"
-                ))
-            })?;
-            if seed_bytes.len() != 32 {
-                return Err(crate::ToadStoolError::configuration(format!(
-                    "Invalid signing key seed length: expected 32 bytes, got {}",
-                    seed_bytes.len()
-                )));
-            }
-            let seed: [u8; 32] = seed_bytes.try_into().map_err(|_: Vec<u8>| {
-                crate::ToadStoolError::configuration(
-                    "seed byte conversion failed (length invariant violated)",
-                )
-            })?;
-            let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
-            let signature = signing_key.sign(payload.as_bytes());
-            Ok(format!(
-                "ed25519:{}",
-                general_purpose::STANDARD.encode(signature.to_bytes())
-            ))
-        } else {
-            #[cfg(any(test, feature = "dev-mock-auth"))]
-            {
-                #[cfg(all(feature = "dev-mock-auth", not(debug_assertions)))]
-                compile_error!(
-                    "dev-mock-auth feature must not be enabled in release builds! \
-                     Use TOADSTOOL_SIGNING_KEY_SEED environment variable for production."
-                );
-                tracing::warn!(
-                    "⚠️ INSECURE: No signing key configured, using mock signature. \
-                     This is acceptable ONLY in tests."
-                );
-                Ok(format!(
-                    "ed25519:mock:{}",
-                    general_purpose::STANDARD.encode(payload.as_bytes())
-                ))
-            }
-            #[cfg(not(any(test, feature = "dev-mock-auth")))]
-            {
-                Err(crate::ToadStoolError::configuration(
-                    "No signing key configured. Set TOADSTOOL_SIGNING_KEY_SEED or configure signing_key_seed in auth config.",
-                ))
-            }
-        }
+        self.backend.sign_payload(payload)
     }
 
-    /// Returns the public key for signature verification, if a signing key is configured.
+    /// Returns the public key for signature verification, if available.
     #[must_use]
     pub fn get_public_key(&self) -> Option<String> {
-        use base64::{Engine as _, engine::general_purpose};
-        let seed_b64 = self.config.signing_key_seed.as_ref()?;
-        let seed_bytes = general_purpose::STANDARD.decode(seed_b64).ok()?;
-        if seed_bytes.len() != 32 {
-            return None;
-        }
-        let seed: [u8; 32] = seed_bytes.try_into().ok()?;
-        let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
-        let verifying_key = signing_key.verifying_key();
-        Some(general_purpose::STANDARD.encode(verifying_key.as_bytes()))
+        self.backend.public_key()
     }
 
     /// # Errors

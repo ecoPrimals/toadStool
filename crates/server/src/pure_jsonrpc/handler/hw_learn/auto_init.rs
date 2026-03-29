@@ -208,16 +208,19 @@ impl HwLearnHandler {
             _ => 0.0,
         };
 
-        let mut rollback_info = serde_json::json!(null);
-        if result.verdict != hw_learn::applicator::ApplyVerdict::Success && !snapshot.is_empty() {
+        let rollback_info = if result.verdict != hw_learn::applicator::ApplyVerdict::Success
+            && !snapshot.is_empty()
+        {
             tracing::warn!(bdf = %bdf, "auto_init failed — attempting rollback");
             let rollback_ok = snapshot.rollback(&mut bar0);
-            rollback_info = serde_json::json!({
+            serde_json::json!({
                 "attempted": true,
                 "succeeded": rollback_ok,
                 "registers": snapshot.len(),
-            });
-        }
+            })
+        } else {
+            serde_json::json!(null)
+        };
 
         if let Ok(mut store) = self.open_store() {
             let _ = store.update_confidence(&recipe_id, confidence);
@@ -311,7 +314,6 @@ impl HwLearnHandler {
                     let recipe = store.load(&recipe_id).ok().flatten()?;
                     let card_path = card_path_for_bdf(&gpu.bdf);
                     let gpu = gpu.clone();
-                    let recipe = recipe.clone();
                     let store_dir = store_dir.clone();
                     Some(tokio::task::spawn_blocking(move || {
                         init_one_gpu(&gpu, &card_path, &recipe, false, &store_dir)
@@ -338,7 +340,6 @@ impl HwLearnHandler {
                     let recipe = store.load(&recipe_id).ok().flatten()?;
                     let card_path = card_path_for_bdf(&gpu.bdf);
                     let gpu = gpu.clone();
-                    let recipe = recipe.clone();
                     let store_dir = store_dir.clone();
                     Some(tokio::task::spawn_blocking(move || {
                         init_one_gpu(&gpu, &card_path, &recipe, true, &store_dir)

@@ -62,10 +62,6 @@ fake = { version = "2.0", features = ["derive", "uuid"] }
 criterion = "0.5"
 temp-env = "0.3"
 
-[[bench]]
-name = "hot_paths"
-harness = false
-
 [features]
 default = []
 integration-tests = ["wiremock"] # Pure Rust: removed libc (unix sockets via std)

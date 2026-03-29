@@ -62,7 +62,3 @@ hardware-enclave = [] # Future: SGX/SEV support
 [lints]
 workspace = true
 
-[[bench]]
-name = "performance"
-harness = false
-

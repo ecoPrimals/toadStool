@@ -19,6 +19,11 @@ use crate::types::traits::JobStatus;
 
 impl SpecialtyRuntimeEngine {
     /// Convert ExecutionRequest to LegacyJob
+    #[allow(
+        clippy::unnecessary_wraps,
+        clippy::unused_self,
+        clippy::needless_pass_by_value
+    )]
     pub(crate) fn convert_execution_request_to_legacy_job(
         &self,
         request: ExecutionRequest,
@@ -266,7 +271,7 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
         Box::pin(async move {
             tracing::info!("Shutting down legacy runtime engine");
-            let jobs: Vec<uuid::Uuid> = self.active_jobs.read().await.keys().cloned().collect();
+            let jobs: Vec<uuid::Uuid> = self.active_jobs.read().await.keys().copied().collect();
             for job_id in jobs {
                 if let Err(e) = self.cancel_job(job_id).await {
                     tracing::error!("Error cancelling job {}: {}", job_id, e);

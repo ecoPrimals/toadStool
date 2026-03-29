@@ -11,7 +11,7 @@ use std::fmt;
 use uuid::Uuid;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use super::SecurityLevel;
+use super::security::SecurityLevel;
 
 /// Encrypted payload container
 ///

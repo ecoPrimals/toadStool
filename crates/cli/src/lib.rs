@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 #![allow(
@@ -103,11 +103,6 @@ impl From<std::net::AddrParseError> for CliError {
     }
 }
 
-impl From<ed25519_dalek::ed25519::Error> for CliError {
-    fn from(e: ed25519_dalek::ed25519::Error) -> Self {
-        Self::Other(e.to_string())
-    }
-}
 
 #[cfg(feature = "npu")]
 impl From<akida_driver::AkidaError> for CliError {
@@ -411,7 +406,7 @@ pub struct ServiceVolume {
 /// Health check configuration for a service or primal
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthCheck {
-    /// Command and args to run (e.g. ["curl", "-f", "http://localhost/health"])
+    /// Command and args to run (e.g. `["curl", "-f", "http://localhost/health"]`)
     pub command: Vec<String>,
     /// Interval between checks in seconds
     pub interval: u64,

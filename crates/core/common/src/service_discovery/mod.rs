@@ -5,6 +5,7 @@
 
 mod config;
 mod discovery_config;
+#[cfg(feature = "mdns")]
 mod discovery_mdns;
 mod discovery_registry;
 mod endpoint;

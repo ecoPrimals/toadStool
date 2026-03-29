@@ -104,7 +104,7 @@ impl IBMMainframeAdapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for IBMMainframeAdapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "IBM Mainframe Adapter"
     }
 

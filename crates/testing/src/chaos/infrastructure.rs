@@ -399,7 +399,7 @@ impl ChaosEngine {
         {
             let mut metrics = self.metrics.write().await;
             metrics.operations_succeeded += 1;
-            metrics.avg_latency_ms = (metrics.avg_latency_ms + delay_ms as f64) / 2.0;
+            metrics.avg_latency_ms = f64::midpoint(metrics.avg_latency_ms, delay_ms as f64);
         }
 
         Ok(())

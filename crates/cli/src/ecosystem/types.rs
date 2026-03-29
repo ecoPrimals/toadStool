@@ -6,7 +6,6 @@
 
 use crate::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
@@ -379,27 +378,60 @@ impl CryptoVerificationContext {
         self
     }
 
-    /// Verify an Ed25519 signature over a message
+    /// Verify an Ed25519 signature over a message.
+    ///
+    /// Delegates to the crypto primal (BearDog) via `crypto.verify` JSON-RPC
+    /// over the discovered Unix socket. Returns `Ok(false)` when no crypto
+    /// provider is available.
     pub fn verify_ed25519_signature(
         &self,
         message: &[u8],
         signature_bytes: &[u8],
         public_key_bytes: &[u8],
     ) -> Result<bool> {
-        // Parse public key from bytes (RustCrypto ed25519-dalek - pure Rust!)
-        let public_key = VerifyingKey::from_bytes(public_key_bytes.try_into().map_err(|_| {
-            crate::CliError::Other("Invalid public key length (expected 32 bytes)".to_string())
-        })?)?;
+        let socket_path =
+            toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
 
-        // Parse signature from bytes
-        let signature = Signature::from_bytes(signature_bytes.try_into().map_err(|_| {
-            crate::CliError::Other("Invalid signature length (expected 64 bytes)".to_string())
-        })?);
+        if !socket_path.exists() {
+            tracing::debug!(
+                "No crypto primal socket at {}, signature verification unavailable",
+                socket_path.display()
+            );
+            return Ok(false);
+        }
 
-        // Verify signature using RustCrypto (pure Rust, no C/assembly!)
-        match public_key.verify(message, &signature) {
-            Ok(()) => Ok(true),
-            Err(_) => Ok(false),
+        let client =
+            toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+
+        let params = serde_json::json!({
+            "data": message,
+            "signature": signature_bytes,
+            "public_key": BASE64.encode(public_key_bytes),
+        });
+
+        let result: std::result::Result<serde_json::Value, _> = std::thread::scope(|s| {
+            s.spawn(|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|e| {
+                        crate::CliError::Other(format!("Failed to create runtime: {e}"))
+                    })?;
+                rt.block_on(client.call("crypto.verify", params))
+                    .map_err(|e| {
+                        crate::CliError::Other(format!("crypto.verify failed: {e}"))
+                    })
+            })
+            .join()
+            .unwrap_or_else(|_| Err(crate::CliError::Other("verify thread panicked".into())))
+        });
+
+        match result {
+            Ok(value) => Ok(value.get("valid").and_then(|v| v.as_bool()).unwrap_or(false)),
+            Err(e) => {
+                tracing::debug!("crypto.verify RPC failed: {e}, returning false");
+                Ok(false)
+            }
         }
     }
 
@@ -478,67 +510,20 @@ impl CryptoVerificationContext {
 mod tests {
     use super::*;
 
-    // RFC 8032 Ed25519 test vector - empty message
-    fn test_public_key() -> [u8; 32] {
-        hex::decode("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a")
-            .unwrap()
-            .try_into()
-            .unwrap()
-    }
-    fn test_signature() -> [u8; 64] {
-        hex::decode("e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b")
-            .unwrap()
-            .try_into()
-            .unwrap()
+    #[test]
+    fn test_verify_ed25519_returns_false_without_crypto_primal() {
+        let context = CryptoVerificationContext::new();
+        let result = context.verify_ed25519_signature(b"hello", &[0u8; 64], &[0u8; 32]);
+        assert!(!result.unwrap(), "must return false when no crypto primal is reachable");
     }
 
     #[test]
-    fn test_verify_ed25519_signature_valid() {
+    fn test_verify_ed25519_accepts_any_input_shapes() {
         let context = CryptoVerificationContext::new();
-        let result = context.verify_ed25519_signature(b"", &test_signature(), &test_public_key());
-        assert!(result.unwrap());
-    }
-
-    #[test]
-    fn test_verify_ed25519_signature_invalid() {
-        let context = CryptoVerificationContext::new();
-        let result = context.verify_ed25519_signature(
-            b"wrong message",
-            &test_signature(),
-            &test_public_key(),
-        );
-        assert!(!result.unwrap());
-    }
-
-    #[test]
-    fn test_verify_ed25519_signature_invalid_key_length() {
-        let context = CryptoVerificationContext::new();
-        let result = context.verify_ed25519_signature(
-            b"msg", &[0u8; 64], &[0u8; 16], // Wrong length - should be 32
-        );
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Invalid public key")
-        );
-    }
-
-    #[test]
-    fn test_verify_ed25519_signature_invalid_signature_length() {
-        let context = CryptoVerificationContext::new();
-        let result = context.verify_ed25519_signature(
-            b"msg", &[0u8; 32], // Wrong length - should be 64
-            &[0u8; 32],
-        );
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("Invalid signature")
-        );
+        let short_key = context.verify_ed25519_signature(b"msg", &[0u8; 64], &[0u8; 16]);
+        let short_sig = context.verify_ed25519_signature(b"msg", &[0u8; 32], &[0u8; 32]);
+        assert!(short_key.is_ok(), "length validation is BearDog's responsibility");
+        assert!(short_sig.is_ok(), "length validation is BearDog's responsibility");
     }
 
     #[test]

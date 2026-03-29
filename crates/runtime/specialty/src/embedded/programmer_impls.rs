@@ -35,7 +35,7 @@ macro_rules! impl_programmer_stub {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl ProgrammerTrait for $programmer {
-            fn name(&self) -> &str {
+            fn name(&self) -> &'static str {
                 $name
             }
 

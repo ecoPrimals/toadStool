@@ -30,7 +30,7 @@
 //! }
 //! ```
 
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 pub mod cpu;

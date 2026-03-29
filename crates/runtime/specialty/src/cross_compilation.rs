@@ -23,28 +23,28 @@ use crate::types::systems::LegacyArchitecture;
 /// 6502 Toolchain
 #[derive(Debug)]
 pub struct Toolchain6502 {
-    name: String,
+    name: &'static str,
     config: Option<ToolchainConfig>,
 }
 
 /// Z80 Toolchain
 #[derive(Debug)]
 pub struct ToolchainZ80 {
-    name: String,
+    name: &'static str,
     config: Option<ToolchainConfig>,
 }
 
 /// 68000 Toolchain
 #[derive(Debug)]
 pub struct Toolchain68000 {
-    name: String,
+    name: &'static str,
     config: Option<ToolchainConfig>,
 }
 
 impl Default for Toolchain6502 {
     fn default() -> Self {
         Self {
-            name: "6502 Cross-Compiler".to_string(),
+            name: "6502 Cross-Compiler",
             config: None,
         }
     }
@@ -67,7 +67,7 @@ impl ToolchainZ80 {
 impl Default for ToolchainZ80 {
     fn default() -> Self {
         Self {
-            name: "Z80 Cross-Compiler".to_string(),
+            name: "Z80 Cross-Compiler",
             config: None,
         }
     }
@@ -83,7 +83,7 @@ impl Toolchain68000 {
 impl Default for Toolchain68000 {
     fn default() -> Self {
         Self {
-            name: "68000 Cross-Compiler".to_string(),
+            name: "68000 Cross-Compiler",
             config: None,
         }
     }
@@ -91,8 +91,8 @@ impl Default for Toolchain68000 {
 
 #[async_trait::async_trait]
 impl CrossCompilationToolchain for Toolchain6502 {
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn supported_architectures(&self) -> Vec<LegacyArchitecture> {
@@ -164,8 +164,8 @@ impl CrossCompilationToolchain for Toolchain6502 {
 
 #[async_trait::async_trait]
 impl CrossCompilationToolchain for ToolchainZ80 {
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn supported_architectures(&self) -> Vec<LegacyArchitecture> {
@@ -237,8 +237,8 @@ impl CrossCompilationToolchain for ToolchainZ80 {
 
 #[async_trait::async_trait]
 impl CrossCompilationToolchain for Toolchain68000 {
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> &'static str {
+        self.name
     }
 
     fn supported_architectures(&self) -> Vec<LegacyArchitecture> {

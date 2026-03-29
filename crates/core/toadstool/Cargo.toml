@@ -52,12 +52,8 @@ base64 = "0.22"
 
 # Security
 zeroize = { version = "1.7", features = ["derive"] }
-ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 
-# Regex for security hardening
-regex = "1.0"
-
-mdns-sd = "0.10"
+mdns-sd = { version = "0.10", optional = true }
 # MUST use same version as workspace to prevent duplicate symbol errors  
 wgpu = { workspace = true, optional = true }
 
@@ -69,13 +65,12 @@ toadstool-testing = { path = "../../testing" }
 proptest = { workspace = true }
 
 [features]
-default = []
+default = ["mdns"]
 # Gates reqwest-based HTTP communication in ecosystem modules
 networking = []
 wgpu = ["dep:wgpu"]
-# Development mock auth - allows mock signatures when no signing key configured
-# WARNING: Do not enable in production builds
-dev-mock-auth = []
+# mDNS bootstrap discovery (songBird's domain -- use for cold-start only)
+mdns = ["dep:mdns-sd"]
 
 [lints]
 workspace = true

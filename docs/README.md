@@ -1,9 +1,8 @@
 # ToadStool Documentation
 
-**Updated**: March 29, 2026 -- S164
+**Updated**: March 29, 2026 -- S166
 
-Old integration guides, barracuda-specific docs, and Feb 2026 planning docs archived to `ecoPrimals/infra/wateringHole/fossilRecord/`.
-Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub.
+Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub. Session trackers archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
 
 ---
 
@@ -11,9 +10,9 @@ Primary documentation lives at the repository root. See [../DOCUMENTATION.md](..
 
 ### Root (authoritative)
 - **[../README.md](../README.md)** -- Project overview, architecture, quality gates
-- **[../STATUS.md](../STATUS.md)** -- Detailed technical status
 - **[../DEBT.md](../DEBT.md)** -- Active debt register
 - **[../NEXT_STEPS.md](../NEXT_STEPS.md)** -- Roadmap
+- **[../CHANGELOG.md](../CHANGELOG.md)** -- Full session history
 - **[../DOCUMENTATION.md](../DOCUMENTATION.md)** -- Navigation hub
 
 ### Architecture

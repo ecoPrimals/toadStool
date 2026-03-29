@@ -264,7 +264,7 @@ pub async fn run_comprehensive_benchmark(runtime: &UniversalRuntime) -> Vec<Benc
             .filter(|(_, t)| *t < f64::MAX && !t.is_nan())
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(n, t)| (n.to_string(), *t))
-            .unwrap_or(("None".to_string(), 0.0));
+            .unwrap_or_else(|| ("None".to_string(), 0.0));
 
         let baseline = cpu_time.unwrap_or(best_time);
         let speedup = if best_time > 0.0 {

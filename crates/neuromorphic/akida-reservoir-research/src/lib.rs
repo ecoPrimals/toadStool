@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 //! Akida Reservoir Computing Research Library
 //!
@@ -22,8 +22,6 @@
 //! ```
 
 #![warn(missing_docs)]
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
 #![allow(clippy::must_use_candidate)]
 #![allow(dead_code)] // Research crate, many components not yet used
 

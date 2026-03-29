@@ -51,6 +51,14 @@ use crate::service_discovery::{DiscoveredService, ServiceDiscovery, ServiceDisco
 use std::time::Duration;
 use thiserror::Error;
 
+/// PATH-based binary lookup (pure Rust, no external `which` crate).
+#[cfg(target_os = "linux")]
+fn which_in_path(binary: &str) -> bool {
+    std::env::var_os("PATH").is_some_and(|path_var| {
+        std::env::split_paths(&path_var).any(|dir| dir.join(binary).is_file())
+    })
+}
+
 /// Capability-based discovery client
 ///
 /// This is the **primary interface** for discovering services by capability.
@@ -67,11 +75,13 @@ pub struct CapabilityDiscovery {
 }
 
 impl CapabilityDiscovery {
-    /// Create new capability discovery client
+    /// Create new capability discovery client (sync bridge).
     ///
     /// Automatically detects available discovery methods:
     /// - mDNS/DNS-SD via Songbird (if on local network)
     /// - Environment variables (always available)
+    ///
+    /// Prefer [`new_async`](Self::new_async) when calling from async contexts.
     ///
     /// # Errors
     ///
@@ -80,14 +90,37 @@ impl CapabilityDiscovery {
         Self::with_config(&DiscoveryConfig::default())
     }
 
-    /// Create with custom configuration
+    /// Create new capability discovery client (async, no runtime bridge).
     ///
     /// # Errors
     ///
-    /// Returns `DiscoveryError` if the tokio runtime cannot be created
+    /// Returns error if discovery backend cannot be initialized.
+    pub async fn new_async() -> Result<Self, DiscoveryError> {
+        Self::with_config_async(&DiscoveryConfig::default()).await
+    }
+
+    /// Create with custom configuration (sync bridge).
+    ///
+    /// # Errors
+    ///
+    /// Returns `DiscoveryError` if the discovery backend cannot be initialized.
     pub fn with_config(config: &DiscoveryConfig) -> Result<Self, DiscoveryError> {
-        // Detect and initialize appropriate discovery backend
         let discovery = Self::detect_discovery_backend()?;
+
+        Ok(Self {
+            discovery,
+            timeout: config.timeout,
+            enable_localhost_fallback: config.enable_localhost_fallback,
+        })
+    }
+
+    /// Create with custom configuration (async, no runtime bridge).
+    ///
+    /// # Errors
+    ///
+    /// Returns `DiscoveryError` if the discovery backend cannot be initialized.
+    pub async fn with_config_async(config: &DiscoveryConfig) -> Result<Self, DiscoveryError> {
+        let discovery = Self::detect_discovery_backend_async().await?;
 
         Ok(Self {
             discovery,
@@ -182,50 +215,66 @@ impl CapabilityDiscovery {
             .ok_or_else(|| DiscoveryError::NoServicesFound("No services available".to_string()))
     }
 
-    /// Detect available discovery backend
+    /// Async detection of available discovery backend.
     ///
     /// **Deep Debt Compliance**: Runtime environment detection
     /// - Checks for mDNS capability (local network via Songbird)
     /// - Falls back to environment variables (self-knowledge)
     /// - Graceful degradation at every level
     ///
-    /// ## Evolution (Feb 15, 2026)
+    /// ## Evolution (Mar 29, 2026)
     ///
-    /// Removed vendor-specific detection (K8s, Docker, cloud providers).
-    /// Service discovery is Songbird's responsibility - ToadStool only cares
-    /// about hardware capabilities.
-    fn detect_discovery_backend() -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
+    /// Removed nested `Runtime::new()` + `block_on` anti-pattern.
+    /// Now natively async. Sync callers should use `new()` which
+    /// detects the current runtime or creates one safely.
+    async fn detect_discovery_backend_async()
+    -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
         use crate::service_discovery::DiscoveryMethod;
 
-        // 1. Check for mDNS availability (Avahi on Linux, Bonjour on macOS)
-        // mDNS discovery is delegated to Songbird (comms primal)
         #[cfg(target_os = "linux")]
         {
-            if std::path::Path::new("/usr/bin/avahi-browse").exists() {
+            if which_in_path("avahi-browse") {
                 tracing::info!("mDNS (Avahi) available - Songbird can use for local discovery");
             }
         }
 
         #[cfg(target_os = "macos")]
         {
-            // Bonjour is built into macOS
             tracing::info!("mDNS (Bonjour) available on macOS - Songbird can use for discovery");
         }
 
-        // 2. Fall back to environment variables (Deep Debt: self-knowledge)
         tracing::info!("Using environment-based service discovery");
 
-        // ServiceDiscovery::new is async, so we need to run it in a blocking context
-        // NOTE: This will panic if called from within an async runtime.
-        // For async contexts, use the async discovery methods directly.
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| DiscoveryError::InvalidConfig(format!("Failed to create runtime: {e}")))?;
-
-        let discovery = runtime
-            .block_on(ServiceDiscovery::new(DiscoveryMethod::Auto))
+        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto)
+            .await
             .map_err(|e| DiscoveryError::DiscoveryFailed(e.to_string()))?;
 
         Ok(Box::new(discovery))
+    }
+
+    /// Sync bridge for discovery backend initialization.
+    ///
+    /// Tries to use an existing tokio runtime handle (safe from async contexts).
+    /// Falls back to creating a lightweight current-thread runtime when no
+    /// runtime is active.
+    fn detect_discovery_backend() -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            std::thread::scope(|s| {
+                s.spawn(|| handle.block_on(Self::detect_discovery_backend_async()))
+                    .join()
+                    .map_err(|_| {
+                        DiscoveryError::DiscoveryFailed("discovery thread panicked".to_string())
+                    })?
+            })
+        } else {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| {
+                    DiscoveryError::InvalidConfig(format!("Failed to create runtime: {e}"))
+                })?;
+            rt.block_on(Self::detect_discovery_backend_async())
+        }
     }
 
     /// Try localhost fallback for development

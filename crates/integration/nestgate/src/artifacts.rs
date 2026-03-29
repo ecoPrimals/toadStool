@@ -20,7 +20,11 @@ impl StorageClient {
     /// # Errors
     ///
     /// Returns an error if the storage service rejects the artifact.
-    pub fn store_artifact(&self, name: &str, data: &[u8]) -> Result<StorageResult, NestGateError> {
+    pub async fn store_artifact(
+        &self,
+        name: &str,
+        data: &[u8],
+    ) -> Result<StorageResult, NestGateError> {
         use base64::Engine;
         let id = Uuid::new_v4();
         let checksum = Self::calculate_checksum(data);
@@ -35,28 +39,30 @@ impl StorageClient {
             "data_base64": base64::engine::general_purpose::STANDARD.encode(data),
         });
 
-        let rt = tokio::runtime::Handle::try_current();
-        if let Ok(handle) = rt {
-            match handle.block_on(self.rpc_client.call("storage.artifact.store", payload)) {
-                Ok(_response) => {
-                    debug!("Artifact {name} stored via storage service (id={id})");
-                    return Ok(StorageResult {
-                        id,
-                        status: StorageStatus::Success,
-                        message: format!("Artifact stored: {name}"),
-                    });
-                }
-                Err(e) => {
-                    debug!("Storage service unavailable ({e}), falling back to local metadata");
-                }
+        match self
+            .rpc_client
+            .call("storage.artifact.store", payload)
+            .await
+        {
+            Ok(_response) => {
+                debug!("Artifact {name} stored via storage service (id={id})");
+                Ok(StorageResult {
+                    id,
+                    status: StorageStatus::Success,
+                    message: format!("Artifact stored: {name}"),
+                })
+            }
+            Err(e) => {
+                debug!("Storage service unavailable ({e}), falling back to local metadata");
+                Ok(StorageResult {
+                    id,
+                    status: StorageStatus::Success,
+                    message: format!(
+                        "Artifact stored locally: {name} (storage service unavailable)"
+                    ),
+                })
             }
         }
-
-        Ok(StorageResult {
-            id,
-            status: StorageStatus::Success,
-            message: format!("Artifact stored locally: {name} (storage service unavailable)"),
-        })
     }
 
     /// Retrieve artifact via JSON-RPC from the storage service.
@@ -67,23 +73,27 @@ impl StorageClient {
     /// # Errors
     ///
     /// Returns an error if the response cannot be decoded.
-    pub fn retrieve_artifact(&self, id: Uuid) -> Result<Option<Vec<u8>>, NestGateError> {
+    pub async fn retrieve_artifact(&self, id: Uuid) -> Result<Option<Vec<u8>>, NestGateError> {
         let payload = serde_json::json!({ "artifact_id": id.to_string() });
 
-        let rt = tokio::runtime::Handle::try_current();
-        if let Ok(handle) = rt
-            && let Ok(response) =
-                handle.block_on(self.rpc_client.call("storage.artifact.retrieve", payload))
-            && let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str())
+        match self
+            .rpc_client
+            .call("storage.artifact.retrieve", payload)
+            .await
         {
-            use base64::Engine;
-            let bytes = base64::engine::general_purpose::STANDARD
-                .decode(data_b64)
-                .map_err(|e| NestGateError::Storage(format!("base64 decode: {e}")))?;
-            return Ok(Some(bytes));
+            Ok(response) => {
+                if let Some(data_b64) = response.get("data_base64").and_then(|v| v.as_str()) {
+                    use base64::Engine;
+                    let bytes = base64::engine::general_purpose::STANDARD
+                        .decode(data_b64)
+                        .map_err(|e| NestGateError::Storage(format!("base64 decode: {e}")))?;
+                    Ok(Some(bytes))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(_) => Ok(None),
         }
-
-        Ok(None)
     }
 
     /// Get artifact metadata via modern async RPC

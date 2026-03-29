@@ -67,6 +67,9 @@ pub mod capability_fallback {
 
     /// Shader compiler capability (WGSL/SPIR-V → native binary) — e.g. coralReef
     pub const SHADER_COMPILER: u16 = 8090;
+
+    /// Display IPC capability (local display server communication)
+    pub const DISPLAY_IPC: u16 = 8091;
 }
 
 /// Map a capability id string to the cold-start port literal from [`capability_fallback`].

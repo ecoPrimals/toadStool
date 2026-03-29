@@ -10,6 +10,17 @@ use tracing::info;
 use uuid::Uuid;
 
 use super::types::*;
+
+/// PATH-based compiler lookup (no hardcoded `/usr/bin` paths).
+fn find_compiler_in_path(name: &str) -> PathBuf {
+    std::env::var_os("PATH")
+        .and_then(|path_var| {
+            std::env::split_paths(&path_var)
+                .map(|dir| dir.join(name))
+                .find(|candidate| candidate.is_file())
+        })
+        .unwrap_or_else(|| PathBuf::from(name))
+}
 use crate::{
     AuthenticationSettings, COBOLSettings, ConnectionSettings, DatasetConfig, JCLSettings,
 };
@@ -58,7 +69,7 @@ impl AS400Adapter {
 
 #[async_trait::async_trait]
 impl LegacyAdapter for AS400Adapter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "AS/400 Adapter"
     }
 
@@ -281,7 +292,7 @@ impl Default for COBOLCompiler {
                 link_options: vec![],
                 runtime_options: vec![],
             },
-            compiler_path: PathBuf::from("/usr/bin/cobc"),
+            compiler_path: find_compiler_in_path("cobc"),
             library_paths: vec![],
         }
     }
@@ -377,7 +388,7 @@ impl DatasetManager {
         &mut self,
         datasets: &HashMap<String, DatasetConfig>,
     ) -> ToadStoolResult<()> {
-        self.datasets = datasets.clone();
+        self.datasets.clone_from(datasets);
         Ok(())
     }
 }
@@ -402,7 +413,7 @@ impl DCLProcessor {
 impl Default for VAXFortranCompiler {
     fn default() -> Self {
         Self {
-            compiler_path: PathBuf::from("/usr/bin/f77"),
+            compiler_path: find_compiler_in_path("f77"),
             compiler_options: vec![],
             library_paths: vec![],
         }

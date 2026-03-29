@@ -34,7 +34,7 @@ pub enum SubstratePreference {
     Auto,
     /// Use a specific substrate type.
     Specific(SubstrateType),
-    /// Select by capability names (e.g. ["cuda", "opencl"]).
+    /// Select by capability names (e.g. `["cuda", "opencl"]`).
     ByCapability(Vec<String>),
 }
 

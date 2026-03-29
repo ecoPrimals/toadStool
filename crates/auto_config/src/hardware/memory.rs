@@ -34,18 +34,18 @@ impl Default for MemoryInfo {
 
 /// Detect memory configuration
 pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<MemoryInfo> {
-    let mut memory_info = MemoryInfo::default();
-
-    // Try to get memory info from /proc/meminfo on Linux
-    if cfg!(target_os = "linux")
+    let memory_info = if cfg!(target_os = "linux")
         && let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await
     {
-        memory_info = parse_linux_meminfo(&meminfo);
-    }
+        parse_linux_meminfo(&meminfo)
+    } else {
+        MemoryInfo::default()
+    };
 
     // macOS memory detection
     #[cfg(target_os = "macos")]
-    {
+    let memory_info = {
+        let mut m = memory_info;
         if let Ok(output) = tokio::process::Command::new("sysctl")
             .arg("-n")
             .arg("hw.memsize")
@@ -56,14 +56,16 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
                 .trim()
                 .parse::<u64>()
             {
-                memory_info.total_gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+                m.total_gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
             }
         }
-    }
+        m
+    };
 
     // Windows memory detection
     #[cfg(target_os = "windows")]
-    {
+    let memory_info = {
+        let mut m = memory_info;
         if let Ok(output) = tokio::process::Command::new("wmic")
             .arg("computersystem")
             .arg("get")
@@ -78,14 +80,15 @@ pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<Memo
                     let parts: Vec<&str> = line.split(',').collect();
                     if parts.len() >= 2 {
                         if let Ok(bytes) = parts[1].trim().parse::<u64>() {
-                            memory_info.total_gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+                            m.total_gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
                         }
                     }
                     break;
                 }
             }
         }
-    }
+        m
+    };
 
     debug!("Detected memory: {:.1} GB total", memory_info.total_gb);
     Ok(memory_info)

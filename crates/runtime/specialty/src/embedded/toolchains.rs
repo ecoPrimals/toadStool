@@ -78,7 +78,7 @@ impl Toolchain6502 {
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EmbeddedToolchain for Toolchain6502 {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "6502 Toolchain"
     }
 
@@ -164,7 +164,7 @@ macro_rules! impl_toolchain_stub {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl EmbeddedToolchain for $toolchain {
-            fn name(&self) -> &str {
+            fn name(&self) -> &'static str {
                 $name
             }
 

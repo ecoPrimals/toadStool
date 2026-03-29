@@ -31,50 +31,36 @@ impl InputValidator {
             )));
         }
 
-        // Check for blocked patterns
-        for pattern in &self.rules.blocked_patterns {
-            if let Ok(regex) = regex::Regex::new(pattern) {
-                if regex.is_match(input) {
-                    return Err(ToadStoolError::security(format!(
-                        "Input contains blocked pattern: {pattern}"
-                    )));
-                }
+        self.check_patterns(input, &self.rules.blocked_patterns, "blocked pattern")?;
+        self.check_patterns(
+            input,
+            &self.rules.sql_injection_patterns,
+            "SQL injection pattern",
+        )?;
+        self.check_patterns(input, &self.rules.xss_patterns, "XSS pattern")?;
+        self.check_patterns(
+            input,
+            &self.rules.command_injection_patterns,
+            "command injection pattern",
+        )?;
+
+        Ok(())
+    }
+
+    fn check_patterns(
+        &self,
+        input: &str,
+        patterns: &[String],
+        label: &str,
+    ) -> ToadStoolResult<()> {
+        let lowered = input.to_lowercase();
+        for pattern in patterns {
+            if lowered.contains(&pattern.to_lowercase()) {
+                return Err(ToadStoolError::security(format!(
+                    "Input contains {label}: {pattern}"
+                )));
             }
         }
-
-        // Check for SQL injection
-        for pattern in &self.rules.sql_injection_patterns {
-            if let Ok(regex) = regex::Regex::new(pattern) {
-                if regex.is_match(input) {
-                    return Err(ToadStoolError::security(
-                        "Input contains SQL injection pattern".to_string(),
-                    ));
-                }
-            }
-        }
-
-        // Check for XSS
-        for pattern in &self.rules.xss_patterns {
-            if let Ok(regex) = regex::Regex::new(pattern) {
-                if regex.is_match(input) {
-                    return Err(ToadStoolError::security(
-                        "Input contains XSS pattern".to_string(),
-                    ));
-                }
-            }
-        }
-
-        // Check for command injection
-        for pattern in &self.rules.command_injection_patterns {
-            if let Ok(regex) = regex::Regex::new(pattern) {
-                if regex.is_match(input) {
-                    return Err(ToadStoolError::security(
-                        "Input contains command injection pattern".to_string(),
-                    ));
-                }
-            }
-        }
-
         Ok(())
     }
 
