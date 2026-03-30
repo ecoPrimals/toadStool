@@ -178,12 +178,12 @@ mod tests {
             .unwrap();
 
         let report = enforcer.report_for_provider("basic").unwrap();
-        let security_checks: Vec<_> = report
-            .checks
-            .iter()
-            .filter(|c| c.check_name.starts_with("security_"))
-            .collect();
-        assert!(!security_checks.is_empty());
+        assert!(
+            report
+                .checks
+                .iter()
+                .any(|c| c.check_name.starts_with("security_"))
+        );
     }
 
     #[tokio::test]

@@ -179,7 +179,7 @@ fn test_discovery_client_clone() {
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let socket_path = temp_dir.path().join("songbird.sock");
     let client = DiscoveryClient::for_test(conn, socket_path);
-    let cloned = client.clone();
+    let cloned = client;
     let _ = cloned;
 }
 

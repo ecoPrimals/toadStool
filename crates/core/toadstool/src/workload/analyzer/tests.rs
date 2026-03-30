@@ -30,9 +30,7 @@ fn test_aiml_training_large_model() {
         64,
     );
     let analyzer = WorkloadAnalyzer::new();
-    let chars = analyzer.analyze(&WorkloadSpec::AiMl {
-        workload: workload.clone(),
-    });
+    let chars = analyzer.analyze(&WorkloadSpec::AiMl { workload });
     assert_eq!(chars.compute_intensity, ComputeIntensity::High);
     assert!(matches!(chars.gpu_advantage, GpuAdvantage::VeryHigh));
 }
@@ -58,9 +56,7 @@ fn test_cuda_large_workload() {
     };
     let workload = CudaWorkload::new(source, launch);
     let analyzer = WorkloadAnalyzer::new();
-    let chars = analyzer.analyze(&WorkloadSpec::Cuda {
-        workload: workload.clone(),
-    });
+    let chars = analyzer.analyze(&WorkloadSpec::Cuda { workload });
     assert!(matches!(
         chars.compute_intensity,
         ComputeIntensity::VeryHigh | ComputeIntensity::Extreme

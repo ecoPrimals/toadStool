@@ -23,7 +23,7 @@ pub enum PaperTapeFormat {
 }
 
 /// ROM formats
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ROMFormat {
     /// Intel HEX
     IntelHex,

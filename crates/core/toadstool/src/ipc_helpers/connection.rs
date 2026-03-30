@@ -75,7 +75,7 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
             //   gpu, wasm, container
             "capabilities": [
                 "compute", "workload", "orchestration", "ai_local",
-                "gpu", "wasm", "container"
+                "gpu", "wasm", "container", "shader.dispatch"
             ],
             "endpoint": socket_endpoint
         },

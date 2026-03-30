@@ -114,7 +114,7 @@ fn test_network_health_monitor_clone() {
 #[test]
 fn test_capability_tracker_clone() {
     let tracker = CapabilityTracker::new();
-    let _cloned = tracker.clone();
+    let _cloned = tracker;
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn test_node_registry_get_nodes_by_types_empty_filter() {
 fn test_node_registry_get_node() {
     let mut registry = NodeRegistry::new();
     let reg = make_node_registration("lookup", NodeType::Songbird, 1.0, 2.0, 10.0);
-    registry.register_node(reg.clone()).unwrap();
+    registry.register_node(reg).unwrap();
     let found = registry.get_node(&"lookup".to_string());
     assert!(found.is_some());
     assert_eq!(found.unwrap().node_id, "lookup");

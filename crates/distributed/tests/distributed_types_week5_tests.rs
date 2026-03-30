@@ -28,7 +28,7 @@ fn test_execution_status_variants() {
 #[test]
 fn test_execution_status_clone() {
     let status = DistributedExecutionStatus::Running;
-    let cloned = status.clone();
+    let cloned = status;
 
     assert!(matches!(cloned, DistributedExecutionStatus::Running));
 }
@@ -71,7 +71,7 @@ fn test_allocation_strategy_variants() {
 #[test]
 fn test_allocation_strategy_clone() {
     let strategy = ResourceAllocationStrategy::Fair;
-    let cloned = strategy.clone();
+    let cloned = strategy;
 
     assert!(matches!(cloned, ResourceAllocationStrategy::Fair));
 }

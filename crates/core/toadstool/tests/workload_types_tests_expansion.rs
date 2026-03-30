@@ -127,7 +127,7 @@ fn test_workload_spec_native_with_many_args() {
         executable: ExecutableSource::File {
             path: PathBuf::from("/bin/echo"),
         },
-        args: Some(many_args.clone()),
+        args: Some(many_args),
         working_dir: None,
         env_vars: HashMap::new(),
         user: None,
@@ -209,7 +209,7 @@ fn test_workload_spec_container_with_volumes() {
         args: None,
         env_vars: HashMap::new(),
         working_dir: None,
-        volumes: volumes.clone(),
+        volumes,
         ports: vec![],
         registry_auth: None,
     };
@@ -244,7 +244,7 @@ fn test_workload_spec_container_with_ports() {
         env_vars: HashMap::new(),
         working_dir: None,
         volumes: vec![],
-        ports: ports.clone(),
+        ports,
         registry_auth: None,
     };
 
@@ -259,7 +259,7 @@ fn test_workload_spec_container_with_ports() {
 #[test]
 fn test_workload_spec_wasm_with_large_module() {
     let large_module: Vec<u8> = vec![0x00, 0x61, 0x73, 0x6d]; // start of valid WASM
-    let mut extended = large_module.clone();
+    let mut extended = large_module;
     extended.extend(vec![0; 10000]); // 10KB module
 
     let workload = WorkloadSpec::Wasm {
@@ -297,7 +297,7 @@ fn test_workload_spec_python_with_many_requirements() {
             code: "import numpy as np\nprint(np.__version__)".to_string(),
         },
         python_version: Some("3.11".to_string()),
-        requirements: requirements.clone(),
+        requirements,
         env_vars: HashMap::new(),
     };
 
@@ -362,7 +362,7 @@ fn test_wasi_config_with_allowed_dirs() {
     let wasi = WasiConfig {
         inherit_env: false,
         inherit_stdio: false,
-        allowed_dirs: dirs.clone(),
+        allowed_dirs: dirs,
         preopened_dirs: vec![],
         args: vec![],
     };
@@ -383,7 +383,7 @@ fn test_wasi_config_with_args() {
         inherit_stdio: false,
         allowed_dirs: vec![],
         preopened_dirs: vec![],
-        args: args.clone(),
+        args,
     };
 
     assert_eq!(wasi.args.len(), 3);
@@ -397,7 +397,7 @@ fn test_wasi_config_with_preopened_dirs() {
         inherit_env: false,
         inherit_stdio: false,
         allowed_dirs: vec![],
-        preopened_dirs: dirs.clone(),
+        preopened_dirs: dirs,
         args: vec![],
     };
 
@@ -505,7 +505,7 @@ fn test_registry_auth_clone() {
 #[test]
 fn test_gpu_argument_buffer() {
     let data = vec![1u8, 2, 3, 4, 5, 6, 7, 8];
-    let arg = GpuArgument::Buffer { data: data.clone() };
+    let arg = GpuArgument::Buffer { data };
 
     match arg {
         GpuArgument::Buffer { data: d } => {
@@ -519,9 +519,7 @@ fn test_gpu_argument_buffer() {
 #[test]
 fn test_gpu_argument_buffer_large() {
     let large_data = vec![0u8; 1024 * 1024]; // 1MB buffer
-    let arg = GpuArgument::Buffer {
-        data: large_data.clone(),
-    };
+    let arg = GpuArgument::Buffer { data: large_data };
 
     match arg {
         GpuArgument::Buffer { data: d } => {
@@ -804,7 +802,7 @@ fn test_executable_source_empty_url() {
 fn test_executable_source_large_bytes() {
     let large_data = vec![0u8; 1024 * 1024]; // 1MB
     let source = ExecutableSource::Bytes {
-        data: large_data.clone().into(),
+        data: large_data.into(),
     };
 
     match source {

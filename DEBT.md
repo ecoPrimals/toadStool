@@ -1,9 +1,68 @@
 # Active Technical Debt Register
 
-**Date**: March 29, 2026 — S166
+**Date**: March 30, 2026 — S168
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S168 Resolved Debt
+
+### Sovereign shader pipeline — `shader.dispatch` (ludoSpring V35 / coralReef Iter 70)
+- **D-SHADER-DISPATCH-S168**: Implemented `shader.dispatch` JSON-RPC method — closes the compile→dispatch→readback E2E gap identified by ludoSpring V35 (Part 4) and coralReef Iter 70. Accepts compiled GPU binary via base64 string, JSON u8 array, or nested `compile_result` object (zero-friction pipeline chaining from coralReef's `shader.compile.wgsl` response). Routes to GPU via VFIO/DRM through coralReef's `compute.dispatch.execute`. Includes thermal safety check, job tracking (reuses `compute.dispatch.{status,result}`), and `readback` flag. 18 tests (16 unit + 2 handler-level routing/discoverability). Registered in semantic method registry, literal router, and Songbird capability registration. See: `wateringHole/handoffs/CORALREEF_ITER70_LUDOSPRING_GAP_RESOLUTION_HANDOFF_MAR30_2026.md` and `LUDOSPRING_V35_PRIMAL_COMPOSITION_GAP_DISCOVERY_HANDOFF_MAR30_2026.md` (Part 4).
+
+### Clippy audit — full workspace zero-warning
+- **D-CLIPPY-WORKSPACE-S168**: Full `cargo clippy --workspace --all-targets -- -D warnings` audit and resolution. ~120+ warnings fixed across 20+ crates: `redundant_clone` (63), `default_constructed_unit_structs` (18), `float_cmp` (8), `needless_collect` (8), `derive_partial_eq_without_eq` (5), `manual_mul_add` (5), `string_lit_as_bytes` (3), `needless_pass_by_value` (2), `items_after_statements`, `match_like_matches_macro`, `iter_on_single_items`. Also refactored `discovery_engine::with_defaults()` to use `vec![]` with `#[cfg()]` attributes (eliminating `vec_init_then_push`). All auto-fixable lints applied via `cargo clippy --fix`, remaining hand-fixed.
+
+### Async-first auth_backend evolution
+- **D-AUTH-ASYNC-S168**: `BearDogBackend::sign_payload()` and `public_key()` evolved from sync (per-call `std::thread::scope` + `tokio::runtime::Builder::new_current_thread()` + `block_on`) to native `async fn`. Eliminates per-call thread spawn and runtime construction. `AuthBackend` trait methods now async. `AuthenticationManager::sign_token_request()`, `sign_verification_request()`, `get_public_key()` all async. All call sites and tests updated.
+
+### Zero-copy server connection
+- **D-ZERO-COPY-SERVER-S168**: Server `pure_jsonrpc/connection.rs` — raw JSON-RPC path evolved from `first_line.trim().as_bytes().to_vec()` (copy) to `Cow::Borrowed(first_line.trim().as_bytes())` (zero-copy). Both Unix and TCP handlers now avoid allocation for the common non-HTTP path.
+
+### Coverage expansion round 2
+- **D-COV-ERROR-S168**: `runtime/specialty/src/error.rs` 0% → covered: all `SpecialtyRuntimeError` variants, Display, Debug, `From<std::io::Error>`, `From<serde_json::Error>`, `Error::source()`, conversion to `ToadStoolError`.
+- **D-COV-MANAGEMENT-S168**: `runtime/specialty/types/configs/management.rs` 0% → covered: `TransferType`, `MonitoringType`, `AdministrationType`, `JobPriority` — Default, serde, From conversions (legacy ↔ canonical).
+- **D-COV-EMULATION-S168**: `runtime/specialty/types/emulation.rs` 0% → covered: `EmulationConfig`, `PeripheralConfig`, `EmulationStatus` — Default, Clone, Debug, serde round-trips.
+- **D-COV-DOS-S168**: `runtime/specialty/embedded/dos.rs` 0% → covered: `DOSInterface`, `DOSFileSystem`, `FileAllocationTable`, `DirectoryEntry` — constructors, env get/set, directory ops, mount/unmount, FAT operations.
+- **D-COV-CROSS-COMPILATION-S168**: `runtime/specialty/cross_compilation.rs` 0% → covered: `Toolchain6502`, `ToolchainZ80`, `Toolchain68000` — Default, Debug, serde, full async trait methods (initialize, compile, link, create_rom_image, disassemble).
+- **D-COV-MAINFRAME-IBM-S168**: `runtime/specialty/mainframe/ibm.rs` 0% → covered: `IBMMainframeAdapter` — Default, Debug, serde for config types, async lifecycle (init → submit → status → cancel → shutdown), error paths.
+- **D-COV-MAINFRAME-VAX-S168**: `runtime/specialty/mainframe/vax.rs` 0% → covered: `VAXVMSAdapter` — Default, Debug, serde for types, async lifecycle + error paths.
+- **D-COV-MAINFRAME-AS400-S168**: `runtime/specialty/mainframe/as400.rs` 0% → covered: `AS400Adapter`, `JCLGenerator`, `COBOLCompiler`, `Terminal3270`, `DatasetManager`, `DCLProcessor`, `VAXFortranCompiler`, `VAXTerminal`, `VMSFileSystem`, `RPGCompiler`, `Terminal5250`, `IFSManager` — comprehensive constructor/default/debug/serde/async tests.
+- **D-COV-EMULATOR-IMPLS-S168**: `runtime/specialty/embedded/emulator_impls.rs` 0% → covered: `EmbeddedEmulator` trait methods, serde for config types, async stub methods.
+- **D-COV-PROGRAMMER-IMPLS-S168**: `runtime/specialty/embedded/programmer_impls.rs` 0% → covered: `ProgrammerInterface` trait methods, serde for types, async stub methods.
+
+## S167 Resolved Debt
+
+### Quality gates
+- **D-FMT-S167**: `cargo fmt` regression fixed (formatting diffs in 7+ files).
+- **D-CLI-VERSION**: Hardcoded CLI version `"0.1.0"` evolved to `env!("CARGO_PKG_VERSION")` — tracks workspace version automatically.
+
+### Terminology and stub evolution
+- **D-STUB-TOOLCHAINS**: Embedded toolchain "stub" terminology evolved — `not_implemented()` → `toolchain_unavailable()`, `impl_toolchain_stub!` → `impl_pending_toolchain!`, doc comments updated to describe runtime discovery rather than "stubs". Module doc table documents evolution path per architecture.
+- **D-STUB-MOCKS**: Testing `mocks::stubs` submodule renamed to `mocks::lightweight` — test doubles are complete implementations, not placeholders.
+
+### Zero-copy evolution
+- **D-ZERO-COPY-JSONRPC**: `JsonRpcRequest.method` evolved from `String` to `Cow<'_, str>` — eliminates per-call allocation on the IPC hot path. `JsonRpcRequest` now borrows both `jsonrpc` version and `method` from caller.
+
+### Feature gating and dependency evolution
+- **D-GBM-FEATURE**: `gbm` optional dep in `toadstool-display` gated behind explicit `gbm-buffers` feature using `dep:` syntax — prevents implicit feature activation, documents wayland system dependency requirement.
+- **D-DEP-AUDIT-S167**: Full dependency audit confirmed: `blake3` with `pure` feature avoids `cc` build dep; wayland deps only via explicit `gbm-buffers` feature; CI handles system deps for `--all-features` builds.
+
+### block_on audit
+- **D-BLOCK-ON-AUDIT**: All 5 production `block_on` sites audited — all use safe `std::thread::scope` + `spawn` patterns. No nested-runtime issues. Highest-value evolution target: `auth_backend.rs` (per-call runtime + thread creation).
+
+### Coverage expansion
+- **D-COV-CRYPTO-LOCK**: `distributed/crypto_lock/access_control/types.rs` 0% → covered: `AccessResult`, `PermissionLevel`, `CryptoLockStatus`, `AccessPolicies` serde round-trips, Default, Clone, Debug, proptest.
+- **D-COV-CRYPTO-LOCK-MOD**: `distributed/crypto_lock/mod.rs` 0% → covered: `duration_from_days` edge cases + proptest.
+- **D-COV-ECOSYSTEM-AUTH**: `distributed/ecosystem/auth.rs` 0% → covered: `AuthenticationManager`, `AuthToken`, `Credentials` — Default, serde, Clone, Debug.
+- **D-COV-ECOSYSTEM-REGISTRY**: `distributed/ecosystem/registry.rs` 0% → covered: `ServiceRegistry`, `RegisteredService` — Default, serde, Clone, Debug.
+- **D-COV-EMBEDDED-TYPES**: `runtime/specialty/embedded/types.rs` 0% → covered: 20+ types including all enums (`EmbeddedJobType`, `SourceFileType`, `OptimizationLevel`, `DebugInterface`, `EmulationStatus`, etc.), `CompilationResult`, `LinkResult`, `MemoryMapRegion`, `Symbol`, `Section`, `CpuRegisters`, `PeripheralStatus`, `TargetInfo`.
+- **D-COV-TOOLCHAINS**: `runtime/specialty/embedded/toolchains.rs` 0% → covered: all 6 toolchains return `toolchain_unavailable` errors, `name()`, `supported_architectures()`, constructors.
+- **D-COV-EMULATORS**: `runtime/specialty/embedded/emulators.rs` 0% → covered: constructors, Default, Debug.
+- **D-COV-PROGRAMMERS**: `runtime/specialty/embedded/programmers.rs` 0% → covered: constructors, Default, Debug.
+- **D-COV-LOAD-BALANCING**: `cli/network_config/types/load_balancing.rs` 0% → covered: `CookieConfig`, `StickySessionsConfig`, `BackendConfig` (default weight, explicit weight, health check), `LoadBalancingConfig` full nested round-trip.
+- **D-COV-BIOME-RESOURCES**: `core/toadstool/biomeos_integration/types/resources.rs` 0% → covered: `BiomeHealthCheckConfig`, `TokenPropagationConfig`, `VolumeConfig`, `BackupConfig`, `BiomeStorageConfig`, `PrimalResources`, `GpuAllocation`, `BiomeResources`.
+- **D-COV-SERVER-DISPATCH**: `cli/commands/dispatch/server.rs` 0% → covered: BYOB server error mapping, daemon shutdown behavior.
 
 ## S166 Resolved Debt
 

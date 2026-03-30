@@ -120,7 +120,7 @@ fn test_constraint_evaluation_get_satisfaction() {
         ConstraintSatisfaction::Partial(0.5),
     );
     let eval = ConstraintEvaluation {
-        request: request.clone(),
+        request,
         results,
         overall_score: 0.75,
         is_feasible: true,

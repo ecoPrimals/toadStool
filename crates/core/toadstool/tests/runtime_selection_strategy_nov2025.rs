@@ -34,11 +34,11 @@ fn test_runtime_selection_strategy_optimal_match() {
 #[test]
 fn test_runtime_selection_strategy_clone() {
     let strategy = RuntimeSelectionStrategy::FirstAvailable;
-    let cloned = strategy.clone();
+    let cloned = strategy;
     assert!(matches!(cloned, RuntimeSelectionStrategy::FirstAvailable));
 
     let strategy2 = RuntimeSelectionStrategy::LoadBalanced;
-    let cloned2 = strategy2.clone();
+    let cloned2 = strategy2;
     assert!(matches!(cloned2, RuntimeSelectionStrategy::LoadBalanced));
 }
 

@@ -228,7 +228,7 @@ impl AuthenticationManager {
     /// # Errors
     ///
     /// Returns an error if signing fails (e.g., invalid key configuration).
-    pub fn sign_token_request(
+    pub async fn sign_token_request(
         &self,
         token: &AuthenticationToken,
         target_primal: &str,
@@ -246,7 +246,7 @@ impl AuthenticationManager {
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0)
         );
-        self.sign_payload(&payload)
+        self.sign_payload(&payload).await
     }
 
     /// Sign a verification request payload for the given primal.
@@ -254,7 +254,7 @@ impl AuthenticationManager {
     /// # Errors
     ///
     /// Returns an error if signing fails (e.g., invalid key configuration).
-    pub fn sign_verification_request(&self, primal_name: &str) -> ToadStoolResult<String> {
+    pub async fn sign_verification_request(&self, primal_name: &str) -> ToadStoolResult<String> {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
@@ -267,17 +267,17 @@ impl AuthenticationManager {
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0)
         );
-        self.sign_payload(&payload)
+        self.sign_payload(&payload).await
     }
 
-    fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
-        self.backend.sign_payload(payload)
+    async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
+        self.backend.sign_payload(payload).await
     }
 
     /// Returns the public key for signature verification, if available.
     #[must_use]
-    pub fn get_public_key(&self) -> Option<String> {
-        self.backend.public_key()
+    pub async fn get_public_key(&self) -> Option<String> {
+        self.backend.public_key().await
     }
 
     /// # Errors

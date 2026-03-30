@@ -328,12 +328,13 @@ async fn test_vec_filter_operations() -> Result<()> {
     // Test Vec filtering for service selection
     let services = vec!["songbird", "beardog", "nestgate", "squirrel"];
 
-    let filtered: Vec<_> = services
-        .iter()
-        .filter(|s| s.contains("bird") || s.contains("dog"))
-        .collect();
-
-    assert_eq!(filtered.len(), 2);
+    assert_eq!(
+        services
+            .iter()
+            .filter(|s| s.contains("bird") || s.contains("dog"))
+            .count(),
+        2
+    );
 
     Ok(())
 }

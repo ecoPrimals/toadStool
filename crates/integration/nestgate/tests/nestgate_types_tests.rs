@@ -42,7 +42,7 @@ fn test_storage_tier_archive() {
 #[test]
 fn test_storage_tier_clone() {
     let tier = StorageTier::Hot;
-    let cloned = tier.clone();
+    let cloned = tier;
 
     assert!(matches!(cloned, StorageTier::Hot));
 }

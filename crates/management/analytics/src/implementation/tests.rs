@@ -101,7 +101,7 @@ async fn test_analyze_trends_with_data() {
         let point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
             metric_name: "cpu_usage".to_string(),
-            value: 50.0 + (f64::from(i) * 0.5),
+            value: f64::from(i).mul_add(0.5, 50.0),
             timestamp: now,
             runtime_type: None,
             execution_id: None,
@@ -125,7 +125,7 @@ async fn test_predict_values_with_data() {
         let point = AnalyticsDataPoint {
             id: Uuid::new_v4(),
             metric_name: "memory_usage".to_string(),
-            value: 60.0 + (f64::from(i) * 0.1),
+            value: f64::from(i).mul_add(0.1, 60.0),
             timestamp: now,
             runtime_type: None,
             execution_id: None,

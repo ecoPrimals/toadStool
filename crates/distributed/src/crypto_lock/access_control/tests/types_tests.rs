@@ -123,7 +123,7 @@ fn test_access_result_clone() {
         expires_at: None,
         restrictions: vec![],
     };
-    let c = granted.clone();
+    let c = granted;
     assert!(matches!(c, AccessResult::Granted { .. }));
 }
 
@@ -217,7 +217,7 @@ fn test_access_result_denied_clone() {
         reason: "no".to_string(),
         how_to_get_access: "get permit".to_string(),
     };
-    let c = denied.clone();
+    let c = denied;
     assert!(matches!(c, AccessResult::Denied { .. }));
 }
 
@@ -268,7 +268,7 @@ fn test_crypto_lock_status_clone() {
         delegation_chains: vec![],
         expiring_permissions: vec![],
     };
-    let c = status.clone();
+    let c = status;
     assert!(c.pure_rust_unlocked);
 }
 

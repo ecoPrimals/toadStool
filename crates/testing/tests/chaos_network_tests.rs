@@ -101,7 +101,7 @@ async fn test_connection_drop_single() {
     let result = chaos.simulate_request().await;
     assert!(result.is_err());
 
-    if let Err(NetworkFailure::ConnectionDrop) = result {
+    if matches!(result, Err(NetworkFailure::ConnectionDrop)) {
         // Expected
     } else {
         panic!("Expected ConnectionDrop");

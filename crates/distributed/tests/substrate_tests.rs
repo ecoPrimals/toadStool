@@ -35,7 +35,7 @@ fn test_traditional_platform_arm64() {
     };
 
     // Test Clone trait
-    let cloned = platform.clone();
+    let cloned = platform;
     assert!(format!("{cloned:?}").contains("Apple M3 Max"));
 }
 
@@ -386,7 +386,7 @@ fn test_universal_substrate_capabilities_creation() {
     assert!(debug_str.contains("Test CPU"));
 
     // Test Clone trait
-    let cloned = caps.clone();
+    let cloned = caps;
     assert_eq!(cloned.traditional_platforms.len(), 1);
     assert_eq!(cloned.container_platforms.len(), 1);
 }

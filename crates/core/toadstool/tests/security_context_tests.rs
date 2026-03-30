@@ -55,7 +55,7 @@ fn test_security_context_with_user_context() {
         groups: vec![100, 200],
     };
 
-    let context = SecurityContext::default().with_user_context(user.clone());
+    let context = SecurityContext::default().with_user_context(user);
 
     assert!(context.user_context.is_some());
     assert_eq!(

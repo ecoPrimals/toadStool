@@ -35,15 +35,13 @@ pub use runtime_engines::MockRuntimeEngine;
 pub use v4l2::{CaptureFormat, FramePattern, MockV4l2Config, MockV4l2Device, MockV4l2Error};
 pub use vfio::{AccessOp, MockVfioDevice, MockVfioError, RegisterAccessEntry};
 
-// Export the enhanced stub implementations
-pub use stubs::{
+pub use lightweight::{
     MockConfigLoader, MockSecurityContext, MockWorkloadSpec, ResourceRequirements, SecurityLevel,
     WorkloadType,
 };
 
-/// Simple stubs for configuration, security, and workload mocks.
-/// Used when full mock implementations are not yet needed.
-pub mod stubs {
+/// Lightweight test doubles for configuration, security, and workload testing.
+pub mod lightweight {
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
 

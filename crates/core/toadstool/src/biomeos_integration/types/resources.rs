@@ -144,3 +144,155 @@ pub struct BiomeResources {
     /// Network bandwidth
     pub network_bandwidth: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::{
+        BackupConfig, BiomeHealthCheckConfig, BiomeResources, BiomeStorageConfig, GpuAllocation,
+        PrimalResources, ReplicationConfig, TokenPropagationConfig, TokenValidationConfig,
+        VolumeConfig,
+    };
+
+    #[test]
+    fn biome_health_check_default_and_serde_roundtrip() {
+        let d = BiomeHealthCheckConfig::default();
+        assert_eq!(d.interval, Duration::from_secs(30));
+        assert_eq!(d.timeout, Duration::from_secs(10));
+        assert_eq!(d.retries, 3);
+        assert_eq!(d.initial_delay, Duration::from_secs(30));
+
+        let json = serde_json::to_string(&d).expect("serialize");
+        let back: BiomeHealthCheckConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.interval, d.interval);
+        assert_eq!(back.timeout, d.timeout);
+        assert_eq!(back.retries, d.retries);
+        assert_eq!(back.initial_delay, d.initial_delay);
+        assert!(format!("{d:?}").contains("BiomeHealthCheckConfig"));
+    }
+
+    #[test]
+    fn token_propagation_and_validation_serde_roundtrip_clone() {
+        let tv = TokenValidationConfig {
+            require_signature: true,
+            timestamp_window: Duration::from_secs(300),
+            replay_protection: true,
+        };
+        let tp = TokenPropagationConfig {
+            enabled: true,
+            refresh_interval: Duration::from_secs(600),
+            validation: tv.clone(),
+        };
+
+        let json = serde_json::to_string(&tp).expect("serialize tp");
+        let back: TokenPropagationConfig = serde_json::from_str(&json).expect("deserialize tp");
+        assert_eq!(back.enabled, tp.enabled);
+        assert_eq!(back.refresh_interval, tp.refresh_interval);
+        assert_eq!(back.validation.require_signature, tv.require_signature);
+        assert_eq!(back.validation.replay_protection, tv.replay_protection);
+
+        let cloned = tp.clone();
+        assert_eq!(cloned.validation.timestamp_window, tv.timestamp_window);
+        assert!(matches!(format!("{tp:?}"), s if s.contains("TokenPropagationConfig")));
+    }
+
+    #[test]
+    fn volume_config_serde_roundtrip() {
+        let v = VolumeConfig {
+            name: "data".to_string(),
+            size: "100Gi".to_string(),
+            storage_class: Some("fast".to_string()),
+            access_modes: vec!["ReadWriteOnce".to_string()],
+            mount_path: Some("/data".to_string()),
+            backup_policy: Some("daily".to_string()),
+        };
+        let json = serde_json::to_string(&v).expect("serialize");
+        let back: VolumeConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.name, v.name);
+        assert_eq!(back.access_modes, v.access_modes);
+        assert_eq!(back.mount_path, v.mount_path);
+    }
+
+    #[test]
+    fn backup_and_replication_config_serde_roundtrip() {
+        let b = BackupConfig {
+            enabled: true,
+            schedule: "0 2 * * *".to_string(),
+            retention: "30d".to_string(),
+            destination: "s3://bucket/backups".to_string(),
+        };
+        let r = ReplicationConfig {
+            enabled: false,
+            factor: 3,
+            strategy: "raft".to_string(),
+        };
+
+        let jb = serde_json::to_string(&b).unwrap();
+        let bb: BackupConfig = serde_json::from_str(&jb).unwrap();
+        assert_eq!(bb.schedule, b.schedule);
+
+        let jr = serde_json::to_string(&r).unwrap();
+        let rr: ReplicationConfig = serde_json::from_str(&jr).unwrap();
+        assert_eq!(rr.factor, r.factor);
+        assert!(!rr.enabled);
+    }
+
+    #[test]
+    fn biome_storage_config_serde_roundtrip() {
+        let s = BiomeStorageConfig {
+            enabled: true,
+            backend: "local".to_string(),
+            capacity: Some("500Gi".to_string()),
+        };
+        let json = serde_json::to_string(&s).expect("serialize");
+        let back: BiomeStorageConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.backend, s.backend);
+        assert_eq!(back.capacity, s.capacity);
+    }
+
+    #[test]
+    fn primal_resources_and_gpu_serde_roundtrip() {
+        let gpu = GpuAllocation {
+            count: 2,
+            gpu_type: Some("H100".to_string()),
+            memory: Some("80GB".to_string()),
+        };
+        let pr = PrimalResources {
+            cpu_cores: Some(8.0),
+            memory_gb: Some(64.0),
+            storage_gb: Some(500.0),
+            gpu: Some(gpu.clone()),
+            network_bandwidth: Some("10Gbps".to_string()),
+        };
+
+        let json = serde_json::to_string(&pr).expect("serialize");
+        let back: PrimalResources = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.cpu_cores, pr.cpu_cores);
+        assert_eq!(back.gpu.as_ref().unwrap().count, 2);
+        assert_eq!(
+            back.gpu.as_ref().unwrap().gpu_type,
+            Some("H100".to_string())
+        );
+
+        let jg = serde_json::to_string(&gpu).expect("serialize gpu");
+        let gg: GpuAllocation = serde_json::from_str(&jg).expect("deserialize gpu");
+        assert_eq!(gg.count, gpu.count);
+    }
+
+    #[test]
+    fn biome_resources_serde_roundtrip_optional_fields() {
+        let br = BiomeResources {
+            cpu_limit: Some(4.0),
+            memory_limit: Some("8Gi".to_string()),
+            storage_limit: None,
+            gpu_limit: Some(1),
+            network_bandwidth: None,
+        };
+        let json = serde_json::to_string(&br).expect("serialize");
+        let back: BiomeResources = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.cpu_limit, Some(4.0));
+        assert!(matches!(back.gpu_limit, Some(1)));
+        assert!(back.storage_limit.is_none());
+    }
+}

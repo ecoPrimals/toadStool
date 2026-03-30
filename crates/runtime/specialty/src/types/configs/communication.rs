@@ -153,7 +153,7 @@ pub struct ProgrammingInterface {
 }
 
 /// Programming interface types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProgrammingInterfaceType {
     /// In-System Programming (ISP)
     ISP,

@@ -20,7 +20,7 @@ use common::*;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_start() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     let result = monitor.start();
     assert!(result.is_ok(), "Monitor should start successfully");
     assert!(monitor.is_running(), "Monitor should be running");
@@ -28,7 +28,7 @@ async fn test_monitor_start() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_stop() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     monitor.start().unwrap();
     let result = monitor.stop();
     assert!(result.is_ok(), "Monitor should stop successfully");
@@ -37,7 +37,7 @@ async fn test_monitor_stop() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_restart() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     monitor.start().unwrap();
     monitor.stop().unwrap();
     let result = monitor.start();
@@ -50,7 +50,7 @@ async fn test_monitor_restart() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_start_idempotent() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     monitor.start().unwrap();
     let result = monitor.start();
     assert!(result.is_ok() || result.is_err());
@@ -58,14 +58,14 @@ async fn test_monitor_start_idempotent() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_stop_idempotent() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     let result = monitor.stop();
     assert!(result.is_ok() || result.is_err());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_graceful_shutdown() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     monitor.start().unwrap();
     let result = monitor.shutdown_gracefully(Duration::from_secs(5)).await;
     assert!(result.is_ok(), "Graceful shutdown should succeed");
@@ -84,7 +84,7 @@ async fn test_monitor_shutdown_timeout() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_cleanup_on_stop() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     monitor.start().unwrap();
     monitor.stop().unwrap();
     monitor.cleanup();

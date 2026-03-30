@@ -22,7 +22,7 @@ async fn test_validate_deployment_request() {
     let valid_request = create_test_deployment_request();
     assert!(DeploymentValidator::validate_deployment(&valid_request).is_ok());
 
-    let mut invalid_request = valid_request.clone();
+    let mut invalid_request = valid_request;
     for i in 0..100 {
         invalid_request.services.insert(
             format!("service-{i}"),

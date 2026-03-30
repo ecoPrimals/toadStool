@@ -381,7 +381,7 @@ mod tests {
         assert!(endpoint.is_fresh(Duration::from_secs(10)));
 
         // Simulate old endpoint
-        let mut old_endpoint = endpoint.clone();
+        let mut old_endpoint = endpoint;
         old_endpoint.last_seen = Instant::now()
             .checked_sub(Duration::from_secs(100))
             .unwrap();

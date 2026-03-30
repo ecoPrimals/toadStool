@@ -434,7 +434,8 @@ fn test_resource_limits_default() {
 #[test]
 fn test_resource_limits_clone() {
     let limits = ResourceLimits::default();
-    let _cloned = limits.clone();
+    let cloned = limits.clone();
+    assert_eq!(cloned.execution_timeout, limits.execution_timeout);
 
     // Should clone successfully - test passes if no panic occurs
 }
@@ -461,7 +462,8 @@ fn test_system_resources_default() {
 #[test]
 fn test_system_resources_clone() {
     let resources = SystemResources::default();
-    let _cloned = resources.clone();
+    let cloned = resources.clone();
+    assert_eq!(cloned.total_cpu_cores, resources.total_cpu_cores);
 
     // Should clone successfully - test passes if no panic occurs
 }

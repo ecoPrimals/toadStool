@@ -60,7 +60,7 @@ fn universal_job_type_from_str_custom() {
 #[test]
 fn resource_requirements_default_values() {
     let req = ResourceRequirements::default();
-    assert_eq!(req.cpu.min_cores, 1.0);
+    assert!((req.cpu.min_cores - 1.0).abs() < f64::EPSILON);
     assert_eq!(req.memory.min_bytes, 1024 * 1024 * 1024);
     assert!(req.gpu.is_none());
 }

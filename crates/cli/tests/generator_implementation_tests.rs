@@ -24,7 +24,7 @@ use toadstool_cli::templates::{BiomeTemplate, TemplateGenerator};
 #[test]
 fn test_generator_new() {
     let output_dir = PathBuf::from("/tmp/test");
-    let generator = TemplateGenerator::new(output_dir.clone(), false);
+    let generator = TemplateGenerator::new(output_dir, false);
 
     // Generator should be created successfully
     // (We can't inspect internal fields, but construction should work)

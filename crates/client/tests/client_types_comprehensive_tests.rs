@@ -264,7 +264,7 @@ fn test_execution_info_with_output() {
         completed_at: Some(SystemTime::now()),
         runtime_type: Some("container".to_string()),
         error_message: None,
-        output: Some(output.clone()),
+        output: Some(output),
         metrics: None,
     };
 
@@ -499,7 +499,7 @@ fn test_many_args() {
 
     let workload = WorkloadType::Native {
         executable: "/bin/echo".to_string(),
-        args: args.clone(),
+        args,
         working_dir: None,
     };
 
@@ -548,21 +548,21 @@ fn test_workload_type_clone() {
         working_dir: None,
     };
 
-    let cloned = workload.clone();
+    let cloned = workload;
     let _ = format!("{cloned:?}");
 }
 
 #[test]
 fn test_execution_status_clone() {
     let status = ExecutionStatus::Running;
-    let cloned = status.clone();
+    let cloned = status;
     let _ = format!("{cloned:?}");
 }
 
 #[test]
 fn test_resource_requirements_clone() {
     let resources = ResourceRequirements::default();
-    let cloned = resources.clone();
+    let cloned = resources;
     let _ = format!("{cloned:?}");
 }
 

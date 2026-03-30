@@ -264,7 +264,7 @@ mod tests {
     #[test]
     fn test_os_layer_manager_new() {
         let config = OSLayerConfig::default();
-        let manager = OSLayerManager::new(config.clone());
+        let manager = OSLayerManager::new(config);
         let info = manager.get_platform_info();
         assert_eq!(info.os, std::env::consts::OS);
         assert_eq!(info.arch, std::env::consts::ARCH);

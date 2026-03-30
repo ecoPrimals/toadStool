@@ -169,7 +169,7 @@ mod tests {
             runtime_used: RuntimeType::Native,
             warnings: vec![],
         };
-        let result = adapter.adapt_response(response.clone());
+        let result = adapter.adapt_response(response);
         assert!(result.is_ok());
         let adapted = result.unwrap();
         assert_eq!(adapted.status, ExecutionStatus::Success);
@@ -190,7 +190,7 @@ mod tests {
             runtime_used: RuntimeType::Native,
             warnings: vec![],
         };
-        let result = adapter.adapt_response(response.clone());
+        let result = adapter.adapt_response(response);
         assert!(result.is_ok());
         let adapted = result.unwrap();
         assert!(matches!(

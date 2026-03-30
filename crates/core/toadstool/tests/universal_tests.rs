@@ -176,24 +176,23 @@ fn test_primal_context_security_levels() {
         geo_location: None,
     };
 
-    let contexts = vec![
+    let levels = [
         SecurityLevel::Basic,
         SecurityLevel::Standard,
         SecurityLevel::High,
         SecurityLevel::Maximum,
-    ]
-    .into_iter()
-    .map(|level| PrimalContext {
-        user_id: "user".to_string(),
-        device_id: "device".to_string(),
-        session_id: "session".to_string(),
-        network_location: location.clone(),
-        security_level: level,
-        metadata: HashMap::new(),
-    })
-    .collect::<Vec<_>>();
-
-    assert_eq!(contexts.len(), 4);
+    ];
+    for level in levels {
+        let _ = PrimalContext {
+            user_id: "user".to_string(),
+            device_id: "device".to_string(),
+            session_id: "session".to_string(),
+            network_location: location.clone(),
+            security_level: level,
+            metadata: HashMap::new(),
+        };
+    }
+    assert_eq!(levels.len(), 4);
 }
 
 #[test]
@@ -231,7 +230,7 @@ fn test_primal_context_equality() {
         user_id: "user-123".to_string(),
         device_id: "device-456".to_string(),
         session_id: "session-789".to_string(),
-        network_location: location.clone(),
+        network_location: location,
         security_level: SecurityLevel::Standard,
         metadata: HashMap::new(),
     };

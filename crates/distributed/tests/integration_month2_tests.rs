@@ -25,7 +25,7 @@ async fn test_coordinator_initialization() {
 
 #[tokio::test]
 async fn test_coordinator_start_stop() {
-    let mut coord = create_coordinator().await;
+    let coord = create_coordinator().await;
 
     // Start
     coord.start().await.unwrap();
@@ -38,7 +38,7 @@ async fn test_coordinator_start_stop() {
 
 #[tokio::test]
 async fn test_coordinator_graceful_shutdown() {
-    let mut coord = create_coordinator().await;
+    let coord = create_coordinator().await;
     coord.start().await.unwrap();
 
     // Add jobs
@@ -56,7 +56,7 @@ async fn test_coordinator_graceful_shutdown() {
 
 #[tokio::test]
 async fn test_coordinator_restart() {
-    let mut coord = create_coordinator().await;
+    let coord = create_coordinator().await;
 
     coord.start().await.unwrap();
     coord.stop().await.unwrap();
@@ -365,12 +365,12 @@ impl Coordinator {
         self.jobs.read().await.len()
     }
 
-    async fn start(&mut self) -> Result<(), String> {
+    async fn start(&self) -> Result<(), String> {
         *self.running.write().await = true;
         Ok(())
     }
 
-    async fn stop(&mut self) -> Result<(), String> {
+    async fn stop(&self) -> Result<(), String> {
         *self.running.write().await = false;
         Ok(())
     }
@@ -379,7 +379,7 @@ impl Coordinator {
         *self.running.read().await
     }
 
-    async fn shutdown_graceful(&mut self, _timeout: std::time::Duration) -> Result<(), String> {
+    async fn shutdown_graceful(&self, _timeout: std::time::Duration) -> Result<(), String> {
         *self.running.write().await = false;
         Ok(())
     }

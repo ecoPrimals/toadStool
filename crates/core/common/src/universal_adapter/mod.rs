@@ -49,9 +49,11 @@ pub use capability_types::{
     HealthStatus, IntelligenceFeature, ModelType, MonitoringFeature, NetworkFeature,
     SecurityFeature, ServiceEndpoint, StorageFeature, TrustLevel,
 };
-pub use discovery_engine::{DiscoveryEngine, DiscoverySource, EnvironmentSource, LocalRegistrySource};
 #[cfg(feature = "mdns")]
 pub use discovery_engine::MDnsSource;
+pub use discovery_engine::{
+    DiscoveryEngine, DiscoverySource, EnvironmentSource, LocalRegistrySource,
+};
 pub use graceful_degradation::{DegradationStrategy, GracefulDegradation};
 pub use provider_registry::ProviderRegistry;
 pub use request_builder::{

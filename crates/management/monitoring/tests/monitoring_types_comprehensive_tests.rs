@@ -124,7 +124,7 @@ mod threshold_action_tests {
     #[test]
     fn test_threshold_action_log() {
         let action = ThresholdAction::Log;
-        let cloned = action.clone();
+        let cloned = action;
 
         match cloned {
             ThresholdAction::Log => { /* No-op verification */ }
@@ -155,7 +155,7 @@ mod threshold_action_tests {
     #[test]
     fn test_threshold_action_clone() {
         let action = ThresholdAction::Alert;
-        let cloned = action.clone();
+        let cloned = action;
 
         match cloned {
             ThresholdAction::Alert => { /* No-op verification */ }

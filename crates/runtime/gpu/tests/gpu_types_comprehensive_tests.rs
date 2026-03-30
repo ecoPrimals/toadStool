@@ -309,7 +309,7 @@ fn test_device_type_virtual_gpu() {
 #[test]
 fn test_device_type_clone() {
     let device_type = DeviceType::DiscreteGpu;
-    let cloned = device_type.clone();
+    let cloned = device_type;
 
     match cloned {
         DeviceType::DiscreteGpu => (),
@@ -417,7 +417,7 @@ fn test_device_id_hash_equality() {
     let id1 = DeviceId::new(GpuFramework::Cuda, 0, "id1".to_string());
     let id2 = DeviceId::new(GpuFramework::Cuda, 0, "id1".to_string());
     let mut map = HashMap::new();
-    map.insert(id1.clone(), "device1");
+    map.insert(id1, "device1");
 
     assert_eq!(map.get(&id2), Some(&"device1"));
 }

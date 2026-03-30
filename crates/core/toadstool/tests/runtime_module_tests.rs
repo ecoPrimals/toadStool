@@ -241,12 +241,13 @@ fn test_runtime_type_vec_filter() {
         RuntimeType::Container,
     ];
 
-    let containers: Vec<_> = types
-        .iter()
-        .filter(|rt| **rt == RuntimeType::Container)
-        .collect();
-
-    assert_eq!(containers.len(), 2);
+    assert_eq!(
+        types
+            .iter()
+            .filter(|rt| **rt == RuntimeType::Container)
+            .count(),
+        2
+    );
 }
 
 #[test]

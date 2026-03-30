@@ -27,21 +27,21 @@ fn test_config() -> StorageProvisioningConfig {
 #[test]
 fn test_manager_with_inmemory_initialization() {
     let config = test_config();
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert_eq!(manager.config().storage_tier, "hot");
 }
 
 #[test]
 fn test_manager_with_nestgate_initialization() {
     let config = test_config();
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert!(manager.config().backup_enabled);
 }
 
 #[test]
 fn test_config_access() {
     let config = test_config();
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     let retrieved_config = manager.config();
     assert_eq!(retrieved_config.storage_tier, "hot");
     assert_eq!(retrieved_config.replication_factor, 3);

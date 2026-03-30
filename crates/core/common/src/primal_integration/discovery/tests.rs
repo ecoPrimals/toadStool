@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+use std::io::{Read, Write};
+use std::net::TcpListener;
+
 use super::*;
 
 #[test]
@@ -301,9 +304,6 @@ fn try_discover_via_docker_compose_with_project_but_unresolvable_returns_none() 
 // --- try_discover_via_registry (mock HTTP server) ---
 
 fn spawn_registry_response(body: String) -> (std::thread::JoinHandle<()>, String) {
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
-
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind registry mock");
     let addr = listener.local_addr().expect("local addr");
     let endpoint = format!("http://127.0.0.1:{}", addr.port());
@@ -473,14 +473,11 @@ fn try_discover_via_registry_capability_underscore_matches_hyphen() {
 fn try_discover_via_registry_url_with_custom_path_segment() {
     let json = r#"{"services":[{"name":"p","capabilities":["mcp"],"endpoints":["http://127.0.0.1:65005"]}]}"#
         .to_string();
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
 
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let port = listener.local_addr().expect("addr").port();
     let endpoint = format!("http://127.0.0.1:{port}/api/v1/services/list");
 
-    let body = json.clone();
     let server = std::thread::spawn(move || {
         let Ok((mut stream, _)) = listener.accept() else {
             return;
@@ -489,8 +486,8 @@ fn try_discover_via_registry_url_with_custom_path_segment() {
         let _ = stream.read(&mut buf);
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-            body.len(),
-            body
+            json.len(),
+            json
         );
         let _ = stream.write_all(response.as_bytes());
     });

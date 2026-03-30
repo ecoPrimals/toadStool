@@ -638,7 +638,7 @@ fn test_validation_cache_config() {
         cache_type: String::new(),
         ..Default::default()
     };
-    config.cache = Some(cache_config.clone());
+    config.cache = Some(cache_config);
     let result = config.validate_runtime_config();
     assert!(result.is_err());
     assert!(
@@ -688,7 +688,7 @@ fn test_validation_metrics_config() {
         endpoint: String::new(),
         ..Default::default()
     };
-    config.metrics = Some(metrics_config.clone());
+    config.metrics = Some(metrics_config);
     let result = config.validate_runtime_config();
     assert!(result.is_err());
     assert!(

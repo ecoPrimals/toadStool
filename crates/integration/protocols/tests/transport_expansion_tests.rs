@@ -488,21 +488,21 @@ fn test_transport_trpc_variant() {
 #[test]
 fn test_transport_clone_http() {
     let transport = Transport::Http(HttpTransport::new());
-    let cloned = transport.clone();
+    let cloned = transport;
     assert_eq!(cloned.transport_type(), TransportType::Http);
 }
 
 #[test]
 fn test_transport_clone_websocket() {
     let transport = Transport::TRpc(TRpcTransport::new());
-    let cloned = transport.clone();
+    let cloned = transport;
     assert_eq!(cloned.transport_type(), TransportType::TRpc);
 }
 
 #[test]
 fn test_transport_clone_trpc() {
     let transport = Transport::TRpc(TRpcTransport::new());
-    let cloned = transport.clone();
+    let cloned = transport;
     assert_eq!(cloned.transport_type(), TransportType::TRpc);
 }
 

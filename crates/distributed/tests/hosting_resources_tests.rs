@@ -161,7 +161,7 @@ fn test_hosting_resource_manager_with_config() {
         reservation_buffer: 0.1,
     };
 
-    let manager = HostingResourceManager::new(config.clone());
+    let manager = HostingResourceManager::new(config);
     assert_eq!(manager.config.limits.get("max_instances"), Some(&10));
 }
 

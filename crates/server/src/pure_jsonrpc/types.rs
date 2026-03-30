@@ -252,7 +252,7 @@ mod proptest_tests {
                 jsonrpc: "2.0".to_string(),
                 method: method.clone(),
                 params: None,
-                id: Some(serde_json::Value::String(id_str.clone())),
+                id: Some(serde_json::Value::String(id_str)),
             };
             let json = serde_json::to_string(&builder).unwrap();
             let parsed: JsonRpcRequest<'_> = serde_json::from_str(&json).unwrap();

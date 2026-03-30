@@ -78,10 +78,11 @@ async fn test_multiple_coordinators_can_coexist() {
 async fn test_coordinator_survives_multiple_clones() {
     let coordinator = create_test_coordinator().await;
 
-    // Create multiple clones
-    let clones: Vec<_> = (0..10).map(|_| Arc::clone(&coordinator)).collect();
-
-    // All clones should be valid
+    // Create multiple clones (keep alive so strong_count reflects them)
+    let mut clones = Vec::with_capacity(10);
+    for _ in 0..10 {
+        clones.push(Arc::clone(&coordinator));
+    }
     assert_eq!(clones.len(), 10);
     assert!(Arc::strong_count(&coordinator) >= 10);
 }

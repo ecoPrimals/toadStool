@@ -64,7 +64,7 @@ fn test_authentication_config_many_api_keys() {
     let api_keys: Vec<String> = (0..100).map(|i| format!("key{i}")).collect();
     let config = AuthenticationConfig {
         required: true,
-        api_keys: api_keys.clone(),
+        api_keys,
         jwt_secret: None,
         basic_auth: HashMap::new(),
         custom_validator: None,

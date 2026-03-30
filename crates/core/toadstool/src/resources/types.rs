@@ -509,7 +509,7 @@ mod tests {
         let metrics = RuntimeMetrics::default();
         let json = serde_json::to_string(&metrics).unwrap();
         let deser: RuntimeMetrics = serde_json::from_str(&json).unwrap();
-        assert_eq!(deser.cpu.cores_used, metrics.cpu.cores_used);
+        assert!((deser.cpu.cores_used - metrics.cpu.cores_used).abs() < f64::EPSILON);
         assert_eq!(deser.memory.used_bytes, metrics.memory.used_bytes);
     }
 
@@ -544,14 +544,14 @@ mod tests {
     #[test]
     fn cpu_metrics_default() {
         let m = CpuMetrics::default();
-        assert_eq!(m.usage_percent, 0.0);
-        assert_eq!(m.cores_used, 0.0);
+        assert!((m.usage_percent - 0.0).abs() < f64::EPSILON);
+        assert!((m.cores_used - 0.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn gpu_metrics_default() {
         let m = GpuMetrics::default();
-        assert_eq!(m.usage_percent, 0.0);
+        assert!((m.usage_percent - 0.0).abs() < f64::EPSILON);
         assert!(m.temperature_celsius.is_none());
     }
 
@@ -585,7 +585,7 @@ mod tests {
         };
         let json = serde_json::to_string(&la).unwrap();
         let deser: LoadAverages = serde_json::from_str(&json).unwrap();
-        assert_eq!(deser.one_minute, 1.5);
+        assert!((deser.one_minute - 1.5).abs() < f64::EPSILON);
     }
 
     #[test]

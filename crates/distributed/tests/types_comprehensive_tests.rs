@@ -229,7 +229,7 @@ fn test_execution_target_local() {
 #[test]
 fn test_execution_target_clone() {
     let target1 = ExecutionTarget::Local;
-    let target2 = target1.clone();
+    let target2 = target1;
 
     assert!(matches!(target2, ExecutionTarget::Local));
 }

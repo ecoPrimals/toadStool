@@ -606,8 +606,14 @@ mod universal_tests {
             architecture: "aarch64".to_string(),
         };
         let meta = manager.get_platform_metadata(&platform);
-        assert_eq!(meta.get("type").map(|s| s.as_ref()), Some("linux"));
-        assert_eq!(meta.get("distribution").map(|s| s.as_ref()), Some("Debian"));
+        assert_eq!(
+            meta.get("type").map(std::convert::AsRef::as_ref),
+            Some("linux")
+        );
+        assert_eq!(
+            meta.get("distribution").map(std::convert::AsRef::as_ref),
+            Some("Debian")
+        );
     }
 
     #[tokio::test]

@@ -376,7 +376,7 @@ fn public_types_default_clone_debug_serde_roundtrip() {
     let _: ResourceLimits = serde_json::from_str(&j).expect("de");
 
     let mut spec = native_echo_spec("serde-id");
-    spec.resource_limits = limits.clone();
+    spec.resource_limits = limits;
     let sj = serde_json::to_string(&spec).expect("serde");
     let _: SandboxSpec = serde_json::from_str(&sj).expect("de");
 
@@ -478,7 +478,7 @@ fn public_types_default_clone_debug_serde_roundtrip() {
         severity: ViolationSeverity::Low,
         action_taken: "a".to_string(),
     };
-    let v2 = viol.clone();
+    let v2 = viol;
     assert!(!format!("{v2:?}").is_empty());
 
     let ru = ResourceUsage::default();

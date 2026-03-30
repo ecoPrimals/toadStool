@@ -649,9 +649,9 @@ async fn transport_status_unknown_stream_id() {
 
 #[tokio::test]
 async fn semantic_dispatch_resolves_known_methods() {
+    type CheckFn = Box<dyn Fn(&serde_json::Value)>;
     let handler = test_handler();
 
-    type CheckFn = Box<dyn Fn(&serde_json::Value)>;
     let methods_and_checks: Vec<(&str, CheckFn)> = vec![
         (
             "compute.health",

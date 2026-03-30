@@ -102,7 +102,7 @@ fn test_server_event_execution_started() {
     };
 
     // Verify event can be created and cloned
-    let cloned = event.clone();
+    let cloned = event;
     match cloned {
         ServerEvent::ExecutionStarted {
             execution_id: id,

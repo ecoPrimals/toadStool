@@ -152,7 +152,7 @@ async fn test_shared_input_data_across_runtimes() {
     input1.data = shared_data.clone().into();
 
     let mut input2 = ExecutionInput::default();
-    input2.data = shared_data.clone().into();
+    input2.data = shared_data.into();
 
     assert_eq!(input1.data, input2.data);
 }
@@ -192,10 +192,10 @@ async fn test_output_data_transfer_between_runtimes() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_native_to_wasm_interop() {
     // Test Native runtime output feeding into WASM runtime
-    let native_output = "native_result".as_bytes().to_vec();
+    let native_output = b"native_result".to_vec();
 
     let mut wasm_input = ExecutionInput::default();
-    wasm_input.data = native_output.clone().into();
+    wasm_input.data = native_output.into();
 
     assert!(!wasm_input.data.is_empty());
 }
@@ -206,7 +206,7 @@ async fn test_wasm_to_container_interop() {
     let wasm_output = vec![1, 2, 3, 4];
 
     let mut container_input = ExecutionInput::default();
-    container_input.data = wasm_output.clone().into();
+    container_input.data = wasm_output.into();
 
     assert_eq!(container_input.data.len(), 4);
 }
@@ -214,10 +214,10 @@ async fn test_wasm_to_container_interop() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_container_to_python_interop() {
     // Test Container runtime output feeding into Python runtime
-    let container_output = "{'key': 'value'}".as_bytes().to_vec();
+    let container_output = b"{'key': 'value'}".to_vec();
 
     let mut python_input = ExecutionInput::default();
-    python_input.data = container_output.clone().into();
+    python_input.data = container_output.into();
 
     assert!(!python_input.data.is_empty());
 }
@@ -429,10 +429,10 @@ async fn test_binary_data_across_runtimes() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_text_data_across_runtimes() {
     // Test text data handling across runtimes
-    let text_data = "Hello from runtime".as_bytes().to_vec();
+    let text_data = b"Hello from runtime".to_vec();
 
     let mut input = ExecutionInput::default();
-    input.data = text_data.clone().into();
+    input.data = text_data.into();
 
     let decoded = String::from_utf8(input.data.to_vec()).unwrap();
     assert_eq!(decoded, "Hello from runtime");
@@ -445,7 +445,7 @@ async fn test_json_data_across_runtimes() {
     let json_data = json_str.as_bytes().to_vec();
 
     let mut input = ExecutionInput::default();
-    input.data = json_data.clone().into();
+    input.data = json_data.into();
 
     // Verify JSON can be parsed
     let parsed = serde_json::from_slice::<serde_json::Value>(&input.data);

@@ -47,12 +47,7 @@ impl InputValidator {
         Ok(())
     }
 
-    fn check_patterns(
-        &self,
-        input: &str,
-        patterns: &[String],
-        label: &str,
-    ) -> ToadStoolResult<()> {
+    fn check_patterns(&self, input: &str, patterns: &[String], label: &str) -> ToadStoolResult<()> {
         let lowered = input.to_lowercase();
         for pattern in patterns {
             if lowered.contains(&pattern.to_lowercase()) {

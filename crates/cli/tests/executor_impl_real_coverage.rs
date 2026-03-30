@@ -116,14 +116,11 @@ async fn test_biome_name_determination_logic() {
     let manifest_name = "my-biome".to_string();
 
     // When provided name exists, use it
-    let provided_name = Some("custom-name".to_string());
-    let effective_name = provided_name
-        .clone()
-        .unwrap_or_else(|| manifest_name.clone());
+    let effective_name = "custom-name".to_string();
     assert_eq!(effective_name, "custom-name");
 
     // When no provided name, use manifest name
-    let effective_name_fallback = manifest_name.clone();
+    let effective_name_fallback = manifest_name;
     assert_eq!(effective_name_fallback, "my-biome");
 }
 
@@ -145,7 +142,7 @@ async fn test_resource_limit_override_logic() {
     let memory_override = Some("1Gi".to_string());
 
     let effective_cpu = cpu_override.or(base_limits.cpu);
-    let effective_memory = memory_override.or(base_limits.memory.clone());
+    let effective_memory = memory_override.or_else(|| base_limits.memory.clone());
 
     assert_eq!(effective_cpu, Some(2.0));
     assert_eq!(effective_memory, Some("1Gi".to_string()));

@@ -333,7 +333,7 @@ fn test_full_config_lifecycle() {
     assert!(config.validate().is_ok());
 
     // Customize for environment
-    let dev_config = config.clone().for_environment("development");
+    let dev_config = config.for_environment("development");
     assert_eq!(dev_config.app.environment, "development");
 
     // Add overrides

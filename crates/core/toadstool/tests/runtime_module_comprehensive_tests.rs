@@ -51,7 +51,7 @@ fn test_runtime_orchestrator_with_all_strategies() {
 #[test]
 fn test_runtime_selection_strategy_clone() {
     let strategy = RuntimeSelectionStrategy::FirstAvailable;
-    let cloned = strategy.clone();
+    let cloned = strategy;
 
     // Should be cloneable - types are Copy/trivial, no explicit drop needed
     let _ = strategy;

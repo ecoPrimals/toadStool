@@ -467,7 +467,7 @@ fn test_runtime_config_default_works() {
 #[test]
 fn test_runtime_config_can_be_cloned() {
     let config1 = RuntimeConfig::default();
-    let config2 = config1.clone();
+    let config2 = config1;
 
     // Should be able to clone
     let _ = config1;

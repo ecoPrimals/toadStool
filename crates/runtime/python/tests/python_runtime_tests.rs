@@ -73,7 +73,7 @@ fn test_python_runtime_config_with_requirements() {
             request_timeout: Duration::from_secs(300),
             ..Default::default()
         },
-        requirements: requirements.clone(),
+        requirements,
     };
 
     assert_eq!(config.requirements.len(), 3);
@@ -257,7 +257,7 @@ fn test_python_runtime_config_many_requirements() {
             request_timeout: Duration::from_secs(300),
             ..Default::default()
         },
-        requirements: requirements.clone(),
+        requirements,
     };
 
     assert_eq!(config.requirements.len(), 100);

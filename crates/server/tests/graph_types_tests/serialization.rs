@@ -112,7 +112,7 @@ fn test_clone_graph_edge() {
 fn test_clone_node_resource_requirements() {
     let node = GraphNode::builder("n", "op").cpu(2.0).build();
     let req = node.requirements;
-    let cloned = req.clone();
+    let cloned = req;
     assert_eq!(cloned.cpu.as_ref().unwrap().min_cores, 2.0);
 }
 

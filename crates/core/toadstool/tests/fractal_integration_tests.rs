@@ -70,7 +70,7 @@ async fn test_capability_adaptation_validity() {
     let mut detector = LayerDetector::new();
     let layer = detector.detect().await.unwrap();
 
-    let adapter = LayerCapabilityAdapter::new(layer.clone());
+    let adapter = LayerCapabilityAdapter::new(layer);
     let caps = adapter.get_adapted_capabilities();
 
     // All layers should have some compute capability

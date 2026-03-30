@@ -144,7 +144,7 @@ fn test_execution_spec_native_with_args() {
     let args = vec!["arg1".to_string(), "arg2".to_string(), "arg3".to_string()];
     let spec = ExecutionSpec::Native {
         command: "cmd".to_string(),
-        args: Some(args.clone()),
+        args: Some(args),
         working_dir: None,
         env: None,
     };
@@ -260,7 +260,7 @@ fn test_execution_spec_python_with_args() {
     let spec = ExecutionSpec::Python {
         script: None,
         file: Some("script.py".to_string()),
-        args: Some(args.clone()),
+        args: Some(args),
         env: None,
     };
 
@@ -313,7 +313,7 @@ fn test_execution_spec_wasm_with_args() {
     let args = vec!["arg1".to_string()];
     let spec = ExecutionSpec::Wasm {
         module: "module.wasm".to_string(),
-        args: Some(args.clone()),
+        args: Some(args),
         env: None,
     };
 
@@ -367,7 +367,7 @@ fn test_execution_spec_container_with_command() {
     let command = vec!["sh".to_string(), "-c".to_string()];
     let spec = ExecutionSpec::Container {
         image: "ubuntu:20.04".to_string(),
-        command: Some(command.clone()),
+        command: Some(command),
         args: None,
         env: None,
     };

@@ -400,8 +400,7 @@ impl CryptoVerificationContext {
             return Ok(false);
         }
 
-        let client =
-            toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+        let client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         let params = serde_json::json!({
             "data": message,
@@ -418,16 +417,17 @@ impl CryptoVerificationContext {
                         crate::CliError::Other(format!("Failed to create runtime: {e}"))
                     })?;
                 rt.block_on(client.call("crypto.verify", params))
-                    .map_err(|e| {
-                        crate::CliError::Other(format!("crypto.verify failed: {e}"))
-                    })
+                    .map_err(|e| crate::CliError::Other(format!("crypto.verify failed: {e}")))
             })
             .join()
             .unwrap_or_else(|_| Err(crate::CliError::Other("verify thread panicked".into())))
         });
 
         match result {
-            Ok(value) => Ok(value.get("valid").and_then(|v| v.as_bool()).unwrap_or(false)),
+            Ok(value) => Ok(value
+                .get("valid")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)),
             Err(e) => {
                 tracing::debug!("crypto.verify RPC failed: {e}, returning false");
                 Ok(false)
@@ -514,7 +514,10 @@ mod tests {
     fn test_verify_ed25519_returns_false_without_crypto_primal() {
         let context = CryptoVerificationContext::new();
         let result = context.verify_ed25519_signature(b"hello", &[0u8; 64], &[0u8; 32]);
-        assert!(!result.unwrap(), "must return false when no crypto primal is reachable");
+        assert!(
+            !result.unwrap(),
+            "must return false when no crypto primal is reachable"
+        );
     }
 
     #[test]
@@ -522,8 +525,14 @@ mod tests {
         let context = CryptoVerificationContext::new();
         let short_key = context.verify_ed25519_signature(b"msg", &[0u8; 64], &[0u8; 16]);
         let short_sig = context.verify_ed25519_signature(b"msg", &[0u8; 32], &[0u8; 32]);
-        assert!(short_key.is_ok(), "length validation is BearDog's responsibility");
-        assert!(short_sig.is_ok(), "length validation is BearDog's responsibility");
+        assert!(
+            short_key.is_ok(),
+            "length validation is BearDog's responsibility"
+        );
+        assert!(
+            short_sig.is_ok(),
+            "length validation is BearDog's responsibility"
+        );
     }
 
     #[test]

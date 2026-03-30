@@ -301,7 +301,7 @@ fn test_callback_event_variants() {
 #[test]
 fn test_callback_event_clone() {
     let event = CallbackEvent::Started;
-    let cloned = event.clone();
+    let cloned = event;
 
     assert!(matches!(cloned, CallbackEvent::Started));
 }
@@ -588,7 +588,7 @@ fn test_callback_event_round_trip() {
 fn test_execution_input_large_data() {
     let large_data = vec![0u8; 1024 * 1024]; // 1MB
     let input = ExecutionInput {
-        data: large_data.clone().into(),
+        data: large_data.into(),
         format: None,
         metadata: HashMap::new(),
     };

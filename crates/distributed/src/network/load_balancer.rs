@@ -239,7 +239,7 @@ mod tests {
             last_failure_time: None,
         };
 
-        let cloned = breaker.clone();
+        let cloned = breaker;
         assert_eq!(cloned.failure_count, 3);
     }
 

@@ -563,7 +563,7 @@ mod tests {
             "temperature": 0.7,
             "top_p": 0.9
         });
-        let mut body = base.clone();
+        let mut body = base;
         if let (Some(obj), Some(extra_obj)) = (body.as_object_mut(), extra.as_object()) {
             for (k, v) in extra_obj {
                 obj.insert(k.clone(), v.clone());

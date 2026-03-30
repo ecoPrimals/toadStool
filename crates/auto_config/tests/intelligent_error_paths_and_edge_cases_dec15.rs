@@ -111,7 +111,7 @@ fn test_usage_hints_with_very_long_workload_list() {
     let workload_types: Vec<String> = (0..1000).map(|i| format!("workload_type_{i}")).collect();
 
     let hints = UsageHints {
-        predicted_workload_types: workload_types.clone(),
+        predicted_workload_types: workload_types,
         expected_cpu_usage: 0.5,
         expected_memory_usage: 0.5,
         prefers_gpu: false,

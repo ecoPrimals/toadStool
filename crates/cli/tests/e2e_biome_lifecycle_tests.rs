@@ -275,7 +275,7 @@ async fn e2e_timeout_protected_operations() -> Result<()> {
     // All should complete within timeout
     let mut completed = 0;
     for handle in handles {
-        if let Ok(Ok(Ok(()))) = handle.await {
+        if matches!(handle.await, Ok(Ok(Ok(())))) {
             completed += 1;
         }
     }

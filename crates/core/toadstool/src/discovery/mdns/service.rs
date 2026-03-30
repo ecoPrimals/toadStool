@@ -212,7 +212,7 @@ mod tests {
             ..DiscoveryConfig::default()
         };
 
-        let result = MdnsDiscoveryService::with_config(config.clone());
+        let result = MdnsDiscoveryService::with_config(config);
         if let Ok(mdns) = result {
             assert_eq!(mdns.config.discovery_interval, Duration::from_secs(60));
             assert_eq!(mdns.config.service_timeout, Duration::from_secs(600));
@@ -346,11 +346,6 @@ mod tests {
         };
 
         let all = vec![storage_service];
-        let matching: Vec<_> = all
-            .into_iter()
-            .filter(|s| s.has_capability("compute"))
-            .collect();
-
-        assert!(matching.is_empty());
+        assert!(!all.iter().any(|s| s.has_capability("compute")));
     }
 }

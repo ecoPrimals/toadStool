@@ -322,12 +322,14 @@ async fn test_gpu_workflow() {
         .expect("Validation should succeed");
 
     if !availability.available {
-        let gpu_gaps: Vec<_> = availability
-            .gaps
-            .iter()
-            .filter(|gap| gap.resource_type.contains("gpu"))
-            .collect();
-        println!("GPU gaps found: {}", gpu_gaps.len());
+        println!(
+            "GPU gaps found: {}",
+            availability
+                .gaps
+                .iter()
+                .filter(|gap| gap.resource_type.contains("gpu"))
+                .count()
+        );
     }
 
     let optimizer = ResourceOptimizer::new();

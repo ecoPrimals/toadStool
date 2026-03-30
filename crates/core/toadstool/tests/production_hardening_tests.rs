@@ -533,7 +533,7 @@ async fn test_resource_requirements_in_allocation() {
         id: Uuid::new_v4(),
         resource_type: "gpu-workload".to_string(),
         allocated_at: Instant::now(),
-        requirements: requirements.clone(),
+        requirements,
         owner: "ml-pipeline".to_string(),
         last_accessed: Instant::now(),
     };

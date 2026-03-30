@@ -29,28 +29,28 @@ impl MockMonitor {
         self.running.load(std::sync::atomic::Ordering::SeqCst)
     }
 
-    pub fn start(&mut self) -> anyhow::Result<()> {
+    pub fn start(&self) -> anyhow::Result<()> {
         self.running
             .store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 
-    pub fn stop(&mut self) -> anyhow::Result<()> {
+    pub fn stop(&self) -> anyhow::Result<()> {
         self.running
             .store(false, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 
-    pub async fn shutdown_gracefully(&mut self, _timeout: Duration) -> anyhow::Result<()> {
+    pub async fn shutdown_gracefully(&self, _timeout: Duration) -> anyhow::Result<()> {
         self.stop()
     }
 
     #[allow(dead_code)]
-    pub fn collect_metric(&mut self, _metric: Metric) -> anyhow::Result<()> {
+    pub fn collect_metric(&self, _metric: Metric) -> anyhow::Result<()> {
         Ok(())
     }
 
-    pub fn cleanup(&mut self) {}
+    pub fn cleanup(&self) {}
 
     pub fn get_metrics(&self) -> Vec<Metric> {
         vec![]
@@ -183,6 +183,6 @@ pub fn create_test_alert(metric: &str, value: f64) -> Alert {
     }
 }
 
-pub fn _export_path() -> PathBuf {
+pub fn export_path() -> PathBuf {
     PathBuf::from("/tmp/metrics-export.json")
 }

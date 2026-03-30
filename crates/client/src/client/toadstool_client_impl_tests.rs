@@ -164,7 +164,7 @@ mod jsonrpc_unix_mock {
 
     use super::{ClientConfig, ExecutionStatus, ToadStoolClient};
     use serde_json::{Value, json};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex};
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -286,9 +286,9 @@ mod jsonrpc_unix_mock {
         let _ = writer.flush().await;
     }
 
-    pub(super) fn spawn_mock(path: PathBuf, state: MockState) -> JoinHandle<()> {
-        let _ = std::fs::remove_file(&path);
-        let listener = UnixListener::bind(&path).expect("bind mock unix socket");
+    pub(super) fn spawn_mock(path: &Path, state: MockState) -> JoinHandle<()> {
+        let _ = std::fs::remove_file(path);
+        let listener = UnixListener::bind(path).expect("bind mock unix socket");
         tokio::spawn(async move {
             loop {
                 let Ok((stream, _)) = listener.accept().await else {
@@ -306,7 +306,7 @@ mod jsonrpc_unix_mock {
     async fn health_check_ok_when_healthy_true() {
         let path = abs_socket_path();
         let state = MockState::new();
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let result = client.health_check().await;
@@ -320,7 +320,7 @@ mod jsonrpc_unix_mock {
         let path = abs_socket_path();
         let state = MockState::new();
         *state.health.lock().expect("lock") = json!({"healthy": false});
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let result = client.health_check().await;
@@ -339,7 +339,7 @@ mod jsonrpc_unix_mock {
         let path = abs_socket_path();
         let state = MockState::new();
         *state.health.lock().expect("lock") = json!({"version": "1"});
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let result = client.health_check().await;
@@ -352,7 +352,7 @@ mod jsonrpc_unix_mock {
     async fn with_config_connects_and_lists_cluster() {
         let path = abs_socket_path();
         let state = MockState::new();
-        let handle = spawn_mock(path.clone(), state.clone());
+        let handle = spawn_mock(&path, state.clone());
         tokio::task::yield_now().await;
         let client = ToadStoolClient::with_config(config_for_socket(&path))
             .await
@@ -371,7 +371,7 @@ mod jsonrpc_unix_mock {
     async fn new_connects_via_health() {
         let path = abs_socket_path();
         let state = MockState::new();
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new(&format!("unix://{}", path.display()))
             .await
@@ -387,7 +387,7 @@ mod jsonrpc_unix_mock {
         let path = abs_socket_path();
         let state = MockState::new();
         *state.compute_list.lock().expect("lock") = json!({"jobs": []});
-        let handle = spawn_mock(path.clone(), state.clone());
+        let handle = spawn_mock(&path, state.clone());
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let cluster = client.get_cluster_status().await.expect("cluster");
@@ -402,7 +402,7 @@ mod jsonrpc_unix_mock {
         let path = abs_socket_path();
         let state = MockState::new();
         *state.health.lock().expect("lock") = json!({"healthy": false});
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let cluster = client.get_cluster_status().await.expect("cluster");
@@ -415,7 +415,7 @@ mod jsonrpc_unix_mock {
     async fn cancel_execution_ok() {
         let path = abs_socket_path();
         let state = MockState::new();
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let id = Uuid::new_v4();
@@ -430,7 +430,7 @@ mod jsonrpc_unix_mock {
         let path = abs_socket_path();
         let state = MockState::new();
         state.cancel_fail.store(true, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let result = client.cancel_execution(Uuid::new_v4()).await;
@@ -452,7 +452,7 @@ mod jsonrpc_unix_mock {
         *state.compute_status.lock().expect("lock") =
             vec![json!({"status": "completed", "error": null})];
         state.compute_status_idx.store(0, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let id = Uuid::new_v4();
@@ -473,7 +473,7 @@ mod jsonrpc_unix_mock {
             "error": "oom"
         })];
         state.compute_status_idx.store(0, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let id = Uuid::new_v4();
@@ -491,7 +491,7 @@ mod jsonrpc_unix_mock {
         *state.compute_status.lock().expect("lock") =
             vec![json!({"status": "failed", "error": 42})];
         state.compute_status_idx.store(0, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let info = client
@@ -510,7 +510,7 @@ mod jsonrpc_unix_mock {
         let state = MockState::new();
         *state.compute_status.lock().expect("lock") = vec![json!({"status": "cancelled"})];
         state.compute_status_idx.store(0, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let info = client
@@ -528,7 +528,7 @@ mod jsonrpc_unix_mock {
         let state = MockState::new();
         *state.compute_status.lock().expect("lock") = vec![json!({"status": "COMPLETED"})];
         state.compute_status_idx.store(0, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let info = client
@@ -545,7 +545,7 @@ mod jsonrpc_unix_mock {
         let path = abs_socket_path();
         let state = MockState::new();
         state.compute_status_fail.store(true, Ordering::SeqCst);
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let client = ToadStoolClient::new_for_testing(config_for_socket(&path)).expect("client");
         let result = client.wait_for_completion(Uuid::new_v4()).await;
@@ -590,7 +590,7 @@ mod jsonrpc_unix_mock {
     async fn with_config_auth_and_custom_headers() {
         let path = abs_socket_path();
         let state = MockState::new();
-        let handle = spawn_mock(path.clone(), state);
+        let handle = spawn_mock(&path, state);
         tokio::task::yield_now().await;
         let mut headers = std::collections::HashMap::new();
         headers.insert("X-Test".to_string(), "1".to_string());

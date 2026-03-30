@@ -43,6 +43,35 @@ impl Default for EPROMProgrammer {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generic_programmer_new_and_default_agree() {
+        assert_eq!(
+            format!("{:?}", GenericProgrammer::new()),
+            format!("{:?}", GenericProgrammer)
+        );
+    }
+
+    #[test]
+    fn eprom_programmer_new_and_default_agree() {
+        assert_eq!(
+            format!("{:?}", EPROMProgrammer::new()),
+            format!("{:?}", EPROMProgrammer)
+        );
+    }
+
+    #[test]
+    fn programmer_types_debug_contains_struct_names() {
+        let g = format!("{:?}", GenericProgrammer::new());
+        let e = format!("{:?}", EPROMProgrammer::new());
+        assert!(g.contains("GenericProgrammer"), "{g}");
+        assert!(e.contains("EPROMProgrammer"), "{e}");
+    }
+}
+
 // Future Enhancement: Implement ProgrammerInterface trait for each programmer
 // This will require full implementation of device communication, programming, and verification
 // Tracked as future feature - not required for current production deployment

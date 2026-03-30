@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn test_provider_new() {
         let context = make_context(SecurityLevel::Standard);
-        let provider = ToadStoolPrimalProvider::new(context.clone());
+        let provider = ToadStoolPrimalProvider::new(context);
         assert_eq!(provider.context().user_id, "test-user");
         assert_eq!(provider.context().security_level, SecurityLevel::Standard);
     }

@@ -201,7 +201,7 @@ fn test_security_policy_with_rules() {
         author: None,
         created_at: now,
         modified_at: now,
-        rules: vec![rule.clone()],
+        rules: vec![rule],
         inherits: vec![],
         metadata: HashMap::new(),
         signature: None,

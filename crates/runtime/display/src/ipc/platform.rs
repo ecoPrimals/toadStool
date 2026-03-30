@@ -108,8 +108,7 @@ mod tests {
     #[test]
     fn test_discover_socket_path_format() {
         let path = discover_socket_path();
-        let components: Vec<_> = path.components().collect();
-        assert!(!components.is_empty());
+        assert!(path.components().next().is_some());
         assert_eq!(path.file_name().unwrap(), "display.sock");
     }
 

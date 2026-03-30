@@ -116,7 +116,7 @@ fn test_auth_request_with_multiple_capabilities() {
     let auth_request = AuthRequest {
         service_id: "toadstool-multi".to_string(),
         service_type: "universal-compute".to_string(),
-        capabilities: capabilities.clone(),
+        capabilities,
         security_context: SecurityContext::default(),
         timestamp: std::time::SystemTime::now(),
     };

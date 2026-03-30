@@ -101,8 +101,10 @@ async fn test_init_with_biomeos_calls_init() {
 #[test]
 fn test_version_format() {
     let version = toadstool::VERSION;
-    let parts: Vec<&str> = version.split('.').collect();
-    assert!(parts.len() >= 2, "Version should have at least major.minor");
+    assert!(
+        version.split('.').count() >= 2,
+        "Version should have at least major.minor"
+    );
 }
 
 #[test]

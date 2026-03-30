@@ -182,7 +182,7 @@ fn v4l2_capture_device_open_nonexistent() {
 #[test]
 fn v4l2_display_error_device_not_found_variant() {
     let path = PathBuf::from("/dev/nonexistent-video-99999");
-    let err = DisplayError::DeviceNotFound(path.clone());
+    let err = DisplayError::DeviceNotFound(path);
     let s = format!("{err}");
     assert!(s.contains("not found") || s.contains("NotFound"));
     assert!(s.contains("nonexistent"));

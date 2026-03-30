@@ -20,7 +20,7 @@ fn test_storage_provisioning_manager_new() {
         ..StorageProvisioningConfig::default()
     };
 
-    let _manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let _manager = StorageProvisioningManager::with_inmemory(config);
     // Should create without panicking
 }
 
@@ -34,7 +34,7 @@ fn test_storage_provisioning_manager_with_hot_tier() {
         ..StorageProvisioningConfig::default()
     };
 
-    let _manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let _manager = StorageProvisioningManager::with_inmemory(config);
     // Verified by successful creation
 }
 
@@ -48,7 +48,7 @@ fn test_storage_provisioning_manager_with_cold_tier() {
         ..StorageProvisioningConfig::default()
     };
 
-    let _manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let _manager = StorageProvisioningManager::with_inmemory(config);
     // Verified by successful creation
 }
 
@@ -62,7 +62,7 @@ fn test_storage_provisioning_manager_replication_disabled() {
         ..StorageProvisioningConfig::default()
     };
 
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert!(!manager.config().replication_enabled);
     assert_eq!(manager.config().replication_factor, 1);
 }
@@ -149,7 +149,7 @@ fn test_manager_with_backup_disabled() {
         ..StorageProvisioningConfig::default()
     };
 
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert!(!manager.config().backup_enabled);
 }
 
@@ -163,7 +163,7 @@ fn test_manager_with_replication_disabled() {
         ..StorageProvisioningConfig::default()
     };
 
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert!(!manager.config().replication_enabled);
     assert_eq!(manager.config().replication_factor, 1);
 }
@@ -178,7 +178,7 @@ fn test_manager_with_high_replication() {
         ..StorageProvisioningConfig::default()
     };
 
-    let manager = StorageProvisioningManager::with_inmemory(config.clone());
+    let manager = StorageProvisioningManager::with_inmemory(config);
     assert_eq!(manager.config().replication_factor, 5);
 }
 

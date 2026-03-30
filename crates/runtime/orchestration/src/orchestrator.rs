@@ -51,7 +51,10 @@ impl WorkloadOrchestrator {
 
     /// Register a substrate
     pub fn register_substrate(&self, substrate: SubstrateHandle) {
-        self.substrates.write().expect("lock poisoned").push(substrate);
+        self.substrates
+            .write()
+            .expect("lock poisoned")
+            .push(substrate);
     }
 
     /// Get number of available substrates

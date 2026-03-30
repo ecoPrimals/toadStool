@@ -214,7 +214,7 @@ fn test_legacy_architecture_serialization() {
 fn test_system_status() {
     assert_eq!(SystemStatus::Online, SystemStatus::Online);
     assert_eq!(SystemStatus::Offline, SystemStatus::Offline);
-    let default: SystemStatus = Default::default();
+    let default: SystemStatus = SystemStatus::default();
     assert!(matches!(default, SystemStatus::Unknown));
 }
 
@@ -242,7 +242,7 @@ fn test_job_status_variants() {
 fn test_job_output() {
     let output = JobOutput {
         stdout: "Hello".to_string(),
-        stderr: "".to_string(),
+        stderr: String::new(),
         return_code: Some(0),
         output_files: vec![],
         binary_output: None,

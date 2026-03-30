@@ -372,7 +372,7 @@ mod plugin_system_tests {
         let mut manager = PluginManager::new();
         let manifest = create_test_manifest("info-plugin");
         manager
-            .register_plugin(manifest.clone())
+            .register_plugin(manifest)
             .expect("register should succeed");
         let info = manager
             .get_plugin_info("info-plugin")
@@ -785,7 +785,7 @@ mod plugin_system_tests {
 
         let mut manager = PluginManager::new();
         manager
-            .register_plugin(manifest.clone())
+            .register_plugin(manifest)
             .expect("register should succeed");
         let info = manager
             .get_plugin_info("full-info")

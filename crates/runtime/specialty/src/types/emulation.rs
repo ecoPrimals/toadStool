@@ -96,3 +96,141 @@ pub enum EmulationStatus {
     /// Emulation encountered an error
     Error(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn assert_json_round_trip_eq<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        let json = serde_json::to_string(value).expect("serialize");
+        let back: T = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(serde_json::to_string(&back).expect("re-serialize"), json);
+    }
+
+    fn sample_emulation_config() -> EmulationConfig {
+        let mut peripherals = HashMap::new();
+        peripherals.insert(
+            "uart0".to_string(),
+            PeripheralConfig {
+                peripheral_type: "serial".to_string(),
+                options: HashMap::from([("baud".to_string(), "115200".to_string())]),
+            },
+        );
+        EmulationConfig {
+            cpu_speed_mhz: Some(1.0),
+            memory_size: 131_072,
+            enable_debugging: true,
+            rom_paths: vec![PathBuf::from("/tmp/test.rom")],
+            peripherals,
+        }
+    }
+
+    #[test]
+    fn emulation_config_default_matches_expected() {
+        let c = EmulationConfig::default();
+        assert!(c.cpu_speed_mhz.is_none());
+        assert_eq!(c.memory_size, 65536);
+        assert!(!c.enable_debugging);
+        assert!(c.rom_paths.is_empty());
+        assert!(c.peripherals.is_empty());
+    }
+
+    #[test]
+    fn emulation_status_default_is_uninitialized() {
+        assert_eq!(EmulationStatus::default(), EmulationStatus::Uninitialized);
+    }
+
+    #[test]
+    fn emulation_config_clone_preserves_serialization() {
+        let a = sample_emulation_config();
+        let b = a.clone();
+        assert_json_round_trip_eq(&a);
+        assert_json_round_trip_eq(&b);
+        assert_eq!(
+            serde_json::to_string(&a).unwrap(),
+            serde_json::to_string(&b).unwrap()
+        );
+    }
+
+    #[test]
+    fn peripheral_config_clone_preserves_serialization() {
+        let p = PeripheralConfig {
+            peripheral_type: "gpio".to_string(),
+            options: HashMap::from([("pull".to_string(), "up".to_string())]),
+        };
+        let q = p.clone();
+        assert_json_round_trip_eq(&p);
+        assert_eq!(
+            serde_json::to_string(&p).unwrap(),
+            serde_json::to_string(&q).unwrap()
+        );
+    }
+
+    #[test]
+    fn emulation_status_clone_and_eq() {
+        let variants = [
+            EmulationStatus::Uninitialized,
+            EmulationStatus::Ready,
+            EmulationStatus::Running,
+            EmulationStatus::Paused,
+            EmulationStatus::Stopped,
+            EmulationStatus::Error("fault".to_string()),
+        ];
+        for v in variants {
+            assert_eq!(v.clone(), v);
+            assert_json_round_trip_eq(&v);
+        }
+    }
+
+    #[test]
+    fn debug_formats_include_type_names() {
+        let cfg = format!("{:?}", sample_emulation_config());
+        let per = format!(
+            "{:?}",
+            PeripheralConfig {
+                peripheral_type: "t".to_string(),
+                options: HashMap::new(),
+            }
+        );
+        let st = format!("{:?}", EmulationStatus::Running);
+        assert!(cfg.contains("EmulationConfig"), "{cfg}");
+        assert!(per.contains("PeripheralConfig"), "{per}");
+        assert!(st.contains("Running"), "{st}");
+        assert!(format!("{:?}", EmulationStatus::Error("e".into())).contains("Error"),);
+    }
+
+    #[test]
+    fn serde_json_round_trip_emulation_config() {
+        assert_json_round_trip_eq(&sample_emulation_config());
+        assert_json_round_trip_eq(&EmulationConfig::default());
+    }
+
+    #[test]
+    fn serde_json_round_trip_peripheral_config() {
+        assert_json_round_trip_eq(&PeripheralConfig {
+            peripheral_type: "timer".to_string(),
+            options: HashMap::new(),
+        });
+    }
+
+    #[test]
+    fn serde_json_round_trip_emulation_status_variants() {
+        for s in [
+            EmulationStatus::Uninitialized,
+            EmulationStatus::Ready,
+            EmulationStatus::Running,
+            EmulationStatus::Paused,
+            EmulationStatus::Stopped,
+            EmulationStatus::Error("io".to_string()),
+        ] {
+            assert_json_round_trip_eq(&s);
+            let back: EmulationStatus =
+                serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+            assert_eq!(s, back);
+        }
+    }
+}

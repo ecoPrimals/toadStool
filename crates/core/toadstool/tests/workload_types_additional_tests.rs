@@ -81,9 +81,7 @@ fn test_executable_source_url() {
 #[test]
 fn test_executable_source_bytes() {
     let data = vec![0x7F, 0x45, 0x4C, 0x46]; // ELF header
-    let source = ExecutableSource::Bytes {
-        data: data.clone().into(),
-    };
+    let source = ExecutableSource::Bytes { data: data.into() };
     assert!(matches!(source, ExecutableSource::Bytes { .. }));
 }
 
@@ -118,9 +116,7 @@ fn test_wasm_module_source_file() {
 #[test]
 fn test_wasm_module_source_bytes() {
     let data = vec![0x00, 0x61, 0x73, 0x6D]; // WASM magic number
-    let source = WasmModuleSource::Bytes {
-        data: data.clone().into(),
-    };
+    let source = WasmModuleSource::Bytes { data: data.into() };
     assert!(matches!(source, WasmModuleSource::Bytes { .. }));
 }
 

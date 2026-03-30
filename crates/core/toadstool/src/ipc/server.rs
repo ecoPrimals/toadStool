@@ -243,7 +243,7 @@ mod tests {
             port: 9000,
         }];
 
-        let server = IpcServer::with_endpoints(custom.clone());
+        let server = IpcServer::with_endpoints(custom);
         assert_eq!(server.endpoints().len(), 1);
     }
 

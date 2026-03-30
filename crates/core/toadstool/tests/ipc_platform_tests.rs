@@ -59,9 +59,7 @@ async fn test_endpoint_equality() {
     let ep1 = Endpoint::Unix {
         path: path1.clone(),
     };
-    let ep2 = Endpoint::Unix {
-        path: path1.clone(),
-    };
+    let ep2 = Endpoint::Unix { path: path1 };
     let ep3 = Endpoint::Unix { path: path2 };
 
     assert_eq!(ep1, ep2);

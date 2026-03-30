@@ -149,7 +149,7 @@ fn test_run_biome_determines_name_from_manifest() {
 
     // Case 2: Name from manifest
     let no_name: Option<String> = None;
-    let biome_name = no_name.unwrap_or(manifest_name.clone());
+    let biome_name = no_name.unwrap_or_else(|| manifest_name.clone());
     assert_eq!(biome_name, "test-biome");
 }
 

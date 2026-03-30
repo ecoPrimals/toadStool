@@ -255,7 +255,7 @@ fn test_job_type_native() {
 fn test_job_type_wasm() {
     let wasm_module = vec![0x00, 0x61, 0x73, 0x6d]; // WASM magic number
     let job_type = UniversalJobType::Wasm {
-        module: wasm_module.clone(),
+        module: wasm_module,
         args: vec!["--help".to_string()],
         env: HashMap::new(),
     };

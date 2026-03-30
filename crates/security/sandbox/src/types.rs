@@ -438,7 +438,7 @@ mod tests {
     fn resource_usage_default_zeroed() {
         let usage = ResourceUsage::default();
         assert_eq!(usage.memory_bytes, 0);
-        assert_eq!(usage.cpu_percent, 0.0);
+        assert!((usage.cpu_percent - 0.0).abs() < f64::EPSILON);
         assert_eq!(usage.file_descriptors, 0);
         assert_eq!(usage.processes, 0);
         assert_eq!(usage.execution_time, Duration::ZERO);

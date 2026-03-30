@@ -477,12 +477,12 @@ fn ipc_transport_tcp_fallback_serialization() {
 #[test]
 fn ipc_transport_clone() {
     let t1 = IpcTransport::UnixSocket;
-    let t2 = t1.clone();
+    let t2 = t1;
     assert!(matches!(t2, IpcTransport::UnixSocket));
 
     let addr: std::net::SocketAddr = "127.0.0.1:0".parse().unwrap();
     let t3 = IpcTransport::TcpFallback(addr);
-    let t4 = t3.clone();
+    let t4 = t3;
     assert!(matches!(t4, IpcTransport::TcpFallback(_)));
 }
 

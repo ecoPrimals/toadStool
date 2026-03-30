@@ -561,8 +561,7 @@ mod ecosystem_logic_tests {
         let version = "1.0.0";
         assert!(version.contains('.'));
 
-        let parts: Vec<&str> = version.split('.').collect();
-        assert_eq!(parts.len(), 3);
+        assert_eq!(version.split('.').count(), 3);
     }
 
     #[test]

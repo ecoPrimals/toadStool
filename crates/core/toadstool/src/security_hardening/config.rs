@@ -167,10 +167,7 @@ impl Default for ValidationRules {
                 "' or '".to_string(),
                 "' and '".to_string(),
             ],
-            xss_patterns: vec![
-                "<script".to_string(),
-                "javascript:".to_string(),
-            ],
+            xss_patterns: vec!["<script".to_string(), "javascript:".to_string()],
             command_injection_patterns: vec![
                 ";".to_string(),
                 "&".to_string(),

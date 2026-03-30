@@ -334,7 +334,7 @@ async fn test_concurrent_config_creation() {
                 _ => ToadStoolConfig::testing(),
             };
 
-            config.app.environment.clone()
+            config.app.environment
         });
 
         handles.push(handle);

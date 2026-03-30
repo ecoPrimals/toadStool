@@ -208,10 +208,8 @@ mod resource_manager_tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_concurrent_biome_existence_checks() {
         // Test concurrent biome existence checks
-        let biome_names: Vec<_> = (0..50).map(|i| format!("biome-{i}")).collect();
-
-        let handles: Vec<_> = biome_names
-            .into_iter()
+        let handles: Vec<_> = (0..50)
+            .map(|i| format!("biome-{i}"))
             .map(|name| {
                 tokio::spawn(async move {
                     // Simulate existence check

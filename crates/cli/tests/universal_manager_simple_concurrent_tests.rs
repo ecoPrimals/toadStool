@@ -409,7 +409,7 @@ async fn test_timeout_awareness_manager() -> Result<()> {
     // All should complete within timeout
     let mut completed = 0;
     for handle in handles {
-        if let Ok(Ok(())) = handle.await? {
+        if matches!(handle.await?, Ok(Ok(()))) {
             completed += 1;
         }
     }

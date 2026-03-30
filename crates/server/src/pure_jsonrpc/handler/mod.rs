@@ -285,6 +285,7 @@ impl JsonRpcHandler {
             "shader.compile.spirv" => return self.shader.compile_spirv(params).await,
             "shader.compile.status" => return self.shader.compile_status(params).await,
             "shader.compile.capabilities" => return self.shader.compile_capabilities().await,
+            "shader.dispatch" => return self.dispatch.shader_dispatch(params).await,
 
             "compute.performance_surface.report" => {
                 return self.silicon.report(params).await;
@@ -343,6 +344,7 @@ impl JsonRpcHandler {
             "shader_compile_spirv" => self.shader.compile_spirv(params).await,
             "shader_compile_status" => self.shader.compile_status(params).await,
             "shader_compile_capabilities" => self.shader.compile_capabilities().await,
+            "shader_dispatch" => self.dispatch.shader_dispatch(params).await,
             "toadstool_provenance" => Self::toadstool_provenance().await,
             "ollama_list_models" => self.ollama.ollama_list_models().await,
             "ollama_inference" => self.ollama.ollama_inference(params).await,
@@ -678,5 +680,41 @@ mod tests {
                 "{method} should return job_id"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn test_shader_dispatch_routes_and_returns_domain() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "binary": [0xDE, 0xAD, 0xBE, 0xEF],
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+        });
+        let request = mk_request("shader.dispatch", Some(params), 1);
+        let response = handler.handle_request(&request).await;
+        assert!(
+            response.error.is_none(),
+            "shader.dispatch should route without error"
+        );
+        let result = response.result.expect("result present");
+        assert_eq!(result["domain"], "shader.dispatch");
+        assert!(result["job_id"].as_str().is_some());
+        assert_eq!(result["binary_size"], 4);
+    }
+
+    #[tokio::test]
+    async fn test_shader_dispatch_discoverable_via_semantic_registry() {
+        let handler = test_handler();
+        let request = mk_request("compute.discover_capabilities", None, 1);
+        let response = handler.handle_request(&request).await;
+        let result = response.result.expect("result present");
+        let methods = result["methods"].as_array().expect("methods array");
+        let has_shader_dispatch = methods
+            .iter()
+            .any(|m| m.as_str() == Some("shader.dispatch"));
+        assert!(
+            has_shader_dispatch,
+            "discover_capabilities should include shader.dispatch"
+        );
     }
 }

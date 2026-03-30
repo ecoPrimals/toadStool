@@ -35,7 +35,7 @@ fn test_circuit_state_half_open() {
 #[test]
 fn test_circuit_state_clone() {
     let state = CircuitState::Closed;
-    let cloned = state.clone();
+    let cloned = state;
     assert_eq!(cloned, CircuitState::Closed);
 }
 

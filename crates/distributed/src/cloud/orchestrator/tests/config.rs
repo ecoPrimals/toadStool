@@ -37,16 +37,16 @@ async fn test_orchestrator_config_scheduling_strategies() {
 #[tokio::test]
 async fn test_availability_info_make_helper() {
     let avail = make_availability(8.0, 16.0, 100.0);
-    assert_eq!(avail.cpu_cores, 8.0);
-    assert_eq!(avail.memory_gb, 16.0);
-    assert_eq!(avail.storage_gb, 100.0);
+    assert!((avail.cpu_cores - 8.0).abs() < f64::EPSILON);
+    assert!((avail.memory_gb - 16.0).abs() < f64::EPSILON);
+    assert!((avail.storage_gb - 100.0).abs() < f64::EPSILON);
     assert_eq!(avail.gpu_count, 0);
 }
 
 #[tokio::test]
 async fn test_requirements_make_helper() {
     let req = make_requirements(2.0, 4096, 1024);
-    assert_eq!(req.cpu.min_cores, 2.0);
+    assert!((req.cpu.min_cores - 2.0).abs() < f64::EPSILON);
     assert_eq!(req.memory.min_bytes, 4096);
     assert_eq!(req.storage.min_bytes, 1024);
 }

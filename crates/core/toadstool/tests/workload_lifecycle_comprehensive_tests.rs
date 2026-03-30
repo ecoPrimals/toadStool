@@ -40,7 +40,7 @@ fn test_workload_spec_serialization_roundtrip() {
 #[test]
 fn test_workload_spec_clone() {
     let spec = WorkloadSpec::default();
-    let cloned = spec.clone();
+    let cloned = spec;
 
     // Clone creates a separate instance
     let _ = cloned;
@@ -377,7 +377,7 @@ fn test_security_context_serialization() {
 #[test]
 fn test_security_context_clone() {
     let context = SecurityContext::default();
-    let cloned = context.clone();
+    let cloned = context;
 
     assert!(cloned.validate().is_ok());
 }
@@ -563,7 +563,7 @@ fn test_execution_id_stability() {
 
     assert_eq!(request.execution_id, id);
 
-    let cloned = request.clone();
+    let cloned = request;
     assert_eq!(cloned.execution_id, id);
 }
 

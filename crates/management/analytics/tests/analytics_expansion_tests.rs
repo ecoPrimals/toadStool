@@ -780,7 +780,7 @@ fn test_webhook_config_many_event_types() {
     let webhook = WebhookConfig {
         name: "Multi-Event Webhook".to_string(),
         url: "https://example.com/hook".to_string(),
-        event_types: event_types.clone(),
+        event_types,
         headers: HashMap::new(),
     };
 

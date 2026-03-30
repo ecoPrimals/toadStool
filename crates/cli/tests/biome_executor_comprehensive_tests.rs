@@ -103,7 +103,7 @@ async fn test_resource_override_logic() {
     let override_memory = Some("1Gi".to_string());
 
     let effective_cpu = override_cpu.or(base_cpu);
-    let effective_memory = override_memory.or(base_memory.clone());
+    let effective_memory = override_memory.or_else(|| base_memory.clone());
 
     assert_eq!(effective_cpu, Some(2.0));
     assert_eq!(effective_memory, Some("1Gi".to_string()));
@@ -272,11 +272,15 @@ async fn test_process_list_filtering() {
     ];
 
     // Filter by status
-    let running: Vec<_> = processes.iter().filter(|p| p.status == "running").collect();
-    assert_eq!(running.len(), 2);
+    assert_eq!(
+        processes.iter().filter(|p| p.status == "running").count(),
+        2
+    );
 
-    let stopped: Vec<_> = processes.iter().filter(|p| p.status == "stopped").collect();
-    assert_eq!(stopped.len(), 1);
+    assert_eq!(
+        processes.iter().filter(|p| p.status == "stopped").count(),
+        1
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

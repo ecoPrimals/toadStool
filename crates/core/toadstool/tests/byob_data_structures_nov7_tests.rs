@@ -683,7 +683,11 @@ fn test_byob_executor_config_default() {
 #[test]
 fn test_byob_executor_config_clone() {
     let config = ByobExecutorConfig::default();
-    let _cloned = config.clone();
+    let cloned = config.clone();
+    assert_eq!(
+        cloned.max_concurrent_deployments,
+        config.max_concurrent_deployments
+    );
 }
 
 // ============================================================================

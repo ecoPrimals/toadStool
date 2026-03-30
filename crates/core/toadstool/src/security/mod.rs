@@ -72,7 +72,7 @@ mod tests {
             gid: Some(1000),
             groups: vec![100, 101],
         };
-        let ctx = SecurityContext::default().with_user_context(user.clone());
+        let ctx = SecurityContext::default().with_user_context(user);
         assert!(ctx.user_context.is_some());
         let uc = ctx.user_context.unwrap();
         assert_eq!(uc.username, Some("testuser".to_string()));

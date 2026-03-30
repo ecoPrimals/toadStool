@@ -297,7 +297,7 @@ mod tests {
             let id = serde_json::from_str::<serde_json::Value>(&line)
                 .ok()
                 .and_then(|r| r.get("id").cloned())
-                .unwrap_or(serde_json::json!(1));
+                .unwrap_or_else(|| serde_json::json!(1));
 
             let response = serde_json::json!({
                 "jsonrpc": "2.0",

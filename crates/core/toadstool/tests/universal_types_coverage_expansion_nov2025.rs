@@ -215,7 +215,7 @@ fn test_primal_context_network_location() {
         user_id: "user-777".to_string(),
         device_id: "device-888".to_string(),
         session_id: "session-888".to_string(),
-        network_location: location.clone(),
+        network_location: location,
         security_level: SecurityLevel::Maximum,
         metadata: HashMap::new(),
     };
@@ -422,7 +422,7 @@ fn test_universal_job_type_primal() {
 fn test_universal_job_type_biomeos() {
     let manifest = serde_json::json!({"version": "1.0", "services": []});
     let job_type = UniversalJobType::BiomeOS {
-        biome_manifest: manifest.clone(),
+        biome_manifest: manifest,
         team_id: "team-123".to_string(),
     };
 

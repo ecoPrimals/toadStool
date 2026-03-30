@@ -192,8 +192,9 @@ async fn get_platform_metrics_pid_one_when_readable() {
         Ok(m) => {
             let _ = format!("{:?}", m.cpu);
         }
-        Err(ResourceMonitorError::CommandExecutionFailed(_))
-        | Err(ResourceMonitorError::ParseError(_)) => {}
+        Err(
+            ResourceMonitorError::CommandExecutionFailed(_) | ResourceMonitorError::ParseError(_),
+        ) => {}
         Err(e) => panic!("unexpected error: {e:?}"),
     }
 }

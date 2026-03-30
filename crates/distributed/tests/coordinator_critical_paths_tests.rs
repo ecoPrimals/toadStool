@@ -231,8 +231,7 @@ mod node_registration_tests {
 
         for addr in valid_addresses {
             assert!(addr.contains(':'));
-            let parts: Vec<&str> = addr.split(':').collect();
-            assert_eq!(parts.len(), 2);
+            assert_eq!(addr.split(':').count(), 2);
         }
     }
 

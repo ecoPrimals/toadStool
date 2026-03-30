@@ -160,7 +160,7 @@ mod tests {
             info: BiomeInfo {
                 id: Uuid::new_v4(),
                 name: name.to_string(),
-                status: status.clone(),
+                status,
                 created: now,
                 started: Some(now),
                 manifest_path: PathBuf::from("."),

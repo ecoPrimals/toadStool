@@ -573,12 +573,8 @@ mod tests {
     #[test]
     fn test_healthspring_flows_exist() {
         let flows = cross_spring_flows();
-        let hs_flows: Vec<_> = flows
-            .iter()
-            .filter(|f| f.from == Spring::HealthSpring)
-            .collect();
         assert!(
-            !hs_flows.is_empty(),
+            flows.iter().any(|f| f.from == Spring::HealthSpring),
             "healthSpring should have source contributions"
         );
     }

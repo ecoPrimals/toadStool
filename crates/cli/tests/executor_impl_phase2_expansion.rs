@@ -395,9 +395,7 @@ fn test_logs_multiple_services() {
     // Covers: Multi-service logs
 
     let services = vec!["web", "database", "cache"];
-    let log_files: Vec<_> = services.iter().map(|s| format!("{s}.log")).collect();
-
-    assert_eq!(log_files.len(), 3);
+    assert_eq!(services.iter().map(|s| format!("{s}.log")).count(), 3);
 }
 
 #[test]

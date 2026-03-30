@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Toolchain implementations for embedded systems
+//! Embedded cross-compilation toolchain trait implementations.
 //!
-//! ## Planned / Future Implementation
+//! Each struct satisfies the [`EmbeddedToolchain`] trait for a specific legacy
+//! architecture.  Operations return [`ToadStoolError::not_supported`] until the
+//! corresponding cross-compiler is discovered at runtime.
 //!
-//! These toolchain structs and trait implementations are **infrastructure placeholders**
-//! for future embedded cross-compilation support. They are registered in the embedded
-//! adapter registry and satisfy the type system, but all operations return
-//! `not_supported` until real toolchains are integrated.
+//! ## Evolution Path
 //!
-//! ## Architecture Notes
-//!
-//! - **6502**: Planned integration with cc65 or WDC816 toolchain
-//! - **Z80**: Planned integration with z88dk or SDCC
-//! - **8080**: Legacy Intel; may share tooling with Z80
-//! - **8051**: Planned SDCC integration
-//! - **8086**: Planned NASM/MASM integration for x86 real mode
-//! - **68000**: Planned vasm or gcc-m68k integration
+//! | Arch   | Compiler         | Status       |
+//! |--------|------------------|--------------|
+//! | 6502   | cc65 / WDC816    | Pending — runtime discovery needed |
+//! | Z80    | z88dk / SDCC     | Pending — runtime discovery needed |
+//! | 8080   | z88dk (shared)   | Pending — runtime discovery needed |
+//! | 8051   | SDCC             | Pending — runtime discovery needed |
+//! | 8086   | NASM / MASM      | Pending — runtime discovery needed |
+//! | 68000  | vasm / gcc-m68k  | Pending — runtime discovery needed |
 //!
 //! Each toolchain will require: cross-compiler binary discovery, platform-specific
 //! linker scripts, and ROM image format generation (e.g., .nes, .sms, raw binary).
@@ -31,40 +30,46 @@ use super::types::{
     CompilationResult, EmbeddedToolchain, LinkResult, MemoryMap, OutputFileType, SourceFile,
 };
 
-fn not_implemented(feature: impl Into<String>) -> ToadStoolError {
+fn toolchain_unavailable(feature: impl Into<String>) -> ToadStoolError {
     ToadStoolError::not_supported(format!(
-        "{} not yet implemented; requires cross-compilation toolchain integration",
+        "{}: cross-compilation toolchain not discovered on this system",
         feature.into()
     ))
 }
 
-/// Toolchain for 6502 (planned: cc65/wdc816 integration).
-/// Stub until cross-compilation toolchain is integrated.
+/// MOS 6502 cross-compilation toolchain (cc65 / WDC816).
+///
+/// Returns `not_supported` until the compiler is discovered at runtime.
 #[derive(Debug)]
 pub struct Toolchain6502;
 
-/// Toolchain for Z80 (planned: z88dk/SDCC integration).
-/// Stub until cross-compilation toolchain is integrated.
+/// Zilog Z80 cross-compilation toolchain (z88dk / SDCC).
+///
+/// Returns `not_supported` until the compiler is discovered at runtime.
 #[derive(Debug)]
 pub struct ToolchainZ80;
 
-/// Toolchain for 8080 (planned: may share tooling with Z80).
-/// Stub until cross-compilation toolchain is integrated.
+/// Intel 8080 cross-compilation toolchain (shared with Z80 tooling).
+///
+/// Returns `not_supported` until the compiler is discovered at runtime.
 #[derive(Debug)]
 pub struct Toolchain8080;
 
-/// Toolchain for 8051 (planned: SDCC integration).
-/// Stub until cross-compilation toolchain is integrated.
+/// Intel 8051 cross-compilation toolchain (SDCC).
+///
+/// Returns `not_supported` until the compiler is discovered at runtime.
 #[derive(Debug)]
 pub struct Toolchain8051;
 
-/// Toolchain for 8086 (planned: NASM/MASM integration).
-/// Stub until cross-compilation toolchain is integrated.
+/// Intel 8086 cross-compilation toolchain (NASM / MASM).
+///
+/// Returns `not_supported` until the compiler is discovered at runtime.
 #[derive(Debug)]
 pub struct Toolchain8086;
 
-/// Toolchain for 68000 (planned: vasm/gcc-m68k integration).
-/// Stub until cross-compilation toolchain is integrated.
+/// Motorola 68000 cross-compilation toolchain (vasm / gcc-m68k).
+///
+/// Returns `not_supported` until the compiler is discovered at runtime.
 #[derive(Debug)]
 pub struct Toolchain68000;
 
@@ -87,7 +92,7 @@ impl EmbeddedToolchain for Toolchain6502 {
     }
 
     async fn initialize(&mut self, _config: &EmbeddedConfig) -> ToadStoolResult<()> {
-        Err(not_implemented("Toolchain initialization"))
+        Err(toolchain_unavailable("6502 initialization"))
     }
 
     async fn compile(
@@ -95,7 +100,7 @@ impl EmbeddedToolchain for Toolchain6502 {
         _sources: &[SourceFile],
         _output_path: &Path,
     ) -> ToadStoolResult<CompilationResult> {
-        Err(not_implemented("6502 compilation"))
+        Err(toolchain_unavailable("6502 compilation"))
     }
 
     async fn link(
@@ -104,7 +109,7 @@ impl EmbeddedToolchain for Toolchain6502 {
         _output_path: &Path,
         _memory_layout: &MemoryLayout,
     ) -> ToadStoolResult<LinkResult> {
-        Err(not_implemented("6502 linking"))
+        Err(toolchain_unavailable("6502 linking"))
     }
 
     async fn generate_rom_image(
@@ -112,15 +117,15 @@ impl EmbeddedToolchain for Toolchain6502 {
         _executable: &Path,
         _format: OutputFileType,
     ) -> ToadStoolResult<Vec<u8>> {
-        Err(not_implemented("ROM image generation"))
+        Err(toolchain_unavailable("6502 ROM image generation"))
     }
 
     async fn disassemble(&self, _binary: &[u8], _start_address: u32) -> ToadStoolResult<String> {
-        Err(not_implemented("6502 disassembly"))
+        Err(toolchain_unavailable("6502 disassembly"))
     }
 
     async fn create_memory_map(&self, _executable: &Path) -> ToadStoolResult<MemoryMap> {
-        Err(not_implemented("Memory map creation"))
+        Err(toolchain_unavailable("6502 memory map creation"))
     }
 }
 
@@ -159,7 +164,7 @@ impl Toolchain68000 {
     }
 }
 
-macro_rules! impl_toolchain_stub {
+macro_rules! impl_pending_toolchain {
     ($toolchain:ty, $name:expr, $arch:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
@@ -173,7 +178,7 @@ macro_rules! impl_toolchain_stub {
             }
 
             async fn initialize(&mut self, _config: &EmbeddedConfig) -> ToadStoolResult<()> {
-                Err(not_implemented("Toolchain initialization"))
+                Err(toolchain_unavailable(format!("{} initialization", $name)))
             }
 
             async fn compile(
@@ -181,7 +186,7 @@ macro_rules! impl_toolchain_stub {
                 _sources: &[SourceFile],
                 _output_path: &Path,
             ) -> ToadStoolResult<CompilationResult> {
-                Err(not_implemented(format!("{} compilation", $name)))
+                Err(toolchain_unavailable(format!("{} compilation", $name)))
             }
 
             async fn link(
@@ -190,7 +195,7 @@ macro_rules! impl_toolchain_stub {
                 _output_path: &Path,
                 _memory_layout: &MemoryLayout,
             ) -> ToadStoolResult<LinkResult> {
-                Err(not_implemented(format!("{} linking", $name)))
+                Err(toolchain_unavailable(format!("{} linking", $name)))
             }
 
             async fn generate_rom_image(
@@ -198,7 +203,10 @@ macro_rules! impl_toolchain_stub {
                 _executable: &Path,
                 _format: OutputFileType,
             ) -> ToadStoolResult<Vec<u8>> {
-                Err(not_implemented("ROM image generation"))
+                Err(toolchain_unavailable(format!(
+                    "{} ROM image generation",
+                    $name
+                )))
             }
 
             async fn disassemble(
@@ -206,33 +214,36 @@ macro_rules! impl_toolchain_stub {
                 _binary: &[u8],
                 _start_address: u32,
             ) -> ToadStoolResult<String> {
-                Err(not_implemented(format!("{} disassembly", $name)))
+                Err(toolchain_unavailable(format!("{} disassembly", $name)))
             }
 
             async fn create_memory_map(&self, _executable: &Path) -> ToadStoolResult<MemoryMap> {
-                Err(not_implemented("Memory map creation"))
+                Err(toolchain_unavailable(format!(
+                    "{} memory map creation",
+                    $name
+                )))
             }
         }
     };
 }
 
-impl_toolchain_stub!(ToolchainZ80, "Z80 Toolchain", LegacyArchitecture::ZilogZ80);
-impl_toolchain_stub!(
+impl_pending_toolchain!(ToolchainZ80, "Z80 Toolchain", LegacyArchitecture::ZilogZ80);
+impl_pending_toolchain!(
     Toolchain8080,
     "8080 Toolchain",
     LegacyArchitecture::Intel8080
 );
-impl_toolchain_stub!(
+impl_pending_toolchain!(
     Toolchain8051,
     "8051 Toolchain",
     LegacyArchitecture::Intel8051
 );
-impl_toolchain_stub!(
+impl_pending_toolchain!(
     Toolchain8086,
     "8086 Toolchain",
     LegacyArchitecture::Intel8086
 );
-impl_toolchain_stub!(
+impl_pending_toolchain!(
     Toolchain68000,
     "68000 Toolchain",
     LegacyArchitecture::Motorola68000
@@ -271,5 +282,246 @@ impl Default for Toolchain8086 {
 impl Default for Toolchain68000 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use super::*;
+    use crate::embedded::types::{EmbeddedToolchain, OutputFileType, SourceFile};
+    use crate::{
+        EmbeddedConfig, LegacyArchitecture, MemoryLayout, ProgrammingInterface,
+        ProgrammingInterfaceType,
+    };
+    use toadstool::ToadStoolError;
+
+    fn minimal_embedded_config() -> EmbeddedConfig {
+        EmbeddedConfig {
+            architecture: LegacyArchitecture::MOS6502,
+            memory_layout: MemoryLayout {
+                rom_regions: vec![],
+                ram_regions: vec![],
+                io_regions: vec![],
+            },
+            peripherals: vec![],
+            programming_interface: ProgrammingInterface {
+                interface_type: ProgrammingInterfaceType::ISP,
+                connection_params: std::collections::HashMap::new(),
+            },
+        }
+    }
+
+    fn assert_not_supported_toolchain_error(err: &ToadStoolError) {
+        let msg = err.to_string();
+        assert!(
+            msg.contains("not supported"),
+            "expected platform not-supported wording, got: {msg}"
+        );
+        assert!(
+            msg.contains("cross-compilation toolchain not discovered"),
+            "expected toolchain discovery message, got: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn toolchain_6502_returns_not_supported_for_initialization() {
+        let mut t = Toolchain6502::new();
+        let err = t
+            .initialize(&minimal_embedded_config())
+            .await
+            .expect_err("6502 initialize should fail until toolchain is installed");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_6502_returns_not_supported_for_compile_link_and_rom() {
+        let t = Toolchain6502::new();
+        let err = t
+            .compile(&[], Path::new("out.o"))
+            .await
+            .expect_err("compile");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .link(
+                &[],
+                Path::new("out.bin"),
+                &minimal_embedded_config().memory_layout,
+            )
+            .await
+            .expect_err("link");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .generate_rom_image(Path::new("a.bin"), OutputFileType::Binary)
+            .await
+            .expect_err("rom");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .disassemble(&[0xea], 0x8000)
+            .await
+            .expect_err("disassemble");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .create_memory_map(Path::new("a.bin"))
+            .await
+            .expect_err("memory map");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_6502_name_and_architectures() {
+        let t = Toolchain6502;
+        assert_eq!(t.name(), "6502 Toolchain");
+        assert_eq!(
+            t.supported_architectures(),
+            vec![LegacyArchitecture::MOS6502]
+        );
+    }
+
+    #[tokio::test]
+    async fn toolchain_z80_returns_not_supported_for_initialization() {
+        let mut t = ToolchainZ80;
+        let err = t
+            .initialize(&minimal_embedded_config())
+            .await
+            .expect_err("init");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_z80_returns_not_supported_for_compile() {
+        let t = ToolchainZ80::new();
+        let err = t
+            .compile(&[], Path::new("out.o"))
+            .await
+            .expect_err("compile");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_8080_returns_not_supported_for_initialization() {
+        let mut t = Toolchain8080;
+        let err = t
+            .initialize(&minimal_embedded_config())
+            .await
+            .expect_err("init");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_8051_returns_not_supported_for_initialization() {
+        let mut t = Toolchain8051;
+        let err = t
+            .initialize(&minimal_embedded_config())
+            .await
+            .expect_err("init");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_8086_returns_not_supported_for_initialization() {
+        let mut t = Toolchain8086;
+        let err = t
+            .initialize(&minimal_embedded_config())
+            .await
+            .expect_err("init");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_68000_returns_not_supported_for_initialization() {
+        let mut t = Toolchain68000;
+        let err = t
+            .initialize(&minimal_embedded_config())
+            .await
+            .expect_err("init");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn pending_toolchains_macro_impl_returns_not_supported_for_all_operations() {
+        let t = ToolchainZ80::new();
+        let cfg = minimal_embedded_config();
+        let mem = &cfg.memory_layout;
+
+        let err = t
+            .compile(&[], Path::new("out.o"))
+            .await
+            .expect_err("compile");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .link(&[], Path::new("linked.bin"), mem)
+            .await
+            .expect_err("link");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .generate_rom_image(Path::new("rom.bin"), OutputFileType::IntelHex)
+            .await
+            .expect_err("rom");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t.disassemble(&[], 0).await.expect_err("disassemble");
+        assert_not_supported_toolchain_error(&err);
+
+        let err = t
+            .create_memory_map(Path::new("a.out"))
+            .await
+            .expect_err("map");
+        assert_not_supported_toolchain_error(&err);
+    }
+
+    #[tokio::test]
+    async fn toolchain_constructors_match_default() {
+        assert_eq!(
+            format!("{:?}", Toolchain6502::new()),
+            format!("{:?}", Toolchain6502)
+        );
+        assert_eq!(
+            format!("{:?}", ToolchainZ80::new()),
+            format!("{:?}", ToolchainZ80)
+        );
+        assert_eq!(
+            format!("{:?}", Toolchain8080::new()),
+            format!("{:?}", Toolchain8080)
+        );
+        assert_eq!(
+            format!("{:?}", Toolchain8051::new()),
+            format!("{:?}", Toolchain8051)
+        );
+        assert_eq!(
+            format!("{:?}", Toolchain8086::new()),
+            format!("{:?}", Toolchain8086)
+        );
+        assert_eq!(
+            format!("{:?}", Toolchain68000::new()),
+            format!("{:?}", Toolchain68000)
+        );
+    }
+
+    #[tokio::test]
+    async fn toolchain_6502_compile_mentions_feature_in_error_message() {
+        let t = Toolchain6502::new();
+        let err = t
+            .compile(
+                &[SourceFile {
+                    path: PathBuf::from("main.asm"),
+                    file_type: crate::embedded::types::SourceFileType::Assembly,
+                    content: String::new(),
+                    include_paths: vec![],
+                    defines: std::collections::HashMap::new(),
+                }],
+                Path::new("out.o"),
+            )
+            .await
+            .expect_err("compile");
+        let msg = err.to_string();
+        assert!(msg.contains("6502 compilation"), "msg: {msg}");
     }
 }

@@ -35,3 +35,29 @@ pub use validation::*;
 pub const fn duration_from_days(days: u64) -> std::time::Duration {
     std::time::Duration::from_secs(days * 86400)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::duration_from_days;
+    use proptest::prelude::*;
+
+    #[test]
+    fn duration_from_days_zero_is_zero_secs() {
+        assert_eq!(duration_from_days(0).as_secs(), 0);
+        assert_eq!(duration_from_days(0).subsec_nanos(), 0);
+    }
+
+    #[test]
+    fn duration_from_days_one_day_is_86400_secs() {
+        assert_eq!(duration_from_days(1).as_secs(), 86400);
+    }
+
+    proptest! {
+        #[test]
+        fn duration_from_days_matches_secs_and_has_no_subsec(days in 0u64..50_000u64) {
+            let d = duration_from_days(days);
+            prop_assert_eq!(d.as_secs(), days.saturating_mul(86400));
+            prop_assert_eq!(d.subsec_nanos(), 0u32);
+        }
+    }
+}

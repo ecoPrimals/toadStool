@@ -46,7 +46,7 @@ pub trait CrossCompilationToolchain: Send + Sync {
 }
 
 /// Toolchain configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct ToolchainConfig {
     /// Compiler flags
     pub compiler_flags: Vec<String>,
@@ -61,7 +61,7 @@ pub struct ToolchainConfig {
 }
 
 /// Compilation result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompilationResult {
     /// Whether compilation succeeded
     pub success: bool,
@@ -78,7 +78,7 @@ pub struct CompilationResult {
 }
 
 /// Link result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LinkResult {
     /// Whether linking succeeded
     pub success: bool,

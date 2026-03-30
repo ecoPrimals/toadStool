@@ -51,7 +51,7 @@ fn test_ecosystem_service_unknown() {
 #[test]
 fn test_ecosystem_service_clone() {
     let service = EcosystemService::Discovery;
-    let cloned = service.clone();
+    let cloned = service;
     assert!(matches!(cloned, EcosystemService::Discovery));
 }
 
@@ -365,7 +365,7 @@ fn test_discovered_service_clone() {
         last_seen: std::time::SystemTime::now(),
     };
 
-    let cloned = service.clone();
+    let cloned = service;
     assert!(matches!(cloned.service_type, ServiceType::Storage));
 }
 

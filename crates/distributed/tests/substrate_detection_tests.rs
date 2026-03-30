@@ -387,7 +387,7 @@ fn test_substrate_capabilities_clone() {
         experimental_platforms: vec![],
     };
 
-    let cloned = capabilities.clone();
+    let cloned = capabilities;
     assert_eq!(cloned.total_platforms(), 1);
 }
 
@@ -533,7 +533,7 @@ fn test_long_platform_strings() {
     let long_string = "x".repeat(1000);
     let platform = PlatformType::Linux {
         distribution: long_string.clone(),
-        architecture: long_string.clone(),
+        architecture: long_string,
     };
 
     match platform {

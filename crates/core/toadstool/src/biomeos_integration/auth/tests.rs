@@ -98,24 +98,25 @@ async fn test_sign_token_request_mock() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
-    let signature = manager.sign_token_request(&token, well_known::SONGBIRD);
+    let signature = manager
+        .sign_token_request(&token, well_known::SONGBIRD)
+        .await;
     assert!(signature.is_ok());
     assert!(signature.unwrap().starts_with("ed25519:mock:"));
 }
 
-#[test]
-fn test_get_public_key_from_backend() {
+#[tokio::test(flavor = "current_thread")]
+async fn test_get_public_key_from_backend() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
-    // InMemoryAuthBackend always returns a test key
-    assert!(manager.get_public_key().is_some());
+    assert!(manager.get_public_key().await.is_some());
 }
 
-#[test]
-fn test_get_public_key_delegates_to_backend() {
+#[tokio::test(flavor = "current_thread")]
+async fn test_get_public_key_delegates_to_backend() {
     let config = test_config_with_signing_key();
     let manager = AuthenticationManager::with_inmemory(config);
-    let public_key = manager.get_public_key();
+    let public_key = manager.get_public_key().await;
     assert!(public_key.is_some());
 }
 
@@ -155,6 +156,7 @@ async fn test_sign_token_request_disabled_returns_signature_disabled() {
     let token = manager.get_current_token().await.expect("token");
     let sig = manager
         .sign_token_request(&token, well_known::NESTGATE)
+        .await
         .unwrap();
     assert_eq!(sig, "signature_disabled");
 }
@@ -165,16 +167,16 @@ async fn test_sign_verification_request_disabled_returns_signature_disabled() {
     let manager = AuthenticationManager::with_inmemory(config);
     let sig = manager
         .sign_verification_request(well_known::SONGBIRD)
+        .await
         .unwrap();
     assert_eq!(sig, "signature_disabled");
 }
 
-#[test]
-fn test_get_public_key_returns_backend_key() {
+#[tokio::test(flavor = "current_thread")]
+async fn test_get_public_key_returns_backend_key() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
-    // InMemoryAuthBackend always returns a public key for testing
-    assert!(manager.get_public_key().is_some());
+    assert!(manager.get_public_key().await.is_some());
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -182,7 +184,9 @@ async fn test_sign_payload_delegates_to_backend() {
     let config = test_config();
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.expect("token");
-    let result = manager.sign_token_request(&token, well_known::SONGBIRD);
+    let result = manager
+        .sign_token_request(&token, well_known::SONGBIRD)
+        .await;
     assert!(result.is_ok());
     assert!(result.unwrap().starts_with("ed25519:mock:"));
 }

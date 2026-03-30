@@ -150,7 +150,7 @@ async fn main() -> Result<(), ComputeError> {
             let channel = i % num_channels;
             let sample = i / num_channels;
             // Different channels have different scales
-            (channel as f32 * 0.1) + (sample as f32 * 0.01)
+            (channel as f32).mul_add(0.1, sample as f32 * 0.01)
         })
         .collect();
 

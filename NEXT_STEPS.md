@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 29, 2026 -- S166 Deep Debt Execution + Capability-Based Evolution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,700+ tests (0 failures) | 1,900+ `.rs` files, 577K lines | 96+ JSON-RPC methods | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero production mocks | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L
-**Latest**: S166 — Lint allow cleanup (29 `lib.rs`); capability IDs + `resolve_capability_socket_fallback()` + deprecated legacy names; crypto_lock + substrate validation completed; seven large files split to module dirs (<400L each); `md5`→`md-5`, `bollard` 0.18; orchestrator provider selection deterministic; net 123 files, +1145/−8334 lines.
+**Updated**: March 30, 2026 -- S168 shader.dispatch + Clippy Zero-Warning + Async Auth + Coverage R2
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,700+ tests (0 failures) | 1,900+ `.rs` files, 577K lines | **97+ JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero production mocks | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **Zero `block_on` in auth (async-first)** | **Sovereign shader pipeline: compile→dispatch→readback**
+**Latest**: S168 — `shader.dispatch` JSON-RPC method implemented (ludoSpring V35 / coralReef Iter 70 gap closure: compile→dispatch→readback E2E pipeline); full workspace clippy zero-warning (~120+ fixes); auth_backend async-first; server connection zero-copy; 11 specialty runtime files from 0% → covered.
 
 ---
 
@@ -44,7 +44,9 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 - `client/core.rs` 54% → ~85% (+18 tests)
 - `pure_jsonrpc/handler/dispatch.rs` 40% → ~70% (+13 tests)
 
-**Remaining gap**: Largest uncovered areas are hardware-dependent paths (VFIO, DRM, V4L2, akida userspace), specialty runtimes (mainframe AS/400, embedded, emulation, industrial), neuromorphic drivers, and CLI discovery modules. These require integration-level testing with hardware or mock hardware infrastructure.
+**S168** expanded coverage with 11 more 0% files → covered (see DEBT.md D-COV-*-S168).
+
+**Remaining gap**: Largest uncovered areas are hardware-dependent paths (VFIO, DRM, V4L2, akida userspace), neuromorphic drivers, GPU engine/execution paths, CLI discovery modules, and specialty engine.rs (4% coverage). These require integration-level testing with hardware or mock hardware infrastructure.
 
 ### ~~P1: Sovereignty Migration (D-SOV)~~ ✅ RESOLVED (S94b)
 

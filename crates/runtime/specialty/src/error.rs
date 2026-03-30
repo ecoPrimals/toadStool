@@ -51,3 +51,130 @@ impl From<SpecialtyRuntimeError> for ToadStoolError {
         ToadStoolError::runtime(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SpecialtyRuntimeError;
+    use std::error::Error as StdError;
+    use std::io;
+    use toadstool::ToadStoolError;
+
+    fn assert_nonempty_debug_display(err: &SpecialtyRuntimeError) {
+        let d = format!("{err:?}");
+        let s = err.to_string();
+        assert!(!d.is_empty());
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn system_not_supported_debug_display() {
+        let err = SpecialtyRuntimeError::SystemNotSupported("mips".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("mips"));
+    }
+
+    #[test]
+    fn architecture_not_supported_debug_display() {
+        let err = SpecialtyRuntimeError::ArchitectureNotSupported("h8300".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("h8300"));
+    }
+
+    #[test]
+    fn compilation_failed_debug_display() {
+        let err = SpecialtyRuntimeError::CompilationFailed("linker died".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("linker"));
+    }
+
+    #[test]
+    fn communication_error_debug_display() {
+        let err = SpecialtyRuntimeError::CommunicationError("serial timeout".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("serial"));
+    }
+
+    #[test]
+    fn emulation_error_debug_display() {
+        let err = SpecialtyRuntimeError::EmulationError("bad opcode".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("opcode"));
+    }
+
+    #[test]
+    fn configuration_error_debug_display() {
+        let err = SpecialtyRuntimeError::ConfigurationError("missing baud".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("baud"));
+    }
+
+    #[test]
+    fn timeout_debug_display() {
+        let err = SpecialtyRuntimeError::Timeout("30s".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("30s"));
+    }
+
+    #[test]
+    fn other_debug_display() {
+        let err = SpecialtyRuntimeError::Other("unknown".into());
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("unknown"));
+    }
+
+    #[test]
+    fn io_error_from_std_io_preserves_source() {
+        let inner = io::Error::new(io::ErrorKind::PermissionDenied, "no access");
+        let err: SpecialtyRuntimeError = inner.into();
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("I/O"));
+        assert!(err.to_string().contains("no access"));
+        assert!(err.source().is_some());
+    }
+
+    #[test]
+    fn serialization_error_from_serde_json_preserves_source() {
+        let json_err = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
+        let err: SpecialtyRuntimeError = json_err.into();
+        assert_nonempty_debug_display(&err);
+        assert!(err.to_string().contains("Serialization"));
+        assert!(err.source().is_some());
+    }
+
+    #[test]
+    fn serde_json_round_trip_and_invalid_input_maps_to_specialty_error() {
+        let n: u64 = serde_json::from_str("7").unwrap();
+        assert_eq!(n, 7);
+        let back = serde_json::to_string(&n).unwrap();
+        assert_eq!(back, "7");
+
+        let json_err = serde_json::from_str::<u64>("not a number").unwrap_err();
+        let mapped: SpecialtyRuntimeError = json_err.into();
+        assert!(!mapped.to_string().is_empty());
+    }
+
+    #[test]
+    fn into_toadstool_error_carries_message() {
+        let cases = [
+            SpecialtyRuntimeError::SystemNotSupported("a".into()),
+            SpecialtyRuntimeError::ArchitectureNotSupported("b".into()),
+            SpecialtyRuntimeError::CompilationFailed("c".into()),
+            SpecialtyRuntimeError::CommunicationError("d".into()),
+            SpecialtyRuntimeError::EmulationError("e".into()),
+            SpecialtyRuntimeError::ConfigurationError("f".into()),
+            SpecialtyRuntimeError::Timeout("g".into()),
+            SpecialtyRuntimeError::IoError(io::Error::other("h")),
+            SpecialtyRuntimeError::SerializationError(
+                serde_json::from_str::<()>("oops").unwrap_err(),
+            ),
+            SpecialtyRuntimeError::Other("i".into()),
+        ];
+        for spec in cases {
+            let msg = spec.to_string();
+            let top: ToadStoolError = spec.into();
+            let out = top.to_string();
+            assert!(!out.is_empty());
+            assert!(out.contains(&msg), "expected {out:?} to contain {msg:?}");
+        }
+    }
+}

@@ -145,8 +145,15 @@ impl ResourceOrchestrator {
 
     /// Register a tenant with resource quotas.
     pub fn register_tenant(&self, tenant_id: &str, quota: TenantQuota) {
-        self.quotas.write().expect("lock poisoned").insert(tenant_id.to_string(), quota);
-        self.usage.write().expect("lock poisoned").entry(tenant_id.to_string()).or_default();
+        self.quotas
+            .write()
+            .expect("lock poisoned")
+            .insert(tenant_id.to_string(), quota);
+        self.usage
+            .write()
+            .expect("lock poisoned")
+            .entry(tenant_id.to_string())
+            .or_default();
     }
 
     /// Request resource allocation for a tenant.
@@ -188,7 +195,11 @@ impl ResourceOrchestrator {
     /// Get current usage for a tenant.
     #[must_use]
     pub fn tenant_usage(&self, tenant_id: &str) -> Option<TenantUsage> {
-        self.usage.read().expect("lock poisoned").get(tenant_id).cloned()
+        self.usage
+            .read()
+            .expect("lock poisoned")
+            .get(tenant_id)
+            .cloned()
     }
 
     /// Get all tenant usage stats.

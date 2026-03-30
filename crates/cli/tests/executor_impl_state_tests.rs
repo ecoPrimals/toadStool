@@ -345,13 +345,9 @@ mod state_management_tests {
         {
             let states = state_store.read().await;
 
-            let running: Vec<_> = states.values().filter(|s| s.status == "running").collect();
-            let stopped: Vec<_> = states.values().filter(|s| s.status == "stopped").collect();
-            let paused: Vec<_> = states.values().filter(|s| s.status == "paused").collect();
-
-            assert_eq!(running.len(), 3); // biome-3, 6, 9
-            assert_eq!(stopped.len(), 4); // biome-1, 4, 7, 10
-            assert_eq!(paused.len(), 3); // biome-2, 5, 8
+            assert_eq!(states.values().filter(|s| s.status == "running").count(), 3); // biome-3, 6, 9
+            assert_eq!(states.values().filter(|s| s.status == "stopped").count(), 4); // biome-1, 4, 7, 10
+            assert_eq!(states.values().filter(|s| s.status == "paused").count(), 3); // biome-2, 5, 8
         }
     }
 

@@ -73,7 +73,7 @@ async fn test_analyze_trends_with_increasing_trend() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i as u64) * 3600),
             metric_name: "increasing_metric".to_string(),
-            value: 10.0 + (f64::from(i) * 5.0), // 10, 15, 20, 25, ...
+            value: f64::from(i).mul_add(5.0, 10.0), // 10, 15, 20, 25, ...
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),
@@ -97,7 +97,7 @@ async fn test_analyze_trends_with_stable_data() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i as u64) * 3600),
             metric_name: "stable_metric".to_string(),
-            value: 50.0 + (f64::from(i) * 0.1), // Very small variation
+            value: f64::from(i).mul_add(0.1, 50.0), // Very small variation
             runtime_type: Some(RuntimeType::Wasm),
             execution_id: None,
             tags: HashMap::new(),
@@ -133,7 +133,7 @@ async fn test_predict_values_with_historical_data() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i * 3) as u64 * 3600),
             metric_name: "predict_metric".to_string(),
-            value: 100.0 + (f64::from(i) * 2.0),
+            value: f64::from(i).mul_add(2.0, 100.0),
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),
@@ -325,7 +325,7 @@ async fn test_dashboard_with_panels() {
             id: Uuid::new_v4(),
             timestamp: base_time + Duration::from_secs((i * 15) as u64 * 60),
             metric_name: "dashboard_metric".to_string(),
-            value: 50.0 + (f64::from(i) * 10.0),
+            value: f64::from(i).mul_add(10.0, 50.0),
             runtime_type: Some(RuntimeType::Native),
             execution_id: None,
             tags: HashMap::new(),

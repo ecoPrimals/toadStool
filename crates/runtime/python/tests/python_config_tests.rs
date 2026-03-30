@@ -112,7 +112,7 @@ fn test_python_runtime_config_with_requirements() {
         virtual_env: None,
         max_memory_mb: 1024,
         timeouts: TimeoutConfig::default(),
-        requirements: requirements.clone(),
+        requirements,
     };
 
     assert_eq!(config.requirements.len(), 3);
@@ -307,7 +307,7 @@ fn test_python_runtime_config_multiple_requirements() {
         virtual_env: None,
         max_memory_mb: 2048,
         timeouts: TimeoutConfig::default(),
-        requirements: requirements.clone(),
+        requirements,
     };
 
     assert_eq!(config.requirements.len(), 5);

@@ -67,9 +67,7 @@ fn test_convert_request_to_workload_vulkan_spirv() {
     let request = ExecutionRequest {
         execution_id: Uuid::new_v4(),
         workload: WorkloadSpec::Gpu {
-            program: GpuProgramSource::Vulkan {
-                spirv: spirv_bytes.clone(),
-            },
+            program: GpuProgramSource::Vulkan { spirv: spirv_bytes },
             kernel_name: "main".to_string(),
             global_work_size: (1, 1, 1),
             work_group_size: Some((1, 1, 1)),

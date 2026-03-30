@@ -239,7 +239,7 @@ fn test_workload_type_container() {
 fn test_workload_type_wasm() {
     let module_data = vec![0x00, 0x61, 0x73, 0x6d]; // WASM magic number
     let workload = WorkloadType::Wasm {
-        module_data: module_data.clone(),
+        module_data,
         args: vec!["arg1".to_string()],
     };
 
@@ -282,7 +282,7 @@ fn test_workload_type_custom() {
     });
 
     let workload = WorkloadType::Custom {
-        workload_data: data.clone(),
+        workload_data: data,
     };
 
     match workload {

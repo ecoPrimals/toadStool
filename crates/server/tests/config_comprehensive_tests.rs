@@ -55,7 +55,7 @@ fn test_server_config_with_authentication() {
         ..Default::default()
     };
 
-    let config = ServerConfig::default().auth(auth.clone());
+    let config = ServerConfig::default().auth(auth);
 
     assert!(config.auth.is_some());
     let configured_auth = config.auth.unwrap();
@@ -73,7 +73,7 @@ fn test_server_config_with_rate_limiting() {
         limit_by_api_key: true,
     };
 
-    let config = ServerConfig::default().rate_limiting(rate_limiting.clone());
+    let config = ServerConfig::default().rate_limiting(rate_limiting);
 
     assert!(config.rate_limiting.is_some());
     let configured_rl = config.rate_limiting.unwrap();
@@ -363,7 +363,6 @@ fn test_config_clone_and_modify() {
         .max_concurrent_executions(100);
 
     let modified_config = base_config
-        .clone()
         .bind_address("0.0.0.0:8080")
         .max_concurrent_executions(200);
 

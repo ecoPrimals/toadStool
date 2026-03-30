@@ -104,7 +104,7 @@ async fn check_result_fail_clone_copies_reason() {
     let a = CheckResult::Fail {
         reason: "x".to_string(),
     };
-    let b = a.clone();
+    let b = a;
     assert!(matches!(b, CheckResult::Fail { ref reason } if reason == "x"));
 }
 
@@ -114,7 +114,7 @@ async fn compliance_check_clone_and_serde_roundtrip() {
         check_name: "n".to_string(),
         result: CheckResult::Pass,
     };
-    let d = c.clone();
+    let d = c;
     assert_eq!(d.check_name, "n");
 
     let json = serde_json::to_string(&d).unwrap();
@@ -131,7 +131,7 @@ async fn compliance_report_clone_and_serde_roundtrip() {
         overall_pass: true,
         compliant_regions: vec!["a".to_string()],
     };
-    let s = r.clone();
+    let s = r;
     assert_eq!(s.compliant_regions, vec!["a".to_string()]);
 
     let json = serde_json::to_string(&s).unwrap();
@@ -227,7 +227,7 @@ async fn certification_rule_fails_when_required_missing() {
             assert!(reason.contains("Missing"));
             assert!(reason.contains("GDPR"));
         }
-        _ => panic!("expected certification failure"),
+        CheckResult::Pass => panic!("expected certification failure"),
     }
     assert!(!report.overall_pass);
 }
@@ -331,7 +331,7 @@ async fn data_sovereignty_per_data_type_requires_region_in_allowed_set() {
             assert!(reason.contains("health"));
             assert!(reason.contains("eu-west-1"));
         }
-        _ => panic!("expected sovereignty failure"),
+        CheckResult::Pass => panic!("expected sovereignty failure"),
     }
 }
 
@@ -372,12 +372,14 @@ async fn security_tier_basic_requires_only_encryption() {
     enforcer.add_provider_compliance("p", &caps).await.unwrap();
     let report = enforcer.report_for_provider("p").unwrap();
     assert!(report.overall_pass);
-    let sec: Vec<_> = report
-        .checks
-        .iter()
-        .filter(|c| c.check_name.starts_with("security_"))
-        .collect();
-    assert_eq!(sec.len(), 1);
+    assert_eq!(
+        report
+            .checks
+            .iter()
+            .filter(|c| c.check_name.starts_with("security_"))
+            .count(),
+        1
+    );
 }
 
 #[test]
@@ -470,7 +472,7 @@ async fn resource_isolation_high_tier_fails_without_segmentation_features() {
         CheckResult::Fail { reason } => {
             assert!(reason.contains("High security tier"));
         }
-        _ => panic!("expected resource isolation failure"),
+        CheckResult::Pass => panic!("expected resource isolation failure"),
     }
     assert!(!report.overall_pass);
 }
@@ -502,7 +504,7 @@ async fn compliant_regions_lists_all_provider_regions_when_no_requirement_filter
     caps.regions = vec![region("a"), region("b")];
     enforcer.add_provider_compliance("p", &caps).await.unwrap();
     let report = enforcer.report_for_provider("p").unwrap();
-    let mut rs = report.compliant_regions.clone();
+    let mut rs = report.compliant_regions;
     rs.sort();
     assert_eq!(rs, vec!["a".to_string(), "b".to_string()]);
 }

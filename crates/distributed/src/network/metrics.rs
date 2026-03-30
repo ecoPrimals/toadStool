@@ -73,7 +73,7 @@ mod tests {
             average_response_time: Duration::from_millis(250),
         };
 
-        let cloned = data.clone();
+        let cloned = data;
         assert_eq!(cloned.total_requests, 100);
         assert_eq!(cloned.successful_requests, 95);
         assert_eq!(cloned.failed_requests, 5);

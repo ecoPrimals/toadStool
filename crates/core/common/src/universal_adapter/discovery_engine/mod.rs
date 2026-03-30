@@ -50,12 +50,12 @@ impl DiscoveryEngine {
     ///
     /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
     pub fn with_defaults() -> ToadStoolResult<Self> {
-        let mut sources: Vec<Box<dyn DiscoverySource>> = Vec::new();
-        #[cfg(feature = "mdns")]
-        sources.push(Box::new(MDnsSource::new()));
-        sources.push(Box::new(EnvironmentSource::new()));
-        sources.push(Box::new(LocalRegistrySource::new()));
-        let sources = sources;
+        let sources: Vec<Box<dyn DiscoverySource>> = vec![
+            #[cfg(feature = "mdns")]
+            Box::new(MDnsSource::new()),
+            Box::new(EnvironmentSource::new()),
+            Box::new(LocalRegistrySource::new()),
+        ];
         Ok(Self {
             sources,
             timeout: Duration::from_secs(5),

@@ -157,7 +157,7 @@ fn test_execution_environment_clone() {
         runtime: "podman".to_string(),
     };
 
-    let cloned = env.clone();
+    let cloned = env;
 
     if let ExecutionEnvironment::Container { runtime } = cloned {
         assert_eq!(runtime, "podman");

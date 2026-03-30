@@ -95,7 +95,7 @@ fn test_property_test_result_failure() {
         test_name: "test_failure".to_string(),
         success: false,
         test_cases_run: 50,
-        failures: vec![failure.clone()],
+        failures: vec![failure],
         duration: Duration::from_secs(2),
         statistics: TestStatistics {
             input_distribution: HashMap::new(),

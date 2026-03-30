@@ -35,7 +35,7 @@ fn test_usage_hints_multiple_workload_types() {
     ];
 
     let hints = UsageHints {
-        predicted_workload_types: workload_types.clone(),
+        predicted_workload_types: workload_types,
         expected_cpu_usage: 0.7,
         expected_memory_usage: 0.6,
         prefers_gpu: true,
@@ -274,7 +274,7 @@ fn test_usage_hints_single_workload_type() {
 fn test_usage_hints_very_long_workload_name() {
     let long_name = "a".repeat(1000);
     let hints = UsageHints {
-        predicted_workload_types: vec![long_name.clone()],
+        predicted_workload_types: vec![long_name],
         expected_cpu_usage: 0.5,
         expected_memory_usage: 0.5,
         prefers_gpu: false,

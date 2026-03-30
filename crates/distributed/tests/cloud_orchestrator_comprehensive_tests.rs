@@ -129,7 +129,7 @@ async fn test_orchestrator_cost_config() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_success() {
     // Test: Provider registration succeeds
-    let mut orchestrator = create_mock_orchestrator(create_test_config())
+    let orchestrator = create_mock_orchestrator(create_test_config())
         .await
         .unwrap();
 
@@ -161,7 +161,7 @@ async fn test_register_provider_validates_metadata() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_updates_cost_models() {
     // Test: Cost models are updated
-    let mut orchestrator = create_mock_orchestrator(create_test_config())
+    let orchestrator = create_mock_orchestrator(create_test_config())
         .await
         .unwrap();
 
@@ -179,7 +179,7 @@ async fn test_register_provider_updates_cost_models() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_updates_compliance() {
     // Test: Compliance rules are updated
-    let mut orchestrator = create_mock_orchestrator(create_test_config())
+    let orchestrator = create_mock_orchestrator(create_test_config())
         .await
         .unwrap();
 
@@ -197,7 +197,7 @@ async fn test_register_provider_updates_compliance() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_multiple_providers() {
     // Test: Multiple providers can be registered
-    let mut orchestrator = create_mock_orchestrator(create_test_config())
+    let orchestrator = create_mock_orchestrator(create_test_config())
         .await
         .unwrap();
 
@@ -221,7 +221,7 @@ async fn test_register_multiple_providers() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_register_provider_duplicate_name() {
     // Test: Duplicate provider names are handled
-    let mut orchestrator = create_mock_orchestrator(create_test_config())
+    let orchestrator = create_mock_orchestrator(create_test_config())
         .await
         .unwrap();
 
@@ -532,7 +532,7 @@ async fn create_mock_orchestrator(config: OrchestratorConfig) -> Result<MockOrch
 }
 
 async fn create_configured_orchestrator() -> Result<MockOrchestrator> {
-    let mut orch = create_mock_orchestrator(create_test_config()).await?;
+    let orch = create_mock_orchestrator(create_test_config()).await?;
     orch.mock_register_provider("aws", create_mock_provider())
         .await?;
     orch.mock_register_provider("gcp", create_mock_provider())
@@ -660,7 +660,7 @@ impl MockOrchestrator {
         self.providers.read().await.len()
     }
 
-    async fn mock_register_provider(&mut self, name: &str, provider: MockProvider) -> Result<()> {
+    async fn mock_register_provider(&self, name: &str, provider: MockProvider) -> Result<()> {
         self.providers
             .write()
             .await

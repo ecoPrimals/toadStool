@@ -68,10 +68,9 @@ mod error_handling_tests {
         for env in malformed {
             // Check various invalid formats
             let has_equals = env.contains('=');
-            let parts: Vec<&str> = env.split('=').collect();
 
             if has_equals {
-                assert!(parts.len() >= 2);
+                assert!(env.split('=').count() >= 2);
             }
         }
     }

@@ -216,7 +216,7 @@ fn test_metric_batch_with_metrics() {
     let batch = MetricBatch {
         timestamp: std::time::SystemTime::now(),
         source: "system-monitor".to_string(),
-        metrics: metrics.clone(),
+        metrics,
     };
 
     assert_eq!(batch.metrics.len(), 2);
@@ -595,7 +595,7 @@ fn test_time_series_with_data() {
 
     let ts = TimeSeries {
         name: "memory_usage".to_string(),
-        data_points: data_points.clone(),
+        data_points,
         labels: HashMap::new(),
     };
 

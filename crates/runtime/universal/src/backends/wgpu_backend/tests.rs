@@ -207,7 +207,7 @@ mod wgpu_backend_tests {
         let info_populated = GpuAdapterInfo {
             min_subgroup_size: 32,
             max_subgroup_size: 32,
-            ..info_zero.clone()
+            ..info_zero
         };
         assert_eq!(info_populated.min_subgroup_size, 32);
         assert_eq!(info_populated.max_subgroup_size, 32);

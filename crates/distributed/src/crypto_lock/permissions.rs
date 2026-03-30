@@ -221,7 +221,7 @@ pub enum DelegationStatus {
 }
 
 /// Notification for expiring permission.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExpiringPermission {
     /// Permission ID.
     pub permission_id: Uuid,
@@ -232,7 +232,7 @@ pub struct ExpiringPermission {
 }
 
 /// Permission status for display/audit.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PermissionStatus {
     /// Permission ID.
     pub permission_id: Uuid,

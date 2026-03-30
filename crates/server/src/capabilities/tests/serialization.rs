@@ -64,9 +64,7 @@ fn test_primal_capabilities_serialization_roundtrip() {
         },
         capabilities: vec!["compute".to_string(), "gpu-nvidia".to_string()],
         socket_path: PathBuf::from("/tmp/ecoPrimals/sockets/test.sock"),
-        metadata: [("region".to_string(), "us-west".to_string())]
-            .into_iter()
-            .collect(),
+        metadata: std::iter::once(("region".to_string(), "us-west".to_string())).collect(),
     };
 
     let json = serde_json::to_string(&caps).expect("serialize");

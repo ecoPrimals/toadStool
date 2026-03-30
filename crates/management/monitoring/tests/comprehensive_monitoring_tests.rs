@@ -239,7 +239,7 @@ fn test_threshold_action_terminate() {
 #[test]
 fn test_threshold_action_clone() {
     let action1 = ThresholdAction::Alert;
-    let action2 = action1.clone();
+    let action2 = action1;
 
     assert!(matches!(action2, ThresholdAction::Alert));
 }

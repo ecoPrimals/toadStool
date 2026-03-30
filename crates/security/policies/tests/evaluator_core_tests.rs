@@ -357,7 +357,7 @@ fn test_validate_deeply_nested_composite() {
 
     let middle_condition = PolicyCondition::Composite {
         operator: LogicalOperator::Or,
-        conditions: vec![inner_condition.clone(), inner_condition.clone()],
+        conditions: vec![inner_condition.clone(), inner_condition],
     };
 
     let outer_condition = PolicyCondition::Composite {

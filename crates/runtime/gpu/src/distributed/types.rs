@@ -177,7 +177,7 @@ mod tests {
 
         let job = DistributedJobState {
             job_id: "job-123".to_string(),
-            workload: workload.clone(),
+            workload,
             status: JobStatus::Pending,
             assigned_tower: None,
             result: None,
@@ -230,9 +230,7 @@ mod tests {
             "compute".to_string(),
             "postprocess".to_string(),
         ];
-        let strategy = PartitionStrategy::Pipeline {
-            stages: stages.clone(),
-        };
+        let strategy = PartitionStrategy::Pipeline { stages };
         match strategy {
             PartitionStrategy::Pipeline { stages: s } => {
                 assert_eq!(s.len(), 3);

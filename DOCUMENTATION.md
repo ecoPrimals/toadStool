@@ -1,12 +1,12 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 29, 2026 — S166
+**Last Updated**: March 30, 2026 — S168
 
 ---
 
-## Fossil record (S166)
+## Fossil Record
 
-These root documents were **fully resolved** and **fossilized** in wateringHole (see `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`): **UNSAFE_AUDIT_REPORT**, **SOVEREIGN_COMPUTE_GAPS**, **PURE_RUST_TRACKING** — renamed with `_S166` suffix. Use those paths when citing historical audit, sovereign-gap, or pure-Rust tracking content.
+These root documents were **fully resolved** and **fossilized** in wateringHole (see `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`): **UNSAFE_AUDIT_REPORT**, **SOVEREIGN_COMPUTE_GAPS**, **PURE_RUST_TRACKING**, **STATUS**, **EVOLUTION_TRACKER**, **QUICK_REFERENCE**, **SOVEREIGN_COMPUTE**, **SPRING_ABSORPTION_TRACKER**, **BREAKING_CHANGES** — all renamed with `_S166` suffix. Use those paths when citing historical audit, sovereign-gap, or pure-Rust tracking content.
 
 ---
 
@@ -30,14 +30,15 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S166 — March 29, 2026)
+## Current State (S168 — March 30, 2026)
 
-**Post-budding, dependency-sovereign.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration.
+**Post-budding, dependency-sovereign, shader pipeline complete.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **21,700+ tests**, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%).
-- **100+ JSON-RPC methods** (dynamically built from semantic registry).
-- **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to BearDog (`crypto.sign`/`crypto.verify`/`crypto.public_key`). HTTP delegated to Songbird (`comms.http_forward`). `ed25519-dalek`, `regex`, `parking_lot`, `hmac` eliminated.
-- **Capability-based discovery** — Primals discover each other by capability, not name. `get_socket_path_for_capability()`. Self-knowledge principle.
+- **97+ JSON-RPC methods** (dynamically built from semantic registry), including `shader.dispatch` (S168).
+- **Sovereign shader pipeline** — `coralReef (compile) → toadStool (dispatch) → consumer (validate)` E2E chain complete (ludoSpring V35 gap closed).
+- **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to BearDog. HTTP delegated to Songbird.
+- **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **AGPL-3.0-only** — All Cargo.toml + all .rs files aligned. `deny.toml` enforced.
 
@@ -75,7 +76,7 @@ BarraCuda guides have been fossilized to `ecoPrimals/infra/wateringHole/fossilRe
 
 ## Scientific Middleware
 
-Scientific computing middleware (linalg, numerical, special, stats, optimize, surrogate, sample, PDE) has moved to **barraCuda** (`ecoPrimals/barraCuda/`). Legacy API examples are preserved in [QUICK_REFERENCE.md](QUICK_REFERENCE.md#scientific-computing-middleware-api) for reference.
+Scientific computing middleware (linalg, numerical, special, stats, optimize, surrogate, sample, PDE) has moved to **barraCuda** (`ecoPrimals/barraCuda/`). Legacy API examples are preserved in the fossil record (`ecoPrimals/infra/wateringHole/fossilRecord/toadstool/TOADSTOOL_QUICK_REFERENCE_S166.md`).
 
 ---
 
@@ -85,9 +86,9 @@ Scientific computing middleware (linalg, numerical, special, stats, optimize, su
 
 **Computational Scientists**: See barraCuda (`ecoPrimals/barraCuda/`) for scientific middleware
 
-**System Architects**: [STATUS.md](STATUS.md) then [specs/](specs/)
+**System Architects**: [README.md](README.md) then [specs/](specs/)
 
-**DevOps Engineers**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md) then [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)
+**DevOps Engineers**: [README.md](README.md) then [docs/guides/AKIDA_DRIVER_DEPLOYMENT.md](docs/guides/AKIDA_DRIVER_DEPLOYMENT.md)
 
 ---
 
@@ -107,4 +108,4 @@ docs/
 specs/                     -- Technical specifications
 ```
 
-**Fossil record** — Session trackers (STATUS, EVOLUTION_TRACKER, QUICK_REFERENCE, SOVEREIGN_COMPUTE, SPRING_ABSORPTION_TRACKER, BREAKING_CHANGES, UNSAFE_AUDIT_REPORT, SOVEREIGN_COMPUTE_GAPS, PURE_RUST_TRACKING) archived with `_S166` suffix under `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
+**Fossil record** — 9 session trackers archived with `_S166` suffix under `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.

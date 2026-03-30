@@ -134,7 +134,7 @@ async fn build_capabilities_adds_gpu_dispatch_when_gpus_present() {
         cpu_cores: 8,
         total_memory_bytes: 32 * 1024 * 1024 * 1024,
         available_memory_bytes: 16 * 1024 * 1024 * 1024,
-        gpu_devices: vec![gpu.clone()],
+        gpu_devices: vec![gpu],
         architecture: "x86_64".to_string(),
         os: "linux".to_string(),
     };

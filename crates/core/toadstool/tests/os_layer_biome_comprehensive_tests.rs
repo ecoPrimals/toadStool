@@ -297,7 +297,7 @@ fn test_biome_deployment_manifest_complex() {
     let deployment = BiomeDeployment {
         deployment_id: "deploy-ml-001".to_string(),
         team_id: "ml-team".to_string(),
-        biome_manifest: complex_manifest.clone(),
+        biome_manifest: complex_manifest,
         status: BiomeDeploymentStatus::Running,
         created_at: now,
         updated_at: now,

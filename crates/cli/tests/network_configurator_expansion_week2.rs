@@ -271,7 +271,7 @@ async fn test_configurator_validation_succeeds_with_defaults() {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_configurator_can_be_cloned_and_used() {
     let configurator1 = SongbirdNetworkConfigurator::new();
-    let config = configurator1.config.clone();
+    let config = configurator1.config;
     assert!(config.service_mesh.enabled);
 }
 

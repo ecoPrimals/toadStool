@@ -208,7 +208,7 @@ fn debug_all_public_types_non_empty() {
     let cr = ComputeResult {
         session_id: Uuid::nil(),
         device_id: DeviceId::new(GpuFramework::OpenCl, 0, "u".into()),
-        primary_output: ko.clone(),
+        primary_output: ko,
         recursive_results: vec![],
         total_execution_time: Duration::from_secs(1),
     };
@@ -586,6 +586,6 @@ fn compute_result_recursive_clone() {
         }],
         total_execution_time: Duration::from_secs(2),
     };
-    let r2 = r.clone();
+    let r2 = r;
     assert_eq!(r2.recursive_results.len(), 1);
 }

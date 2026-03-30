@@ -75,7 +75,7 @@ async fn sign_token_request_with_inmemory() {
     config.signature_validation = false;
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.unwrap();
-    let sig = manager.sign_token_request(&token, "target");
+    let sig = manager.sign_token_request(&token, "target").await;
     assert!(sig.is_ok());
     assert_eq!(sig.unwrap(), "signature_disabled");
 }
@@ -85,7 +85,7 @@ async fn sign_verification_request_with_inmemory() {
     let mut config = base_config();
     config.signature_validation = false;
     let manager = AuthenticationManager::with_inmemory(config);
-    let sig = manager.sign_verification_request("primal");
+    let sig = manager.sign_verification_request("primal").await;
     assert!(sig.is_ok());
     assert_eq!(sig.unwrap(), "signature_disabled");
 }
@@ -98,7 +98,7 @@ async fn sign_token_request_disabled_returns_literal() {
     config.signature_validation = false;
     let manager = AuthenticationManager::with_inmemory(config);
     let token = manager.get_current_token().await.unwrap();
-    let sig = manager.sign_token_request(&token, "x");
+    let sig = manager.sign_token_request(&token, "x").await;
     assert!(sig.is_ok());
     assert_eq!(sig.unwrap(), "signature_disabled");
 }
@@ -108,18 +108,17 @@ async fn sign_verification_request_disabled_returns_literal() {
     let mut config = base_config();
     config.signature_validation = false;
     let manager = AuthenticationManager::with_inmemory(config);
-    let sig = manager.sign_verification_request("x");
+    let sig = manager.sign_verification_request("x").await;
     assert!(sig.is_ok());
     assert_eq!(sig.unwrap(), "signature_disabled");
 }
 
 // ─── get_public_key ─────────────────────────────────────────────────────────
 
-#[test]
-fn get_public_key_delegates_to_backend() {
+#[tokio::test(flavor = "current_thread")]
+async fn get_public_key_delegates_to_backend() {
     let manager = AuthenticationManager::with_inmemory(base_config());
-    // InMemoryAuthBackend always provides a test public key
-    assert!(manager.get_public_key().is_some());
+    assert!(manager.get_public_key().await.is_some());
 }
 
 // ─── start_token_refresh and stop ──────────────────────────────────────────

@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn test_capability_provider_clone() {
         let provider = CapabilityProvider::default();
-        let cloned = provider.clone();
+        let cloned = provider;
         let _ = cloned;
     }
 }

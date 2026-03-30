@@ -5,7 +5,40 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 29, 2026 (Sessions 43-166)
+## [Unreleased] - March 30, 2026 (Sessions 43-168)
+
+### Session S168 (Mar 30, 2026) — Sovereign Shader Pipeline + Clippy Zero-Warning + Async Auth
+
+#### `shader.dispatch` JSON-RPC method (ludoSpring V35 / coralReef Iter 70 gap closure)
+- Implemented `shader.dispatch` — closes the compile→dispatch→readback E2E gap for the sovereign shader pipeline
+- Accepts compiled GPU binary via base64 string, JSON u8 array, or nested `compile_result` object (zero-friction pipeline chaining from coralReef's `shader.compile.wgsl`)
+- Routes to GPU via VFIO/DRM through coralReef's `compute.dispatch.execute`
+- Thermal safety check, job tracking (reuses `compute.dispatch.{status,result}`), configurable `readback`
+- Registered in semantic method registry (`shader.dispatch` → `shader_dispatch`), literal router, Songbird capability registration
+- 18 new tests (16 unit + 2 handler-level routing/discoverability)
+- New file: `crates/server/src/pure_jsonrpc/handler/dispatch/shader_dispatch.rs`
+
+#### Full workspace clippy zero-warning
+- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings (was ~120+)
+- Fixed: `redundant_clone` (63), `default_constructed_unit_structs` (18), `float_cmp` (8), `needless_collect` (8), `derive_partial_eq_without_eq` (5), `manual_mul_add` (5), `string_lit_as_bytes` (3), `needless_pass_by_value` (2), plus misc
+- Refactored `discovery_engine::with_defaults()` to use `vec![]` with `#[cfg()]` (eliminating `vec_init_then_push`)
+
+#### Async-first auth_backend
+- `BearDogBackend::sign_payload()` and `public_key()` evolved from sync (per-call `thread::scope` + `block_on`) to native `async fn`
+- `AuthBackend` trait methods now async; all call sites and tests updated
+- Eliminates per-call thread spawn and runtime construction overhead
+
+#### Server connection zero-copy
+- `pure_jsonrpc/connection.rs`: raw JSON-RPC path from `to_vec()` to `Cow::Borrowed` (zero-copy for Unix + TCP)
+
+#### Coverage expansion round 2 (11 files: 0% → covered)
+- `error.rs`, `types/configs/management.rs`, `types/emulation.rs`, `embedded/dos.rs`, `cross_compilation.rs`, `mainframe/{ibm,vax,as400}.rs`, `emulator_impls.rs`, `programmer_impls.rs`
+
+#### Quality gates
+- `cargo fmt --all -- --check`: 0 diffs
+- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings
+- `cargo check --workspace`: clean
+- All tests passing, 0 failures
 
 ### Session S166 (Mar 29, 2026) — Deep Debt Evolution + Dependency Sovereignty
 

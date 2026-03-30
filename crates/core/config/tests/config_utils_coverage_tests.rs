@@ -393,7 +393,7 @@ fn defaults_getters_follow_env() {
                 ConfigUtils::get_execution_timeout(),
                 Duration::from_secs(120)
             );
-            assert_eq!(ConfigUtils::get_max_cpu_usage(), 12.5);
+            assert!((ConfigUtils::get_max_cpu_usage() - 12.5_f64).abs() < f64::EPSILON);
             assert_eq!(ConfigUtils::get_max_memory_usage(), 4096);
             assert_eq!(ConfigUtils::get_max_storage_usage(), 8192);
             assert_eq!(ConfigUtils::get_metrics_interval(), Duration::from_secs(3));
@@ -435,7 +435,7 @@ fn defaults_numeric_invalid_falls_back() {
             ("TOADSTOOL_EXECUTION_TIMEOUT_SECS", Some("-1")),
         ],
         || {
-            assert_eq!(ConfigUtils::get_max_cpu_usage(), 90.0);
+            assert!((ConfigUtils::get_max_cpu_usage() - 90.0_f64).abs() < f64::EPSILON);
             assert_eq!(ConfigUtils::get_max_memory_usage(), 8 * 1024 * 1024 * 1024);
             assert_eq!(
                 ConfigUtils::get_execution_timeout(),

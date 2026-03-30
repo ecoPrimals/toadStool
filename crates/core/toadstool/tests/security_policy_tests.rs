@@ -149,7 +149,7 @@ fn test_security_policy_with_network_restrictions() {
         isolation_level: IsolationLevel::Enhanced,
         allowed_capabilities: vec![Capability::NetworkClient],
         denied_capabilities: vec![],
-        network_restrictions: net.clone(),
+        network_restrictions: net,
         filesystem_restrictions: FilesystemSecurity::default(),
     };
 
@@ -173,7 +173,7 @@ fn test_security_policy_with_filesystem_restrictions() {
         allowed_capabilities: vec![Capability::Read],
         denied_capabilities: vec![Capability::Write],
         network_restrictions: NetworkSecurity::default(),
-        filesystem_restrictions: fs.clone(),
+        filesystem_restrictions: fs,
     };
 
     assert!(policy.filesystem_restrictions.read_only);

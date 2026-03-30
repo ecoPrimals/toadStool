@@ -39,7 +39,7 @@ async fn test_monitor_handles_invalid_metric() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_monitor_recovers_from_error() {
-    let mut monitor = create_test_monitor().await.unwrap();
+    let monitor = create_test_monitor().await.unwrap();
     monitor.start().unwrap();
     monitor.stop().unwrap();
     let result = monitor.start();

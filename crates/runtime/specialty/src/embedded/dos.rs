@@ -202,3 +202,129 @@ impl Default for FileAllocationTable {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn dos_interface_new_and_default_match() {
+        let a = DOSInterface::new();
+        let b = DOSInterface::default();
+        assert_eq!(a.version(), b.version());
+        assert_eq!(a.current_directory(), b.current_directory());
+        assert_eq!(a.version(), "MS-DOS 6.22");
+        assert_eq!(a.current_directory(), &PathBuf::from("C:\\"));
+    }
+
+    #[test]
+    fn dos_interface_debug_format() {
+        let s = format!("{:?}", DOSInterface::new());
+        assert!(s.contains("DOSInterface"));
+    }
+
+    #[test]
+    fn dos_interface_env_and_directory() {
+        let mut iface = DOSInterface::new();
+        assert!(iface.get_env("PATH").is_none());
+        iface.set_env("PATH".to_string(), "C:\\DOS".to_string());
+        assert_eq!(iface.get_env("PATH").map(String::as_str), Some("C:\\DOS"));
+
+        let p = PathBuf::from("D:\\WORK");
+        iface.set_current_directory(p.clone());
+        assert_eq!(iface.current_directory(), &p);
+    }
+
+    #[test]
+    fn dos_interface_file_system_accessors() {
+        let mut iface = DOSInterface::new();
+        assert_eq!(iface.file_system().current_drive(), 'C');
+        iface.file_system_mut().set_current_drive('A');
+        assert_eq!(iface.file_system().current_drive(), 'A');
+    }
+
+    #[test]
+    fn dos_file_system_new_default_mount_and_fat() {
+        let a = DOSFileSystem::new();
+        let b = DOSFileSystem::default();
+        assert_eq!(a.current_drive(), b.current_drive());
+
+        let mut fs = DOSFileSystem::new();
+        fs.mount_drive('D', PathBuf::from("/mnt/d"));
+        assert_eq!(fs.unmount_drive('D'), Some(PathBuf::from("/mnt/d")));
+        assert!(fs.unmount_drive('Z').is_none());
+
+        assert_eq!(fs.fat().cluster_size(), 512);
+        fs.fat_mut().set_cluster_size(1024);
+        assert_eq!(fs.fat().cluster_size(), 1024);
+    }
+
+    #[test]
+    fn dos_file_system_debug_format() {
+        let s = format!("{:?}", DOSFileSystem::new());
+        assert!(s.contains("DOSFileSystem"));
+    }
+
+    #[test]
+    fn file_allocation_table_new_default_and_root_entries() {
+        let a = FileAllocationTable::new();
+        let b = FileAllocationTable::default();
+        assert_eq!(a.cluster_size(), b.cluster_size());
+
+        let mut fat = FileAllocationTable::new();
+        assert!(fat.root_entries().is_empty());
+
+        let t = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let entry = DirectoryEntry {
+            name: "README".to_string(),
+            extension: "TXT".to_string(),
+            attributes: 0x20,
+            size: 1024,
+            start_cluster: 2,
+            last_modified: t,
+        };
+        fat.add_root_entry(entry);
+        assert_eq!(fat.root_entries().len(), 1);
+        fat.clear_root_entries();
+        assert!(fat.root_entries().is_empty());
+    }
+
+    #[test]
+    fn file_allocation_table_debug_format() {
+        let s = format!("{:?}", FileAllocationTable::new());
+        assert!(s.contains("FileAllocationTable"));
+    }
+
+    #[test]
+    fn directory_entry_clone_debug_serde_roundtrip() {
+        let t = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+        let entry = DirectoryEntry {
+            name: "README".to_string(),
+            extension: "TXT".to_string(),
+            attributes: 0x20,
+            size: 1024,
+            start_cluster: 2,
+            last_modified: t,
+        };
+        let c = entry.clone();
+        assert_eq!(entry.name, c.name);
+        assert_eq!(entry.extension, c.extension);
+        assert_eq!(entry.attributes, c.attributes);
+        assert_eq!(entry.size, c.size);
+        assert_eq!(entry.start_cluster, c.start_cluster);
+        assert_eq!(entry.last_modified, c.last_modified);
+
+        let dbg = format!("{:?}", entry);
+        assert!(dbg.contains("README"));
+
+        let json = serde_json::to_string(&entry).unwrap();
+        let back: DirectoryEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(entry.name, back.name);
+        assert_eq!(entry.extension, back.extension);
+        assert_eq!(entry.attributes, back.attributes);
+        assert_eq!(entry.size, back.size);
+        assert_eq!(entry.start_cluster, back.start_cluster);
+        assert_eq!(entry.last_modified, back.last_modified);
+    }
+}

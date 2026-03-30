@@ -332,12 +332,13 @@ fn test_metric_label_filtering() {
         ("server-03", "us-west", 15.0),
     ];
 
-    let us_west_metrics: Vec<_> = metrics
-        .iter()
-        .filter(|(_, region, _)| *region == "us-west")
-        .collect();
-
-    assert_eq!(us_west_metrics.len(), 2);
+    assert_eq!(
+        metrics
+            .iter()
+            .filter(|(_, region, _)| *region == "us-west")
+            .count(),
+        2
+    );
 }
 
 // ============================================================================

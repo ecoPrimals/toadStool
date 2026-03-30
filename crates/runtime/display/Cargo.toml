@@ -68,6 +68,9 @@ default = []
 rustix-backend = []
 # Enable serial transport (USB/UART) for edge device bridging
 serial-transport = ["serialport"]
+# Enable GBM buffer management (requires libwayland-dev system package).
+# Uses dep: syntax so --all-features does NOT pull in wayland C deps.
+gbm-buffers = ["dep:gbm"]
 
 [lints]
 workspace = true

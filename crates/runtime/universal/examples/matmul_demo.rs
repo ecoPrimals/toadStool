@@ -100,7 +100,7 @@ async fn main() -> Result<(), ComputeError> {
         println!();
 
         // Manual verification for first element: C[0,0] = 1*7 + 2*9 + 3*11 = 7 + 18 + 33 = 58
-        let expected_00 = 1.0 * 7.0 + 2.0 * 9.0 + 3.0 * 11.0;
+        let expected_00 = 3.0f32.mul_add(11.0, 1.0f32.mul_add(7.0, 2.0 * 9.0));
         println!("Verification:");
         println!("  C[0,0] = A[0,:]·B[:,0] = 1*7 + 2*9 + 3*11 = {expected_00:.1}");
         println!("  Actual: {:.1}", c[0]);
@@ -155,7 +155,11 @@ async fn main() -> Result<(), ComputeError> {
         operation: OperationType::MatMul,
         data_type: DataType::F32,
         num_operations: size * size * size,
-        required_memory: (identity.len() + matrix.len() + size * size) * std::mem::size_of::<f32>(),
+        required_memory: {
+            let size_sq = size * size;
+            let elements = identity.len() + matrix.len() + size_sq;
+            elements * std::mem::size_of::<f32>()
+        },
         input: WorkloadData::F32MatrixPair(
             identity.clone(),
             size,
@@ -287,7 +291,11 @@ async fn main() -> Result<(), ComputeError> {
         operation: OperationType::MatMul,
         data_type: DataType::F32,
         num_operations: seq_len * d_k * seq_len,
-        required_memory: (q.len() + k_t.len() + seq_len * seq_len) * std::mem::size_of::<f32>(),
+        required_memory: {
+            let seq_sq = seq_len * seq_len;
+            let elements = q.len() + k_t.len() + seq_sq;
+            elements * std::mem::size_of::<f32>()
+        },
         input: WorkloadData::F32MatrixPair(q, seq_len, d_k, k_t, d_k, seq_len),
         params: WorkloadParams {
             params: HashMap::new(),

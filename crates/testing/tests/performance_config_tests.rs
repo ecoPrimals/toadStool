@@ -54,7 +54,7 @@ fn test_config_with_many_custom_metrics() {
     let metrics: Vec<String> = (0..10).map(|i| format!("metric_{i}")).collect();
     let config = PerformanceTestConfig {
         test_name: "many_metrics".to_string(),
-        custom_metrics: metrics.clone(),
+        custom_metrics: metrics,
         ..Default::default()
     };
 

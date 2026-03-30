@@ -121,7 +121,7 @@ async fn test_discovery_engine_with_config() {
         retry_delay: Duration::from_secs(2),
     };
 
-    let engine = DiscoveryEngine::with_config(config.clone());
+    let engine = DiscoveryEngine::with_config(config);
 
     assert!(!engine.config.enable_cache);
     assert_eq!(engine.config.cache_ttl, Duration::from_secs(600));

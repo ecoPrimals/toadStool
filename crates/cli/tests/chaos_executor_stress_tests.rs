@@ -360,7 +360,7 @@ async fn chaos_concurrent_state_access() -> Result<()> {
 
     let mut success = 0;
     for handle in handles {
-        if let Ok(Ok(())) = handle.await {
+        if matches!(handle.await, Ok(Ok(()))) {
             success += 1;
         }
     }
@@ -443,7 +443,7 @@ async fn chaos_recovery_after_stress() -> Result<()> {
 
     let mut recovered = 0;
     for handle in recovery_handles {
-        if let Ok(Ok(())) = handle.await {
+        if matches!(handle.await, Ok(Ok(()))) {
             recovered += 1;
         }
     }

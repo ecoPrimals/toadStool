@@ -24,12 +24,12 @@ use tokio::net::UnixStream;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
-/// JSON-RPC 2.0 request
+/// JSON-RPC 2.0 request (zero-copy: both `jsonrpc` and `method` borrow when possible)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct JsonRpcRequest {
+struct JsonRpcRequest<'a> {
     jsonrpc: Cow<'static, str>,
     id: u64,
-    method: String,
+    method: Cow<'a, str>,
     params: Value,
 }
 
@@ -119,11 +119,11 @@ impl UnixJsonRpcClient {
             .next_id
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        // Build JSON-RPC 2.0 request (zero-copy version string)
+        // Build JSON-RPC 2.0 request (zero-copy: borrows both version and method)
         let request = JsonRpcRequest {
             jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id,
-            method: method.to_string(),
+            method: Cow::Borrowed(method),
             params,
         };
 
@@ -307,7 +307,7 @@ mod tests {
         let request = JsonRpcRequest {
             jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
-            method: "test.method".to_string(),
+            method: Cow::Borrowed("test.method"),
             params: serde_json::json!({"key": "value"}),
         };
 
@@ -347,7 +347,7 @@ mod tests {
         let request = JsonRpcRequest {
             jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 42,
-            method: "simple.method".to_string(),
+            method: Cow::Borrowed("simple.method"),
             params: serde_json::json!(null),
         };
 
@@ -361,7 +361,7 @@ mod tests {
         let request = JsonRpcRequest {
             jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
-            method: "test.array".to_string(),
+            method: Cow::Borrowed("test.array"),
             params: serde_json::json!([1, 2, 3]),
         };
 
@@ -445,7 +445,7 @@ mod tests {
         let request = JsonRpcRequest {
             jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
             id: 1,
-            method: "test".to_string(),
+            method: Cow::Borrowed("test"),
             params: serde_json::json!({}),
         };
 

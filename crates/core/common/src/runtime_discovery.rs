@@ -539,7 +539,7 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        cache.insert(service.clone());
+        cache.insert(service);
         assert_eq!(cache.get_all().len(), 1);
     }
 

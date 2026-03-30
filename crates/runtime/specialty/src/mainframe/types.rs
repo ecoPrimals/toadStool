@@ -111,7 +111,7 @@ pub trait Terminal3270Session: Send + Sync + std::fmt::Debug {
 }
 
 /// 3270 Terminal Attributes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Terminal3270Attributes {
     /// Screen width
     pub width: u16,
@@ -216,7 +216,7 @@ pub struct VAXTerminal {
 }
 
 /// VAX Terminal Attributes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VAXTerminalAttributes {
     /// Terminal width
     pub width: u16,

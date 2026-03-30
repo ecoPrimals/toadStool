@@ -308,7 +308,7 @@ mod tests {
         assert_eq!(ScalarReducer::sum(values.clone()), 15.0);
         assert_eq!(ScalarReducer::min(values.clone()), Some(1.0));
         assert_eq!(ScalarReducer::max(values.clone()), Some(5.0));
-        assert_eq!(ScalarReducer::average(values.clone()), Some(3.0));
+        assert_eq!(ScalarReducer::average(values), Some(3.0));
         assert_eq!(ScalarReducer::product(vec![2.0, 3.0, 4.0]), 24.0);
     }
 }

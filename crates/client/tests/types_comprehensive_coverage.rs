@@ -53,7 +53,7 @@ fn test_workload_submission_clone() {
         metadata: HashMap::new(),
     };
 
-    let cloned = submission.clone();
+    let cloned = submission;
     assert!(matches!(cloned.workload_type, WorkloadType::Native { .. }));
 }
 
@@ -167,7 +167,7 @@ fn test_workload_type_python() {
 fn test_workload_type_custom() {
     let data = serde_json::json!({"custom": "data", "value": 42});
     let workload = WorkloadType::Custom {
-        workload_data: data.clone(),
+        workload_data: data,
     };
 
     assert!(matches!(workload, WorkloadType::Custom { .. }));
@@ -197,7 +197,7 @@ fn test_workload_type_clone() {
         working_dir: None,
     };
 
-    let cloned = workload.clone();
+    let cloned = workload;
     assert!(matches!(cloned, WorkloadType::Container { .. }));
 }
 
@@ -439,7 +439,7 @@ fn test_execution_status_serialization() {
 #[test]
 fn test_execution_status_clone() {
     let status = ExecutionStatus::Running;
-    let cloned = status.clone();
+    let cloned = status;
     assert!(matches!(cloned, ExecutionStatus::Running));
 }
 
@@ -628,7 +628,7 @@ fn test_event_clone() {
         execution_id: "id-123".to_string(),
         status: "running".to_string(),
     };
-    let cloned = event.clone();
+    let cloned = event;
     assert!(matches!(
         cloned,
         ToadStoolEvent::ExecutionStatusChanged { .. }

@@ -492,8 +492,7 @@ async fn test_biome_version_string() {
     assert!(version.starts_with("0."));
     assert!(version.contains('.'));
 
-    let parts: Vec<&str> = version.split('.').collect();
-    assert_eq!(parts.len(), 3);
+    assert_eq!(version.split('.').count(), 3);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

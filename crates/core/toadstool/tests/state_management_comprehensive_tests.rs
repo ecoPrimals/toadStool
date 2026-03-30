@@ -228,7 +228,7 @@ fn test_execution_response_with_warnings() {
     let warnings = vec!["Warning 1".to_string(), "Warning 2".to_string()];
 
     let response = ExecutionResponse {
-        warnings: warnings.clone(),
+        warnings,
         ..ExecutionResponse::default()
     };
 
@@ -764,7 +764,7 @@ fn test_empty_execution_input() {
 fn test_large_execution_input() {
     let large_data = vec![0u8; 1024 * 1024]; // 1 MB
     let input = ExecutionInput {
-        data: large_data.clone().into(),
+        data: large_data.into(),
         ..ExecutionInput::default()
     };
 

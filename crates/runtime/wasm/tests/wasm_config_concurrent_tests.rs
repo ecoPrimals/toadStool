@@ -77,7 +77,7 @@ async fn test_stress_200_concurrent_configs() {
                 _ => {
                     // Clone existing
                     let config = WasmRuntimeConfig::default();
-                    let _ = config.clone();
+                    let _ = config;
                 }
             }
             true

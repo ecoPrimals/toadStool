@@ -234,7 +234,7 @@ fn test_beardog_permission_multiple_capabilities() {
     let permission = BearDogPermission {
         permission_id: uuid::Uuid::new_v4(),
         granted_to: "admin-service".to_string(),
-        capabilities: capabilities.clone(),
+        capabilities,
         valid_until: std::time::SystemTime::now() + std::time::Duration::from_secs(7 * 24 * 3600),
         signature: "signature123".to_string(),
     };

@@ -75,8 +75,7 @@ fn test_pcie_address_format() {
         assert!(parts[1].chars().all(|c| c.is_ascii_hexdigit()));
 
         // Device.function
-        let dev_func: Vec<&str> = parts[2].split('.').collect();
-        assert_eq!(dev_func.len(), 2);
+        assert_eq!(parts[2].split('.').count(), 2);
     }
 }
 

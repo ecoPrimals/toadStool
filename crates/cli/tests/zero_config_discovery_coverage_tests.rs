@@ -37,7 +37,7 @@ async fn test_discover_system_succeeds_on_linux() {
 #[tokio::test]
 async fn test_discover_system_populates_cpu_info() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_system().await {
+    if matches!(deployment.discover_system().await, Ok(())) {
         assert!(deployment.system_info.cpu.cores >= 1);
         assert!(!deployment.system_info.cpu.architecture.is_empty());
     }
@@ -46,7 +46,7 @@ async fn test_discover_system_populates_cpu_info() {
 #[tokio::test]
 async fn test_discover_system_populates_memory_info() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_system().await {
+    if matches!(deployment.discover_system().await, Ok(())) {
         // Memory info may be 0 if /proc/meminfo parse fails
         let _ = deployment.system_info.memory.total_bytes;
         let _ = deployment.system_info.memory.available_bytes;
@@ -56,7 +56,7 @@ async fn test_discover_system_populates_memory_info() {
 #[tokio::test]
 async fn test_discover_system_populates_storage_info() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_system().await {
+    if matches!(deployment.discover_system().await, Ok(())) {
         let _ = deployment.system_info.storage.total_bytes;
         let _ = deployment.system_info.storage.available_bytes;
     }
@@ -65,7 +65,7 @@ async fn test_discover_system_populates_storage_info() {
 #[tokio::test]
 async fn test_discover_system_populates_os_info() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_system().await {
+    if matches!(deployment.discover_system().await, Ok(())) {
         assert!(!deployment.system_info.os.name.is_empty());
         assert!(!deployment.system_info.os.arch.is_empty());
     }
@@ -74,7 +74,7 @@ async fn test_discover_system_populates_os_info() {
 #[tokio::test]
 async fn test_discover_system_populates_container_runtime() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_system().await {
+    if matches!(deployment.discover_system().await, Ok(())) {
         let _ = deployment.system_info.container_runtime.docker;
         let _ = deployment.system_info.container_runtime.podman;
         let _ = deployment.system_info.container_runtime.containerd;
@@ -84,7 +84,7 @@ async fn test_discover_system_populates_container_runtime() {
 #[tokio::test]
 async fn test_discover_system_populates_gpu_info() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_system().await {
+    if matches!(deployment.discover_system().await, Ok(())) {
         let _ = deployment.system_info.gpu.count;
         let _ = deployment.system_info.gpu.vendor.as_str();
         let _ = deployment.system_info.gpu.model.as_str();
@@ -105,7 +105,7 @@ async fn test_discover_ecosystem_succeeds() {
 #[tokio::test]
 async fn test_discover_ecosystem_populates_services() {
     let mut deployment = ZeroConfigDeployment::new();
-    if let Ok(()) = deployment.discover_ecosystem().await {
+    if matches!(deployment.discover_ecosystem().await, Ok(())) {
         let _ = &deployment.ecosystem_services.songbird;
         let _ = &deployment.ecosystem_services.beardog;
         let _ = &deployment.ecosystem_services.nestgate;

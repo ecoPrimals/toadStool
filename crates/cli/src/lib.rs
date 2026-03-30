@@ -103,7 +103,6 @@ impl From<std::net::AddrParseError> for CliError {
     }
 }
 
-
 #[cfg(feature = "npu")]
 impl From<akida_driver::AkidaError> for CliError {
     fn from(e: akida_driver::AkidaError) -> Self {
@@ -148,7 +147,7 @@ pub use commands::{
 #[derive(Parser)]
 #[command(name = "toadstool")]
 #[command(about = "🍄 Universal Compute Platform - The backbone of SOVEREIGN SCIENCE")]
-#[command(version = "0.1.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(author = "ToadStool Development Team")]
 #[command(long_about = "
 ToadStool is the universal runtime environment for the ecoPrimals ecosystem.

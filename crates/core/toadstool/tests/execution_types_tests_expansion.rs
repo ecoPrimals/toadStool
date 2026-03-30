@@ -28,7 +28,7 @@ fn test_execution_status_failed_empty_error() {
 fn test_execution_status_failed_long_error() {
     let long_error = "a".repeat(10000);
     let status = ExecutionStatus::Failed {
-        error: long_error.clone().into(),
+        error: long_error.into(),
     };
 
     match status {
@@ -196,7 +196,7 @@ fn test_execution_output_large_stdout() {
     let large_stdout = "line\n".repeat(100_000);
     let output = ExecutionOutput {
         data: bytes::Bytes::new(),
-        stdout: Some(large_stdout.clone()),
+        stdout: Some(large_stdout),
         stderr: None,
         exit_code: Some(0),
         format: None,
@@ -307,7 +307,7 @@ fn test_callback_config_long_auth_token() {
     let long_token = "a".repeat(10000);
     let config = CallbackConfig {
         url: "https://example.com".to_string(),
-        auth_token: Some(long_token.clone()),
+        auth_token: Some(long_token),
         events: vec![],
     };
 
@@ -527,7 +527,7 @@ fn test_execution_response_many_warnings() {
     let warnings: Vec<String> = (0..1000).map(|i| format!("Warning {i}")).collect();
 
     let response = ExecutionResponse {
-        warnings: warnings.clone(),
+        warnings,
         ..Default::default()
     };
 
@@ -709,7 +709,7 @@ fn test_execution_with_input_and_output() {
     };
 
     let request = ExecutionRequest {
-        input_data: input.clone(),
+        input_data: input,
         ..Default::default()
     };
 
@@ -721,7 +721,7 @@ fn test_execution_with_input_and_output() {
     };
 
     let response = ExecutionResponse {
-        output: output.clone(),
+        output,
         status: ExecutionStatus::Success,
         ..Default::default()
     };

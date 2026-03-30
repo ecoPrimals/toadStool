@@ -234,9 +234,7 @@ async fn test_broadcast_messaging() {
     let _message = "broadcast_message";
     let node_count = 5;
 
-    let recipients: Vec<Uuid> = (0..node_count).map(|_| Uuid::new_v4()).collect();
-
-    assert_eq!(recipients.len(), node_count);
+    assert_eq!((0..node_count).map(|_| Uuid::new_v4()).count(), node_count);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

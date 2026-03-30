@@ -302,8 +302,7 @@ mod container_runtime_tests {
 
         for image in images {
             assert!(image.contains(':'));
-            let parts: Vec<&str> = image.split(':').collect();
-            assert_eq!(parts.len(), 2);
+            assert_eq!(image.split(':').count(), 2);
         }
     }
 
@@ -470,8 +469,7 @@ mod gpu_runtime_tests {
         let cuda_versions = vec!["11.8", "12.0", "12.1"];
 
         for version in cuda_versions {
-            let parts: Vec<&str> = version.split('.').collect();
-            assert_eq!(parts.len(), 2);
+            assert_eq!(version.split('.').count(), 2);
         }
     }
 

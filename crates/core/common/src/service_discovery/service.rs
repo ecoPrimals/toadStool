@@ -447,7 +447,7 @@ mod tests {
             name: "test".to_string(),
             version: "1.0".to_string(),
             capabilities: vec![],
-            endpoints: vec![endpoint.clone()],
+            endpoints: vec![endpoint],
             metadata: std::collections::HashMap::new(),
             discovered_at: SystemTime::now(),
             last_seen: SystemTime::now(),

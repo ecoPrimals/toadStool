@@ -9,6 +9,7 @@ mod capabilities;
 mod forward;
 mod queries;
 mod routing;
+mod shader_dispatch;
 mod submit;
 mod types;
 

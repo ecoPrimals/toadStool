@@ -24,9 +24,7 @@ mod tests {
         .with_precision(Precision::FP16)
         .with_max_latency_ms(1000);
 
-        let workload_spec = WorkloadSpec::AiMl {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::AiMl { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -59,9 +57,7 @@ mod tests {
         .with_precision(Precision::INT8)
         .with_max_latency_ms(50);
 
-        let workload_spec = WorkloadSpec::AiMl {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::AiMl { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -88,9 +84,7 @@ mod tests {
         };
         let workload = CudaWorkload::new(source, launch);
 
-        let workload_spec = WorkloadSpec::Cuda {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::Cuda { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -120,9 +114,7 @@ mod tests {
         };
         let workload = CudaWorkload::new(source, launch);
 
-        let workload_spec = WorkloadSpec::Cuda {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::Cuda { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -152,9 +144,7 @@ mod tests {
             entry_point: "kernel".to_string(),
         };
         let workload = CudaWorkload::new(source, launch);
-        let workload_spec = WorkloadSpec::Cuda {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::Cuda { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -187,9 +177,7 @@ mod tests {
             entry_point: "kernel".to_string(),
         };
         let workload = CudaWorkload::new(source, launch);
-        let workload_spec = WorkloadSpec::Cuda {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::Cuda { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -215,9 +203,7 @@ mod tests {
             entry_point: "kernel".to_string(),
         };
         let workload = CudaWorkload::new(source, launch);
-        let workload_spec = WorkloadSpec::Cuda {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::Cuda { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);
@@ -251,9 +237,7 @@ mod tests {
             entry_point: "kernel".to_string(),
         };
         let workload = CudaWorkload::new(source, launch);
-        let workload_spec = WorkloadSpec::Cuda {
-            workload: workload.clone(),
-        };
+        let workload_spec = WorkloadSpec::Cuda { workload };
 
         let analyzer = WorkloadAnalyzer::new();
         let characteristics = analyzer.analyze(&workload_spec);

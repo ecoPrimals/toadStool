@@ -240,7 +240,7 @@ fn test_active_execution_creation() {
         started_at,
         timeout,
         status: status.clone(),
-        client_info: client_info.clone(),
+        client_info,
     };
 
     assert_eq!(execution.execution_id, execution_id);

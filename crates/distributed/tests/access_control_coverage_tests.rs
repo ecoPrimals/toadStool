@@ -238,7 +238,7 @@ fn access_result_granted_clone() {
         expires_at: None,
         restrictions: vec![],
     };
-    let c = r.clone();
+    let c = r;
     assert!(matches!(c, AccessResult::Granted { .. }));
 }
 
@@ -248,7 +248,7 @@ fn access_result_denied_clone() {
         reason: "no".to_string(),
         how_to_get_access: "get".to_string(),
     };
-    let c = r.clone();
+    let c = r;
     assert!(matches!(c, AccessResult::Denied { .. }));
 }
 

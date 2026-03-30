@@ -269,7 +269,7 @@ fn test_auth_type_serialization() {
 #[test]
 fn test_auth_type_clone() {
     let auth = AuthType::Bearer;
-    let cloned = auth.clone();
+    let cloned = auth;
     // Can't use assert_eq because AuthType doesn't derive PartialEq
     // Just verify clone succeeds
     let _ = cloned;

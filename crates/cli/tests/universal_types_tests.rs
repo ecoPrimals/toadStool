@@ -83,7 +83,7 @@ fn test_benchmark_type_custom() {
 #[test]
 fn test_benchmark_type_clone() {
     let bench_type = BenchmarkType::CpuInteger;
-    let cloned = bench_type.clone();
+    let cloned = bench_type;
     assert!(matches!(cloned, BenchmarkType::CpuInteger));
 }
 
@@ -192,7 +192,7 @@ fn test_federation_status_error() {
 #[test]
 fn test_federation_status_clone() {
     let status = FederationStatus::Ready;
-    let cloned = status.clone();
+    let cloned = status;
     assert!(matches!(cloned, FederationStatus::Ready));
 }
 
@@ -227,7 +227,7 @@ fn test_trust_level_sovereign() {
 #[test]
 fn test_trust_level_clone() {
     let level = TrustLevel::Sovereign;
-    let cloned = level.clone();
+    let cloned = level;
     assert!(matches!(cloned, TrustLevel::Sovereign));
 }
 
@@ -325,7 +325,7 @@ fn test_platform_status_error() {
 #[test]
 fn test_platform_status_clone() {
     let status = PlatformStatus::Available;
-    let cloned = status.clone();
+    let cloned = status;
     assert!(matches!(cloned, PlatformStatus::Available));
 }
 

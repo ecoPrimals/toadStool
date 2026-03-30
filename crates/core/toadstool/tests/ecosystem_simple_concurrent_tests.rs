@@ -230,6 +230,8 @@ async fn test_stress_context_creation() -> Result<()> {
         }));
     }
 
+    assert_eq!(handles.len(), 100);
+
     // Track completions
     let mut completion_count = 0;
     while completion_count < 100 {

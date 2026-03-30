@@ -37,7 +37,7 @@ async fn test_export_metrics_csv() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_export_to_file() {
-    let export_path = _export_path();
+    let export_path = export_path();
     assert!(export_path.to_str().is_some(), "Path should be valid");
 }
 

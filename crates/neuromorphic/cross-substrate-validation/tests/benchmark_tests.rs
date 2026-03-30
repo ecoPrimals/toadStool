@@ -134,7 +134,7 @@ fn test_suite_has_varied_sizes() {
     let sizes: Vec<usize> = suite.iter().map(|w| w.size).collect();
 
     // Should have at least 3 different sizes
-    let mut unique_sizes = sizes.clone();
+    let mut unique_sizes = sizes;
     unique_sizes.sort_unstable();
     unique_sizes.dedup();
 

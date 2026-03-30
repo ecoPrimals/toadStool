@@ -43,7 +43,7 @@ fn test_jsonrpc_request_with_params() {
 fn test_jsonrpc_request_destroy_window_params() {
     let window_id = WindowId::new();
     let params = serde_json::json!({"window_id": window_id.as_string()});
-    let req = JsonRpcRequest::new("display.destroy_window", Some(params.clone()));
+    let req = JsonRpcRequest::new("display.destroy_window", Some(params));
     assert_eq!(req.method, "display.destroy_window");
     assert_eq!(
         req.params.as_ref().unwrap()["window_id"],

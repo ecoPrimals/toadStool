@@ -124,3 +124,172 @@ impl_emulator_stub!(
     LegacyArchitecture::ZilogZ80,
     "embedded_emulator_zilog_z80"
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        EmbeddedConfig, LegacyArchitecture, MemoryLayout, ProgrammingInterface,
+        ProgrammingInterfaceType,
+    };
+    use std::collections::HashMap;
+
+    use crate::embedded::emulators::{Emulator6502, EmulatorZ80};
+    use crate::embedded::types::{CpuRegisters, EmbeddedEmulator, EmulationStatus};
+
+    fn minimal_embedded_config() -> EmbeddedConfig {
+        EmbeddedConfig {
+            architecture: LegacyArchitecture::MOS6502,
+            memory_layout: MemoryLayout {
+                rom_regions: vec![],
+                ram_regions: vec![],
+                io_regions: vec![],
+            },
+            peripherals: vec![],
+            programming_interface: ProgrammingInterface {
+                interface_type: ProgrammingInterfaceType::ISP,
+                connection_params: HashMap::new(),
+            },
+        }
+    }
+
+    fn assert_not_supported_emulator(err: &ToadStoolError) {
+        let msg = err.to_string();
+        assert!(
+            msg.contains("not supported"),
+            "expected not-supported wording, got: {msg}"
+        );
+        assert!(
+            msg.contains("emulator"),
+            "expected emulator feature or reason, got: {msg}"
+        );
+    }
+
+    fn assert_serde_json_stable<T>(value: &T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
+    {
+        let json = serde_json::to_string(value).expect("serde_json serialize");
+        let back: T = serde_json::from_str(&json).expect("serde_json deserialize");
+        let json_again = serde_json::to_string(&back).expect("serde_json re-serialize");
+        assert_eq!(json, json_again);
+    }
+
+    #[test]
+    fn emulator_6502_new_default_debug() {
+        let a = Emulator6502::new();
+        let b = Emulator6502;
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        let s = format!("{a:?}");
+        assert!(s.contains("Emulator6502"), "{s}");
+    }
+
+    #[test]
+    fn emulator_z80_new_default_debug() {
+        let a = EmulatorZ80::new();
+        let b = EmulatorZ80;
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        let s = format!("{a:?}");
+        assert!(s.contains("EmulatorZ80"), "{s}");
+    }
+
+    #[test]
+    fn serde_roundtrip_types_used_by_emulator_trait() {
+        let cfg = minimal_embedded_config();
+        assert_serde_json_stable(&cfg);
+        let pi = ProgrammingInterface {
+            interface_type: ProgrammingInterfaceType::ISP,
+            connection_params: HashMap::from([("port".to_string(), "/dev/ttyUSB0".to_string())]),
+        };
+        assert_serde_json_stable(&pi);
+        assert_serde_json_stable(&ProgrammingInterfaceType::Parallel);
+        let regs = CpuRegisters {
+            general_purpose: HashMap::from([("A".to_string(), 0x42)]),
+            program_counter: 0x8000,
+            stack_pointer: 0x100,
+            status_register: 0,
+            special: HashMap::new(),
+        };
+        assert_serde_json_stable(&regs);
+        assert_serde_json_stable(&EmulationStatus::Running);
+        assert_serde_json_stable(&EmulationStatus::Stopped);
+        assert_serde_json_stable(&EmulationStatus::Breakpoint { address: 0x2000 });
+        assert_serde_json_stable(&EmulationStatus::Error {
+            message: "boom".to_string(),
+        });
+    }
+
+    #[test]
+    fn emulator_6502_trait_name_and_architectures() {
+        let e = Emulator6502::new();
+        assert_eq!(EmbeddedEmulator::name(&e), "6502 Emulator");
+        assert_eq!(
+            EmbeddedEmulator::supported_architectures(&e),
+            vec![LegacyArchitecture::MOS6502]
+        );
+    }
+
+    #[test]
+    fn emulator_z80_trait_name_and_architectures() {
+        let e = EmulatorZ80::new();
+        assert_eq!(EmbeddedEmulator::name(&e), "Z80 Emulator");
+        assert_eq!(
+            EmbeddedEmulator::supported_architectures(&e),
+            vec![LegacyArchitecture::ZilogZ80]
+        );
+    }
+
+    #[tokio::test]
+    async fn emulator_6502_stub_returns_not_supported_except_noops() {
+        let mut e = Emulator6502::new();
+        let cfg = minimal_embedded_config();
+        assert_not_supported_emulator(&e.initialize(&cfg).await.expect_err("initialize"));
+        assert_not_supported_emulator(&e.load_rom(&[], 0).await.expect_err("load_rom"));
+        assert_not_supported_emulator(&e.start().await.expect_err("start"));
+        e.stop().await.expect("stop");
+        assert_not_supported_emulator(&e.step().await.expect_err("step"));
+        assert_not_supported_emulator(&e.get_status().await.expect_err("get_status"));
+        assert_not_supported_emulator(&e.read_memory(0, 4).await.expect_err("read_memory"));
+        assert_not_supported_emulator(&e.write_memory(0, &[1]).await.expect_err("write_memory"));
+        let regs = CpuRegisters {
+            general_purpose: HashMap::new(),
+            program_counter: 0,
+            stack_pointer: 0,
+            status_register: 0,
+            special: HashMap::new(),
+        };
+        assert_not_supported_emulator(&e.read_registers().await.expect_err("read_registers"));
+        assert_not_supported_emulator(
+            &e.write_registers(&regs).await.expect_err("write_registers"),
+        );
+        assert_not_supported_emulator(&e.set_breakpoint(0).await.expect_err("set_breakpoint"));
+        e.clear_breakpoint(0).await.expect("clear_breakpoint");
+    }
+
+    #[tokio::test]
+    async fn emulator_z80_stub_returns_not_supported_except_noops() {
+        let mut e = EmulatorZ80::new();
+        let cfg = minimal_embedded_config();
+        assert_not_supported_emulator(&e.initialize(&cfg).await.expect_err("initialize"));
+        assert_not_supported_emulator(&e.load_rom(&[], 0).await.expect_err("load_rom"));
+        assert_not_supported_emulator(&e.start().await.expect_err("start"));
+        e.stop().await.expect("stop");
+        assert_not_supported_emulator(&e.step().await.expect_err("step"));
+        assert_not_supported_emulator(&e.get_status().await.expect_err("get_status"));
+        assert_not_supported_emulator(&e.read_memory(0, 4).await.expect_err("read_memory"));
+        assert_not_supported_emulator(&e.write_memory(0, &[1]).await.expect_err("write_memory"));
+        let regs = CpuRegisters {
+            general_purpose: HashMap::new(),
+            program_counter: 0,
+            stack_pointer: 0,
+            status_register: 0,
+            special: HashMap::new(),
+        };
+        assert_not_supported_emulator(&e.read_registers().await.expect_err("read_registers"));
+        assert_not_supported_emulator(
+            &e.write_registers(&regs).await.expect_err("write_registers"),
+        );
+        assert_not_supported_emulator(&e.set_breakpoint(0).await.expect_err("set_breakpoint"));
+        e.clear_breakpoint(0).await.expect("clear_breakpoint");
+    }
+}

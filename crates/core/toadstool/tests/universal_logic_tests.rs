@@ -82,9 +82,7 @@ mod universal_logic_tests {
         }
 
         let reg = registry.read().await;
-        let compute_primals: Vec<_> = reg.iter().filter(|(_, v)| *v == "compute").collect();
-
-        assert_eq!(compute_primals.len(), 3);
+        assert_eq!(reg.iter().filter(|(_, v)| *v == "compute").count(), 3);
     }
 
     // ============================================================================
@@ -253,18 +251,14 @@ mod universal_logic_tests {
             ("primal-3", "compute"),
         ];
 
-        let compute_primals: Vec<_> = primals.iter().filter(|(_, t)| *t == "compute").collect();
-
-        assert_eq!(compute_primals.len(), 2);
+        assert_eq!(primals.iter().filter(|(_, t)| *t == "compute").count(), 2);
     }
 
     #[test]
     fn test_select_primal_none_available() {
         let primals = vec![("primal-1", "compute"), ("primal-2", "security")];
 
-        let storage_primals: Vec<_> = primals.iter().filter(|(_, t)| *t == "storage").collect();
-
-        assert_eq!(storage_primals.len(), 0);
+        assert_eq!(primals.iter().filter(|(_, t)| *t == "storage").count(), 0);
     }
 
     #[test]

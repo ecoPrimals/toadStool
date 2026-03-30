@@ -95,7 +95,7 @@ fn test_biome_template_custom() {
 #[test]
 fn test_biome_template_clone() {
     let template = BiomeTemplate::Basic;
-    let cloned = template.clone();
+    let cloned = template;
     assert!(matches!(cloned, BiomeTemplate::Basic));
 }
 

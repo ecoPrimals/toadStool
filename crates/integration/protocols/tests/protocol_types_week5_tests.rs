@@ -27,7 +27,7 @@ fn test_transport_type_variants() {
 #[test]
 fn test_transport_type_clone() {
     let original = TransportType::Http;
-    let cloned = original.clone();
+    let cloned = original;
 
     assert!(matches!(cloned, TransportType::Http));
 }
@@ -152,7 +152,7 @@ fn test_auth_type_variants() {
 #[test]
 fn test_auth_type_clone() {
     let auth = AuthType::Bearer;
-    let cloned = auth.clone();
+    let cloned = auth;
 
     assert!(matches!(cloned, AuthType::Bearer));
 }

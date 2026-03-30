@@ -335,13 +335,11 @@ async fn test_display_under_log_flood() {
                 for i in 0..100 {
                     let mut buf = buffer.lock().await;
 
-                    if buf.len() < max_buffer_size {
-                        buf.push(format!("Log {i}"));
-                    } else {
+                    if buf.len() >= max_buffer_size {
                         // Buffer full, drop oldest
                         buf.remove(0);
-                        buf.push(format!("Log {i}"));
                     }
+                    buf.push(format!("Log {i}"));
 
                     sleep(Duration::from_micros(50)).await;
                 }

@@ -238,6 +238,7 @@ impl SemanticMethodRegistry {
         add_mapping("shader.compile.spirv", "shader_compile_spirv");
         add_mapping("shader.compile.status", "shader_compile_status");
         add_mapping("shader.compile.capabilities", "shader_compile_capabilities");
+        add_mapping("shader.dispatch", "shader_dispatch");
 
         // ═══════════════════════════════════════════════════════════
         // SILICON DOMAIN - All-silicon pipeline / performance surface (S159)

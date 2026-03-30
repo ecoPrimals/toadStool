@@ -656,7 +656,7 @@ mod tests {
                 correlation_id: Some(msg.id),
                 reply_to: None,
                 ttl: None,
-                priority: msg.priority.clone(),
+                priority: msg.priority,
             }))
         });
 

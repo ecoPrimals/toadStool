@@ -134,6 +134,8 @@ async fn test_stress_list_operations() -> Result<()> {
         }));
     }
 
+    assert_eq!(handles.len(), 100);
+
     // Track completions (event-driven)
     let mut completion_count = 0;
     while completion_count < 100 {

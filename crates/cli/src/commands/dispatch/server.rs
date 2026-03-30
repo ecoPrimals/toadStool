@@ -35,3 +35,60 @@ pub async fn run_byob_server(
         .await
         .map_err(|e| CliError::Other(format!("BYOB server failed: {e}")))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    use crate::CliError;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn run_byob_server_invalid_bind_maps_to_cli_error() {
+        let err = super::run_byob_server(
+            Some("not-a-valid-socket-addr-for-parse".to_string()),
+            8080,
+            None,
+        )
+        .await
+        .expect_err("invalid bind should fail before listen");
+
+        assert!(
+            matches!(err, CliError::Other(ref msg) if msg.contains("BYOB server failed")),
+            "expected BYOB mapping, got {err:?}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn run_byob_server_missing_config_file_maps_to_cli_error() {
+        let err = super::run_byob_server(
+            None,
+            8080,
+            Some(PathBuf::from("/nonexistent/byob-config.toml")),
+        )
+        .await
+        .expect_err("missing config should fail");
+
+        assert!(
+            matches!(err, CliError::Other(ref msg) if msg.contains("BYOB server failed")),
+            "expected BYOB mapping, got {err:?}"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn run_server_daemon_blocks_until_shutdown() {
+        temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+            let result = tokio::time::timeout(
+                Duration::from_millis(80),
+                super::run_server_daemon(Some("test-family-id".to_string()), None),
+            )
+            .await;
+
+            assert!(
+                result.is_err(),
+                "server daemon should block on shutdown signal (timeout expected)"
+            );
+        })
+        .await;
+    }
+}

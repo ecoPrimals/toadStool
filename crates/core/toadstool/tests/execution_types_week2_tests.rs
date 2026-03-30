@@ -454,7 +454,7 @@ fn test_callback_event_variants() {
 #[test]
 fn test_callback_event_clone() {
     let event = CallbackEvent::Started;
-    let cloned = event.clone();
+    let cloned = event;
 
     assert!(matches!(cloned, CallbackEvent::Started));
 }

@@ -261,18 +261,18 @@ async fn test_string_split_patterns() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[allow(clippy::unnecessary_literal_unwrap)] // intentional Some/None + unwrap_or_else coverage
 async fn test_option_handling_patterns() -> Result<()> {
     // Test Option handling patterns used in executor
 
-    let some_value: Option<String> = Some("test".to_string());
+    let some_value = Some("test".to_string());
+    assert_eq!(some_value.unwrap_or_else(|| "default".to_string()), "test");
+
     let none_value: Option<String> = None;
-
-    // unwrap_or_else pattern
-    let result1 = some_value.clone().unwrap_or_else(|| "default".to_string());
-    assert_eq!(result1, "test");
-
-    // None value would use default
-    assert!(none_value.is_none());
+    assert_eq!(
+        none_value.unwrap_or_else(|| "default".to_string()),
+        "default"
+    );
 
     Ok(())
 }

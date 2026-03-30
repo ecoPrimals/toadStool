@@ -42,7 +42,7 @@ pub enum TowerFailure {
 }
 
 /// Tower state
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TowerState {
     Healthy,
     Degraded,

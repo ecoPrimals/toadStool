@@ -4,6 +4,7 @@
 //! Generic over JsonRpcHandler. Parses requests from owned bytes so that
 //! JsonRpcRequest's Cow<'a, str> can borrow from the slice during deserialization.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -122,14 +123,14 @@ async fn handle_unix_connection(
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
 
-    let (body, is_http) = if first_line.starts_with("POST")
+    let (body, is_http): (Cow<'_, [u8]>, bool) = if first_line.starts_with("POST")
         || first_line.starts_with("GET")
         || first_line.starts_with("HTTP")
     {
         let (_headers, body) = read_http_request_continuation_unix(&mut reader).await?;
-        (body, true)
+        (Cow::Owned(body), true)
     } else {
-        (first_line.trim().as_bytes().to_vec(), false)
+        (Cow::Borrowed(first_line.trim().as_bytes()), false)
     };
 
     let response_body = process_request(&handler, &body).await?;
@@ -167,14 +168,14 @@ async fn handle_tcp_connection(
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
 
-    let (body, is_http) = if first_line.starts_with("POST")
+    let (body, is_http): (Cow<'_, [u8]>, bool) = if first_line.starts_with("POST")
         || first_line.starts_with("GET")
         || first_line.starts_with("HTTP")
     {
         let (_headers, body) = read_http_request_continuation_tcp(&mut reader).await?;
-        (body, true)
+        (Cow::Owned(body), true)
     } else {
-        (first_line.trim().as_bytes().to_vec(), false)
+        (Cow::Borrowed(first_line.trim().as_bytes()), false)
     };
 
     let response_body = process_request(&handler, &body).await?;

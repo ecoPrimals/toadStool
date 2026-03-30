@@ -127,7 +127,7 @@ fn test_auth_response_with_policies() {
         expires_in: 7200,
         scope: vec!["execute".to_string()],
         security_level: "high".to_string(),
-        policies: vec![policy.clone()],
+        policies: vec![policy],
     };
 
     assert_eq!(auth_response.policies.len(), 1);
@@ -374,7 +374,7 @@ fn test_large_capabilities_list() {
     let auth_request = AuthRequest {
         service_id: "test".to_string(),
         service_type: "test".to_string(),
-        capabilities: capabilities.clone(),
+        capabilities,
         security_context: SecurityContext::default(),
         timestamp: std::time::SystemTime::now(),
     };

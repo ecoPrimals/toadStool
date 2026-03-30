@@ -398,19 +398,9 @@ async fn test_log_line_filtering() {
     ];
 
     // Filter by level
-    let errors: Vec<&str> = log_lines
-        .iter()
-        .filter(|l| l.contains("ERROR"))
-        .copied()
-        .collect();
-    assert_eq!(errors.len(), 1);
+    assert_eq!(log_lines.iter().filter(|l| l.contains("ERROR")).count(), 1);
 
-    let warnings: Vec<&str> = log_lines
-        .iter()
-        .filter(|l| l.contains("WARN"))
-        .copied()
-        .collect();
-    assert_eq!(warnings.len(), 1);
+    assert_eq!(log_lines.iter().filter(|l| l.contains("WARN")).count(), 1);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

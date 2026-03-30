@@ -289,11 +289,11 @@ async fn duplicate_workload_id_keeps_first_map_entry() {
         .expect("second submit");
 
     assert_eq!(
-        out1.data.as_ref().map(|b| b.as_ref()),
+        out1.data.as_ref().map(std::convert::AsRef::as_ref),
         Some([0u8].as_slice())
     );
     assert_eq!(
-        out2.data.as_ref().map(|b| b.as_ref()),
+        out2.data.as_ref().map(std::convert::AsRef::as_ref),
         Some([1u8].as_slice())
     );
 
@@ -302,7 +302,7 @@ async fn duplicate_workload_id_keeps_first_map_entry() {
         .await
         .expect("query");
     assert_eq!(
-        stored.data.as_ref().map(|b| b.as_ref()),
+        stored.data.as_ref().map(std::convert::AsRef::as_ref),
         Some([0u8].as_slice())
     );
 }

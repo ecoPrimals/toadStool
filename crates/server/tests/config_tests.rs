@@ -81,7 +81,7 @@ fn test_server_config_with_auth() {
         custom_validator: None,
     };
 
-    let config = ServerConfig::default().auth(auth.clone());
+    let config = ServerConfig::default().auth(auth);
 
     assert!(config.auth.is_some());
     assert!(config.auth.unwrap().required);

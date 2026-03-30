@@ -27,7 +27,7 @@ fn test_jsonrpc_request_notification_no_id() {
 #[test]
 fn test_jsonrpc_request_with_params_serialization() {
     let params = serde_json::json!({"window_id": "test-123", "width": 800, "height": 600});
-    let req = JsonRpcRequest::new("display.resize_window", Some(params.clone()));
+    let req = JsonRpcRequest::new("display.resize_window", Some(params));
     let json = serde_json::to_string(&req).unwrap();
     assert!(json.contains("display.resize_window"));
     assert!(json.contains("800"));
