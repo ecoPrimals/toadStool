@@ -60,12 +60,11 @@ impl MemoryPool {
     /// Create a memory pool with specific bucket capacity
     ///
     /// More buckets = finer-grained size matching, less waste
-    pub fn with_capacity(_bucket_count: usize) -> Self {
+    pub fn with_capacity(bucket_count: usize) -> Self {
         #[cfg(feature = "opencl")]
         let buffers = {
-            let mut buckets = Vec::with_capacity(_bucket_count);
-            // Pre-create buckets for common sizes (powers of 2)
-            for i in 0.._bucket_count {
+            let mut buckets = Vec::with_capacity(bucket_count);
+            for i in 0..bucket_count {
                 let size = 1024 * (1 << i); // 1KB, 2KB, 4KB, 8KB, ...
                 buckets.push(BufferBucket {
                     size,
@@ -74,6 +73,9 @@ impl MemoryPool {
             }
             Arc::new(RwLock::new(buckets))
         };
+
+        #[cfg(not(feature = "opencl"))]
+        let _ = bucket_count;
 
         Self {
             #[cfg(feature = "opencl")]

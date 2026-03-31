@@ -11,7 +11,6 @@
 //! - ✅ Modern async I/O
 //! - ✅ User-friendly output
 
-#![allow(dead_code)] // Functions are used via commands.rs
 
 use super::*;
 use tokio::io::{AsyncBufReadExt, BufReader};

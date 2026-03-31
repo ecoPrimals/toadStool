@@ -99,9 +99,9 @@ impl DaemonConfig {
 
     /// Validate configuration
     fn validate(&self) -> Result<()> {
-        if self.port < 1024 {
+        if self.port != 0 && self.port < 1024 {
             return Err(crate::CliError::Other(
-                "Port must be >= 1024 (non-privileged)".to_string(),
+                "Port must be 0 (OS-assigned) or >= 1024 (non-privileged)".to_string(),
             ));
         }
 
@@ -145,7 +145,7 @@ mod tests {
     #[tokio::test]
     async fn test_default_config() {
         let config = DaemonConfig::default();
-        assert_eq!(config.port, 8084);
+        assert_eq!(config.port, toadstool_config::ports::daemon_port());
         assert_eq!(config.max_concurrent_workloads, 10);
         assert!(!config.register_with_biomeos);
     }
@@ -154,15 +154,22 @@ mod tests {
     async fn test_config_validation() {
         let mut config = DaemonConfig::default();
 
-        // Valid config
+        // Valid config (port 0 = OS-assigned is valid)
         assert!(config.validate().is_ok());
 
-        // Invalid port
+        // Invalid port (privileged range, non-zero)
         config.port = 80;
         assert!(config.validate().is_err());
 
-        // Invalid max workloads
+        // Port 0 (OS-assigned) is valid
+        config.port = 0;
+        assert!(config.validate().is_ok());
+
+        // Valid explicit port
         config.port = 8084;
+        assert!(config.validate().is_ok());
+
+        // Invalid max workloads
         config.max_concurrent_workloads = 0;
         assert!(config.validate().is_err());
 

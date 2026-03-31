@@ -199,7 +199,7 @@ impl ServiceDiscovery {
         }
 
         // c) wateringHole: prefer Unix sockets under $XDG_RUNTIME_DIR/ecoPrimals/ before TCP.
-        let socket_services = Self::services_from_eco_primals_runtime_sockets()?;
+        let socket_services = Self::services_from_eco_primals_runtime_sockets();
         if !socket_services.is_empty() {
             info!(
                 count = socket_services.len(),
@@ -238,14 +238,7 @@ impl ServiceDiscovery {
 
     /// Probe `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` (with TMPDIR/temp fallbacks when
     /// `XDG_RUNTIME_DIR` is unset) and build [`DiscoveredService`] entries for existing paths.
-    fn services_from_eco_primals_runtime_sockets() -> DiscoveryResult<Vec<DiscoveredService>> {
-        let runtime_base = std::env::var_os("XDG_RUNTIME_DIR")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("TMPDIR").map(PathBuf::from))
-            .unwrap_or_else(std::env::temp_dir);
-        let eco_dir = runtime_base.join("ecoPrimals");
-        let now = SystemTime::now();
-
+    fn services_from_eco_primals_runtime_sockets() -> Vec<DiscoveredService> {
         const SOCKET_SPECS: &[(&str, Capability)] = &[
             (
                 PRIMAL_NAME,
@@ -264,6 +257,13 @@ impl ServiceDiscovery {
                 Capability::Storage(StorageCapability::ObjectStorage),
             ),
         ];
+
+        let runtime_base = std::env::var_os("XDG_RUNTIME_DIR")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("TMPDIR").map(PathBuf::from))
+            .unwrap_or_else(std::env::temp_dir);
+        let eco_dir = runtime_base.join("ecoPrimals");
+        let now = SystemTime::now();
 
         let mut out = Vec::new();
         for &(slug, ref cap) in SOCKET_SPECS {
@@ -295,7 +295,7 @@ impl ServiceDiscovery {
                 healthy: true,
             });
         }
-        Ok(out)
+        out
     }
 
     pub(crate) fn parse_capabilities(capabilities_str: &str) -> Vec<Capability> {

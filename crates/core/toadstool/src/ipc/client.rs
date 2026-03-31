@@ -367,12 +367,13 @@ mod tests {
     }
 
     #[test]
-    fn test_for_primal_tcp_endpoint_has_valid_port() {
+    fn test_for_primal_tcp_endpoint_uses_env_or_ephemeral() {
         let client = IpcClient::for_primal("test-primal");
         let tcp_endpoint = client.endpoints().iter().find(|e| e.is_tcp());
         assert!(tcp_endpoint.is_some());
         if let Some(Endpoint::Tcp { port, .. }) = tcp_endpoint {
-            assert!(*port > 0, "TCP port should be non-zero");
+            // Port 0 = OS-assigned ephemeral (unless overridden by env)
+            assert_eq!(*port, 0, "TCP port defaults to ephemeral (0)");
         }
     }
 

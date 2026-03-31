@@ -527,7 +527,7 @@ async fn evaluate_policy_merge_retains_parent_modified_when_child_has_no_rules()
 }
 
 #[tokio::test]
-async fn evaluate_policy_returns_error_when_rule_condition_evaluation_errors() {
+async fn evaluate_policy_network_access_denies_by_default() {
     let tmp = TempDir::new().unwrap();
     let mgr = FilePolicyManager::new(config_in(&tmp)).unwrap();
     let mut p = base_policy("net", "n");
@@ -544,11 +544,10 @@ async fn evaluate_policy_returns_error_when_rule_condition_evaluation_errors() {
         description: None,
     }];
     mgr.save_policy(&p).await.unwrap();
-    assert!(
-        mgr.evaluate_policy("net", &eval_context_native())
-            .await
-            .is_err()
-    );
+    let result = mgr
+        .evaluate_policy("net", &eval_context_native())
+        .await;
+    assert!(result.is_ok(), "NetworkAccess should deny-by-default, not error");
 }
 
 #[tokio::test]

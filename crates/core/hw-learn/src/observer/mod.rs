@@ -177,33 +177,18 @@ impl TraceObserver {
 }
 
 /// Observation errors.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ObserveError {
     /// Trace facility not available (kernel config, permissions).
+    #[error("trace unavailable: {0}")]
     TraceUnavailable(String),
     /// Failed to parse trace output.
+    #[error("parse error: {0}")]
     ParseError(String),
     /// IO error reading trace file.
-    Io(std::io::Error),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
     /// GPU not found.
+    #[error("GPU not found: {0}")]
     GpuNotFound(String),
-}
-
-impl std::fmt::Display for ObserveError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::TraceUnavailable(msg) => write!(f, "trace unavailable: {msg}"),
-            Self::ParseError(msg) => write!(f, "parse error: {msg}"),
-            Self::Io(e) => write!(f, "IO error: {e}"),
-            Self::GpuNotFound(sel) => write!(f, "GPU not found: {sel}"),
-        }
-    }
-}
-
-impl std::error::Error for ObserveError {}
-
-impl From<std::io::Error> for ObserveError {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e)
-    }
 }

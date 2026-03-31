@@ -23,26 +23,11 @@ use std::net::SocketAddr;
 use toadstool_common::constants::network::{BIND_ALL_IPV4, LOCALHOST_IPV4};
 use tokio::net::{TcpListener, TcpStream};
 
-/// Default TCP port for ToadStool IPC (DEPRECATED)
+/// Default TCP port for ToadStool IPC.
 ///
-/// **DEEP DEBT VIOLATION**: Hardcoded ports break multi-instance support.
-/// Primal endpoints are discovered at runtime via capability-based mDNS.
-///
-/// **Migration**: Use Unix sockets or discovery:
-/// ```rust,ignore
-/// // OLD: TCP with hardcoded port
-/// let listener = tcp::bind("127.0.0.1", 8370).await?;
-///
-/// // NEW: Unix socket (no ports, no conflicts)
-/// use toadstool_common::primal_sockets;
-/// let socket_path = primal_sockets::get_toadstool_socket_path();
-/// let listener = unix::bind(&socket_path).await?;
-/// ```
-#[deprecated(
-    since = "0.2.0",
-    note = "Use Unix sockets via platform::unix or capability-based discovery"
-)]
-pub const DEFAULT_PORT: u16 = 8370;
+/// Port `0` means the OS assigns an ephemeral port at bind time.
+/// Production deployments use Unix sockets; TCP is Tier 2 fallback.
+pub const DEFAULT_PORT: u16 = 0;
 
 /// Bind TCP listener
 ///
@@ -78,11 +63,7 @@ pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
     })
 }
 
-/// Get default ToadStool TCP address
-///
-/// **Deep Debt**: Runtime detection, localhost-first.
-/// Returns `Result` instead of panicking on parse failure.
-#[allow(deprecated)]
+/// Get default ToadStool TCP address (localhost, OS-assigned port).
 pub fn default_addr() -> ToadStoolResult<SocketAddr> {
     format!("{LOCALHOST_IPV4}:{DEFAULT_PORT}")
         .parse()
@@ -93,14 +74,8 @@ pub fn default_addr() -> ToadStoolResult<SocketAddr> {
         })
 }
 
-/// Get local network address for cross-device
-///
-/// **Deep Debt**: Discovers local IP at runtime.
-/// Returns `Result` instead of panicking on parse failure.
-#[allow(deprecated)]
+/// Get local network address for cross-device (bind all interfaces, OS-assigned port).
 pub fn local_network_addr() -> ToadStoolResult<SocketAddr> {
-    // Try to get local IP via interface detection
-    // Fallback to 0.0.0.0 (bind all interfaces)
     format!("{BIND_ALL_IPV4}:{DEFAULT_PORT}")
         .parse()
         .map_err(|e| {
@@ -122,13 +97,11 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(deprecated)]
-    fn test_default_port() {
-        assert_eq!(DEFAULT_PORT, 8370);
+    fn test_default_port_is_ephemeral() {
+        assert_eq!(DEFAULT_PORT, 0);
     }
 
     #[test]
-    #[allow(deprecated)]
     fn test_default_addr() {
         let addr = default_addr().unwrap();
         assert_eq!(addr.port(), DEFAULT_PORT);
@@ -136,11 +109,9 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn test_local_network_addr() {
         let addr = local_network_addr().unwrap();
         assert_eq!(addr.port(), DEFAULT_PORT);
-        // Should bind all interfaces
         assert_eq!(addr.ip().to_string(), "0.0.0.0");
     }
 

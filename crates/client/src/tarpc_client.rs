@@ -97,8 +97,9 @@ impl ToadStoolTarpcClient {
         // Establish Unix socket connection
         let stream = UnixStream::connect(socket_path).await.map_err(|e| {
             TarpcClientError::Connection(format!(
-                "Failed to connect to Unix socket {:?}: {}",
-                socket_path, e
+                "Failed to connect to Unix socket {}: {}",
+                socket_path.display(),
+                e
             ))
         })?;
 

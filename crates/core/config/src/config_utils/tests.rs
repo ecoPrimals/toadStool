@@ -5,9 +5,9 @@ use super::*;
 fn test_config_utils() {
     temp_env::with_vars(
         [
-            ("SONGBIRD_PORT", Some("8080")),
-            ("BEARDOG_PORT", Some("8081")),
-            ("NESTGATE_PORT", Some("8082")),
+            ("COORDINATION_PORT", Some("8080")),
+            ("SECURITY_PORT", Some("8081")),
+            ("STORAGE_PORT", Some("8082")),
             ("BIND_ADDRESS", Some("127.0.0.1")),
             ("TOADSTOOL_ENV", Some("development")),
             ("TOADSTOOL_DEBUG", Some("false")),
@@ -22,7 +22,7 @@ fn test_config_utils() {
 
             temp_env::with_vars(
                 [
-                    ("SONGBIRD_PORT", Some("9080")),
+                    ("COORDINATION_PORT", Some("9080")),
                     ("TOADSTOOL_DEBUG", Some("true")),
                 ],
                 || {
@@ -260,11 +260,17 @@ fn test_get_toadstool_endpoint() {
 
 #[test]
 fn test_get_squirrel_port_default() {
-    temp_env::with_var("SQUIRREL_PORT", None::<&str>, || {
-        let port = ConfigUtils::get_squirrel_port();
-        assert_eq!(
-            port, 8083,
-            "DEFAULT_SQUIRREL_DISCOVERY_PORT = 8083 for cold-start bootstrap"
-        );
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_PLATFORM_PORT", None::<&str>),
+            ("PLATFORM_PORT", None::<&str>),
+        ],
+        || {
+            let port = ConfigUtils::get_squirrel_port();
+            assert_eq!(
+                port, 8083,
+                "DEFAULT_SQUIRREL_DISCOVERY_PORT = 8083 for cold-start bootstrap"
+            );
+        },
+    );
 }

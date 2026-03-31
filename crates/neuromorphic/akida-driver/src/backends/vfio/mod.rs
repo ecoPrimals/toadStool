@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // VFIO ioctls and OwnedFd construction require unsafe
 //! VFIO NPU backend — Pure Rust with DMA support
 //!
 //! Uses Linux VFIO (Virtual Function I/O) for:

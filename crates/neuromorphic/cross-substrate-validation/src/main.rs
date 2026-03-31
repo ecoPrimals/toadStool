@@ -19,10 +19,22 @@ use std::time::Instant;
 use toadstool_runtime_universal::{
     ComputeUnitType, OperationType, UniversalRuntime, WorkloadBuilder,
 };
-// Using simple formatting instead of prettytable
+
+/// Typed error for cross-substrate benchmarks.
+#[derive(Debug, thiserror::Error)]
+enum BenchError {
+    #[error("compute: {0}")]
+    Compute(#[from] toadstool_runtime_universal::ComputeError),
+    #[error("akida: {0}")]
+    Akida(#[from] akida_driver::AkidaError),
+    #[error("model: {0}")]
+    AkidaModel(#[from] akida_models::AkidaModelError),
+    #[error("{0}")]
+    Other(String),
+}
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), BenchError> {
     // Initialize logging
     tracing_subscriber::fmt().with_env_filter("warn").init();
 
@@ -159,7 +171,7 @@ struct BenchmarkResult {
 async fn benchmark_cpu(
     runtime: &UniversalRuntime,
     input: &[f32],
-) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+) -> Result<BenchmarkResult, BenchError> {
     let start = Instant::now();
 
     // Execute ReLU on CPU
@@ -178,7 +190,7 @@ async fn benchmark_cpu(
 
     let output_vec = match output.data {
         toadstool_runtime_universal::WorkloadData::F32Vec(v) => v,
-        _ => return Err("Invalid output type".into()),
+        _ => return Err(BenchError::Other("Invalid output type".to_string())),
     };
 
     Ok(BenchmarkResult {
@@ -192,7 +204,7 @@ async fn benchmark_gpu(
     runtime: &UniversalRuntime,
     index: usize,
     input: &[f32],
-) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+) -> Result<BenchmarkResult, BenchError> {
     let start = Instant::now();
 
     // Execute ReLU on GPU
@@ -209,7 +221,7 @@ async fn benchmark_gpu(
 
     let output_vec = match output.data {
         toadstool_runtime_universal::WorkloadData::F32Vec(v) => v,
-        _ => return Err("Invalid output type".into()),
+        _ => return Err(BenchError::Other("Invalid output type".to_string())),
     };
 
     Ok(BenchmarkResult {
@@ -222,7 +234,7 @@ async fn benchmark_gpu(
 async fn benchmark_neuromorphic(
     manager: &DeviceManager,
     _input_size: usize,
-) -> Result<BenchmarkResult, Box<dyn std::error::Error>> {
+) -> Result<BenchmarkResult, BenchError> {
     // For neuromorphic, we need a model
     let model_path = std::env::args().nth(1).unwrap_or_else(|| {
         std::env::var("AKIDA_TEST_MODEL").unwrap_or_else(|_| "minimal_test.fbz".to_string())

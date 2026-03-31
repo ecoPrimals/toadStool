@@ -105,7 +105,7 @@ RUST_LOG=akida_driver=trace cargo test -- --nocapture
 **Current**: Phase 1 - Basic I/O working  
 **Next**: Phase 2 - Protocol analysis and model loading
 
-See `PURE_RUST_TRACKING.md` at the repo root for the pure Rust migration roadmap.
+See `ecoPrimals/infra/wateringHole/fossilRecord/` for the fossilized pure Rust migration roadmap.
 
 ## License
 

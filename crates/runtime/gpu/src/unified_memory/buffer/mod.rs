@@ -62,14 +62,10 @@ pub struct UnifiedBuffer {
     /// Size in bytes
     size: usize,
 
-    /// CPU-accessible pointer (DEEP DEBT EVOLUTION: NonNull for compile-time guarantee)
+    /// CPU-accessible pointer.
     ///
-    /// Using `NonNull<u8>` instead of `*mut u8` provides:
-    /// - Compile-time null safety (cannot be null by construction)
-    /// - Covariant over `T` (safer type system interactions)
-    /// - Niche optimization (`Option<NonNull<T>>` same size as `*mut T`)
-    ///
-    /// This is a "Fast AND Safe" evolution - same performance, better safety
+    /// `NonNull<u8>` instead of `*mut u8` provides compile-time null safety,
+    /// covariance, and niche optimization (`Option<NonNull<T>>` is pointer-sized).
     cpu_ptr: NonNull<u8>,
 
     /// GPU device pointer

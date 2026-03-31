@@ -525,7 +525,7 @@ async fn caching_large_number_of_entries() {
     assert_eq!(cache.get(&"k99".to_string()).await, Some(99));
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn caching_expired_entries_cleanup_task() {
     let config = CachingConfig {
         max_size: 100,

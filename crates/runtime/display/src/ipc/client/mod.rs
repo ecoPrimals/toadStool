@@ -21,6 +21,9 @@ use tokio::net::{TcpStream, UnixStream};
 /// Mirrors `toadstool_config::ports::capability_fallback::DISPLAY_IPC`.
 const DISPLAY_IPC_FALLBACK_PORT: u16 = 8091;
 
+/// Loopback address used when constructing TCP fallback endpoints.
+const LOOPBACK: &str = toadstool_common::constants::network::LOCALHOST_IPV4;
+
 /// Default TCP address for display IPC fallback.
 ///
 /// Resolution order:
@@ -36,7 +39,7 @@ pub fn default_display_ipc_tcp_addr() -> String {
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(DISPLAY_IPC_FALLBACK_PORT);
-    format!("127.0.0.1:{port}")
+    format!("{LOOPBACK}:{port}")
 }
 
 /// IPC endpoint (polymorphic - Unix OR TCP)

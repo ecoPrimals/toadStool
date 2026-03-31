@@ -83,7 +83,7 @@ cargo run --example parse_fbz
 - [ ] Weight parsing
 - [ ] Device loading
 
-See `PURE_RUST_TRACKING.md` at the repo root for the pure Rust migration roadmap.
+See `ecoPrimals/infra/wateringHole/fossilRecord/` for the fossilized pure Rust migration roadmap.
 
 ## License
 

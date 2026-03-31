@@ -5,24 +5,19 @@ use super::UnifiedBuffer;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 impl UnifiedBuffer {
-    /// Validate CPU pointer before use (Deep Debt: comprehensive validation)
+    /// Validate CPU pointer before use.
     ///
-    /// DEEP DEBT EVOLUTION: With NonNull, we no longer need to check for null!
-    /// The type system guarantees it at compile time.
+    /// `NonNull` guarantees non-null at compile time; this checks the allocation
+    /// is still live and the pointer is outside the NULL page.
     pub(in crate::unified_memory::buffer) fn validate_cpu_ptr(&self) -> ToadStoolResult<()> {
-        // Check allocation still exists
         if self.allocation.is_none() {
             return Err(ToadStoolError::runtime(
                 "Buffer has been freed (allocation is None)",
             ));
         }
 
-        // DEEP DEBT: Null check eliminated! NonNull provides compile-time guarantee
-        // Old code: if self.cpu_ptr.is_null() { ... }
-        // NonNull makes this impossible by construction
-
-        // Check pointer value is reasonable (not in NULL page)
-        // Note: NonNull still needs this check as it can't prevent all invalid addresses
+        // NonNull guarantees non-null, but we still guard against addresses
+        // in the kernel NULL page (typically < 4096 on Linux).
         let ptr_val = self.cpu_ptr.as_ptr() as usize;
         if ptr_val < 4096 {
             return Err(ToadStoolError::runtime(format!(

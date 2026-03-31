@@ -10,8 +10,15 @@ use akida_driver::DeviceManager;
 use cross_substrate_validation::{print_results_summary, run_comprehensive_benchmark};
 use toadstool_runtime_universal::UniversalRuntime;
 
+/// Typed error for comprehensive benchmark.
+#[derive(Debug, thiserror::Error)]
+enum BenchError {
+    #[error("compute: {0}")]
+    Compute(#[from] toadstool_runtime_universal::ComputeError),
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), BenchError> {
     // Initialize logging
     tracing_subscriber::fmt().with_env_filter("warn").init();
 

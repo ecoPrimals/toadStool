@@ -31,7 +31,7 @@ impl CapabilityDiscovery {
         #[cfg(feature = "opencl")]
         {
             #[allow(deprecated)]
-            units.extend(Self::discover_opencl().await);
+            units.extend(Self::discover_opencl());
         }
 
         // Discover GPU (wgpu) — isolated so driver crashes don't bring down the process
@@ -85,9 +85,7 @@ impl CapabilityDiscovery {
         since = "3.0.0",
         note = "Use wgpu (barraCuda) instead - pure Rust, vendor-agnostic"
     )]
-    async fn discover_opencl() -> Vec<Box<dyn ComputeUnit>> {
-        // Returning empty Vec - OpenCL discovery deprecated in favor of wgpu
-        // Applications should use discover_wgpu() for GPU compute
+    fn discover_opencl() -> Vec<Box<dyn ComputeUnit>> {
         Vec::new()
     }
 

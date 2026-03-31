@@ -190,7 +190,7 @@ impl ComputeContext for CudaComputeContext {
                 let block_size = 256u32;
                 let grid_size = (output_elements as u32).div_ceil(block_size).max(1);
 
-                let input_refs: Vec<&[f32]> = input_vecs.iter().map(|v| v.as_slice()).collect();
+                let input_refs: Vec<&[f32]> = input_vecs.iter().map(std::vec::Vec::as_slice).collect();
                 let output = self
                     .backend
                     .execute_kernel::<f32>(

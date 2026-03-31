@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // Kernel ioctl FFI requires unsafe via rustix
 //! VFIO ioctl wrappers — safe Rust interfaces over kernel ioctls
 //!
 //! Each wrapper function encapsulates one `unsafe` ioctl call with documented

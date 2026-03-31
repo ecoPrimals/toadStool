@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: March 30, 2026 — S168
+**Last Updated**: March 31, 2026 — S170
 
 ---
 
@@ -30,13 +30,14 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S168 — March 30, 2026)
+## Current State (S170 — March 31, 2026)
 
-**Post-budding, dependency-sovereign, shader pipeline complete.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
+**Post-budding, dependency-sovereign, IPC-first, fully concurrent.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **21,700+ tests**, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%).
-- **97+ JSON-RPC methods** (dynamically built from semantic registry), including `shader.dispatch` (S168).
-- **Sovereign shader pipeline** — `coralReef (compile) → toadStool (dispatch) → consumer (validate)` E2E chain complete (ludoSpring V35 gap closed).
+- **21,632 tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
+- **~65 JSON-RPC methods** (S169: removed 30+ overstepping methods; S170: all tests concurrent).
+- **IPC compliance** — `health.liveness/readiness/check`, `capabilities.list`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`.
+- **Capability-based discovery** — coralReef via socket directory scan, env var cascade, XDG manifests.
 - **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to BearDog. HTTP delegated to Songbird.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.

@@ -12,8 +12,9 @@
 /// Default metrics/monitoring port (Prometheus-style scrape target).
 pub const METRICS_PORT: u16 = 9090;
 
-/// Default BYOB (Bring Your Own Biome) coordinator/daemon port
-pub const BYOB_DEFAULT_PORT: u16 = 8084;
+/// Default BYOB (Bring Your Own Biome) coordinator/daemon port.
+/// Port 0 = OS-assigned at bind time (capability-based discovery resolves the actual port).
+pub const BYOB_DEFAULT_PORT: u16 = 0;
 
 // ============================================================================
 // Address constants
@@ -54,7 +55,7 @@ mod tests {
     #[test]
     fn test_toadstool_ports() {
         assert_eq!(METRICS_PORT, 9090);
-        assert_eq!(BYOB_DEFAULT_PORT, 8084);
+        assert_eq!(BYOB_DEFAULT_PORT, 0);
     }
 
     #[test]

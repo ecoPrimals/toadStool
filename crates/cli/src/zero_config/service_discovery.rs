@@ -63,12 +63,12 @@ impl ServiceDiscovery {
             return Ok(Some(service));
         }
 
-        // Try HTTP registry (centralized discovery)
+        // Try biomeOS socket directory scan (wildcard matching for capability variants)
         if let Some(service) = self
-            .try_registry_discovery(capability, capability_name)
+            .try_biomeos_directory_scan(capability, capability_name)
             .await?
         {
-            debug!("Found {} via registry", capability_name);
+            debug!("Found {} via biomeOS directory scan", capability_name);
             return Ok(Some(service));
         }
 
@@ -187,23 +187,52 @@ impl ServiceDiscovery {
         }
     }
 
-    /// Try HTTP registry discovery
+    /// Try biomeOS socket directory scan.
     ///
-    /// Queries a centralized service registry via HTTP API.
-    #[allow(clippy::unused_async)] // Deprecated; returns None; async for API consistency
-    async fn try_registry_discovery(
+    /// Scans `$XDG_RUNTIME_DIR/biomeos/` for sockets matching the capability name
+    /// prefix. Handles variant naming (e.g. `coralreef-core-default.sock` for
+    /// capability `coralreef`).
+    #[allow(clippy::unused_async)]
+    async fn try_biomeos_directory_scan(
         &self,
-        capability: &str,
+        _capability: &str,
         capability_name: &str,
     ) -> Result<Option<ServiceEndpoint>> {
-        // DEEP DEBT: HTTP registry discovery removed - use Unix socket capability discovery!
-        tracing::debug!(
-            "HTTP registry discovery deprecated for {} ({}) - use Unix socket discovery",
-            capability_name,
-            capability
-        );
+        let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+        if !biomeos_dir.exists() {
+            return Ok(None);
+        }
 
-        // Return None to allow fallback to other discovery methods
+        let prefix = capability_name.to_lowercase();
+        let entries = match std::fs::read_dir(&biomeos_dir) {
+            Ok(e) => e,
+            Err(_) => return Ok(None),
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let is_match = path.extension().and_then(|e| e.to_str()) == Some("sock")
+                && path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|s| s.starts_with(&prefix));
+            if is_match && path.exists() {
+                let endpoint = format!("unix://{}", path.display());
+                debug!(
+                    "biomeOS directory scan found {} socket: {}",
+                    capability_name, endpoint
+                );
+                return Ok(Some(ServiceEndpoint {
+                    name: capability_name.to_string(),
+                    endpoint,
+                    version: "1.0.0".to_string(),
+                    status: "discovered".to_string(),
+                    auth_required: false,
+                    discovered_at: std::time::SystemTime::now(),
+                }));
+            }
+        }
+
         Ok(None)
     }
 
@@ -483,7 +512,8 @@ mod tests {
         let ep = endpoint.unwrap();
         assert_eq!(ep.name, "toadstool");
         assert!(ep.endpoint.contains("127.0.0.1"));
-        assert!(ep.endpoint.contains("8084"));
+        let expected_port = toadstool_config::ports::daemon_port().to_string();
+        assert!(ep.endpoint.contains(&expected_port));
     }
 
     #[tokio::test]

@@ -617,7 +617,7 @@ The following modules were refactored from single-file layouts into multi-file m
 - `CONFIG_PATTERNS_GUIDE.md` - Configuration composition patterns
 - `CONSTANTS_REFERENCE.md` - Default constants and thresholds
 - `00_START_HERE.md` - Project overview and status
-- `STATUS.md` - Current production readiness metrics
+- `NEXT_STEPS.md` - Current production readiness metrics and next steps
 
 ---
 

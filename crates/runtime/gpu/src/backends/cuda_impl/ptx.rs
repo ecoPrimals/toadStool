@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Embedded PTX kernel sources
 
-pub const MATMUL_SIMPLE: &str = r#"
+pub const MATMUL_SIMPLE: &str = r"
 .version 7.0
 .target sm_50
 .address_size 64
@@ -42,9 +42,9 @@ pub const MATMUL_SIMPLE: &str = r#"
 DONE:
     ret;
 }
-"#;
+";
 
-pub const REDUCE_SUM: &str = r#"
+pub const REDUCE_SUM: &str = r"
 .version 7.0
 .target sm_50
 .address_size 64
@@ -116,4 +116,4 @@ SKIP_REDUCE:
 DONE:
     ret;
 }
-"#;
+";

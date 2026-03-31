@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! ToadStool Daemon Mode
 //!
-//! 🍄 **Like the fungus: Same organism, different forms**
+//! **Like the fungus: Same organism, different forms**
 //!
 //! - **CLI Mode** (fruiting body): Specialized, project-specific execution
 //! - **Daemon Mode** (mycelium): Network-wide, resource-sharing compute service
 //!
 //! ## Architecture
 //!
-//! The daemon mode transforms ToadStool from a CLI tool into an ecosystem workload execution service:
+//! The daemon mode transforms ToadStool from a CLI tool into an ecosystem
+//! workload execution service using JSON-RPC over Unix domain sockets per
+//! wateringHole standards:
 //!
-//! - **HTTP API Server**: Accept workload requests from other primals or remote nodes
+//! - **JSON-RPC Server**: Accept workload requests from other primals via UDS
 //! - **Capability Registry**: Auto-register capabilities, report resources, heartbeat
 //! - **Workload Manager**: Queue, execute, and monitor workloads
 //! - **Resource Monitor**: Track CPU, memory, GPU, storage and report to registry
@@ -19,33 +21,24 @@
 //! ## Usage
 //!
 //! ```bash
-//! # Start daemon with biomeOS registration
-//! toadstool daemon --register
+//! # Start as server (UniBin standard)
+//! toadstool server --register
 //!
-//! # Start daemon on custom port
-//! toadstool daemon --port 8085
-//!
-//! # Submit workload via API
-//! curl -X POST http://localhost:8084/api/v1/workload/submit \
-//!   -H "Content-Type: application/json" \
-//!   -d '{"biome_yaml": "...", "requester": "beardog"}'
+//! # Start with optional TCP listener for cross-host access
+//! toadstool server --port 8085
 //! ```
 //!
 //! ## Infant Discovery
 //!
 //! The daemon starts with ZERO knowledge and discovers everything at runtime:
 //!
-//! 1. Load self-knowledge (ports, resources)
+//! 1. Load self-knowledge (socket paths, resources)
 //! 2. Connect to capability registry (if --register)
-//! 3. Register capabilities (Compute, Storage, Orchestration)
+//! 3. Register capabilities (Compute, GPU dispatch, Shader dispatch)
 //! 4. Discover security provider by capability
 //! 5. Discover coordination provider by capability
-//! 6. Start API server
+//! 6. Start JSON-RPC server on Unix socket
 //! 7. Begin heartbeat reporting
-
-use crate::Result;
-use std::path::PathBuf;
-use tracing::info;
 
 mod api_types;
 mod config;
@@ -60,90 +53,8 @@ pub use config::DaemonConfig;
 pub use server::DaemonServer;
 pub use workload_manager::WorkloadManager;
 
-/// Start ToadStool in daemon mode
-///
-/// ## Infant Discovery Flow
-///
-/// 1. **Self-Knowledge**: Load own ports and resource info
-/// 2. **Registry Discovery**: Connect to capability registry (optional)
-/// 3. **Capability Registration**: Report what we provide (Compute, Storage, Orchestration)
-/// 4. **Dependency Discovery**: Find security and coordination providers by capability
-/// 5. **API Server**: Start HTTP server for workload submission
-/// 6. **Heartbeat**: Report resources and health to registry
-///
-/// ## Philosophy
-///
-/// Zero hardcoded knowledge. Everything discovered at runtime via infant discovery.
-pub async fn start_daemon(
-    port: u16,
-    register_with_biomeos: bool,
-    socket_path: Option<PathBuf>,
-    config_path: Option<PathBuf>,
-    max_workloads: usize,
-    biomeos_socket: Option<PathBuf>,
-) -> Result<()> {
-    info!("🍄 Starting ToadStool daemon mode...");
-    info!("📍 Port: {}", port);
-    info!(
-        "🔗 Capability registry: {}",
-        if register_with_biomeos {
-            "enabled"
-        } else {
-            "disabled"
-        }
-    );
-
-    // Load configuration
-    let config = DaemonConfig::load(
-        port,
-        register_with_biomeos,
-        socket_path,
-        config_path,
-        max_workloads,
-        biomeos_socket,
-    )
-    .await?;
-
-    // Start daemon server
-    let daemon = DaemonServer::start(config).await?;
-
-    info!("✅ ToadStool daemon started successfully");
-    info!("🌐 API: http://localhost:{}/api/v1", port);
-    info!("📊 Health: http://localhost:{}/health", port);
-    info!("📈 Metrics: http://localhost:{}/metrics", port);
-
-    if register_with_biomeos {
-        info!("🔗 Registered with capability registry");
-    } else {
-        info!("📍 Running in standalone mode (no registry)");
-    }
-
-    // Run daemon until shutdown signal
-    daemon.run().await?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_start_daemon_invalid_config_path() {
-        let result = start_daemon(
-            8084,
-            false,
-            None,
-            Some(std::path::PathBuf::from(
-                "/nonexistent/config/path/that/does/not/exist.yaml",
-            )),
-            4,
-            None,
-        )
-        .await;
-        assert!(result.is_err());
-    }
-
     #[test]
     fn test_daemon_module_exports() {
         use crate::daemon::{DaemonConfig, WorkloadManager};

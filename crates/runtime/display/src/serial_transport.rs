@@ -98,9 +98,8 @@ mod inner {
     /// Discover all serial ports on the system.
     #[must_use]
     pub fn discover_serial_transports() -> Vec<TransportInfo> {
-        let ports = match serialport::available_ports() {
-            Ok(p) => p,
-            Err(_) => return Vec::new(),
+        let Ok(ports) = serialport::available_ports() else {
+            return Vec::new();
         };
 
         ports

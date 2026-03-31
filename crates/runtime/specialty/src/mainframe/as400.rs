@@ -393,77 +393,6 @@ impl DatasetManager {
     }
 }
 
-impl Default for DCLProcessor {
-    fn default() -> Self {
-        Self {
-            templates: HashMap::new(),
-            environment: HashMap::new(),
-            current_directory: PathBuf::from("SYS$LOGIN:"),
-        }
-    }
-}
-
-impl DCLProcessor {
-    /// Creates a new DCL processor for VAX/VMS.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for VAXFortranCompiler {
-    fn default() -> Self {
-        Self {
-            compiler_path: find_compiler_in_path("f77"),
-            compiler_options: vec![],
-            library_paths: vec![],
-        }
-    }
-}
-
-impl VAXFortranCompiler {
-    /// Creates a new VAX FORTRAN compiler interface.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for VAXTerminal {
-    fn default() -> Self {
-        Self {
-            terminal_type: "VT100".to_string(),
-            attributes: VAXTerminalAttributes {
-                width: 80,
-                height: 24,
-                capabilities: vec!["cursor_addressing".to_string()],
-            },
-            session: None,
-        }
-    }
-}
-
-impl VAXTerminal {
-    /// Creates a new VAX terminal interface.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for VMSFileSystem {
-    fn default() -> Self {
-        Self {
-            file_specs: HashMap::new(),
-            directory_cache: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-}
-
-impl VMSFileSystem {
-    /// Creates a new VMS file system interface.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 impl Default for RPGCompiler {
     fn default() -> Self {
         Self {
@@ -534,13 +463,13 @@ impl IFSManager {
 #[cfg(test)]
 mod tests {
     use super::super::types::{
-        Field5250, Field5250Attributes, Field5250Type, IFSFile, IFSFileAttributes, MainframeJob,
-        Terminal3270Attributes, VAXTerminalAttributes, VMSFileSpec,
+        DCLProcessor, Field5250, Field5250Attributes, Field5250Type, IFSFile, IFSFileAttributes,
+        MainframeJob, Terminal3270Attributes, VAXFortranCompiler, VAXTerminal,
+        VAXTerminalAttributes, VMSFileSpec, VMSFileSystem,
     };
     use super::{
-        AS400Adapter, COBOLCompiler, DCLProcessor, DatasetManager, IFSManager, JCLGenerator,
-        RPGCompiler, Terminal3270, Terminal5250, VAXFortranCompiler, VAXTerminal, VMSFileSystem,
-        find_compiler_in_path,
+        AS400Adapter, COBOLCompiler, DatasetManager, IFSManager, JCLGenerator, RPGCompiler,
+        Terminal3270, Terminal5250, find_compiler_in_path,
     };
     use crate::{
         AuthenticationSettings, AuthenticationType, COBOLSettings, CommunicationRequirements,

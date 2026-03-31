@@ -121,6 +121,7 @@ fn daemon_socket_path_resolution_uses_platform_paths_when_none() {
 async fn daemon_server_run_shuts_down_on_sigint() {
     let temp = tempfile::tempdir().expect("temp dir");
     let socket = temp.path().join("daemon_run.sock");
+    let sock_path = socket.clone();
     let config = DaemonConfig {
         socket_path: Some(socket),
         ..DaemonConfig::default()
@@ -128,7 +129,13 @@ async fn daemon_server_run_shuts_down_on_sigint() {
     let server = DaemonServer::start(config).await.expect("start");
     let handle = tokio::spawn(async move { server.run().await });
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(300)).await;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
+        while tokio::time::Instant::now() < deadline {
+            if sock_path.exists() {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
         let pid = rustix::process::getpid();
         let _ = rustix::process::kill_process(pid, rustix::process::Signal::Int);
     });

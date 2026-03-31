@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn test_recursive_hosting_manager_create_child_with_custom_port() {
-        temp_env::with_var("TOADSTOOL_API_PORT", Some("9999"), || {
+        temp_env::with_var("TOADSTOOL_DAEMON_API_PORT", Some("9999"), || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             let config = RecursiveHostingConfig {
                 enabled: true,

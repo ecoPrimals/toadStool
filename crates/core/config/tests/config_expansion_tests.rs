@@ -291,10 +291,16 @@ fn test_network_default_max_connections_per_host() {
 
 #[test]
 fn test_get_songbird_port_default() {
-    temp_env::with_var_unset("TOADSTOOL_SONGBIRD_PORT", || {
-        let port = network::get_songbird_port();
-        assert_eq!(port, 8080);
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_COORDINATION_PORT", None::<&str>),
+            ("COORDINATION_PORT", None::<&str>),
+        ],
+        || {
+            let port = network::get_songbird_port();
+            assert_eq!(port, 8080);
+        },
+    );
 }
 
 #[test]
@@ -302,7 +308,7 @@ fn test_get_songbird_port_from_env() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("SONGBIRD_PORT", Some("9080"), || {
+    temp_env::with_var("COORDINATION_PORT", Some("9080"), || {
         let port = network::get_songbird_port();
         assert_eq!(port, 9080);
     });
@@ -313,10 +319,16 @@ fn test_get_beardog_port_default() {
     let _lock = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var_unset("BEARDOG_PORT", || {
-        let port = network::get_beardog_port();
-        assert_eq!(port, 8081);
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SECURITY_PORT", None::<&str>),
+            ("SECURITY_PORT", None::<&str>),
+        ],
+        || {
+            let port = network::get_beardog_port();
+            assert_eq!(port, 8081);
+        },
+    );
 }
 
 #[test]
@@ -324,7 +336,7 @@ fn test_get_beardog_port_from_env() {
     let _lock = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("BEARDOG_PORT", Some("9081"), || {
+    temp_env::with_var("SECURITY_PORT", Some("9081"), || {
         let port = network::get_beardog_port();
         assert_eq!(port, 9081);
     });
@@ -385,7 +397,7 @@ fn test_get_bind_host_from_env() {
 #[test]
 #[allow(deprecated)]
 fn test_get_songbird_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_SONGBIRD_PORT"], || {
+    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_COORDINATION_PORT", "COORDINATION_PORT"], || {
         let endpoint = network::get_songbird_endpoint();
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains(':'));
@@ -395,7 +407,7 @@ fn test_get_songbird_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_beardog_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_BEARDOG_PORT"], || {
+    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_SECURITY_PORT", "SECURITY_PORT"], || {
         let endpoint = network::get_beardog_endpoint();
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains(':'));
@@ -405,7 +417,7 @@ fn test_get_beardog_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_nestgate_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_NESTGATE_PORT"], || {
+    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_STORAGE_PORT", "STORAGE_PORT"], || {
         let endpoint = network::get_nestgate_endpoint();
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains(':'));
@@ -415,7 +427,7 @@ fn test_get_nestgate_endpoint_format() {
 #[test]
 #[allow(deprecated)]
 fn test_get_squirrel_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_SQUIRREL_PORT"], || {
+    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_PLATFORM_PORT", "PLATFORM_PORT"], || {
         let endpoint = network::get_squirrel_endpoint();
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains(':'));

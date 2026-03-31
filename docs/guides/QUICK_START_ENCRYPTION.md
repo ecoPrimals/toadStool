@@ -227,13 +227,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## More Information
 
-- **Architecture**: `docs/planning/THREE_PRIMAL_INTEGRATION_ROADMAP.md`
+- **Architecture**: `docs/architecture/` (ADRs and migration patterns)
 - **API Docs**: `crates/core/toadstool/src/encryption/mod.rs`
 
 ## 🚀 Status
 
 - ✅ Encryption API: **Production Ready**
-- 🟡 BearDog Integration: **Awaiting HTTP API**
+- ✅ BearDog Integration: **Socket-based client (`BearDogClient`)**
 - ✅ Fallback Support: **Fully Implemented**
 - ✅ Documentation: **Complete**
 

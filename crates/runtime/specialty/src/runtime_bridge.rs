@@ -133,6 +133,8 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
         request: ExecutionRequest,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
         Box::pin(async move {
+            const MAX_POLL_INTERVAL: Duration = Duration::from_millis(500);
+
             let execution_id = request.execution_id;
             tracing::info!(
                 "Executing specialty hardware runtime request: {:?}",
@@ -144,6 +146,7 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
 
             let timeout = Duration::from_secs(self.config.job_timeout.as_secs());
             let start_time = std::time::Instant::now();
+            let mut poll_interval = Duration::from_millis(10);
 
             loop {
                 let status = self.get_job_status(job_id).await?;
@@ -225,7 +228,8 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
                                 warnings: Vec::new(),
                             });
                         }
-                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        tokio::time::sleep(poll_interval).await;
+                        poll_interval = (poll_interval * 2).min(MAX_POLL_INTERVAL);
                     }
                 }
             }

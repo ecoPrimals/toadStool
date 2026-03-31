@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // mmap/munmap require unsafe for NPU BAR memory mapping
 //! Memory-mapped region abstraction
 //!
 //! Deep Debt Principles:

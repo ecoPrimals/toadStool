@@ -211,6 +211,90 @@ impl LegacyAdapter for VAXVMSAdapter {
     }
 }
 
+// ── VAX/VMS supporting component implementations ────────────────────────────
+
+/// PATH-based compiler lookup (no hardcoded `/usr/bin` paths).
+fn find_compiler_in_path(name: &str) -> std::path::PathBuf {
+    std::env::var_os("PATH")
+        .and_then(|path_var| {
+            std::env::split_paths(&path_var)
+                .map(|dir| dir.join(name))
+                .find(|candidate| candidate.is_file())
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from(name))
+}
+
+impl Default for DCLProcessor {
+    fn default() -> Self {
+        Self {
+            templates: HashMap::new(),
+            environment: HashMap::new(),
+            current_directory: std::path::PathBuf::from("SYS$LOGIN:"),
+        }
+    }
+}
+
+impl DCLProcessor {
+    /// Creates a new DCL processor for VAX/VMS.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for VAXFortranCompiler {
+    fn default() -> Self {
+        Self {
+            compiler_path: find_compiler_in_path("f77"),
+            compiler_options: vec![],
+            library_paths: vec![],
+        }
+    }
+}
+
+impl VAXFortranCompiler {
+    /// Creates a new VAX FORTRAN compiler interface.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for VAXTerminal {
+    fn default() -> Self {
+        Self {
+            terminal_type: "VT100".to_string(),
+            attributes: VAXTerminalAttributes {
+                width: 80,
+                height: 24,
+                capabilities: vec!["cursor_addressing".to_string()],
+            },
+            session: None,
+        }
+    }
+}
+
+impl VAXTerminal {
+    /// Creates a new VAX terminal interface.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for VMSFileSystem {
+    fn default() -> Self {
+        Self {
+            file_specs: HashMap::new(),
+            directory_cache: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+impl VMSFileSystem {
+    /// Creates a new VMS file system interface.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::types::{MainframeJob, VAXTerminalAttributes, VMSFileSpec};

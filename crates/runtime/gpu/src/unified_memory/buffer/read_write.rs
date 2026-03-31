@@ -55,9 +55,6 @@ impl UnifiedBuffer {
             )));
         }
 
-        // DEEP DEBT: Null checks removed - NonNull provides compile-time guarantee
-        // Old code: if self.cpu_ptr.is_null() { return Err(...); }
-        // NonNull makes this impossible by construction
 
         // Validate pointer value (defensive check - still useful for invalid addresses)
         let ptr_value = self.cpu_ptr.as_ptr() as usize;
@@ -65,13 +62,8 @@ impl UnifiedBuffer {
             return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
 
-        // Deep Debt: Use safe slice operations instead of raw pointers!
-        // Get safe mutable slice (unsafe encapsulated in helper method)
         let buffer_slice = self.as_cpu_slice_mut()?;
-        let target_slice = &mut buffer_slice[offset..offset + data.len()];
-
-        // Now use safe slice copy (no unsafe here!)
-        target_slice.copy_from_slice(data);
+        buffer_slice[offset..offset + data.len()].copy_from_slice(data);
 
         // Update sync state
         *self
@@ -143,9 +135,6 @@ impl UnifiedBuffer {
             )));
         }
 
-        // DEEP DEBT: Null checks removed - NonNull provides compile-time guarantee
-        // Old code: if self.cpu_ptr.is_null() { return Err(...); }
-        // NonNull makes this impossible by construction
 
         // Validate pointer value (defensive check - still useful for invalid addresses)
         let ptr_value = self.cpu_ptr.as_ptr() as usize;
@@ -153,13 +142,8 @@ impl UnifiedBuffer {
             return Err(ToadStoolError::runtime("CPU pointer is zero (invalid)"));
         }
 
-        // Deep Debt: Use safe slice operations instead of raw pointers!
-        // Get safe immutable slice (unsafe encapsulated in helper method)
         let buffer_slice = self.as_cpu_slice()?;
-        let source_slice = &buffer_slice[offset..offset + len];
-
-        // Use Bytes for zero-copy clone when passing across threads/tasks
-        let result = Bytes::copy_from_slice(source_slice);
+        let result = Bytes::copy_from_slice(&buffer_slice[offset..offset + len]);
 
         // Update metadata
         if let Some(metadata) = self

@@ -40,7 +40,9 @@ impl CoralReefClient {
     /// 1. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit socket path)
     /// 2. `CORALREEF_URL` env var (socket path or address)
     /// 3. XDG runtime dir manifest: `$XDG_RUNTIME_DIR/ecoPrimals/coralreef-core.json`
-    /// 4. Capability-based socket: `$XDG_RUNTIME_DIR/biomeos/coralreef.sock`
+    /// 4. Socket directory scan: `$XDG_RUNTIME_DIR/biomeos/coralreef*.sock` (matches
+    ///    any coralReef naming variant, e.g. `coralreef-core-default.sock`)
+    /// 5. ecoPrimals socket fallback: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
     async fn discover() -> Option<UnixJsonRpcClient> {
         if let Ok(addr) = std::env::var("TOADSTOOL_SHADER_COMPILER_ADDR") {
             let path = PathBuf::from(&addr);
@@ -59,9 +61,9 @@ impl CoralReefClient {
         }
 
         if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            let manifest = PathBuf::from(&runtime_dir)
-                .join("ecoPrimals")
-                .join("coralreef-core.json");
+            let runtime = PathBuf::from(&runtime_dir);
+
+            let manifest = runtime.join("ecoPrimals").join("coralreef-core.json");
             if let Some(socket) = read_socket_from_manifest(&manifest)
                 && socket.exists()
             {
@@ -69,12 +71,15 @@ impl CoralReefClient {
                 return Some(UnixJsonRpcClient::new(socket));
             }
 
-            let sock = PathBuf::from(&runtime_dir)
-                .join("biomeos")
-                .join("coralreef.sock");
-            if sock.exists() {
-                debug!(path = %sock.display(), "coralReef discovered via biomeos socket");
+            if let Some(sock) = scan_dir_for_socket(&runtime.join("biomeos"), "coralreef") {
+                debug!(path = %sock.display(), "coralReef discovered via biomeos socket directory scan");
                 return Some(UnixJsonRpcClient::new(sock));
+            }
+
+            let capability_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
+            if capability_sock.exists() {
+                debug!(path = %capability_sock.display(), "coralReef discovered via ecoPrimals capability socket");
+                return Some(UnixJsonRpcClient::new(capability_sock));
             }
         }
 
@@ -98,6 +103,25 @@ impl CoralReefClient {
     pub async fn is_available(&self) -> bool {
         self.client().await.is_some()
     }
+}
+
+/// Scan a directory for a Unix socket whose file stem starts with `prefix`.
+///
+/// Returns the first matching `.sock` path found (sorted for determinism).
+fn scan_dir_for_socket(dir: &std::path::Path, prefix: &str) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    let mut matches: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.extension().and_then(|e| e.to_str()) == Some("sock")
+                && p.file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|s| s.starts_with(prefix))
+        })
+        .collect();
+    matches.sort();
+    matches.into_iter().next()
 }
 
 /// Read socket path from a coralReef discovery manifest JSON file.
@@ -170,5 +194,36 @@ mod tests {
     async fn test_client_not_available_without_coralreef() {
         let client = CoralReefClient::new();
         assert!(!client.is_available().await);
+    }
+
+    #[test]
+    fn test_scan_dir_for_socket_finds_prefixed() {
+        let dir = std::env::temp_dir().join("test_scan_coralreef");
+        let _ = std::fs::create_dir_all(&dir);
+        let sock = dir.join("coralreef-core-default.sock");
+        std::fs::write(&sock, b"").unwrap();
+
+        let result = scan_dir_for_socket(&dir, "coralreef");
+        assert_eq!(result, Some(sock.clone()));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_scan_dir_for_socket_no_match() {
+        let dir = std::env::temp_dir().join("test_scan_no_cr");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("beardog.sock"), b"").unwrap();
+
+        let result = scan_dir_for_socket(&dir, "coralreef");
+        assert!(result.is_none());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_scan_dir_for_socket_missing_dir() {
+        let result = scan_dir_for_socket(std::path::Path::new("/nonexistent/dir"), "coralreef");
+        assert!(result.is_none());
     }
 }

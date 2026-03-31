@@ -277,11 +277,28 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(crate::CliError::Other(format!(
-                "Container benchmark failed ({}): {}",
-                output.status,
-                stderr.trim()
-            )));
+            tracing::warn!(
+                runtime = runtime_name,
+                status = %output.status,
+                "Container benchmark degraded: {}", stderr.trim()
+            );
+            let mut details = HashMap::new();
+            details.insert(
+                "degraded".to_string(),
+                serde_json::Value::String(format!(
+                    "{runtime_name} exited {}: {}",
+                    output.status,
+                    stderr.trim()
+                )),
+            );
+            return Ok(BenchmarkTest {
+                name: "Container Startup".to_string(),
+                test_type: BenchmarkType::ContainerStartup,
+                duration: std::time::Duration::ZERO,
+                score: 0.0,
+                unit: "score".to_string(),
+                details,
+            });
         }
 
         // Score: higher is better; 1000/duration_ms gives ops-per-second-like metric

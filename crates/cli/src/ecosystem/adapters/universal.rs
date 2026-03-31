@@ -134,6 +134,7 @@ impl UniversalServiceAdapter {
 
         match protocol.as_str() {
             "jsonrpc" | "unix" => self.invoke_jsonrpc(provider, request).await,
+            #[allow(deprecated)]
             "http" | "https" => self.invoke_http(provider, request).await,
             "grpc" => {
                 tracing::error!(
@@ -249,10 +250,15 @@ impl UniversalServiceAdapter {
         }
     }
 
-    /// Invoke via HTTP/REST
+    /// Invoke via HTTP/REST — always returns an error.
     ///
-    /// DEEP DEBT: HTTP adapter removed - use Unix socket RPC instead!
-    #[allow(clippy::unused_async)] // Trait method; deprecated, returns Err immediately
+    /// HTTP is not supported for primal-to-primal. External HTTP routes through
+    /// Songbird (Concentrated Gap architecture).
+    #[deprecated(
+        since = "0.92.0",
+        note = "HTTP adapter removed. Use Unix socket RPC for primal-to-primal."
+    )]
+    #[allow(clippy::unused_async)]
     async fn invoke_http(
         &self,
         _provider: &ServiceProvider,

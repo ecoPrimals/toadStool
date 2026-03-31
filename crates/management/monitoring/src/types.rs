@@ -78,19 +78,25 @@ pub enum ThresholdAction {
 }
 
 /// Resource monitoring error types
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum ResourceMonitorError {
     /// Process was not registered for monitoring
+    #[error("Process not registered for monitoring: {0}")]
     ProcessNotRegistered(String),
     /// Process not found in system
+    #[error("Process not found: {0}")]
     ProcessNotFound(String),
     /// Command execution failed
+    #[error("Command execution failed: {0}")]
     CommandExecutionFailed(String),
     /// Parse error reading metrics
+    #[error("Parse error: {0}")]
     ParseError(String),
     /// Platform does not support this operation
+    #[error("Platform not supported: {0}")]
     PlatformNotSupported(String),
     /// Resource limit exceeded
+    #[error("Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}")]
     ResourceLimitExceeded {
         /// Process identifier
         process_id: String,
@@ -102,8 +108,10 @@ pub enum ResourceMonitorError {
         limit: f64,
     },
     /// Network monitoring unavailable on platform
+    #[error("Network monitoring is not available on this platform")]
     NetworkMonitoringNotAvailable,
     /// Threshold violation detected
+    #[error("Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}")]
     ThresholdViolation {
         /// Workload identifier
         workload_id: String,
@@ -115,58 +123,9 @@ pub enum ResourceMonitorError {
         threshold: f64,
     },
     /// Other error
+    #[error("Other error: {0}")]
     Other(String),
 }
-
-impl std::fmt::Display for ResourceMonitorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ProcessNotRegistered(id) => {
-                write!(f, "Process not registered for monitoring: {id}")
-            }
-            Self::ProcessNotFound(id) => {
-                write!(f, "Process not found: {id}")
-            }
-            Self::CommandExecutionFailed(msg) => {
-                write!(f, "Command execution failed: {msg}")
-            }
-            Self::ParseError(msg) => {
-                write!(f, "Parse error: {msg}")
-            }
-            Self::PlatformNotSupported(platform) => {
-                write!(f, "Platform not supported: {platform}")
-            }
-            Self::ResourceLimitExceeded {
-                process_id,
-                resource_type,
-                current_value,
-                limit,
-            } => {
-                write!(
-                    f,
-                    "Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}"
-                )
-            }
-            Self::NetworkMonitoringNotAvailable => {
-                write!(f, "Network monitoring is not available on this platform")
-            }
-            Self::ThresholdViolation {
-                workload_id,
-                resource_type,
-                current_value,
-                threshold,
-            } => {
-                write!(
-                    f,
-                    "Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}"
-                )
-            }
-            Self::Other(msg) => write!(f, "Other error: {msg}"),
-        }
-    }
-}
-
-impl std::error::Error for ResourceMonitorError {}
 
 impl From<ResourceMonitorError> for ToadStoolError {
     fn from(err: ResourceMonitorError) -> Self {

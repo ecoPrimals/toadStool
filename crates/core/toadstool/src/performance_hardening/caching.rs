@@ -9,8 +9,9 @@ use crate::ToadStoolResult;
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
+use tokio::time::Instant;
 
 /// Intelligent cache
 pub struct IntelligentCache<K, V> {

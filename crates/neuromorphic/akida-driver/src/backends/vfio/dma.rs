@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // DMA allocation requires unsafe alloc/mlock/ioctl for IOMMU mapping
 //! DMA buffer management for VFIO NPU backend
 //!
 //! Provides page-aligned, mlock'd, IOMMU-mapped memory buffers for

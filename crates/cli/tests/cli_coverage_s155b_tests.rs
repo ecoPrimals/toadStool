@@ -270,7 +270,7 @@ mod daemon_tests {
     #[test]
     fn test_daemon_config_default() {
         let config = DaemonConfig::default();
-        assert!(config.port > 0);
+        assert_eq!(config.port, toadstool_config::ports::daemon_port());
         assert!(config.max_concurrent_workloads > 0);
     }
 
@@ -290,9 +290,9 @@ mod daemon_tests {
     }
 
     #[tokio::test]
-    async fn test_start_daemon_invalid_config_path() {
-        let result = toadstool_cli::daemon::start_daemon(
-            8084,
+    async fn test_daemon_config_load_invalid_path() {
+        let result = DaemonConfig::load(
+            0,
             false,
             None,
             Some(PathBuf::from("/nonexistent/config/path.yaml")),

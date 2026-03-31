@@ -64,37 +64,61 @@ fn test_default_federation_address() {
 #[test]
 #[allow(deprecated)]
 fn test_get_songbird_port_default() {
-    temp_env::with_var("SONGBIRD_PORT", None::<&str>, || {
-        let port = network::get_songbird_port();
-        assert!(port > 0);
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_COORDINATION_PORT", None::<&str>),
+            ("COORDINATION_PORT", None::<&str>),
+        ],
+        || {
+            let port = network::get_songbird_port();
+            assert!(port > 0);
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_beardog_port_default() {
-    temp_env::with_var("BEARDOG_PORT", None::<&str>, || {
-        let port = network::get_beardog_port();
-        assert_eq!(port, 8081);
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SECURITY_PORT", None::<&str>),
+            ("SECURITY_PORT", None::<&str>),
+        ],
+        || {
+            let port = network::get_beardog_port();
+            assert_eq!(port, 8081);
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_nestgate_port_default() {
-    temp_env::with_var("NESTGATE_PORT", None::<&str>, || {
-        let port = network::get_nestgate_port();
-        assert_eq!(port, 8082);
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_STORAGE_PORT", None::<&str>),
+            ("STORAGE_PORT", None::<&str>),
+        ],
+        || {
+            let port = network::get_nestgate_port();
+            assert_eq!(port, 8082);
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_squirrel_port_default() {
-    temp_env::with_var("TOADSTOOL_SQUIRREL_PORT", None::<&str>, || {
-        let port = network::get_squirrel_port();
-        assert_eq!(port, 8083);
-    });
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_PLATFORM_PORT", None::<&str>),
+            ("PLATFORM_PORT", None::<&str>),
+        ],
+        || {
+            let port = network::get_squirrel_port();
+            assert_eq!(port, 8083);
+        },
+    );
 }
 
 #[test]

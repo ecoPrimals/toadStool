@@ -94,15 +94,12 @@ impl IpcServer {
         }
     }
 
-    /// Resolve TCP port for a primal using environment-first discovery
-    ///
-    /// **Deep Debt**: Self-knowledge pattern. ToadStool knows its own default port (8370).
-    /// All other primals provide their ports via environment variables at runtime.
+    /// Resolve TCP port for a primal using environment-first discovery.
     ///
     /// Priority:
     /// 1. `{PRIMAL_NAME}_PORT` environment variable
     /// 2. `BIOMEOS_IPC_PORT` environment variable
-    /// 3. Default 8370 (ToadStool's own well-known port)
+    /// 3. Port `0` — OS-assigned ephemeral (production uses Unix sockets)
     fn resolve_port(primal_name: &str) -> u16 {
         let env_key = format!("{}_PORT", primal_name.to_uppercase().replace('-', "_"));
         if let Ok(port_str) = std::env::var(&env_key) {
@@ -117,8 +114,7 @@ impl IpcServer {
             }
         }
 
-        // Self-knowledge: ToadStool's own default port
-        8370
+        0
     }
 
     /// Create server with custom endpoints

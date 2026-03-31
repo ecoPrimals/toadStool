@@ -42,7 +42,6 @@ impl CudaBackend {
                 }
                 Err(e) => {
                     tracing::warn!("Failed to initialize CUDA device {}: {}", ordinal, e);
-                    continue;
                 }
             }
         }
@@ -264,8 +263,8 @@ impl CudaBackend {
         let sm_count = self.device_info.multiprocessor_count as f64;
         let clock_hz = (self.device_info.clock_rate_khz * 1000) as f64;
         let ops_per_clock_per_sm = match self.device_info.compute_capability {
-            (8, 0) | (8, 6) | (8, 9) => 256.0,
-            (7, 0) | (7, 5) => 128.0,
+            (8, 0 | 6 | 9) => 256.0,
+            (7, 0 | 5) => 128.0,
             (6, _) => 128.0,
             (5, _) => 128.0,
             _ => 64.0,

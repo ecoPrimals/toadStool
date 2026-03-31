@@ -210,23 +210,35 @@ impl ConditionEvaluator {
             },
 
             PolicyCondition::NetworkAccess { hosts, ports } => {
-                Err(ToadStoolError::validation(format!(
-                    "NetworkAccess condition not yet implemented (hosts: {hosts:?}, ports: {ports:?}); \
-                 use validate_condition to ensure policy structure is valid before evaluation"
-                )))
+                tracing::warn!(
+                    ?hosts, ?ports,
+                    "NetworkAccess policy condition evaluated as deny-by-default — \
+                     enforcement requires sandbox crate integration"
+                );
+                Ok(false)
             }
 
             PolicyCondition::FileSystemAccess { paths, operations } => {
-                Err(ToadStoolError::validation(format!(
-                    "FileSystemAccess condition not yet implemented (paths: {paths:?}, operations: {operations:?}); \
-                     use validate_condition to ensure policy structure is valid before evaluation"
-                )))
+                tracing::warn!(
+                    ?paths, ?operations,
+                    "FileSystemAccess policy condition evaluated as deny-by-default — \
+                     enforcement requires sandbox crate integration"
+                );
+                Ok(false)
             }
 
-            PolicyCondition::Custom { expression, .. } => Err(ToadStoolError::validation(format!(
-                "Custom expression condition not yet implemented (expression: {expression:?}); \
-                 Phase 2+ will add regex_cache-based evaluation"
-            ))),
+            PolicyCondition::Custom { expression, .. } => {
+                let compiled = self.regex_cache.read().await;
+                if let Some(re) = compiled.get(expression) {
+                    Ok(re.is_match(&format!("{context:?}")))
+                } else {
+                    tracing::debug!(
+                        expression,
+                        "Custom condition with uncached regex — evaluating as deny-by-default"
+                    );
+                    Ok(false)
+                }
+            }
         }
     }
 }

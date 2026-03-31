@@ -28,7 +28,7 @@ fn test_env_config_loader() {
 fn test_network_env_config() {
     temp_env::with_vars(
         [
-            ("SONGBIRD_PORT", Some("9080")),
+            ("COORDINATION_PORT", Some("9080")),
             ("TOADSTOOL_BIND_ADDRESS", Some("0.0.0.0")),
         ],
         || {

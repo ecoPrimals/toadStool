@@ -79,5 +79,5 @@ async fn test_feature_workflow() {
 
 ## See Also
 
-- **[STATUS.md](../../STATUS.md)** — Overall project status
+- **[NEXT_STEPS.md](../../NEXT_STEPS.md)** — Overall project status and next steps
 - **[QUICK_REFERENCE.md](../../QUICK_REFERENCE.md)** — Commands and API reference

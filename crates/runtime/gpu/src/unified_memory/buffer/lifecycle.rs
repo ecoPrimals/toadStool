@@ -35,9 +35,6 @@ impl UnifiedBuffer {
             device_ptr as usize
         );
 
-        // DEEP DEBT EVOLUTION: Convert to NonNull for compile-time null safety
-        // Use safe NonNull::new().expect() instead of new_unchecked - assertions
-        // guarantee non-null, so expect() documents the invariant without unsafe.
         assert!(
             !cpu_ptr.is_null(),
             "CPU pointer cannot be null at buffer creation"
@@ -120,10 +117,6 @@ impl Drop for UnifiedBuffer {
                 metrics.active_allocations = metrics.active_allocations.saturating_sub(1);
                 metrics.total_allocated = new_total;
             }
-
-            // DEEP DEBT FIX: Actually free the memory!
-            // Drop can't be async, so we need to free synchronously
-            // For backends that need async cleanup, they must handle it internally
 
             let backend = Arc::clone(&self.backend);
             let size = self.size;

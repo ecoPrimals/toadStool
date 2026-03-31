@@ -393,27 +393,16 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                 interval: Duration::from_secs(30),
                 // Health endpoints now constructed dynamically from service domains + env ports
                 endpoints: {
+                    use toadstool_config::ports::{capability_fallback, resolve_capability_port};
                     let domains = ServiceDomainsConfig::from_env();
-                    let songbird_port = std::env::var("TOADSTOOL_SONGBIRD_PORT")
-                        .or_else(|_| std::env::var("SONGBIRD_PORT"))
-                        .ok()
-                        .and_then(|p| p.parse().ok())
-                        .unwrap_or(7000u16);
-                    let beardog_port = std::env::var("TOADSTOOL_BEARDOG_PORT")
-                        .or_else(|_| std::env::var("BEARDOG_PORT"))
-                        .ok()
-                        .and_then(|p| p.parse().ok())
-                        .unwrap_or(8000u16);
-                    let nestgate_port = std::env::var("TOADSTOOL_NESTGATE_PORT")
-                        .or_else(|_| std::env::var("NESTGATE_PORT"))
-                        .ok()
-                        .and_then(|p| p.parse().ok())
-                        .unwrap_or(9000u16);
-                    let squirrel_port = std::env::var("TOADSTOOL_SQUIRREL_PORT")
-                        .or_else(|_| std::env::var("SQUIRREL_PORT"))
-                        .ok()
-                        .and_then(|p| p.parse().ok())
-                        .unwrap_or(6000u16);
+                    let songbird_port =
+                        resolve_capability_port("COORDINATION", capability_fallback::COORDINATION);
+                    let beardog_port =
+                        resolve_capability_port("SECURITY", capability_fallback::SECURITY);
+                    let nestgate_port =
+                        resolve_capability_port("STORAGE", capability_fallback::STORAGE);
+                    let squirrel_port =
+                        resolve_capability_port("PLATFORM", capability_fallback::PLATFORM);
                     vec![
                         HealthEndpoint {
                             name: "orchestration".to_string(), // Capability-based name

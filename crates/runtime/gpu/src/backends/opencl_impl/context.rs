@@ -57,8 +57,7 @@ impl ComputeContext for OpenClComputeContext {
                 let total_elements = workload
                     .inputs
                     .first()
-                    .map(|input| input.data.len())
-                    .unwrap_or(1024);
+                    .map_or(1024, |input| input.data.len());
                 let work_size = calculate_work_size(total_elements);
 
                 // Execute (no extra args for general compute/matrix multiply)
@@ -68,8 +67,7 @@ impl ComputeContext for OpenClComputeContext {
                         workload
                             .inputs
                             .first()
-                            .map(|i| i.data.len() as i32)
-                            .unwrap_or(0),
+                            .map_or(0, |i| i.data.len() as i32),
                     ]
                 } else {
                     vec![]
@@ -124,8 +122,7 @@ impl ComputeContext for OpenClComputeContext {
                 let total_elements = workload
                     .inputs
                     .first()
-                    .map(|input| input.data.len())
-                    .unwrap_or(1024);
+                    .map_or(1024, |input| input.data.len());
                 let work_size = calculate_work_size(total_elements);
 
                 // For custom kernels, user should handle extra args via parameters
