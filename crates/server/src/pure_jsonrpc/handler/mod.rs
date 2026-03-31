@@ -10,11 +10,7 @@ mod core;
 mod dispatch;
 mod hw_learn;
 mod job;
-mod ollama;
 mod resources;
-mod science;
-mod science_domains;
-mod shader;
 mod silicon;
 mod transport;
 mod workload;
@@ -30,9 +26,7 @@ use super::types::{JSONRPC_VERSION, JsonRpcError, JsonRpcRequest, JsonRpcRespons
 use dispatch::DispatchHandler;
 pub use hw_learn::HwLearnHandler;
 use job::JobHandler;
-use ollama::OllamaHandler;
 use resources::ResourceHandler;
-use shader::ShaderHandler;
 use silicon::SiliconHandler;
 use transport::TransportHandler;
 use workload::WorkloadHandler;
@@ -53,8 +47,6 @@ pub struct JsonRpcHandler {
     workload: WorkloadHandler,
     resources: ResourceHandler,
     transport: TransportHandler,
-    ollama: OllamaHandler,
-    shader: ShaderHandler,
     silicon: SiliconHandler,
 }
 
@@ -82,8 +74,6 @@ impl JsonRpcHandler {
             workload: WorkloadHandler::new(executor),
             resources: ResourceHandler::new(),
             transport: TransportHandler::new(),
-            ollama: OllamaHandler::new(),
-            shader: ShaderHandler::new(crate::coral_reef_client::create_coral_reef_client()),
             silicon: SiliconHandler::new(),
         }
     }
@@ -200,17 +190,6 @@ impl JsonRpcHandler {
                 return self.hw_learn.gpu_telemetry(params).await;
             }
 
-            "inference.list_models" | "ollama.list_models" => {
-                return self.ollama.ollama_list_models().await;
-            }
-            "inference.execute" | "ollama.inference" => {
-                return self.ollama.ollama_inference(params).await;
-            }
-            "inference.load_model" | "ollama.load" => return self.ollama.ollama_load(params).await,
-            "inference.unload_model" | "ollama.unload" => {
-                return self.ollama.ollama_unload(params).await;
-            }
-
             "gate.update" => return self.job.gate_update(params).await,
             "gate.remove" => return self.job.gate_remove(params).await,
             "gate.list" => return self.job.gate_list().await,
@@ -222,47 +201,6 @@ impl JsonRpcHandler {
             "transport.open" => return self.transport.transport_open(params).await,
             "transport.stream" => return self.transport.transport_stream(params).await,
             "transport.status" => return self.transport.transport_status(params).await,
-
-            "science.compute.submit" => {
-                return science::science_compute_submit(&self.job, params).await;
-            }
-            "science.compute.status" => {
-                return science::science_compute_status(&self.job, params).await;
-            }
-            "science.compute.result" => {
-                return science::science_compute_result(&self.job, params).await;
-            }
-            "science.compute.cancel" => {
-                return science::science_compute_cancel(&self.job, params).await;
-            }
-            "science.gpu.dispatch" => {
-                return science::science_gpu_dispatch(&self.job, params).await;
-            }
-            "science.gpu.capabilities" => return science::science_gpu_capabilities().await,
-            "science.npu.dispatch" => {
-                return science::science_npu_dispatch(&self.job, params).await;
-            }
-            "science.npu.capabilities" => return science::science_npu_capabilities().await,
-            "science.substrate.discover" => return science::science_substrate_discover().await,
-            "science.substrate.probe" => return science::science_substrate_probe(params).await,
-
-            // barraCuda Sprint 2 API awareness
-            "science.activations.list" => return science::science_activations_list().await,
-            "science.rng.capabilities" => return science::science_rng_capabilities().await,
-            "science.special.functions" => return science::science_special_functions().await,
-
-            // Ecology domain — airSpring science offload routing
-            m if m.starts_with("ecology.") => return science::ecology_offload(m, params).await,
-
-            // Discovery domain — NUCLEUS primal discovery (groundSpring V99)
-            "discovery.primals" => return science::discovery_primals().await,
-            "discovery.primal_health" => return science::discovery_primal_health(params).await,
-            "discovery.direct_rpc" => return science::discovery_direct_rpc(params).await,
-            "discovery.topology" => return science::discovery_topology().await,
-
-            // Deploy domain — science primal capability routing (wetSpring V99)
-            "deploy.capability_call" => return science::deploy_capability_call(params).await,
-            "deploy.graph_status" => return science::deploy_graph_status().await,
 
             // Hardware learning domain — biomeOS v2.30 compute.hardware.* capabilities
             "compute.hardware.observe" => return self.hw_learn.hw_learn_observe(params).await,
@@ -280,11 +218,6 @@ impl JsonRpcHandler {
                 return self.hw_learn.hw_learn_vfio_devices(params).await;
             }
 
-            "shader.compile.wgsl" => return self.shader.compile_wgsl(params).await,
-            "shader.compile.wgsl.multi" => return self.shader.compile_wgsl_multi(params).await,
-            "shader.compile.spirv" => return self.shader.compile_spirv(params).await,
-            "shader.compile.status" => return self.shader.compile_status(params).await,
-            "shader.compile.capabilities" => return self.shader.compile_capabilities().await,
             "shader.dispatch" => return self.dispatch.shader_dispatch(params).await,
 
             "compute.performance_surface.report" => {
@@ -325,40 +258,15 @@ impl JsonRpcHandler {
             "list_workloads" => self.job.list_workloads(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
             "check_health" => core::health(&self.version, self.start_time, &self.error_count).await,
-            "science_compute_submit" => science::science_compute_submit(&self.job, params).await,
-            "science_compute_status" => science::science_compute_status(&self.job, params).await,
-            "science_compute_result" => science::science_compute_result(&self.job, params).await,
-            "science_compute_cancel" => science::science_compute_cancel(&self.job, params).await,
-            "science_gpu_dispatch" => science::science_gpu_dispatch(&self.job, params).await,
             "dispatch_submit" => self.dispatch.dispatch_submit(params).await,
             "dispatch_status" => self.dispatch.dispatch_status(params).await,
             "dispatch_result" => self.dispatch.dispatch_result(params).await,
             "dispatch_capabilities" => self.dispatch.dispatch_capabilities(params).await,
-            "science_gpu_capabilities" => science::science_gpu_capabilities().await,
-            "science_npu_dispatch" => science::science_npu_dispatch(&self.job, params).await,
-            "science_npu_capabilities" => science::science_npu_capabilities().await,
-            "science_substrate_discover" => science::science_substrate_discover().await,
-            "science_substrate_probe" => science::science_substrate_probe(params).await,
-            "shader_compile_wgsl" => self.shader.compile_wgsl(params).await,
-            "shader_compile_wgsl_multi" => self.shader.compile_wgsl_multi(params).await,
-            "shader_compile_spirv" => self.shader.compile_spirv(params).await,
-            "shader_compile_status" => self.shader.compile_status(params).await,
-            "shader_compile_capabilities" => self.shader.compile_capabilities().await,
             "shader_dispatch" => self.dispatch.shader_dispatch(params).await,
             "toadstool_provenance" => Self::toadstool_provenance().await,
-            "ollama_list_models" => self.ollama.ollama_list_models().await,
-            "ollama_inference" => self.ollama.ollama_inference(params).await,
-            "ollama_load" => self.ollama.ollama_load(params).await,
-            "ollama_unload" => self.ollama.ollama_unload(params).await,
             "gpu_info" => core::gpu_info().await,
             "gpu_memory" => core::gpu_memory().await,
             "gpu_telemetry" => self.hw_learn.gpu_telemetry(params).await,
-            "discovery_primals" => science::discovery_primals().await,
-            "discovery_primal_health" => science::discovery_primal_health(params).await,
-            "discovery_direct_rpc" => science::discovery_direct_rpc(params).await,
-            "discovery_topology" => science::discovery_topology().await,
-            "deploy_capability_call" => science::deploy_capability_call(params).await,
-            "deploy_graph_status" => science::deploy_graph_status().await,
             "hw_learn_observe" => self.hw_learn.hw_learn_observe(params).await,
             "hw_learn_distill" => self.hw_learn.hw_learn_distill(params).await,
             "hw_learn_apply" => self.hw_learn.hw_learn_apply(params).await,
@@ -371,10 +279,6 @@ impl JsonRpcHandler {
             "performance_surface_query" => self.silicon.query(params).await,
             "performance_surface_list" => self.silicon.list().await,
             "route_multi_unit" => self.silicon.route_multi_unit(params).await,
-            n if n.starts_with("ecology_") => {
-                let method = n.replace('_', ".");
-                science::ecology_offload(&method, params).await
-            }
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }
@@ -419,55 +323,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_discover_capabilities_includes_science_in_node_capabilities() {
-        let handler = test_handler();
-        let request = mk_request("compute.discover_capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        let node_capabilities = result["node_capabilities"]
-            .as_array()
-            .expect("node_capabilities is array");
-        let has_science = node_capabilities
-            .iter()
-            .any(|c| c.as_str() == Some("science"));
-        assert!(has_science, "node_capabilities should include 'science'");
-    }
-
-    #[tokio::test]
-    async fn test_discover_capabilities_includes_science_methods() {
-        let handler = test_handler();
-        let request = mk_request("compute.discover_capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        let methods = result["methods"].as_array().expect("methods is array");
-        let science_methods: Vec<_> = methods
-            .iter()
-            .filter_map(|m| m.as_str())
-            .filter(|m| m.starts_with("science."))
-            .collect();
-        assert!(
-            !science_methods.is_empty(),
-            "methods should include science.* entries"
-        );
-        assert!(
-            science_methods.contains(&"science.gpu.capabilities"),
-            "should include science.gpu.capabilities"
-        );
-        assert!(
-            science_methods.contains(&"science.npu.capabilities"),
-            "should include science.npu.capabilities"
-        );
-        assert!(
-            science_methods.contains(&"science.substrate.discover"),
-            "should include science.substrate.discover"
-        );
-    }
-
-    #[tokio::test]
     async fn test_health_returns_valid_status() {
         let handler = test_handler();
         let request = mk_request("toadstool.health", None, 1);
@@ -508,49 +363,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_science_gpu_capabilities_returns_expected_structure() {
-        let handler = test_handler();
-        let request = mk_request("science.gpu.capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        assert!(result.get("devices").is_some());
-        assert!(result.get("supported_precisions").is_some());
-        assert!(result.get("compute_backends").is_some());
-        assert_eq!(result["domain"], "science");
-    }
-
-    #[tokio::test]
-    async fn test_science_npu_capabilities_returns_expected_structure() {
-        let handler = test_handler();
-        let request = mk_request("science.npu.capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        assert!(result.get("available").is_some());
-        assert_eq!(result["domain"], "science");
-        assert!(result.get("supported_models").is_some());
-        assert!(result.get("note").is_some());
-    }
-
-    #[tokio::test]
-    async fn test_science_substrate_discover_returns_expected_structure() {
-        let handler = test_handler();
-        let request = mk_request("science.substrate.discover", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        let substrates = result.get("substrates").expect("substrates present");
-        assert!(substrates.get("gpu").is_some());
-        assert!(substrates.get("npu").is_some());
-        assert!(substrates.get("cpu").is_some());
-        assert_eq!(result["domain"], "science");
-    }
-
-    #[tokio::test]
     async fn test_discover_capabilities_includes_shader_methods() {
         let handler = test_handler();
         let request = mk_request("compute.discover_capabilities", None, 1);
@@ -559,127 +371,13 @@ mod tests {
         assert!(response.error.is_none());
         let result = response.result.expect("result present");
         let methods = result["methods"].as_array().expect("methods is array");
-        let shader_methods: Vec<_> = methods
+        let has_shader_dispatch = methods
             .iter()
-            .filter_map(|m| m.as_str())
-            .filter(|m| m.starts_with("shader."))
-            .collect();
+            .any(|m| m.as_str() == Some("shader.dispatch"));
         assert!(
-            !shader_methods.is_empty(),
-            "methods should include shader.* entries"
+            has_shader_dispatch,
+            "methods should include shader.dispatch"
         );
-        assert!(
-            shader_methods.contains(&"shader.compile.wgsl"),
-            "should include shader.compile.wgsl"
-        );
-        assert!(
-            shader_methods.contains(&"shader.compile.capabilities"),
-            "should include shader.compile.capabilities"
-        );
-    }
-
-    #[tokio::test]
-    async fn test_shader_compile_capabilities_returns_expected_structure() {
-        let handler = test_handler();
-        let request = mk_request("shader.compile.capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        assert_eq!(result["domain"], "shader");
-        assert!(result["naga_pipeline"].as_bool().unwrap());
-        assert!(!result["native_compiler_available"].as_bool().unwrap());
-        assert!(result["source_languages"].as_array().is_some());
-    }
-
-    #[tokio::test]
-    async fn test_shader_compile_wgsl_requires_source() {
-        let handler = test_handler();
-        let request = mk_request("shader.compile.wgsl", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_some());
-        let err = response.error.expect("error present");
-        assert!(err.message.contains("source"));
-    }
-
-    #[tokio::test]
-    async fn test_shader_compile_wgsl_with_source() {
-        let handler = test_handler();
-        let params = serde_json::json!({ "source": "@compute fn main() {}" });
-        let request = mk_request("shader.compile.wgsl", Some(params), 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        assert_eq!(result["status"], "accepted");
-        assert_eq!(result["source_language"], "wgsl");
-    }
-
-    #[tokio::test]
-    async fn test_science_gpu_capabilities_includes_precision_notes() {
-        let handler = test_handler();
-        let request = mk_request("science.gpu.capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-
-        assert!(response.error.is_none());
-        let result = response.result.expect("result present");
-        let notes = result
-            .get("precision_notes")
-            .expect("precision_notes present");
-        assert!(!notes["f64_shared_memory_reliable"].as_bool().unwrap());
-        assert!(notes["df64_reductions"].as_bool().unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_all_science_methods_dispatch_without_routing_error() {
-        let handler = test_handler();
-
-        let no_param_methods = [
-            "science.gpu.capabilities",
-            "science.npu.capabilities",
-            "science.substrate.discover",
-        ];
-        for method in no_param_methods {
-            let request = mk_request(method, None, 1);
-            let response = handler.handle_request(&request).await;
-            assert!(
-                response.error.is_none(),
-                "{method} should dispatch without error"
-            );
-        }
-
-        let request = mk_request("science.substrate.probe", None, 1);
-        let response = handler.handle_request(&request).await;
-        assert!(
-            response.error.is_none(),
-            "science.substrate.probe should succeed"
-        );
-
-        let params = serde_json::json!({
-            "inference": { "model": "tinyllama", "prompt": "test", "params": {} }
-        });
-        let submit_methods = [
-            "science.compute.submit",
-            "science.gpu.dispatch",
-            "science.npu.dispatch",
-        ];
-        for method in submit_methods {
-            let request = mk_request(method, Some(params.clone()), 1);
-            let response = handler.handle_request(&request).await;
-            assert!(
-                response.error.is_none(),
-                "{method} should dispatch and return job_id"
-            );
-            assert!(
-                response
-                    .result
-                    .as_ref()
-                    .and_then(|r| r.get("job_id"))
-                    .is_some(),
-                "{method} should return job_id"
-            );
-        }
     }
 
     #[tokio::test]
@@ -700,21 +398,5 @@ mod tests {
         assert_eq!(result["domain"], "shader.dispatch");
         assert!(result["job_id"].as_str().is_some());
         assert_eq!(result["binary_size"], 4);
-    }
-
-    #[tokio::test]
-    async fn test_shader_dispatch_discoverable_via_semantic_registry() {
-        let handler = test_handler();
-        let request = mk_request("compute.discover_capabilities", None, 1);
-        let response = handler.handle_request(&request).await;
-        let result = response.result.expect("result present");
-        let methods = result["methods"].as_array().expect("methods array");
-        let has_shader_dispatch = methods
-            .iter()
-            .any(|m| m.as_str() == Some("shader.dispatch"));
-        assert!(
-            has_shader_dispatch,
-            "discover_capabilities should include shader.dispatch"
-        );
     }
 }

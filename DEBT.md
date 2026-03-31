@@ -1,9 +1,33 @@
 # Active Technical Debt Register
 
-**Date**: March 30, 2026 — S168
+**Date**: March 31, 2026 — S169
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## S169 Resolved Debt
+
+### Primal boundary enforcement (overstep cleanup)
+- **D-OVERSTEP-S169**: Removed responsibilities that belong to peer primals: Ollama / inference handler (Squirrel), shader **compile** proxy (coralReef — **`shader.dispatch`** kept), science + ecology + discovery + deploy relay (biomeOS), HTTP server surface from server + cli (Songbird). Dropped axum/tower/tower-http from server + cli; hyper/tower from distributed + analytics.
+- **D-ECOBIN-FFI-S169**: Removed **pyo3** from workspace — FFI violates ecoBin v3.0 pure-Rust policy.
+- **D-DEPS-CLEANUP-S169**: Removed **gbm** from display (C via wayland-sys), **linfa** from performance (ML domain), unused **hmac** and **indicatif**.
+
+### Configuration and discovery evolution
+- **D-PORTS-CAPABILITY-S169**: Evolved **`ports.rs`** — deprecated primal-named fallbacks removed; capability-only discovery path.
+- **D-NETWORK-MINIMAL-S169**: Evolved **`network.rs`** — HTTP-centric constants, `DEFAULT_COORDINATION_ENDPOINT`, WebSocket, Consul/etcd removed.
+- **D-DISCOVERY-UNIX-S169**: Service discovery fallback prefers Unix sockets (`$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock`) over localhost TCP.
+
+### Security and test hygiene
+- **D-MOCK-AUTH-S169**: **`InMemoryAuthBackend`** isolated to **`#[cfg(test)]`** — production no longer ships mock ed25519 signatures.
+
+### Embedded and filesystem conventions
+- **D-EMBEDDED-TYPES-S169**: Refactored **`embedded/types.rs`** (1123 → 4 files: job / toolchain / interfaces / tests).
+- **D-EMBEDDED-PLACEHOLDER-S169**: Programmer/emulator stubs behind **`embedded-placeholder-impls`** with typed errors.
+- **D-TMP-XDG-S169**: `/tmp` literals replaced with **`std::env::temp_dir()`** and XDG-aware paths (6+ files).
+
+### Workspace and verification
+- **D-WORKSPACE-INHERIT-S169**: **`url`**, **`futures`**, **`clap`** use `workspace = true` consistently.
+- **D-FEDERATION-UNWRAP-S169**: **`federation.rs`** audited — zero production unwraps (40 unwraps are test-only).
 
 ## S168 Resolved Debt
 

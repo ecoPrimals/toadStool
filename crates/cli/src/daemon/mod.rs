@@ -49,7 +49,6 @@ use tracing::info;
 
 mod api_types;
 mod config;
-mod http_server;
 mod jsonrpc_server;
 #[cfg(feature = "nautilus")]
 mod nautilus_handlers;

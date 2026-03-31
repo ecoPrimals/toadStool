@@ -2,6 +2,7 @@
 //! Service discovery implementation
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::SystemTime;
 
@@ -137,7 +138,9 @@ impl ServiceDiscovery {
             }
         }
         if !successful && all_services.is_empty() && self.fallbacks.should_use_fallback() {
-            info!("Using localhost fallbacks for development");
+            info!(
+                "Discovery produced no results; trying fallbacks (ecoPrimals runtime sockets, then TCP)"
+            );
             return self.discover_from_fallbacks();
         }
         Ok(all_services)
@@ -194,8 +197,23 @@ impl ServiceDiscovery {
         if !self.fallbacks.should_use_fallback() {
             return Ok(services);
         }
-        info!("Using localhost fallbacks for development");
+
+        // c) wateringHole: prefer Unix sockets under $XDG_RUNTIME_DIR/ecoPrimals/ before TCP.
+        let socket_services = Self::services_from_eco_primals_runtime_sockets()?;
+        if !socket_services.is_empty() {
+            info!(
+                count = socket_services.len(),
+                "Discovered service(s) via ecoPrimals runtime sockets ($XDG_RUNTIME_DIR/ecoPrimals/{{capability}}.sock)"
+            );
+            return Ok(socket_services);
+        }
+
+        // d) Last resort: explicit TCP URL from env (deprecated for inter-primal use).
         if let Some(url) = self.fallbacks.get_fallback_url(PRIMAL_NAME) {
+            warn!(
+                "TCP URL fallback for {} is deprecated for inter-primal discovery; prefer Unix sockets at $XDG_RUNTIME_DIR/ecoPrimals/{{capability}}.sock (wateringHole), or TOADSTOOL_SERVICE_*_URL endpoints",
+                PRIMAL_NAME
+            );
             services.push(DiscoveredService {
                 id: format!("fallback-{PRIMAL_NAME}"),
                 name: PRIMAL_NAME.to_string(),
@@ -206,7 +224,8 @@ impl ServiceDiscovery {
                 endpoints: vec![ServiceEndpoint::from_url_string(&url)?],
                 metadata: {
                     let mut meta = HashMap::new();
-                    meta.insert("source".to_string(), "fallback".to_string());
+                    meta.insert("source".to_string(), "fallback-tcp".to_string());
+                    meta.insert("deprecation".to_string(), "tcp_url_fallback".to_string());
                     meta
                 },
                 discovered_at: SystemTime::now(),
@@ -215,6 +234,68 @@ impl ServiceDiscovery {
             });
         }
         Ok(services)
+    }
+
+    /// Probe `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` (with TMPDIR/temp fallbacks when
+    /// `XDG_RUNTIME_DIR` is unset) and build [`DiscoveredService`] entries for existing paths.
+    fn services_from_eco_primals_runtime_sockets() -> DiscoveryResult<Vec<DiscoveredService>> {
+        let runtime_base = std::env::var_os("XDG_RUNTIME_DIR")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("TMPDIR").map(PathBuf::from))
+            .unwrap_or_else(std::env::temp_dir);
+        let eco_dir = runtime_base.join("ecoPrimals");
+        let now = SystemTime::now();
+
+        const SOCKET_SPECS: &[(&str, Capability)] = &[
+            (
+                PRIMAL_NAME,
+                Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution),
+            ),
+            (
+                "compute",
+                Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution),
+            ),
+            (
+                "coordination",
+                Capability::Coordination(CoordinationCapability::ServiceDiscovery),
+            ),
+            (
+                "storage",
+                Capability::Storage(StorageCapability::ObjectStorage),
+            ),
+        ];
+
+        let mut out = Vec::new();
+        for &(slug, ref cap) in SOCKET_SPECS {
+            let sock_path = eco_dir.join(format!("{slug}.sock"));
+            if !sock_path.exists() {
+                continue;
+            }
+            let url = format!("unix://{}", sock_path.display());
+            let endpoint = match ServiceEndpoint::from_url_string(&url) {
+                Ok(ep) => ep,
+                Err(e) => {
+                    warn!(path = %sock_path.display(), error = %e, "invalid unix socket URL for ecoPrimals fallback");
+                    continue;
+                }
+            };
+            out.push(DiscoveredService {
+                id: format!("fallback-socket-{slug}"),
+                name: slug.to_string(),
+                version: "dev".to_string(),
+                capabilities: vec![cap.clone()],
+                endpoints: vec![endpoint],
+                metadata: {
+                    let mut m = HashMap::new();
+                    m.insert("source".to_string(), "fallback-unix-socket".to_string());
+                    m
+                },
+                discovered_at: now,
+                last_seen: now,
+                healthy: true,
+            });
+        }
+        Ok(out)
     }
 
     pub(crate) fn parse_capabilities(capabilities_str: &str) -> Vec<Capability> {
@@ -463,5 +544,57 @@ mod tests {
         assert_eq!(DiscoveryMethod::Mdns, DiscoveryMethod::Mdns);
         assert_eq!(DiscoveryMethod::Environment, DiscoveryMethod::Environment);
         assert_ne!(DiscoveryMethod::Auto, DiscoveryMethod::Mdns);
+    }
+
+    #[test]
+    fn test_discover_from_fallbacks_prefers_eco_primals_unix_socket() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let eco = tmp.path().join("ecoPrimals");
+        std::fs::create_dir_all(&eco).expect("mkdir");
+        std::fs::File::create(eco.join("toadstool.sock")).expect("touch");
+
+        temp_env::with_var(
+            "XDG_RUNTIME_DIR",
+            Some(tmp.path().to_str().unwrap()),
+            || {
+                let disc = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+                let services = disc.discover_from_fallbacks().expect("ok");
+                assert_eq!(services.len(), 1);
+                assert_eq!(services[0].endpoints[0].protocol, "unix");
+                assert!(services[0].endpoints[0].address.contains("toadstool.sock"));
+                assert_eq!(
+                    services[0].metadata.get("source").map(String::as_str),
+                    Some("fallback-unix-socket")
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn test_discover_from_fallbacks_tcp_when_no_socket() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let eco = tmp.path().join("ecoPrimals");
+        std::fs::create_dir_all(&eco).expect("mkdir");
+
+        temp_env::with_vars(
+            [
+                ("XDG_RUNTIME_DIR", Some(tmp.path().to_str().unwrap())),
+                ("TOADSTOOL_URL", Some("http://localhost:8084")),
+            ],
+            || {
+                let disc = ServiceDiscovery::new_no_refresh(DiscoveryMethod::Environment);
+                let services = disc.discover_from_fallbacks().expect("ok");
+                assert_eq!(services.len(), 1);
+                assert_eq!(services[0].endpoints[0].protocol, "http");
+                assert_eq!(
+                    services[0].metadata.get("source").map(String::as_str),
+                    Some("fallback-tcp")
+                );
+                assert_eq!(
+                    services[0].metadata.get("deprecation").map(String::as_str),
+                    Some("tcp_url_fallback")
+                );
+            },
+        );
     }
 }

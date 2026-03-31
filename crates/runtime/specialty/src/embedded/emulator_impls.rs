@@ -6,7 +6,12 @@
 //! These emulator structs and trait implementations are **infrastructure placeholders**
 //! for future CPU emulation support. They are registered in the embedded adapter
 //! registry and satisfy the type system, but all operations (except no-op `stop` and
-//! `clear_breakpoint`) return `SystemError::NotSupported` until emulator cores exist.
+//! `clear_breakpoint`) return [`crate::SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder`]
+//! (mapped to [`toadstool::SystemError::NotSupported`]) until emulator cores exist.
+//!
+//! Compile this module with Cargo feature **`embedded-placeholder-impls`** (enabled by default).
+//!
+//! **Tracking:** `# TODO(embedded-hw):` replace stubs with real cores when ready.
 //!
 //! ## Architecture Notes
 //!
@@ -18,23 +23,23 @@
 
 use async_trait::async_trait;
 
-use crate::{EmbeddedConfig, LegacyArchitecture, ToadStoolResult};
-use toadstool::{SystemError, ToadStoolError};
+use crate::{EmbeddedConfig, LegacyArchitecture, SpecialtyRuntimeError, ToadStoolResult};
+use toadstool::ToadStoolError;
 
 use super::emulators::{Emulator6502, EmulatorZ80};
 use super::types::{CpuRegisters, EmbeddedEmulator as EmulatorTrait, EmulationStatus};
 
-fn emulator_capability_unavailable(
-    feature_id: &'static str,
-    operation: &'static str,
-) -> ToadStoolError {
-    SystemError::NotSupported {
-        feature: feature_id.to_string(),
-        reason: format!("{operation}: embedded CPU emulator core not implemented"),
+fn emulator_placeholder_err(feature_id: &'static str, operation: &'static str) -> ToadStoolError {
+    SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
+        feature_id,
+        operation,
     }
     .into()
 }
 
+/// Generates [`EmbeddedEmulator`] impls that return structured placeholder errors (no panics).
+///
+/// **Tracking:** `# TODO(embedded-hw):` CPU emulator cores — see module-level docs.
 macro_rules! impl_emulator_stub {
     ($emulator:ty, $name:expr, $arch:expr, $feature_id:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
@@ -49,7 +54,7 @@ macro_rules! impl_emulator_stub {
             }
 
             async fn initialize(&mut self, _config: &EmbeddedConfig) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable($feature_id, "initialize"))
+                Err(emulator_placeholder_err($feature_id, "initialize"))
             }
 
             async fn load_rom(
@@ -57,11 +62,11 @@ macro_rules! impl_emulator_stub {
                 _rom_data: &[u8],
                 _load_address: u32,
             ) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable($feature_id, "load_rom"))
+                Err(emulator_placeholder_err($feature_id, "load_rom"))
             }
 
             async fn start(&mut self) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable($feature_id, "start"))
+                Err(emulator_placeholder_err($feature_id, "start"))
             }
 
             async fn stop(&mut self) -> ToadStoolResult<()> {
@@ -69,40 +74,31 @@ macro_rules! impl_emulator_stub {
             }
 
             async fn step(&mut self) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable($feature_id, "step"))
+                Err(emulator_placeholder_err($feature_id, "step"))
             }
 
             async fn get_status(&self) -> ToadStoolResult<EmulationStatus> {
-                Err(emulator_capability_unavailable($feature_id, "get_status"))
+                Err(emulator_placeholder_err($feature_id, "get_status"))
             }
 
             async fn read_memory(&self, _address: u32, _length: u32) -> ToadStoolResult<Vec<u8>> {
-                Err(emulator_capability_unavailable($feature_id, "read_memory"))
+                Err(emulator_placeholder_err($feature_id, "read_memory"))
             }
 
             async fn write_memory(&mut self, _address: u32, _data: &[u8]) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable($feature_id, "write_memory"))
+                Err(emulator_placeholder_err($feature_id, "write_memory"))
             }
 
             async fn read_registers(&self) -> ToadStoolResult<CpuRegisters> {
-                Err(emulator_capability_unavailable(
-                    $feature_id,
-                    "read_registers",
-                ))
+                Err(emulator_placeholder_err($feature_id, "read_registers"))
             }
 
             async fn write_registers(&mut self, _registers: &CpuRegisters) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable(
-                    $feature_id,
-                    "write_registers",
-                ))
+                Err(emulator_placeholder_err($feature_id, "write_registers"))
             }
 
             async fn set_breakpoint(&mut self, _address: u32) -> ToadStoolResult<()> {
-                Err(emulator_capability_unavailable(
-                    $feature_id,
-                    "set_breakpoint",
-                ))
+                Err(emulator_placeholder_err($feature_id, "set_breakpoint"))
             }
 
             async fn clear_breakpoint(&mut self, _address: u32) -> ToadStoolResult<()> {

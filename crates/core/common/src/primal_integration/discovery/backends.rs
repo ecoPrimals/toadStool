@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use tracing::debug;
 
-use crate::constants::network::http_url;
+use crate::constants::network::HTTP_PROTOCOL;
 
 use super::super::PrimalEndpoint;
 use super::discovery_http_port;
@@ -105,7 +105,7 @@ pub fn try_discover_via_kubernetes(capability: &str) -> Option<Vec<PrimalEndpoin
 
     let _ = (dns_name.as_str(), port).to_socket_addrs().ok()?.next()?;
 
-    let url = http_url(&dns_name, port);
+    let url = format!("{HTTP_PROTOCOL}{dns_name}:{port}");
     Some(vec![PrimalEndpoint {
         service_id: format!("{capability}-k8s"),
         url,
@@ -143,7 +143,7 @@ pub fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEnd
         .ok()?
         .next()?;
 
-    let url = http_url(&service_name, port);
+    let url = format!("{HTTP_PROTOCOL}{service_name}:{port}");
     Some(vec![PrimalEndpoint {
         service_id: format!("{capability}-compose"),
         url,

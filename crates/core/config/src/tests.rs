@@ -166,7 +166,7 @@ fn test_app_constants() {
     assert_eq!(app::DEFAULT_DATA_DIR, "./data");
     assert_eq!(app::DEFAULT_CACHE_DIR, "./cache");
     assert_eq!(app::DEFAULT_LOGS_DIR, "./logs");
-    assert_eq!(app::DEFAULT_TEMP_DIR, "/tmp");
+    assert_eq!(app::default_temp_dir(), std::env::temp_dir());
 }
 
 // ===== Testing constants =====

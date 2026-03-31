@@ -57,14 +57,9 @@ use toadstool_common::runtime_discovery::RuntimeDiscovery;
 /// use toadstool_config::discovery_integration::discover_or_fallback;
 /// use toadstool_common::runtime_discovery::RuntimeDiscovery;
 /// use toadstool_common::primal_identity::Capability;
-/// use toadstool_common::constants::network;
 ///
 /// let discovery = RuntimeDiscovery::new()?;
-/// let fallback = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
-///     .unwrap_or_else(|_| network::http_url(
-///         network::DEFAULT_HOSTNAME,
-///         network::COORDINATION_FALLBACK_PORT,
-///     ));
+/// let fallback = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT").unwrap_or_default();
 /// let coord_endpoint = discover_or_fallback(
 ///     &discovery,
 ///     Capability::Coordination,

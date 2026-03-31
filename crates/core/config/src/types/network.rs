@@ -12,7 +12,10 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use crate::network;
-use toadstool_common::constants::network::{BIND_ALL_IPV4, DEV_HTTP_PORT, LOCALHOST_IPV4};
+use toadstool_common::constants::network::{BIND_ALL_IPV4, LOCALHOST_IPV4};
+
+/// Last-resort bind port when parsing the configured bind address fails (development fallback only).
+const BIND_FALLBACK_PORT: u16 = 3000;
 
 /// Network configuration
 ///
@@ -43,14 +46,14 @@ impl Default for NetworkConfig {
         .parse()
         .unwrap_or_else(|e| {
             tracing::error!("Invalid default bind address, using fallback: {}", e);
-            // Fallback to BIND_ALL_IPV4:DEV_HTTP_PORT, which should always parse
-            let fallback = format!("{BIND_ALL_IPV4}:{DEV_HTTP_PORT}");
+            // Fallback to BIND_ALL_IPV4:BIND_FALLBACK_PORT, which should always parse
+            let fallback = format!("{BIND_ALL_IPV4}:{BIND_FALLBACK_PORT}");
             fallback.parse().unwrap_or_else(|_| {
-                // Last resort: LOCALHOST_IPV4:DEV_HTTP_PORT is guaranteed valid by IP spec
+                // Last resort: LOCALHOST_IPV4:BIND_FALLBACK_PORT is guaranteed valid by IP spec
                 // This expect is justified: it's a compile-time constant that must be valid
                 #[allow(clippy::expect_used)]
-                format!("{LOCALHOST_IPV4}:{DEV_HTTP_PORT}").parse().expect(
-                    "Constants LOCALHOST_IPV4:DEV_HTTP_PORT must parse - language guarantee",
+                format!("{LOCALHOST_IPV4}:{BIND_FALLBACK_PORT}").parse().expect(
+                    "Constants LOCALHOST_IPV4:BIND_FALLBACK_PORT must parse - language guarantee",
                 )
             })
         });
@@ -138,23 +141,19 @@ impl Default for EndpointConfig {
         // ✅ DEEP DEBT EVOLUTION: Capability-based discovery instead of hardcoded endpoints
         // Check environment variables first, then fall back to localhost defaults
         let songbird = std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
-            #[allow(deprecated)]
-            let port = crate::ports::fallback::SONGBIRD;
+            let port = crate::ports::capability_fallback::COORDINATION;
             format!("http://{}:{}", config.network.bind_address, port)
         });
         let beardog = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").unwrap_or_else(|_| {
-            #[allow(deprecated)]
-            let port = crate::ports::fallback::BEARDOG;
+            let port = crate::ports::capability_fallback::SECURITY;
             format!("http://{}:{}", config.network.bind_address, port)
         });
         let nestgate = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").unwrap_or_else(|_| {
-            #[allow(deprecated)]
-            let port = crate::ports::fallback::NESTGATE;
+            let port = crate::ports::capability_fallback::STORAGE;
             format!("http://{}:{}", config.network.bind_address, port)
         });
         let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
-            #[allow(deprecated)]
-            let port = crate::ports::fallback::SQUIRREL;
+            let port = crate::ports::capability_fallback::PLATFORM;
             format!("http://{}:{}", config.network.bind_address, port)
         });
 

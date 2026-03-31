@@ -345,8 +345,7 @@ mod tests {
     async fn test_coordinator_with_songbird_config() {
         let config = DistributedConfig {
             songbird_integration: Some(SongbirdConfig {
-                endpoint: toadstool_config::defaults::network::DEFAULT_COORDINATION_ENDPOINT
-                    .to_string(),
+                endpoint: "http://127.0.0.1:8080".to_string(),
                 auth_token: None,
                 health_reporting_interval_secs: 30,
             }),

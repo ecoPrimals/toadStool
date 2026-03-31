@@ -26,7 +26,7 @@ use crate::network;
     note = "Use capability-based discovery via infant_discovery instead of primal-name port lookup"
 )]
 pub fn get_primal_default_port(primal_name: &str) -> u16 {
-    use crate::ports::{capability_fallback, resolve_capability_or_legacy_port};
+    use crate::ports::{capability_fallback, resolve_capability_port};
 
     let (capability, fallback) = match primal_name {
         "SONGBIRD" => ("COORDINATION", capability_fallback::COORDINATION),
@@ -37,7 +37,7 @@ pub fn get_primal_default_port(primal_name: &str) -> u16 {
         _ => return crate::defaults::network::API_PORT,
     };
 
-    resolve_capability_or_legacy_port(capability, primal_name, fallback)
+    resolve_capability_port(capability, fallback)
 }
 
 /// Get Songbird port from environment or default

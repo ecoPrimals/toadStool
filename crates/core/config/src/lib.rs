@@ -84,8 +84,11 @@ pub mod app {
     /// Default logs directory
     pub const DEFAULT_LOGS_DIR: &str = "./logs";
 
-    /// Default temp directory
-    pub const DEFAULT_TEMP_DIR: &str = "/tmp";
+    /// Returns the platform-appropriate default temporary directory (`TMPDIR` / system temp).
+    #[must_use]
+    pub fn default_temp_dir() -> std::path::PathBuf {
+        std::env::temp_dir()
+    }
 
     /// Default max file size in bytes (100MB)
     pub const DEFAULT_MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;

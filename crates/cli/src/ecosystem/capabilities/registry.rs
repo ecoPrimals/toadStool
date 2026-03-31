@@ -213,9 +213,11 @@ mod tests {
 
         let capability = StandardCapability::CryptoSignatureEd25519.id();
         let provider = ServiceProvider {
-            endpoint: toadstool_common::constants::http_url(
+            endpoint: format!(
+                "{}{}:{}",
+                toadstool_common::constants::network::HTTP_PROTOCOL,
                 toadstool_common::constants::DEFAULT_HOSTNAME,
-                toadstool_common::constants::DEFAULT_WS_PORT,
+                8081
             ),
             protocols: vec!["http".to_string()],
             health: ServiceHealth::Healthy,

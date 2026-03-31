@@ -20,7 +20,7 @@ toadstool-common = { path = "../core/common" }
 
 # HTTP client and networking
 # PURE RUST: reqwest removed - unix sockets only! ✅
-url = "2.4"
+url = { workspace = true }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

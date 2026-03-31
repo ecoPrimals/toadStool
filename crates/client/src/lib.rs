@@ -50,7 +50,7 @@
 //!     //
 //!     // Option 1: Environment-based (development/testing)
 //!     let endpoint = std::env::var("TOADSTOOL_SERVER_URL")
-//!         .unwrap_or_else(|_| toadstool_config::defaults::network::DEFAULT_SERVER_ENDPOINT.to_string());
+//!         .unwrap_or_else(|_| std::env::var("TOADSTOOL_SERVER_URL").unwrap_or_default());
 //!     
 //!     // Option 2: Production with discovery (see ClientConfig::with_discovery)
 //!     let client = ToadStoolClient::new(&endpoint).await?;
@@ -494,9 +494,8 @@ mod tests {
     #[test]
     fn test_client_config_api_url() {
         // ✅ Test uses dynamic endpoint (no hardcoded assumption about port)
-        let test_endpoint = std::env::var("TEST_TOADSTOOL_ENDPOINT").unwrap_or_else(|_| {
-            toadstool_config::defaults::network::DEFAULT_SERVER_ENDPOINT.to_string()
-        });
+        let test_endpoint = std::env::var("TEST_TOADSTOOL_ENDPOINT")
+            .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string());
 
         let config = ClientConfig {
             base_url: test_endpoint.clone(),

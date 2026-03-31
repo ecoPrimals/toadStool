@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 30, 2026 -- S168 shader.dispatch + Clippy Zero-Warning + Async Auth + Coverage R2
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,700+ tests (0 failures) | 1,900+ `.rs` files, 577K lines | **97+ JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | Zero production mocks | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **Zero `block_on` in auth (async-first)** | **Sovereign shader pipeline: compile→dispatch→readback**
-**Latest**: S168 — `shader.dispatch` JSON-RPC method implemented (ludoSpring V35 / coralReef Iter 70 gap closure: compile→dispatch→readback E2E pipeline); full workspace clippy zero-warning (~120+ fixes); auth_backend async-first; server connection zero-copy; 11 specialty runtime files from 0% → covered.
+**Updated**: March 31, 2026 -- S169 Primal Overstep Cleanup + Deep Debt Evolution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,700+ tests (0 failures) | 1,900+ `.rs` files, 577K lines | **~65 JSON-RPC methods** (trimmed S169: removed inference/shader.compile/science/ecology/discovery/deploy surface) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | **Production mocks test-gated** (`#[cfg(test)]`, e.g. `InMemoryAuthBackend`) | IPC-first pipeline | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **Zero `block_on` in auth (async-first)** | **Sovereign shader dispatch** (`shader.dispatch`; compile in coralReef)
+**Latest**: S169 — Primal overstep cleanup (Ollama, HTTP stack in server+cli, shader compile proxy, science/ecology/deploy relay removed; **`shader.dispatch`** kept); deep debt (ports/network capability-only, InMemoryAuthBackend test-only, embedded/types split, XDG + temp_dir, Unix-socket-first discovery, workspace deps, federation unwrap audit); pyo3/gbm/linfa/hmac/indicatif removed.
 
 ---
 
@@ -131,7 +131,8 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
 - [x] **Zero-copy hot paths** -- `Cow<'static, str>`, `Arc<str>` in execution types (S129)
 - [x] **Generated artifacts cleaned** -- removed tracked JSON files from git (S129)
-- [x] **coralReef shader proxy** -- `shader.compile.*` stubs evolved to real proxy with capability-based discovery (S130)
+- [x] **Primal overstep cleanup (S169)** -- Ollama, HTTP server stack (server+cli → Songbird), shader **compile** proxy (→ coralReef), science/ecology/deploy relay (→ biomeOS); pyo3/gbm/linfa/hmac/indicatif removed; **`shader.dispatch`** retained
+- [x] **coralReef shader compile path (S130; boundary S169)** -- S130 added real compile proxy; S169 removed compile from toadStool (coralReef-only); dispatch-only E2E remains via **`shader.dispatch`**
 - [x] **Cross-spring provenance** -- `cross_spring_provenance.rs`, `toadstool.provenance` JSON-RPC method (S130)
 - [x] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
 - [x] **Hardware Transport wiring** -- transport.discover/list/route JSON-RPC + CLI commands

@@ -39,8 +39,6 @@ pub mod engine;
 pub mod error;
 /// Industrial control system adapters.
 pub mod industrial;
-/// Legacy networking protocol support.
-pub mod legacy_networking;
 /// Mainframe system adapters (IBM, VAX, AS/400).
 pub mod mainframe;
 /// Real-time operating system support.

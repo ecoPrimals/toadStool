@@ -41,8 +41,7 @@ pub const DEFAULT_MAX_CONNECTIONS_PER_HOST: u32 = 100;
 #[must_use]
 pub fn default_songbird_endpoint() -> String {
     let config = crate::env_config::EnvironmentConfig::from_env();
-    #[allow(deprecated)]
-    let port = crate::ports::fallback::SONGBIRD;
+    let port = crate::ports::capability_fallback::COORDINATION;
     format!("http://{}:{}", config.network.bind_address, port)
 }
 

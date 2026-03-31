@@ -62,7 +62,9 @@ pub mod types;
 pub use agent_backend::{AgentBackend, InMemoryAgentBackend, SquirrelBackend};
 pub use agents::*;
 pub use auth::*;
-pub use auth_backend::{AuthBackend, BearDogBackend, InMemoryAuthBackend};
+#[cfg(any(test, feature = "test-mocks"))]
+pub use auth_backend::InMemoryAuthBackend;
+pub use auth_backend::{AuthBackend, BearDogBackend};
 pub use storage::*;
 pub use storage_backend::{InMemoryBackend, NestGateBackend, StorageBackend, VolumeStatus};
 pub use types::*;

@@ -312,83 +312,8 @@ async fn gate_route_requires_params() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Ollama/Inference handlers
-// ═══════════════════════════════════════════════════════════
-
-#[tokio::test]
-async fn ollama_list_models_routes_correctly() {
-    let handler = test_handler();
-    let request = mk_request("inference.list_models", None, 60);
-    let response = handler.handle_request(&request).await;
-    // Ollama may or may not be running; either result or error is valid
-    assert!(response.result.is_some() || response.error.is_some());
-}
-
-#[tokio::test]
-async fn ollama_inference_requires_params() {
-    let handler = test_handler();
-    let request = mk_request("inference.execute", None, 61);
-    let response = handler.handle_request(&request).await;
-    assert!(response.error.is_some());
-}
-
-#[tokio::test]
-async fn ollama_load_requires_params() {
-    let handler = test_handler();
-    let request = mk_request("inference.load_model", None, 62);
-    let response = handler.handle_request(&request).await;
-    assert!(response.error.is_some());
-}
-
-#[tokio::test]
-async fn ollama_unload_requires_params() {
-    let handler = test_handler();
-    let request = mk_request("inference.unload_model", None, 63);
-    let response = handler.handle_request(&request).await;
-    assert!(response.error.is_some());
-}
-
-// ═══════════════════════════════════════════════════════════
-// Shader compilation — additional paths
-// ═══════════════════════════════════════════════════════════
-
-#[tokio::test]
-async fn shader_compile_spirv_requires_source() {
-    let handler = test_handler();
-    let request = mk_request("shader.compile.spirv", None, 70);
-    let response = handler.handle_request(&request).await;
-    assert!(response.error.is_some());
-}
-
-#[tokio::test]
-async fn shader_compile_status_returns_result() {
-    let handler = test_handler();
-    let request = mk_request("shader.compile.status", None, 71);
-    let response = handler.handle_request(&request).await;
-    assert!(response.error.is_none());
-}
-
-#[tokio::test]
-async fn shader_compile_wgsl_multi_requires_sources() {
-    let handler = test_handler();
-    let request = mk_request("shader.compile.wgsl.multi", None, 72);
-    let response = handler.handle_request(&request).await;
-    assert!(response.error.is_some());
-}
-
-#[tokio::test]
-async fn shader_compile_wgsl_multi_with_sources() {
-    let handler = test_handler();
-    let params = serde_json::json!({
-        "sources": [
-            {"name": "pass1", "source": "@compute @workgroup_size(64) fn main() {}"},
-        ]
-    });
-    let request = mk_request("shader.compile.wgsl.multi", Some(params), 73);
-    let response = handler.handle_request(&request).await;
-    // Accept either success or error (depends on naga validation)
-    assert!(response.result.is_some() || response.error.is_some());
-}
+// Ollama/Inference handlers: REMOVED — AI is Squirrel's domain
+// Shader compilation handlers: REMOVED — compilation is coralReef's domain
 
 // ═══════════════════════════════════════════════════════════
 // Silicon performance surface handlers

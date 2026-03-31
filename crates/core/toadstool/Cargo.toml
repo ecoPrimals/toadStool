@@ -24,7 +24,7 @@ akida-driver = { path = "../../neuromorphic/akida-driver" }
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
-futures = "0.3"
+futures = { workspace = true }
 
 # Serialization (rc for Arc<str> zero-copy in storage types)
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -66,11 +66,28 @@ proptest = { workspace = true }
 
 [features]
 default = ["mdns"]
+# In-memory auth mock (`InMemoryAuthBackend`); for tests and explicit `--features test-mocks`
+test-mocks = []
 # Gates reqwest-based HTTP communication in ecosystem modules
 networking = []
 wgpu = ["dep:wgpu"]
 # mDNS bootstrap discovery (songBird's domain -- use for cold-start only)
 mdns = ["dep:mdns-sd"]
+
+[[test]]
+name = "biomeos_auth_coverage_tests"
+path = "tests/test_mocks/biomeos_auth_coverage_tests.rs"
+required-features = ["test-mocks"]
+
+[[test]]
+name = "biomeos_backend_comprehensive_tests"
+path = "tests/test_mocks/biomeos_backend_comprehensive_tests.rs"
+required-features = ["test-mocks"]
+
+[[test]]
+name = "biomeos_auth_tests"
+path = "tests/test_mocks/biomeos_auth_tests.rs"
+required-features = ["test-mocks"]
 
 [lints]
 workspace = true

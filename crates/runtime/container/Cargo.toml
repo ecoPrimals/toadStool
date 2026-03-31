@@ -32,7 +32,7 @@ tracing = "0.1"
 uuid = { version = "1.0", features = ["v4"] }
 
 # Futures utilities
-futures = "0.3"
+futures = { workspace = true }
 
 # Container runtime support
 bollard = { workspace = true, optional = true }
@@ -50,11 +50,11 @@ flate2 = { version = "1.0", default-features = false, features = ["rust_backend"
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
 
 # New dependencies
+# BYOB HTTP server — future: migrate to UDS JSON-RPC (songBird owns HTTP)
 axum = "0.7"
-clap = { version = "4.0", features = ["derive"] }
+clap = { workspace = true }
 tracing-subscriber = "0.3"
 toml = "0.8"
-tower = { version = "0.4", features = ["util"] }
 
 [features]
 default = ["docker"]
@@ -66,6 +66,8 @@ docker = ["bollard"]
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 
 [lints]
 workspace = true

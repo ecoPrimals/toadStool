@@ -296,7 +296,7 @@ pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> 
         return Ok(());
     }
 
-    let path = PathBuf::from("/tmp").join(filename);
+    let path = env::temp_dir().join(filename);
     fs::write(&path, &content).map_err(|e| ServerError::Internal(e.to_string()))?;
     info!("📁 TCP discovery file: {}", path.display());
     Ok(())
@@ -481,7 +481,7 @@ mod tests {
             let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 0));
             let result = write_tcp_discovery_file("toadstool-test-fallback", &addr);
             assert!(result.is_ok());
-            let path = std::path::PathBuf::from("/tmp").join("toadstool-test-fallback");
+            let path = std::env::temp_dir().join("toadstool-test-fallback");
             if path.exists() {
                 let content = std::fs::read_to_string(&path).unwrap();
                 assert!(content.starts_with("tcp:"));

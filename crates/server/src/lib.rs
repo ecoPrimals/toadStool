@@ -94,7 +94,6 @@ pub use config::{
     RateLimitingConfig, ServerConfig,
 };
 pub use errors::{ServerError, ServerResult};
-pub use server::ToadStoolServer;
 pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics};
 
 // Re-export server functions for daemon
@@ -150,29 +149,25 @@ pub mod graph_errors;
 pub mod graph_node;
 pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 
-pub mod handlers;
-
 // manual_jsonrpc: REMOVED S94 — fully replaced by pure_jsonrpc
-
-// ✅ PURE RUST: Ollama integration client (inference.list_models/execute/load_model/unload_model)
-pub mod ollama;
+// handlers: REMOVED — HTTP REST handlers are songBird's domain; use pure_jsonrpc
 
 // ✅ EVOLVED: Mocks isolated to testing (deep debt principle)
 #[cfg(test)]
 pub mod mocks;
 
-pub mod coral_reef_client; // coralReef shader compiler IPC client
+pub(crate) mod coral_reef_client; // Internal: used by dispatch for coralReef coordination
 pub mod glowplug_client; // coral-ember VFIO passthrough IPC client
 
 // ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
-pub mod lifecycle; // Server startup and shutdown
+// lifecycle: REMOVED — HTTP lifecycle is songBird's domain; use pure_jsonrpc
 pub mod pure_jsonrpc;
 pub mod resource_estimator;
 pub mod resource_optimizer;
 pub mod resource_validator;
-pub mod routes; // HTTP route setup and handler registration
+// routes: REMOVED — HTTP routes are songBird's domain; use pure_jsonrpc
 pub mod rpc_types; // Pure RPC types (no HTTP deps)
-pub mod server; // Main ToadStoolServer implementation
+// server: REMOVED — axum HTTP server is songBird's domain; use pure_jsonrpc
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
@@ -207,5 +202,3 @@ pub use resource_optimizer::{
 pub use resource_validator::{
     AvailabilityResult, ResourceGap, ResourceValidator, SystemCapabilities, ValidationError,
 };
-
-// ToadStoolServer re-exported from server module (see server.rs)

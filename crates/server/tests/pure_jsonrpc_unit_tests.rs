@@ -723,40 +723,4 @@ async fn test_ai_local_execute_alias() {
     assert!(response.result.is_some() || response.error.is_some());
 }
 
-#[tokio::test]
-async fn test_ollama_list_models() {
-    let handler = test_handler();
-    let request = mk_request("inference.list_models", None, 1);
-    let response = handler.handle_request(&request).await;
-    assert!(response.result.is_some() || response.error.is_some());
-}
-
-#[tokio::test]
-async fn test_ollama_inference_missing_params() {
-    let handler = test_handler();
-    let request = mk_request("inference.execute", None, 1);
-    let response = handler.handle_request(&request).await;
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-}
-
-#[tokio::test]
-async fn test_ollama_load_missing_model() {
-    let handler = test_handler();
-    let request = mk_request("inference.load_model", Some(serde_json::json!({})), 1);
-    let response = handler.handle_request(&request).await;
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-}
-
-#[tokio::test]
-async fn test_ollama_unload_missing_model() {
-    let handler = test_handler();
-    let request = mk_request("inference.unload_model", None, 1);
-    let response = handler.handle_request(&request).await;
-    assert!(response.result.is_none());
-    let err = response.error.expect("error present");
-    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
-}
+// Ollama tests: REMOVED — AI inference is Squirrel's domain

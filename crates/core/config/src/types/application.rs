@@ -71,7 +71,7 @@ impl Default for ApplicationConfig {
             data_dir: app::DEFAULT_DATA_DIR.to_string(),
             cache_dir: app::DEFAULT_CACHE_DIR.to_string(),
             logs_dir: app::DEFAULT_LOGS_DIR.to_string(),
-            temp_dir: app::DEFAULT_TEMP_DIR.to_string(),
+            temp_dir: app::default_temp_dir().to_string_lossy().into_owned(),
             worker_threads: app::DEFAULT_WORKER_THREADS,
             queue_size: app::DEFAULT_QUEUE_SIZE,
             batch_size: app::DEFAULT_BATCH_SIZE,

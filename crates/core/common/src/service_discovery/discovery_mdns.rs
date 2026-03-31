@@ -94,7 +94,7 @@ mod tests {
         let now = SystemTime::now();
         let service = primal_endpoint_to_discovered_service(
             "service-1",
-            crate::constants::network::DEFAULT_COORDINATION_ENDPOINT,
+            "http://127.0.0.1:8080",
             &["compute".to_string(), "coordination".to_string()],
             now,
         );

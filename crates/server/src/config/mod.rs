@@ -48,10 +48,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
             .unwrap_or_else(|_| toadstool_config::constants::network::LOCALHOST.to_string());
-        let port = toadstool_config::ports::get_port_with_env(
-            toadstool_config::ports::toadstool::DAEMON_API,
-            "TOADSTOOL_PORT",
-        );
+        let port = toadstool_config::ports::daemon_port();
         Self {
             bind_address: format!("{host}:{port}"),
             enable_api: true,

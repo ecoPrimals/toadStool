@@ -194,20 +194,14 @@ fn primal_endpoint_healthy_and_last_check() {
 #[test]
 fn discovery_http_port_defaults_when_unset() {
     temp_env::with_var("TOADSTOOL_DISCOVERY_HTTP_PORT", None::<&str>, || {
-        assert_eq!(
-            super::discovery_http_port(),
-            crate::constants::network::DEFAULT_HTTP_PORT
-        );
+        assert_eq!(super::discovery_http_port(), 8080);
     });
 }
 
 #[test]
 fn discovery_http_port_invalid_env_falls_back_to_default() {
     temp_env::with_var("TOADSTOOL_DISCOVERY_HTTP_PORT", Some("not-a-port"), || {
-        assert_eq!(
-            super::discovery_http_port(),
-            crate::constants::network::DEFAULT_HTTP_PORT
-        );
+        assert_eq!(super::discovery_http_port(), 8080);
     });
 }
 

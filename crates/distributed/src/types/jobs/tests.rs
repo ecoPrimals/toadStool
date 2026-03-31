@@ -102,7 +102,7 @@ fn execution_target_variants() {
     let _local = ExecutionTarget::Local;
     let _toadstool = ExecutionTarget::ToadStool {
         instance_id: "inst-1".to_string(),
-        endpoint: toadstool_common::constants::network::default_http_url(),
+        endpoint: "http://127.0.0.1:8080".to_string(),
     };
     let _best = ExecutionTarget::BestAvailable {
         constraints: ResourceConstraints {

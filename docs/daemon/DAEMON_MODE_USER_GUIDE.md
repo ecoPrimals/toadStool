@@ -1,5 +1,7 @@
 # ToadStool Daemon Mode - User Guide
 
+> **Deprecation (S169):** The daemon no longer exposes the HTTP API described in this guide (Axum-based server, `curl` examples, and `/api/v1` routes). Workloads are expected to use the JSON-RPC surface over the Unix socket (see `docs/reference/SERVER_METHODS.md`). This document is retained for historical context and needs a full rewrite to match current behavior.
+
 ## 🍄 Overview
 
 ToadStool daemon mode transforms the CLI from a direct execution tool into a network-wide compute service. Like the fungus: **same organism, different forms**.

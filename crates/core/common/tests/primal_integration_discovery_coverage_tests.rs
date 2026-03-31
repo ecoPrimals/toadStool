@@ -424,7 +424,7 @@ fn test_discover_service_filesystem_nonexistent_capability_dir() {
 
 #[test]
 fn test_discovery_http_port_env_invalid_fallback() {
-    // Invalid port string -> parse fails -> uses DEFAULT_HTTP_PORT in k8s/compose
+    // Invalid port string -> parse fails -> uses discovery HTTP port fallback in k8s/compose
     // We can't easily hit k8s/compose without DNS, but we verify env parse behavior
     with_vars(
         [

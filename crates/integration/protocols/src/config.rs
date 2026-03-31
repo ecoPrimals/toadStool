@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use crate::types::{MessageFormat, TransportType};
 use toadstool_common::auth::ServiceAuthConfig;
-use toadstool_common::constants::http_url;
+use toadstool_common::constants::network::HTTP_PROTOCOL;
 
 /// Protocol client configuration
 #[derive(Debug, Clone)]
@@ -96,20 +96,27 @@ pub const SAMPLE_CONSUL_REGISTRY_HTTP_PORT: u16 = 8500;
 /// Build the sample Consul registry URL (documentation/tests; not a deployment default).
 #[must_use]
 pub fn sample_consul_registry_url() -> String {
-    http_url(
-        SAMPLE_CONSUL_REGISTRY_HOST,
-        SAMPLE_CONSUL_REGISTRY_HTTP_PORT,
+    format!(
+        "{HTTP_PROTOCOL}{}:{}",
+        SAMPLE_CONSUL_REGISTRY_HOST, SAMPLE_CONSUL_REGISTRY_HTTP_PORT
     )
 }
 
 /// Get service registry URL from environment or capability discovery.
 ///
-/// Priority: `SERVICE_REGISTRY_URL` → `CONSUL_HTTP_ADDR` → dev fallback via `consul_http_addr()`.
+/// Priority: `SERVICE_REGISTRY_URL` → `CONSUL_HTTP_ADDR` (no deployment default; set env in integration tests).
 #[must_use]
 pub fn service_registry_url() -> String {
-    std::env::var("SERVICE_REGISTRY_URL")
-        .or_else(|_| std::env::var("CONSUL_HTTP_ADDR"))
-        .unwrap_or_else(|_| toadstool_common::constants::network::consul_http_addr())
+    if let Ok(url) = std::env::var("SERVICE_REGISTRY_URL") {
+        return url;
+    }
+    if let Ok(addr) = std::env::var("CONSUL_HTTP_ADDR") {
+        if addr.starts_with("http://") || addr.starts_with("https://") {
+            return addr;
+        }
+        return format!("{HTTP_PROTOCOL}{addr}");
+    }
+    String::new()
 }
 
 /// Service discovery configuration for protocols

@@ -24,8 +24,6 @@ pub struct SpecialtyRuntimeConfig {
     pub realtime_enabled: bool,
     /// Whether cross-compilation toolchains are available.
     pub cross_compilation_enabled: bool,
-    /// Whether legacy networking protocols are supported.
-    pub legacy_networking_enabled: bool,
     /// Whether emulation of legacy architectures is enabled.
     pub emulation_enabled: bool,
     /// Maximum number of jobs that can run concurrently.
@@ -58,7 +56,6 @@ impl Default for SpecialtyRuntimeConfig {
             industrial_enabled: true,
             realtime_enabled: true,
             cross_compilation_enabled: true,
-            legacy_networking_enabled: true,
             emulation_enabled: true,
             max_concurrent_jobs: 10,
             job_timeout: Duration::from_secs(3600),

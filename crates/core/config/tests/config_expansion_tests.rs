@@ -473,7 +473,7 @@ fn test_app_default_logs_dir() {
 
 #[test]
 fn test_app_default_temp_dir() {
-    assert_eq!(app::DEFAULT_TEMP_DIR, "/tmp");
+    assert_eq!(app::default_temp_dir(), std::env::temp_dir());
 }
 
 #[test]

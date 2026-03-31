@@ -6,7 +6,12 @@
 //! These programmer structs and trait implementations are **infrastructure placeholders**
 //! for future hardware programmer support. They are registered in the embedded adapter
 //! registry and satisfy the type system, but all operations (except no-op `disconnect`)
-//! return `not_supported` until hardware-specific implementations are available.
+//! return [`crate::SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder`] (mapped to
+//! [`toadstool::ToadStoolError::not_supported`]) until hardware-specific implementations exist.
+//!
+//! Compile this module with Cargo feature **`embedded-placeholder-impls`** (enabled by default).
+//!
+//! **Tracking:** `# TODO(embedded-hw):` replace stubs when ISP/ICSP/parallel transports land.
 //!
 //! ## Architecture Notes
 //!
@@ -18,18 +23,28 @@
 
 use async_trait::async_trait;
 
-use crate::{ProgrammingInterface, ProgrammingInterfaceType, ToadStoolResult};
+use crate::{
+    ProgrammingInterface, ProgrammingInterfaceType, SpecialtyRuntimeError, ToadStoolResult,
+};
 use toadstool::ToadStoolError;
 
 use super::programmers::{EPROMProgrammer, GenericProgrammer};
 use super::types::{ProgrammerInterface as ProgrammerTrait, TargetInfo};
 
-fn not_implemented(feature: &str) -> ToadStoolError {
-    ToadStoolError::not_supported(format!(
-        "{feature} not yet implemented; requires hardware-specific programmer support"
-    ))
+const PROGRAMMER_PLACEHOLDER_DETAIL: &str =
+    "requires hardware-specific programmer support (infrastructure placeholder; not implemented)";
+
+fn programmer_placeholder_err(operation: &'static str) -> ToadStoolError {
+    SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
+        operation,
+        detail: PROGRAMMER_PLACEHOLDER_DETAIL,
+    }
+    .into()
 }
 
+/// Generates [`ProgrammerInterface`] impls that return structured placeholder errors (no panics).
+///
+/// **Tracking:** `# TODO(embedded-hw):` hardware programmer — see module-level docs.
 macro_rules! impl_programmer_stub {
     ($programmer:ty, $name:expr, $interface:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
@@ -44,11 +59,11 @@ macro_rules! impl_programmer_stub {
             }
 
             async fn initialize(&mut self, _config: &ProgrammingInterface) -> ToadStoolResult<()> {
-                Err(not_implemented("Programmer initialization"))
+                Err(programmer_placeholder_err("Programmer initialization"))
             }
 
             async fn connect(&mut self) -> ToadStoolResult<()> {
-                Err(not_implemented("Programmer connect"))
+                Err(programmer_placeholder_err("Programmer connect"))
             }
 
             async fn disconnect(&mut self) -> ToadStoolResult<()> {
@@ -60,15 +75,15 @@ macro_rules! impl_programmer_stub {
                 _address: u32,
                 _length: u32,
             ) -> ToadStoolResult<Vec<u8>> {
-                Err(not_implemented("Memory read"))
+                Err(programmer_placeholder_err("Memory read"))
             }
 
             async fn write_memory(&mut self, _address: u32, _data: &[u8]) -> ToadStoolResult<()> {
-                Err(not_implemented("Memory write"))
+                Err(programmer_placeholder_err("Memory write"))
             }
 
             async fn erase_memory(&mut self, _address: u32, _length: u32) -> ToadStoolResult<()> {
-                Err(not_implemented("Memory erase"))
+                Err(programmer_placeholder_err("Memory erase"))
             }
 
             async fn verify_memory(
@@ -76,11 +91,11 @@ macro_rules! impl_programmer_stub {
                 _address: u32,
                 _data: &[u8],
             ) -> ToadStoolResult<bool> {
-                Err(not_implemented("Memory verify"))
+                Err(programmer_placeholder_err("Memory verify"))
             }
 
             async fn get_target_info(&self) -> ToadStoolResult<TargetInfo> {
-                Err(not_implemented("Target info"))
+                Err(programmer_placeholder_err("Target info"))
             }
         }
     };

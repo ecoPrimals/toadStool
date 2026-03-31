@@ -284,9 +284,7 @@ mod tests {
                     min_trust_level: TrustLevel::Low,
                 },
                 metadata: std::collections::HashMap::new(),
-                endpoint: ServiceEndpoint::Http(
-                    toadstool_common::constants::network::default_http_url(),
-                ),
+                endpoint: ServiceEndpoint::Http("http://127.0.0.1:8080".to_string()),
                 health: HealthStatus::Healthy,
             },
             CapabilityType::Security {

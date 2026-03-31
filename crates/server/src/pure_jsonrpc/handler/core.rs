@@ -95,15 +95,9 @@ pub(super) async fn discover_capabilities(
         "compute.dispatch.result",
         "compute.dispatch.forward",
         "compute.dispatch.capabilities",
-        "ai.local_inference",
-        "ai.local_execute",
         "gpu.query_info",
         "gpu.query_memory",
         "gpu.query_telemetry",
-        "inference.list_models",
-        "inference.execute",
-        "inference.load_model",
-        "inference.unload_model",
         "provenance.query",
         "gate.update",
         "gate.remove",
@@ -134,10 +128,9 @@ pub(super) async fn discover_capabilities(
 
     let capabilities = serde_json::json!({
         "node_capabilities": [
-            "compute", "workload", "orchestration", "ai_local",
+            "compute", "workload", "orchestration",
             "gpu", "wasm", "container", "hardware_transport",
-            "science", "shader", "ecology", "discovery", "deploy",
-            "hardware_learning"
+            "shader_dispatch", "hardware_learning"
         ],
         "methods": direct_methods,
         "version": version,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-use toadstool::ToadStoolError;
+use toadstool::{SystemError, ToadStoolError};
 
 /// Errors that can occur during specialty runtime operations.
 #[derive(Debug, thiserror::Error)]
@@ -44,11 +44,48 @@ pub enum SpecialtyRuntimeError {
     /// Catch-all for other runtime errors.
     #[error("Other error: {0}")]
     Other(String),
+
+    /// Infrastructure placeholder: [`crate::embedded::types::ProgrammerInterface`] until hardware backends exist.
+    ///
+    /// **Tracking:** `# TODO(embedded-hw):` ISP/ICSP/parallel programmers — `programmer_impls.rs`, feature `embedded-placeholder-impls`.
+    #[error("{operation}: {detail}")]
+    EmbeddedProgrammerPlaceholder {
+        /// Operation name (e.g. `"Memory read"`).
+        operation: &'static str,
+        /// Why the stub returns an error.
+        detail: &'static str,
+    },
+
+    /// Infrastructure placeholder: [`crate::embedded::types::EmbeddedEmulator`] until CPU cores exist.
+    ///
+    /// **Tracking:** `# TODO(embedded-hw):` MOS 6502 / Z80 cores — `emulator_impls.rs`, feature `embedded-placeholder-impls`.
+    #[error("emulator feature {feature_id}: {operation}")]
+    EmbeddedEmulatorPlaceholder {
+        /// Stable feature id (e.g. `embedded_emulator_mos6502`).
+        feature_id: &'static str,
+        /// Operation name (e.g. `"step"`).
+        operation: &'static str,
+    },
 }
 
 impl From<SpecialtyRuntimeError> for ToadStoolError {
     fn from(err: SpecialtyRuntimeError) -> Self {
-        ToadStoolError::runtime(err.to_string())
+        match err {
+            SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder { operation, detail } => {
+                ToadStoolError::not_supported(format!("{operation}: {detail}"))
+            }
+            SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
+                feature_id,
+                operation,
+            } => SystemError::NotSupported {
+                feature: feature_id.to_string(),
+                reason: format!(
+                    "{operation}: embedded CPU emulator core not implemented (infrastructure placeholder)"
+                ),
+            }
+            .into(),
+            e => ToadStoolError::runtime(e.to_string()),
+        }
     }
 }
 
@@ -176,5 +213,38 @@ mod tests {
             assert!(!out.is_empty());
             assert!(out.contains(&msg), "expected {out:?} to contain {msg:?}");
         }
+    }
+
+    #[test]
+    fn embedded_programmer_placeholder_maps_to_not_supported() {
+        let spec = SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
+            operation: "Memory read",
+            detail: "test detail",
+        };
+        let top: ToadStoolError = spec.into();
+        let out = top.to_string();
+        assert!(
+            out.to_lowercase().contains("not supported"),
+            "expected not-supported semantics: {out}"
+        );
+        assert!(out.contains("Memory read"), "{out}");
+    }
+
+    #[test]
+    fn embedded_emulator_placeholder_maps_to_system_not_supported() {
+        let spec = SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
+            feature_id: "embedded_emulator_mos6502",
+            operation: "step",
+        };
+        let top: ToadStoolError = spec.into();
+        let out = top.to_string();
+        assert!(
+            out.to_lowercase().contains("not supported"),
+            "expected not-supported semantics: {out}"
+        );
+        assert!(
+            out.contains("emulator") || out.contains("embedded_emulator"),
+            "{out}"
+        );
     }
 }

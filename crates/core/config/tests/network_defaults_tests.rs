@@ -37,7 +37,7 @@ fn test_localhost_is_valid_address() {
 
 #[test]
 fn test_default_songbird_endpoint() {
-    // network::default_songbird_endpoint uses ports::fallback::SONGBIRD (8080)
+    // network::default_songbird_endpoint uses capability_fallback::COORDINATION (8080)
     let endpoint = toadstool_config::network::default_songbird_endpoint();
     assert!(
         endpoint.contains("8080"),

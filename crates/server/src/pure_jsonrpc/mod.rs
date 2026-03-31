@@ -21,7 +21,7 @@
 //! | Module | Content |
 //! |--------|---------|
 //! | `types` | `JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcError`, `JsonWorkloadSubmission` |
-//! | `handler` | `JsonRpcHandler` — thin coordinator; delegates to JobHandler, WorkloadHandler, ResourceHandler, TransportHandler, OllamaHandler |
+//! | `handler` | `JsonRpcHandler` — thin coordinator; delegates to JobHandler, WorkloadHandler, ResourceHandler, TransportHandler |
 
 mod connection;
 mod handler;

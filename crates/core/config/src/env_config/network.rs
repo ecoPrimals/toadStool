@@ -90,34 +90,20 @@ impl NetworkEnvConfig {
     #[must_use]
     #[allow(deprecated)] // Struct fields deprecated; from_env still needed for bootstrap
     pub fn from_env() -> Self {
-        use crate::ports::{capability_fallback, resolve_capability_or_legacy_port};
+        use crate::ports::{capability_fallback, resolve_capability_port};
 
         let loader = EnvConfigLoader::new();
 
         Self {
-            songbird_port: resolve_capability_or_legacy_port(
+            songbird_port: resolve_capability_port(
                 "COORDINATION",
-                "SONGBIRD",
                 capability_fallback::COORDINATION,
             ),
-            beardog_port: resolve_capability_or_legacy_port(
-                "SECURITY",
-                "BEARDOG",
-                capability_fallback::SECURITY,
-            ),
-            nestgate_port: resolve_capability_or_legacy_port(
-                "STORAGE",
-                "NESTGATE",
-                capability_fallback::STORAGE,
-            ),
-            squirrel_port: resolve_capability_or_legacy_port(
-                "PLATFORM",
-                "SQUIRREL",
-                capability_fallback::PLATFORM,
-            ),
-            biomeos_port: resolve_capability_or_legacy_port(
+            beardog_port: resolve_capability_port("SECURITY", capability_fallback::SECURITY),
+            nestgate_port: resolve_capability_port("STORAGE", capability_fallback::STORAGE),
+            squirrel_port: resolve_capability_port("PLATFORM", capability_fallback::PLATFORM),
+            biomeos_port: resolve_capability_port(
                 "ECOSYSTEM",
-                "BIOMEOS",
                 capability_fallback::ECOSYSTEM_PRIMARY,
             ),
             toadstool_port: loader.get_u16("TOADSTOOL_PORT", crate::defaults::network::API_PORT),

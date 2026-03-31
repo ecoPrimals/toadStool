@@ -5,7 +5,27 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 30, 2026 (Sessions 43-168)
+## [Unreleased] - March 31, 2026 (Sessions 43-169)
+
+### Session S169 (Mar 31, 2026) — Primal Overstep Cleanup + Deep Debt Evolution
+
+#### Primal overstep cleanup
+- Removed Ollama handler (AI → Squirrel's domain); removed shader compile proxy (compilation → coralReef; **`shader.dispatch`** retained)
+- Removed science domains relay (ecology / discovery / deploy → biomeOS)
+- Removed HTTP server stack from server + cli (`handlers/`, `routes.rs`, `lifecycle.rs`, `server.rs` → Songbird); dropped **axum** / **tower** / **tower-http** from server + cli `Cargo.toml`s
+- Removed **hyper** / **tower** from distributed + analytics; removed **pyo3** from workspace (FFI conflicts with ecoBin v3.0)
+- Removed **gbm** from display (C dep via wayland-sys); **linfa** from performance (ML → barraCuda / Squirrel); removed unused **hmac** and **indicatif**
+
+#### Deep debt evolution
+- **`ports.rs`**: removed deprecated primal-named fallbacks; pure capability-based discovery
+- **`network.rs`**: removed HTTP-centric constants, `DEFAULT_COORDINATION_ENDPOINT`, WebSocket, Consul/etcd remnants
+- **`InMemoryAuthBackend`** mock isolated to **`#[cfg(test)]`** (no mock ed25519 signatures in production)
+- **`embedded/types.rs`**: smart split (1123 lines → 4 modules: job, toolchain, interfaces, tests)
+- Standardized workspace dependency inheritance (**`url`**, **`futures`**, **`clap`** → `workspace = true`)
+- Replaced `/tmp` hardcoding with **`std::env::temp_dir()`** and XDG conventions across 6+ files
+- Embedded programmer/emulator stubs behind feature **`embedded-placeholder-impls`** with proper error types
+- **Service discovery** fallback: localhost TCP → Unix socket–first (`$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock`)
+- **`federation.rs`**: verified **0** unwraps in production code (all 40 unwraps are test-only)
 
 ### Session S168 (Mar 30, 2026) — Sovereign Shader Pipeline + Clippy Zero-Warning + Async Auth
 

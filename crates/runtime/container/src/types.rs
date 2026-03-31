@@ -210,7 +210,7 @@ impl Default for VolumePolicy {
     fn default() -> Self {
         Self {
             allow_bind_mounts: false,
-            allowed_host_paths: vec![PathBuf::from("/tmp")],
+            allowed_host_paths: vec![std::env::temp_dir()],
             allow_tmpfs: true,
             max_volume_size_mb: 1024, // 1 GB
         }

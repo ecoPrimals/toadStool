@@ -51,7 +51,7 @@ impl CoordinationAdapter {
     /// let token = coordination.register_service(ServiceInfo {
     ///     name: "toadstool".to_string(),
     ///     capabilities: vec!["compute.wasm.component-model".to_string()],
-    ///     endpoint: format!("http://{}:{}", toadstool_common::constants::DEFAULT_HOSTNAME, toadstool_common::constants::DEFAULT_HTTP_PORT),
+    ///     endpoint: format!("http://{}:{}", toadstool_common::constants::DEFAULT_HOSTNAME, 8080),
     ///     metadata: Default::default(),
     /// }).await?;
     ///
@@ -407,9 +407,11 @@ mod tests {
         let info = ServiceInfo {
             name: "test-service".to_string(),
             capabilities: vec!["compute.native".to_string()],
-            endpoint: toadstool_common::constants::http_url(
+            endpoint: format!(
+                "{}{}:{}",
+                toadstool_common::constants::network::HTTP_PROTOCOL,
                 toadstool_common::constants::DEFAULT_HOSTNAME,
-                toadstool_common::constants::DEFAULT_HTTP_PORT,
+                8080
             ),
             metadata: HashMap::new(),
         };

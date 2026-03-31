@@ -168,7 +168,7 @@ mod tests {
                 capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
                 endpoints: vec![ServiceEndpoint::http(
                     toadstool_common::constants::network::LOCALHOST_IPV4,
-                    toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+                    8080,
                 )],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
@@ -180,10 +180,7 @@ mod tests {
                 name: "remote-crypto".to_string(),
                 version: "1.0.0".to_string(),
                 capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
-                endpoints: vec![ServiceEndpoint::http(
-                    "10.0.0.1",
-                    toadstool_common::constants::network::DEFAULT_HTTP_PORT,
-                )],
+                endpoints: vec![ServiceEndpoint::http("10.0.0.1", 8080)],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
                 last_seen: std::time::SystemTime::now(),
@@ -234,7 +231,7 @@ mod tests {
                 capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
                 endpoints: vec![ServiceEndpoint::http(
                     toadstool_common::constants::network::LOCALHOST_IPV4,
-                    toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+                    8080,
                 )],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
@@ -246,10 +243,7 @@ mod tests {
                 name: "remote-crypto".to_string(),
                 version: "1.0.0".to_string(),
                 capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
-                endpoints: vec![ServiceEndpoint::http(
-                    "10.0.0.1",
-                    toadstool_common::constants::network::DEFAULT_HTTP_PORT,
-                )],
+                endpoints: vec![ServiceEndpoint::http("10.0.0.1", 8080)],
                 metadata: Default::default(),
                 discovered_at: std::time::SystemTime::now(),
                 last_seen: std::time::SystemTime::now(),

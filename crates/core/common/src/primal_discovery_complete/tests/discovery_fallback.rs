@@ -281,10 +281,7 @@ async fn test_create_fallback_service_malformed_url_uses_defaults() {
         services[0].endpoints[0].address,
         crate::constants::network::LOCALHOST_IPV4
     );
-    assert_eq!(
-        services[0].endpoints[0].port,
-        crate::constants::network::DEFAULT_HTTP_PORT
-    );
+    assert_eq!(services[0].endpoints[0].port, 8080);
 }
 
 #[tokio::test]

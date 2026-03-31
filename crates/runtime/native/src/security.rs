@@ -15,7 +15,7 @@ pub fn apply_security_context(
         }
         IsolationLevel::Basic => {
             debug!("Applying basic isolation");
-            command.current_dir("/tmp");
+            command.current_dir(std::env::temp_dir());
 
             #[cfg(unix)]
             {
@@ -38,7 +38,7 @@ pub fn apply_security_context(
         }
         IsolationLevel::Enhanced => {
             debug!("Applying enhanced isolation");
-            command.current_dir("/tmp");
+            command.current_dir(std::env::temp_dir());
 
             #[cfg(unix)]
             {

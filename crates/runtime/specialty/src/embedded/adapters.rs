@@ -15,8 +15,10 @@ use crate::{
 };
 
 use super::dos::DOSInterface;
+#[cfg(feature = "embedded-placeholder-impls")]
 use super::emulators::*;
 use super::managers::{MemoryLayoutManager, PeripheralManager};
+#[cfg(feature = "embedded-placeholder-impls")]
 use super::programmers::*;
 use super::toolchains::*;
 use super::types::*;
@@ -105,35 +107,53 @@ impl Microcontroller8BitAdapter {
 
     /// Initialize programmers
     async fn initialize_programmers(&self) -> ToadStoolResult<()> {
-        let mut programmers = self.programmers.write().await;
+        #[cfg(feature = "embedded-placeholder-impls")]
+        {
+            let mut programmers = self.programmers.write().await;
 
-        // Initialize generic programmer
-        let generic_programmer = Box::new(GenericProgrammer::new());
-        programmers.insert("generic".to_string(), generic_programmer);
+            // Initialize generic programmer
+            let generic_programmer = Box::new(GenericProgrammer::new());
+            programmers.insert("generic".to_string(), generic_programmer);
 
-        // Initialize EPROM programmer
-        let eprom_programmer = Box::new(EPROMProgrammer::new());
-        programmers.insert("eprom".to_string(), eprom_programmer);
+            // Initialize EPROM programmer
+            let eprom_programmer = Box::new(EPROMProgrammer::new());
+            programmers.insert("eprom".to_string(), eprom_programmer);
 
-        drop(programmers);
-        info!("Initialized programmers for 8-bit microcontrollers");
+            drop(programmers);
+            info!("Initialized programmers for 8-bit microcontrollers");
+        }
+        #[cfg(not(feature = "embedded-placeholder-impls"))]
+        {
+            info!(
+                "embedded-placeholder-impls disabled: no programmer adapters registered (trait impls omitted)"
+            );
+        }
         Ok(())
     }
 
     /// Initialize emulators
     async fn initialize_emulators(&self) -> ToadStoolResult<()> {
-        let mut emulators = self.emulators.write().await;
+        #[cfg(feature = "embedded-placeholder-impls")]
+        {
+            let mut emulators = self.emulators.write().await;
 
-        // Initialize 6502 emulator
-        let emulator_6502 = Box::new(Emulator6502::new());
-        emulators.insert(LegacyArchitecture::MOS6502, emulator_6502);
+            // Initialize 6502 emulator
+            let emulator_6502 = Box::new(Emulator6502::new());
+            emulators.insert(LegacyArchitecture::MOS6502, emulator_6502);
 
-        // Initialize Z80 emulator
-        let emulator_z80 = Box::new(EmulatorZ80::new());
-        emulators.insert(LegacyArchitecture::ZilogZ80, emulator_z80);
+            // Initialize Z80 emulator
+            let emulator_z80 = Box::new(EmulatorZ80::new());
+            emulators.insert(LegacyArchitecture::ZilogZ80, emulator_z80);
 
-        drop(emulators);
-        info!("Initialized emulators for 8-bit microcontrollers");
+            drop(emulators);
+            info!("Initialized emulators for 8-bit microcontrollers");
+        }
+        #[cfg(not(feature = "embedded-placeholder-impls"))]
+        {
+            info!(
+                "embedded-placeholder-impls disabled: no emulator adapters registered (trait impls omitted)"
+            );
+        }
         Ok(())
     }
 }

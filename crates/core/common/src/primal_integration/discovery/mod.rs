@@ -5,9 +5,10 @@
 
 use tracing::{debug, info, warn};
 
-use crate::constants::network::DEFAULT_HTTP_PORT;
-
 use super::{DiscoveryError, DiscoveryResult, PrimalEndpoint};
+
+/// Default HTTP port for K8s/Compose discovery probes when `TOADSTOOL_DISCOVERY_HTTP_PORT` is unset.
+const DISCOVERY_HTTP_PORT_FALLBACK: u16 = 8080;
 
 mod backends;
 
@@ -25,7 +26,7 @@ pub fn discovery_http_port() -> u16 {
     std::env::var("TOADSTOOL_DISCOVERY_HTTP_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(DEFAULT_HTTP_PORT)
+        .unwrap_or(DISCOVERY_HTTP_PORT_FALLBACK)
 }
 
 /// Discover any service by capability at runtime.

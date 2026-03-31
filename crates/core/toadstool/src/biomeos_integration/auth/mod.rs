@@ -146,11 +146,11 @@ impl AuthenticationManager {
             return Ok(Self::with_beardog(config));
         }
 
-        tracing::warn!(
-            "No crypto provider discovered, using in-memory backend. \
-             Ensure a crypto provider is running or set BEARDOG_ENDPOINT."
-        );
-        Ok(Self::with_inmemory(config))
+        Err(crate::ToadStoolError::configuration(
+            "No crypto provider discovered. Set BEARDOG_ENDPOINT or TOADSTOOL_SECURITY_ENDPOINT, \
+             configure beardog_endpoint in the auth manager config, or ensure a BearDog/crypto \
+             service is running.",
+        ))
     }
 
     /// # Errors
@@ -181,7 +181,10 @@ impl AuthenticationManager {
     }
 
     /// Creates auth manager with in-memory backend (no crypto).
+    ///
+    /// Only available when compiling tests or with the `test-mocks` feature.
     #[must_use]
+    #[cfg(any(test, feature = "test-mocks"))]
     pub fn with_inmemory(config: AuthManagerConfig) -> Self {
         let backend = crate::biomeos_integration::InMemoryAuthBackend::new();
         Self {

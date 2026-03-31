@@ -46,13 +46,13 @@ humantime-serde = "1.1"
 # Runtime engines
 toadstool-runtime-container = { path = "../runtime/container" }
 toadstool-runtime-native = { path = "../runtime/native" }
-toadstool-runtime-python = { path = "../runtime/python", optional = true }
+# EVOLVED: toadstool-runtime-python removed — pyo3 FFI violates ecoBin v3.0
 toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: has zstd C dependency
 wasmi = { version = "1.0", features = ["std"], optional = true }  # For WASM execution when wasm feature enabled
 toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 
 # CLI framework
-clap = { version = "4.4", features = ["derive", "color", "suggestions"] }
+clap = { workspace = true, features = ["color", "suggestions"] }
 
 # Async runtime
 tokio = { workspace = true, features = ["full"] }
@@ -105,12 +105,10 @@ hex = "0.4"
 
 
 # HTTP client
-url = "2.5"
+url = { workspace = true }
 
-# HTTP server (for daemon mode)
-axum = { workspace = true, optional = true }
-tower = { version = "0.4", features = ["util"], optional = true }
-tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
+# EVOLVED: axum/tower/tower-http removed — daemon uses pure_jsonrpc over Unix sockets.
+# HTTP is songBird's domain per PRIMAL_RESPONSIBILITY_MATRIX.
 
 [dev-dependencies]
 anyhow = "1"
@@ -127,13 +125,13 @@ rustix = { version = "0.38", features = ["process"] }
 [features]
 default = ["full"]
 slow-tests = []
-full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus", "python"]
-python = ["dep:toadstool-runtime-python"]
+full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus"]
+# EVOLVED: python feature removed — pyo3 FFI violates ecoBin v3.0. Use Squirrel IPC.
 ecosystem = []
 universal = []
 monitoring = []
 templates = []
-daemon = ["axum", "tower", "tower-http"]
+daemon = []
 wasm = ["dep:toadstool-runtime-wasm", "dep:wasmi"]  # Optional: WASM runtime
 
 # GPU FEATURES: Sovereign + Pragmatic

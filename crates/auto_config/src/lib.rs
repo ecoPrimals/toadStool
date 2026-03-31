@@ -659,9 +659,11 @@ mod tests {
     #[test]
     fn test_system_summary_from_capabilities_with_ecosystem_services() {
         let mut discovered = std::collections::HashMap::new();
-        let test_endpoint = toadstool_common::constants::network::http_url(
+        let test_endpoint = format!(
+            "{}{}:{}",
+            toadstool_common::constants::network::HTTP_PROTOCOL,
             toadstool_common::constants::network::LOCALHOST_IPV4,
-            toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+            8080
         );
         discovered.insert(
             "songbird".to_string(),

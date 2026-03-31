@@ -15,7 +15,7 @@ toadstool-common = { path = "../../core/common" }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
-futures = "0.3"
+futures = { workspace = true }
 
 # Compression (Pure Rust Evolution - Jan 17, 2026)
 # OLD: zstd, lz4 (both pulled in C dependencies via zstd-sys, lz4-sys)

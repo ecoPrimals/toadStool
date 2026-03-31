@@ -579,20 +579,6 @@ async fn test_gpu_memory_handler() {
 }
 
 #[tokio::test]
-async fn test_ollama_list_models() {
-    let handler = test_handler();
-    let request = mk_request("inference.list_models", None, 1);
-    let response = handler.handle_request(&request).await;
-    // Without ollama running, expect error (connection refused or similar)
-    if response.error.is_some() {
-        assert!(response.result.is_none());
-    } else {
-        let result = response.result.expect("result present");
-        assert!(result.get("models").is_some());
-    }
-}
-
-#[tokio::test]
 async fn test_gate_list() {
     let handler = test_handler();
     let request = mk_request("gate.list", None, 1);

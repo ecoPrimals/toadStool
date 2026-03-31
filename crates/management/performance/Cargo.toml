@@ -26,9 +26,8 @@ serde_yaml_ng = "0.10"
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 
-# Statistics and machine learning
+# Statistics
 statrs = "0.16"
-linfa = { version = "0.8", features = ["serde"] }
 ndarray = { version = "0.16", features = ["serde"] }
 
 # Collections and utilities

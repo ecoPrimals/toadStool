@@ -35,7 +35,7 @@ async fn test_location_filtering() {
             )],
             endpoints: vec![ServiceEndpoint::http(
                 toadstool_common::constants::network::LOCALHOST_IPV4,
-                toadstool_common::constants::network::DEFAULT_HTTP_PORT,
+                8080,
             )],
             metadata: Default::default(),
             discovered_at: std::time::SystemTime::now(),
@@ -49,10 +49,7 @@ async fn test_location_filtering() {
             capabilities: vec![Capability::Coordination(
                 CoordinationCapability::ServiceDiscovery,
             )],
-            endpoints: vec![ServiceEndpoint::http(
-                "10.0.0.1",
-                toadstool_common::constants::network::DEFAULT_HTTP_PORT,
-            )],
+            endpoints: vec![ServiceEndpoint::http("10.0.0.1", 8080)],
             metadata: Default::default(),
             discovered_at: std::time::SystemTime::now(),
             last_seen: std::time::SystemTime::now(),

@@ -21,6 +21,9 @@
 //!
 //! - **Feb 14, 2026**: Removed hardcoded localhost URLs. All fallbacks now require
 //!   explicit environment variable configuration (self-knowledge principle).
+//! - **Mar 31, 2026**: `ServiceDiscovery` fallbacks prefer
+//!   `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` (wateringHole); TCP `*_URL` fallbacks
+//!   remain last resort and are logged as deprecated.
 //! - **Phase 3/4 (Complete)**: mDNS/DNS-SD discovery fully deployed via
 //!   `MdnsDiscoveryService`, `primal_discovery_mdns`, and `discovery_engine`.
 //!   This module retained for development/test graceful degradation only.

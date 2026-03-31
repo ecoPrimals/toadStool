@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use toadstool::ToadStoolResult;
-use toadstool_common::constants::http_url;
+use toadstool_common::constants::network::HTTP_PROTOCOL;
 use tokio::sync::RwLock;
 
 use crate::types::{
@@ -81,14 +81,11 @@ impl RecursiveHostingManager {
         let instance_id = uuid::Uuid::new_v4().to_string();
 
         // Use environment-aware configuration
-        let port: u16 = std::env::var("TOADSTOOL_API_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(toadstool_config::ports::toadstool::DAEMON_API);
+        let port: u16 = toadstool_config::ports::daemon_port();
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
 
-        let base_url = http_url(host, port);
+        let base_url = format!("{HTTP_PROTOCOL}{host}:{port}");
         let instance = ChildToadStoolInstance {
             instance_id: instance_id.clone(),
             process_handle: ProcessHandle::default(),
@@ -144,7 +141,7 @@ impl Default for InterInstanceCommunication {
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use toadstool_common::constants::{LOCALHOST_IPV4, http_url};
+    use toadstool_common::constants::{LOCALHOST_IPV4, network::HTTP_PROTOCOL};
 
     /// Loopback host for recursive hosting unit tests (not a fixed deployment address).
     const TEST_LOOPBACK_HOST: &str = LOCALHOST_IPV4;
@@ -181,7 +178,7 @@ mod tests {
     fn test_communication_channel_debug_clone() {
         let channel = CommunicationChannel {
             channel_id: "ch-1".to_string(),
-            endpoint: http_url(TEST_LOOPBACK_HOST, TEST_HTTP_PORT),
+            endpoint: format!("{HTTP_PROTOCOL}{TEST_LOOPBACK_HOST}:{TEST_HTTP_PORT}"),
             last_activity: std::time::SystemTime::now(),
         };
         let cloned = channel.clone();
@@ -197,7 +194,7 @@ mod tests {
             resource_allocation: ResourceAllocation::default(),
             endpoint: format!(
                 "{}/inst-1",
-                http_url(TEST_LOOPBACK_HOST, TEST_CHILD_API_PORT)
+                format!("{HTTP_PROTOCOL}{TEST_LOOPBACK_HOST}:{TEST_CHILD_API_PORT}")
             ),
             status: InstanceStatus::Starting,
             started_at: SystemTime::now(),

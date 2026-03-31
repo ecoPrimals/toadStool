@@ -102,7 +102,7 @@ mod tests {
     fn test_port_constants() {
         assert_eq!(ports::SONGBIRD, 8080);
         assert_eq!(ports::BEARDOG, 8081);
-        assert_eq!(ports::NESTGATE, 8082); // Consolidated with ports::discovery_fallback
+        assert_eq!(ports::NESTGATE, 8082); // Same as capability_fallback::STORAGE
     }
 
     #[test]

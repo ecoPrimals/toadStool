@@ -370,7 +370,7 @@ mod tests {
                 specialized_hardware: vec![],
                 software_capabilities: vec![],
             },
-            endpoints: vec![toadstool_common::constants::network::default_http_url()],
+            endpoints: vec!["http://127.0.0.1:8080".to_string()],
             protocols: vec!["http".to_string()],
             metadata: NodeMetadata {
                 version: "1.0".to_string(),

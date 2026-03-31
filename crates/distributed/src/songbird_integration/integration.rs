@@ -433,11 +433,11 @@ mod tests {
     use super::*;
     use crate::{ExecutionTarget, UniversalScheduler, UniversalSchedulerConfig};
     use std::time::Duration;
-    use toadstool_common::constants::network::{DEFAULT_GRPC_PORT, LOCALHOST_IPV4};
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
     use uuid::Uuid;
 
     fn grpc_connection() -> SongbirdConnection {
-        let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, DEFAULT_GRPC_PORT);
+        let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, 50051_u16);
         SongbirdConnection {
             endpoints: vec![endpoint.clone()],
             active_endpoint: endpoint,

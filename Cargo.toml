@@ -31,7 +31,7 @@ members = [
     # "crates/runtime/edge",          # Excluded: serialport→libudev (C dep). Add to members + install libudev-dev to build.
     "crates/runtime/native",
     "crates/runtime/orchestration",   # NEW: Workload orchestration (Jan 31, 2026) 🎯
-    "crates/runtime/python",
+    # "crates/runtime/python",        # Excluded: pyo3 FFI violates ecoBin v3.0. Use Squirrel IPC for Python.
     "crates/runtime/wasm",
     "crates/runtime/secure_enclave",  # NEW: Zero-knowledge compute (Dec 22, 2025)
     "crates/runtime/universal",       # NEW: Universal compute runtime (Jan 8, 2026)
@@ -124,11 +124,8 @@ tarpc = { version = "0.34", features = ["tokio1", "serde-transport", "serde-tran
 # jsonrpsee removed (pulls ring C dependency). Pure Rust JSON-RPC via pure_jsonrpc.
 # See: crates/server/src/pure_jsonrpc/ (canonical JSON-RPC handler)
 
-# HTTP and networking - FALLBACK (enabled but not primary)
-# PURE RUST: reqwest removed - all primal communication uses unix sockets!
-axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
+# EVOLVED: axum/tower/tower-http removed — HTTP is songBird's domain.
+# toadStool uses pure_jsonrpc over Unix sockets per wateringHole standard.
 url = "2.5"
 
 # Container runtimes
@@ -141,22 +138,20 @@ bollard = "0.18" # Docker API
 # - Runtime uses wasmi (Pure Rust) for WASM execution
 # - runtime/gpu has optional wasmtime via local dependency for JIT path
 
-# Python integration (preparing for Squirrel MCP integration)
-# NOTE: Python 3.13 requires: export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
-# Waiting for pyo3-asyncio to support pyo3 0.22+
-pyo3 = { version = "0.20", features = ["auto-initialize", "extension-module", "abi3-py38"] }
-pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
+# EVOLVED: pyo3/pyo3-asyncio removed — Python FFI violates ecoBin v3.0.
+# Python integration belongs to Squirrel via IPC.
 
 # Security and sandboxing
 # once_cell removed: evolved to std::sync::LazyLock (Rust 1.80+)
 # EVOLVED: caps removed (Mar 12, 2026) — unused; was dead dep in security crates
 # EVOLVED: nix removed (Feb 14, 2026) — unused in production, libc for tests
 
-# Cryptography — all pure Rust (no C/FFI deps)
+# Cryptography — minimal; signing/encryption delegates to bearDog via IPC.
+# aes-gcm + ed25519-dalek: only used by distributed/software_hsm behind dev-crypto feature
 aes-gcm = "0.10.3"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 hex = "0.4"
-hmac = "0.12"
+# EVOLVED: hmac removed — unused; no crate imports it
 sha2 = "0.10"
 
 # Networking
@@ -173,8 +168,6 @@ futures = "0.3"
 
 # CLI
 clap = { version = "4.4", features = ["derive", "env"] }
-# EVOLVED: console removed (Mar 12, 2026) — unused; only transitive via indicatif
-indicatif = "0.17"
 
 # Development dependencies
 tokio-test = "0.4"

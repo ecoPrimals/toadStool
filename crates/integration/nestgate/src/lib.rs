@@ -25,11 +25,7 @@
 //! // Prefer: NestGateClient::discover().await? (capability-based)
 //! // Or set NESTGATE_ENDPOINT / TOADSTOOL_STORAGE_ENDPOINT env var
 //! let client = NestGateClient::connect(
-//!     std::env::var("NESTGATE_ENDPOINT")
-//!         .unwrap_or_else(|_| toadstool_common::constants::network::http_url(
-//!             toadstool_common::constants::network::DEFAULT_HOSTNAME,
-//!             toadstool_common::constants::network::HEALTH_CHECK_PORT,
-//!         ))
+//!     std::env::var("NESTGATE_ENDPOINT").expect("set NESTGATE_ENDPOINT or use NestGateClient::discover")
 //! ).await?;
 //!
 //! // Store an artifact

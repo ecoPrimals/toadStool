@@ -15,9 +15,8 @@ use toadstool_config::config_utils::ConfigUtils;
 use toadstool_config::discovery_integration::{create_discovery, discover_or_fallback};
 use toadstool_config::network_config::{BindMode, EndpointBuilder, NetworkConfig};
 use toadstool_config::ports::{
-    PortRegistry, capability_fallback, get_capability_port, get_port_with_env, get_primal_endpoint,
-    get_primal_port, get_toadstool_port, resolve_capability_or_legacy_port, resolve_port, test,
-    toadstool,
+    PortRegistry, capability_fallback, get_capability_port, get_port_with_env, get_toadstool_port,
+    resolve_capability_port, resolve_port, test, toadstool,
 };
 use toadstool_config::{ConfigError, ToadStoolConfig};
 
@@ -217,7 +216,7 @@ fn test_ports_resolve_port() {
 #[test]
 fn test_ports_toadstool_constants() {
     assert_eq!(toadstool::SERVER, 0);
-    assert_eq!(toadstool::DAEMON_API, 8084);
+    assert_eq!(toadstool::DAEMON_API, 0);
 }
 
 #[test]
@@ -256,43 +255,27 @@ fn test_ports_get_capability_port() {
 }
 
 #[test]
-fn test_ports_get_primal_port_fallback() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    temp_env::with_var_unset("BEARDOG_PORT", || {
-        let port = get_primal_port("BEARDOG", capability_fallback::SECURITY);
-        assert_eq!(port, capability_fallback::SECURITY);
-    });
-}
-
-#[test]
-fn test_ports_resolve_capability_or_legacy_port() {
+fn test_ports_resolve_capability_port() {
     let _guard = ENV_LOCK.lock().unwrap();
     temp_env::with_var("TOADSTOOL_STORAGE_PORT", Some("8200"), || {
-        let port = resolve_capability_or_legacy_port("STORAGE", "NESTGATE", 8082);
+        let port = resolve_capability_port("STORAGE", 8082);
         assert_eq!(port, 8200);
     });
 }
 
 #[test]
-fn test_ports_get_primal_endpoint() {
+fn test_ports_resolve_capability_port_capability_env() {
     let _guard = ENV_LOCK.lock().unwrap();
-    temp_env::with_var(
-        "SONGBIRD_ENDPOINT",
-        Some("https://coord.example.com:8443"),
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_STORAGE_PORT", None::<&str>),
+            ("STORAGE_PORT", Some("8300")),
+        ],
         || {
-            let endpoint = get_primal_endpoint("SONGBIRD");
-            assert_eq!(endpoint.as_deref(), Some("https://coord.example.com:8443"));
+            let port = resolve_capability_port("STORAGE", 8082);
+            assert_eq!(port, 8300);
         },
     );
-}
-
-#[test]
-fn test_ports_get_primal_endpoint_missing() {
-    let _guard = ENV_LOCK.lock().unwrap();
-    temp_env::with_var_unset("NONEXISTENT_ENDPOINT", || {
-        let endpoint = get_primal_endpoint("NONEXISTENT");
-        assert!(endpoint.is_none());
-    });
 }
 
 #[test]

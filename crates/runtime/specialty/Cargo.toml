@@ -70,7 +70,10 @@ toadstool-common = { path = "../../core/common" }
 toadstool-config = { path = "../../core/config" }
 
 [features]
-default = []  # Temporarily disabled due to missing dependencies
+default = ["embedded-placeholder-impls"]
+# Optional: trait impls for embedded programmer/emulator types (`ProgrammerInterface`, `EmbeddedEmulator`).
+# Disable for minimal builds that do not register placeholder adapters (see `embedded::adapters`).
+embedded-placeholder-impls = []
 # mainframe = ["ibm-mq", "cobol-parser", "jcl-parser"]  # Missing dependencies
 # embedded = ["cortex-m", "bindgen"]  # Missing dependencies
 industrial = []  # ["ethercat", "canbus", "profinet"] - dependencies not on crates.io

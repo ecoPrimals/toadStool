@@ -7,9 +7,14 @@
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 
 use async_trait::async_trait;
+#[cfg(any(test, feature = "test-mocks"))]
 use std::collections::HashMap;
+#[cfg(any(test, feature = "test-mocks"))]
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+#[cfg(any(test, feature = "test-mocks"))]
+use std::time::Duration;
+use std::time::SystemTime;
+#[cfg(any(test, feature = "test-mocks"))]
 use tokio::sync::Mutex;
 
 use toadstool_common::constants::ecosystem::well_known;
@@ -23,8 +28,8 @@ pub use super::auth::{AuthenticationToken, TokenRefreshRequest, TokenRequest};
 /// Trait defining the interface for authentication backends
 ///
 /// This allows dependency injection of different authentication implementations
-/// (production BearDog backend, in-memory test backend, etc.) without relying
-/// on feature flags or conditional compilation.
+/// (production BearDog backend, in-memory test backend when `cfg(test)` or the
+/// `test-mocks` crate feature is enabled).
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait AuthBackend: Send + Sync {
@@ -239,10 +244,12 @@ impl AuthBackend for BearDogBackend {
 ///
 /// This is a proper test implementation, not a mock. It generates valid
 /// tokens for testing purposes without requiring a real BearDog service.
+#[cfg(any(test, feature = "test-mocks"))]
 pub struct InMemoryAuthBackend {
     tokens: Arc<Mutex<HashMap<String, AuthenticationToken>>>,
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl InMemoryAuthBackend {
     /// Create a new in-memory authentication backend for testing
     #[must_use]
@@ -273,12 +280,14 @@ impl InMemoryAuthBackend {
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for InMemoryAuthBackend {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 #[async_trait]
 impl AuthBackend for InMemoryAuthBackend {
     async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {

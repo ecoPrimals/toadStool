@@ -30,8 +30,8 @@ pub mod toadstool {
     /// Metrics/monitoring port (0 = OS-assigned)
     pub const METRICS: u16 = 0;
 
-    /// Daemon/BYOB HTTP API port (default when not using OS-assigned)
-    pub const DAEMON_API: u16 = 8084;
+    /// Daemon/BYOB HTTP API port (0 = OS-assigned; override with `TOADSTOOL_DAEMON_API_PORT`)
+    pub const DAEMON_API: u16 = 0;
 }
 
 /// Capability-based fallback ports for cold-start bootstrap.
@@ -70,91 +70,6 @@ pub mod capability_fallback {
 
     /// Display IPC capability (local display server communication)
     pub const DISPLAY_IPC: u16 = 8091;
-}
-
-/// Map a capability id string to the cold-start port literal from [`capability_fallback`].
-///
-/// **Deprecated**: Prefer [`get_capability_port`] or runtime discovery. This function exists
-/// only to mark the bootstrap port table as a transitional API; the numeric defaults are
-/// unchanged but should not be depended on in production.
-#[deprecated(
-    since = "0.2.0",
-    note = "Use get_capability_port(capability, capability_fallback::…) or runtime discovery; literals are bootstrap-only."
-)]
-#[must_use]
-pub fn bootstrap_capability_port(capability: &str) -> Option<u16> {
-    match capability.to_lowercase().as_str() {
-        "coordination" => Some(capability_fallback::COORDINATION),
-        "security" | "crypto" => Some(capability_fallback::SECURITY),
-        "storage" => Some(capability_fallback::STORAGE),
-        "platform" | "intelligence" | "routing" | "ai" => Some(capability_fallback::PLATFORM),
-        "ecosystem" => Some(capability_fallback::ECOSYSTEM),
-        "ecosystem_primary" | "ecosystem-primary" => Some(capability_fallback::ECOSYSTEM_PRIMARY),
-        "shader_compiler" | "shader-compile" => Some(capability_fallback::SHADER_COMPILER),
-        _ => None,
-    }
-}
-
-/// Legacy primal-name aliases for backward compatibility during migration.
-///
-/// **DEPRECATED**: Use `capability_fallback::*` or runtime capability discovery.
-#[deprecated(
-    since = "0.1.0",
-    note = "Use capability_fallback::* or runtime capability discovery."
-)]
-pub mod discovery_fallback {
-    /// Coordination capability discovery port (legacy).
-    #[deprecated(note = "Use capability_fallback::COORDINATION")]
-    pub const DEFAULT_SONGBIRD_DISCOVERY_PORT: u16 = super::capability_fallback::COORDINATION;
-
-    /// Security capability discovery port (legacy).
-    #[deprecated(note = "Use capability_fallback::SECURITY")]
-    pub const DEFAULT_BEARDOG_DISCOVERY_PORT: u16 = super::capability_fallback::SECURITY;
-
-    /// Storage capability discovery port (legacy).
-    #[deprecated(note = "Use capability_fallback::STORAGE")]
-    pub const DEFAULT_NESTGATE_DISCOVERY_PORT: u16 = super::capability_fallback::STORAGE;
-
-    /// Platform capability discovery port (legacy).
-    #[deprecated(note = "Use capability_fallback::PLATFORM")]
-    pub const DEFAULT_SQUIRREL_DISCOVERY_PORT: u16 = super::capability_fallback::PLATFORM;
-
-    /// Ecosystem discovery port (legacy).
-    #[deprecated(note = "Use capability_fallback::ECOSYSTEM")]
-    pub const DEFAULT_BIOMEOS_DISCOVERY_PORT: u16 = super::capability_fallback::ECOSYSTEM;
-
-    /// Ecosystem primary port (legacy).
-    #[deprecated(note = "Use capability_fallback::ECOSYSTEM_PRIMARY")]
-    pub const DEFAULT_BIOMEOS_PRIMARY_PORT: u16 = super::capability_fallback::ECOSYSTEM_PRIMARY;
-}
-
-/// Legacy primal-name port constants for backward compatibility.
-///
-/// **DEPRECATED**: Use `capability_fallback::*` or runtime capability discovery.
-#[deprecated(
-    since = "0.1.0",
-    note = "Use capability_fallback::* or runtime capability discovery."
-)]
-pub mod fallback {
-    /// Coordination capability port (legacy).
-    #[deprecated(note = "Use capability_fallback::COORDINATION")]
-    pub const SONGBIRD: u16 = super::capability_fallback::COORDINATION;
-
-    /// Platform capability port (legacy).
-    #[deprecated(note = "Use capability_fallback::PLATFORM")]
-    pub const SQUIRREL: u16 = super::capability_fallback::PLATFORM;
-
-    /// Security capability port (legacy).
-    #[deprecated(note = "Use capability_fallback::SECURITY")]
-    pub const BEARDOG: u16 = super::capability_fallback::SECURITY;
-
-    /// Storage capability port (legacy).
-    #[deprecated(note = "Use capability_fallback::STORAGE")]
-    pub const NESTGATE: u16 = super::capability_fallback::STORAGE;
-
-    /// Ecosystem capability port (legacy).
-    #[deprecated(note = "Use capability_fallback::ECOSYSTEM")]
-    pub const BIOMEOS: u16 = super::capability_fallback::ECOSYSTEM;
 }
 
 /// Port registry for runtime configuration
@@ -274,21 +189,16 @@ pub fn daemon_port() -> u16 {
 ///
 /// // TOADSTOOL_SERVER_PORT=9000 cargo run
 /// let port = get_toadstool_port("SERVER", toadstool::SERVER);
-/// // Returns 9000 if env var set, otherwise 8084
+/// // Returns 9000 if env var set, otherwise the default (e.g. 0 for OS-assigned)
 /// ```
 #[must_use]
 pub fn get_toadstool_port(name: &str, default: u16) -> u16 {
     get_port_with_env(default, &format!("TOADSTOOL_{name}_PORT"))
 }
 
-/// Resolve port for a capability via env var with fallback default.
+/// Resolve port for a capability via `TOADSTOOL_{CAPABILITY}_PORT` with fallback default.
 ///
-/// Resolution order:
-/// 1. `TOADSTOOL_{CAPABILITY}_PORT` env var (e.g. `TOADSTOOL_SECURITY_PORT`)
-/// 2. Legacy `{PRIMAL}_PORT` env var (backward compatibility)
-/// 3. `capability_fallback::*` default
-///
-/// Prefer `get_capability_port` over the deprecated `get_primal_port`.
+/// Does not read `{CAPABILITY}_PORT`; use [`resolve_capability_port`] when that is needed.
 #[must_use]
 pub fn get_capability_port(capability: &str, fallback_port: u16) -> u16 {
     let capability_env = format!("TOADSTOOL_{capability}_PORT");
@@ -300,28 +210,12 @@ pub fn get_capability_port(capability: &str, fallback_port: u16) -> u16 {
     fallback_port
 }
 
-/// Get primal port with environment override (legacy — prefer `get_capability_port`).
+/// Resolve a capability port using only capability-scoped environment variables.
 ///
-/// Checks `{PRIMAL}_PORT` environment variable first, falls back to default.
-/// This exists for backward compatibility during migration to capability-based ports.
+/// Same as [`get_capability_port`] for `TOADSTOOL_{CAPABILITY}_PORT`, but also
+/// honors `{CAPABILITY}_PORT` before the numeric fallback.
 #[must_use]
-pub fn get_primal_port(primal: &str, fallback_port: u16) -> u16 {
-    get_port_with_env(fallback_port, &format!("{primal}_PORT"))
-}
-
-/// Resolve port by trying capability env vars first, then fallback.
-///
-/// Resolution order:
-/// 1. `TOADSTOOL_{CAPABILITY}_PORT` (e.g. `TOADSTOOL_SECURITY_PORT`)
-/// 2. `{CAPABILITY}_PORT` (capability-based, e.g. `COORDINATION_PORT`)
-/// 3. `{LEGACY_NAME}_PORT` (primal name, deprecated — e.g. `SONGBIRD_PORT`)
-/// 4. `fallback_port` — hardcoded default from `capability_fallback::*`
-#[must_use]
-pub fn resolve_capability_or_legacy_port(
-    capability: &str,
-    legacy_name: &str,
-    fallback_port: u16,
-) -> u16 {
+pub fn resolve_capability_port(capability: &str, fallback_port: u16) -> u16 {
     if let Ok(v) = std::env::var(format!("TOADSTOOL_{capability}_PORT")) {
         if let Ok(p) = v.parse::<u16>() {
             return p;
@@ -332,38 +226,7 @@ pub fn resolve_capability_or_legacy_port(
             return p;
         }
     }
-    if let Ok(v) = std::env::var(format!("{legacy_name}_PORT")) {
-        if let Ok(p) = v.parse::<u16>() {
-            return p;
-        }
-    }
     fallback_port
-}
-
-/// Get primal endpoint with environment override
-///
-/// **Phase 2: Environment Overrides (RECOMMENDED)**
-///
-/// Checks `{PRIMAL}_ENDPOINT` environment variable for full endpoint URL.
-/// This allows complete override including hostname, port, and protocol.
-///
-/// **Recommended for production**: Use full endpoint URLs for flexibility.
-///
-/// # Examples
-/// ```
-/// use toadstool_config::ports::get_primal_endpoint;
-///
-/// // SONGBIRD_ENDPOINT=https://songbird.prod.example.com:8080
-/// let endpoint = get_primal_endpoint("SONGBIRD");
-/// // Returns Some("https://songbird.prod.example.com:8080")
-///
-/// // Without env var
-/// let endpoint = get_primal_endpoint("NONEXISTENT");
-/// // Returns None
-/// ```
-#[must_use]
-pub fn get_primal_endpoint(primal: &str) -> Option<String> {
-    std::env::var(format!("{primal}_ENDPOINT")).ok()
 }
 
 #[cfg(test)]

@@ -149,14 +149,14 @@ fn test_network_bind_address_default() {
 }
 
 #[test]
-fn test_discovery_fallback_ports() {
-    use toadstool_config::ports::discovery_fallback;
+fn test_capability_fallback_bootstrap_ports() {
+    use toadstool_config::ports::capability_fallback;
 
-    assert_eq!(discovery_fallback::DEFAULT_SONGBIRD_DISCOVERY_PORT, 8080);
-    assert_eq!(discovery_fallback::DEFAULT_BEARDOG_DISCOVERY_PORT, 8081);
-    assert_eq!(discovery_fallback::DEFAULT_NESTGATE_DISCOVERY_PORT, 8082);
-    assert_eq!(discovery_fallback::DEFAULT_SQUIRREL_DISCOVERY_PORT, 8083);
-    assert_eq!(discovery_fallback::DEFAULT_BIOMEOS_DISCOVERY_PORT, 8088);
+    assert_eq!(capability_fallback::COORDINATION, 8080);
+    assert_eq!(capability_fallback::SECURITY, 8081);
+    assert_eq!(capability_fallback::STORAGE, 8082);
+    assert_eq!(capability_fallback::PLATFORM, 8083);
+    assert_eq!(capability_fallback::ECOSYSTEM, 8088);
 }
 
 #[test]

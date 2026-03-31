@@ -14,9 +14,7 @@ use tokio::signal;
 use tracing::{info, warn};
 
 use super::config::DaemonConfig;
-#[cfg(feature = "daemon")]
-use super::http_server;
-use super::jsonrpc_server; // NEW: JSON-RPC over Unix sockets
+use super::jsonrpc_server;
 use super::workload_manager::WorkloadManager;
 
 /// Daemon server
@@ -101,32 +99,7 @@ impl DaemonServer {
             });
         }
 
-        // DEPRECATED: HTTP server (backward compatibility only)
-        #[cfg(feature = "daemon")]
-        if std::env::var("TOADSTOOL_HTTP_COMPAT").is_ok() {
-            warn!("⚠️  HTTP compatibility mode enabled (DEPRECATED)");
-            let port = self.config.port;
-            let manager = Arc::clone(&self.workload_manager);
-
-            tokio::spawn(async move {
-                if let Err(e) = http_server::start_http_server(port, manager).await {
-                    warn!("⚠️  HTTP server stopped: {e}");
-                }
-            });
-
-            info!(
-                "📊 HTTP API (DEPRECATED): http://localhost:{}/api/v1",
-                self.config.port
-            );
-            info!(
-                "💚 HTTP Health (DEPRECATED): http://localhost:{}/health",
-                self.config.port
-            );
-        } else {
-            info!(
-                "✨ Pure Unix socket mode - HTTP disabled (set TOADSTOOL_HTTP_COMPAT=1 for old clients)"
-            );
-        }
+        info!("✨ Pure Unix socket mode — JSON-RPC over UDS per wateringHole standard");
 
         // Wait for shutdown signal
         signal::ctrl_c().await?;

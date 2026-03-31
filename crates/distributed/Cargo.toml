@@ -27,7 +27,7 @@ toadstool-management-monitoring = { path = "../management/monitoring" }
 tokio = { version = "1.0", features = ["full"] }
 tokio-util = { version = "0.7" }
 async-trait = "0.1"
-futures = "0.3"
+futures = { workspace = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -37,10 +37,6 @@ serde_json = "1.0"
 # use postcard (pure Rust, no_std, varint) or bitcode instead.
 humantime-serde = "1.1"
 bytes = { workspace = true }
-
-# Networking and communication
-hyper = { version = "1.0", features = ["full"] }
-tower = "0.4"
 
 # Clustering and load balancing
 rand = "0.8"

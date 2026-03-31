@@ -10,17 +10,18 @@ use std::path::PathBuf;
 
 /// Discover socket path from environment
 ///
-/// **Capability-based**: Uses `XDG_RUNTIME_DIR`, no hardcoding!
+/// **Capability-based**: Uses `XDG_RUNTIME_DIR` with [`std::env::temp_dir`] as fallback,
+/// under the `ecoPrimals/<PRIMAL_NAME>/` layout.
 #[must_use]
 pub fn discover_socket_path() -> PathBuf {
-    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+    let base = std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir());
 
     let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
-    let mut path = PathBuf::from(runtime_dir);
-    path.push(primal_name);
-    path.push("display.sock");
-
-    path
+    base.join("ecoPrimals")
+        .join(primal_name)
+        .join("display.sock")
 }
 
 /// Detect platform constraints (not real errors!)
@@ -56,14 +57,14 @@ pub fn is_selinux_enforcing() -> bool {
 
 /// Write TCP discovery file for clients
 ///
-/// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, `HOME`, `/tmp`
+/// **XDG-compliant**: Tries `XDG_RUNTIME_DIR`, `HOME/.local/share`, then the system temp directory.
 pub fn write_tcp_discovery_file(addr: &SocketAddr) {
     let discovery_dirs: Vec<Option<String>> = vec![
         std::env::var("XDG_RUNTIME_DIR").ok(),
         std::env::var("HOME")
             .ok()
             .map(|h| format!("{h}/.local/share")),
-        Some("/tmp".to_string()),
+        Some(std::env::temp_dir().to_string_lossy().into_owned()),
     ];
 
     for dir in discovery_dirs.iter().filter_map(|d| d.as_ref()) {

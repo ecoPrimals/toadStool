@@ -42,16 +42,16 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,700+ tests, 0 failures** (S168), 222 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,700+ tests, 0 failures** (S169), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
-| Production stubs | 0 -- all evolved to real implementations (architecture stubs → typed enums/traits S128) |
+| Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) **`#[cfg(test)]` only** (S169) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
-| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`), `hmac` |
+| External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
 | Hardcoded primal names | 0 -- all capability-based discovery via `get_socket_path_for_capability()` |
 | `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
@@ -112,7 +112,6 @@ ToadStool: Hardware Discovery + Orchestration (THIS REPO)
   GpuAdapterInfo (driver, f64, workgroups, buffer limits)
   NpuDispatch trait (generic neuromorphic compute)
   GPU Job Queue + Cross-Gate Routing
-  Ollama Model Lifecycle (list/load/inference/unload)
   Capability-based runtime discovery (self-knowledge only)
   Cloud cost / compliance / federation
   Shared error tracking (AtomicU64)
@@ -143,7 +142,9 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (97+ dynamically built)
+### JSON-RPC Methods (~65 dynamically built; S169)
+
+Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ Squirrel), **`shader.compile.*`** (→ coralReef), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ biomeOS and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in coralReef).
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -154,15 +155,11 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 | `ai.*` | `local_inference`, `local_execute` | biomeOS ai_local capability |
 | `ai.nautilus.*` | `status`, `observe`, `train`, `predict`, `screen`, `edges`, `shell.export`, `shell.import` | Evolutionary reservoir computing (feature-gated `nautilus`) |
 | `gpu.*` | `gpu.query_info`, `gpu.query_memory`, `gpu.query_telemetry` | Hardware info |
-| `inference.*` | `list_models`, `inference`, `load`, `unload` | (was ollama.*, deprecated aliases retained) |
 | `gate.*` | `update`, `remove`, `list`, `route` | Distributed routing |
 | `transport.*` | `discover`, `list`, `route` | Hardware transport discovery + routing |
-| `shader.compile.*` | `wgsl`, `spirv`, `status`, `capabilities` | coralReef proxy (capability-based discovery, naga fallback) |
-| `shader.dispatch` | `dispatch` | Sovereign shader pipeline: accepts compiled binary (base64/array/compile_result), dispatches to GPU via VFIO/DRM, returns readback |
-| `ecology.*` | 14 methods | Ecosystem integration (NUCLEUS discovery, capability routing) |
-| `discovery.*` | NUCLEUS discovery, capability probing | Runtime capability-based discovery |
-| `deploy.*` | graph routing, workload placement | Deploy graph routing and placement |
-| `provenance.query` | cross-spring flow matrix | (was toadstool.provenance, deprecated alias retained) |
+| `shader.dispatch` | — | Sovereign pipeline: compiled binary in (base64 / array / `compile_result`), GPU via VFIO/DRM, optional readback |
+| `provenance.query` | cross-spring flow matrix | (was `toadstool.provenance`; deprecated alias retained) |
+| *Peer primals* | — | **Compile** (`shader.compile.*`), **LLM/inference**, **science / ecology / discovery / deploy** — call Squirrel, coralReef, biomeOS, Songbird over capability sockets (not re-exported here) |
 
 ---
 
@@ -194,7 +191,7 @@ toadStool/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config, port constants)
 |   |   +-- toadstool/             Core runtime, IPC, scheduler, production hardening
-|   +-- server/                    JSON-RPC server, GPU job queue, Ollama, cross-gate router
+|   +-- server/                    JSON-RPC server, GPU job queue, cross-gate router
 |   +-- (api/ fossilized S96 — ByobApi extracted to container, remainder to ecoPrimals/fossil/)
 |   +-- cli/                       UniBin CLI (single binary, BYOB server subcommand)
 |   +-- integration/               Inter-primal protocols (beardog, nestgate, songbird)
@@ -229,7 +226,7 @@ toadStool/
 3. **Capability-based discovery** -- self-knowledge principle: only `PRIMAL_NAME` is known; everything else discovered at runtime via `get_socket_path_for_capability()`
 4. **Zero-copy hot paths** -- `Cow<'a, str>` with `#[serde(borrow)]` on JSON-RPC types, `serde_json::from_slice`, `bytes::Bytes` on binary payloads
 5. **No hardcoding** -- ports, hostnames, and primal names all config-driven or capability-discovered
-6. **Mocks isolated to testing** -- all `#[cfg(test)]` gated; production code is complete implementations
+6. **Mocks isolated to testing** -- all `#[cfg(test)]` gated (including `InMemoryAuthBackend`); production code is complete implementations or typed errors
 7. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 8. **Vendor-agnostic** -- WGPU/Vulkan for GPU discovery, any vendor works
 9. **Sovereign compute** -- no vendor lock-in, pure Rust core
@@ -243,17 +240,17 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,700+** (S168), 0 failures |
+| Workspace tests | **21,700+** (S169), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
-| Production stubs / mocks | 0 -- all evolved to real implementations or proper errors |
+| Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** (S169) |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `md5`→`md-5`, `bollard` 0.18, `ed25519-dalek` (core+CLI→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`), `hmac` |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `md5`→`md-5`, `bollard` 0.18, `ed25519-dalek` (core+CLI→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif` |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -264,11 +261,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,700+ tests (S168); ~80% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,700+ tests (S169); ~80% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S169 (Mar 31, 2026)**: Primal overstep cleanup — removed Ollama, HTTP stack from server+cli (Songbird), shader **compile** proxy (coralReef), science/ecology/deploy relays (biomeOS); dropped pyo3/gbm/linfa/hmac/indicatif; **`shader.dispatch`** retained. Deep debt: capability-only `ports`/`network`, `InMemoryAuthBackend` test-only, `embedded/types` split, XDG + `temp_dir`, Unix-socket-first discovery, workspace dep inheritance, federation unwrap audit.
 - **S168 (Mar 30, 2026)**: `shader.dispatch` JSON-RPC method — closes ludoSpring V35 / coralReef Iter 70 E2E gap (compile→dispatch→readback sovereign shader pipeline). Base64 + u8-array + compile_result input. Workspace-wide clippy zero-warning (~120+ fixes). Auth backend evolved to async-first. Server connection zero-copy. 11 specialty runtime files from 0% → covered. 18 new shader dispatch tests.
 - **S166 (Mar 29, 2026)**: Deep debt execution + capability-based evolution + dependency sovereignty. Redundant `#![allow]` cleanup (29 `lib.rs` files; blanket `clippy::nursery` removed from server + cross-substrate-validation). Discovery: hardcoded primal names → capability IDs (`crypto`, `coordination`, `storage`, `routing`); `resolve_capability_socket_fallback()`; legacy names `#[deprecated]`; `ecosystem::capabilities` module. Production stubs: `crypto_lock` JSON permissions + delegation validation; `SubstrateConfig::validate()` (power budget, fallback order, capabilities). Smart-split 7 large files into module dirs (all production **< 400 lines**). `md5` → `md-5`; `bollard` 0.18 workspace-wide; orchestrator provider selection intersects compliance + sorts deterministically. **Dependency sovereignty**: `ed25519-dalek` removed from core + CLI (signing/verification delegated to BearDog via `crypto.sign`/`crypto.verify`/`crypto.public_key` JSON-RPC); `regex` removed (replaced with `str::contains()` pattern matching); `parking_lot` replaced with `std::sync::RwLock` in orchestration; `AuthBackend` trait extended with `sign_payload()` + `public_key()`; HTTP transport delegates to Songbird via `comms.http_forward` JSON-RPC; `hmac` removed; `mdns-sd` retained as feature-gated cold-start discovery. Net: 123 files changed, +1145/-8334 lines.
 - **S164 (Mar 29, 2026)**: Dependency deduplication (linfa 0.7→0.8, ndarray 0.15→0.16, mockall 0.11→0.12, env_logger 0.10→0.11). Smart-refactored 5 large files into directory modules (execution.rs, capabilities.rs, client.rs, ecosystem/mod.rs, integration_impl.rs). +94 new tests across 7 lowest-coverage files (resource_validator 20→75%, discovery 57→88%, scheduler/execution 45→99%, orchestrator 43→100%, ecosystem 68→85%, client/core 54→85%, dispatch 40→70%). All quality gates green.
@@ -297,7 +295,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,700+ tests (S168); ~80% lib-only line (185K instrumented); S168: 11 specialty runtime files 0%→covered + 18 shader.dispatch tests; remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,700+ tests (S169); ~80% lib-only line (185K instrumented); S168: 11 specialty runtime files 0%→covered + 18 shader.dispatch tests; remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -341,7 +339,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 30, 2026 — S168. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). 97+ JSON-RPC methods (incl. `shader.dispatch`, `health.liveness`/`capabilities.list` per semantic standard). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **43 crates** inherit workspace `clippy::pedantic + nursery` lints. `--port` wired to TCP JSON-RPC (UniBin compliant). Rust 1.85+ (edition 2024, MSRV). Sovereign shader pipeline: compile→dispatch→readback E2E.
+**Last Updated**: March 31, 2026 — S169. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~65 JSON-RPC methods** (S169 trimmed inference/shader.compile/science/ecology/discovery/deploy; **`shader.dispatch`** retained; compile in coralReef). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **43 crates** inherit workspace `clippy::pedantic + nursery` lints. IPC-first JSON-RPC (Unix sockets; HTTP stack removed from server+cli in S169). Rust 1.85+ (edition 2024, MSRV). Sovereign shader **dispatch** E2E with coralReef compile.
 
 ---
 

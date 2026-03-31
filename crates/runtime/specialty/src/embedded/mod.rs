@@ -14,9 +14,11 @@
 // Module declarations
 pub mod adapters;
 pub mod dos;
+#[cfg(feature = "embedded-placeholder-impls")]
 pub mod emulator_impls;
 pub mod emulators;
 pub mod managers;
+#[cfg(feature = "embedded-placeholder-impls")]
 pub mod programmer_impls;
 pub mod programmers;
 pub mod toolchains;
