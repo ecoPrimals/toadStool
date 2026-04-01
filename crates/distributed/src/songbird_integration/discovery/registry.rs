@@ -11,18 +11,22 @@ use super::super::types::{
 };
 
 impl NodeRegistry {
+    /// Create an empty node registry.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Return references to all nodes currently considered active.
     pub fn get_active_nodes(&self) -> Vec<&NodeRegistration> {
         self.nodes.values().collect()
     }
 
+    /// Return references to every registered node.
     pub fn get_all_nodes(&self) -> Vec<&NodeRegistration> {
         self.nodes.values().collect()
     }
 
+    /// Filter nodes whose type matches one of the given canonical node types.
     pub fn get_nodes_by_types(&self, types: &[NodeType]) -> Vec<&NodeRegistration> {
         self.nodes
             .values()
@@ -40,11 +44,13 @@ impl NodeRegistry {
             .collect()
     }
 
+    /// Insert or update a node registration in the registry.
     pub fn register_node(&mut self, registration: NodeRegistration) -> ToadStoolResult<()> {
         self.register(registration);
         Ok(())
     }
 
+    /// No-op placeholder when discovery reports health for a known node id.
     pub fn update_node_health(&mut self, node_id: &NodeId, _healthy: bool) {
         // Mark node as active if it exists
         if self.nodes.contains_key(node_id) {
@@ -54,6 +60,7 @@ impl NodeRegistry {
 }
 
 impl NetworkHealthMonitor {
+    /// Create a monitor with the given check interval (stored as `check_interval`).
     pub fn new(timeout: Duration) -> Self {
         Self {
             health_checks: HashMap::new(),
@@ -74,6 +81,7 @@ impl Clone for NetworkHealthMonitor {
 }
 
 impl CapabilityTracker {
+    /// Create an empty capability tracker.
     pub fn new() -> Self {
         Self {
             capabilities: HashMap::new(),

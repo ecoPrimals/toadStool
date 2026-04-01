@@ -1,35 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // mmap/munmap require unsafe for NPU BAR memory mapping
-//! Memory-mapped region abstraction
+//! Memory-mapped region abstraction for Akida NPU PCIe BARs.
 //!
-//! Deep Debt Principles:
-//! - Minimal unsafe (only in mmap, well-encapsulated)
-//! - Runtime validation (bounds checking)
-//! - Safe public API
-//! - Comprehensive error handling
-//!
-//! # Evolution (Feb 12, 2026)
-//!
-//! Evolved from `libc` raw C bindings to `rustix` safe Rust wrappers.
-//! This provides better error handling and type safety while maintaining
-//! identical functionality.
+//! Delegates mmap lifecycle to [`toadstool_hw_safe::SafeMmapRegion`],
+//! eliminating duplicate unsafe mmap/munmap code. All volatile MMIO
+//! is performed through the safe `VolatileMmio` wrapper.
 
-use crate::backends::volatile_access::VolatileSlice;
 use crate::error::{AkidaError, Result};
-use rustix::mm::{MapFlags, ProtFlags, mmap, munmap};
-use std::fs::{File, OpenOptions};
-use std::os::unix::io::AsFd;
-use std::ptr::NonNull;
+use std::path::Path;
 
 /// Memory-mapped PCIe BAR region
 ///
 /// Provides safe, bounds-checked access to memory-mapped hardware.
-/// Unsafe operations are encapsulated and well-documented.
+/// Backed by [`toadstool_hw_safe::SafeMmapRegion`] for the mmap lifecycle.
 #[derive(Debug)]
 pub struct MmapRegion {
-    ptr: NonNull<u8>,
-    size: usize,
-    _file: File,
+    inner: toadstool_hw_safe::SafeMmapRegion,
     pcie_address: String,
     bar_index: usize,
 }
@@ -43,77 +28,25 @@ impl MmapRegion {
     /// - Resource file doesn't exist
     /// - Cannot open file
     /// - mmap fails
-    ///
-    /// # Safety
-    ///
-    /// This function contains unsafe mmap operation, but:
-    /// - Validates file descriptor before mapping
-    /// - Checks mmap return value
-    /// - Ensures proper cleanup via Drop
-    ///
-    /// # Panics
-    ///
-    /// Panics if `rustix::mm::mmap` returns a null pointer on success
-    /// (should never happen per rustix API contract).
     pub fn new(pcie_address: &str, bar_index: usize) -> Result<Self> {
         let path = format!("/sys/bus/pci/devices/{pcie_address}/resource{bar_index}");
 
         tracing::debug!("Mapping PCIe BAR: {path}");
 
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)
+        let inner = toadstool_hw_safe::SafeMmapRegion::map_shared_rw(Path::new(&path))
             .map_err(|e| {
                 AkidaError::capability_query_failed(format!(
-                    "Cannot open {path}: {e}. Is device enabled?"
+                    "BAR{bar_index} mmap for {pcie_address}: {e}"
                 ))
             })?;
 
-        // Truncation acceptable: BAR sizes fit in usize on 64-bit (our only target)
-        #[allow(clippy::cast_possible_truncation)]
-        let size = file
-            .metadata()
-            .map_err(|e| AkidaError::capability_query_failed(format!("Cannot stat BAR: {e}")))?
-            .len() as usize;
-
-        if size == 0 {
-            return Err(AkidaError::capability_query_failed(
-                "BAR size is 0 (device not enabled?)",
-            ));
-        }
-
-        tracing::debug!("BAR size: {size} bytes ({} MB)", size / (1024 * 1024));
-
-        // SAFETY: Invariants: fd valid; size>0; flags valid; offset within file.
-        // Satisfied: file from OpenOptions; size checked above; ProtFlags/MapFlags from rustix;
-        // offset 0. File stored in struct; munmap in Drop. Violation: invalid fd → kernel error;
-        // zero size → implementation-defined; leak if no munmap.
-        let ptr = unsafe {
-            let addr = mmap(
-                std::ptr::null_mut(),
-                size,
-                ProtFlags::READ | ProtFlags::WRITE,
-                MapFlags::SHARED,
-                file.as_fd(),
-                0,
-            )
-            .map_err(|e| AkidaError::capability_query_failed(format!("mmap failed: {e}")))?;
-
-            // EVOLVED: NonNull::new + expect is safe; rustix returns non-null on Ok
-            NonNull::new(addr.cast::<u8>())
-                .expect("rustix mmap returns non-null pointer on success")
-        };
-
         tracing::info!(
-            "Mapped BAR{bar_index} for {pcie_address} ({} MB at {ptr:p})",
-            size / (1024 * 1024),
+            "Mapped BAR{bar_index} for {pcie_address} ({} MB)",
+            inner.size() / (1024 * 1024),
         );
 
         Ok(Self {
-            ptr,
-            size,
-            _file: file,
+            inner,
             pcie_address: pcie_address.to_string(),
             bar_index,
         })
@@ -125,10 +58,10 @@ impl MmapRegion {
     ///
     /// Returns error if offset is out of bounds
     pub fn read_u32(&self, offset: usize) -> Result<u32> {
-        // SAFETY: Invariants: ptr valid for size bytes; from mmap; not yet unmapped.
-        // Satisfied: ptr/size from new(); _file keeps mapping alive. Violation: use-after-unmap → UB.
-        let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
-        let value = slice.read_u32(offset)?;
+        let volatile = self.inner.as_volatile();
+        let value = volatile.read_u32(offset).map_err(|e| {
+            AkidaError::transfer_failed(format!("BAR read_u32 @ {offset:#x}: {e}"))
+        })?;
         tracing::trace!("Read u32 @ {offset:#x} = {value:#x}");
         Ok(value)
     }
@@ -140,9 +73,10 @@ impl MmapRegion {
     /// Returns error if offset is out of bounds
     pub fn write_u32(&mut self, offset: usize, value: u32) -> Result<()> {
         tracing::trace!("Write u32 @ {offset:#x} = {value:#x}");
-        // SAFETY: Invariants: ptr valid for size; mapping alive. Satisfied: from new(); _file held.
-        let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
-        slice.write_u32(offset, value)
+        let volatile = self.inner.as_volatile();
+        volatile.write_u32(offset, value).map_err(|e| {
+            AkidaError::transfer_failed(format!("BAR write_u32 @ {offset:#x}: {e}"))
+        })
     }
 
     /// Read bytes at offset
@@ -151,9 +85,10 @@ impl MmapRegion {
     ///
     /// Returns error if read would exceed bounds
     pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<()> {
-        // SAFETY: Invariants: ptr valid for size; mapping alive. Satisfied: from new(); _file held.
-        let slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
-        slice.read_region(offset, buffer)
+        self.inner
+            .as_volatile()
+            .read_bytes(offset, buffer)
+            .map_err(|e| AkidaError::transfer_failed(format!("BAR read_bytes @ {offset:#x}: {e}")))
     }
 
     /// Write bytes at offset
@@ -162,15 +97,18 @@ impl MmapRegion {
     ///
     /// Returns error if write would exceed bounds
     pub fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        // SAFETY: Invariants: ptr valid for size; mapping alive. Satisfied: from new(); _file held.
-        let mut slice = unsafe { VolatileSlice::from_raw_parts(self.ptr, self.size) };
-        slice.write_region(offset, data)
+        self.inner
+            .as_volatile()
+            .write_bytes(offset, data)
+            .map_err(|e| {
+                AkidaError::transfer_failed(format!("BAR write_bytes @ {offset:#x}: {e}"))
+            })
     }
 
     /// Get region size
     #[must_use]
-    pub const fn size(&self) -> usize {
-        self.size
+    pub fn size(&self) -> usize {
+        self.inner.size()
     }
 
     /// Get PCIe address
@@ -186,44 +124,6 @@ impl MmapRegion {
     }
 }
 
-impl Drop for MmapRegion {
-    fn drop(&mut self) {
-        tracing::debug!(
-            "Unmapping BAR{} for {} ({} MB)",
-            self.bar_index,
-            self.pcie_address,
-            self.size / (1024 * 1024)
-        );
-
-        // SAFETY: Invariants: addr from mmap; length matches original mmap; no refs to mapping.
-        // Satisfied: ptr/size from new(); Drop runs once; no outstanding slices. Violation: wrong ptr/size → UB.
-        unsafe {
-            if let Err(e) = munmap(self.ptr.as_ptr().cast(), self.size) {
-                tracing::error!("munmap failed during drop: {e}");
-            }
-        }
-    }
-}
-
-// SAFETY: Send implementation is safe because:
-// - MmapRegion owns the mapped memory exclusively (no other references exist)
-// - The memory mapping is process-private (MAP_SHARED with device file, but no
-//   other in-process references to the same mapping)
-// - The mapped memory is valid for the lifetime of the MmapRegion (file kept open)
-// - All pointer operations are bounds-checked and safe
-// - Moving MmapRegion between threads doesn't invalidate the mapping
-unsafe impl Send for MmapRegion {}
-
-// SAFETY: Sync implementation is safe because:
-// - MmapRegion API requires &mut self for writes (exclusive access enforced by borrow checker)
-// - Read operations use &self but are safe because:
-//   - All reads are bounds-checked
-//   - Volatile reads prevent data races (hardware register reads are idempotent)
-//   - Multiple concurrent reads from MMIO registers are safe (hardware handles it)
-// - The underlying memory mapping is thread-safe (mmap'd memory can be accessed from any thread)
-// - No internal mutable state without synchronization (size, ptr, _file are immutable)
-unsafe impl Sync for MmapRegion {}
-
 #[cfg(test)]
 mod tests {
     use crate::error::AkidaError;
@@ -236,7 +136,6 @@ mod tests {
 
     #[test]
     fn test_mmap_error_messages() {
-        // Verify AkidaError types used by MmapRegion
         let _e = AkidaError::capability_query_failed("test");
         let _e2 = AkidaError::transfer_failed("out of bounds");
     }
@@ -248,7 +147,7 @@ mod tests {
         let err = result.unwrap_err();
         let msg = err.to_string();
         assert!(
-            msg.contains("Cannot open") || msg.contains("capability") || msg.contains("resource")
+            msg.contains("mmap") || msg.contains("capability") || msg.contains("BAR")
         );
     }
 

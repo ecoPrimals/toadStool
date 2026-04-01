@@ -75,16 +75,28 @@ pub enum CryptoOperation {
     Hash,
 
     /// Generate key
-    GenerateKey { key_type: KeyType },
+    GenerateKey {
+        /// Desired key material type and size.
+        key_type: KeyType,
+    },
 
     /// Rotate key
-    RotateKey { old_key_id: String },
+    RotateKey {
+        /// Key id to retire and replace.
+        old_key_id: String,
+    },
 
     /// Export key (for backup/migration)
-    ExportKey { key_id: String },
+    ExportKey {
+        /// Key id to export.
+        key_id: String,
+    },
 
     /// Import key
-    ImportKey { key_data: Vec<u8> },
+    ImportKey {
+        /// Encrypted or raw key blob from backup.
+        key_data: Vec<u8>,
+    },
 }
 
 /// Encryption algorithm (extensible list)
@@ -100,10 +112,16 @@ pub enum EncryptionAlgorithm {
     ChaCha20Poly1305,
 
     /// RSA with OAEP
-    RsaOaep { bits: u16 },
+    RsaOaep {
+        /// RSA modulus size in bits.
+        bits: u16,
+    },
 
     /// Elliptic curve (ECDSA, ECDH)
-    EllipticCurve { curve: String },
+    EllipticCurve {
+        /// Named curve (e.g. P-256).
+        curve: String,
+    },
 
     /// Custom/provider-specific
     Custom(String),
@@ -113,13 +131,24 @@ pub enum EncryptionAlgorithm {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum KeyType {
     /// Symmetric key (AES, ChaCha)
-    Symmetric { bits: u16 },
+    Symmetric {
+        /// Key length in bits.
+        bits: u16,
+    },
 
     /// Asymmetric keypair (RSA, EC)
-    Asymmetric { algorithm: String, bits: u16 },
+    Asymmetric {
+        /// Algorithm name or family.
+        algorithm: String,
+        /// Modulus or key size in bits.
+        bits: u16,
+    },
 
     /// Signing key
-    Signing { algorithm: String },
+    Signing {
+        /// Signing algorithm name.
+        algorithm: String,
+    },
 
     /// Key encryption key
     Kek,
@@ -174,19 +203,34 @@ pub struct KeyManagementResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum KeyOperation {
     /// Generate new key
-    Generate { key_type: KeyType },
+    Generate {
+        /// Type of key to create.
+        key_type: KeyType,
+    },
 
     /// Rotate existing key
-    Rotate { key_id: String },
+    Rotate {
+        /// Key id to rotate.
+        key_id: String,
+    },
 
     /// Delete key
-    Delete { key_id: String },
+    Delete {
+        /// Key id to remove.
+        key_id: String,
+    },
 
     /// Export key for backup
-    Export { key_id: String },
+    Export {
+        /// Key id to export.
+        key_id: String,
+    },
 
     /// Import key from backup
-    Import { key_data: Vec<u8> },
+    Import {
+        /// Serialized key material.
+        key_data: Vec<u8>,
+    },
 
     /// List keys
     List,

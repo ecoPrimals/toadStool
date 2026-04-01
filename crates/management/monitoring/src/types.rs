@@ -96,7 +96,9 @@ pub enum ResourceMonitorError {
     #[error("Platform not supported: {0}")]
     PlatformNotSupported(String),
     /// Resource limit exceeded
-    #[error("Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}")]
+    #[error(
+        "Resource limit exceeded for {process_id}: {resource_type} current={current_value}, limit={limit}"
+    )]
     ResourceLimitExceeded {
         /// Process identifier
         process_id: String,
@@ -111,7 +113,9 @@ pub enum ResourceMonitorError {
     #[error("Network monitoring is not available on this platform")]
     NetworkMonitoringNotAvailable,
     /// Threshold violation detected
-    #[error("Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}")]
+    #[error(
+        "Threshold violation for {workload_id}: {resource_type} current={current_value}, threshold={threshold}"
+    )]
     ThresholdViolation {
         /// Workload identifier
         workload_id: String,

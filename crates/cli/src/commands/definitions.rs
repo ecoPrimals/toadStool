@@ -215,7 +215,7 @@ pub enum Commands {
         #[arg(long)]
         register: bool,
 
-        /// HTTP API port
+        /// JSON-RPC TCP port (0 = OS-assigned; enables cross-host access alongside Unix socket)
         #[arg(long, default_value_t = toadstool_config::defaults::network::API_PORT)]
         port: u16,
 
@@ -254,7 +254,7 @@ pub enum Commands {
         #[arg(long)]
         register: bool,
 
-        /// HTTP API port
+        /// JSON-RPC TCP port (0 = OS-assigned; enables cross-host access alongside Unix socket)
         #[arg(long, default_value_t = toadstool_config::defaults::network::API_PORT)]
         port: u16,
 

@@ -29,6 +29,7 @@ impl Clone for DiscoveryClient {
 }
 
 impl DiscoveryClient {
+    /// Create a client bound to the Songbird Unix JSON-RPC coordination socket.
     pub async fn new(connection: Arc<SongbirdConnection>) -> ToadStoolResult<Self> {
         let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
             .await
@@ -55,6 +56,7 @@ impl DiscoveryClient {
         }
     }
 
+    /// Call `coordination.discover_nodes` and return registrations (empty on RPC failure).
     pub async fn discover_nodes(&self) -> ToadStoolResult<Vec<NodeRegistration>> {
         let mut params = serde_json::json!({});
 

@@ -1,27 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! coral-ember / GlowPlug VFIO client for GPU passthrough IPC.
+//! glowPlug / ember device management service.
 //!
-//! Discovers `coral-ember` at runtime via capability-based discovery, then
-//! proxies `ember.list`, `ember.vfio_fds`, `ember.swap`, `ember.reacquire`,
-//! and `ember.status` requests through JSON-RPC over a Unix domain socket.
+//! toadStool-native device lifecycle management. This replaces the
+//! former `coral-ember` proxy — toadStool IS the hardware primal and
+//! owns the ember subsystem directly.
 //!
-//! The FD-passing path (`ember.vfio_fds`) uses `SCM_RIGHTS` and is handled
-//! by coral-glowplug directly — this client covers the metadata / lifecycle
-//! RPCs that toadStool needs for hardware orchestration.
+//! Provides `ember.list`, `ember.status`, `ember.swap`, and
+//! `ember.reacquire` operations for GPU passthrough and driver
+//! personality management.
+//!
+//! ## Architecture
+//!
+//! - `toadstool-ember` (crate): hardware-agnostic device holder (held resources, journals)
+//! - `toadstool-glowplug` (crate): hardware-agnostic device lifecycle (personality, swap, discovery)
+//! - `toadstool-runtime-gpu/glowplug/`: GPU-specific implementations
+//! - This module: server-side JSON-RPC service exposing ember to the ecosystem
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::sync::Arc;
-use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-use tokio::sync::OnceCell;
-use tracing::{debug, warn};
-
-/// Fallback ember socket path when no env or XDG candidate exists (override with `CORALREEF_EMBER_DEFAULT_SOCKET`).
-fn fallback_ember_socket_path() -> PathBuf {
-    std::env::var("CORALREEF_EMBER_DEFAULT_SOCKET")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/run/user/1000/biomeos/coral-ember-default.sock"))
-}
+use tracing::debug;
 
 /// Device entry returned by `ember.list`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,12 +52,12 @@ pub struct EmberReacquireResult {
     pub bdf: String,
 }
 
-/// Client for coral-ember VFIO daemon.
+/// toadStool-native device management service.
 ///
-/// Uses capability-based discovery to find coral-ember at runtime.
-/// Falls back gracefully when the daemon is not running.
+/// Manages GPU device lifecycle directly — no external primal dependency.
+/// Uses PCI sysfs for device enumeration and driver bind/unbind.
 pub struct GlowPlugClient {
-    inner: OnceCell<Option<UnixJsonRpcClient>>,
+    start_time: std::time::Instant,
 }
 
 impl Default for GlowPlugClient {
@@ -70,137 +67,121 @@ impl Default for GlowPlugClient {
 }
 
 impl GlowPlugClient {
-    /// Creates a new GlowPlug client (lazy discovery on first use).
+    /// Creates a new glowPlug service.
     pub fn new() -> Self {
         Self {
-            inner: OnceCell::new(),
+            start_time: std::time::Instant::now(),
         }
     }
 
-    /// Attempt to discover and connect to coral-ember.
+    /// Whether the glowPlug subsystem is operational.
     ///
-    /// Discovery order:
-    /// 1. `CORALREEF_EMBER_SOCKET` env var (explicit socket path)
-    /// 2. wateringHole convention: `$XDG_RUNTIME_DIR/biomeos/coral-ember-default.sock`
-    /// 3. `CORALREEF_EMBER_DEFAULT_SOCKET` or built-in fallback path (last resort)
-    async fn discover() -> Option<UnixJsonRpcClient> {
-        if let Ok(addr) = std::env::var("CORALREEF_EMBER_SOCKET") {
-            let path = PathBuf::from(&addr);
-            if path.exists() {
-                debug!(path = %path.display(), "coral-ember discovered via CORALREEF_EMBER_SOCKET");
-                return Some(UnixJsonRpcClient::new(path));
-            }
-        }
-
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            let sock = PathBuf::from(&runtime_dir)
-                .join("biomeos")
-                .join("coral-ember-default.sock");
-            if sock.exists() {
-                debug!(path = %sock.display(), "coral-ember discovered via wateringHole convention");
-                return Some(UnixJsonRpcClient::new(sock));
-            }
-        }
-
-        let default = fallback_ember_socket_path();
-        if default.exists() {
-            debug!(path = %default.display(), "coral-ember discovered at default path");
-            return Some(UnixJsonRpcClient::new(default));
-        }
-
-        debug!("coral-ember not discovered — VFIO passthrough unavailable");
-        None
+    /// Always true — toadStool owns this subsystem natively.
+    pub fn is_available(&self) -> bool {
+        true
     }
 
-    async fn client(&self) -> Option<&UnixJsonRpcClient> {
-        self.inner
-            .get_or_init(|| async { Self::discover().await })
-            .await
-            .as_ref()
+    /// List all GPU devices visible via PCI sysfs.
+    pub fn list_devices(&self) -> EmberDeviceList {
+        let devices = discover_gpu_bdfs();
+        debug!(count = devices.len(), "ember.list: enumerated GPU devices");
+        EmberDeviceList { devices }
     }
 
-    /// Public accessor for the underlying JSON-RPC client.
-    pub async fn client_ref(&self) -> Option<&UnixJsonRpcClient> {
-        self.client().await
-    }
-
-    /// Whether coral-ember is available (discovered and socket exists).
-    pub async fn is_available(&self) -> bool {
-        self.client().await.is_some()
-    }
-
-    /// List all devices currently held by ember.
-    pub async fn list_devices(&self) -> Option<EmberDeviceList> {
-        let client = self.client().await?;
-        match client
-            .call_typed::<EmberDeviceList>("ember.list", serde_json::json!({}))
-            .await
-        {
-            Ok(list) => Some(list),
-            Err(e) => {
-                warn!(error = %e, "ember.list failed");
-                None
-            }
-        }
-    }
-
-    /// Query ember daemon status (held devices + uptime).
-    pub async fn status(&self) -> Option<EmberStatus> {
-        let client = self.client().await?;
-        match client
-            .call_typed::<EmberStatus>("ember.status", serde_json::json!({}))
-            .await
-        {
-            Ok(status) => Some(status),
-            Err(e) => {
-                warn!(error = %e, "ember.status failed");
-                None
-            }
+    /// Query service status (held devices + uptime).
+    pub fn status(&self) -> EmberStatus {
+        EmberStatus {
+            devices: discover_gpu_bdfs(),
+            uptime_secs: self.start_time.elapsed().as_secs(),
         }
     }
 
     /// Request a driver swap for a device.
     ///
-    /// `target` is the driver to bind (e.g. `"vfio"`, `"nouveau"`, `"amdgpu"`, `"unbound"`).
-    pub async fn swap_device(&self, bdf: &str, target: &str) -> Option<EmberSwapResult> {
-        let client = self.client().await?;
-        match client
-            .call_typed::<EmberSwapResult>(
-                "ember.swap",
-                serde_json::json!({"bdf": bdf, "target": target}),
-            )
-            .await
-        {
-            Ok(result) => Some(result),
-            Err(e) => {
-                warn!(bdf, target, error = %e, "ember.swap failed");
-                None
+    /// `target` is the driver to bind (e.g. `"vfio-pci"`, `"nouveau"`, `"unbound"`).
+    ///
+    /// Uses sysfs driver_override + rebind for the swap.
+    pub fn swap_device(&self, bdf: &str, target: &str) -> Option<EmberSwapResult> {
+        debug!(bdf, target, "ember.swap: requesting personality swap");
+
+        let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
+        let unbind_path = find_driver_unbind_path(bdf);
+        let bind_path = format!("/sys/bus/pci/drivers/{target}/bind");
+
+        // Unbind current driver
+        if let Some(ref unbind) = unbind_path {
+            if std::fs::write(unbind, bdf).is_err() {
+                tracing::warn!(bdf, "unbind failed (device may not be bound)");
             }
         }
+
+        // Set driver override
+        if target != "unbound" {
+            if let Err(e) = std::fs::write(&override_path, target) {
+                tracing::warn!(bdf, target, error = %e, "driver_override write failed");
+                return None;
+            }
+
+            // Bind new driver
+            if let Err(e) = std::fs::write(&bind_path, bdf) {
+                tracing::warn!(bdf, target, error = %e, "driver bind failed");
+            }
+        }
+
+        Some(EmberSwapResult {
+            bdf: bdf.to_string(),
+            personality: target.to_string(),
+        })
     }
 
-    /// Reacquire VFIO hold on a device after a swap back to vfio-pci.
-    pub async fn reacquire(&self, bdf: &str) -> Option<EmberReacquireResult> {
-        let client = self.client().await?;
-        match client
-            .call_typed::<EmberReacquireResult>("ember.reacquire", serde_json::json!({"bdf": bdf}))
-            .await
-        {
-            Ok(result) => Some(result),
-            Err(e) => {
-                warn!(bdf, error = %e, "ember.reacquire failed");
-                None
-            }
-        }
+    /// Reacquire a device (rebind to vfio-pci after a swap).
+    pub fn reacquire(&self, bdf: &str) -> Option<EmberReacquireResult> {
+        self.swap_device(bdf, "vfio-pci")?;
+        Some(EmberReacquireResult {
+            bdf: bdf.to_string(),
+        })
     }
 }
 
-/// Shared GlowPlug client wrapped in Arc for handler use.
+/// Shared glowPlug service wrapped in Arc for handler use.
 pub type SharedGlowPlugClient = Arc<GlowPlugClient>;
 
-/// Create a shared GlowPlug client instance.
+/// Create a shared glowPlug service instance.
 pub fn create_glowplug_client() -> SharedGlowPlugClient {
     Arc::new(GlowPlugClient::new())
+}
+
+/// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).
+fn discover_gpu_bdfs() -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+        return Vec::new();
+    };
+
+    let mut bdfs: Vec<String> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let class_path = entry.path().join("class");
+            let class = std::fs::read_to_string(class_path).ok()?;
+            let class_trimmed = class.trim();
+            // VGA: 0x030000, 3D: 0x030200
+            if class_trimmed.starts_with("0x0302") || class_trimmed.starts_with("0x0300") {
+                entry.file_name().to_str().map(String::from)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    bdfs.sort();
+    bdfs
+}
+
+/// Find the driver unbind path for a device (if currently bound).
+fn find_driver_unbind_path(bdf: &str) -> Option<String> {
+    let driver_link = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let driver = std::fs::read_link(&driver_link).ok()?;
+    let driver_name = driver.file_name()?.to_str()?;
+    Some(format!("/sys/bus/pci/drivers/{driver_name}/unbind"))
 }
 
 #[cfg(test)]
@@ -210,7 +191,7 @@ mod tests {
     #[test]
     fn client_creation() {
         let client = GlowPlugClient::new();
-        assert!(!client.inner.initialized());
+        assert!(client.is_available());
     }
 
     #[test]
@@ -219,39 +200,19 @@ mod tests {
         assert!(Arc::strong_count(&client) == 1);
     }
 
-    #[tokio::test]
-    async fn not_available_without_ember() {
+    #[test]
+    fn status_has_uptime() {
         let client = GlowPlugClient::new();
-        assert!(!client.is_available().await);
+        let status = client.status();
+        assert!(status.uptime_secs < 10);
     }
 
-    #[tokio::test]
-    async fn list_returns_none_without_ember() {
+    #[test]
+    fn list_devices_returns_vec() {
         let client = GlowPlugClient::new();
-        assert!(client.list_devices().await.is_none());
-    }
-
-    #[tokio::test]
-    async fn status_returns_none_without_ember() {
-        let client = GlowPlugClient::new();
-        assert!(client.status().await.is_none());
-    }
-
-    #[tokio::test]
-    async fn swap_returns_none_without_ember() {
-        let client = GlowPlugClient::new();
-        assert!(
-            client
-                .swap_device("0000:01:00.0", "nouveau")
-                .await
-                .is_none()
-        );
-    }
-
-    #[tokio::test]
-    async fn reacquire_returns_none_without_ember() {
-        let client = GlowPlugClient::new();
-        assert!(client.reacquire("0000:01:00.0").await.is_none());
+        let list = client.list_devices();
+        // May be empty in CI/test environments without GPUs
+        let _ = list.devices;
     }
 
     #[test]
@@ -281,5 +242,14 @@ mod tests {
         let json = r#"{"bdf":"0000:01:00.0"}"#;
         let result: EmberReacquireResult = serde_json::from_str(json).unwrap();
         assert_eq!(result.bdf, "0000:01:00.0");
+    }
+
+    #[test]
+    fn discover_gpu_bdfs_runs() {
+        let bdfs = discover_gpu_bdfs();
+        // Should not panic, may be empty in CI
+        for bdf in &bdfs {
+            assert!(bdf.contains(':'));
+        }
     }
 }

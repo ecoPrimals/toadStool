@@ -18,37 +18,59 @@ pub type NodeId = super::node::NodeId;
 // Message Types
 // ============================================================================
 
+/// In-process job control messages for the Songbird integration path.
 pub enum SongbirdJobMessage {
+    /// Run a job and send the result on `reply_channel`.
     ExecuteJob {
+        /// Work to execute.
         job: Box<UniversalJob>,
+        /// Channel for the final [`SongbirdJobResponse`].
         reply_channel: mpsc::Sender<SongbirdJobResponse>,
     },
+    /// Request cancellation of a job by id.
     CancelJob {
+        /// Target job identifier.
         job_id: Uuid,
     },
+    /// Subtask or job status changed.
     StatusUpdate {
+        /// Job or subtask identifier.
         job_id: Uuid,
+        /// New status.
         status: super::job_types::SubTaskStatus,
     },
 }
 
+/// Broadcast payloads for capability, health, or custom fan-out channels.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SongbirdBroadcastMessage {
+    /// Node capabilities changed.
     CapabilityUpdate {
+        /// Originating node.
         node_id: NodeId,
+        /// Advertised capabilities.
         capabilities: NodeCapabilities,
+        /// When the update was produced.
         #[serde(with = "toadstool_common::system_time_serde")]
         timestamp: SystemTime,
     },
+    /// Node health signal.
     HealthUpdate {
+        /// Originating node.
         node_id: NodeId,
+        /// Opaque health summary (e.g. `"ok"`, `"degraded"`).
         health_status: String,
+        /// When the update was produced.
         #[serde(with = "toadstool_common::system_time_serde")]
         timestamp: SystemTime,
     },
+    /// Application-defined broadcast.
     CustomMessage {
+        /// Routing label for subscribers.
         message_type: String,
+        /// JSON payload.
         payload: serde_json::Value,
+        /// When the message was produced.
         #[serde(with = "toadstool_common::system_time_serde")]
         timestamp: SystemTime,
     },

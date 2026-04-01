@@ -95,40 +95,37 @@ impl std::fmt::Debug for WebGpuAllocation {
 unsafe impl Send for WebGpuAllocation {}
 unsafe impl Sync for WebGpuAllocation {}
 
-/// CPU allocation details
+/// CPU allocation details.
+///
+/// Backed by [`toadstool_hw_safe::AlignedAlloc`] for RAII-managed aligned
+/// allocation. No unsafe needed — slice access delegates to `AlignedAlloc`.
 #[derive(Debug)]
 pub struct CpuAllocation {
-    /// Allocated pointer
-    pub ptr: *mut u8,
-
-    /// Size in bytes
-    pub size: usize,
+    /// RAII aligned allocation (zero-initialized, cache-line aligned).
+    pub alloc: toadstool_hw_safe::AlignedAlloc,
 }
 
 impl CpuAllocation {
     /// Return a mutable slice over the allocation.
-    ///
-    /// The allocation must be constructed by a backend (e.g. `CpuBackend`) which
-    /// guarantees `ptr` is valid for `size` bytes and properly aligned.
-    ///
-    /// No safe alternative: `from_raw_parts_mut` is required to create a slice from
-    /// the raw ptr+size returned by the allocator. CpuBackend uses AlignedBuffer
-    /// which guarantees valid, aligned, exclusive allocation.
-    pub const fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: Invariants: ptr valid for size bytes; properly aligned; exclusive access.
-        // Satisfied: ptr from CpuBackend (AlignedBuffer::into_raw); size matches; &mut self
-        // guarantees no aliasing. Violation: invalid ptr/size → UB; aliasing → data race.
-        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        self.alloc.as_mut_slice()
+    }
+
+    /// Return an immutable slice over the allocation.
+    pub fn as_slice(&self) -> &[u8] {
+        self.alloc.as_slice()
+    }
+
+    /// Raw pointer for GPU interop.
+    pub fn ptr(&self) -> *mut u8 {
+        self.alloc.as_ptr().as_ptr()
+    }
+
+    /// Allocation size in bytes.
+    pub fn size(&self) -> usize {
+        self.alloc.size()
     }
 }
-
-// SAFETY: CpuAllocation is Send/Sync because: (1) ptr points to heap-allocated memory
-// owned exclusively by this allocation; (2) No interior mutability; not shared without
-// synchronization; (3) Raw pointer is not dereferenced across threads without exclusive
-// access. Violation: use-after-free if allocation freed while in use; data races if
-// accessed concurrently without sync.
-unsafe impl Send for CpuAllocation {}
-unsafe impl Sync for CpuAllocation {}
 
 /// Unified memory backend trait
 ///

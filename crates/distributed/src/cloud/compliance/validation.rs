@@ -20,8 +20,13 @@ use crate::cloud::types::{
 /// Result of a single compliance check.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum CheckResult {
+    /// Check succeeded.
     Pass,
-    Fail { reason: String },
+    /// Check failed with an explanation.
+    Fail {
+        /// Why the check did not pass.
+        reason: String,
+    },
 }
 
 /// A single compliance check with pass/fail and optional details.
@@ -51,12 +56,15 @@ pub struct ComplianceReport {
 /// Compliance-related errors.
 #[derive(Debug, Error)]
 pub enum ComplianceError {
+    /// A compliance rule returned a failure result.
     #[error("Compliance check failed: {0}")]
     CheckFailed(String),
 
+    /// Provider lacks region metadata needed for sovereignty validation.
     #[error("Provider '{0}' has no region information for sovereignty check")]
     NoRegionInfo(String),
 
+    /// Security tier string or value could not be parsed or applied.
     #[error("Invalid security tier: {0}")]
     InvalidSecurityTier(String),
 }
@@ -71,12 +79,16 @@ impl From<ComplianceError> for ToadStoolError {
 
 /// Cloud compliance enforcer with data sovereignty, security tier, and isolation checks.
 pub struct CloudComplianceEnforcer {
+    /// Certifications, regions, and data-sovereignty rules to enforce.
     pub(crate) requirements: ComplianceRequirements,
+    /// Registered provider id → advertised capabilities.
     pub(crate) provider_compliance: std::collections::HashMap<String, CloudCapabilities>,
+    /// Required security features implied by this tier.
     pub(crate) security_tier: SecurityTier,
 }
 
 impl CloudComplianceEnforcer {
+    /// Creates an enforcer from compliance configuration (default security tier: standard).
     pub async fn new(config: ComplianceConfig) -> ToadStoolResult<Self> {
         let security_tier = SecurityTier::Standard; // Default
         Ok(Self {
@@ -97,6 +109,7 @@ impl CloudComplianceEnforcer {
         self
     }
 
+    /// Registers or updates a provider's capabilities for reports and job constraints.
     pub async fn add_provider_compliance(
         &mut self,
         name: &str,
@@ -143,6 +156,7 @@ impl CloudComplianceEnforcer {
         })
     }
 
+    /// Builds job-level compliance constraints from currently compliant providers and policy.
     pub async fn get_constraints_for_job(
         &self,
         _job: &UniversalJob,
@@ -160,6 +174,7 @@ impl CloudComplianceEnforcer {
         })
     }
 
+    /// Provider names whose [`ComplianceReport::overall_pass`] is true.
     pub(crate) fn get_compliant_providers(&self) -> Vec<String> {
         self.provider_compliance
             .keys()

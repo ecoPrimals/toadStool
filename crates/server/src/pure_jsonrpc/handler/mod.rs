@@ -62,9 +62,11 @@ impl JsonRpcHandler {
         version: impl Into<Arc<str>>,
         error_count: Option<Arc<AtomicU64>>,
     ) -> Self {
-        let local_gate_id = std::env::var("HOSTNAME")
-            .or_else(|_| std::env::var("TOADSTOOL_GATE_ID"))
-            .or_else(|_| std::fs::read_to_string("/etc/hostname").map(|h| h.trim().to_string()))
+        let local_gate_id = std::env::var("TOADSTOOL_GATE_ID")
+            .or_else(|_| std::env::var("HOSTNAME"))
+            .or_else(|_| {
+                std::fs::read_to_string("/etc/hostname").map(|h| h.trim().to_string())
+            })
             .unwrap_or_else(|_| String::from("local"));
         Self {
             version: version.into(),
@@ -303,30 +305,19 @@ impl JsonRpcHandler {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Ember domain — GPU fleet status via coral-ember daemon
+    // Ember domain — toadStool-native GPU device management
     // ═══════════════════════════════════════════════════════════
 
     async fn ember_list(&self) -> Result<serde_json::Value, JsonRpcError> {
-        match self.glowplug.list_devices().await {
-            Some(list) => Ok(serde_json::to_value(list)
-                .unwrap_or_else(|_| serde_json::json!({"devices": []}))),
-            None => Ok(serde_json::json!({
-                "devices": [],
-                "available": false,
-                "hint": "coral-ember daemon not running"
-            })),
-        }
+        let list = self.glowplug.list_devices();
+        Ok(serde_json::to_value(list)
+            .unwrap_or_else(|_| serde_json::json!({"devices": []})))
     }
 
     async fn ember_status(&self) -> Result<serde_json::Value, JsonRpcError> {
-        match self.glowplug.status().await {
-            Some(status) => Ok(serde_json::to_value(status)
-                .unwrap_or_else(|_| serde_json::json!({"available": false}))),
-            None => Ok(serde_json::json!({
-                "available": false,
-                "hint": "coral-ember daemon not running"
-            })),
-        }
+        let status = self.glowplug.status();
+        Ok(serde_json::to_value(status)
+            .unwrap_or_else(|_| serde_json::json!({"available": false})))
     }
 }
 

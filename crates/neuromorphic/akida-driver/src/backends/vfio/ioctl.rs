@@ -32,6 +32,7 @@ unsafe impl<const OP: Opcode> Ioctl for VfioIoctlReturn<OP> {
         self.arg as *mut std::ffi::c_void
     }
 
+    // SAFETY: trivial — wraps kernel return code, no pointer dereference.
     unsafe fn output_from_ptr(
         out: IoctlOutput,
         _extract_output: *mut std::ffi::c_void,
@@ -60,6 +61,7 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioIoctlPtr<OP, T> {
         self.ptr.cast()
     }
 
+    // SAFETY: trivial — discards output, no pointer dereference.
     unsafe fn output_from_ptr(
         _out: IoctlOutput,
         _extract_output: *mut std::ffi::c_void,

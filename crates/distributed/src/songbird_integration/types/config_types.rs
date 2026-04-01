@@ -9,6 +9,7 @@ use toadstool_common::config_bases::ConnectionPoolConfig;
 
 use super::protocols::ProtocolConfig;
 
+/// Service authentication settings (re-exported for Songbird config).
 pub type AuthConfig = ServiceAuthConfig;
 
 // ============================================================================

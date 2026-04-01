@@ -289,11 +289,14 @@ impl SongbirdConnection {
     }
 }
 
-/// Connection statistics
+/// Snapshot of discovered Songbird services and cache freshness.
 #[derive(Debug, Clone)]
 pub struct ConnectionStats {
+    /// Number of services in the cached discovery result set.
     pub available_services: usize,
+    /// Wall-clock time of the last discovery refresh, if any.
     pub last_discovery: Option<SystemTime>,
+    /// Seconds since `last_discovery`, or `None` if never refreshed.
     pub cache_age_seconds: Option<i64>,
 }
 

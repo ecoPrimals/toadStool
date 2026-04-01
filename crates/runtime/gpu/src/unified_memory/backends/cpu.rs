@@ -1,121 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // Aligned allocation via alloc::Layout for GPU-compatible buffers
-//! CPU fallback backend - Always available
+//! CPU fallback backend — Always available.
 //!
-//! # Safety Evolution
+//! Delegates aligned allocation to [`toadstool_hw_safe::AlignedAlloc`],
+//! eliminating duplicate unsafe alloc/dealloc code.
 //!
-//! This module uses safe Rust patterns where possible:
-//! - `AlignedBuffer`: RAII wrapper for aligned memory with automatic cleanup
-//! - `NonNull`: Null-checked pointer type for better safety guarantees
-//! - Encapsulated unsafe: All raw pointer operations in a single, audited location
-//!
-//! **Why not `Vec<u8>`?** `Vec` uses default allocator alignment (typically 8–16 bytes).
+//! **Why not `Vec<u8>`?** `Vec` uses default allocator alignment (typically 8-16 bytes).
 //! Unified memory backends require 64-byte (cache-line) alignment for DMA and coherent
-//! access. `std::alloc::alloc_zeroed` with a custom layout is the standard approach.
-//! External crates (e.g. `aligned-vec`) exist but use std::alloc internally; we avoid
-//! the dependency and document the unsafe invariants explicitly.
-//!
-//! **Audit (2026)**: Verified that `Vec<u8>` cannot provide 64-byte alignment — std has
-//! no API for custom-aligned Vec; `Layout::from_size_align` + raw alloc is necessary.
+//! access. `AlignedAlloc` wraps `std::alloc::alloc_zeroed` with a custom layout.
 
 use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, CpuAllocation, UnifiedMemoryBackend},
     types::*,
 };
 use async_trait::async_trait;
-use std::alloc::{Layout, dealloc};
-use std::ptr::NonNull;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-
-/// RAII wrapper for aligned memory allocation (Safe Rust pattern)
-///
-/// This struct encapsulates unsafe pointer operations and ensures memory is
-/// properly deallocated via Drop. The `ManuallyDrop` on the inner buffer
-/// prevents double-free when converting to raw pointer for backend use.
-///
-/// # Safety Invariants
-///
-/// - `ptr` is always valid and non-null (guaranteed by NonNull)
-/// - `size` and `align` exactly match the allocation parameters
-/// - Memory is zeroed on allocation
-/// - Memory is freed exactly once in Drop (unless taken via `into_raw`)
-struct AlignedBuffer {
-    ptr: NonNull<u8>,
-    size: usize,
-    align: usize,
-}
-
-impl AlignedBuffer {
-    /// Allocate aligned, zeroed memory
-    ///
-    /// # Errors
-    /// Returns error if alignment is not power of 2 or allocation fails (OOM)
-    fn new(size: usize, align: usize) -> ToadStoolResult<Self> {
-        if !align.is_power_of_two() {
-            return Err(ToadStoolError::runtime("Alignment must be power of 2"));
-        }
-
-        let layout = Layout::from_size_align(size, align)
-            .map_err(|e| ToadStoolError::runtime(format!("Invalid layout: {e}")))?;
-
-        // SAFETY: Invariants: layout valid (size, align power-of-two). Satisfied:
-        // from_size_align succeeded. alloc_zeroed returns ptr or null (checked).
-        // Dealloc in Drop with same layout. Violation: invalid layout → UB; mismatched dealloc → use-after-free.
-        let raw = unsafe { std::alloc::alloc_zeroed(layout) };
-        let ptr = NonNull::new(raw).ok_or_else(|| ToadStoolError::runtime("Out of memory"))?;
-
-        Ok(Self { ptr, size, align })
-    }
-
-    /// Get the raw pointer (for use in allocations)
-    const fn _as_ptr(&self) -> *mut u8 {
-        self.ptr.as_ptr()
-    }
-
-    /// Consume the buffer and return the raw pointer
-    /// Caller takes ownership and responsibility for deallocation
-    const fn into_raw(self) -> *mut u8 {
-        let ptr = self.ptr.as_ptr();
-        // Prevent Drop from running (caller now owns memory)
-        std::mem::forget(self);
-        ptr
-    }
-
-    /// Create from raw pointer (takes ownership)
-    ///
-    /// # Safety
-    /// - `ptr` must be non-null and point to valid memory from alloc_zeroed with the
-    ///   given layout (size, align)
-    /// - `size` and `align` must exactly match the original allocation parameters
-    /// - Caller transfers ownership: must not use ptr after this, must not dealloc
-    /// - If Some is returned, Drop deallocates; caller must not dealloc
-    ///
-    /// Violation: mismatched layout → UB on Drop; double-free if caller also deallocs.
-    unsafe fn from_raw(ptr: *mut u8, size: usize, align: usize) -> Option<Self> {
-        NonNull::new(ptr).map(|ptr| Self { ptr, size, align })
-    }
-}
-
-impl Drop for AlignedBuffer {
-    #[allow(clippy::expect_used)]
-    fn drop(&mut self) {
-        // size/align are immutable after construction and were validated
-        // at alloc time, so from_size_align cannot fail here.
-        // Drop cannot propagate errors, so expect is the correct choice.
-        let layout = Layout::from_size_align(self.size, self.align)
-            .expect("layout valid: matches original allocation");
-        // SAFETY: Invariants: ptr and layout must match original alloc; no outstanding refs.
-        // Satisfied: ptr/layout from new(); Drop runs once. Violation: mismatched layout → UB; double-free → UB.
-        unsafe { dealloc(self.ptr.as_ptr(), layout) };
-    }
-}
-
-// SAFETY: AlignedBuffer owns its allocation exclusively. No interior mutability;
-// ptr/size/align are immutable after construction. Drop deallocates with the same
-// Layout used at allocation time. Violation: use-after-free or double-free if
-// ownership/aliasing invariants are broken.
-unsafe impl Send for AlignedBuffer {}
-unsafe impl Sync for AlignedBuffer {}
+use toadstool_hw_safe::AlignedAlloc;
 
 /// CPU shared memory backend
 ///
@@ -128,17 +27,6 @@ unsafe impl Sync for AlignedBuffer {}
 /// - **Coherent**: No synchronization needed
 /// - **Fast CPU access**: Direct memory access
 /// - **No GPU acceleration**: CPU-only, no actual GPU access
-///
-/// # Safety Evolution
-///
-/// Uses `AlignedBuffer` RAII wrapper to minimize unsafe code and ensure
-/// proper memory management with automatic cleanup.
-///
-/// # Use Cases
-///
-/// - Development and testing
-/// - Systems without GPU
-/// - Graceful degradation
 pub struct CpuBackend {
     capabilities: UnifiedMemoryCapabilities,
 }
@@ -150,34 +38,13 @@ impl CpuBackend {
             capabilities: UnifiedMemoryCapabilities {
                 backend_type: BackendType::Cpu,
                 max_allocation_size: 1024 * 1024 * 1024 * 4, // 4GB
-                zero_copy: true,                             // Technically true (no copies)
-                coherent: true,                              // Always coherent
-                cpu_fast_access: true,                       // Direct CPU access
-                gpu_fast_access: false,                      // No actual GPU
-                alignment_requirement: 64,                   // Cache line alignment
+                zero_copy: true,
+                coherent: true,
+                cpu_fast_access: true,
+                gpu_fast_access: false,
+                alignment_requirement: 64,
             },
         })
-    }
-
-    /// Allocate aligned memory using safe RAII wrapper
-    ///
-    /// **EVOLVED**: Uses `AlignedBuffer` for safe memory management
-    fn allocate_aligned_safe(size: usize, align: usize) -> ToadStoolResult<AlignedBuffer> {
-        AlignedBuffer::new(size, align)
-    }
-
-    /// Free aligned memory safely
-    ///
-    /// **EVOLVED**: Uses `AlignedBuffer` RAII for automatic cleanup.
-    /// This function reconstructs the buffer and lets Drop handle deallocation.
-    fn free_aligned_safe(ptr: *mut u8, size: usize, align: usize) {
-        if !ptr.is_null() {
-            // SAFETY: Invariants: ptr from our alloc; size/align match. Caller transfers ownership.
-            // Satisfied: ptr/size/align from allocate_aligned_safe. Violation: wrong allocator or mismatched params → UB.
-            if let Some(buffer) = unsafe { AlignedBuffer::from_raw(ptr, size, align) } {
-                drop(buffer); // Explicit drop for clarity (would happen anyway)
-            }
-        }
     }
 }
 
@@ -187,7 +54,7 @@ impl BackendInitializer for CpuBackend {
     }
 
     fn is_available() -> bool {
-        true // Always available
+        true
     }
 }
 
@@ -211,29 +78,22 @@ impl UnifiedMemoryBackend for CpuBackend {
         size: usize,
         _flags: MemoryFlags,
     ) -> ToadStoolResult<BackendAllocation> {
-        // EVOLVED: Use safe RAII wrapper for allocation
-        let buffer = Self::allocate_aligned_safe(size, self.capabilities.alignment_requirement)?;
-        let ptr = buffer.into_raw(); // Transfer ownership to CpuAllocation
+        let alloc = AlignedAlloc::new(size, self.capabilities.alignment_requirement)
+            .map_err(|e| ToadStoolError::runtime(format!("CPU alloc: {e}")))?;
 
         tracing::debug!(
-            "CPU backend allocated {} bytes at address {:#x} (alignment {}, zeroed)",
-            size,
-            ptr as usize,
+            "CPU backend allocated {} bytes (alignment {}, zeroed)",
+            alloc.size(),
             self.capabilities.alignment_requirement
         );
 
-        Ok(BackendAllocation::Cpu(CpuAllocation { ptr, size }))
+        Ok(BackendAllocation::Cpu(CpuAllocation { alloc }))
     }
 
     async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {
         match allocation {
-            BackendAllocation::Cpu(alloc) => {
-                // EVOLVED: Use safe deallocation via RAII wrapper
-                Self::free_aligned_safe(
-                    alloc.ptr,
-                    alloc.size,
-                    self.capabilities.alignment_requirement,
-                );
+            BackendAllocation::Cpu(_alloc) => {
+                // AlignedAlloc handles dealloc in Drop — just let it drop
                 Ok(())
             }
             _ => Err(ToadStoolError::runtime(
@@ -244,7 +104,7 @@ impl UnifiedMemoryBackend for CpuBackend {
 
     async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
         match allocation {
-            BackendAllocation::Cpu(alloc) => Ok(alloc.ptr),
+            BackendAllocation::Cpu(alloc) => Ok(alloc.ptr()),
             _ => Err(ToadStoolError::runtime(
                 "Invalid allocation type for CPU backend",
             )),
@@ -253,18 +113,17 @@ impl UnifiedMemoryBackend for CpuBackend {
 
     fn get_device_ptr(&self, allocation: &BackendAllocation) -> *const u8 {
         match allocation {
-            BackendAllocation::Cpu(alloc) => alloc.ptr as *const u8,
+            BackendAllocation::Cpu(alloc) => alloc.ptr() as *const u8,
             _ => std::ptr::null(),
         }
     }
 
-    // CPU backend doesn't need sync (always coherent)
     async fn sync_cpu_to_device(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
-        Ok(()) // No-op
+        Ok(())
     }
 
     async fn sync_device_to_cpu(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
-        Ok(()) // No-op
+        Ok(())
     }
 
     fn is_valid(&self, allocation: &BackendAllocation) -> bool {
@@ -291,22 +150,19 @@ mod tests {
     async fn test_cpu_backend_allocation() {
         let backend = CpuBackend::new().unwrap();
 
-        // Allocate memory
         let mut allocation = backend
             .allocate_unified(4096, MemoryFlags::default())
             .await
             .unwrap();
 
-        // Should be CPU allocation
         assert!(matches!(allocation, BackendAllocation::Cpu(_)));
 
-        // Get pointers
         let cpu_ptr = backend.map_cpu_ptr(&allocation).await.unwrap();
         let device_ptr = backend.get_device_ptr(&allocation);
 
         assert!(!cpu_ptr.is_null());
         assert!(!device_ptr.is_null());
-        assert_eq!(cpu_ptr as *const u8, device_ptr); // Same pointer!
+        assert_eq!(cpu_ptr as *const u8, device_ptr);
 
         let BackendAllocation::Cpu(ref mut alloc) = allocation else {
             panic!("expected CPU allocation");
@@ -314,7 +170,6 @@ mod tests {
         alloc.as_mut_slice().fill(42);
         assert_eq!(alloc.as_mut_slice()[0], 42);
 
-        // Free
         backend.free_unified(allocation).await.unwrap();
     }
 
@@ -326,7 +181,6 @@ mod tests {
             .await
             .unwrap();
 
-        // Sync should be no-op (always coherent)
         let result = backend.sync_cpu_to_device(&allocation).await;
         assert!(result.is_ok());
 

@@ -9,7 +9,9 @@ mod security_tier;
 mod tests;
 mod validation;
 
+/// Minimum security posture (standard vs high) for compliance checks.
 pub use security_tier::SecurityTier;
+/// Compliance reports, per-check results, and the cloud compliance enforcer.
 pub use validation::{
     CheckResult, CloudComplianceEnforcer, ComplianceCheck, ComplianceError, ComplianceReport,
 };

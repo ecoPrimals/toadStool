@@ -1,0 +1,24 @@
+[package]
+name = "toadstool-hw-safe"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Safe wrappers for hardware primitives — the single unsafe containment zone for mmap, volatile MMIO, aligned allocation, and memory locking"
+keywords = ["hardware", "mmap", "mmio", "unsafe", "wrapper"]
+categories.workspace = true
+
+[dependencies]
+rustix = { version = "1", features = ["mm"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

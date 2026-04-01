@@ -13,6 +13,7 @@ use super::types::{
 };
 
 impl SongbirdBroadcaster {
+    /// Initialize channels from config and prepare subscription management.
     pub async fn new(
         config: BroadcastConfig,
         _connection: Arc<SongbirdConnection>,
@@ -78,12 +79,14 @@ impl SongbirdBroadcaster {
         Ok(self.subscription_manager.subscribe(channel_name))
     }
 
+    /// Close dynamic subscriptions for the named channel.
     pub async fn unsubscribe_from_channel(&self, channel_name: &str) -> ToadStoolResult<()> {
         debug!(channel = %channel_name, "Closing channel subscription");
         self.subscription_manager.close_channel(channel_name);
         Ok(())
     }
 
+    /// Deliver a message scoped to target nodes (currently delegates to `broadcast`).
     pub async fn send_targeted_message(
         &self,
         target_nodes: &[String],

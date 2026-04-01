@@ -10,8 +10,11 @@ use super::config::DataSovereigntyRequirement;
 /// Cloud health checker
 #[derive(Debug, Clone)]
 pub struct CloudHealthChecker {
+    /// Health endpoint URL or host to probe.
     pub endpoint: String,
+    /// Interval between health checks.
     pub check_interval: Duration,
+    /// Per-request timeout.
     pub timeout: Duration,
 }
 
@@ -29,32 +32,43 @@ impl CloudHealthChecker {
 /// Compliance requirements
 #[derive(Debug, Clone)]
 pub struct ComplianceRequirements {
+    /// Required compliance certifications (SOC2, ISO, etc.).
     pub certifications: Vec<ComplianceCertification>,
+    /// Allowed or required region identifiers.
     pub regions: Vec<String>,
+    /// Per-data-type sovereignty and region rules.
     pub data_sovereignty: Vec<DataSovereigntyRequirement>,
 }
 
 /// Compliance constraints for a job
 #[derive(Debug, Clone)]
 pub struct ComplianceConstraints {
+    /// Provider names permitted for this job.
     pub allowed_providers: Vec<String>,
+    /// Regions the job must run in.
     pub required_regions: Vec<String>,
+    /// Whether encryption at rest/in transit is mandatory.
     pub encryption_required: bool,
 }
 
 /// Trust level for cloud providers
 #[derive(Debug, Clone, Default)]
 pub enum TrustLevel {
+    /// Provider is treated as fully trusted by default.
     #[default]
     Trusted,
+    /// Provider is not trusted without extra validation.
     Untrusted,
+    /// Trust depends on policy or runtime checks.
     Conditional,
 }
 
 /// Trust configuration
 #[derive(Debug, Clone, Default)]
 pub struct TrustConfig {
+    /// Whether explicit validation must run before use.
     pub validation_required: bool,
+    /// Minimum score or threshold to treat a provider as trusted.
     pub trust_threshold: f64,
 }
 

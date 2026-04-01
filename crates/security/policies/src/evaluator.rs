@@ -211,7 +211,8 @@ impl ConditionEvaluator {
 
             PolicyCondition::NetworkAccess { hosts, ports } => {
                 tracing::warn!(
-                    ?hosts, ?ports,
+                    ?hosts,
+                    ?ports,
                     "NetworkAccess policy condition evaluated as deny-by-default — \
                      enforcement requires sandbox crate integration"
                 );
@@ -220,7 +221,8 @@ impl ConditionEvaluator {
 
             PolicyCondition::FileSystemAccess { paths, operations } => {
                 tracing::warn!(
-                    ?paths, ?operations,
+                    ?paths,
+                    ?operations,
                     "FileSystemAccess policy condition evaluated as deny-by-default — \
                      enforcement requires sandbox crate integration"
                 );

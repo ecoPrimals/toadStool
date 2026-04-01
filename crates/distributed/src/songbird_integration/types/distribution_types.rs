@@ -13,19 +13,28 @@ use super::job_types::{
 // Metrics and Distribution Support
 // ============================================================================
 
+/// Normalized load fractions (0.0–1.0) for CPU, memory, and network.
 pub struct LoadMetric {
+    /// Estimated CPU utilization relative to capacity.
     pub cpu_load: f64,
+    /// Estimated memory utilization relative to capacity.
     pub memory_load: f64,
+    /// Estimated network utilization relative to capacity.
     pub network_load: f64,
 }
 
+/// Configuration for splitting a universal job into subtasks.
 pub struct JobSplittingStrategy {
+    /// How to partition work (data-parallel, task-parallel, etc.).
     pub strategy_type: SplittingStrategyType,
+    /// Upper bound on the number of subtasks to create.
     pub max_subtasks: usize,
+    /// Minimum size of each subtask (implementation-defined units).
     pub min_subtask_size: usize,
 }
 
 impl JobSplittingStrategy {
+    /// Split `job` into subtasks according to this strategy.
     pub async fn split_job(&self, job: &UniversalJob) -> Vec<SubTask> {
         if self.max_subtasks <= 1 {
             return vec![];
@@ -97,17 +106,26 @@ impl JobSplittingStrategy {
     }
 }
 
+/// How a job should be split across workers.
 pub enum SplittingStrategyType {
+    /// Partition data across parallel workers.
     DataParallel,
+    /// Run independent tasks in parallel.
     TaskParallel,
+    /// Staged pipeline parallelism.
     Pipeline,
+    /// Map phase then reduce.
     MapReduce,
+    /// Custom strategy identified by name.
     Custom(String),
 }
 
+/// Re-export of the crate-wide distribution algorithm type.
 pub type DistributionAlgorithm = crate::common::distribution::DistributionAlgorithm;
 
+/// Produces load estimates from job requirements and local system state.
 pub struct LoadEstimator {
+    /// Name or identifier of the estimation model (e.g. `"linear"`).
     pub estimation_model: String,
 }
 
@@ -120,6 +138,7 @@ impl Default for LoadEstimator {
 }
 
 impl LoadEstimator {
+    /// Compute approximate CPU, memory, and network load for `job`.
     pub async fn estimate_load(&self, job: &UniversalJob) -> LoadMetric {
         let cpu_cores = std::thread::available_parallelism()
             .map(|n| n.get() as f64)
@@ -158,7 +177,9 @@ impl LoadEstimator {
     }
 }
 
+/// Builds coordination jobs from a distribution plan.
 pub struct JobCoordinator {
+    /// High-level coordination mode name (e.g. `"parallel"`).
     pub coordination_strategy: String,
 }
 
@@ -171,6 +192,7 @@ impl Default for JobCoordinator {
 }
 
 impl JobCoordinator {
+    /// Turn `plan` into a `CoordinationJob` with a matching completion strategy.
     pub async fn coordinate(&self, plan: &DistributionPlan) -> CoordinationJob {
         let completion_strategy = match plan.coordination_strategy {
             CoordinationStrategy::Sequential => CompletionStrategy::WaitForAll,
@@ -186,6 +208,7 @@ impl JobCoordinator {
         }
     }
 
+    /// Create a coordinator using the given strategy label.
     #[must_use]
     pub fn with_strategy(strategy: &str) -> Self {
         Self {

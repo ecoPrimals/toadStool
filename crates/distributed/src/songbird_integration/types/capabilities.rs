@@ -7,16 +7,20 @@ use std::time::SystemTime;
 
 use super::node::{NodeCapabilities, NodeId};
 
+/// In-memory map of the latest announced capabilities per node.
 #[derive(Default)]
 pub struct CapabilityTracker {
+    /// Latest `NodeCapabilities` keyed by node id.
     pub capabilities: HashMap<NodeId, NodeCapabilities>,
 }
 
 impl CapabilityTracker {
+    /// Replace or insert capabilities for `node_id`.
     pub fn update_capabilities(&mut self, node_id: NodeId, capabilities: NodeCapabilities) {
         self.capabilities.insert(node_id, capabilities);
     }
 
+    /// Look up capabilities for a node, if known.
     pub fn get_capabilities(&self, node_id: &NodeId) -> Option<&NodeCapabilities> {
         self.capabilities.get(node_id)
     }
@@ -24,7 +28,9 @@ impl CapabilityTracker {
 
 /// Snapshot of node capabilities at a point in time
 pub struct CapabilitySnapshot {
+    /// When the snapshot was taken.
     pub timestamp: SystemTime,
+    /// Capabilities per node at `timestamp`.
     pub capabilities: HashMap<NodeId, NodeCapabilities>,
 }
 

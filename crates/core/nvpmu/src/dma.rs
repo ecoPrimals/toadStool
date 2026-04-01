@@ -97,6 +97,8 @@ unsafe impl<const OP: Opcode, T> Ioctl for DmaIoctl<OP, T> {
     fn as_ptr(&mut self) -> *mut std::ffi::c_void {
         self.ptr.cast()
     }
+    // SAFETY: output_from_ptr is trivial — we discard the raw output and
+    // return Ok(()). No pointer dereference; no memory access.
     unsafe fn output_from_ptr(
         _: IoctlOutput,
         _: *mut std::ffi::c_void,
@@ -168,6 +170,7 @@ impl Drop for DmaBuffer {
         let ioctl = DmaIoctl::<OP_IOMMU_UNMAP_DMA, _> {
             ptr: std::ptr::from_mut(&mut unmap),
         };
+        // SAFETY: fd is valid (borrowed above); struct matches kernel VFIO unmap ABI.
         let _ = unsafe { rustix::ioctl::ioctl(fd, ioctl) };
 
         if self.huge_page {
@@ -253,6 +256,7 @@ impl DmaAllocator {
             size: aligned_size as u64,
         };
 
+        // SAFETY: container_fd is a valid VFIO container fd held for the lifetime of DmaAllocator.
         let fd = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
         let ioctl = DmaIoctl::<OP_IOMMU_MAP_DMA, _> {
             ptr: std::ptr::from_mut(&mut dma_map),
@@ -260,6 +264,7 @@ impl DmaAllocator {
 
         // SAFETY: container_fd from valid VFIO open; struct has correct argsz and layout.
         if let Err(e) = unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+            // SAFETY: cleanup on failed DMA map — munlock and dealloc match the alloc above.
             unsafe {
                 let _ = munlock(vaddr.cast(), aligned_size);
                 std::alloc::dealloc(vaddr, layout);
@@ -357,12 +362,15 @@ impl DmaAllocator {
             size: aligned_size as u64,
         };
 
+        // SAFETY: container_fd is a valid VFIO container fd held for the lifetime of DmaAllocator.
         let fd = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
         let ioctl = DmaIoctl::<OP_IOMMU_MAP_DMA, _> {
             ptr: std::ptr::from_mut(&mut dma_map),
         };
 
+        // SAFETY: container_fd valid; struct layout matches kernel ABI.
         if let Err(e) = unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+            // SAFETY: cleanup on failed DMA map — munlock and munmap match the mmap above.
             unsafe {
                 let _ = munlock(vaddr.cast(), aligned_size);
                 let _ = munmap(vaddr.cast(), aligned_size);

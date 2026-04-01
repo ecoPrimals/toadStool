@@ -63,12 +63,7 @@ impl ComputeContext for OpenClComputeContext {
                 // Execute (no extra args for general compute/matrix multiply)
                 let extra_args = if matches!(operation, Operation::Reduction) {
                     // Reduction kernel needs the 'n' parameter
-                    vec![
-                        workload
-                            .inputs
-                            .first()
-                            .map_or(0, |i| i.data.len() as i32),
-                    ]
+                    vec![workload.inputs.first().map_or(0, |i| i.data.len() as i32)]
                 } else {
                     vec![]
                 };

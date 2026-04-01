@@ -4,6 +4,9 @@ members = [
     # Core crates
     "crates/core/common",
     "crates/core/config", 
+    "crates/core/ember",        # Hardware-agnostic device holder (glowPlug subsystem)
+    "crates/core/glowplug",     # Hardware-agnostic device lifecycle interface
+    "crates/core/hw-safe",      # Safe wrappers for hardware primitives (mmap, MMIO, alloc)
     "crates/core/hw-learn",
     "crates/core/nvpmu",
     "crates/core/sysmon",

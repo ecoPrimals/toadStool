@@ -2,7 +2,7 @@
 //! Daemon server implementation
 //!
 //! Core daemon server that handles:
-//! - HTTP API server for workload submission
+//! - JSON-RPC server for workload submission (Unix socket + optional TCP)
 //! - biomeOS capability registry integration
 //! - Resource monitoring and reporting
 //! - Workload lifecycle management
@@ -20,7 +20,7 @@ use super::workload_manager::WorkloadManager;
 /// Daemon server
 ///
 /// Coordinates all daemon functionality:
-/// - HTTP API server
+/// - JSON-RPC server (Unix socket + optional TCP via `--port`)
 /// - Capability registry integration (via mDNS/environment)
 /// - Workload management
 /// - Resource monitoring
@@ -76,8 +76,6 @@ impl DaemonServer {
 
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
-        // Determine socket path (prefer Unix socket for primal communication)
-        // Uses XDG-compliant path resolution - no hardcoded paths
         let socket_path = self.config.socket_path.clone().unwrap_or_else(|| {
             let env = PathEnv::from_env();
             PlatformPaths::new(&env).toadstool_socket()
@@ -87,7 +85,7 @@ impl DaemonServer {
         info!("🍄 JSON-RPC socket: {}", socket_path.display());
         info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
 
-        // Start JSON-RPC server (EVOLVED: Pure Rust over Unix sockets!)
+        // Start JSON-RPC Unix socket server
         {
             let socket = socket_path.clone();
             let manager = Arc::clone(&self.workload_manager);
@@ -99,7 +97,19 @@ impl DaemonServer {
             });
         }
 
-        info!("✨ Pure Unix socket mode — JSON-RPC over UDS per wateringHole standard");
+        // Start TCP JSON-RPC if --port was specified (non-zero enables cross-host access)
+        let tcp_port = self.config.port;
+        if tcp_port != 0 {
+            info!("🌐 TCP JSON-RPC on port {tcp_port} (--port)");
+            let manager = Arc::clone(&self.workload_manager);
+            tokio::spawn(async move {
+                if let Err(e) = jsonrpc_server::start_tcp_jsonrpc_server(tcp_port, manager).await {
+                    warn!("⚠️  TCP JSON-RPC on port {tcp_port} failed: {e}");
+                }
+            });
+        }
+
+        info!("✨ JSON-RPC over UDS per wateringHole standard");
 
         // Wait for shutdown signal
         signal::ctrl_c().await?;
@@ -120,10 +130,9 @@ impl DaemonServer {
 
         // Shutdown sequence:
         // 1. Stop accepting new workloads
-        // 2. Stop HTTP server
+        // 2. Stop JSON-RPC servers (Unix + TCP)
         // 3. Gracefully terminate running workloads
         // 4. Unregister from songBird (if registered)
-        // All integrated with graceful degradation patterns
 
         info!("✅ Shutdown complete");
         Ok(())

@@ -53,15 +53,24 @@ pub struct CostEstimate {
 /// Cost-related errors.
 #[derive(Debug, Error)]
 pub enum CostError {
+    /// Estimated cost exceeds the configured budget limit.
     #[error("Budget limit exceeded: estimate ${estimate:.2} exceeds limit ${limit:.2}")]
-    BudgetExceeded { estimate: f64, limit: f64 },
+    BudgetExceeded {
+        /// Computed cost estimate.
+        estimate: f64,
+        /// Configured maximum spend.
+        limit: f64,
+    },
 
+    /// Resource requirements are inconsistent or unusable for estimation.
     #[error("Invalid resource requirement: {0}")]
     InvalidRequirement(String),
 
+    /// No pricing model is registered for the named provider.
     #[error("Cost model not found for provider: {0}")]
     ModelNotFound(String),
 
+    /// Duration must be positive for cost estimation.
     #[error("Negative or zero duration for cost estimation")]
     InvalidDuration,
 }

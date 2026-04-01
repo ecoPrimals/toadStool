@@ -13,8 +13,13 @@ use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExec
 use super::capabilities;
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 
-/// Bind to any interface with OS-assigned port (TCP fallback when Unix sockets unavailable)
-const BIND_ANY: &str = "0.0.0.0:0";
+/// Bind to any interface with OS-assigned port (TCP fallback when Unix sockets unavailable).
+///
+/// Overridable via `TOADSTOOL_BIND_ADDRESS` environment variable.
+fn bind_any() -> String {
+    let host = std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    format!("{host}:0")
+}
 
 /// Create executor with distributed or standalone mode
 ///
@@ -165,7 +170,7 @@ async fn start_tcp_servers(
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
     let bind_addr =
-        std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| BIND_ANY.to_string());
+        std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| bind_any());
 
     let tarpc_listener = TcpListener::bind(&bind_addr)
         .await
@@ -200,11 +205,12 @@ async fn start_tcp_servers(
 
 /// Start a TCP JSON-RPC listener bound to a specific port (UniBin `--port` support).
 ///
-/// Newline-delimited JSON-RPC on `0.0.0.0:<port>` per `PRIMAL_IPC_PROTOCOL.md`.
+/// Newline-delimited JSON-RPC per `PRIMAL_IPC_PROTOCOL.md`.
 async fn start_tcp_jsonrpc_on_port(handler: Arc<JsonRpcHandler>, port: u16) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
-    let addr = format!("0.0.0.0:{port}");
+    let host = std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    let addr = format!("{host}:{port}");
     let listener = TcpListener::bind(&addr)
         .await
         .map_err(|e| ServerError::Network(format!("--port {port} bind failed: {e}")))?;

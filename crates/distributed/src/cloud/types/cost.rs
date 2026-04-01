@@ -5,39 +5,53 @@ use std::time::Duration;
 /// Cost model for a provider
 #[derive(Debug, Clone)]
 pub struct CostModel {
+    /// Cost per CPU core-hour.
     pub cpu_cost_per_core_hour: f64,
+    /// Cost per GB-hour of memory.
     pub memory_cost_per_gb_hour: f64,
+    /// Cost per GB-month of storage.
     pub storage_cost_per_gb_month: f64,
+    /// Cost per GB of egress/network transfer.
     pub network_cost_per_gb: f64,
 }
 
 /// Spend tracker
 #[derive(Debug, Clone)]
 pub struct SpendTracker {
+    /// Spend accrued in the current billing window.
     pub current_spend: f64,
+    /// Total spend for the current month.
     pub monthly_spend: f64,
+    /// Projected end-of-period spend from current usage.
     pub projected_spend: f64,
 }
 
 /// Budget manager
 #[derive(Debug, Clone)]
 pub struct BudgetManager {
+    /// Optional monthly spend cap, if configured.
     pub monthly_budget: Option<f64>,
+    /// Fractional thresholds (e.g. 0.8) at which to raise alerts.
     pub alert_thresholds: Vec<f64>,
 }
 
 /// Spot instance manager
 #[derive(Debug, Clone)]
 pub struct SpotInstanceManager {
+    /// Weight or preference for spot vs on-demand (0.0-1.0 style).
     pub spot_preference: f64,
+    /// Maximum acceptable interruption frequency or duration for spot workloads.
     pub max_interruption_tolerance: Duration,
 }
 
 /// Performance metric
 #[derive(Debug, Clone)]
 pub struct PerformanceMetric {
+    /// Metric identifier or label.
     pub name: String,
+    /// Observed value.
     pub value: f64,
+    /// When the sample was recorded.
     pub timestamp: std::time::SystemTime,
 }
 
@@ -54,17 +68,23 @@ impl Default for PerformanceMetric {
 /// Cost alert
 #[derive(Debug, Clone, Default)]
 pub struct CostAlert {
+    /// Budget or spend fraction that triggered the alert.
     pub threshold: f64,
+    /// Human-readable alert text.
     pub message: String,
+    /// Severity of the alert.
     pub severity: AlertSeverity,
 }
 
 /// Alert severity levels
 #[derive(Debug, Clone, Default)]
 pub enum AlertSeverity {
+    /// Informational notice.
     #[default]
     Info,
+    /// Elevated attention; may need action soon.
     Warning,
+    /// Immediate attention required.
     Critical,
 }
 

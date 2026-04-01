@@ -11,18 +11,24 @@ use crate::UniversalJob;
 // Capacity Management
 // ============================================================================
 
+/// Thread-safe view of resources available on this node for scheduling.
 pub struct LocalCapacityManager {
     pub(crate) available_capacity: Arc<RwLock<CapacityInfo>>,
 }
 
+/// Snapshot of CPU, memory, and storage available for accepting work.
 #[derive(Debug, Clone)]
 pub struct CapacityInfo {
+    /// Logical CPU cores available.
     pub cpu_cores: f64,
+    /// RAM available in bytes.
     pub memory_bytes: u64,
+    /// Aggregate free storage in bytes.
     pub storage_bytes: u64,
 }
 
 impl CapacityInfo {
+    /// Whether this snapshot satisfies `job` resource requirements.
     #[must_use]
     pub fn can_handle_job(&self, job: &UniversalJob) -> bool {
         let requirements = &job.resource_requirements;
@@ -31,6 +37,7 @@ impl CapacityInfo {
             && requirements.storage.min_bytes <= self.storage_bytes
     }
 
+    /// Build capacity info from local sysmon readings (best effort).
     #[must_use]
     #[allow(clippy::cast_precision_loss)]
     pub fn from_system() -> Self {

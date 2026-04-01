@@ -41,7 +41,10 @@ pub struct BearDogEndpoint {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BearDogCapability {
     /// Encryption/decryption
-    Encryption { algorithms: Vec<String> },
+    Encryption {
+        /// Supported algorithm names or identifiers.
+        algorithms: Vec<String>,
+    },
     /// Key management
     KeyManagement,
     /// Genetic entropy
@@ -98,15 +101,20 @@ pub struct EncryptionResponse {
 /// Encryption operation type
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EncryptionOperation {
+    /// Encrypt plaintext to ciphertext.
     Encrypt,
+    /// Decrypt ciphertext to plaintext.
     Decrypt,
 }
 
 /// Security level for operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum SecurityLevel {
+    /// Software-only cryptography.
     Standard,
+    /// Stronger software or policy-backed crypto.
     Enhanced,
+    /// Hardware-backed (e.g. HSM) security.
     HardwareSecured,
 }
 
@@ -153,19 +161,36 @@ pub enum KeyOperation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum KeyOperationResult {
     /// Key generated
-    Generated { key_id: String, algorithm: String },
+    Generated {
+        /// New key identifier.
+        key_id: String,
+        /// Algorithm used for the new key.
+        algorithm: String,
+    },
     /// Key retrieved
     Retrieved {
+        /// Key identifier.
         key_id: String,
+        /// Raw or wrapped key bytes.
         key_material: Vec<u8>,
+        /// Algorithm for the key material.
         algorithm: String,
     },
     /// Key deleted
-    Deleted { key_id: String },
+    Deleted {
+        /// Key id that was removed.
+        key_id: String,
+    },
     /// Keys listed
-    Listed { keys: Vec<String> },
+    Listed {
+        /// Known key ids.
+        keys: Vec<String>,
+    },
     /// Operation failed
-    Error { message: String },
+    Error {
+        /// Error description.
+        message: String,
+    },
 }
 
 /// Signature request to BearDog

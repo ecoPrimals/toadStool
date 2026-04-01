@@ -13,14 +13,22 @@ use super::super::permissions::{
 /// Access result (granted or denied)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AccessResult {
+    /// Access was granted with optional expiry and restrictions.
     Granted {
+        /// Human-readable grant reason.
         reason: String,
+        /// Coarse permission tier.
         permission_level: PermissionLevel,
+        /// When the grant expires, if applicable.
         expires_at: Option<SystemTime>,
+        /// Additional restriction strings (e.g. IP, scope).
         restrictions: Vec<String>,
     },
+    /// Access was denied.
     Denied {
+        /// Denial reason.
         reason: String,
+        /// Hint for obtaining access (e.g. request workflow).
         how_to_get_access: String,
     },
 }
@@ -28,21 +36,28 @@ pub enum AccessResult {
 /// Permission level for access
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PermissionLevel {
+    /// Minimal access.
     Basic,
+    /// Partial access with constraints.
     Limited,
+    /// Full access within scope.
     Full,
 }
 
 /// Crypto lock status report
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CryptoLockStatus {
+    /// Whether pure-Rust features are unlocked without external permission.
     pub pure_rust_unlocked: bool,
+    /// Current permission status per external target.
     pub external_permissions: HashMap<ExternalTarget, PermissionStatus>,
+    /// Active delegation chains.
     pub delegation_chains: Vec<DelegationChain>,
+    /// Permissions nearing expiry.
     pub expiring_permissions: Vec<ExpiringPermission>,
 }
 
-/// Access control policies
+/// Access control policies (placeholder; serde-stable marker type).
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AccessPolicies;
 

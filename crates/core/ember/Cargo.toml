@@ -1,0 +1,27 @@
+[package]
+name = "toadstool-ember"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Hardware-agnostic device holder subsystem — keeps exclusive resources alive across restarts, persists metadata, manages lend/reclaim lifecycle"
+keywords = ["hardware", "device", "lifecycle", "holder", "vfio"]
+categories.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

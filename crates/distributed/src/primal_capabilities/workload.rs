@@ -38,38 +38,55 @@ pub struct WorkloadRequest {
 pub enum WorkloadType {
     /// Native executable
     Native {
+        /// Path or name of the executable.
         executable: String,
+        /// Command-line arguments.
         args: Vec<String>,
     },
     /// Container workload
     Container {
+        /// OCI image reference.
         image: String,
+        /// Optional container entrypoint override.
         command: Option<Vec<String>>,
+        /// Optional arguments for the container command.
         args: Option<Vec<String>>,
     },
     /// WebAssembly module
     Wasm {
+        /// Module bytes as base64.
         module_data: String, // base64 encoded
+        /// Arguments passed to the module.
         args: Vec<String>,
     },
     /// Python script
     Python {
+        /// Script source or path.
         script: String,
+        /// Pip-style dependency names.
         requirements: Vec<String>,
     },
     /// GPU computation
     GpuCompute {
+        /// GPU kernel source or path.
         kernel_code: String,
+        /// Input payload as base64.
         input_data: String, // base64 encoded
     },
     /// ML training
     MlTraining {
+        /// Model family or template name.
         model_type: String,
+        /// Training data as base64 blob or URL.
         training_data: String, // base64 or URL
+        /// Hyperparameter map for the trainer.
         hyperparameters: HashMap<String, serde_json::Value>,
     },
     /// Custom workload
-    Custom { workload_data: serde_json::Value },
+    Custom {
+        /// Arbitrary JSON-defined workload payload.
+        workload_data: serde_json::Value,
+    },
 }
 
 /// Resource requirements for workload
@@ -108,10 +125,15 @@ pub struct WorkloadResponse {
 /// Workload status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WorkloadStatus {
+    /// Accepted by the scheduler but not yet running.
     Accepted,
+    /// Currently executing.
     Running,
+    /// Finished successfully.
     Completed,
+    /// Finished with an error.
     Failed,
+    /// Stopped due to timeout.
     TimedOut,
 }
 
@@ -133,15 +155,20 @@ pub struct WorkloadOutput {
 /// Output file from workload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadOutputFile {
+    /// File name or path hint.
     pub name: String,
+    /// File contents as base64.
     pub data: String, // base64 encoded
 }
 
 /// Workload execution metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkloadMetrics {
+    /// CPU time accrued for the workload (seconds).
     pub cpu_time_seconds: f64,
+    /// Peak or average memory usage (MB).
     pub memory_used_mb: u64,
+    /// GPU time when applicable (seconds).
     pub gpu_time_seconds: Option<f64>,
 }
 
@@ -276,6 +303,7 @@ impl WorkloadExecutor {
 }
 
 impl Default for WorkloadExecutor {
+    /// Same as [`WorkloadExecutor::new`].
     fn default() -> Self {
         Self::new()
     }

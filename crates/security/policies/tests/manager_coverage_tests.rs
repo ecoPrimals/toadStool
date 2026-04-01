@@ -544,10 +544,11 @@ async fn evaluate_policy_network_access_denies_by_default() {
         description: None,
     }];
     mgr.save_policy(&p).await.unwrap();
-    let result = mgr
-        .evaluate_policy("net", &eval_context_native())
-        .await;
-    assert!(result.is_ok(), "NetworkAccess should deny-by-default, not error");
+    let result = mgr.evaluate_policy("net", &eval_context_native()).await;
+    assert!(
+        result.is_ok(),
+        "NetworkAccess should deny-by-default, not error"
+    );
 }
 
 #[tokio::test]

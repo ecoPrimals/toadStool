@@ -11,7 +11,7 @@
 //!
 //! Compile this module with Cargo feature **`embedded-placeholder-impls`** (enabled by default).
 //!
-//! **Tracking:** `# TODO(embedded-hw):` replace stubs with real cores when ready.
+//! See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
 //!
 //! ## Architecture Notes
 //!
@@ -39,7 +39,7 @@ fn emulator_placeholder_err(feature_id: &'static str, operation: &'static str) -
 
 /// Generates [`EmbeddedEmulator`] impls that return structured placeholder errors (no panics).
 ///
-/// **Tracking:** `# TODO(embedded-hw):` CPU emulator cores — see module-level docs.
+/// See DEBT.md `D-EMBEDDED-EMULATOR` and module-level docs for evolution plan.
 macro_rules! impl_emulator_stub {
     ($emulator:ty, $name:expr, $arch:expr, $feature_id:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible

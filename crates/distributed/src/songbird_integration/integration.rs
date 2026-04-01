@@ -18,6 +18,7 @@ use super::types::{
 };
 
 impl ToadStoolSongbirdIntegration {
+    /// Construct integration with Songbird connection, capacity config, and scheduler.
     pub async fn new(
         instance_id: String,
         connection: SongbirdConnection,
@@ -330,6 +331,7 @@ impl ToadStoolSongbirdIntegration {
 use tokio::sync::RwLock;
 
 impl LocalCapacityManager {
+    /// Probe system capacity and initialize the local capacity manager.
     pub async fn new(_config: CapacityConfig) -> ToadStoolResult<Self> {
         // Probe real system capacity at construction so callers see accurate values
         // from the first call to get_available_capacity().
@@ -338,6 +340,7 @@ impl LocalCapacityManager {
         })
     }
 
+    /// Return a snapshot of this node's available CPU, memory, and storage.
     pub async fn get_available_capacity(&self) -> ToadStoolResult<CapacityInfo> {
         Ok(self.available_capacity.read().await.clone())
     }
@@ -415,6 +418,7 @@ impl LocalCapacityManager {
 use super::types::JobReceiver;
 
 impl JobReceiver {
+    /// Create a job receiver with the given config and Songbird connection.
     pub async fn new(
         _config: ReceiverConfig,
         _connection: Arc<SongbirdConnection>,

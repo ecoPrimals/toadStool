@@ -13,6 +13,10 @@ categories = ["hardware-support", "science"]
 # Core ToadStool dependencies
 toadstool = { path = "../../core/toadstool" }
 toadstool-common = { path = "../../core/common" }
+toadstool-glowplug = { path = "../../core/glowplug" }
+toadstool-ember = { path = "../../core/ember" }
+toadstool-hw-safe = { path = "../../core/hw-safe" }
+nvpmu = { path = "../../core/nvpmu" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

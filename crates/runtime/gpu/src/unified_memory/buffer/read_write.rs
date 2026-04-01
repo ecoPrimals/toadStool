@@ -55,7 +55,6 @@ impl UnifiedBuffer {
             )));
         }
 
-
         // Validate pointer value (defensive check - still useful for invalid addresses)
         let ptr_value = self.cpu_ptr.as_ptr() as usize;
         if ptr_value == 0 {
@@ -134,7 +133,6 @@ impl UnifiedBuffer {
                 offset, len, self.size
             )));
         }
-
 
         // Validate pointer value (defensive check - still useful for invalid addresses)
         let ptr_value = self.cpu_ptr.as_ptr() as usize;

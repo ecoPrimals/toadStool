@@ -397,41 +397,69 @@ fn test_get_bind_host_from_env() {
 #[test]
 #[allow(deprecated)]
 fn test_get_songbird_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_COORDINATION_PORT", "COORDINATION_PORT"], || {
-        let endpoint = network::get_songbird_endpoint();
-        assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains(':'));
-    });
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_BIND_HOST",
+            "TOADSTOOL_COORDINATION_PORT",
+            "COORDINATION_PORT",
+        ],
+        || {
+            let endpoint = network::get_songbird_endpoint();
+            assert!(endpoint.starts_with("http://"));
+            assert!(endpoint.contains(':'));
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_beardog_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_SECURITY_PORT", "SECURITY_PORT"], || {
-        let endpoint = network::get_beardog_endpoint();
-        assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains(':'));
-    });
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_BIND_HOST",
+            "TOADSTOOL_SECURITY_PORT",
+            "SECURITY_PORT",
+        ],
+        || {
+            let endpoint = network::get_beardog_endpoint();
+            assert!(endpoint.starts_with("http://"));
+            assert!(endpoint.contains(':'));
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_nestgate_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_STORAGE_PORT", "STORAGE_PORT"], || {
-        let endpoint = network::get_nestgate_endpoint();
-        assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains(':'));
-    });
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_BIND_HOST",
+            "TOADSTOOL_STORAGE_PORT",
+            "STORAGE_PORT",
+        ],
+        || {
+            let endpoint = network::get_nestgate_endpoint();
+            assert!(endpoint.starts_with("http://"));
+            assert!(endpoint.contains(':'));
+        },
+    );
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_get_squirrel_endpoint_format() {
-    temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_PLATFORM_PORT", "PLATFORM_PORT"], || {
-        let endpoint = network::get_squirrel_endpoint();
-        assert!(endpoint.starts_with("http://"));
-        assert!(endpoint.contains(':'));
-    });
+    temp_env::with_vars_unset(
+        [
+            "TOADSTOOL_BIND_HOST",
+            "TOADSTOOL_PLATFORM_PORT",
+            "PLATFORM_PORT",
+        ],
+        || {
+            let endpoint = network::get_squirrel_endpoint();
+            assert!(endpoint.starts_with("http://"));
+            assert!(endpoint.contains(':'));
+        },
+    );
 }
 
 #[test]

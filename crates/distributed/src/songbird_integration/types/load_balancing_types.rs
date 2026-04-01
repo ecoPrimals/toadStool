@@ -28,6 +28,7 @@ pub struct NodeCapacityTracker {
 }
 
 impl NodeCapacityTracker {
+    /// Create an empty tracker with no load observations.
     pub fn new() -> Self {
         Self {
             inner: Mutex::new(HashMap::new()),
@@ -87,6 +88,7 @@ struct PerformanceCounters {
 }
 
 impl PerformanceMetrics {
+    /// Create metrics with zeroed counters.
     pub fn new() -> Self {
         Self {
             inner: Mutex::new(PerformanceCounters::default()),
@@ -134,6 +136,7 @@ impl PerformanceMetrics {
             .unwrap_or(0.0)
     }
 
+    /// Total number of recorded requests.
     pub fn request_count(&self) -> u64 {
         self.inner.lock().ok().map(|g| g.requests).unwrap_or(0)
     }
@@ -148,9 +151,25 @@ impl Default for PerformanceMetrics {
 /// Feedback messages sent back to Songbird about local node state.
 #[derive(Debug, Clone)]
 pub enum SongbirdFeedback {
-    LoadUpdate { node_id: NodeId, load: f64 },
-    ErrorReport { node_id: NodeId, error: String },
-    CapacityAvailable { node_id: NodeId },
+    /// Reported load fraction for a node (0.0–1.0).
+    LoadUpdate {
+        /// Node that produced the observation.
+        node_id: NodeId,
+        /// Load value.
+        load: f64,
+    },
+    /// Report a failure or abnormal condition for a node.
+    ErrorReport {
+        /// Affected node.
+        node_id: NodeId,
+        /// Human-readable error description.
+        error: String,
+    },
+    /// Signal that the node can accept more work.
+    CapacityAvailable {
+        /// Node with spare capacity.
+        node_id: NodeId,
+    },
 }
 
 /// Sends feedback events to Songbird's coordination loop.
@@ -161,11 +180,14 @@ pub struct SongbirdFeedbackSender {
     tx: mpsc::UnboundedSender<SongbirdFeedback>,
 }
 
+/// End of a feedback channel; receives [`SongbirdFeedback`] from the sender half.
 pub struct SongbirdFeedbackReceiver {
+    /// Unbounded receiver for feedback events.
     pub rx: mpsc::UnboundedReceiver<SongbirdFeedback>,
 }
 
 impl SongbirdFeedbackSender {
+    /// Create a connected sender/receiver pair for feedback.
     pub fn new() -> (Self, SongbirdFeedbackReceiver) {
         let (tx, rx) = mpsc::unbounded_channel();
         (Self { tx }, SongbirdFeedbackReceiver { rx })

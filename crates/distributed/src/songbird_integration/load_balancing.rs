@@ -18,6 +18,7 @@ use super::types::{
 const REBALANCE_THRESHOLD: f64 = 0.8;
 
 impl SongbirdLoadBalancer {
+    /// Initialize a load balancer with config and Songbird connection.
     pub async fn new(
         _config: LoadBalancerConfig,
         _connection: Arc<SongbirdConnection>,
@@ -31,6 +32,15 @@ impl SongbirdLoadBalancer {
         })
     }
 
+    fn self_node_id(&self) -> String {
+        std::env::var("TOADSTOOL_GATE_ID")
+            .or_else(|_| std::env::var("HOSTNAME"))
+            .unwrap_or_else(|_| {
+                toadstool_common::constants::network::LOCALHOST_IPV4.to_string()
+            })
+    }
+
+    /// Recommend target nodes for the given resource requirements using current load data.
     pub async fn request_advice(
         &self,
         _requirements: &ResourceRequirements,
@@ -45,19 +55,19 @@ impl SongbirdLoadBalancer {
         debug!(strategy, "Requesting load balancing advice");
 
         let snapshot = self.capacity_tracker.snapshot();
+        let self_node = self.self_node_id();
         let (recommended, reasoning) = if snapshot.is_empty() {
-            // No capacity data yet — recommend self (localhost) as a starting node.
             (
-                vec![toadstool_common::constants::network::LOCALHOST_IPV4.to_string()],
-                "No capacity data available; defaulting to localhost".to_string(),
+                vec![self_node],
+                "No capacity data available; defaulting to self".to_string(),
             )
         } else {
             let least = self.capacity_tracker.least_loaded();
             least.map_or_else(
                 || {
                     (
-                        vec![toadstool_common::constants::network::LOCALHOST_IPV4.to_string()],
-                        "All nodes saturated; defaulting to localhost".to_string(),
+                        vec![self_node],
+                        "All nodes saturated; defaulting to self".to_string(),
                     )
                 },
                 |node| {
@@ -85,6 +95,7 @@ impl SongbirdLoadBalancer {
         })
     }
 
+    /// Record load for a node and emit feedback for downstream coordination.
     pub async fn update_node_load(&self, node_id: &NodeId, load: f64) -> ToadStoolResult<()> {
         debug!(%node_id, load, "Recording node load");
         self.capacity_tracker.update(node_id, load);
@@ -95,6 +106,7 @@ impl SongbirdLoadBalancer {
         Ok(())
     }
 
+    /// Return whether any tracked node exceeds the rebalance load threshold.
     pub async fn rebalance_if_needed(&self) -> ToadStoolResult<bool> {
         let snapshot = self.capacity_tracker.snapshot();
         let overloaded = snapshot.values().any(|&l| l > REBALANCE_THRESHOLD);

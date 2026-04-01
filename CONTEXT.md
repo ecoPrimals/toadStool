@@ -10,11 +10,11 @@ ToadStool is the **hardware infrastructure primal** ("WHERE") in the ecoPrimals 
 
 | Primal | Role |
 |--------|------|
-| **barraCuda** | Compiler / "HOW" — GPU shader compilation, sovereign math |
-| **toadStool** | Infrastructure / "WHERE" — hardware discovery, workload routing |
-| **coralReef** | Driver / "BRIDGE" — VFIO passthrough, kernel-level dispatch |
+| **barraCuda** | Universal Math / "WHAT" — GPU shader dispatch, sovereign math |
+| **toadStool** | Universal Hardware / "WHERE" — hardware discovery, workload routing, device lifecycle |
+| **coralReef** | Sovereign Compiler / "HOW" — GPU compilation, VFIO passthrough, kernel-level dispatch |
 
-ToadStool is the **Layer 0** hardware substrate that other primals and springs depend on for compute capability discovery and job execution.
+ToadStool is the **Layer 0** hardware substrate that other primals and springs depend on for compute capability discovery and job execution. The glowPlug/ember subsystem provides hardware-agnostic device lifecycle management.
 
 ## Key Facts
 

@@ -47,7 +47,7 @@ pub enum SpecialtyRuntimeError {
 
     /// Infrastructure placeholder: [`crate::embedded::types::ProgrammerInterface`] until hardware backends exist.
     ///
-    /// **Tracking:** `# TODO(embedded-hw):` ISP/ICSP/parallel programmers — `programmer_impls.rs`, feature `embedded-placeholder-impls`.
+    /// See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
     #[error("{operation}: {detail}")]
     EmbeddedProgrammerPlaceholder {
         /// Operation name (e.g. `"Memory read"`).
@@ -58,7 +58,7 @@ pub enum SpecialtyRuntimeError {
 
     /// Infrastructure placeholder: [`crate::embedded::types::EmbeddedEmulator`] until CPU cores exist.
     ///
-    /// **Tracking:** `# TODO(embedded-hw):` MOS 6502 / Z80 cores — `emulator_impls.rs`, feature `embedded-placeholder-impls`.
+    /// See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
     #[error("emulator feature {feature_id}: {operation}")]
     EmbeddedEmulatorPlaceholder {
         /// Stable feature id (e.g. `embedded_emulator_mos6502`).

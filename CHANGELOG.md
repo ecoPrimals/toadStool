@@ -5,7 +5,47 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - March 31, 2026 (Sessions 43-169)
+## [Unreleased] - April 1, 2026 (Sessions 43-171)
+
+### Session S171 (Apr 1, 2026) — Ember Absorption + Unsafe Evolution + Deep Debt
+
+#### hw-safe consolidation (unsafe containment zone)
+- Created `toadstool-hw-safe` crate: `SafeMmapRegion`, `VolatileMmio`, `AlignedAlloc` — single crate for all hardware unsafe primitives
+- Migrated `akida-driver/backends/mmap.rs` to `SafeMmapRegion` — zero unsafe in mmap.rs
+- Migrated `nvpmu/bar0.rs` to `SafeMmapRegion` + `VolatileMmio` — zero hand-rolled volatile
+- Migrated `gpu/backends/cpu.rs` and `gpu/memory/pinned.rs` to `AlignedAlloc` — zero unsafe in both
+- Added `// SAFETY:` comments to all remaining `output_from_ptr` ioctl impls (nvpmu, akida, hw-learn)
+
+#### Ember absorption — toadStool-native hardware lifecycle
+- Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess`: direct BAR0 Falcon register reads via `nvpmu::Bar0Access` (FECS `0x409000`, GPCCS `0x41A000`, PMU `0x10A000`). Zero external primal dependency.
+- Evolved `glowplug_client.rs` from coral-ember JSON-RPC proxy to toadStool-native ember service: PCI sysfs enumeration, `driver_override` + rebind for personality swaps. Zero coral-ember dependency.
+- Updated JSON-RPC handler `ember_list`/`ember_status` to use synchronous local service.
+
+#### glowPlug/ember subsystem (hardware-agnostic)
+- Created `toadstool-ember` crate: `ResourceHandle`, `MetadataStore`, `HeldResource`, `LendReceipt`, `SwapJournal` — hardware-agnostic device holder
+- Created `toadstool-glowplug` crate: `DeviceId`, `DevicePersonality`, `DeviceSlot`, `FirmwareInterface`, `HealthProbe`, `DeviceDiscovery`, `SwapOrchestrator` — hardware-agnostic device lifecycle
+- GPU-specific implementations in `crates/runtime/gpu/src/glowplug/`: `GpuPersonality`, `GpuDiscovery`, `GpuFirmwareAccess`
+
+#### Hardcoding evolution
+- TCP bind addresses → `TOADSTOOL_BIND_ADDRESS` env var (`jsonrpc_server.rs`, `unibin/execution.rs`)
+- Gate ID → `TOADSTOOL_GATE_ID` over `HOSTNAME`; load balancer self-node → `self_node_id()`
+- Network configurator: extracted 12+ magic numbers to named constants, env-overridable
+
+#### Documentation
+- All ~400 missing doc warnings resolved across `distributed` crate. `#![allow(missing_docs)]` removed.
+- Documented `songbird_integration/` (12 files), `cloud/` (19 files), and 15+ remaining modules.
+
+#### Quality
+- `cargo check --workspace`: clean. `cargo test`: all passing. Zero clippy warnings.
+
+### Session S170 (Mar 31, 2026) — Concurrent Test Evolution + Deep Debt
+
+#### Deep debt cleanup
+- Fixed 16+ pre-existing test failures (stale env vars, Docker degradation, policy deny-by-default)
+- Eliminated test sleeps: cache TTL tests use `tokio::time::Instant` with `start_paused`, daemon polls instead of sleeping, runtime_bridge uses exponential backoff
+- Cleaned stale Deep Debt comments from production code
+- Production `configurator/core.rs` uses `resolve_capability_port()` instead of hand-rolled env vars
+- Verified IPC compliance against wateringHole matrix
 
 ### Session S169 (Mar 31, 2026) — Primal Overstep Cleanup + Deep Debt Evolution
 

@@ -1,0 +1,29 @@
+[package]
+name = "toadstool-glowplug"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Hardware-agnostic device lifecycle interface — the mailbox and ringmaker for universal hardware management"
+keywords = ["hardware", "device", "lifecycle", "personality", "firmware"]
+categories.workspace = true
+
+[dependencies]
+toadstool-ember = { path = "../ember" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

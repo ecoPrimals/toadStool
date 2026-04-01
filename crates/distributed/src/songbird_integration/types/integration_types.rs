@@ -22,6 +22,7 @@ use crate::common::distribution::DistributionAlgorithm;
 // Core Integration Types
 // ============================================================================
 
+/// Main handle tying local scheduling/capacity to a Songbird connection.
 pub struct ToadStoolSongbirdIntegration {
     pub(crate) instance_id: String,
     pub(crate) connection: super::connection_types::SongbirdConnection,
@@ -29,6 +30,7 @@ pub struct ToadStoolSongbirdIntegration {
     pub(crate) workload_scheduler: Arc<crate::universal::UniversalScheduler>,
 }
 
+/// Splits and coordinates large jobs across the mesh using configured strategies.
 pub struct MassiveJobDistributor {
     pub(crate) splitting_strategies: HashMap<UniversalJobType, JobSplittingStrategy>,
     pub(crate) distribution_algorithms: Vec<DistributionAlgorithm>,
@@ -36,6 +38,7 @@ pub struct MassiveJobDistributor {
     pub(crate) job_coordinator: JobCoordinator,
 }
 
+/// Discovers peers and tracks capabilities and health for the mesh.
 pub struct SongbirdNetworkDiscovery {
     pub(crate) discovery_client: DiscoveryClient,
     pub(crate) node_registry: RwLock<NodeRegistry>,
@@ -43,6 +46,7 @@ pub struct SongbirdNetworkDiscovery {
     pub(crate) health_monitor: NetworkHealthMonitor,
 }
 
+/// Selects nodes using strategies, metrics, and feedback to Songbird.
 pub struct SongbirdLoadBalancer {
     pub(crate) strategies: HashMap<String, super::load_balancing_types::LoadBalancingStrategy>,
     pub(crate) capacity_tracker: NodeCapacityTracker,
@@ -50,6 +54,7 @@ pub struct SongbirdLoadBalancer {
     pub(crate) feedback_sender: SongbirdFeedbackSender,
 }
 
+/// Named pub/sub channels and subscription bookkeeping for Songbird.
 pub struct SongbirdBroadcaster {
     pub(crate) channels: HashMap<String, BroadcastChannel>,
     pub(crate) message_types: MessageTypeRegistry,

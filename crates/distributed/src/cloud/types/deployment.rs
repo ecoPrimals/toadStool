@@ -30,7 +30,10 @@ pub enum CloudJobStatus {
     /// Job completed successfully.
     Completed,
     /// Job failed with error.
-    Failed { error: String },
+    Failed {
+        /// Error message from the provider or runtime.
+        error: String,
+    },
     /// Job cancelled.
     Cancelled,
 }

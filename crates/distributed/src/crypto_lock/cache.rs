@@ -17,12 +17,14 @@ pub struct PermissionCache {
 }
 
 impl Default for PermissionCache {
+    /// Same as [`PermissionCache::new`].
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl PermissionCache {
+    /// Creates an empty permission cache.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -53,10 +55,12 @@ impl PermissionCache {
 /// Cached permission result
 #[derive(Clone)]
 pub struct CachedResult {
+    /// Last evaluated access result for the target.
     pub result: AccessResult,
 }
 
 impl CachedResult {
+    /// Always `false`; expiry is not tracked in this stub cache.
     #[must_use]
     pub const fn is_expired(&self) -> bool {
         false

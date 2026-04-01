@@ -262,8 +262,11 @@ impl ByobComputeExecutor {
         }
     }
 
-    /// Monitor deployment health (background loop in production is phase 2+; covered by unit tests today).
-    #[cfg_attr(not(test), allow(dead_code))]
+    /// Monitor deployment health (background loop production integration is phase 2+).
+    #[expect(
+        dead_code,
+        reason = "phase 2+ background health loop; covered by unit tests"
+    )]
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 
@@ -325,7 +328,6 @@ impl ByobComputeExecutor {
     }
 
     /// Perform health check for a specific service
-    #[cfg_attr(not(test), allow(dead_code))]
     fn perform_health_check(
         &self,
         service_name: &str,

@@ -23,7 +23,10 @@
 
 #![warn(missing_docs)]
 #![allow(clippy::must_use_candidate)]
-#![allow(dead_code)] // Research crate, many components not yet used
+#![expect(
+    dead_code,
+    reason = "research crate: components wired incrementally as experiments mature"
+)]
 
 pub mod ensemble;
 pub mod error;

@@ -1,9 +1,72 @@
 # Active Technical Debt Register
 
-**Date**: March 31, 2026 — S170
+**Date**: April 1, 2026 — S171
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
+
+## Active Debt
+
+### D-EMBEDDED-PROGRAMMER
+**Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
+ISP/ICSP/parallel programmer trait impls return `EmbeddedProgrammerPlaceholder` errors.
+Evolve when hardware-specific transport layers (USB, parallel, serial) land.
+Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
+
+### D-EMBEDDED-EMULATOR
+**Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
+MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
+Evolve when cycle-accurate CPU cores are implemented.
+Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+### D-IOCTL-TYPED
+**Crate**: `akida-driver`, `nvpmu` | VFIO ioctl dispatch uses generic `DmaIoctl<OP, T>`.
+Evolve to typed per-operation dispatch modules for stronger compile-time safety.
+
+### D-LOCKED-MEMORY
+**Crate**: `nvpmu` | DMA buffers use separate alloc + mlock/munlock.
+Compose `AlignedAlloc` + `mlock`/`munlock` into a single `LockedMemory` RAII type.
+
+### D-BYOB-HEALTH-LOOP
+**Crate**: `core/toadstool` | `byob/byob_impl/mod.rs`
+`monitor_deployment_health` and `perform_health_check` are complete implementations
+but not yet wired into a production background loop. Phase 2+ integration.
+
+## S171 Resolved Debt
+
+### TS-01 coralReef discovery and --port wiring
+- **D-CORALREEF-URL-S171**: Renamed `CORALREEF_URL` env → `CORALREEF_SOCKET` (deprecated fallback retained). coralReef discovery is socket-first: XDG manifest, biomeos dir scan, capability socket.
+- **D-GLOWPLUG-UID-S171**: Removed hardcoded `/run/user/1000/` from `glowplug_client.rs`; uses `platform_paths::biomeos_runtime_dir()`.
+- **D-PORT-HELP-S171**: Fixed `--port` help text from "HTTP API port" to "JSON-RPC TCP port" on Server and Daemon commands.
+- **D-DAEMON-TCP-S171**: Wired `DaemonServer.config.port` to TCP JSON-RPC binding (was accepted but ignored).
+- **D-FMT-S171**: Fixed 17 pre-existing `cargo fmt` diffs across 2 files.
+
+### Unsafe evolution — hw-safe consolidation
+- **D-MMAP-CONSOLIDATE-S171**: Created `toadstool-hw-safe` crate with `SafeMmapRegion`, `VolatileMmio`, `AlignedAlloc`. Single unsafe containment zone for all hardware primitives.
+- **D-MMAP-MIGRATE-S171**: Migrated `akida-driver/backends/mmap.rs` `MmapRegion` to delegate to `SafeMmapRegion` — eliminated duplicate mmap/munmap unsafe. Zero unsafe in mmap.rs.
+- **D-BAR0-MIGRATE-S171**: Migrated `nvpmu/bar0.rs` `Bar0Access` to delegate to `SafeMmapRegion` + `VolatileMmio` — eliminated hand-rolled volatile reads/writes.
+- **D-ALLOC-MIGRATE-S171**: Migrated `gpu/backends/cpu.rs` `AlignedBuffer` and `gpu/memory/pinned.rs` `PinnedMemory` to `AlignedAlloc` from hw-safe. `CpuAllocation` now holds `AlignedAlloc` directly — zero unsafe in cpu.rs and pinned.rs.
+- **D-SAFETY-COMMENTS-S171**: Added `// SAFETY:` comments to all `unsafe fn output_from_ptr` in ioctl impls across `nvpmu/dma.rs`, `nvpmu/vfio.rs`, `akida-driver/vfio/ioctl.rs`, `akida-driver/mmio.rs`, `hw-learn/nouveau_drm.rs`.
+
+### Ember absorption — toadStool-native hardware lifecycle
+- **D-EMBER-ABSORB-S171**: Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess`. Direct BAR0 register reads via `nvpmu::Bar0Access` (hw-safe backed). No external primal dependency — toadStool reads FECS/GPCCS/PMU Falcon registers natively. Defined register map constants (FECS `0x409000`, GPCCS `0x41A000`, PMU `0x10A000`).
+- **D-GLOWPLUG-ABSORB-S171**: Evolved `glowplug_client.rs` from coral-ember JSON-RPC proxy to toadStool-native ember service. Device lifecycle (list, status, swap, reacquire) via PCI sysfs + `driver_override` + rebind. Zero coral-ember dependency.
+
+### Hardcoding evolution
+- **D-BIND-ADDRESS-S171**: All TCP bind addresses (`0.0.0.0`) now overridable via `TOADSTOOL_BIND_ADDRESS` env var. Affected: `jsonrpc_server.rs`, `unibin/execution.rs`.
+- **D-GATE-ID-S171**: Gate ID resolution now prefers `TOADSTOOL_GATE_ID` over `HOSTNAME` for explicit operator control.
+- **D-LOADBALANCER-SELF-S171**: Songbird load balancer self-node fallback evolved from hardcoded `LOCALHOST_IPV4` to `self_node_id()` (env-driven identity).
+- **D-CONFIGURATOR-S171**: Network configurator `default_config()` magic numbers extracted to named constants (`DEFAULT_PROXY_LISTEN_PORT`, `DEFAULT_SIDECAR_IMAGE`, `RFC1918_RANGES`, etc.) and env-overridable where appropriate (`TOADSTOOL_AUDIT_LOG_PATH`, `TOADSTOOL_SIDECAR_IMAGE`).
+
+### Documentation
+- **D-DISTRIBUTED-DOCS-S171**: All ~400 missing doc warnings resolved across `distributed` crate. `#![allow(missing_docs)]` removed — crate compiles clean with `#![warn(missing_docs)]`. Modules documented: `songbird_integration/types/` (12 files), `cloud/` (19 files), `beardog_integration/`, `security_provider/`, `primal_capabilities/`, `crypto_lock/`, `crypto_integration/`, `coordination_integration/`.
+
+### Deep debt cleanup
+- **D-TODO-MARKERS-S171**: Migrated all `TODO(embedded-hw)` markers from committed code to DEBT.md entries (D-EMBEDDED-PROGRAMMER, D-EMBEDDED-EMULATOR). Zero TODOs in `.rs` files per wateringHole standard.
+- **D-MISSING-DOCS-S171**: Removed `#![allow(missing_docs)]` from `distributed/src/lib.rs`; promoted to `#![warn(missing_docs)]`.
+- **D-JAEGER-HARDCODE-S171**: Removed hardcoded `http://jaeger:14268/api/traces` default; tracing endpoint is now env-only (`TOADSTOOL_JAEGER_ENDPOINT`).
+- **D-MTLS-HARDCODE-S171**: Removed hardcoded `/etc/certs/*.crt` mTLS defaults; certs from env only, mTLS auto-disabled when env vars absent.
+- **D-DEAD-CODE-EVOLVE-S171**: Evolved `#[allow(dead_code)]` to `#[expect(dead_code, reason = "...")]` in `byob_impl/mod.rs` and `akida-reservoir-research/src/lib.rs`.
 
 ## S170 Resolved Debt
 

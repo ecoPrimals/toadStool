@@ -15,6 +15,21 @@ use toadstool_common::config_bases::{
 use toadstool_common::interned_strings::capabilities;
 use tracing::info;
 
+// --- Network configurator defaults (overridable via env) ---
+
+const DEFAULT_PROXY_LISTEN_PORT: u16 = 15001;
+const DEFAULT_PROXY_ADMIN_PORT: u16 = 15000;
+const DEFAULT_METRICS_PORT: u16 = 15090;
+const DEFAULT_DNS_PORT: u16 = 53;
+const DEFAULT_PROXY_CONCURRENCY: u32 = 2;
+const DEFAULT_SIDECAR_IMAGE: &str = "toadstool/service-mesh-proxy:latest";
+const RFC1918_RANGES: &[&str] = &["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
+
+fn default_audit_log_path() -> String {
+    std::env::var("TOADSTOOL_AUDIT_LOG_PATH")
+        .unwrap_or_else(|_| "/var/log/toadstool/audit.log".into())
+}
+
 /// Core configurator trait
 ///
 /// Provides construction and main orchestration methods
@@ -66,7 +81,8 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                 mesh_type: "native".to_string(),
                 sidecar: SidecarConfig {
                     enabled: true,
-                    image: "toadstool/service-mesh-proxy:latest".to_string(),
+                    image: std::env::var("TOADSTOOL_SIDECAR_IMAGE")
+                        .unwrap_or_else(|_| DEFAULT_SIDECAR_IMAGE.to_string()),
                     resources: SidecarResources {
                         cpu_limit: "200m".to_string(),
                         memory_limit: "256Mi".to_string(),
@@ -75,9 +91,9 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     },
                     proxy: ProxyConfig {
                         proxy_type: "envoy".to_string(),
-                        listen_port: 15001,
-                        admin_port: 15000,
-                        concurrency: 2,
+                        listen_port: DEFAULT_PROXY_LISTEN_PORT,
+                        admin_port: DEFAULT_PROXY_ADMIN_PORT,
+                        concurrency: DEFAULT_PROXY_CONCURRENCY,
                         timeouts: TimeoutConfig {
                             connection_timeout: Duration::from_secs(10),
                             request_timeout: Duration::from_secs(30),
@@ -89,21 +105,15 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         metrics_enabled: true,
                         tracing_enabled: true,
                         access_logs: true,
-                        metrics_port: 15090,
-                        tracing_endpoint: Some(
-                            std::env::var("TOADSTOOL_JAEGER_ENDPOINT")
-                                .unwrap_or_else(|_| "http://jaeger:14268/api/traces".to_string()),
-                        ),
+                        metrics_port: DEFAULT_METRICS_PORT,
+                        tracing_endpoint: std::env::var("TOADSTOOL_JAEGER_ENDPOINT").ok(),
                     },
                 },
                 mtls: MutualTLSConfig {
-                    enabled: true,
-                    ca_cert: std::env::var("TOADSTOOL_CA_CERT")
-                        .unwrap_or_else(|_| "/etc/certs/ca.crt".to_string()),
-                    service_cert: std::env::var("TOADSTOOL_SERVICE_CERT")
-                        .unwrap_or_else(|_| "/etc/certs/service.crt".to_string()),
-                    private_key: std::env::var("TOADSTOOL_SERVICE_KEY")
-                        .unwrap_or_else(|_| "/etc/certs/service.key".to_string()),
+                    enabled: std::env::var("TOADSTOOL_CA_CERT").is_ok(),
+                    ca_cert: std::env::var("TOADSTOOL_CA_CERT").unwrap_or_default(),
+                    service_cert: std::env::var("TOADSTOOL_SERVICE_CERT").unwrap_or_default(),
+                    private_key: std::env::var("TOADSTOOL_SERVICE_KEY").unwrap_or_default(),
                     rotation_interval: Duration::from_secs(3600),
                     verification_mode: "strict".to_string(),
                 },
@@ -234,11 +244,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                 network_isolation: NetworkIsolationConfig {
                     enabled: true,
                     isolation_level: "strict".to_string(),
-                    allowed_networks: vec![
-                        "10.0.0.0/8".to_string(),
-                        "172.16.0.0/12".to_string(),
-                        "192.168.0.0/16".to_string(),
-                    ],
+                    allowed_networks: RFC1918_RANGES.iter().map(|s| (*s).to_string()).collect(),
                     blocked_networks: vec![],
                     firewall_rules: vec![],
                 },
@@ -250,7 +256,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         destination_type: "file".to_string(),
                         config: HashMap::from([(
                             "path".to_string(),
-                            serde_json::Value::String("/var/log/toadstool/audit.log".to_string()),
+                            serde_json::Value::String(default_audit_log_path()),
                         )]),
                         enabled: true,
                     }],
@@ -285,7 +291,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         value: "0.0.0.0/0".to_string(),
                     }],
                     ports: vec![NetworkPort {
-                        port: 53,
+                        port: DEFAULT_DNS_PORT,
                         protocol: "udp".to_string(),
                         end_port: None,
                     }],

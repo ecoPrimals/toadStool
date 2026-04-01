@@ -42,12 +42,12 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,700+ tests, 0 failures** (S169), 222 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,700+ tests, 0 failures** (S171), 222 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
+| `unsafe` blocks | ~26 irreducible (all in `hw-safe` + drivers), SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
-| Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) **`#[cfg(test)]` only** (S169) |
+| Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) **`#[cfg(test)]` only** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
@@ -191,6 +191,10 @@ toadStool/
 |   |   +-- common/                Shared types, constants, primal identity, ecosystem IDs, error types
 |   |   +-- config/                Centralized configuration (env-aware, network config, port constants)
 |   |   +-- toadstool/             Core runtime, IPC, scheduler, production hardening
+|   |   +-- glowplug/              Hardware-agnostic device lifecycle (personality, swap, discovery)
+|   |   +-- ember/                 Hardware-agnostic device holder (resources, journals, metadata)
+|   |   +-- hw-safe/               Safe wrappers for hardware primitives (mmap, volatile MMIO, aligned alloc)
+|   |   +-- nvpmu/                 NVIDIA PMU BAR0 access, DMA, VFIO
 |   +-- server/                    JSON-RPC server, GPU job queue, cross-gate router
 |   +-- (api/ fossilized S96 — ByobApi extracted to container, remainder to ecoPrimals/fossil/)
 |   +-- cli/                       UniBin CLI (single binary, BYOB server subcommand)
@@ -240,12 +244,12 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,700+** (S169), 0 failures |
+| Workspace tests | **21,700+** (S171), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | ~70+ (GPU APIs + FFI/MMIO), all SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
+| `unsafe` blocks | ~26 irreducible (all in `hw-safe` + drivers), SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
-| Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** (S169) |
+| Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); ~25 justified `#[allow(dead_code)]` remain |
@@ -266,11 +270,13 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S171 (Apr 1, 2026)**: Ember absorption + unsafe evolution. Created `toadstool-hw-safe` (unsafe containment zone), `toadstool-glowplug`, `toadstool-ember` crates. Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess` (direct BAR0 reads, zero coral-ember dependency). Evolved `glowplug_client.rs` to toadStool-native sysfs-based service. Migrated mmap/alloc to hw-safe across akida-driver, nvpmu, gpu. All ~400 distributed crate missing_docs resolved. Hardcoding evolved (bind address, gate ID, configurator constants).
+- **S170 (Mar 31, 2026)**: Concurrent test evolution. Fixed 16+ stale test failures, eliminated test sleeps, IPC compliance verification.
 - **S169 (Mar 31, 2026)**: Primal overstep cleanup — removed Ollama, HTTP stack from server+cli (Songbird), shader **compile** proxy (coralReef), science/ecology/deploy relays (biomeOS); dropped pyo3/gbm/linfa/hmac/indicatif; **`shader.dispatch`** retained. Deep debt: capability-only `ports`/`network`, `InMemoryAuthBackend` test-only, `embedded/types` split, XDG + `temp_dir`, Unix-socket-first discovery, workspace dep inheritance, federation unwrap audit.
 - **S168 (Mar 30, 2026)**: `shader.dispatch` JSON-RPC method — closes ludoSpring V35 / coralReef Iter 70 E2E gap (compile→dispatch→readback sovereign shader pipeline). Base64 + u8-array + compile_result input. Workspace-wide clippy zero-warning (~120+ fixes). Auth backend evolved to async-first. Server connection zero-copy. 11 specialty runtime files from 0% → covered. 18 new shader dispatch tests.
 - **S166 (Mar 29, 2026)**: Deep debt execution + capability-based evolution + dependency sovereignty. Redundant `#![allow]` cleanup (29 `lib.rs` files; blanket `clippy::nursery` removed from server + cross-substrate-validation). Discovery: hardcoded primal names → capability IDs (`crypto`, `coordination`, `storage`, `routing`); `resolve_capability_socket_fallback()`; legacy names `#[deprecated]`; `ecosystem::capabilities` module. Production stubs: `crypto_lock` JSON permissions + delegation validation; `SubstrateConfig::validate()` (power budget, fallback order, capabilities). Smart-split 7 large files into module dirs (all production **< 400 lines**). `md5` → `md-5`; `bollard` 0.18 workspace-wide; orchestrator provider selection intersects compliance + sorts deterministically. **Dependency sovereignty**: `ed25519-dalek` removed from core + CLI (signing/verification delegated to BearDog via `crypto.sign`/`crypto.verify`/`crypto.public_key` JSON-RPC); `regex` removed (replaced with `str::contains()` pattern matching); `parking_lot` replaced with `std::sync::RwLock` in orchestration; `AuthBackend` trait extended with `sign_payload()` + `public_key()`; HTTP transport delegates to Songbird via `comms.http_forward` JSON-RPC; `hmac` removed; `mdns-sd` retained as feature-gated cold-start discovery. Net: 123 files changed, +1145/-8334 lines.
 - **S164 (Mar 29, 2026)**: Dependency deduplication (linfa 0.7→0.8, ndarray 0.15→0.16, mockall 0.11→0.12, env_logger 0.10→0.11). Smart-refactored 5 large files into directory modules (execution.rs, capabilities.rs, client.rs, ecosystem/mod.rs, integration_impl.rs). +94 new tests across 7 lowest-coverage files (resource_validator 20→75%, discovery 57→88%, scheduler/execution 45→99%, orchestrator 43→100%, ecosystem 68→85%, client/core 54→85%, dispatch 40→70%). All quality gates green.
-- **S163+ (Mar 22, 2026)**: GlowPlug ember client stub (`glowplug_client.rs`) — lazy Unix socket discovery (env var / XDG runtime / default), JSON-RPC RPCs (`ember.list`, `ember.status`, `ember.swap`, `ember.reacquire`), `SharedGlowPlugClient` via `Arc<GlowPlugClient>`. Wires toadStool into coral-ember device lifecycle. Via hotSpring Full Sweep Evolution Sprint.
+- **S163+ (Mar 22, 2026)**: GlowPlug ember client — device lifecycle RPCs (`ember.list`, `ember.status`, `ember.swap`, `ember.reacquire`). Initially a coral-ember proxy, evolved to toadStool-native in S171.
 - **S163 (Mar 21, 2026)**: Deep code quality + dependency audit. 26 phantom deps removed across 10 crates (indicatif, figment, handlebars, nom, byteorder, csv, rand + 19 more). Zero-copy improvements: PrimalIdentity trait returns references not clones, PluginManager returns `&str` not `String`, protocol handler map uses `Arc<str>` keys, JSON payload serialization bypasses intermediate String. `#[allow(dead_code)]` evolved to `#[expect(dead_code, reason)]` or `#[cfg(test)]`. RUSTSEC-2025-0119 advisory eliminated (indicatif removed). Stale async-trait import removed. Clippy zero warnings. All tests pass.
 - **S162 (Mar 21, 2026)**: Coverage expansion (81.64%→82.81%). +98 tests across barracuda, science domains, dispatch, transport, hw_learn, tarpc, unibin. Coverage script fix. SPDX sweep (38 files). Last production unwrap evolved.
 - **S160 (Mar 20, 2026)**: Deep execution + coverage expansion. 9 broken tests fixed (neuromorphic detection, nested-runtime, transport assertions). +49 new tests across resource types, security policies/sandbox types, property-based testing. Hardcoded Akida specs → named constants. Dead `procfs` dep removed from 3 crates. 21,275 tests, 0 failures.
@@ -339,7 +345,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: March 31, 2026 — S169. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~65 JSON-RPC methods** (S169 trimmed inference/shader.compile/science/ecology/discovery/deploy; **`shader.dispatch`** retained; compile in coralReef). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~70+ unsafe blocks (all SAFETY-documented); **43 crates** inherit workspace `clippy::pedantic + nursery` lints. IPC-first JSON-RPC (Unix sockets; HTTP stack removed from server+cli in S169). Rust 1.85+ (edition 2024, MSRV). Sovereign shader **dispatch** E2E with coralReef compile.
+**Last Updated**: April 1, 2026 — S171. 21,700+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~65 JSON-RPC methods**. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~26 irreducible unsafe ops (all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Rust 1.85+ (edition 2024, MSRV). **glowPlug/ember** subsystem absorbed from coralReef — toadStool-native hardware lifecycle.
 
 ---
 

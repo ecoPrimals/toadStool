@@ -157,7 +157,7 @@ pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 pub mod mocks;
 
 pub(crate) mod coral_reef_client; // Internal: used by dispatch for coralReef coordination
-pub mod glowplug_client; // coral-ember VFIO passthrough IPC client
+pub mod glowplug_client; // toadStool-native device management service
 
 // ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
 // lifecycle: REMOVED — HTTP lifecycle is songBird's domain; use pure_jsonrpc

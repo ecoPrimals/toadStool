@@ -11,7 +11,7 @@ use std::time::Duration;
 /// Daemon configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DaemonConfig {
-    /// HTTP API port
+    /// JSON-RPC TCP port (0 = OS-assigned; non-zero enables TCP alongside Unix socket)
     pub port: u16,
 
     /// Register with biomeOS capability registry

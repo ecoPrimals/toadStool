@@ -87,26 +87,47 @@ pub struct CoordinationResponse {
 pub enum CoordinationOperation {
     /// Register a service
     RegisterService {
+        /// Full registration payload.
         registration: Box<ServiceRegistration>,
     },
 
     /// Deregister a service
-    DeregisterService { service_id: String },
+    DeregisterService {
+        /// Service id to remove.
+        service_id: String,
+    },
 
     /// Discover services by capability
-    DiscoverServices { capability: String },
+    DiscoverServices {
+        /// Capability name to search for.
+        capability: String,
+    },
 
     /// Get load balancing advice
-    GetLoadBalancing { service_ids: Vec<String> },
+    GetLoadBalancing {
+        /// Service ids to consider.
+        service_ids: Vec<String>,
+    },
 
     /// Report health status
-    ReportHealth { service_id: String, healthy: bool },
+    ReportHealth {
+        /// Reporting service id.
+        service_id: String,
+        /// Whether the service considers itself healthy.
+        healthy: bool,
+    },
 
     /// Subscribe to service updates
-    Subscribe { capability: String },
+    Subscribe {
+        /// Capability to watch.
+        capability: String,
+    },
 
     /// Unsubscribe from service updates
-    Unsubscribe { subscription_id: String },
+    Unsubscribe {
+        /// Subscription id returned from a prior subscribe.
+        subscription_id: String,
+    },
 }
 
 /// Health check request
@@ -160,10 +181,16 @@ pub enum LoadBalancingStrategy {
     Random,
 
     /// Weighted round-robin
-    WeightedRoundRobin { weights: Vec<u32> },
+    WeightedRoundRobin {
+        /// Relative weights per backend index.
+        weights: Vec<u32>,
+    },
 
     /// Consistent hashing
-    ConsistentHash { key: String },
+    ConsistentHash {
+        /// Hash key for stable backend selection.
+        key: String,
+    },
 
     /// Custom strategy
     Custom(String),

@@ -38,11 +38,12 @@ impl CoralReefClient {
     ///
     /// Discovery order:
     /// 1. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit socket path)
-    /// 2. `CORALREEF_URL` env var (socket path or address)
-    /// 3. XDG runtime dir manifest: `$XDG_RUNTIME_DIR/ecoPrimals/coralreef-core.json`
-    /// 4. Socket directory scan: `$XDG_RUNTIME_DIR/biomeos/coralreef*.sock` (matches
+    /// 2. `CORALREEF_SOCKET` env var (socket path — preferred over deprecated `CORALREEF_URL`)
+    /// 3. `CORALREEF_URL` env var (deprecated: treated as socket path, not HTTP)
+    /// 4. XDG runtime dir manifest: `$XDG_RUNTIME_DIR/ecoPrimals/coralreef-core.json`
+    /// 5. Socket directory scan: `$XDG_RUNTIME_DIR/biomeos/coralreef*.sock` (matches
     ///    any coralReef naming variant, e.g. `coralreef-core-default.sock`)
-    /// 5. ecoPrimals socket fallback: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
+    /// 6. ecoPrimals socket fallback: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
     async fn discover() -> Option<UnixJsonRpcClient> {
         if let Ok(addr) = std::env::var("TOADSTOOL_SHADER_COMPILER_ADDR") {
             let path = PathBuf::from(&addr);
@@ -52,11 +53,13 @@ impl CoralReefClient {
             }
         }
 
-        if let Ok(url) = std::env::var("CORALREEF_URL") {
-            let path = PathBuf::from(&url);
-            if path.exists() {
-                debug!(path = %path.display(), "coralReef discovered via CORALREEF_URL");
-                return Some(UnixJsonRpcClient::new(path));
+        for env_name in ["CORALREEF_SOCKET", "CORALREEF_URL"] {
+            if let Ok(val) = std::env::var(env_name) {
+                let path = PathBuf::from(&val);
+                if path.exists() {
+                    debug!(path = %path.display(), env = env_name, "coralReef discovered via env");
+                    return Some(UnixJsonRpcClient::new(path));
+                }
             }
         }
 

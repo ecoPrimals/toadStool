@@ -9,11 +9,17 @@ pub type NodeId = String;
 /// Node capability specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeCapabilities {
+    /// Logical CPU cores advertised by the node.
     pub cpu_cores: f64,
+    /// RAM in gigabytes.
     pub memory_gb: f64,
+    /// Storage in gigabytes.
     pub storage_gb: f64,
+    /// Number of GPUs (or accelerator slots) available.
     pub gpu_count: u32,
+    /// Hardware labels (e.g. device families).
     pub specialized_hardware: Vec<String>,
+    /// Software features (runtimes, frameworks) available on the node.
     pub software_capabilities: Vec<String>,
 }
 

@@ -14,8 +14,8 @@ use std::path::PathBuf;
 /// under the `ecoPrimals/<PRIMAL_NAME>/` layout.
 #[must_use]
 pub fn discover_socket_path() -> PathBuf {
-    let base = std::env::var("XDG_RUNTIME_DIR")
-        .map_or_else(|_| std::env::temp_dir(), PathBuf::from);
+    let base =
+        std::env::var("XDG_RUNTIME_DIR").map_or_else(|_| std::env::temp_dir(), PathBuf::from);
 
     let primal_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     base.join("ecoPrimals")

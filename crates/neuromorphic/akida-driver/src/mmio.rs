@@ -199,6 +199,7 @@ impl MappedRegion {
                 self.ptr.cast()
             }
 
+            // SAFETY: trivial — discards output, no pointer dereference.
             unsafe fn output_from_ptr(
                 _out: IoctlOutput,
                 _extract_output: *mut std::ffi::c_void,

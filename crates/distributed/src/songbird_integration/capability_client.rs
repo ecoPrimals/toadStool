@@ -288,11 +288,14 @@ impl CapabilityClient {
     }
 }
 
-/// Client statistics
+/// Snapshot of capability client cache and discovery timing.
 #[derive(Debug, Clone)]
 pub struct ClientStats {
+    /// Number of services held in the local cache.
     pub available_services: usize,
+    /// Wall-clock time of the last successful discovery refresh, if any.
     pub last_discovery: Option<SystemTime>,
+    /// Seconds since `last_discovery`, or `None` if never discovered.
     pub cache_age_seconds: Option<i64>,
 }
 

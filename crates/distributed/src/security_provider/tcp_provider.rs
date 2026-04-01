@@ -33,6 +33,7 @@ pub struct TcpSecurityProvider {
 }
 
 impl TcpSecurityProvider {
+    /// Connects to `host:port` with the default request timeout.
     pub fn new(host: &str, port: u16) -> Self {
         Self {
             host: host.to_string(),
@@ -42,6 +43,7 @@ impl TcpSecurityProvider {
         }
     }
 
+    /// Like [`Self::new`] but sets the TCP read/write timeout in seconds.
     pub fn with_timeout(host: &str, port: u16, timeout_secs: u64) -> Self {
         Self {
             host: host.to_string(),

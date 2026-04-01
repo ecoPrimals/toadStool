@@ -12,24 +12,23 @@
 //! Wrong register writes can hang the GPU or cause hardware damage.
 //! Always verify thermal safety before and after applying recipes.
 //!
-//! # Phase 3 (this module)
+//! # Evolution
 //!
-//! Provides the `Bar0Access` struct that can be used as a
-//! `hw_learn::applicator::RegisterAccess` backend.
+//! Migrated from hand-rolled mmap/munmap to [`toadstool_hw_safe::SafeMmapRegion`],
+//! which owns the mapping lifetime and provides [`VolatileMmio`] for
+//! bounds-checked volatile reads and writes.
 
 use crate::error::{NvPmuError, Result};
-use std::fs::{File, OpenOptions};
 use std::path::Path;
+use toadstool_hw_safe::SafeMmapRegion;
 
 /// BAR0 MMIO region for a specific GPU.
 ///
 /// Maps the GPU's BAR0 register space via PCI sysfs for direct
-/// register access. Drop unmaps the region.
+/// register access. Drop unmaps the region automatically via the
+/// inner [`SafeMmapRegion`].
 pub struct Bar0Access {
-    /// Memory-mapped region (raw pointer + size).
-    ptr: std::ptr::NonNull<u8>,
-    size: usize,
-    _file: File,
+    inner: SafeMmapRegion,
     bdf: String,
 }
 
@@ -46,44 +45,14 @@ impl Bar0Access {
     }
 
     fn open_path(bdf: &str, path: &Path) -> Result<Self> {
-        let file = OpenOptions::new().read(true).write(true).open(path)?;
+        let inner = SafeMmapRegion::map_shared_rw(path).map_err(|e| {
+            NvPmuError::SensorNotFound(format!("BAR0 mmap for {bdf}: {e}"))
+        })?;
 
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "BAR0 size never exceeds usize on 64-bit Linux"
-        )]
-        let size = file.metadata()?.len() as usize;
-        if size == 0 {
-            return Err(NvPmuError::SensorNotFound(format!(
-                "BAR0 size is 0 for {bdf} (device not enabled?)"
-            )));
-        }
-
-        // SAFETY: mmap of a PCI BAR resource file is standard Linux practice.
-        // We validate the file descriptor (just opened), size (non-zero),
-        // and use MAP_SHARED for device memory. The mapping is valid for the
-        // lifetime of the File (held in struct). Unmapped in Drop.
-        let ptr = unsafe {
-            use std::os::unix::io::AsFd;
-            let addr = rustix::mm::mmap(
-                std::ptr::null_mut(),
-                size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                file.as_fd(),
-                0,
-            )
-            .map_err(|e| std::io::Error::other(format!("mmap BAR0: {e}")))?;
-            std::ptr::NonNull::new(addr.cast::<u8>())
-                .ok_or_else(|| std::io::Error::other("mmap returned null"))?
-        };
-
-        tracing::info!(bdf, size, "BAR0 mapped ({} MB)", size / (1024 * 1024));
+        tracing::info!(bdf, size = inner.size(), "BAR0 mapped ({} MB)", inner.size() / (1024 * 1024));
 
         Ok(Self {
-            ptr,
-            size,
-            _file: file,
+            inner,
             bdf: bdf.to_string(),
         })
     }
@@ -98,24 +67,10 @@ impl Bar0Access {
             reason = "BAR offsets never exceed usize on 64-bit Linux"
         )]
         let off = offset as usize;
-        if off + 4 > self.size {
-            return Err(NvPmuError::SensorNotFound(format!(
-                "BAR0 read out of bounds: offset {offset:#x}, size {:#x}",
-                self.size
-            )));
-        }
-        // SAFETY: bounds checked above, ptr is from valid mmap, volatile
-        // read is correct for MMIO registers. Alignment: BAR0 registers are
-        // naturally u32-aligned; offsets must be 4-byte aligned by hardware spec.
-        #[allow(
-            clippy::cast_ptr_alignment,
-            reason = "BAR0 registers are naturally u32-aligned by hardware spec"
-        )]
-        let val = unsafe {
-            let p = self.ptr.as_ptr().add(off).cast::<u32>();
-            std::ptr::read_volatile(p)
-        };
-        Ok(val)
+        self.inner
+            .as_volatile()
+            .read_u32(off)
+            .map_err(|e| NvPmuError::SensorNotFound(format!("BAR0 read @ {offset:#x}: {e}")))
     }
 
     /// Write a 32-bit register at the given BAR-relative offset.
@@ -128,29 +83,16 @@ impl Bar0Access {
             reason = "BAR offsets never exceed usize on 64-bit Linux"
         )]
         let off = offset as usize;
-        if off + 4 > self.size {
-            return Err(NvPmuError::SensorNotFound(format!(
-                "BAR0 write out of bounds: offset {offset:#x}, size {:#x}",
-                self.size
-            )));
-        }
-        // SAFETY: bounds checked above, ptr is from valid mmap, volatile
-        // write is correct for MMIO registers. Alignment: see read_u32.
-        #[allow(
-            clippy::cast_ptr_alignment,
-            reason = "BAR0 registers are naturally u32-aligned by hardware spec"
-        )]
-        unsafe {
-            let p = self.ptr.as_ptr().add(off).cast::<u32>();
-            std::ptr::write_volatile(p, value);
-        }
-        Ok(())
+        self.inner
+            .as_volatile()
+            .write_u32(off, value)
+            .map_err(|e| NvPmuError::SensorNotFound(format!("BAR0 write @ {offset:#x}: {e}")))
     }
 
     /// BAR0 region size in bytes.
     #[must_use]
-    pub const fn size(&self) -> usize {
-        self.size
+    pub fn size(&self) -> usize {
+        self.inner.size()
     }
 
     /// PCI BDF address of the GPU.
@@ -160,20 +102,8 @@ impl Bar0Access {
     }
 }
 
-impl Drop for Bar0Access {
-    fn drop(&mut self) {
-        // SAFETY: ptr/size from successful mmap in constructor.
-        unsafe {
-            if let Err(e) = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size) {
-                tracing::error!(bdf = %self.bdf, "munmap BAR0 failed: {e}");
-            }
-        }
-        tracing::debug!(bdf = %self.bdf, "BAR0 unmapped");
-    }
-}
-
-// SAFETY: Bar0Access owns the mapped memory exclusively. Moving between
-// threads doesn't invalidate the mapping. Writes require &mut self.
+// SAFETY: Bar0Access delegates all pointer operations to SafeMmapRegion
+// which is Send. Moving between threads doesn't invalidate the mapping.
 unsafe impl Send for Bar0Access {}
 
 impl hw_learn::applicator::RegisterAccess for Bar0Access {

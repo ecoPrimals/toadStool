@@ -114,38 +114,56 @@ pub enum ServiceTier {
 pub enum ExternalTarget {
     /// Cloud provider APIs
     CloudProvider {
+        /// Cloud vendor.
         provider: CloudProvider,
+        /// Allowed region identifiers.
         regions: Vec<String>,
+        /// Service names or API families.
         services: Vec<String>,
     },
     /// Container orchestration platforms
     ContainerPlatform {
+        /// Orchestrator product.
         platform: ContainerPlatform,
+        /// Cluster names in scope.
         clusters: Vec<String>,
+        /// Kubernetes-style namespaces or equivalents.
         namespaces: Vec<String>,
     },
     /// External tools and services
     ExternalTool {
+        /// Logical tool or integration name.
         tool_name: String,
+        /// HTTP or RPC endpoints.
         api_endpoints: Vec<String>,
+        /// Feature flags or modules enabled.
         feature_set: Vec<String>,
     },
     /// Quantum computing platforms
     QuantumProvider {
+        /// Quantum cloud vendor.
         provider: QuantumProvider,
+        /// Named quantum backends.
         backends: Vec<String>,
+        /// Optional maximum qubit count.
         qubit_limits: Option<u32>,
     },
     /// HPC and supercomputing clusters
     HPCCluster {
+        /// Cluster display name.
         cluster_name: String,
+        /// Job scheduler in use.
         scheduler: HPCScheduler,
+        /// Scheduler partition or queue names.
         partitions: Vec<String>,
     },
     /// Enterprise and commercial services
     EnterpriseService {
+        /// Product or service name.
         service_name: String,
+        /// Commercial tier.
         tier: ServiceTier,
+        /// Enabled product features.
         features: Vec<String>,
     },
 }
@@ -207,8 +225,9 @@ pub struct SecurityPermission {
     /// Permission scope
     pub scope: PermissionScope,
 
-    /// Valid time range
+    /// Valid time range (inclusive start)
     pub valid_from: SystemTime,
+    /// Valid time range (inclusive end)
     pub valid_until: SystemTime,
 
     /// Cryptographic proof
@@ -237,10 +256,15 @@ pub struct SecurityProof {
 /// Signature algorithms
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SignatureAlgorithm {
+    /// ECDSA over P-256.
     EcdsaP256,
+    /// ECDSA over P-384.
     EcdsaP384,
+    /// Ed25519.
     Ed25519,
+    /// RSA-4096.
     Rsa4096,
+    /// Provider-specific or custom algorithm.
     Custom,
 }
 
@@ -328,9 +352,13 @@ pub struct SignatureResult {
 /// Verification result
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationResult {
+    /// Signature verifies successfully.
     Valid,
+    /// Signature does not verify.
     Invalid,
+    /// Public key or key id was not found.
     KeyNotFound,
+    /// Algorithm does not match the key or request.
     AlgorithmMismatch,
 }
 

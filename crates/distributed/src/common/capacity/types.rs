@@ -96,8 +96,9 @@ pub struct CapacityConfig {
     pub reserve_percent: f64,
     /// Enable automatic scaling
     pub auto_scale: bool,
-    /// Scaling thresholds
+    /// Utilization fraction above which to scale up.
     pub scale_up_threshold: f64,
+    /// Utilization fraction below which to scale down.
     pub scale_down_threshold: f64,
 }
 

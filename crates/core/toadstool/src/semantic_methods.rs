@@ -233,9 +233,8 @@ impl SemanticMethodRegistry {
         // ═══════════════════════════════════════════════════════════
         // SHADER DOMAIN - Dispatch via coralReef daemon pipeline
         //
-        // shader.compile.* removed (Mar 2026): compilation is handled
-        // directly by coralReef's coral-ember daemon. Callers should
-        // connect to $XDG_RUNTIME_DIR/biomeos/shader.sock instead.
+        // shader.compile.* removed (Mar 2026): compilation is coralReef's
+        // domain. Callers connect to coralReef via capability discovery.
         // ═══════════════════════════════════════════════════════════
 
         add_mapping("shader.dispatch", "shader_dispatch");
@@ -596,10 +595,7 @@ mod tests {
     fn test_shader_dispatch_present() {
         let registry = SemanticMethodRegistry::new();
 
-        assert_eq!(
-            registry.resolve("shader.dispatch"),
-            Some("shader_dispatch")
-        );
+        assert_eq!(registry.resolve("shader.dispatch"), Some("shader_dispatch"));
         assert_eq!(
             registry.get_semantic("shader_dispatch"),
             Some("shader.dispatch")

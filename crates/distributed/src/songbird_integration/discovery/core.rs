@@ -16,6 +16,7 @@ use crate::songbird_integration::types::{
 };
 
 impl SongbirdNetworkDiscovery {
+    /// Start discovery with periodic background refresh against the Songbird coordination socket.
     pub async fn new(
         config: SongbirdDiscoveryConfig,
         connection: Arc<SongbirdConnection>,
@@ -64,6 +65,7 @@ impl SongbirdNetworkDiscovery {
     }
 
     #[allow(clippy::significant_drop_tightening)] // nodes are refs from registry
+    /// Aggregate CPU, memory, and storage across active registered nodes.
     pub async fn get_network_capacity(&self) -> ToadStoolResult<NetworkCapacity> {
         let registry = self.node_registry.read().await;
         let nodes = registry.get_active_nodes();
@@ -94,6 +96,7 @@ impl SongbirdNetworkDiscovery {
     }
 
     #[allow(clippy::significant_drop_tightening)] // available_nodes are refs from registry
+    /// Assign each subtask to a best-matching node and return a distribution plan.
     pub async fn get_optimal_distribution(
         &self,
         subtasks: &[SubTask],
@@ -184,6 +187,7 @@ impl SongbirdNetworkDiscovery {
     }
 
     #[allow(clippy::significant_drop_tightening)] // Multiple operations on registry
+    /// Register a node in the local registry and return channel assignments.
     pub async fn register_node(
         &self,
         registration: NodeRegistration,
@@ -215,6 +219,7 @@ impl SongbirdNetworkDiscovery {
     }
 
     #[allow(clippy::significant_drop_tightening)] // all_nodes/active_nodes are refs from registry
+    /// Summarize node counts, pooled capacity, and estimated local utilization.
     pub async fn get_network_status(&self) -> ToadStoolResult<NetworkStatus> {
         let registry = self.node_registry.read().await;
         let all_nodes = registry.get_all_nodes();

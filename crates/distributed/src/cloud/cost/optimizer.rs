@@ -12,12 +12,16 @@ use crate::types::resources::ResourceRequirements;
 
 /// Cloud cost optimizer with real estimation, capability-based pricing, and budget enforcement.
 pub struct CloudCostOptimizer {
+    /// Budget, spot preference, and tracking flags from configuration.
     pub(crate) config: CostConfig,
+    /// Per-provider [`CostModel`] rates derived from capabilities.
     pub(crate) cost_models: HashMap<String, CostModel>,
+    /// Cached [`CloudCapabilities`] used to infer GPU tiers and spot scaling.
     pub(crate) capability_models: HashMap<String, CloudCapabilities>,
 }
 
 impl CloudCostOptimizer {
+    /// Builds an optimizer with no providers registered yet.
     pub async fn new(config: CostConfig) -> ToadStoolResult<Self> {
         Ok(Self {
             config,

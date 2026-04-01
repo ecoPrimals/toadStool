@@ -19,8 +19,9 @@ pub struct SecurityProviderPermission {
     pub external_target: ExternalTarget,
     /// Permission scope and limits
     pub scope: PermissionScope,
-    /// Valid time range
+    /// Valid time range (inclusive start)
     pub valid_from: SystemTime,
+    /// Valid time range (inclusive end)
     pub valid_until: SystemTime,
     /// Security provider cryptographic proof
     pub crypto_proof: SecurityProof,

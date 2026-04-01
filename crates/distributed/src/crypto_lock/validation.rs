@@ -127,6 +127,7 @@ impl SecurityPermissionValidator {
         }
     }
 
+    /// Validates a delegation proof (stub; always succeeds).
     pub async fn validate_delegation_proof(&self, _proof: &SecurityProof) -> ToadStoolResult<()> {
         // Validate delegation proof
         Ok(())
@@ -197,39 +198,54 @@ pub struct SecurityProof {
 /// Cryptographic algorithms supported
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CryptoAlgorithm {
+    /// Ed25519 signatures.
     Ed25519,
+    /// ECDSA P-256.
     EcdsaP256,
+    /// RSA-4096.
     Rsa4096,
+    /// BearDog-specific custom algorithm.
     BearDogCustom,
 }
 
 /// Proof metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofMetadata {
+    /// Entity that issued the proof.
     pub issuer: String,
+    /// Intended use or audience for the proof.
     pub purpose: String,
+    /// Additional string claims attached to the proof.
     pub additional_claims: HashMap<String, String>,
 }
 
 /// Permission validation result
 #[derive(Debug, Clone)]
 pub enum PermissionValidationResult {
+    /// Permission is valid for use.
     Valid,
+    /// Permission failed validation (e.g. bad signature).
     Invalid,
+    /// Permission is outside its valid time window.
     Expired,
+    /// Permission was revoked.
     Revoked,
 }
 
 /// Verification level for identity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VerificationLevel {
+    /// No verification performed.
     Unverified,
+    /// Email ownership verified.
     EmailVerified,
+    /// Government or KYC-style identity verified.
     IdentityVerified,
+    /// Institution affiliation verified.
     InstitutionVerified,
 }
 
-/// Cryptographic signature validator
+/// Cryptographic signature validator (placeholder implementation).
 pub struct CryptoValidator;
 
 impl Default for CryptoValidator {
@@ -239,13 +255,14 @@ impl Default for CryptoValidator {
 }
 
 impl CryptoValidator {
+    /// Creates a new validator instance.
     #[must_use]
     pub const fn new() -> Self {
         Self
     }
 }
 
-/// Delegation chain validator
+/// Delegation chain validator (placeholder implementation).
 pub struct DelegationValidator;
 
 impl Default for DelegationValidator {
@@ -255,13 +272,14 @@ impl Default for DelegationValidator {
 }
 
 impl DelegationValidator {
+    /// Creates a new delegation validator.
     #[must_use]
     pub const fn new() -> Self {
         Self
     }
 }
 
-/// Permission revocation list
+/// Permission revocation list (placeholder; empty by default).
 pub struct PermissionRevocationList;
 
 impl Default for PermissionRevocationList {
@@ -271,13 +289,14 @@ impl Default for PermissionRevocationList {
 }
 
 impl PermissionRevocationList {
+    /// Creates an empty revocation list.
     #[must_use]
     pub const fn new() -> Self {
         Self
     }
 }
 
-/// Security provider public key
+/// Security provider public key (opaque placeholder for verification keys).
 pub struct SecurityPublicKey;
 
 #[cfg(test)]

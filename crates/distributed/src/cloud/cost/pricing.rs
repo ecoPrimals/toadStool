@@ -81,7 +81,7 @@ impl PricingTier {
     }
 }
 
-/// Infer pricing tier from cloud capabilities.
+/// Selects a [`PricingTier`] from advertised [`CloudCapabilities`].
 pub fn infer_pricing_tier(capabilities: &CloudCapabilities) -> PricingTier {
     if capabilities.gpu_support {
         PricingTier::GpuAccelerated
@@ -105,9 +105,13 @@ pub fn infer_pricing_tier(capabilities: &CloudCapabilities) -> PricingTier {
 /// Cloud cost model implementations (capability-based, not provider-named).
 #[derive(Debug, Clone)]
 pub struct CloudCostModel {
+    /// CPU cost per core-hour (currency units).
     pub cpu_rate: f64,
+    /// Memory cost per GB-hour.
     pub memory_rate: f64,
+    /// Storage cost per GB-month.
     pub storage_rate: f64,
+    /// Network cost per GB transferred.
     pub network_rate: f64,
 }
 
@@ -175,10 +179,12 @@ impl CloudCostModel {
 
 // Legacy constructors for backward compatibility
 impl CloudCostModel {
+    /// Legacy alias for [`Self::standard_compute`] (AWS-style baseline).
     pub const fn new_aws() -> Self {
         Self::standard_compute()
     }
 
+    /// Approximate Azure-relative rates vs standard compute.
     pub fn new_azure() -> Self {
         let t = PricingTier::StandardCompute;
         Self {
@@ -189,6 +195,7 @@ impl CloudCostModel {
         }
     }
 
+    /// Approximate GCP-relative rates vs standard compute.
     pub fn new_gcp() -> Self {
         let t = PricingTier::StandardCompute;
         Self {
@@ -199,6 +206,7 @@ impl CloudCostModel {
         }
     }
 
+    /// Approximate DigitalOcean-relative rates vs standard compute.
     pub fn new_digitalocean() -> Self {
         let t = PricingTier::StandardCompute;
         Self {
@@ -209,6 +217,7 @@ impl CloudCostModel {
         }
     }
 
+    /// Approximate Hetzner-relative rates vs standard compute.
     pub fn new_hetzner() -> Self {
         let t = PricingTier::StandardCompute;
         Self {
@@ -219,6 +228,7 @@ impl CloudCostModel {
         }
     }
 
+    /// Legacy alias for [`Self::edge_local`] (local/minimal cloud cost).
     pub const fn new_localhost() -> Self {
         Self::edge_local()
     }

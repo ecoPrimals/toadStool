@@ -18,6 +18,7 @@ use super::types::{
 };
 
 impl MassiveJobDistributor {
+    /// Build a distributor from config, including default and custom splitting strategies.
     pub async fn new(config: DistributionConfig) -> ToadStoolResult<Self> {
         // Initialize splitting strategies based on configuration
         let mut splitting_strategies = HashMap::new();
@@ -64,6 +65,7 @@ impl MassiveJobDistributor {
         })
     }
 
+    /// Splits a universal job into subtasks according to complexity and configured strategies.
     pub async fn split_job(
         &self,
         job: &UniversalJob,
@@ -278,6 +280,7 @@ impl Default for JobSplittingStrategy {
 }
 
 impl JobSplittingStrategy {
+    /// Parse a splitting strategy name into a `JobSplittingStrategy` (unknown names become custom).
     pub fn from_string(strategy_str: &str) -> Self {
         use super::types::SplittingStrategyType;
 

@@ -54,6 +54,9 @@ pub mod universal;
 // Unified memory (NEW - vendor-agnostic zero-copy)
 pub mod unified_memory;
 
+// glowPlug/ember GPU implementation (hardware-agnostic lifecycle traits)
+pub mod glowplug;
+
 // Real GPU backends (no mocks)
 // EVOLVED: Feature gates are CORRECT here - they enable optional optimizations
 // WebGPU (wgpu) is the universal default, always available without features

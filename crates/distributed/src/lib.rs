@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![warn(missing_docs)]
-#![allow(missing_docs)] // ~400 items remain in songbird/beardog/cloud types; add docs incrementally
 
 //! # `ToadStool` Distributed Computing Integration
 //!

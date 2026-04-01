@@ -11,7 +11,7 @@
 //!
 //! Compile this module with Cargo feature **`embedded-placeholder-impls`** (enabled by default).
 //!
-//! **Tracking:** `# TODO(embedded-hw):` replace stubs when ISP/ICSP/parallel transports land.
+//! See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
 //!
 //! ## Architecture Notes
 //!
@@ -44,7 +44,7 @@ fn programmer_placeholder_err(operation: &'static str) -> ToadStoolError {
 
 /// Generates [`ProgrammerInterface`] impls that return structured placeholder errors (no panics).
 ///
-/// **Tracking:** `# TODO(embedded-hw):` hardware programmer — see module-level docs.
+/// See DEBT.md `D-EMBEDDED-PROGRAMMER` and module-level docs for evolution plan.
 macro_rules! impl_programmer_stub {
     ($programmer:ty, $name:expr, $interface:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible

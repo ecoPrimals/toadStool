@@ -79,6 +79,7 @@ unsafe impl Ioctl for DrmIoctl {
     fn as_ptr(&mut self) -> *mut std::ffi::c_void {
         self.arg.cast()
     }
+    // SAFETY: trivial — discards output, no pointer dereference.
     unsafe fn output_from_ptr(
         _: IoctlOutput,
         _: *mut std::ffi::c_void,

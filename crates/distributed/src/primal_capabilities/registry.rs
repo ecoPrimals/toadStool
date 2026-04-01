@@ -200,7 +200,7 @@ impl Capability {
     }
 }
 
-/// Registry of capabilities
+/// In-memory registry of [`Capability`] entries keyed by id.
 pub struct CapabilityRegistry {
     capabilities: HashMap<String, Capability>,
 }
@@ -299,6 +299,7 @@ pub struct ProviderRegistry {
 }
 
 impl ProviderRegistry {
+    /// Creates an empty provider registry.
     #[must_use]
     pub fn new() -> Self {
         Self {

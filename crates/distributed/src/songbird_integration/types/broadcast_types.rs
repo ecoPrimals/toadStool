@@ -22,6 +22,7 @@ pub struct BroadcastChannel {
 }
 
 impl BroadcastChannel {
+    /// Create a channel with the given display name and a fresh broadcast sender.
     pub fn new(name: impl Into<String>) -> Self {
         let (tx, _) = broadcast::channel(64);
         Self {
@@ -30,6 +31,7 @@ impl BroadcastChannel {
         }
     }
 
+    /// Channel name used when registering or logging.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -61,6 +63,7 @@ pub struct MessageTypeRegistry {
 }
 
 impl MessageTypeRegistry {
+    /// Create an empty registry.
     pub fn new() -> Self {
         Self {
             types: Mutex::new(HashSet::new()),
@@ -82,6 +85,7 @@ impl MessageTypeRegistry {
             .is_some_and(|g| g.contains(type_name))
     }
 
+    /// All registered type names, sorted arbitrarily.
     pub fn known_types(&self) -> Vec<String> {
         self.types
             .lock()
@@ -107,6 +111,7 @@ pub struct SubscriptionManager {
 }
 
 impl SubscriptionManager {
+    /// Create a manager with no channels yet.
     pub fn new() -> Self {
         Self {
             channels: Mutex::new(HashMap::new()),

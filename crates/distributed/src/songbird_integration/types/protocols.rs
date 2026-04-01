@@ -8,25 +8,35 @@ use serde::{Deserialize, Serialize};
 /// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SongbirdProtocol {
+    /// JSON-RPC or REST-style HTTP transport.
     HTTP,
+    /// gRPC (deprecated; prefer JSON-RPC per project IPC standard).
     GRPC,
+    /// Brokered message-queue transport.
     MessageQueue,
 }
 
 /// Protocol configuration for Songbird communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProtocolConfig {
+    /// Active transport for this connection.
     pub protocol: SongbirdProtocol,
+    /// Settings when using HTTP.
     pub http: HttpProtocolConfig,
+    /// Settings when using gRPC (deprecated).
     pub grpc: GrpcProtocolConfig,
+    /// Settings when using a message queue.
     pub message_queue: MessageQueueProtocolConfig,
 }
 
 /// HTTP protocol configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpProtocolConfig {
+    /// Per-request timeout in milliseconds.
     pub timeout_ms: u64,
+    /// Maximum retry attempts for transient failures.
     pub max_retries: u32,
+    /// Extra HTTP headers to send on each request.
     pub headers: HashMap<String, String>,
 }
 
@@ -42,16 +52,22 @@ pub struct HttpProtocolConfig {
 )]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GrpcProtocolConfig {
+    /// Per-call timeout in milliseconds.
     pub timeout_ms: u64,
+    /// Maximum encoded message size in bytes.
     pub max_message_size: usize,
+    /// Whether to enable compression on the channel.
     pub compression: bool,
 }
 
 /// Message queue protocol configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageQueueProtocolConfig {
+    /// Primary queue name for consumer bindings.
     pub queue_name: String,
+    /// AMQP-style exchange name (or broker-specific equivalent).
     pub exchange: String,
+    /// Routing key for directed delivery.
     pub routing_key: String,
 }
 

@@ -141,6 +141,7 @@ impl VolatileSlice {
     /// # Errors
     ///
     /// Returns error if read would exceed region bounds
+    #[expect(dead_code, reason = "byte-level access migrated to toadstool-hw-safe VolatileMmio")]
     pub fn read_region(&self, offset: usize, buf: &mut [u8]) -> Result<()> {
         if offset + buf.len() > self.size {
             return Err(AkidaError::transfer_failed(format!(
@@ -165,6 +166,7 @@ impl VolatileSlice {
     /// # Errors
     ///
     /// Returns error if write would exceed region bounds
+    #[expect(dead_code, reason = "byte-level access migrated to toadstool-hw-safe VolatileMmio")]
     pub fn write_region(&mut self, offset: usize, data: &[u8]) -> Result<()> {
         if offset + data.len() > self.size {
             return Err(AkidaError::transfer_failed(format!(

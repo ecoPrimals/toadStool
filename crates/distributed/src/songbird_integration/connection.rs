@@ -10,6 +10,7 @@ use super::types::{
 use toadstool_common::auth::AuthType;
 
 impl SongbirdConnection {
+    /// Connect using config: pick a healthy endpoint, set auth token, and record health.
     pub async fn new(config: SongbirdConnectionConfig) -> ToadStoolResult<Self> {
         // Validate at least one endpoint is provided
         if config.endpoints.is_empty() {

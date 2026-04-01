@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: March 31, 2026 -- S170 Concurrent Test Evolution + Deep Debt
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** (`check`, `fmt`, `clippy` 0 warnings, `doc`, `test` 0 failures) | 0 clippy pedantic+nursery (58 crates) | 21,632 tests (0 failures) | **~65 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | **Production mocks test-gated** (`#[cfg(test)]`) | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **Zero `block_on` in auth (async-first)** | **Sovereign shader dispatch** (`shader.dispatch`; compile in coralReef) | **IPC compliant** (health.liveness/readiness/check, capabilities.list, XDG socket)
-**Latest**: S170 — Fixed 16+ pre-existing test failures (stale env vars, Docker degradation, policy deny-by-default). Eliminated test sleeps (cache uses `tokio::time::Instant` + `start_paused`, daemon polls instead of sleeping, runtime_bridge uses exponential backoff). Cleaned stale Deep Debt comments. Production `configurator/core.rs` uses `resolve_capability_port()`. Verified IPC compliance against wateringHole matrix.
+**Updated**: April 1, 2026 -- S171 Ember Absorption + Unsafe Evolution + Deep Debt
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,700+ tests (0 failures) | **~65 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **glowPlug/ember** absorbed from coralReef — toadStool-native hardware lifecycle | **~26 irreducible unsafe** ops in `hw-safe` + drivers | **IPC compliant** (health.liveness/readiness/check, capabilities.list, XDG socket)
+**Latest**: S171 — Created `toadstool-hw-safe` (unsafe containment zone), `toadstool-glowplug`, `toadstool-ember` crates. Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess` (direct BAR0 reads). Evolved `glowplug_client.rs` to toadStool-native sysfs service. Migrated mmap/alloc to hw-safe. All ~400 distributed missing_docs resolved. Hardcoding evolved (bind address, gate ID, configurator).
 
 ---
 

@@ -88,10 +88,11 @@ fn test_service_mesh_proxy_config_defaults() {
 }
 
 #[test]
-fn test_service_mesh_mtls_enabled() {
+fn test_service_mesh_mtls_env_driven() {
     let configurator = SongbirdNetworkConfigurator::new();
     let mtls = &configurator.config.service_mesh.mtls;
-    assert!(mtls.enabled);
+    let expect_enabled = std::env::var("TOADSTOOL_CA_CERT").is_ok();
+    assert_eq!(mtls.enabled, expect_enabled);
     assert_eq!(mtls.verification_mode, "strict");
 }
 

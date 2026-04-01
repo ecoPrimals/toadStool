@@ -9,6 +9,7 @@ use toadstool::error::ToadStoolResult;
 
 use crate::{UniversalJob, UniversalJobType};
 
+/// Tracks per-provider cost models, usage, and alerts (placeholder implementation).
 #[derive(Default)]
 pub struct CloudCostTracker {
     _cost_models: HashMap<String, super::types::CostModel>,
@@ -17,11 +18,13 @@ pub struct CloudCostTracker {
 }
 
 impl CloudCostTracker {
+    /// Creates an empty cost tracker.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
+/// Tracks performance samples and baselines per provider (placeholder implementation).
 #[derive(Default)]
 pub struct CloudPerformanceTracker {
     _performance_metrics: HashMap<String, super::types::PerformanceMetric>,
@@ -29,6 +32,7 @@ pub struct CloudPerformanceTracker {
 }
 
 impl CloudPerformanceTracker {
+    /// Creates an empty performance tracker.
     pub fn new() -> Self {
         Self::default()
     }
@@ -36,9 +40,13 @@ impl CloudPerformanceTracker {
 
 /// Hybrid cloud scheduler
 pub struct HybridCloudScheduler {
+    /// Selected scheduling strategy (cost, performance, compliance, etc.).
     pub(crate) _strategy: HybridSchedulingStrategy,
+    /// Placeholder cost tracking state.
     pub(crate) _cost_tracker: CloudCostTracker,
+    /// Placeholder performance tracking state.
     pub(crate) _performance_tracker: CloudPerformanceTracker,
+    /// Default compliance requirements applied when constructing the scheduler.
     pub(crate) _compliance_requirements: super::types::ComplianceRequirements,
 }
 
@@ -51,24 +59,36 @@ pub enum HybridSchedulingStrategy {
     PerformanceOptimized,
     /// Compliance-first scheduling
     ComplianceFirst,
-    /// Balanced approach
+    /// Weighted blend of cost, performance, and compliance objectives.
     Balanced {
+        /// Relative weight for cost in the combined score.
         cost_weight: f64,
+        /// Relative weight for performance.
         performance_weight: f64,
+        /// Relative weight for compliance.
         compliance_weight: f64,
     },
-    /// Geographic affinity
-    GeographicAffinity { preferred_regions: Vec<String> },
-    /// Latency-sensitive
+    /// Prefer placement in or near the listed regions.
+    GeographicAffinity {
+        /// Region names to favor when choosing providers.
+        preferred_regions: Vec<String>,
+    },
+    /// Cap end-to-end latency while restricting to certain regions.
     LatencySensitive {
+        /// Maximum acceptable one-way or round-trip latency in milliseconds.
         max_latency_ms: u64,
+        /// Regions considered for low-latency placement.
         target_regions: Vec<String>,
     },
-    /// Sustainability-focused
-    SustainabilityFocused { renewable_energy_preference: f64 },
+    /// Prefer providers with higher renewable energy share.
+    SustainabilityFocused {
+        /// Weight 0.0-1.0 favoring renewable-powered infrastructure.
+        renewable_energy_preference: f64,
+    },
 }
 
 impl HybridCloudScheduler {
+    /// Builds a scheduler with the given strategy and default compliance requirements.
     pub async fn new(strategy: HybridSchedulingStrategy) -> ToadStoolResult<Self> {
         let cost_tracker = CloudCostTracker::new();
         let performance_tracker = CloudPerformanceTracker::new();
@@ -99,6 +119,7 @@ impl HybridCloudScheduler {
         })
     }
 
+    /// Returns heuristic per-provider performance scores for the given job type.
     pub async fn get_performance_estimates(
         &self,
         job: &UniversalJob,
@@ -121,6 +142,7 @@ impl HybridCloudScheduler {
         Ok(estimates)
     }
 
+    /// Selects zero, one, or all available providers depending on list size and strategy.
     pub async fn select_providers(
         &self,
         _job: &UniversalJob,

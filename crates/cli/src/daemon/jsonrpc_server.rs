@@ -174,6 +174,86 @@ pub async fn start_jsonrpc_server(
     }
 }
 
+/// Start JSON-RPC API server over TCP (cross-host access via `--port`).
+///
+/// Mirrors the Unix socket server but over `0.0.0.0:{port}` for mobile compute
+/// sharing and cross-gate communication per UniBin standard.
+pub async fn start_tcp_jsonrpc_server(
+    port: u16,
+    workload_manager: Arc<WorkloadManager>,
+) -> crate::Result<()> {
+    use tokio::net::TcpListener;
+
+    let state = ServerState {
+        start_time: Instant::now(),
+        workload_manager,
+    };
+
+    let bind_host = std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    let addr = format!("{bind_host}:{port}");
+    let listener = TcpListener::bind(&addr).await?;
+    info!(
+        "🌐 TCP JSON-RPC server listening on {}",
+        listener.local_addr()?
+    );
+
+    loop {
+        match listener.accept().await {
+            Ok((stream, peer)) => {
+                let state_clone = state.clone();
+                tokio::spawn(async move {
+                    let (reader, writer) = stream.into_split();
+                    if let Err(e) = handle_tcp_connection(reader, writer, state_clone).await {
+                        error!("TCP connection from {peer} error: {e}");
+                    }
+                });
+            }
+            Err(e) => {
+                error!("TCP accept error: {e}");
+            }
+        }
+    }
+}
+
+/// Handle a TCP client connection (same protocol as Unix, different transport).
+async fn handle_tcp_connection(
+    reader: tokio::net::tcp::OwnedReadHalf,
+    mut writer: tokio::net::tcp::OwnedWriteHalf,
+    state: ServerState,
+) -> crate::Result<()> {
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+
+    loop {
+        line.clear();
+        let n = reader.read_line(&mut line).await?;
+        if n == 0 {
+            break;
+        }
+
+        let response = match serde_json::from_slice::<JsonRpcRequest>(line.as_bytes()) {
+            Ok(request) => handle_request(request, &state).await,
+            Err(e) => JsonRpcResponse {
+                jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
+                result: None,
+                error: Some(JsonRpcError {
+                    code: error_codes::PARSE_ERROR,
+                    message: format!("Parse error: {e}"),
+                    data: None,
+                }),
+                id: None,
+            },
+        };
+
+        let response_json = serde_json::to_string(&response)?;
+        writer.write_all(response_json.as_bytes()).await?;
+        writer.write_all(b"\n").await?;
+        writer.flush().await?;
+    }
+
+    Ok(())
+}
+
 /// Handle a single client connection
 async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Result<()> {
     let (reader, mut writer) = stream.into_split();
