@@ -31,6 +31,8 @@ use silicon::SiliconHandler;
 use transport::TransportHandler;
 use workload::WorkloadHandler;
 
+use crate::glowplug_client::{self, SharedGlowPlugClient};
+
 /// Pure Rust JSON-RPC Handler
 ///
 /// Thin coordinator that delegates to specialized handlers.
@@ -48,6 +50,7 @@ pub struct JsonRpcHandler {
     resources: ResourceHandler,
     transport: TransportHandler,
     silicon: SiliconHandler,
+    glowplug: SharedGlowPlugClient,
 }
 
 impl JsonRpcHandler {
@@ -75,6 +78,7 @@ impl JsonRpcHandler {
             resources: ResourceHandler::new(),
             transport: TransportHandler::new(),
             silicon: SiliconHandler::new(),
+            glowplug: glowplug_client::create_glowplug_client(),
         }
     }
 
@@ -220,6 +224,9 @@ impl JsonRpcHandler {
 
             "shader.dispatch" => return self.dispatch.shader_dispatch(params).await,
 
+            "ember.list" => return self.ember_list().await,
+            "ember.status" => return self.ember_status().await,
+
             "compute.performance_surface.report" => {
                 return self.silicon.report(params).await;
             }
@@ -293,6 +300,33 @@ impl JsonRpcHandler {
     )]
     async fn toadstool_provenance() -> Result<serde_json::Value, JsonRpcError> {
         Ok(toadstool::cross_spring_provenance::provenance_json())
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Ember domain — GPU fleet status via coral-ember daemon
+    // ═══════════════════════════════════════════════════════════
+
+    async fn ember_list(&self) -> Result<serde_json::Value, JsonRpcError> {
+        match self.glowplug.list_devices().await {
+            Some(list) => Ok(serde_json::to_value(list)
+                .unwrap_or_else(|_| serde_json::json!({"devices": []}))),
+            None => Ok(serde_json::json!({
+                "devices": [],
+                "available": false,
+                "hint": "coral-ember daemon not running"
+            })),
+        }
+    }
+
+    async fn ember_status(&self) -> Result<serde_json::Value, JsonRpcError> {
+        match self.glowplug.status().await {
+            Some(status) => Ok(serde_json::to_value(status)
+                .unwrap_or_else(|_| serde_json::json!({"available": false}))),
+            None => Ok(serde_json::json!({
+                "available": false,
+                "hint": "coral-ember daemon not running"
+            })),
+        }
     }
 }
 

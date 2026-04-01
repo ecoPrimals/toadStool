@@ -20,7 +20,7 @@ use tracing::{debug, warn};
 fn fallback_ember_socket_path() -> PathBuf {
     std::env::var("CORALREEF_EMBER_DEFAULT_SOCKET")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/run/coralreef/ember.sock"))
+        .unwrap_or_else(|_| PathBuf::from("/run/user/1000/biomeos/coral-ember-default.sock"))
 }
 
 /// Device entry returned by `ember.list`.
@@ -81,7 +81,7 @@ impl GlowPlugClient {
     ///
     /// Discovery order:
     /// 1. `CORALREEF_EMBER_SOCKET` env var (explicit socket path)
-    /// 2. XDG runtime dir: `$XDG_RUNTIME_DIR/coralreef/ember.sock`
+    /// 2. wateringHole convention: `$XDG_RUNTIME_DIR/biomeos/coral-ember-default.sock`
     /// 3. `CORALREEF_EMBER_DEFAULT_SOCKET` or built-in fallback path (last resort)
     async fn discover() -> Option<UnixJsonRpcClient> {
         if let Ok(addr) = std::env::var("CORALREEF_EMBER_SOCKET") {
@@ -94,10 +94,10 @@ impl GlowPlugClient {
 
         if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
             let sock = PathBuf::from(&runtime_dir)
-                .join("coralreef")
-                .join("ember.sock");
+                .join("biomeos")
+                .join("coral-ember-default.sock");
             if sock.exists() {
-                debug!(path = %sock.display(), "coral-ember discovered via XDG runtime");
+                debug!(path = %sock.display(), "coral-ember discovered via wateringHole convention");
                 return Some(UnixJsonRpcClient::new(sock));
             }
         }

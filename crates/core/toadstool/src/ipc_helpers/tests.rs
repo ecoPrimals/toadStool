@@ -294,7 +294,7 @@ fn test_list_semantic_methods_count_and_contents() {
         "registry should have 100+ semantic methods"
     );
     assert!(methods.contains(&"compute.execute"));
-    assert!(methods.contains(&"shader.compile.wgsl"));
+    assert!(methods.contains(&"shader.dispatch"));
     assert!(methods.contains(&"provenance.query"));
     assert!(methods.contains(&"ecology.et0_fao56"));
     assert!(methods.contains(&"discovery.primals"));

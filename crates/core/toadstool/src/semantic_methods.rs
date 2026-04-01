@@ -231,13 +231,13 @@ impl SemanticMethodRegistry {
         add_mapping("deploy.graph_status", "deploy_graph_status");
 
         // ═══════════════════════════════════════════════════════════
-        // SHADER DOMAIN - Shader compilation IPC (coralReef pipeline)
+        // SHADER DOMAIN - Dispatch via coralReef daemon pipeline
+        //
+        // shader.compile.* removed (Mar 2026): compilation is handled
+        // directly by coralReef's coral-ember daemon. Callers should
+        // connect to $XDG_RUNTIME_DIR/biomeos/shader.sock instead.
         // ═══════════════════════════════════════════════════════════
 
-        add_mapping("shader.compile.wgsl", "shader_compile_wgsl");
-        add_mapping("shader.compile.spirv", "shader_compile_spirv");
-        add_mapping("shader.compile.status", "shader_compile_status");
-        add_mapping("shader.compile.capabilities", "shader_compile_capabilities");
         add_mapping("shader.dispatch", "shader_dispatch");
 
         // ═══════════════════════════════════════════════════════════
@@ -583,38 +583,26 @@ mod tests {
     }
 
     #[test]
-    fn test_shader_domain_resolution() {
+    fn test_shader_compile_removed() {
         let registry = SemanticMethodRegistry::new();
 
-        assert_eq!(
-            registry.resolve("shader.compile.wgsl"),
-            Some("shader_compile_wgsl")
-        );
-        assert_eq!(
-            registry.resolve("shader.compile.spirv"),
-            Some("shader_compile_spirv")
-        );
-        assert_eq!(
-            registry.resolve("shader.compile.status"),
-            Some("shader_compile_status")
-        );
-        assert_eq!(
-            registry.resolve("shader.compile.capabilities"),
-            Some("shader_compile_capabilities")
-        );
+        assert!(registry.resolve("shader.compile.wgsl").is_none());
+        assert!(registry.resolve("shader.compile.spirv").is_none());
+        assert!(registry.resolve("shader.compile.status").is_none());
+        assert!(registry.resolve("shader.compile.capabilities").is_none());
     }
 
     #[test]
-    fn test_shader_domain_reverse() {
+    fn test_shader_dispatch_present() {
         let registry = SemanticMethodRegistry::new();
 
         assert_eq!(
-            registry.get_semantic("shader_compile_wgsl"),
-            Some("shader.compile.wgsl")
+            registry.resolve("shader.dispatch"),
+            Some("shader_dispatch")
         );
         assert_eq!(
-            registry.get_semantic("shader_compile_spirv"),
-            Some("shader.compile.spirv")
+            registry.get_semantic("shader_dispatch"),
+            Some("shader.dispatch")
         );
     }
 

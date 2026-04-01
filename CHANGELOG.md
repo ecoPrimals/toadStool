@@ -4447,10 +4447,9 @@ cargo run --example fhe_ntt_validation
 
 ## Links
 
-- [Sovereign Compute Gaps](SOVEREIGN_COMPUTE_GAPS.md)
-- [Status](STATUS.md)
+- [Debt](DEBT.md)
 - [Next Steps](NEXT_STEPS.md)
-- [Sovereign Compute Evolution](SOVEREIGN_COMPUTE.md)
+- [Documentation Hub](DOCUMENTATION.md)
 
 ---
 
