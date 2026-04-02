@@ -10,6 +10,10 @@ use crate::ecosystem::types::{ServiceInstance, ServiceStatus};
 
 impl ServiceManager {
     /// Register a discovered service
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn register_service(&self, service: DiscoveredService) -> ToadStoolResult<()> {
         info!("📋 Registering service: {} ({})", service.name, service.id);
 
@@ -34,6 +38,10 @@ impl ServiceManager {
     }
 
     /// Unregister a service
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `service_id` is not registered.
     pub async fn unregister_service(&self, service_id: &str) -> ToadStoolResult<()> {
         info!("🗑️  Unregistering service: {}", service_id);
 

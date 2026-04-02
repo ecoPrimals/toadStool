@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! ByobExecutor trait integration tests
+//! `ByobExecutor` trait integration tests
 
 use super::super::*;
 use super::common::*;

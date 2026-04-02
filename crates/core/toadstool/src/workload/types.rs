@@ -130,7 +130,7 @@ pub struct RegistryAuth {
 pub enum GpuProgramSource {
     /// `OpenCL` source code
     OpenCL {
-        /// OpenCL C source string.
+        /// `OpenCL` C source string.
         source: String,
     },
     /// CUDA source code

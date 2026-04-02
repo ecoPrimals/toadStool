@@ -38,6 +38,10 @@ impl MatrixMerger {
     /// Merge matrix chunks into final matrix
     ///
     /// Zero-copy where possible using smart indexing
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] when chunk coverage is invalid, overlapping, incomplete, or sizes mismatch.
     pub fn merge(&self, chunks: Vec<MatrixChunk>) -> ToadStoolResult<Vec<f32>> {
         // Validate chunks cover the full matrix
         self.validate_coverage(&chunks)?;
@@ -194,6 +198,10 @@ impl VectorMerger {
     }
 
     /// Element-wise addition
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] when input vectors have differing lengths.
     pub fn add(vectors: Vec<Vec<f32>>) -> ToadStoolResult<Vec<f32>> {
         if vectors.is_empty() {
             return Ok(Vec::new());
@@ -216,6 +224,11 @@ impl VectorMerger {
     }
 
     /// Element-wise average
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] when [`Self::add`](VectorMerger::add) fails (e.g. length mismatch).
+    #[allow(clippy::cast_precision_loss)] // count as f32 for division
     pub fn average(vectors: Vec<Vec<f32>>) -> ToadStoolResult<Vec<f32>> {
         let count = vectors.len() as f32;
         if count == 0.0 {
@@ -247,6 +260,7 @@ impl ScalarReducer {
     }
 
     /// Calculate average
+    #[allow(clippy::cast_precision_loss)] // mean of moderate-sized slices
     pub fn average(values: Vec<f32>) -> Option<f32> {
         if values.is_empty() {
             return None;

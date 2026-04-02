@@ -41,7 +41,7 @@ pub struct SpecialtyRuntimeMetrics {
 
 /// Legacy adapter trait for different legacy systems
 ///
-/// **Uses async_trait for trait object compatibility**
+/// **Uses `async_trait` for trait object compatibility**
 /// - Required for `Box<dyn LegacyAdapter>` and `Arc<dyn LegacyAdapter>`
 /// - Enables plugin-style architecture
 /// - Necessary for polymorphic legacy system support
@@ -244,7 +244,7 @@ pub enum NetworkStatus {
 
 /// Communication session trait for legacy systems
 ///
-/// **Uses async_trait for trait object compatibility**
+/// **Uses `async_trait` for trait object compatibility**
 /// - Required for `Box<dyn LegacyCommunicationSession>`
 /// - Enables polymorphic session management
 #[async_trait::async_trait]

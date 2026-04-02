@@ -90,6 +90,10 @@ jobs:
           sudo apt-get install -y libssl-dev pkg-config libwayland-dev
       - name: Run clippy (pedantic)
         run: cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic
+      - name: Clippy: deny unwrap in production
+        run: cargo clippy --workspace --lib -- -D clippy::unwrap_used
+      - name: Clippy: deny holding std locks across await
+        run: cargo clippy --workspace --lib -- -D clippy::await_holding_lock
       - name: Run clippy (all features)
         run: cargo clippy --workspace --all-features --all-targets -- -D warnings
 

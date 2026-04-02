@@ -17,7 +17,7 @@ pub fn service_label_to_capability_id(label: &str) -> Option<&'static str> {
     let lower = label.to_ascii_lowercase();
     match lower.as_str() {
         "toadstool" | "toad-stool" | "nucleus" | "biomeos" => None,
-        _ => CapabilityDomain::from_label(&lower).map(|d| d.as_str()),
+        _ => CapabilityDomain::from_label(&lower).map(CapabilityDomain::as_str),
     }
 }
 

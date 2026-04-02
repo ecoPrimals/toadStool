@@ -10,7 +10,7 @@
 
 use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, CpuAllocation, UnifiedMemoryBackend},
-    types::*,
+    types::{BackendType, MemoryFlags, UnifiedMemoryCapabilities},
 };
 use async_trait::async_trait;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -33,6 +33,10 @@ pub struct CpuBackend {
 
 impl CpuBackend {
     /// Create new CPU backend
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future capability probe failures.
     pub const fn new() -> ToadStoolResult<Self> {
         Ok(Self {
             capabilities: UnifiedMemoryCapabilities {

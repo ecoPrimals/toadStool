@@ -8,25 +8,25 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
-#[cfg(not(test))]
-use super::byob_types::{
-    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, NetworkUsage, ResourceUsage,
-};
 #[cfg(test)]
 pub(crate) use super::byob_types::{
     ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, HealthCheck, NetworkUsage,
     ResourceUsage, ServiceSpec,
 };
+#[cfg(not(test))]
+use super::byob_types::{
+    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, NetworkUsage, ResourceUsage,
+};
 use super::config::ByobExecutorConfig;
 use super::deployment::ActiveDeployment;
 use super::validation::DeploymentValidator;
 
-#[cfg(not(test))]
-use crate::{RuntimeEngine, ToadStoolError, ToadStoolResult};
 #[cfg(test)]
 pub(crate) use crate::{
     ExecutionRequest, ExecutionStatus, RuntimeEngine, ToadStoolError, ToadStoolResult,
 };
+#[cfg(not(test))]
+use crate::{RuntimeEngine, ToadStoolError, ToadStoolResult};
 
 mod deployment_lifecycle;
 
@@ -214,7 +214,10 @@ impl ByobExecutor for ByobComputeExecutor {
         // Spawn background health monitor for this deployment
         self.spawn_health_monitor(dep_id);
 
-        info!("BYOB deployment {} completed successfully", response.deployment_id);
+        info!(
+            "BYOB deployment {} completed successfully",
+            response.deployment_id
+        );
         Ok(response)
     }
 
@@ -240,7 +243,8 @@ impl ByobExecutor for ByobComputeExecutor {
         info!("🛑 Stopping deployment: {}", deployment_id);
 
         // Cancel background health monitor for this deployment
-        if let Some(handle) = self.health_handles.write().await.remove(&deployment_id) {
+        let removed = self.health_handles.write().await.remove(&deployment_id);
+        if let Some(handle) = removed {
             handle.abort();
         }
 

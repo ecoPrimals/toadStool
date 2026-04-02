@@ -46,7 +46,7 @@ pub trait LegacyEmulator: Send + Sync {
 /// Emulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmulationConfig {
-    /// CPU speed (MHz)
+    /// CPU speed (`MHz`)
     pub cpu_speed_mhz: Option<f64>,
     /// Memory size (bytes)
     pub memory_size: usize,

@@ -20,16 +20,28 @@ use super::UniversalGpuEngine;
 
 impl UniversalGpuEngine {
     /// Create new GPU engine with default configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns when engine initialization or framework discovery fails.
     pub async fn new() -> ToadStoolResult<Self> {
         Self::with_config(UniversalGpuConfig::default()).await
     }
 
     /// Create new GPU engine with custom configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns when engine initialization or framework discovery fails.
     pub async fn with_config(config: UniversalGpuConfig) -> ToadStoolResult<Self> {
         Self::with_config_and_strategy(config, BackendSelectionStrategy::default()).await
     }
 
     /// Create new GPU engine with custom configuration and selection strategy
+    ///
+    /// # Errors
+    ///
+    /// Returns when engine initialization or framework discovery fails.
     pub async fn with_config_and_strategy(
         config: UniversalGpuConfig,
         selection_strategy: BackendSelectionStrategy,

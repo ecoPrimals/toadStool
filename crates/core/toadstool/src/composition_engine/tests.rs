@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 use super::*;
+use crate::composition_constraints::Constraint;
 
 #[tokio::test]
 async fn test_engine_initialization() {

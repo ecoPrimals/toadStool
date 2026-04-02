@@ -111,11 +111,19 @@ where
     }
 
     /// Put value in cache
+    ///
+    /// # Errors
+    ///
+    /// Delegates to [`Self::put_with_ttl`].
     pub async fn put(&self, key: K, value: V) -> ToadStoolResult<()> {
         self.put_with_ttl(key, value, self.config.default_ttl).await
     }
 
     /// Put value in cache with custom TTL
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn put_with_ttl(&self, key: K, value: V, ttl: Duration) -> ToadStoolResult<()> {
         let mut entries = self.entries.write().await;
         let mut access_order = self.access_order.write().await;

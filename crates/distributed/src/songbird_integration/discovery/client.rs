@@ -18,8 +18,17 @@ use crate::songbird_integration::types::{NodeCapabilities, NodeMetadata, NodeTyp
 
 impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
-        let socket_path = toadstool_common::primal_sockets::get_biomeos_dir()
-            .join(format!("{}.sock", well_known::SONGBIRD));
+        let biomeos = toadstool_common::primal_sockets::get_biomeos_dir();
+        // Capability-based: prefer coordination.sock (capability domain)
+        // over songbird.sock (identity) per CAPABILITY_BASED_DISCOVERY_STANDARD
+        let socket_path = {
+            let cap_sock = biomeos.join("coordination.sock");
+            if cap_sock.exists() {
+                cap_sock
+            } else {
+                biomeos.join(format!("{}.sock", well_known::SONGBIRD))
+            }
+        };
 
         Self {
             connection: Arc::clone(&self.connection),

@@ -4,8 +4,8 @@
 //! This module provides configuration types for the GPU runtime engine.
 //! Key configurations use base config patterns for consistency:
 //!
-//! - **ExecutionConfig**: Uses `RetryConfig` for retry policies
-//! - **FaultToleranceConfig**: Uses `HealthCheckConfig` for device health monitoring
+//! - **`ExecutionConfig`**: Uses `RetryConfig` for retry policies
+//! - **`FaultToleranceConfig`**: Uses `HealthCheckConfig` for device health monitoring
 //!
 //! # Example
 //!

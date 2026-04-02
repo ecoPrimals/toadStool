@@ -98,7 +98,7 @@ impl NetworkConfig {
     /// | `TOADSTOOL_LISTEN_ADDRESS` | `127.0.0.1` | IP address to bind to |
     /// | `TOADSTOOL_SERVICE_PORT` | `ports::toadstool::SERVER` (8084) | Main service port |
     /// | `TOADSTOOL_API_PORT` | `ports::toadstool::SERVER` | API endpoint port |
-    /// | `TOADSTOOL_METRICS_PORT` | `ports::toadstool::METRICS` (9090) | Metrics/monitoring port |
+    /// | `TOADSTOOL_METRICS_PORT` | `ports::toadstool::METRICS` (0 = OS-assigned) | Metrics/monitoring port |
     /// | `TOADSTOOL_HEALTH_PORT` | `ports::toadstool::HEALTH` (8087) | Health check port |
     /// | `TOADSTOOL_DISCOVERY_ENDPOINTS` | `[]` | Comma-separated discovery endpoints |
     /// | `TOADSTOOL_ENABLE_MDNS` | `true` | Enable mDNS (true/false) |

@@ -65,8 +65,7 @@ impl JsonRpcHandler {
         let local_gate_id = std::env::var("TOADSTOOL_GATE_ID")
             .or_else(|_| std::env::var("HOSTNAME"))
             .or_else(|_| {
-                toadstool_sysmon::system::hostname()
-                    .ok_or_else(|| std::env::VarError::NotPresent)
+                toadstool_sysmon::system::hostname().ok_or_else(|| std::env::VarError::NotPresent)
             })
             .unwrap_or_else(|_| String::from("local"));
         Self {
@@ -148,6 +147,9 @@ impl JsonRpcHandler {
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
             "toadstool.health" | "health.liveness" | "health.readiness" | "health.check" => {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
+            }
+            "identity.get" => {
+                return core::identity_get(&self.version, &self.semantic_registry).await;
             }
             "toadstool.version" => return core::version_info(&self.version).await,
 

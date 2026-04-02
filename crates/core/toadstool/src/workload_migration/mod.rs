@@ -45,7 +45,7 @@ pub use validation::{
 };
 
 use crate::ToadStoolResult;
-use crate::cloud_provider_trait::*;
+use crate::cloud_provider_trait::{CloudProvider, CloudProviderRegistry, WorkloadLocation};
 use crate::composition_engine::CompositionEngine;
 use crate::fractal_integration::FractalRuntime;
 use std::collections::HashMap;
@@ -161,6 +161,10 @@ pub struct CostImpact {
 
 impl MigrationCoordinator {
     /// Create a new migration coordinator
+    ///
+    /// # Errors
+    ///
+    /// Returns error if fractal runtime or composition engine initialization fails.
     pub async fn new() -> ToadStoolResult<Self> {
         let runtime = Arc::new(FractalRuntime::init().await?);
         let engine = Arc::new(CompositionEngine::new(Arc::clone(&runtime))?);

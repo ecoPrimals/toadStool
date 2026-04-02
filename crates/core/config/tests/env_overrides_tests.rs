@@ -8,7 +8,7 @@
 use std::time::Duration;
 use toadstool_config::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
 
-/// All TOADSTOOL_* vars that apply_env_overrides reads (for tests needing clean slate)
+/// All `TOADSTOOL_*` vars that `apply_env_overrides` reads (for tests needing clean slate)
 const ENV_OVERRIDE_VARS: &[&str] = &[
     "TOADSTOOL_ENV",
     "TOADSTOOL_DEBUG",

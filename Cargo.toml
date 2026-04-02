@@ -123,7 +123,7 @@ toml = "0.8"
 
 # RPC Protocols - PRIMARY (following Songbird pattern)
 # tarpc: High-performance binary RPC for primal-to-primal (Rust-to-Rust)
-tarpc = { version = "0.34", features = ["tokio1", "serde-transport", "serde-transport-json"] }
+tarpc = { version = "0.37", features = ["tokio1", "serde-transport", "serde-transport-json"] }
 # jsonrpsee removed (pulls ring C dependency). Pure Rust JSON-RPC via pure_jsonrpc.
 # See: crates/server/src/pure_jsonrpc/ (canonical JSON-RPC handler)
 

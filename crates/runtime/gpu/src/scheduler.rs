@@ -3,7 +3,7 @@
 //!
 //! Matches workloads to compute resources based on capabilities
 
-use crate::universal::*;
+use crate::universal::{ComputeRequirements, UniversalComputeResource};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -92,6 +92,10 @@ impl UniversalComputeScheduler {
     }
 
     /// Select best resource for workload based on policy
+    ///
+    /// # Errors
+    ///
+    /// Returns when no suitable resource is registered or ranking fails.
     pub async fn select_resource(
         &self,
         requirements: &ComputeRequirements,

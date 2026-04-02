@@ -43,7 +43,6 @@ impl<'a> PlatformPaths<'a> {
         let username = self.env.user.as_deref().unwrap_or("default");
 
         match self.env.platform {
-            Platform::Android => temp.join(format!("toadstool-runtime-{username}")),
             Platform::Windows => temp.join(format!("toadstool-{username}")),
             Platform::Wasm => PathBuf::from("/virtual/toadstool"),
             _ => temp.join(format!("toadstool-runtime-{username}")),

@@ -161,7 +161,7 @@ pub fn create_test_runtime_engine() -> Arc<dyn RuntimeEngine> {
     Arc::new(TestRuntimeEngine)
 }
 
-/// Config with deterministic values for testing (avoids env-dependent songbird_port)
+/// Config with deterministic values for testing (avoids env-dependent `songbird_port`)
 pub fn create_test_config(
     default_host_port: u16,
     web_service_ports: Vec<u16>,

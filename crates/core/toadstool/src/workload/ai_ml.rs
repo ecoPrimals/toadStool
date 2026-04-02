@@ -11,13 +11,13 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum AiFramework {
-    /// PyTorch (Python ecosystem, CUDA-dependent in 2025)
+    /// `PyTorch` (Python ecosystem, CUDA-dependent in 2025)
     PyTorch,
 
-    /// TensorFlow (Python ecosystem, CUDA-dependent in 2025)
+    /// `TensorFlow` (Python ecosystem, CUDA-dependent in 2025)
     TensorFlow,
 
-    /// JAX (Google's accelerated NumPy, CUDA-dependent)
+    /// JAX (Google's accelerated `NumPy`, CUDA-dependent)
     JAX,
 
     /// ONNX Runtime (cross-platform inference)
@@ -26,7 +26,7 @@ pub enum AiFramework {
     /// Burn (Rust ML framework, WebGPU-native)
     Burn,
 
-    /// Candle (Rust ML framework by HuggingFace)
+    /// Candle (Rust ML framework by `HuggingFace`)
     Candle,
 
     /// Custom implementation
@@ -83,7 +83,7 @@ impl fmt::Display for AiOperation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum ModelSize {
-    /// Small models (<100MB) - MobileNet, small CNNs
+    /// Small models (<100MB) - `MobileNet`, small CNNs
     Small,
 
     /// Medium models (100MB-1GB) - ResNet-50, BERT-base

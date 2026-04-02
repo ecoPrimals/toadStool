@@ -173,7 +173,7 @@ pub struct ByobApiError {
 }
 
 impl ByobApiError {
-    #[allow(dead_code, reason = "preserved for API compatibility")]
+    #[expect(dead_code, reason = "preserved for API compatibility")]
     #[must_use]
     pub fn new(status: StatusCode, message: &str) -> Self {
         Self {

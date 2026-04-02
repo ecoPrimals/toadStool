@@ -37,6 +37,9 @@ doc-valid-idents = [
     "WebAssembly",
     "HSM",
     "ecoPrimals",
+    "PCIe",
+    "BrainChip",
+    "REQ_IRQ",
 ]
 
 # Allow certain patterns in tests

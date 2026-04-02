@@ -128,6 +128,10 @@ impl IpcServer {
     /// Bind all configured transports
     ///
     /// **Deep Debt**: Binds all available, logs failures (doesn't crash)
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; individual bind failures are logged.
     pub async fn bind(&mut self) -> ToadStoolResult<()> {
         for endpoint in &self.endpoints {
             match self.try_bind(endpoint).await {
@@ -171,6 +175,10 @@ impl IpcServer {
     }
 
     /// Initiate graceful shutdown
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn shutdown(&mut self) -> ToadStoolResult<()> {
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(()).await;

@@ -74,12 +74,18 @@ mod tests {
         let (handler, _dir) = handler_with_temp_store();
         let value = handler.gpu_telemetry(None).await.unwrap();
         assert_eq!(value.get("domain"), Some(&serde_json::json!("gpu")));
-        assert_eq!(value.get("operation"), Some(&serde_json::json!("telemetry")));
+        assert_eq!(
+            value.get("operation"),
+            Some(&serde_json::json!("telemetry"))
+        );
         let count = value
             .get("gpu_count")
             .and_then(|c| c.as_u64())
             .expect("gpu_count");
-        let gpus = value.get("gpus").and_then(|g| g.as_array()).expect("gpus array");
+        let gpus = value
+            .get("gpus")
+            .and_then(|g| g.as_array())
+            .expect("gpus array");
         assert_eq!(gpus.len() as u64, count);
     }
 

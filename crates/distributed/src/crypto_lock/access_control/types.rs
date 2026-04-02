@@ -57,9 +57,40 @@ pub struct CryptoLockStatus {
     pub expiring_permissions: Vec<ExpiringPermission>,
 }
 
-/// Access control policies (placeholder; serde-stable marker type).
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct AccessPolicies;
+/// Access control policies governing who can access what.
+///
+/// Specifies which capabilities require elevated permissions and which
+/// are freely available. Default: all pure-Rust capabilities are open.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AccessPolicies {
+    /// Capabilities that require explicit permission grants.
+    #[serde(default)]
+    pub restricted_capabilities: Vec<String>,
+    /// Maximum delegation depth for permission forwarding.
+    #[serde(default = "default_max_delegation_depth")]
+    pub max_delegation_depth: usize,
+    /// Whether to allow access when no security provider is discovered.
+    #[serde(default = "default_allow_without_provider")]
+    pub allow_without_provider: bool,
+}
+
+impl Default for AccessPolicies {
+    fn default() -> Self {
+        Self {
+            restricted_capabilities: Vec::new(),
+            max_delegation_depth: 3,
+            allow_without_provider: true,
+        }
+    }
+}
+
+fn default_max_delegation_depth() -> usize {
+    3
+}
+
+fn default_allow_without_provider() -> bool {
+    true
+}
 
 #[cfg(test)]
 mod tests {
@@ -118,10 +149,14 @@ mod tests {
 
     #[test]
     fn access_policies_default_clone_debug() {
-        let a = AccessPolicies;
-        let b = a;
+        let a = AccessPolicies::default();
+        let b = a.clone();
         assert_eq!(a, b);
-        assert_eq!(format!("{a:?}"), "AccessPolicies");
+        assert!(a.allow_without_provider);
+        assert_eq!(a.max_delegation_depth, 3);
+        assert!(a.restricted_capabilities.is_empty());
+        let dbg = format!("{a:?}");
+        assert!(dbg.contains("AccessPolicies"));
     }
 
     #[test]
@@ -223,7 +258,7 @@ mod tests {
 
     #[test]
     fn serde_json_roundtrip_access_policies() {
-        let p = AccessPolicies;
+        let p = AccessPolicies::default();
         let json = serde_json::to_string(&p).expect("serialize AccessPolicies");
         let parsed: AccessPolicies = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(parsed, p);

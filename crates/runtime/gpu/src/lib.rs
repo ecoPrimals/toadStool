@@ -29,7 +29,7 @@
 //! **Philosophy**: "If it has parallel compute units, we can harness it"
 //!
 //! This module implements a truly universal GPU compute runtime that can:
-//! - Discover and utilize ANY parallel compute framework (CUDA, `OpenCL`, Vulkan, `ROCm`, Metal, WebGPU, `DirectCompute`)
+//! - Discover and utilize ANY parallel compute framework (CUDA, `OpenCL`, Vulkan, `ROCm`, Metal, `WebGPU`, `DirectCompute`)
 //! - Execute GPU workloads recursively (GPU workloads spawning GPU workloads)
 //! - Provide universal kernel compilation and optimization
 //! - Self-heal through automatic framework and device fallback

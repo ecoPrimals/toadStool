@@ -19,6 +19,11 @@ pub fn calculate_median(data: &[f64]) -> f64 {
 }
 
 /// Helper function to calculate percentile
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+)]
 pub fn calculate_percentile(data: &[f64], p: f64) -> f64 {
     let mut sorted = data.to_vec();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));

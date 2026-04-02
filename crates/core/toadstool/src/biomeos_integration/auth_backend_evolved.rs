@@ -80,7 +80,7 @@ pub struct TokenRequest {
 ///
 /// 1. **Self-knowledge only**: Knows it needs token management
 /// 2. **Runtime discovery**: Finds provider by capability, not name
-/// 3. **Proper errors**: No unwrap(), all errors handled
+/// 3. **Proper errors**: No `unwrap()`, all errors handled
 /// 4. **Agnostic**: Doesn't care which primal provides tokens
 pub struct AuthBackend {
     /// Security provider (discovered at runtime)

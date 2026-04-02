@@ -48,6 +48,10 @@ where
     }
 
     /// Submit operation for batching
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the batch queue is full.
     pub async fn submit(&self, input: T) -> ToadStoolResult<R> {
         let (tx, rx) = tokio::sync::oneshot::channel();
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Intrusion detection system
 //!
-//! Extracted from security_hardening.rs for modularity (Feb 14, 2026).
+//! Extracted from `security_hardening.rs` for modularity (Feb 14, 2026).
 
 use std::collections::HashMap;
 use std::sync::Arc;

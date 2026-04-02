@@ -198,7 +198,7 @@ impl RaspberryPiDevice {
 
     /// Create a device from connection parameters (for remote Pi).
     /// Returns `Err` when the platform cannot create a device.
-    #[allow(dead_code, reason = "Raspberry Pi constructor; requires discovery on target hardware")]
+    #[expect(dead_code, reason = "Raspberry Pi constructor; requires discovery on target hardware")]
     pub fn new(_model: PiModel, _os: PiOS, _address: String) -> ToadStoolResult<Self> {
         Err(platform_not_available(
             "Raspberry Pi device creation requires discovery on target hardware first",

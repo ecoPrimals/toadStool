@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::missing_errors_doc
+)]
 
 //! `ToadStool` monitoring component
 //!
@@ -252,69 +258,14 @@ impl ResourceMonitor for SystemResourceMonitor {
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
         Box::pin(async move {
-            // Get system-wide resource information
-            let mut total_cpu_cores = 1usize;
-            let mut total_memory_bytes = 1024 * 1024 * 1024u64; // 1GB default
-            let mut available_memory_bytes = total_memory_bytes;
+            // /proc and sysctl reads are blocking I/O — run on the blocking
+            // pool so we don't stall the async runtime under load.
+            let (total_cpu_cores, total_memory_bytes, available_memory_bytes) =
+                tokio::task::spawn_blocking(read_system_info)
+                    .await
+                    .unwrap_or((1, 1024 * 1024 * 1024, 1024 * 1024 * 1024));
+
             let available_storage_bytes = 10 * 1024 * 1024 * 1024u64; // 10GB default
-
-            #[cfg(target_os = "linux")]
-            {
-                // Get CPU info from /proc/cpuinfo
-                if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-                    total_cpu_cores = cpuinfo
-                        .lines()
-                        .filter(|line| line.starts_with("processor"))
-                        .count()
-                        .max(1);
-                }
-
-                // Get memory info from /proc/meminfo
-                if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
-                    for line in meminfo.lines() {
-                        if line.starts_with("MemTotal:") {
-                            if let Some(value) = line.split_whitespace().nth(1)
-                                && let Ok(mem_kb) = value.parse::<u64>()
-                            {
-                                total_memory_bytes = mem_kb * 1024;
-                            }
-                        } else if line.starts_with("MemAvailable:")
-                            && let Some(value) = line.split_whitespace().nth(1)
-                            && let Ok(mem_kb) = value.parse::<u64>()
-                        {
-                            available_memory_bytes = mem_kb * 1024;
-                        }
-                    }
-                }
-            }
-
-            #[cfg(target_os = "macos")]
-            {
-                // Use sysctl for macOS
-                if let Ok(output) = std::process::Command::new("sysctl")
-                    .args(["-n", "hw.ncpu"])
-                    .output()
-                {
-                    if let Ok(cpu_str) = String::from_utf8(output.stdout) {
-                        if let Ok(cpu_count) = cpu_str.trim().parse::<usize>() {
-                            total_cpu_cores = cpu_count.max(1);
-                        }
-                    }
-                }
-
-                if let Ok(output) = std::process::Command::new("sysctl")
-                    .args(["-n", "hw.memsize"])
-                    .output()
-                {
-                    if let Ok(mem_str) = String::from_utf8(output.stdout) {
-                        if let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
-                            total_memory_bytes = mem_bytes;
-                            // macOS doesn't have MemAvailable, estimate at 50%
-                            available_memory_bytes = mem_bytes / 2;
-                        }
-                    }
-                }
-            }
 
             // Calculate usage percentages
             let memory_usage_percent = if total_memory_bytes > 0 {
@@ -342,6 +293,72 @@ impl ResourceMonitor for SystemResourceMonitor {
             })
         })
     }
+}
+
+/// Read CPU core count and memory stats from OS interfaces.
+///
+/// Returns `(total_cpu_cores, total_memory_bytes, available_memory_bytes)`.
+/// Designed to run on a blocking thread pool via `spawn_blocking`.
+fn read_system_info() -> (usize, u64, u64) {
+    let mut total_cpu_cores = 1usize;
+    let mut total_memory_bytes = 1024 * 1024 * 1024u64;
+    let mut available_memory_bytes = total_memory_bytes;
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+            total_cpu_cores = cpuinfo
+                .lines()
+                .filter(|line| line.starts_with("processor"))
+                .count()
+                .max(1);
+        }
+
+        if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+            for line in meminfo.lines() {
+                if line.starts_with("MemTotal:") {
+                    if let Some(value) = line.split_whitespace().nth(1)
+                        && let Ok(mem_kb) = value.parse::<u64>()
+                    {
+                        total_memory_bytes = mem_kb * 1024;
+                    }
+                } else if line.starts_with("MemAvailable:")
+                    && let Some(value) = line.split_whitespace().nth(1)
+                    && let Ok(mem_kb) = value.parse::<u64>()
+                {
+                    available_memory_bytes = mem_kb * 1024;
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("sysctl")
+            .args(["-n", "hw.ncpu"])
+            .output()
+        {
+            if let Ok(cpu_str) = String::from_utf8(output.stdout) {
+                if let Ok(cpu_count) = cpu_str.trim().parse::<usize>() {
+                    total_cpu_cores = cpu_count.max(1);
+                }
+            }
+        }
+
+        if let Ok(output) = std::process::Command::new("sysctl")
+            .args(["-n", "hw.memsize"])
+            .output()
+        {
+            if let Ok(mem_str) = String::from_utf8(output.stdout) {
+                if let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
+                    total_memory_bytes = mem_bytes;
+                    available_memory_bytes = mem_bytes / 2;
+                }
+            }
+        }
+    }
+
+    (total_cpu_cores, total_memory_bytes, available_memory_bytes)
 }
 
 impl Default for SystemResourceMonitor {

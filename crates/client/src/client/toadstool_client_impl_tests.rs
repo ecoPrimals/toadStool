@@ -262,7 +262,6 @@ mod jsonrpc_unix_mock {
         let result = match method {
             "toadstool.health" => state.health.lock().expect("lock health").clone(),
             "compute.list" => state.compute_list.lock().expect("lock list").clone(),
-            "compute.cancel" => json!({}),
             "compute.status" => {
                 let idx = state.compute_status_idx.fetch_add(1, Ordering::SeqCst);
                 let g = state.compute_status.lock().expect("lock status");

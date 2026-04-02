@@ -144,7 +144,10 @@ mod tests {
     async fn missing_params_returns_error() {
         let (handler, _dir) = handler_with_temp_store();
         let err = handler.hw_learn_share_recipe(None).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("action"));
     }
 
@@ -152,8 +155,14 @@ mod tests {
     async fn unknown_action_returns_error() {
         let (handler, _dir) = handler_with_temp_store();
         let params = json!({ "action": "nope" });
-        let err = handler.hw_learn_share_recipe(Some(&params)).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        let err = handler
+            .hw_learn_share_recipe(Some(&params))
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("Unknown action"));
     }
 

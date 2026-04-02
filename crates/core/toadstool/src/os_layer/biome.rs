@@ -18,12 +18,20 @@ pub struct BiomeOSIntegration {
 
 impl BiomeOSIntegration {
     /// Creates a new BiomeOS integration with default config.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the biome orchestrator cannot be created.
     pub async fn new() -> ToadStoolResult<Self> {
         let orchestrator = BiomeOrchestrator::new().await?;
         Ok(Self { orchestrator })
     }
 
     /// Executes a BiomeOS deployment job.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if job execution or validation fails.
     pub async fn execute_deployment(
         &self,
         job: UniversalJob,
@@ -35,10 +43,9 @@ impl BiomeOSIntegration {
 /// `BiomeOS` orchestrator for team-isolated deployments
 pub struct BiomeOrchestrator {
     /// biomeOS integration config
-    #[allow(dead_code, reason = "stored for future reconfiguration")]
     config: BiomeOSConfig,
     /// Active biome deployments
-    #[allow(dead_code, reason = "reserved for future deployment management")]
+    #[expect(dead_code, reason = "reserved for future deployment management")]
     active_deployments: Arc<RwLock<HashMap<String, BiomeDeployment>>>,
 }
 
@@ -100,12 +107,20 @@ pub enum BiomeDeploymentStatus {
 
 impl BiomeOrchestrator {
     /// Create a new biome orchestrator with default config
+    ///
+    /// # Errors
+    ///
+    /// Propagates errors from [`Self::with_config`].
     #[allow(clippy::unused_async)] // API consistency with with_config
     pub async fn new() -> ToadStoolResult<Self> {
         Self::with_config(BiomeOSConfig::default()).await
     }
 
     /// Create a new biome orchestrator with custom config (e.g. for testing)
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     #[allow(clippy::unused_async)] // API consistency with trait/async ecosystem
     pub async fn with_config(config: BiomeOSConfig) -> ToadStoolResult<Self> {
         Ok(Self {
@@ -115,6 +130,10 @@ impl BiomeOrchestrator {
     }
 
     /// Initialize the orchestrator
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     #[allow(clippy::unused_async)] // API consistency with DeploymentLayer trait
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         tracing::info!("Initializing biome orchestrator");
@@ -126,6 +145,10 @@ impl BiomeOrchestrator {
     /// Validates the deployment configuration and returns a meaningful response.
     /// If the full deployment pipeline (biomeOS endpoint) is not available,
     /// validation still runs and returns proper errors for invalid configurations.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the job type is wrong, validation fails, or execution cannot complete.
     #[allow(clippy::unused_async)] // API consistency with DeploymentLayer trait
     pub async fn execute_deployment(
         &self,

@@ -34,7 +34,7 @@ pub struct ResourceEnvConfig {
 }
 
 impl ResourceEnvConfig {
-    /// Load resource limits from environment variables (MAX_CPU_PERCENT, etc.).
+    /// Load resource limits from environment variables (`MAX_CPU_PERCENT`, etc.).
     #[must_use]
     pub fn from_env() -> Self {
         let loader = EnvConfigLoader::new();
@@ -91,7 +91,7 @@ pub struct MonitoringEnvConfig {
 }
 
 impl MonitoringEnvConfig {
-    /// Load monitoring config from environment variables (METRICS_ENABLED, LOG_LEVEL, etc.).
+    /// Load monitoring config from environment variables (`METRICS_ENABLED`, `LOG_LEVEL`, `etc`.).
     #[must_use]
     pub fn from_env() -> Self {
         let loader = EnvConfigLoader::new();
@@ -144,7 +144,7 @@ pub struct SecurityEnvConfig {
 }
 
 impl SecurityEnvConfig {
-    /// Load security config from environment variables (AUTH_ENABLED, CORS_ALLOWED_ORIGINS, etc.).
+    /// Load security config from environment variables (`AUTH_ENABLED`, `CORS_ALLOWED_ORIGINS`, etc.).
     #[must_use]
     pub fn from_env() -> Self {
         let loader = EnvConfigLoader::new();

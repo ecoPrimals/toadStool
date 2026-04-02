@@ -67,6 +67,10 @@ impl PrimalIntegrationManager {
     }
 
     /// Bootstrap all Primals from manifest
+    ///
+    /// # Errors
+    ///
+    /// Returns when dependency validation, startup ordering, or primal initialization fails.
     pub async fn bootstrap_from_manifest(
         &self,
         manifest: &BiomeManifest,
@@ -240,6 +244,10 @@ impl PrimalIntegrationManager {
     }
 
     /// Shutdown all Primals gracefully
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; individual shutdown failures are logged only.
     pub async fn shutdown_all(&self) -> ToadStoolResult<()> {
         for (name, primal) in &self.primals {
             if let Err(e) = primal.shutdown().await {

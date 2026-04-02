@@ -108,7 +108,7 @@ pub struct VolumeRequest {
 ///
 /// 1. **Self-knowledge only**: Knows it needs storage
 /// 2. **Runtime discovery**: Finds provider by capability
-/// 3. **Proper errors**: No unwrap(), all errors handled
+/// 3. **Proper errors**: No `unwrap()`, all errors handled
 /// 4. **Agnostic**: Doesn't care which primal provides storage
 pub struct StorageBackend {
     /// Storage provider (discovered at runtime)

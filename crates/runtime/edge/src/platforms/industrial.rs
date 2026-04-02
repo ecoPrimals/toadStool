@@ -169,7 +169,7 @@ impl IndustrialDevice {
 
     /// Create a device from connection parameters.
     /// Returns `Err` when the platform cannot create a device.
-    #[allow(dead_code, reason = "industrial platform constructor; requires target hardware discovery")]
+    #[expect(dead_code, reason = "industrial platform constructor; requires target hardware discovery")]
     pub fn new(
         _system_type: IndustrialSystemType,
         _protocol: IndustrialProtocol,

@@ -8,7 +8,13 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use toadstool::error::ToadStoolResult;
 
-use super::types::*;
+use super::types::{
+    DecryptionResult, EncryptionMetadata, EncryptionResult, PermissionRequest, ProviderMetadata,
+    SecurityPermission, SignatureAlgorithm, SignatureResult, VerificationResult,
+};
+
+#[cfg(test)]
+use super::types::{DecryptionMetadata, SecurityProof};
 
 /// Security Provider - generic interface for security operations
 ///

@@ -17,6 +17,10 @@ use super::UniversalGpuEngine;
 
 impl UniversalGpuEngine {
     /// Execute compute workload
+    ///
+    /// # Errors
+    ///
+    /// Returns when device selection, session lifecycle, or workload execution fails.
     pub async fn execute_workload(
         &self,
         workload: ComputeWorkload,

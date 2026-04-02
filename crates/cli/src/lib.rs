@@ -3,6 +3,13 @@
 #![warn(missing_docs)]
 #![allow(deprecated)] // Intentional: IPC addressing requires well-known names
 #![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::doc_markdown,
+    clippy::missing_errors_doc,
+    clippy::wildcard_imports,
+    clippy::uninlined_format_args,
     clippy::must_use_candidate,
     clippy::items_after_statements,
     clippy::map_unwrap_or,

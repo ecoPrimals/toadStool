@@ -25,17 +25,25 @@ pub struct MdnsDiscoveryService {
     /// Discovered services cache
     services: Arc<RwLock<HashMap<Uuid, DiscoveredService>>>,
     /// Configuration
-    #[allow(dead_code, reason = "retained for reconfiguration")]
+    #[allow(dead_code)] // retained for future reconfiguration
     config: DiscoveryConfig,
 }
 
 impl MdnsDiscoveryService {
     /// Create a new mDNS discovery service
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the mDNS daemon cannot be created.
     pub fn new() -> ToadStoolResult<Self> {
         Self::with_config(DiscoveryConfig::default())
     }
 
     /// Create with custom configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the mDNS daemon cannot be created.
     pub fn with_config(config: DiscoveryConfig) -> ToadStoolResult<Self> {
         let daemon = ServiceDaemon::new()
             .map_err(|e| ToadStoolError::runtime(format!("Failed to create mDNS daemon: {e}")))?;
@@ -51,6 +59,10 @@ impl MdnsDiscoveryService {
     /// Advertise our capabilities via mDNS
     ///
     /// This broadcasts WHAT we can do, not WHO we are
+    ///
+    /// # Errors
+    ///
+    /// Returns error if network identity is missing, service info construction fails, or mDNS registration fails.
     pub fn advertise(&self, identity: &SelfIdentity) -> ToadStoolResult<()> {
         let network = identity
             .network
@@ -104,6 +116,10 @@ impl MdnsDiscoveryService {
     }
 
     /// Discover all services
+    ///
+    /// # Errors
+    ///
+    /// Returns error if mDNS browse cannot be started.
     pub async fn discover_all(&self, timeout: Duration) -> ToadStoolResult<Vec<DiscoveredService>> {
         let receiver = self
             .daemon
@@ -150,6 +166,10 @@ impl MdnsDiscoveryService {
     /// Discover services by capability
     ///
     /// This is the key method: find by WHAT services can do
+    ///
+    /// # Errors
+    ///
+    /// Returns error if mDNS browse cannot be started.
     pub async fn discover_by_capability(
         &self,
         capability: &str,
@@ -180,6 +200,10 @@ impl MdnsDiscoveryService {
 
 impl MdnsDiscoveryService {
     /// Shutdown the mDNS service
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the mDNS daemon fails to shut down.
     pub fn shutdown(self) -> ToadStoolResult<()> {
         // mdns-sd 0.10 shutdown() returns Receiver, we just drop it
         let _receiver = self

@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-use super::types::*;
+use super::types::{MountType, SandboxSpec};
 
 /// Generate unique sandbox ID
 pub fn generate_sandbox_id() -> String {
@@ -18,6 +18,10 @@ pub fn generate_sandbox_id() -> String {
 }
 
 /// Validate sandbox specification
+///
+/// # Errors
+///
+/// Returns [`ToadStoolError`] when the specification fails validation.
 pub async fn validate_sandbox_spec(spec: &SandboxSpec) -> ToadStoolResult<()> {
     // Validate resource limits
     if let Some(memory) = spec.resource_limits.max_memory_bytes
@@ -65,6 +69,10 @@ pub async fn validate_sandbox_spec(spec: &SandboxSpec) -> ToadStoolResult<()> {
 }
 
 /// Create sandbox directory structure
+///
+/// # Errors
+///
+/// Returns [`ToadStoolError`] when directory creation fails.
 pub async fn create_sandbox_directories(
     sandbox_root: &Path,
     sandbox_id: &str,

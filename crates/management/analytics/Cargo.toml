@@ -24,7 +24,7 @@ serde_json = "1.0"
 
 # Machine learning and analytics
 ndarray = "0.16"
-statrs = "0.16"
+statrs = "0.18"
 
 # Database for storing metrics - REMOVED: Brings in ring via rustls (violates pure Rust)
 # PURE RUST: Database persistence disabled by default (in-memory only)

@@ -55,7 +55,7 @@ impl WorkloadAnalyzer {
         }
     }
 
-    /// Classifies memory size into a MemoryRequirement tier.
+    /// Classifies memory size into a `MemoryRequirement` tier.
     pub const fn classify_memory(bytes: u64) -> characteristics::MemoryRequirement {
         use characteristics::MemoryRequirement;
         match bytes {

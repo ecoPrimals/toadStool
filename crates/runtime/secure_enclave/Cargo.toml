@@ -12,6 +12,7 @@ categories = ["cryptography", "no-std"]
 [dependencies]
 # Core ToadStool
 toadstool-common = { path = "../../core/common" }
+toadstool-hw-safe = { path = "../../core/hw-safe" }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }

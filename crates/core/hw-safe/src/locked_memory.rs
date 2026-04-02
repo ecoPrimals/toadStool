@@ -43,7 +43,7 @@ impl LockedMemory {
     /// # Errors
     ///
     /// Returns [`LockError::Alloc`] if the allocation fails, or
-    /// [`LockError::Mlock`] if locking fails (e.g. RLIMIT_MEMLOCK).
+    /// [`LockError::Mlock`] if locking fails (e.g. `RLIMIT_MEMLOCK`).
     pub fn new(size: usize, align: usize) -> Result<Self, LockError> {
         let inner = AlignedAlloc::new(size, align)?;
 

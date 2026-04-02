@@ -278,6 +278,10 @@ impl FractalServiceAdvertiser {
     ///
     /// This ensures other primals see capabilities appropriate for the
     /// current deployment layer.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future discovery integration.
     pub async fn advertise(&self) -> ToadStoolResult<()> {
         let identity = self.runtime.identity();
         let _identity_read = identity.read().await;

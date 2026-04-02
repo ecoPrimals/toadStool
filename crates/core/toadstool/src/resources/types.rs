@@ -94,6 +94,10 @@ pub struct NetworkRequirements {
 
 impl ResourceRequirements {
     /// Validate that the requirements are internally consistent.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if CPU or memory bounds are invalid.
     pub fn validate(&self) -> ToadStoolResult<()> {
         use crate::ToadStoolError;
         if self.cpu.min_cores <= 0.0 {
@@ -298,7 +302,7 @@ impl Default for ResourceLimits {
 /// Snapshot of actual resource consumption during or after execution.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ResourceUsage {
-    /// CPU usage percentage (0.0–100.0 × n_cores)
+    /// CPU usage percentage (0.0–100.0 × `n_cores`)
     pub cpu_usage_percent: f64,
     /// Memory currently in use, in megabytes
     pub memory_used_mb: u64,

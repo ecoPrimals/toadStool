@@ -499,6 +499,10 @@ impl WorkloadBuilder {
     }
 
     /// Build the workload.
+    ///
+    /// # Errors
+    ///
+    /// Returns when operation, data type, or input was not set on the builder.
     pub fn build(self) -> Result<Workload, ComputeError> {
         Ok(Workload {
             operation: self.operation.ok_or_else(|| {

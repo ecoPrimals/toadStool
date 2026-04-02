@@ -6,7 +6,7 @@
 //! triples. toadStool stores these and uses them for tolerance-based routing
 //! across all silicon units on the GPU die.
 
-use std::sync::RwLock;
+use tokio::sync::RwLock;
 
 use toadstool_core::silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,
@@ -16,6 +16,9 @@ use toadstool_core::silicon::{
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 /// Handler for `compute.performance_surface.*` JSON-RPC methods.
+///
+/// Uses `tokio::sync::RwLock` so lock acquisition is async-safe and
+/// cannot block the runtime under contention.
 pub struct SiliconHandler {
     measurements: RwLock<Vec<PerformanceMeasurement>>,
 }
@@ -41,10 +44,7 @@ impl SiliconHandler {
         let unit_name = measurement.silicon_unit.as_str().to_string();
         let op_name = measurement.operation.clone();
 
-        let mut store = self
-            .measurements
-            .write()
-            .map_err(|_| JsonRpcError::internal_error("performance surface lock poisoned"))?;
+        let mut store = self.measurements.write().await;
 
         store.push(measurement);
         let total = store.len();
@@ -74,10 +74,7 @@ impl SiliconHandler {
             .and_then(|v| v.as_f64())
             .ok_or_else(|| JsonRpcError::invalid_params("missing 'tolerance_required'"))?;
 
-        let store = self
-            .measurements
-            .read()
-            .map_err(|_| JsonRpcError::internal_error("performance surface lock poisoned"))?;
+        let store = self.measurements.read().await;
 
         let matching: Vec<&PerformanceMeasurement> = store
             .iter()
@@ -127,10 +124,7 @@ impl SiliconHandler {
 
     /// `compute.performance_surface.list` — list all measurements and available operations.
     pub async fn list(&self) -> Result<serde_json::Value, JsonRpcError> {
-        let store = self
-            .measurements
-            .read()
-            .map_err(|_| JsonRpcError::internal_error("performance surface lock poisoned"))?;
+        let store = self.measurements.read().await;
 
         let operations: Vec<&str> = {
             let mut ops: Vec<&str> = store.iter().map(|m| m.operation.as_str()).collect();
@@ -187,10 +181,7 @@ impl SiliconHandler {
             .and_then(|v| v.as_str())
             .unwrap_or("default");
 
-        let store = self
-            .measurements
-            .read()
-            .map_err(|_| JsonRpcError::internal_error("performance surface lock poisoned"))?;
+        let store = self.measurements.read().await;
 
         let mut routed_ops = Vec::with_capacity(workload.len());
         let mut total_throughput = 0.0_f64;

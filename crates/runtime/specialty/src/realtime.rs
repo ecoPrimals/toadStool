@@ -2,7 +2,7 @@
 //! # Real-time Systems Adapters
 //!
 //! Support for real-time operating systems including:
-//! - VxWorks
+//! - `VxWorks`
 //! - QNX
 //! - RT-11
 //! - RTOS-32
@@ -23,7 +23,7 @@ use crate::{
     SpecialtyRuntimeConfig, SystemInfo, ToadStoolError, ToadStoolResult,
 };
 
-/// VxWorks Adapter
+/// `VxWorks` Adapter
 #[derive(Debug)]
 pub struct VxWorksAdapter {
     config: Option<RealtimeConfig>,
@@ -37,7 +37,7 @@ pub struct QNXAdapter {
     active_jobs: Arc<RwLock<HashMap<Uuid, RealtimeJob>>>,
 }
 
-/// Job submitted to a real-time OS (VxWorks, QNX, etc.).
+/// Job submitted to a real-time OS (`VxWorks`, QNX, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealtimeJob {
     /// Unique identifier for the job.
@@ -60,7 +60,7 @@ impl Default for VxWorksAdapter {
 }
 
 impl VxWorksAdapter {
-    /// Creates a new VxWorks adapter.
+    /// Creates a new `VxWorks` adapter.
     pub fn new() -> Self {
         Self::default()
     }

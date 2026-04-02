@@ -218,10 +218,9 @@ impl StorageProvisioningManager {
 }
 
 /// Helper function to parse size strings (e.g., "100Gi", "1TB")
-#[allow(
-    dead_code,
-    reason = "reserved for volume manifest size parsing; used in tests"
-)]
+///
+/// Used from unit tests today; production call sites will wire manifest parsing later.
+#[allow(dead_code)]
 fn parse_size_string(size_str: &str) -> Option<u64> {
     size_str
         .strip_suffix("Gi")

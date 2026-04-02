@@ -10,6 +10,10 @@ impl UnifiedBuffer {
     ///
     /// Ensures CPU writes are visible to GPU.
     /// No-op if buffer is already synced or if using coherent memory.
+    ///
+    /// # Errors
+    ///
+    /// Returns when the backend synchronization operation fails.
     pub async fn sync_to_device(&self) -> ToadStoolResult<()> {
         let state = *self
             .sync_state
@@ -54,6 +58,10 @@ impl UnifiedBuffer {
     ///
     /// Ensures GPU writes are visible to CPU.
     /// No-op if buffer is already synced or if using coherent memory.
+    ///
+    /// # Errors
+    ///
+    /// Returns when the backend synchronization operation fails.
     pub async fn sync_to_cpu(&self) -> ToadStoolResult<()> {
         let state = *self
             .sync_state
@@ -95,6 +103,10 @@ impl UnifiedBuffer {
     }
 
     /// Auto-sync to target (only if needed).
+    ///
+    /// # Errors
+    ///
+    /// Returns when the chosen sync path fails.
     pub async fn auto_sync(&self, target: SyncTarget) -> ToadStoolResult<()> {
         match target {
             SyncTarget::Cpu => self.sync_to_cpu().await,
@@ -111,6 +123,10 @@ impl UnifiedBuffer {
     }
 
     /// Fill buffer with value.
+    ///
+    /// # Errors
+    ///
+    /// Returns when the CPU slice cannot be obtained or validated.
     pub async fn fill(&mut self, value: u8) -> ToadStoolResult<()> {
         let buffer_slice = self.as_cpu_slice_mut()?;
         buffer_slice.fill(value);
@@ -123,6 +139,10 @@ impl UnifiedBuffer {
     }
 
     /// Zero buffer contents
+    ///
+    /// # Errors
+    ///
+    /// Returns when `fill` fails.
     pub async fn zero(&mut self) -> ToadStoolResult<()> {
         self.fill(0).await
     }

@@ -52,7 +52,7 @@
 //! ```
 
 use crate::ToadStoolResult;
-use crate::composition_constraints::*;
+use crate::composition_constraints::{CompositionRequest, Constraint, ConstraintEvaluation};
 use crate::composition_engine::{CompositionEngine, EngineStats};
 use crate::layer_adaptation::GpuAccess;
 use std::sync::Arc;
@@ -71,12 +71,20 @@ pub struct MultiWorkloadCompositor {
 
 impl MultiWorkloadCompositor {
     /// Create compositor from current runtime
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the composition engine cannot be initialized.
     pub async fn from_runtime() -> ToadStoolResult<Self> {
         let engine = CompositionEngine::from_runtime().await?;
         Self::new(Arc::new(engine))
     }
 
     /// Create compositor with specific engine
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub const fn new(engine: Arc<CompositionEngine>) -> ToadStoolResult<Self> {
         Ok(Self {
             engine,
@@ -110,6 +118,10 @@ impl MultiWorkloadCompositor {
     /// Compose all pending workloads
     ///
     /// Returns a composition plan showing how each workload should be placed.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if composition evaluation fails for a workload.
     pub async fn compose(&self) -> ToadStoolResult<CompositionPlan> {
         info!("🎼 Composing {} workloads...", self.requests.len());
 
@@ -259,6 +271,7 @@ impl MultiWorkloadCompositor {
     }
 
     /// Calculate overall resource utilization
+    #[allow(clippy::cast_precision_loss)] // GiB fraction from byte counts for utilization display
     fn calculate_resource_utilization(
         &self,
         placements: &[WorkloadPlacement],
@@ -490,6 +503,7 @@ impl ResourceUtilization {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::composition_constraints::ConstraintPriority;
 
     #[tokio::test]
     async fn test_compositor_initialization() {

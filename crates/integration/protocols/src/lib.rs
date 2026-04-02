@@ -6,7 +6,10 @@
     clippy::unused_async,
     clippy::needless_pass_by_value,
     clippy::assigning_clones,
-    clippy::unreadable_literal
+    clippy::unreadable_literal,
+    clippy::doc_markdown,
+    clippy::uninlined_format_args,
+    clippy::missing_errors_doc
 )]
 
 //! # `ToadStool` Protocol Integration Layer

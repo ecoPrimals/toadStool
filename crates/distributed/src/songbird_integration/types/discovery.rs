@@ -162,20 +162,12 @@ pub struct DiscoveryClient {
 }
 
 /// Registry of discovered nodes with per-node health tracking.
+#[derive(Default)]
 pub struct NodeRegistry {
     /// Node ID to registration mapping.
     pub nodes: HashMap<NodeId, NodeRegistration>,
     /// Last successful health heartbeat per node.
     pub health_timestamps: HashMap<NodeId, std::time::Instant>,
-}
-
-impl Default for NodeRegistry {
-    fn default() -> Self {
-        Self {
-            nodes: HashMap::new(),
-            health_timestamps: HashMap::new(),
-        }
-    }
 }
 
 impl NodeRegistry {

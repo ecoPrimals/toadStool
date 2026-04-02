@@ -51,12 +51,12 @@ use types::ioctls;
 pub struct VfioBackend {
     pcie_address: String,
     container: std::fs::File,
-    #[allow(
+    #[expect(
         dead_code,
         reason = "VFIO group file descriptor required for kernel lifetime"
     )]
     group: std::fs::File,
-    #[allow(
+    #[expect(
         dead_code,
         reason = "VFIO device file descriptor required for kernel lifetime"
     )]

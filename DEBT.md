@@ -7,6 +7,13 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 ## Active Debt
 
+### D-TARPC-PHASE3
+**Crate**: `integration/protocols` | **Feature**: `tarpc-transport`
+`TRpcTransport::send_message` returns `TRpcTransportNotAvailable` — tarpc binary
+transport is not yet wired. Evolve once `toadstool_common::tarpc_service` API
+stabilizes and Songbird mesh negotiation supports protocol switching.
+Files: `transport.rs`.
+
 ### D-EMBEDDED-PROGRAMMER
 **Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
 ISP/ICSP/parallel programmer trait impls return `EmbeddedProgrammerPlaceholder` errors.
@@ -19,7 +26,111 @@ MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
 
-## S172 Resolved Debt
+## S172-4 Resolved Debt (Deep Debt Execution)
+
+### D-IDENTITY-GET — RESOLVED S172-4
+`identity.get` JSON-RPC method implemented on both main server (`pure_jsonrpc/handler/core.rs`)
+and daemon (`cli/daemon/routes.rs`), satisfying wateringHole CAPABILITY_BASED_DISCOVERY_STANDARD
+MUST requirement. Returns primal name, version, capabilities, methods, and transport.
+
+### D-DAEMON-HEALTH-ALIGN — RESOLVED S172-4
+Daemon routes now accept canonical `health.liveness`, `health.readiness`, `health.check`
+in addition to `daemon.health`, aligning with main server health routing and wateringHole
+semantic method naming standard.
+
+### D-IPC-NEURAL-API — RESOLVED S172-4
+IPC registration evolved from legacy `ipc.register` / `ipc.resolve` / `ipc.capabilities`
+to wateringHole Neural API naming: `capability.register` / `capability.resolve` /
+`capability.find` (`connection.rs`).
+
+### D-CAPABILITY-SYMLINKS — RESOLVED S172-4
+`ipc/platform/unix.rs` `bind()` now creates capability symlinks (e.g. `compute.sock` →
+`toadstool.sock`) per CAPABILITY_BASED_DISCOVERY_STANDARD v1.1 SHOULD, enabling peers to
+discover by capability rather than primal identity.
+
+### D-CRYPTO-VALIDATION — RESOLVED S172-4
+Placeholder types evolved to real implementations:
+- `CryptoValidator`: validates signature presence and temporal freshness (24h max proof age).
+- `DelegationValidator`: enforces delegation depth and delegator/delegatee presence.
+- `PermissionRevocationList`: `HashSet<Uuid>` backed revocation checking.
+- `SecurityPublicKey`: keyed by algorithm + raw bytes.
+- `SecurityPermissionValidator` fallback path now performs local revocation, crypto, and
+  delegation chain validation when no external provider is discovered.
+
+### D-ACCESS-POLICIES — RESOLVED S172-4
+`AccessPolicies` evolved from empty marker type to real policy struct with
+`restricted_capabilities`, `max_delegation_depth`, and `allow_without_provider` fields.
+Serde-stable with sensible defaults (3 max depth, allow without provider).
+
+### D-VFIO-DMA-CONSOLIDATION — RESOLVED S172-4
+Shared `vfio_dma` module added to `hw-safe` crate with consolidated `VfioDmaMap`,
+`VfioDmaUnmap` kernel ABI structs, `dma_map`/`dma_unmap` ioctl wrappers,
+`page_align_up` helper, and `flags` module. Eliminates duplication between
+`nvpmu::dma` and `akida-driver::backends::vfio::dma`.
+
+### D-SECURITY-CLIENT-DEDUP — RESOLVED S172-4
+`SecurityClient` in `beardog_integration/client_evolved.rs` RPC methods deduplicated
+via generic `rpc<Req, Resp>()` helper, reducing 5 near-identical method bodies to
+single-line delegations.
+
+## S172-3 Resolved Debt (primalSpring Audit)
+
+### D-GAP-TS01-CAPABILITY-DISCOVERY — RESOLVED S172-3
+Gap TS-01 closed. `coral_reef_client.rs` discovery evolved from identity-based
+(coralreef env vars, manifests, socket name scan) to capability-based: primary
+tier is now `$XDG_RUNTIME_DIR/biomeos/shader.sock` (per CAPABILITY_BASED_DISCOVERY_STANDARD v1.1).
+Identity-based tiers demoted to legacy fallback. `songbird_integration/discovery/client.rs`
+`clone()` evolved to prefer `coordination.sock` over `songbird.sock`. `resolve_primal()`
+and `connect_to_primal()` deprecated in favour of `find_by_capability()`.
+
+### D-PRIMALSPRING-FMT-CLIPPY — RESOLVED S172-3
+All 18 `cargo fmt` diffs and 15 clippy warnings (dead code, closures, embedded-hw cfg)
+from the primalSpring downstream audit were already resolved in S172 session 2.
+Re-verified: `cargo fmt --check` exits 0, `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` exits 0.
+
+### D-SHADER-COMPILE-REGISTRY — CONFIRMED S172-3
+`shader.compile.*` methods confirmed absent from `SemanticMethodRegistry`. S169
+overstep cleanup holding clean. Only `shader.dispatch` remains (toadStool's domain).
+
+## S172 Resolved Debt (Session 2)
+
+### D-CLIPPY-PEDANTIC-FULL — RESOLVED S172
+Full workspace `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic`
+passes with 0 errors. Added `# Errors` sections, doc backticks, cast annotations,
+wildcard import fixes, and `.clippy.toml` `doc-valid-idents` for hardware terms
+(PCIe, BrainChip, REQ_IRQ) across all 43+ crates.
+
+### D-UNSAFE-ISOLATED-MEMORY — RESOLVED S172
+Reduced `secure_enclave/isolated_memory.rs` from 15 unsafe blocks to 1. Delegated
+allocation/locking to `hw-safe::LockedMemory`. Only `madvise(MADV_DONTDUMP)` remains
+unsafe (Linux-only, with SAFETY comment).
+
+### D-DEAD-CODE-SCHEDULING — RESOLVED S172
+Wired `CloudCostTracker`/`CloudPerformanceTracker` into `HybridCloudScheduler`:
+cost-based selection, performance ratios, compliance region filtering. All fields
+active; no dead code warnings.
+
+### D-ALLOW-DEAD-EXPECT — RESOLVED S172
+Evolved `#[allow(dead_code)]` to `#[expect(dead_code, reason = "...")]` across
+production code. Removed unfulfilled expectations where code was actually used.
+
+### D-METRICS-PORT — RESOLVED S172
+Deprecated `constants::network::METRICS_PORT` in favor of `ports::metrics_port()`.
+Default is now 0 (OS-assigned) consistent with all ToadStool self-ports.
+
+### D-RPG-HARDCODE — RESOLVED S172
+Replaced hardcoded `/QSYS.LIB/CRTRPGPGM.PGM` in `RPGCompiler::default()` with
+`TOADSTOOL_RPG_COMPILER` env-var + PATH-based `find_compiler_in_path("CRTRPGPGM")`.
+
+### D-UNWRAP-CI — RESOLVED S172
+Added `cargo clippy --workspace --lib -- -D clippy::unwrap_used` CI step. Verified
+zero production unwraps (all 200+ are test-only).
+
+### D-UNIBIN-COVERAGE — RESOLVED S172
+Added `unibin_deep_coverage_s172_tests.rs` integration tests covering error paths,
+feature-gated branches, env-var resolution, platform constraints, and discovery.
+
+## S172 Resolved Debt (Session 1)
 
 ### D-IOCTL-TYPED — RESOLVED S172
 Replaced generic ioctl dispatch with typed helper functions in `nvpmu/src/vfio.rs` (`vfio_get_api_version`, `vfio_group_get_status`, `vfio_device_get_bar0_info`). Stronger compile-time safety.

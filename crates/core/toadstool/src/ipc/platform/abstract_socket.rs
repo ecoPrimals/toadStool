@@ -25,7 +25,7 @@ use tokio::net::{UnixListener, UnixStream};
 
 /// Bind abstract Unix socket
 ///
-/// **Deep Debt**: Safe Rust using std::os::unix SocketAddr!
+/// **Deep Debt**: Safe Rust using `std::os::unix` `SocketAddr`!
 ///
 /// ## Usage
 ///
@@ -38,6 +38,10 @@ use tokio::net::{UnixListener, UnixStream};
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if the abstract address cannot be built, bind fails, or conversion to tokio fails.
 pub async fn bind(name: &str) -> ToadStoolResult<UnixListener> {
     use std::os::linux::net::SocketAddrExt;
     use std::os::unix::net::SocketAddr; // Linux-specific extension trait
@@ -74,7 +78,11 @@ pub async fn bind(name: &str) -> ToadStoolResult<UnixListener> {
 
 /// Connect to abstract Unix socket
 ///
-/// **Deep Debt**: Safe async using SocketAddr!
+/// **Deep Debt**: Safe async using `SocketAddr`!
+///
+/// # Errors
+///
+/// Returns error if the abstract address cannot be built or connection fails.
 pub async fn connect(name: &str) -> ToadStoolResult<UnixStream> {
     use std::os::linux::net::SocketAddrExt;
     use std::os::unix::net::SocketAddr; // Linux-specific extension trait

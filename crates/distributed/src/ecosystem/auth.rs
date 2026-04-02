@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 /// Authentication manager
-#[allow(
+#[expect(
     dead_code,
     reason = "Phase 2+: distributed auth token/credential management"
 )]

@@ -3,7 +3,7 @@
 //!
 //! Manages communication channels and messaging with ecosystem services.
 //!
-//! ## WateringHole Sovereignty: Discover by Capability, Address by Name
+//! ## `WateringHole` Sovereignty: Discover by Capability, Address by Name
 //!
 //! This module receives **already-discovered** services. The caller must discover
 //! by capability (e.g., `discover_capability("crypto.encrypt")`), not by hardcoded
@@ -55,6 +55,10 @@ impl CommunicationManager {
     }
 
     /// Creates a channel for the discovered service.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the service has no endpoint or client setup fails.
     pub async fn create_channel(
         &self,
         service: &DiscoveredService,
@@ -93,6 +97,10 @@ impl CommunicationManager {
     }
 
     /// Sends a message to the service via the channel.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the RPC client is unavailable or the remote call fails.
     #[allow(clippy::unused_async, clippy::significant_drop_tightening)] // Conditional async; Tarpc fallback_client() borrows from guard
     pub async fn send_message(
         &self,
@@ -130,6 +138,10 @@ impl CommunicationManager {
     }
 
     /// Performs a health check on the service.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the health RPC fails or the client is not initialized.
     #[allow(clippy::unused_async, clippy::significant_drop_tightening)] // Conditional async; Tarpc fallback_client() borrows from guard
     pub async fn check_health(&self, channel: &ServiceChannel) -> ToadStoolResult<()> {
         debug!("🔍 Checking health of service: {}", channel.service_name);
@@ -169,6 +181,10 @@ impl CommunicationManager {
     }
 
     /// Sends a heartbeat to the service and updates last seen.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the channel is missing or sending the heartbeat message fails.
     pub async fn send_heartbeat(&self, service_id: &str) -> ToadStoolResult<()> {
         let channels = self.channels.read().await;
         let channel = channels

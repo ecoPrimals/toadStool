@@ -184,7 +184,7 @@ impl BatchCapabilities {
 pub enum WeightMutationSupport {
     /// Not available on this hardware
     None,
-    /// Full runtime weight updates via set_variable
+    /// Full runtime weight updates via `set_variable`
     Full,
     /// Readout layer only (faster, no reservoir re-upload)
     ReadoutOnly,

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(clippy::cast_precision_loss)]
 
 use std::time::{Duration, SystemTime};
 

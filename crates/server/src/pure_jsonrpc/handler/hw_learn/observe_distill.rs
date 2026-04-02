@@ -124,7 +124,10 @@ mod tests {
     async fn observe_missing_params_returns_error() {
         let (handler, _dir) = handler_with_temp_store();
         let err = handler.hw_learn_observe(None).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("trace_data"));
     }
 
@@ -133,7 +136,10 @@ mod tests {
         let (handler, _dir) = handler_with_temp_store();
         let params = json!({});
         let err = handler.hw_learn_observe(Some(&params)).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("trace_data"));
     }
 
@@ -155,7 +161,10 @@ mod tests {
     async fn distill_missing_params_returns_error() {
         let (handler, _dir) = handler_with_temp_store();
         let err = handler.hw_learn_distill(None).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
     }
 
     #[tokio::test]
@@ -166,7 +175,10 @@ mod tests {
             "chip": "gv100",
         });
         let err = handler.hw_learn_distill(Some(&params)).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("baseline"));
     }
 
@@ -178,7 +190,10 @@ mod tests {
             "chip": "gv100",
         });
         let err = handler.hw_learn_distill(Some(&params)).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("compute"));
     }
 
@@ -190,7 +205,10 @@ mod tests {
             "compute": minimal_mmiotrace_text(),
         });
         let err = handler.hw_learn_distill(Some(&params)).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("chip"));
     }
 

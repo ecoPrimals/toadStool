@@ -12,8 +12,10 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_security_policies::{PolicyManager, SecurityPolicy};
 
 use super::helpers;
-use super::traits::*;
-use super::types::*;
+use super::traits::SandboxManager;
+use super::types::{
+    FilesystemMount, ResourceUsage, SandboxConfig, SandboxInfo, SandboxSpec, SandboxStatus,
+};
 
 #[cfg(target_os = "linux")]
 use super::linux::LinuxSandboxManager;
@@ -40,6 +42,11 @@ pub struct CrossPlatformSandboxManager {
 
 impl CrossPlatformSandboxManager {
     /// Create new cross-platform sandbox manager
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] when required directories cannot be created or the
+    /// platform-specific manager fails to initialize.
     pub async fn new(
         config: SandboxConfig,
         policy_manager: Arc<dyn PolicyManager>,

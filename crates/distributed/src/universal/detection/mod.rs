@@ -8,7 +8,11 @@
 mod gpu;
 mod helpers;
 
-use super::types::*;
+use super::types::{
+    BiologicalComputingPlatform, ContainerPlatform, EdgeIoTPlatform, ExperimentalPlatform,
+    LanguageRuntime, NeuromorphicPlatform, OperatingSystemSupport, QuantumPlatform,
+    SpecializedArchitecture, TraditionalPlatform, UniversalSubstrateCapabilities,
+};
 use toadstool::ToadStoolResult;
 
 impl UniversalSubstrateCapabilities {

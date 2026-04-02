@@ -57,6 +57,10 @@ impl RuntimeOrchestrator {
     }
 
     /// Register a runtime engine
+    ///
+    /// # Errors
+    ///
+    /// Returns error if registration fails.
     pub async fn register_engine(
         &self,
         runtime_type: RuntimeType,
@@ -66,6 +70,10 @@ impl RuntimeOrchestrator {
     }
 
     /// Execute a workload using the appropriate runtime
+    ///
+    /// # Errors
+    ///
+    /// Returns error if validation fails, no engine is available for the selected runtime, or execution fails.
     #[allow(clippy::significant_drop_tightening)]
     pub async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
         let execution_id = request.execution_id;
@@ -147,7 +155,13 @@ impl RuntimeOrchestrator {
                 decision.reasoning
             );
 
-            if self.registry.engines().read().await.contains_key(&RuntimeType::Gpu) {
+            if self
+                .registry
+                .engines()
+                .read()
+                .await
+                .contains_key(&RuntimeType::Gpu)
+            {
                 Ok(RuntimeType::Gpu)
             } else {
                 warn!("GPU runtime not available for CUDA workload, falling back to Native");

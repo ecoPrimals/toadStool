@@ -6,9 +6,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
 
-use crate::{
-    ExecutionRequest, RuntimeEngine, RuntimeType, ToadStoolError, ToadStoolResult,
-};
+use crate::{ExecutionRequest, RuntimeEngine, RuntimeType, ToadStoolError, ToadStoolResult};
 
 pub(crate) struct EngineRegistry {
     engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,

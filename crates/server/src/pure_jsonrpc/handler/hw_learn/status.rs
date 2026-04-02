@@ -76,7 +76,10 @@ mod tests {
     async fn no_params_returns_valid_json() {
         let (handler, _dir) = handler_with_temp_store();
         let value = handler.hw_learn_status(None).await.unwrap();
-        assert_eq!(value.get("domain"), Some(&serde_json::json!("compute.hardware")));
+        assert_eq!(
+            value.get("domain"),
+            Some(&serde_json::json!("compute.hardware"))
+        );
         assert_eq!(value.get("operation"), Some(&serde_json::json!("status")));
     }
 
@@ -98,7 +101,10 @@ mod tests {
         let (handler, _dir) = handler_with_temp_store();
         let params = serde_json::json!({ "chip": "gv100" });
         let value = handler.hw_learn_status(Some(&params)).await.unwrap();
-        assert_eq!(value.get("domain"), Some(&serde_json::json!("compute.hardware")));
+        assert_eq!(
+            value.get("domain"),
+            Some(&serde_json::json!("compute.hardware"))
+        );
         assert!(value.get("firmware").is_some());
     }
 }

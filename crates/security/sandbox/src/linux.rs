@@ -80,6 +80,10 @@ impl LinuxSandboxManager {
     }
 
     /// Create sandbox using Linux namespaces
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when sandbox creation or kernel setup fails.
     pub async fn create_sandbox(
         &self,
         spec: &SandboxSpec,
@@ -99,6 +103,10 @@ impl LinuxSandboxManager {
     }
 
     /// Start execution in Linux sandbox
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the sandbox cannot be started.
     pub async fn start_execution(&self, sandbox_id: &str) -> ToadStoolResult<()> {
         debug!("Starting execution in Linux sandbox: {}", sandbox_id);
 
@@ -111,6 +119,10 @@ impl LinuxSandboxManager {
     }
 
     /// Stop execution in Linux sandbox
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the sandbox process cannot be stopped.
     pub async fn stop_execution(&self, sandbox_id: &str) -> ToadStoolResult<()> {
         debug!("Stopping execution in Linux sandbox: {}", sandbox_id);
 
@@ -137,6 +149,10 @@ impl LinuxSandboxManager {
     }
 
     /// Destroy sandbox
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when teardown or cleanup fails.
     pub async fn destroy_sandbox(&self, sandbox_id: &str) -> ToadStoolResult<()> {
         debug!("Destroying Linux sandbox: {}", sandbox_id);
 
@@ -154,6 +170,10 @@ impl LinuxSandboxManager {
     }
 
     /// Set up filesystem mount
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the mount operation fails.
     pub async fn setup_mount(
         &self,
         mount: &FilesystemMount,
@@ -175,6 +195,10 @@ impl LinuxSandboxManager {
     }
 
     /// Monitor sandbox resource usage
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when resource usage cannot be read.
     pub async fn monitor_sandbox(&self, sandbox_id: &str) -> ToadStoolResult<ResourceUsage> {
         debug!("Monitoring Linux sandbox: {}", sandbox_id);
 
@@ -198,6 +222,10 @@ impl LinuxSandboxManager {
     }
 
     /// Apply security policy to Linux sandbox
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the policy cannot be applied.
     pub async fn apply_security_policy(
         &self,
         sandbox_id: &str,
@@ -216,6 +244,10 @@ impl LinuxSandboxManager {
     }
 
     /// Get sandbox logs
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when logs cannot be read.
     pub async fn get_sandbox_logs(&self, sandbox_id: &str) -> ToadStoolResult<Vec<String>> {
         debug!("Getting logs for Linux sandbox: {}", sandbox_id);
 

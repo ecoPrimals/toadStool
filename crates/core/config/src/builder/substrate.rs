@@ -44,7 +44,7 @@ pub enum SubstratePreference {
 pub enum SubstrateType {
     /// CPU execution.
     Cpu,
-    /// GPU (CUDA, OpenCL, etc.).
+    /// `GPU` (`CUDA`, `OpenCL`, `etc`.).
     Gpu,
     /// Neural processing unit.
     Npu,

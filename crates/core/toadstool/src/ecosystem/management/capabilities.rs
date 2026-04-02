@@ -35,6 +35,10 @@ impl ServiceManager {
     }
 
     /// Get capabilities for a service
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `service_id` is not registered.
     pub async fn get_service_capabilities(
         &self,
         service_id: &str,

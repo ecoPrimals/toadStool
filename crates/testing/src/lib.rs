@@ -18,6 +18,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
+    clippy::pedantic, // Dev/test helper crate: keep `toadstool` pedantic-clean without duplicating policy here
     clippy::unused_async, // Test helpers/placeholders; async for trait/API consistency
     clippy::must_use_candidate,
     clippy::return_self_not_must_use,

@@ -45,7 +45,7 @@ pub struct PluginManifest {
     /// Plugin version (semver)
     pub version: String,
 
-    /// Plugin type (e.g., "cloud_provider", "storage_backend")
+    /// Plugin type (e.g., `cloud_provider`, `storage_backend`)
     pub plugin_type: String,
 
     /// Entry point (library path)

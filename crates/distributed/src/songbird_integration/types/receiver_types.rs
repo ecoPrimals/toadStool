@@ -42,7 +42,7 @@ impl UniversalJobProcessor {
             display_name: format!("processor-{}", &processor_id[..8.min(processor_id.len())]),
             processor_id,
             max_concurrent_jobs: std::thread::available_parallelism()
-                .map(|n| n.get())
+                .map(std::num::NonZero::get)
                 .unwrap_or(4),
             supported_job_types: Vec::new(),
         }

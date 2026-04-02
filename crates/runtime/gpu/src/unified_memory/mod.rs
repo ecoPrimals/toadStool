@@ -54,9 +54,9 @@
 //! ## Backend Selection
 //!
 //! Priority order (sovereignty-first):
-//! 1. **WebGPU** - Pure Rust, vendor-agnostic (future primary)
+//! 1. **`WebGPU`** - Pure Rust, vendor-agnostic (future primary)
 //! 2. **Vulkan** - Cross-vendor, modern (current best)
-//! 3. **OpenCL** - Cross-vendor, legacy (compatibility)
+//! 3. **`OpenCL`** - Cross-vendor, legacy (compatibility)
 //! 4. **CPU** - Always available (fallback)
 //!
 //! ## Zero-Copy Performance
@@ -87,7 +87,7 @@
 //! - **Thread-safe**: Uses `Arc`, `RwLock`, `DashMap` for concurrency
 //! - **Zero unwraps**: Comprehensive error handling
 //! - **Vendor-agnostic**: Works on Intel, AMD, NVIDIA via open standards
-//! - **Sovereignty-first**: Prioritizes pure Rust WebGPU backend
+//! - **Sovereignty-first**: Prioritizes pure Rust `WebGPU` backend
 
 // Module declarations
 pub mod backend;

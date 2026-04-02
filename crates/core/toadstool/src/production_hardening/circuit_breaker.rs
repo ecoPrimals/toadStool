@@ -103,6 +103,10 @@ impl CircuitBreaker {
     }
 
     /// Executes an operation through the circuit breaker.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the circuit is open, half-open permits are exhausted, or the operation fails.
     pub async fn execute<F, T, E>(&self, operation: F) -> Result<T, CircuitBreakerError>
     where
         F: std::future::Future<Output = Result<T, E>>,

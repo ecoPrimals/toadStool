@@ -27,6 +27,7 @@
 pub mod aligned_alloc;
 pub mod locked_memory;
 pub mod safe_mmap;
+pub mod vfio_dma;
 pub mod volatile_mmio;
 
 pub use aligned_alloc::AlignedAlloc;

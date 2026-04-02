@@ -88,7 +88,7 @@ pub fn make_expired_permission(target: ExternalTarget) -> SecurityProviderPermis
         valid_from,
         valid_until,
         crypto_proof: SecurityProof {
-            signature: vec![],
+            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
             public_key_id: "key1".to_string(),
             timestamp: now,

@@ -164,6 +164,10 @@ fn estimate_tmu_rop(name: &str, is_nvidia: bool, is_amd: bool) -> (u32, u32) {
 
 impl WgpuComputeUnit {
     /// Create from a wgpu adapter
+    ///
+    /// # Errors
+    ///
+    /// Returns when `request_device` fails or capability setup errors occur.
     pub async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self, ComputeError> {
         const GIB: u64 = 1024 * 1024 * 1024;
         const DISCRETE_MIN_VRAM: u64 = 4 * GIB;

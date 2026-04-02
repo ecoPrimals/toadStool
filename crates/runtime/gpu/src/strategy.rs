@@ -2,18 +2,18 @@
 //! Backend Selection Strategy - Pragmatic now, Sovereign tomorrow
 //!
 //! This module implements intelligent GPU backend selection that prioritizes
-//! sovereignty (WebGPU) while pragmatically supporting vendor backends (CUDA)
+//! sovereignty (`WebGPU`) while pragmatically supporting vendor backends (CUDA)
 //! when the ecosystem requires them.
 //!
 //! ## Philosophy
-//! - **Default**: Pure Rust WebGPU (vendor-agnostic, sovereign)
+//! - **Default**: Pure Rust `WebGPU` (vendor-agnostic, sovereign)
 //! - **Pragmatic**: CUDA when Python AI needs it (2025)
-//! - **Evolution**: Track ecosystem maturity, migrate to WebGPU when ready
+//! - **Evolution**: Track ecosystem maturity, migrate to `WebGPU` when ready
 //!
 //! ## Selection Priority
-//! 1. WebGPU (pure Rust, universal) ✅ Always prefer
-//! 2. CUDA (vendor-specific) ⚠️ Python AI compatibility (interim; migrate when WebGPU covers stacks)
-//! 3. OpenCL (legacy) ⚠️ Fallback only
+//! 1. `WebGPU` (pure Rust, universal) ✅ Always prefer
+//! 2. CUDA (vendor-specific) ⚠️ Python AI compatibility (interim; migrate when `WebGPU` covers stacks)
+//! 3. `OpenCL` (legacy) ⚠️ Fallback only
 //! 4. CPU Compute (always available) ✅ Safe fallback
 
 use tracing::{info, warn};
@@ -25,16 +25,16 @@ use toadstool::WorkloadType;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BackendSelectionStrategy {
     /// Automatic: Intelligent selection based on workload and availability
-    /// Prioritizes sovereign backends (WebGPU), uses vendor when needed
+    /// Prioritizes sovereign backends (`WebGPU`), uses vendor when needed
     #[default]
     Automatic,
 
-    /// Sovereign only: Pure Rust WebGPU only (no vendor backends)
-    /// Fails if WebGPU is not available
+    /// Sovereign only: Pure Rust `WebGPU` only (no vendor backends)
+    /// Fails if `WebGPU` is not available
     SovereignOnly,
 
     /// Pragmatic: Prefer vendor backends for maximum performance
-    /// Uses CUDA/OpenCL when available, falls back to WebGPU
+    /// Uses CUDA/`OpenCL` when available, falls back to `WebGPU`
     Pragmatic,
 
     /// Specific: Use a specific framework (for testing/debugging)
@@ -119,7 +119,7 @@ impl BackendSelectionStrategy {
         None
     }
 
-    /// Sovereign selection: WebGPU only
+    /// Sovereign selection: `WebGPU` only
     fn select_sovereign(available: &[GpuFramework]) -> Option<GpuFramework> {
         if available.contains(&GpuFramework::WebGpu) {
             info!("✅ Selected WebGPU (sovereign mode)");
@@ -197,19 +197,19 @@ impl BackendSelectionStrategy {
 /// Evolution metrics for tracking ecosystem maturity
 #[derive(Debug, Clone)]
 pub struct EvolutionMetrics {
-    /// WebGPU AI library coverage (0.0 - 1.0)
+    /// `WebGPU` AI library coverage (0.0 - 1.0)
     pub webgpu_ai_coverage: f32,
-    /// WebGPU performance vs CUDA (0.0 - 1.0+)
+    /// `WebGPU` performance vs CUDA (0.0 - 1.0+)
     pub webgpu_performance_ratio: f32,
-    /// PyTorch WebGPU backend ready
+    /// `PyTorch` `WebGPU` backend ready
     pub pytorch_webgpu_ready: bool,
-    /// TensorFlow WebGPU backend ready
+    /// `TensorFlow` `WebGPU` backend ready
     pub tensorflow_webgpu_ready: bool,
     /// Burn (Rust) adoption rate
     pub burn_adoption_rate: f32,
     /// CUDA usage percentage (0.0 - 1.0)
     pub cuda_usage_percentage: f32,
-    /// WebGPU usage percentage (0.0 - 1.0)
+    /// `WebGPU` usage percentage (0.0 - 1.0)
     pub webgpu_usage_percentage: f32,
 }
 

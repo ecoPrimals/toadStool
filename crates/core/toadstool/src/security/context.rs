@@ -94,6 +94,10 @@ impl SecurityContext {
     }
 
     /// Validate the security context
+    ///
+    /// # Errors
+    ///
+    /// Returns error if capabilities are empty or mutually inconsistent with filesystem policy.
     pub fn validate(&self) -> ToadStoolResult<()> {
         // Basic validation of the security context
         if self.capabilities.is_empty() {

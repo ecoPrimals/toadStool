@@ -34,7 +34,7 @@ use crate::ToadStoolResult;
 
 /// Hardware detection and capability assessment system
 pub struct HardwareDetector {
-    #[allow(dead_code, reason = "reserved for platform-specific system info")]
+    #[allow(dead_code)] // Reserved for platform-specific system info
     system_info: Option<SystemInfo>,
 }
 

@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Compute capability constants (extending infant_discovery capabilities)
+/// Compute capability constants (extending `infant_discovery` capabilities)
 pub mod compute_capabilities {
     /// Direct GPU compute access (bare metal, GPU passthrough)
     pub const GPU_COMPUTE_DIRECT: &str = "gpu_compute_direct";

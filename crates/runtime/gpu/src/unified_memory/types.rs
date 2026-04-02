@@ -151,10 +151,10 @@ pub enum BackendType {
     /// Vulkan backend
     Vulkan,
 
-    /// OpenCL backend
+    /// `OpenCL` backend
     OpenCL,
 
-    /// WebGPU backend
+    /// `WebGPU` backend
     WebGpu,
 
     /// CPU fallback
@@ -175,14 +175,14 @@ impl fmt::Display for BackendType {
 /// Backend selection strategy
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BackendStrategy {
-    /// Automatic: Sovereignty-first (WebGPU > Vulkan > OpenCL > CPU)
+    /// Automatic: Sovereignty-first (`WebGPU` > Vulkan > `OpenCL` > CPU)
     #[default]
     Automatic,
 
-    /// Sovereignty only: WebGPU or fail
+    /// Sovereignty only: `WebGPU` or fail
     SovereignOnly,
 
-    /// Performance: Prefer fastest backend (Vulkan > OpenCL > WebGPU > CPU)
+    /// Performance: Prefer fastest backend (Vulkan > `OpenCL` > `WebGPU` > CPU)
     Performance,
 
     /// Specific backend
@@ -328,6 +328,7 @@ impl UnifiedMemoryStats {
     }
 
     /// Calculate pool hit rate
+    #[allow(clippy::cast_precision_loss)] // ratio in [0,1]
     pub fn calculate_pool_hit_rate(&mut self, hits: u64, misses: u64) {
         let total = hits + misses;
         self.pool_hit_rate = if total > 0 {

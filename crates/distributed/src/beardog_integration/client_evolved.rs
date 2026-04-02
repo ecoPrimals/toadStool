@@ -215,31 +215,38 @@ impl SecurityClient {
             .ok_or(SecurityClientError::NoProvider)
     }
 
+    /// Call a security RPC method with typed request/response.
+    async fn rpc<Req, Resp>(
+        &self,
+        method: &str,
+        request: &Req,
+        map_err: fn(String) -> SecurityClientError,
+    ) -> Result<Resp>
+    where
+        Req: Serialize + Sync,
+        Resp: for<'de> Deserialize<'de>,
+    {
+        let params = serde_json::to_value(request).map_err(SecurityClientError::Json)?;
+        let provider = self.get_provider().await?;
+        let response = provider
+            .call(method, params)
+            .await
+            .map_err(|e| map_err(e.to_string()))?;
+        serde_json::from_value(response).map_err(SecurityClientError::Json)
+    }
+
     /// Encrypt data
-    ///
-    /// # Deep Debt Evolution
-    ///
-    /// Before: `call_rpc("/primal/beardog", "crypto.encrypt", ...)`
-    /// After: `provider.call("security.encrypt", ...)`
     ///
     /// # Errors
     ///
     /// Returns error if provider unavailable or encryption fails
     pub async fn encrypt(&self, request: EncryptionRequest) -> Result<EncryptionResponse> {
-        let provider = self.get_provider().await?;
-
-        let params = json!({
-            "data": request.data,
-            "algorithm": request.algorithm,
-            "key_id": request.key_id,
-        });
-
-        let response = provider
-            .call("security.encrypt", params)
-            .await
-            .map_err(|e| SecurityClientError::EncryptionFailed(e.to_string()))?;
-
-        serde_json::from_value(response).map_err(SecurityClientError::Json)
+        self.rpc(
+            "security.encrypt",
+            &request,
+            SecurityClientError::EncryptionFailed,
+        )
+        .await
     }
 
     /// Decrypt data
@@ -248,19 +255,12 @@ impl SecurityClient {
     ///
     /// Returns error if decryption fails
     pub async fn decrypt(&self, request: DecryptionRequest) -> Result<DecryptionResponse> {
-        let provider = self.get_provider().await?;
-
-        let params = json!({
-            "encrypted_data": request.encrypted_data,
-            "key_id": request.key_id,
-        });
-
-        let response = provider
-            .call("security.decrypt", params)
-            .await
-            .map_err(|e| SecurityClientError::DecryptionFailed(e.to_string()))?;
-
-        serde_json::from_value(response).map_err(SecurityClientError::Json)
+        self.rpc(
+            "security.decrypt",
+            &request,
+            SecurityClientError::DecryptionFailed,
+        )
+        .await
     }
 
     /// Sign data
@@ -269,20 +269,12 @@ impl SecurityClient {
     ///
     /// Returns error if signing fails
     pub async fn sign(&self, request: SignatureRequest) -> Result<SignatureResponse> {
-        let provider = self.get_provider().await?;
-
-        let params = json!({
-            "data": request.data,
-            "algorithm": request.algorithm,
-            "key_id": request.key_id,
-        });
-
-        let response = provider
-            .call("security.sign", params)
-            .await
-            .map_err(|e| SecurityClientError::SignatureFailed(e.to_string()))?;
-
-        serde_json::from_value(response).map_err(SecurityClientError::Json)
+        self.rpc(
+            "security.sign",
+            &request,
+            SecurityClientError::SignatureFailed,
+        )
+        .await
     }
 
     /// Verify signature
@@ -291,20 +283,12 @@ impl SecurityClient {
     ///
     /// Returns error if verification fails
     pub async fn verify(&self, request: VerificationRequest) -> Result<VerificationResponse> {
-        let provider = self.get_provider().await?;
-
-        let params = json!({
-            "data": request.data,
-            "signature": request.signature,
-            "key_id": request.key_id,
-        });
-
-        let response = provider
-            .call("security.verify", params)
-            .await
-            .map_err(|e| SecurityClientError::VerificationFailed(e.to_string()))?;
-
-        serde_json::from_value(response).map_err(SecurityClientError::Json)
+        self.rpc(
+            "security.verify",
+            &request,
+            SecurityClientError::VerificationFailed,
+        )
+        .await
     }
 
     /// Validate token
@@ -316,18 +300,12 @@ impl SecurityClient {
         &self,
         request: TokenValidationRequest,
     ) -> Result<TokenValidationResponse> {
-        let provider = self.get_provider().await?;
-
-        let params = json!({
-            "token": request.token,
-        });
-
-        let response = provider
-            .call("security.validate_token", params)
-            .await
-            .map_err(|e| SecurityClientError::ValidationFailed(e.to_string()))?;
-
-        serde_json::from_value(response).map_err(SecurityClientError::Json)
+        self.rpc(
+            "security.validate_token",
+            &request,
+            SecurityClientError::ValidationFailed,
+        )
+        .await
     }
 
     /// Generate new key

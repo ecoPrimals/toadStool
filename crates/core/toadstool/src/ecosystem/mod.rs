@@ -78,7 +78,7 @@ pub struct EcosystemCoordinator {
     /// Service manager
     management: Arc<ServiceManager>,
     /// Service discovery client (stored for potential direct use)
-    #[allow(dead_code, reason = "reserved for direct discovery fallback/reconnect")]
+    #[expect(dead_code, reason = "reserved for direct discovery fallback/reconnect")]
     discovery_client: Arc<ServiceDiscovery>,
     /// Configuration
     config: EcosystemConfig,
@@ -86,11 +86,19 @@ pub struct EcosystemCoordinator {
 
 impl EcosystemCoordinator {
     /// Create a new ecosystem coordinator with capability-based discovery
+    ///
+    /// # Errors
+    ///
+    /// Returns error if service discovery initialization fails.
     pub async fn new() -> ToadStoolResult<Self> {
         Self::with_config(EcosystemConfig::default()).await
     }
 
     /// Create a new ecosystem coordinator with custom config
+    ///
+    /// # Errors
+    ///
+    /// Returns error if service discovery initialization fails.
     pub async fn with_config(config: EcosystemConfig) -> ToadStoolResult<Self> {
         info!("🌐 Creating Ecosystem Coordinator (capability-based discovery)");
 
@@ -134,6 +142,10 @@ impl EcosystemCoordinator {
     /// Discover services by capability
     ///
     /// This is the **modern way** to find services - by what they can do, not who they are.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if discovery or service registration fails.
     pub async fn find_service_by_capability(
         &self,
         capability: Capability,
@@ -147,6 +159,10 @@ impl EcosystemCoordinator {
     }
 
     /// Discover all services for configured capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns error if required services cannot be discovered.
     pub async fn discover_services(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
         info!("🔍 Discovering ecosystem services");
 
@@ -180,6 +196,10 @@ impl EcosystemCoordinator {
     /// Integrate with discovered services
     ///
     /// This creates communication channels for all services.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; failures are logged per service.
     pub async fn integrate_services(
         &self,
         services: Vec<DiscoveredService>,
@@ -226,6 +246,10 @@ impl EcosystemCoordinator {
     }
 
     /// Send a message to a service via ecosystem messaging
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no channel exists for the service or messaging fails.
     pub async fn send_ecosystem_message(
         &self,
         service_id: &str,
@@ -245,6 +269,10 @@ impl EcosystemCoordinator {
     }
 
     /// Send heartbeat to a service
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the channel is missing or the heartbeat cannot be sent.
     pub async fn send_heartbeat(&self, service_id: &str) -> ToadStoolResult<()> {
         self.communication.send_heartbeat(service_id).await
     }
@@ -254,6 +282,10 @@ impl EcosystemCoordinator {
     // ========================================================================
 
     /// Get service capabilities by service ID
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the service is unknown or capabilities cannot be read.
     pub async fn get_service_capabilities(
         &self,
         service_id: &str,
@@ -289,6 +321,10 @@ impl EcosystemCoordinator {
     ///
     /// # ⚠️ Deprecated
     /// Use `get_service_statuses()` instead.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     #[deprecated(since = "0.4.0", note = "Use get_service_statuses()")]
     pub async fn get_primal_status(&self) -> ToadStoolResult<HashMap<String, ServiceStatus>> {
         Ok(self.get_service_statuses().await)
@@ -308,6 +344,10 @@ impl EcosystemCoordinator {
     ///
     /// # ⚠️ Deprecated
     /// Use `get_service_capabilities()` instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no service matches `primal_name`.
     #[deprecated(since = "0.4.0", note = "Use get_service_capabilities()")]
     pub async fn get_primal_capabilities(&self, primal_name: &str) -> ToadStoolResult<Vec<String>> {
         let services = self.management.get_all_services().await;

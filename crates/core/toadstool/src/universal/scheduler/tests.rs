@@ -49,7 +49,7 @@ fn make_universal_job(job_type: UniversalJobType) -> UniversalJob {
     }
 }
 
-/// Minimal mock RuntimeEngine for scheduler tests
+/// Minimal mock `RuntimeEngine` for scheduler tests
 struct SimpleMockRuntimeEngine;
 
 impl RuntimeEngine for SimpleMockRuntimeEngine {

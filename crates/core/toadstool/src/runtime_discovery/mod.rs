@@ -75,6 +75,10 @@ impl RuntimeDiscovery {
     }
 
     /// Start discovery
+    ///
+    /// # Errors
+    ///
+    /// Returns error if discovery is already running.
     pub async fn start(&self) -> ToadStoolResult<()> {
         let mut state = self.state.write().await;
         if state.running {
@@ -92,6 +96,10 @@ impl RuntimeDiscovery {
     }
 
     /// Stop discovery
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn stop(&self) -> ToadStoolResult<()> {
         let mut state = self.state.write().await;
         if !state.running {
@@ -109,6 +117,10 @@ impl RuntimeDiscovery {
     ///
     /// This is the key method: we find services by WHAT THEY CAN DO,
     /// not by WHO THEY ARE or WHERE THEY ARE.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     pub async fn find_by_capability(
         &self,
         capability: &str,
@@ -137,6 +149,10 @@ impl RuntimeDiscovery {
     }
 
     /// Find services matching a requirement
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     pub async fn find_by_requirement(
         &self,
         requirement: &CapabilityRequirement,
@@ -175,6 +191,10 @@ impl RuntimeDiscovery {
     ///
     /// This allows for manual registration while still maintaining
     /// the capability-based discovery model.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the maximum service limit is reached.
     pub async fn register_service(&self, service: DiscoveredService) -> ToadStoolResult<()> {
         let mut services = self.services.write().await;
 
@@ -203,6 +223,10 @@ impl RuntimeDiscovery {
     }
 
     /// Remove a service
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn remove_service(&self, instance_id: &Uuid) -> ToadStoolResult<()> {
         let mut services = self.services.write().await;
 

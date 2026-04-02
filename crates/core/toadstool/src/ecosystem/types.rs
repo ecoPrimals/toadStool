@@ -52,7 +52,7 @@ impl EcosystemConfig {
     }
 }
 
-/// Builder for EcosystemConfig (fluent API)
+/// Builder for `EcosystemConfig` (fluent API)
 #[derive(Default)]
 pub struct EcosystemConfigBuilder {
     auto_discovery: bool,

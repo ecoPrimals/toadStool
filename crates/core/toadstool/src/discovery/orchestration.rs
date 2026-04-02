@@ -25,7 +25,7 @@ impl OrchestrationClient {
     /// Create a new orchestration client
     ///
     /// Uses the default discovery engine which checks:
-    /// 1. Environment variables (SONGBIRD_ENDPOINT, etc.)
+    /// 1. Environment variables (`SONGBIRD_ENDPOINT`, etc.)
     /// 2. mDNS/local network
     /// 3. primal-capabilities.toml fallback
     pub fn new() -> Self {
@@ -56,6 +56,10 @@ impl OrchestrationClient {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no endpoint with the `service-discovery` capability is found.
     pub async fn discover_service_discovery(&self) -> ToadStoolResult<String> {
         self.discovery
             .discover_endpoint("service-discovery")
@@ -68,6 +72,10 @@ impl OrchestrationClient {
     }
 
     /// Discover load-balancing service endpoint
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no endpoint with the `load-balancing` capability is found.
     pub async fn discover_load_balancing(&self) -> ToadStoolResult<String> {
         self.discovery
             .discover_endpoint("load-balancing")
@@ -80,6 +88,10 @@ impl OrchestrationClient {
     }
 
     /// Discover job-routing service endpoint
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no endpoint with the `job-routing` capability is found.
     pub async fn discover_job_routing(&self) -> ToadStoolResult<String> {
         self.discovery
             .discover_endpoint("job-routing")
@@ -99,6 +111,10 @@ impl OrchestrationClient {
     /// 1. service-discovery (primary orchestration capability)
     /// 2. load-balancing (can route jobs)
     /// 3. job-routing (specialized routing)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if none of the orchestration capabilities can be resolved.
     pub async fn discover_any_orchestration(&self) -> ToadStoolResult<String> {
         // Try capabilities in priority order
         let capabilities = ["service-discovery", "load-balancing", "job-routing"];
@@ -140,6 +156,10 @@ impl Default for OrchestrationClient {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if no orchestration endpoint is discovered.
 pub async fn discover_orchestration() -> ToadStoolResult<String> {
     OrchestrationClient::new()
         .discover_any_orchestration()

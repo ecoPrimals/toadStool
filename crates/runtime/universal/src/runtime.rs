@@ -42,6 +42,10 @@ impl UniversalRuntime {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ComputeError::NoSuitableUnit`] when discovery finds no compute units.
     pub async fn discover() -> Result<Self, ComputeError> {
         let units = CapabilityDiscovery::discover_all().await;
 
@@ -85,6 +89,10 @@ impl UniversalRuntime {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns when no unit can run the workload or execution fails.
     pub async fn execute_optimal(&self, workload: Workload) -> Result<Output, ComputeError> {
         // Analyze workload
         let profile = WorkloadProfile::from_workload(&workload);
@@ -99,6 +107,10 @@ impl UniversalRuntime {
     }
 
     /// Execute on a specific unit by index
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ComputeError::NoSuitableUnit`] for an out-of-range index or execution failures.
     pub async fn execute_on(
         &self,
         index: usize,
@@ -109,6 +121,10 @@ impl UniversalRuntime {
     }
 
     /// Execute on a specific type of unit
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ComputeError::NoSuitableUnit`] when no unit of that type exists, or on execution failure.
     pub async fn execute_on_type(
         &self,
         unit_type: ComputeUnitType,
@@ -140,6 +156,10 @@ impl UniversalRuntime {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns when workload construction, optimal execution, or output type conversion fails.
     pub async fn execute_map_f32<F>(&self, input: Vec<f32>, _f: F) -> Result<Vec<f32>, ComputeError>
     where
         F: Fn(f32) -> f32 + Send + Sync,

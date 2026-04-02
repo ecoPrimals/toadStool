@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(clippy::doc_markdown)]
 //! Coverage expansion S162 — resource_validator identify_gaps + generate_warnings
 //!
 //! Targets the 69.73% → 90%+ coverage gap in resource_validator.rs by exercising

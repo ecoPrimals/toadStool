@@ -198,6 +198,7 @@ impl MemoryPool {
     }
 
     /// Get hit rate as percentage
+    #[allow(clippy::cast_precision_loss)] // display percentage from counts
     pub async fn hit_rate(&self) -> f64 {
         let stats = self.stats.read().await;
         let total = stats.cache_hits + stats.cache_misses;

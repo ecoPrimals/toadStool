@@ -269,7 +269,7 @@ impl ServiceType {
     }
 
     /// Create from service name (backward compatibility when parsing discovered services).
-    /// Resolves legacy primal names via [`CapabilityDomain::from_label`].
+    /// Resolves legacy primal names via [`toadstool_common::interned_strings::CapabilityDomain::from_label`].
     pub fn from_name(name: &str) -> Self {
         use toadstool_common::interned_strings::CapabilityDomain;
         match CapabilityDomain::from_label(name) {

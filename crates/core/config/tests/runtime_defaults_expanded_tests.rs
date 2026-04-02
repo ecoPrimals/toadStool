@@ -4,7 +4,7 @@
 //! Coverage expansion: `runtime_defaults.rs` needs expanded coverage
 //! Testing environment detection, file loading, JSON export, etc.
 //!
-//! ✅ MODERNIZED: Uses temp_env for thread-safe env var testing
+//! ✅ MODERNIZED: Uses `temp_env` for thread-safe env var testing
 
 use std::fs;
 use std::sync::Mutex;

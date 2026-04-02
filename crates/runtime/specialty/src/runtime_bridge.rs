@@ -18,7 +18,7 @@ use crate::types::jobs::LegacyJob;
 use crate::types::traits::JobStatus;
 
 impl SpecialtyRuntimeEngine {
-    /// Convert ExecutionRequest to LegacyJob
+    /// Convert `ExecutionRequest` to `LegacyJob`
     #[allow(
         clippy::unnecessary_wraps,
         clippy::unused_self,
@@ -236,6 +236,7 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
         })
     }
 
+    #[allow(clippy::cast_possible_truncation)] // advertised cap fits u32 for API
     fn get_capabilities(&self) -> RuntimeCapabilities {
         RuntimeCapabilities {
             supported_workloads: vec![WorkloadType::Native],

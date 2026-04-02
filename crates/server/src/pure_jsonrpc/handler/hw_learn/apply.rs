@@ -162,7 +162,10 @@ mod tests {
     async fn missing_params_returns_error() {
         let (handler, _dir) = handler_with_temp_store();
         let err = handler.hw_learn_apply(None).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("recipe_json") || err.message.contains("recipe_id"));
     }
 
@@ -170,11 +173,11 @@ mod tests {
     async fn missing_recipe_json_and_recipe_id_returns_error() {
         let (handler, _dir) = handler_with_temp_store();
         let params = json!({});
-        let err = handler
-            .hw_learn_apply(Some(&params))
-            .await
-            .unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        let err = handler.hw_learn_apply(Some(&params)).await.unwrap_err();
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("recipe_json") || err.message.contains("recipe_id"));
     }
 
@@ -197,11 +200,11 @@ mod tests {
         let params = json!({
             "recipe_json": "not valid json {{{",
         });
-        let err = handler
-            .hw_learn_apply(Some(&params))
-            .await
-            .unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        let err = handler.hw_learn_apply(Some(&params)).await.unwrap_err();
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS
+        );
         assert!(err.message.contains("Invalid recipe JSON"));
     }
 
@@ -230,7 +233,10 @@ mod tests {
             "bdf": "0000:ff:00.0",
         });
         let err = handler.hw_learn_apply(Some(&params)).await.unwrap_err();
-        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INTERNAL_ERROR);
+        assert_eq!(
+            err.code,
+            crate::pure_jsonrpc::types::JsonRpcError::INTERNAL_ERROR
+        );
         assert!(
             err.message.contains("BAR0")
                 || err.message.contains("GPU")

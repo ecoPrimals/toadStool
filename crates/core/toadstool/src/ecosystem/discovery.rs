@@ -58,6 +58,10 @@ impl DiscoveryManager {
     /// Find a service by capability
     ///
     /// This is the **modern, recommended approach** for finding services.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if no service provides the requested capability.
     pub async fn find_by_capability(
         &self,
         capability: Capability,
@@ -95,6 +99,10 @@ impl DiscoveryManager {
     }
 
     /// Discover all services for required capabilities
+    ///
+    /// # Errors
+    ///
+    /// Returns error if any required capability cannot be discovered.
     pub async fn discover_all_required(
         &self,
         config: &EcosystemConfig,
@@ -143,6 +151,10 @@ impl DiscoveryManager {
     ///
     /// This uses environment variables to explicitly configure service endpoints.
     /// This is acceptable because it's **explicit configuration**, not hardcoding.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     pub async fn discover_via_environment(&self) -> ToadStoolResult<Vec<ServiceInstance>> {
         info!("🔍 Discovering services via environment configuration");
 
@@ -227,6 +239,10 @@ impl DiscoveryManager {
     }
 
     /// Refresh a cached service
+    ///
+    /// # Errors
+    ///
+    /// Returns error because refresh requires capability-based rediscovery by the caller.
     pub async fn refresh_service(&self, service_id: &str) -> ToadStoolResult<DiscoveredService> {
         // Remove from cache and rediscover
         self.remove_from_cache(service_id).await;

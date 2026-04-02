@@ -8,7 +8,7 @@
 //! work correctly whether running as:
 //! - The base OS (bare metal)
 //! - Middleware on another OS (e.g., Pop!_OS)
-//! - Service provider to another OS (e.g., SteamOS on biomeOS)
+//! - Service provider to another OS (e.g., `SteamOS` on biomeOS)
 //! - Inside a container (Docker/Podman)
 //! - Inside a VM (QEMU/KVM)
 //! - In the cloud (EC2/GCE/Azure)
@@ -46,7 +46,7 @@ pub enum DeploymentLayer {
 
     /// Providing services to another OS layer above
     ServiceLayer {
-        /// Guest OS(s) being served (e.g. SteamOS).
+        /// Guest OS(s) being served (e.g. `SteamOS`).
         guest_os: Vec<String>,
     },
 
@@ -168,7 +168,7 @@ pub enum CloudProvider {
     Azure,
     /// Oracle Cloud.
     Oracle,
-    /// DigitalOcean.
+    /// `DigitalOcean`.
     DigitalOcean,
     /// Custom or unknown provider.
     Custom(String),

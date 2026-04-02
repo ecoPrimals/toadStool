@@ -10,7 +10,7 @@ use toadstool::execution::RuntimeType;
 use crate::types::{PerformanceMetrics, ResourcePrediction};
 
 /// Baseline metrics for a runtime (used in model updates)
-#[allow(dead_code, reason = "reserved for model updates; used in tests")]
+#[allow(dead_code)] // Reserved for model updates; referenced from tests
 #[expect(clippy::struct_field_names, reason = "field names match domain")]
 #[derive(Clone)]
 pub(super) struct BaselineMetrics {
@@ -22,7 +22,7 @@ pub(super) struct BaselineMetrics {
 /// Runtime selector state (for future ML-based selection)
 #[derive(Default)]
 pub(super) struct RuntimeSelector {
-    #[allow(dead_code, reason = "reserved for ML-based selection")]
+    #[allow(dead_code)] // Reserved for ML-based runtime selection
     pub(super) last_selection: Option<RuntimeType>,
 }
 

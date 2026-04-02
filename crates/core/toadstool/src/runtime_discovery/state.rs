@@ -10,7 +10,7 @@ pub(super) struct DiscoveryState {
     pub(super) running: bool,
 
     /// Last discovery time
-    #[allow(dead_code, reason = "timestamped for future stale-service reporting")]
+    #[expect(dead_code, reason = "timestamped for future stale-service reporting")]
     pub(super) last_discovery: Option<std::time::SystemTime>,
 
     /// Discovery statistics

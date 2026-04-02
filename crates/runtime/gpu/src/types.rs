@@ -11,7 +11,7 @@ use uuid::Uuid;
 /// GPU compute frameworks supported by the runtime
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GpuFramework {
-    /// Universal WebGPU (future-ready, cross-platform)
+    /// Universal `WebGPU` (future-ready, cross-platform)
     WebGpu,
     /// Vulkan compute (cross-platform, high-performance)
     Vulkan,
@@ -266,7 +266,7 @@ pub enum FrameworkHandle {
     /// Vulkan device.
     #[cfg(feature = "vulkan")]
     Vulkan(Arc<vulkano::device::Device>),
-    /// WebGPU device.
+    /// `WebGPU` device.
     #[cfg(feature = "webgpu")]
     WebGpu(Arc<wgpu::Device>),
     // #[cfg(feature = "metal")]
@@ -413,7 +413,7 @@ pub enum KernelFormat {
     LlvmIr,
     /// WebAssembly
     Wasm,
-    /// WebGPU Shading Language (WGSL)
+    /// `WebGPU` Shading Language (WGSL)
     Wgsl,
     /// `ToadStool` Universal Compute Language (custom)
     Tucl,

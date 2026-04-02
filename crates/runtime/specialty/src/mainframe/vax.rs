@@ -7,7 +7,10 @@ use tokio::sync::{Mutex, RwLock};
 use tracing::info;
 use uuid::Uuid;
 
-use super::types::*;
+use super::types::{
+    DCLProcessor, MainframeJob, VAXFortranCompiler, VAXTerminal, VAXTerminalAttributes,
+    VMSFileSystem,
+};
 use crate::{JobOutput, JobStatus, SpecialtyRuntimeConfig};
 use crate::{
     LegacyAdapter, LegacyJob, LegacySystemType, MainframeConfig, SystemInfo, ToadStoolError,
@@ -95,6 +98,7 @@ impl LegacyAdapter for VAXVMSAdapter {
         Ok(())
     }
 
+    #[allow(clippy::cast_possible_truncation)] // label uses low bits of UUID only
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         info!("Submitting job to VAX/VMS: {:?}", job.job_id);
 

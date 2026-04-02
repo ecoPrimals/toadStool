@@ -43,9 +43,9 @@
 mod api_types;
 mod config;
 mod jsonrpc_server;
-mod routes;
 #[cfg(feature = "nautilus")]
 mod nautilus_handlers;
+mod routes;
 mod server;
 mod workload_manager;
 

@@ -2,7 +2,7 @@
 //! IPC helpers tests
 //!
 //! Uses `temp_env` for safe, isolated environment variable testing. No unsafe
-//! env var manipulation; temp_env handles serialization and restoration.
+//! env var manipulation; `temp_env` handles serialization and restoration.
 
 use super::connection::{IPC_TIMEOUT, get_default_songbird_socket};
 use super::*;
@@ -35,6 +35,7 @@ fn test_register_with_songbird_graceful_failure() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_resolve_primal_graceful_failure() {
     temp_env::with_var_unset("SONGBIRD_SOCKET", || {
         std::thread::spawn(|| {
@@ -53,6 +54,7 @@ fn test_resolve_primal_graceful_failure() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_connect_to_primal_graceful_failure() {
     temp_env::with_var_unset("SONGBIRD_SOCKET", || {
         std::thread::spawn(|| {
@@ -442,6 +444,7 @@ fn test_register_with_songbird_error_reply_via_mock() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_resolve_primal_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("resolve.sock");
@@ -475,6 +478,7 @@ fn test_resolve_primal_success_via_mock() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_resolve_primal_missing_endpoint_returns_error() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("resolve_bad.sock");

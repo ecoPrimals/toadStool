@@ -24,6 +24,7 @@ use std::sync::OnceLock;
 use tracing::debug;
 
 // Re-export connection APIs
+#[allow(deprecated)]
 pub use connection::{
     connect_to_primal, find_by_capability, get_default_songbird_socket, register_with_songbird,
     resolve_primal,

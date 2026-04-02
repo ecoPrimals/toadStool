@@ -12,6 +12,10 @@ use tracing::info;
 
 impl MigrationCoordinator {
     /// Migrate workload based on recommendation
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future cloud integration.
     pub async fn migrate_workload(&self, workload_id: &str) -> ToadStoolResult<WorkloadLocation> {
         info!("🚀 Migrating workload: {}", workload_id);
 

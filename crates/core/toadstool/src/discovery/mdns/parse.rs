@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Parse mDNS ServiceInfo into DiscoveredService.
+//! Parse mDNS `ServiceInfo` into `DiscoveredService`.
 //!
-//! Extracted for testability; converts mdns-sd ServiceInfo records
-//! into the discovery module's DiscoveredService type.
+//! Extracted for testability; converts mdns-sd `ServiceInfo` records
+//! into the discovery module's `DiscoveredService` type.
 
 /// mDNS property key prefix for capability entries (e.g. `cap_storage` → storage)
 pub const CAPABILITY_PREFIX: &str = "cap_";
@@ -18,7 +18,11 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-/// Parse ServiceInfo into DiscoveredService (extracted for testability)
+/// Parse `ServiceInfo` into `DiscoveredService` (extracted for testability)
+///
+/// # Errors
+///
+/// Returns error if required mDNS properties are missing or invalid.
 pub fn parse_service_info(info: &ServiceInfo) -> ToadStoolResult<DiscoveredService> {
     // Extract instance ID using mdns-sd 0.10 API
     let instance_id = info

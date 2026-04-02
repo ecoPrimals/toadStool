@@ -20,13 +20,13 @@ pub enum LegacySystemType {
     VaxVms,
     /// IBM AS/400 midrange system.
     AS400,
-    /// Unisys ClearPath mainframe.
+    /// Unisys `ClearPath` mainframe.
     #[serde(rename = "Unisys_ClearPath")]
     UnisysClearPath,
 
     /// DEC PDP-11 minicomputer.
     PDP11,
-    /// Sun Microsystems SunOS.
+    /// Sun Microsystems `SunOS`.
     SunOS,
     /// Legacy IBM AIX.
     #[serde(rename = "AIX_Legacy")]
@@ -55,7 +55,7 @@ pub enum LegacySystemType {
     #[serde(rename = "PIC_Microcontroller")]
     PicMicrocontroller,
 
-    /// Wind River VxWorks RTOS.
+    /// Wind River `VxWorks` RTOS.
     VxWorks,
     /// QNX real-time OS.
     #[serde(rename = "QNX_Legacy")]
@@ -124,7 +124,7 @@ pub enum LegacyArchitecture {
     MipsR2000,
     /// DEC Alpha.
     Alpha,
-    /// PowerPC 601.
+    /// `PowerPC` 601.
     #[serde(rename = "PowerPC_601")]
     PowerPc601,
     /// ARM v4.

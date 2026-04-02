@@ -75,6 +75,10 @@ impl PerformanceHardeningManager {
     }
 
     /// Initialize performance hardening
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         info!("Initializing performance hardening");
 
@@ -121,6 +125,10 @@ impl PerformanceHardeningManager {
     }
 
     /// Create memory pool
+    ///
+    /// # Errors
+    ///
+    /// Returns error if memory pools are disabled in configuration.
     pub async fn create_memory_pool<T, F>(
         &self,
         name: &str,
@@ -150,6 +158,10 @@ impl PerformanceHardeningManager {
     }
 
     /// Create intelligent cache
+    ///
+    /// # Errors
+    ///
+    /// Returns error if caching is disabled in configuration.
     pub async fn create_cache<K, V>(
         &self,
         name: &str,
@@ -192,9 +204,15 @@ mod tests {
             },
             memory: MemoryMetrics {
                 usage_percent: memory_percent,
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss
+                )] // synthetic test metrics; non-negative
                 used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss
+                )]
                 peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
             },
             storage: StorageMetrics::default(),

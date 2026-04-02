@@ -60,7 +60,8 @@ impl NodeRegistry {
             if let Some(entry) = self.health_timestamps.get_mut(node_id) {
                 *entry = Instant::now();
             } else if self.nodes.contains_key(node_id) {
-                self.health_timestamps.insert(node_id.clone(), Instant::now());
+                self.health_timestamps
+                    .insert(node_id.clone(), Instant::now());
             }
         } else {
             self.nodes.remove(node_id);
@@ -77,7 +78,7 @@ impl NodeRegistry {
             .filter(|(id, _)| {
                 self.health_timestamps
                     .get(*id)
-                    .map_or(false, |ts| now.duration_since(*ts) <= max_age)
+                    .is_some_and(|ts| now.duration_since(*ts) <= max_age)
             })
             .map(|(_, reg)| reg)
             .collect()

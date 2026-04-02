@@ -57,7 +57,7 @@ pub mod setup;
 
 /// Hardware identification constants
 pub mod pcie_ids {
-    /// BrainChip vendor ID (0x1E7C)
+    /// BrainChip vendor ID (`0x1E7C`)
     pub const BRAINCHIP_VENDOR_ID: u16 = 0x1E7C;
 
     /// Supported Akida device IDs

@@ -44,6 +44,10 @@ pub const DEFAULT_PORT: u16 = 0;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if binding to the address fails.
 pub async fn bind(host: &str, port: u16) -> ToadStoolResult<TcpListener> {
     let addr = format!("{host}:{port}");
 
@@ -54,7 +58,11 @@ pub async fn bind(host: &str, port: u16) -> ToadStoolResult<TcpListener> {
 
 /// Connect to TCP socket
 ///
-/// **Deep Debt**: Async, timeout-aware (using tokio::time)
+/// **Deep Debt**: Async, timeout-aware (using `tokio::time`)
+///
+/// # Errors
+///
+/// Returns error if the TCP connection fails.
 pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
     let addr = format!("{host}:{port}");
 
@@ -64,6 +72,10 @@ pub async fn connect(host: &str, port: u16) -> ToadStoolResult<TcpStream> {
 }
 
 /// Get default ToadStool TCP address (localhost, OS-assigned port).
+///
+/// # Errors
+///
+/// Returns error if the default address string cannot be parsed.
 pub fn default_addr() -> ToadStoolResult<SocketAddr> {
     format!("{LOCALHOST_IPV4}:{DEFAULT_PORT}")
         .parse()
@@ -75,6 +87,10 @@ pub fn default_addr() -> ToadStoolResult<SocketAddr> {
 }
 
 /// Get local network address for cross-device (bind all interfaces, OS-assigned port).
+///
+/// # Errors
+///
+/// Returns error if the address string cannot be parsed.
 pub fn local_network_addr() -> ToadStoolResult<SocketAddr> {
     format!("{BIND_ALL_IPV4}:{DEFAULT_PORT}")
         .parse()

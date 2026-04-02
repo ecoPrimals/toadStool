@@ -192,48 +192,15 @@ impl ServiceDiscovery {
     /// Scans `$XDG_RUNTIME_DIR/biomeos/` for sockets matching the capability name
     /// prefix. Handles variant naming (e.g. `coralreef-core-default.sock` for
     /// capability `coralreef`).
-    #[allow(clippy::unused_async)]
     async fn try_biomeos_directory_scan(
         &self,
         _capability: &str,
         capability_name: &str,
     ) -> Result<Option<ServiceEndpoint>> {
-        let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
-        if !biomeos_dir.exists() {
-            return Ok(None);
-        }
-
-        let prefix = capability_name.to_lowercase();
-        let entries = match std::fs::read_dir(&biomeos_dir) {
-            Ok(e) => e,
-            Err(_) => return Ok(None),
-        };
-
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let is_match = path.extension().and_then(|e| e.to_str()) == Some("sock")
-                && path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .is_some_and(|s| s.starts_with(&prefix));
-            if is_match && path.exists() {
-                let endpoint = format!("unix://{}", path.display());
-                debug!(
-                    "biomeOS directory scan found {} socket: {}",
-                    capability_name, endpoint
-                );
-                return Ok(Some(ServiceEndpoint {
-                    name: capability_name.to_string(),
-                    endpoint,
-                    version: "1.0.0".to_string(),
-                    status: "discovered".to_string(),
-                    auth_required: false,
-                    discovered_at: std::time::SystemTime::now(),
-                }));
-            }
-        }
-
-        Ok(None)
+        let name = capability_name.to_string();
+        tokio::task::spawn_blocking(move || scan_biomeos_dir(&name))
+            .await
+            .map_err(|e| crate::CliError::Other(format!("spawn_blocking failed: {e}")))?
     }
 
     /// Build mDNS query packet
@@ -402,6 +369,50 @@ fn parse_rr_for_ip(data: &[u8], start: usize) -> Result<(usize, Option<IpAddr>),
     };
 
     Ok((rdata_end, ip_opt))
+}
+
+/// Blocking directory scan for biomeOS capability sockets.
+///
+/// Designed to run via `spawn_blocking` so directory iteration
+/// never stalls the async runtime.
+fn scan_biomeos_dir(capability_name: &str) -> Result<Option<ServiceEndpoint>> {
+    let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+    if !biomeos_dir.exists() {
+        return Ok(None);
+    }
+
+    let prefix = capability_name.to_lowercase();
+    let entries = match std::fs::read_dir(&biomeos_dir) {
+        Ok(e) => e,
+        Err(_) => return Ok(None),
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_match = path.extension().and_then(|e| e.to_str()) == Some("sock")
+            && path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .is_some_and(|s| s.starts_with(&prefix));
+        if is_match && path.exists() {
+            let endpoint = format!("unix://{}", path.display());
+            tracing::debug!(
+                "biomeOS directory scan found {} socket: {}",
+                capability_name,
+                endpoint
+            );
+            return Ok(Some(ServiceEndpoint {
+                name: capability_name.to_string(),
+                endpoint,
+                version: "1.0.0".to_string(),
+                status: "discovered".to_string(),
+                auth_required: false,
+                discovered_at: std::time::SystemTime::now(),
+            }));
+        }
+    }
+
+    Ok(None)
 }
 
 impl Default for ServiceDiscovery {

@@ -77,6 +77,10 @@ impl PrimalType {
     /// Canonical names: "crypto", "storage", "discovery", "orchestration", "compute", "self".
     /// Legacy primal names ("beardog", "nestgate", etc.) are accepted for manifest
     /// backward compatibility but should be migrated to capability strings.
+    ///
+    /// # Errors
+    ///
+    /// Reserved for future strict parsing; currently returns `Ok` for all inputs (unknown strings become [`Self::Custom`]).
     pub fn parse_type(s: &str) -> Result<Self, String> {
         match s.to_lowercase().as_str() {
             // Canonical capability names

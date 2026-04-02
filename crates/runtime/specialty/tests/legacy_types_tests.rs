@@ -2,11 +2,11 @@
 //! Tests for legacy runtime types
 //!
 //! Tests cover types from `toadstool_runtime_specialty`:
-//! - LegacyJob creation and serialization
-//! - LegacyJobType, LegacyLanguage, LegacyJobSource variants
-//! - LegacySystemType, LegacyArchitecture
-//! - JobStatus, JobOutput
-//! - CompilationRequirements, LegacyRuntimeRequirements
+//! - `LegacyJob` creation and serialization
+//! - `LegacyJobType`, `LegacyLanguage`, `LegacyJobSource` variants
+//! - `LegacySystemType`, `LegacyArchitecture`
+//! - `JobStatus`, `JobOutput`
+//! - `CompilationRequirements`, `LegacyRuntimeRequirements`
 
 use std::path::PathBuf;
 use std::time::Duration;

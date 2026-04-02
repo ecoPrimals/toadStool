@@ -8,8 +8,8 @@
 //!
 //! The distributed scheduler is composed of three logical components:
 //!
-//! - **TowerManager**: Discovery and health monitoring of remote towers via Songbird
-//! - **JobTracker**: Lifecycle and state management of distributed jobs
+//! - **`TowerManager`**: Discovery and health monitoring of remote towers via Songbird
+//! - **`JobTracker`**: Lifecycle and state management of distributed jobs
 //! - **Scheduler**: Coordination and execution strategies
 //!
 //! ## Design Principles
@@ -106,6 +106,10 @@ impl DistributedGpuScheduler {
     /// # Returns
     ///
     /// Aggregated result from distributed execution
+    ///
+    /// # Errors
+    ///
+    /// Returns when distributed execution or local scheduling fails.
     pub async fn execute_distributed(
         &self,
         workload: UniversalWorkload,

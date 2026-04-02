@@ -89,6 +89,10 @@ impl std::fmt::Display for Endpoint {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if no Unix socket or TCP discovery file yields a valid endpoint.
 pub async fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
     // Try Unix socket paths (XDG-compliant)
     let unix_paths = get_toadstool_socket_paths();
@@ -120,7 +124,7 @@ pub async fn discover_toadstool_endpoint() -> ToadStoolResult<Endpoint> {
 
 /// Get candidate Unix socket paths for toadstool
 ///
-/// **XDG-compliant**: Uses shared primal_sockets for biomeOS path, plus display-specific paths.
+/// **XDG-compliant**: Uses shared `primal_sockets` for biomeOS path, plus display-specific paths.
 fn get_toadstool_socket_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
@@ -174,6 +178,10 @@ fn get_tcp_discovery_file_paths() -> Vec<PathBuf> {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if the process cannot be spawned, exits before readiness, or the endpoint does not appear in time.
 pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
     info!("🚀 Launching toadstool with config: {:?}", config);
 
@@ -255,6 +263,10 @@ pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if no endpoint can be discovered for health verification.
 pub async fn check_toadstool_health() -> ToadStoolResult<()> {
     // Basic health check by verifying endpoint exists
     verify_endpoint_exists().await
@@ -275,6 +287,10 @@ pub async fn check_toadstool_health() -> ToadStoolResult<()> {
 /// # Ok(())
 /// # }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if no endpoint can be discovered.
 pub async fn verify_endpoint_exists() -> ToadStoolResult<()> {
     discover_toadstool_endpoint()
         .await

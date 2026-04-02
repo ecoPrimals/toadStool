@@ -26,7 +26,7 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code, reason = "enum used by BiomeProcess; internal use only")]
+#[allow(dead_code)] // Variants used via `BiomeProcess` / pattern matching
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),
@@ -43,7 +43,7 @@ impl ProcessType {
         }
     }
 
-    #[allow(dead_code, reason = "used in tests")]
+    #[allow(dead_code)] // Used from tests and future diagnostics
     pub(super) const fn type_str(&self) -> &str {
         match self {
             Self::Primal(_) => "primal",

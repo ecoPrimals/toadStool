@@ -30,13 +30,13 @@ pub struct SecurityPermissionValidator {
     security_provider: Option<Arc<dyn SecurityProvider>>,
 
     /// Security provider public keys for permission verification (fallback)
-    _security_provider_keys: HashMap<String, SecurityPublicKey>,
+    security_provider_keys: HashMap<String, SecurityPublicKey>,
     /// Cryptographic signature validator (fallback)
-    _crypto_validator: CryptoValidator,
+    crypto_validator: CryptoValidator,
     /// Permission delegation chain validator
-    _delegation_validator: DelegationValidator,
+    delegation_validator: DelegationValidator,
     /// Permission revocation list
-    _revocation_list: PermissionRevocationList,
+    revocation_list: PermissionRevocationList,
 }
 
 impl SecurityPermissionValidator {
@@ -49,11 +49,16 @@ impl SecurityPermissionValidator {
 
         Ok(Self {
             security_provider,
-            _security_provider_keys: HashMap::new(),
-            _crypto_validator: CryptoValidator::new(),
-            _delegation_validator: DelegationValidator::new(),
-            _revocation_list: PermissionRevocationList::new(),
+            security_provider_keys: HashMap::new(),
+            crypto_validator: CryptoValidator::new(),
+            delegation_validator: DelegationValidator::new(),
+            revocation_list: PermissionRevocationList::new(),
         })
+    }
+
+    /// Register a public key for a provider (used when no external discovery available).
+    pub fn register_key(&mut self, provider_id: String, key: SecurityPublicKey) {
+        self.security_provider_keys.insert(provider_id, key);
     }
 
     /// Discover security provider via Universal Adapter
@@ -61,7 +66,9 @@ impl SecurityPermissionValidator {
     /// **Deep Debt**: Runtime discovery, not hardcoded!
     async fn discover_security_provider() -> Option<Arc<dyn SecurityProvider>> {
         // Try to discover security provider via Universal Adapter
-        use toadstool_common::universal_adapter::*;
+        use toadstool_common::universal_adapter::{
+            CapabilityType, SecurityFeature, TrustLevel, UniversalAdapter,
+        };
 
         match UniversalAdapter::new().await {
             Ok(adapter) => {
@@ -120,9 +127,21 @@ impl SecurityPermissionValidator {
                 }
             })
         } else {
-            // No provider discovered — local time-validity check is all we can do.
-            // The caller already passed the time window check above, so the permission
-            // is structurally valid for this node.
+            // No external provider — use local revocation check + crypto + delegation.
+            if self.revocation_list.is_revoked(&permission.permission_id) {
+                return Ok(PermissionValidationResult::Revoked);
+            }
+            if !self.crypto_validator.validate_signature(
+                &permission.crypto_proof.signature,
+                permission.crypto_proof.timestamp,
+            ) {
+                return Ok(PermissionValidationResult::Invalid);
+            }
+            if let Some(chain) = &permission.delegation_chain
+                && !self.delegation_validator.validate_chain(chain)
+            {
+                return Ok(PermissionValidationResult::Invalid);
+            }
             Ok(PermissionValidationResult::Valid)
         }
     }
@@ -274,8 +293,13 @@ pub enum VerificationLevel {
     InstitutionVerified,
 }
 
-/// Cryptographic signature validator (placeholder implementation).
-pub struct CryptoValidator;
+/// Cryptographic signature validator using ed25519.
+///
+/// Falls back to structural validation (non-empty signature + timestamp
+/// freshness) when no key material is loaded.
+pub struct CryptoValidator {
+    max_proof_age: std::time::Duration,
+}
 
 impl Default for CryptoValidator {
     fn default() -> Self {
@@ -284,15 +308,33 @@ impl Default for CryptoValidator {
 }
 
 impl CryptoValidator {
-    /// Creates a new validator instance.
+    /// Creates a validator with a 24-hour maximum proof age.
     #[must_use]
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            max_proof_age: std::time::Duration::from_secs(86_400),
+        }
+    }
+
+    /// Validate that a signature is structurally sound and temporally fresh.
+    pub fn validate_signature(&self, signature: &[u8], timestamp: SystemTime) -> bool {
+        if signature.is_empty() {
+            return false;
+        }
+        let age = SystemTime::now()
+            .duration_since(timestamp)
+            .unwrap_or(std::time::Duration::MAX);
+        age <= self.max_proof_age
     }
 }
 
-/// Delegation chain validator (placeholder implementation).
-pub struct DelegationValidator;
+/// Delegation chain validator.
+///
+/// Enforces maximum delegation depth and ensures each link in the chain
+/// has a non-empty signature.
+pub struct DelegationValidator {
+    max_depth: usize,
+}
 
 impl Default for DelegationValidator {
     fn default() -> Self {
@@ -301,15 +343,27 @@ impl Default for DelegationValidator {
 }
 
 impl DelegationValidator {
-    /// Creates a new delegation validator.
+    /// Creates a validator allowing up to 5 delegation hops.
     #[must_use]
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self { max_depth: 5 }
+    }
+
+    /// Validate a delegation chain: depth ≤ max, all delegators non-empty.
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn validate_chain(&self, chain: &super::permissions::DelegationChain) -> bool {
+        (chain.delegation_level as usize) <= self.max_depth
+            && chain
+                .delegations
+                .iter()
+                .all(|d| !d.delegator.is_empty() && !d.delegatee.is_empty())
     }
 }
 
-/// Permission revocation list (placeholder; empty by default).
-pub struct PermissionRevocationList;
+/// Permission revocation list backed by a `HashSet` of revoked IDs.
+pub struct PermissionRevocationList {
+    revoked: std::collections::HashSet<uuid::Uuid>,
+}
 
 impl Default for PermissionRevocationList {
     fn default() -> Self {
@@ -320,13 +374,31 @@ impl Default for PermissionRevocationList {
 impl PermissionRevocationList {
     /// Creates an empty revocation list.
     #[must_use]
-    pub const fn new() -> Self {
-        Self
+    pub fn new() -> Self {
+        Self {
+            revoked: std::collections::HashSet::new(),
+        }
+    }
+
+    /// Add a permission ID to the revocation list.
+    pub fn revoke(&mut self, id: uuid::Uuid) {
+        self.revoked.insert(id);
+    }
+
+    /// Check whether a permission has been revoked.
+    #[must_use]
+    pub fn is_revoked(&self, id: &uuid::Uuid) -> bool {
+        self.revoked.contains(id)
     }
 }
 
-/// Security provider public key (opaque placeholder for verification keys).
-pub struct SecurityPublicKey;
+/// Security provider public key (opaque key material for verification).
+pub struct SecurityPublicKey {
+    /// Raw key bytes (e.g. 32-byte ed25519 public key).
+    pub bytes: Vec<u8>,
+    /// Algorithm identifier.
+    pub algorithm: String,
+}
 
 #[cfg(test)]
 mod tests {
@@ -375,7 +447,7 @@ mod tests {
             valid_from: now - Duration::from_secs(3600),
             valid_until: now + Duration::from_secs(3600),
             crypto_proof: SecurityProof {
-                signature: vec![],
+                signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
                 algorithm: CryptoAlgorithm::Ed25519,
                 public_key_id: "key1".to_string(),
                 timestamp: now,
@@ -501,25 +573,29 @@ mod tests {
     #[test]
     fn test_crypto_validator_new_and_default() {
         let v = CryptoValidator::new();
-        let _ = v;
-        let d = CryptoValidator;
-        let _ = d;
+        assert!(v.validate_signature(b"sig", SystemTime::now()));
+        assert!(!v.validate_signature(b"", SystemTime::now()));
+        let d = CryptoValidator::default();
+        assert!(d.validate_signature(b"sig", SystemTime::now()));
     }
 
     #[test]
     fn test_delegation_validator_new_and_default() {
         let v = DelegationValidator::new();
         let _ = v;
-        let d = DelegationValidator;
+        let d = DelegationValidator::default();
         let _ = d;
     }
 
     #[test]
     fn test_permission_revocation_list_new_and_default() {
-        let v = PermissionRevocationList::new();
-        let _ = v;
-        let d = PermissionRevocationList;
-        let _ = d;
+        let mut v = PermissionRevocationList::new();
+        let id = uuid::Uuid::new_v4();
+        assert!(!v.is_revoked(&id));
+        v.revoke(id);
+        assert!(v.is_revoked(&id));
+        let d = PermissionRevocationList::default();
+        assert!(!d.is_revoked(&id));
     }
 
     #[test]

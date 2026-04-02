@@ -346,7 +346,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 2, 2026 — S172. 21,500+ workspace tests, 0 failures. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~65 JSON-RPC methods**. AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~22 irreducible unsafe ops (all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Rust 1.85+ (edition 2024, MSRV). **glowPlug/ember** subsystem absorbed from coralReef — toadStool-native hardware lifecycle.
+**Last Updated**: April 2, 2026 — S172-4. 21,537 workspace tests, 0 failures, 220 ignored. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~22 irreducible unsafe ops (all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **glowPlug/ember** subsystem absorbed from coralReef — toadStool-native hardware lifecycle. Shared VFIO DMA in `hw-safe::vfio_dma`. Crypto validation evolved from placeholders.
 
 ---
 

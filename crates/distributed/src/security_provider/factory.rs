@@ -231,7 +231,7 @@ impl SecurityProviderFactory {
 pub async fn discover_security_provider(
     features: Vec<toadstool_common::universal_adapter::SecurityFeature>,
 ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
-    use toadstool_common::universal_adapter::*;
+    use toadstool_common::universal_adapter::{CapabilityType, TrustLevel, UniversalAdapter};
 
     // Discover security capability via Universal Adapter
     let adapter = UniversalAdapter::new().await?;

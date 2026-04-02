@@ -9,7 +9,10 @@ use tokio::sync::{Mutex, RwLock};
 use tracing::info;
 use uuid::Uuid;
 
-use super::types::*;
+use super::types::{
+    COBOLCompiler, DatasetManager, IFSManager, JCLGenerator, MainframeJob, RPGCompiler,
+    Terminal3270, Terminal3270Attributes, Terminal5250,
+};
 
 /// PATH-based compiler lookup (no hardcoded `/usr/bin` paths).
 fn find_compiler_in_path(name: &str) -> PathBuf {
@@ -108,6 +111,7 @@ impl LegacyAdapter for AS400Adapter {
         Ok(())
     }
 
+    #[allow(clippy::cast_possible_truncation)] // label uses low bits of UUID only
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         info!("Submitting job to AS/400: {:?}", job.job_id);
 
@@ -247,6 +251,10 @@ impl JCLGenerator {
     }
 
     /// Initializes the generator with JCL settings and loads templates.
+    ///
+    /// # Errors
+    ///
+    /// Reserved for future I/O failures when loading templates.
     pub async fn initialize(&mut self, settings: &JCLSettings) -> ToadStoolResult<()> {
         self.settings = settings.clone();
 
@@ -267,6 +275,10 @@ impl JCLGenerator {
     }
 
     /// Generates JCL for the given legacy job.
+    ///
+    /// # Errors
+    ///
+    /// Returns when a required JCL template is missing.
     pub async fn generate_jcl(&self, _job: &LegacyJob) -> ToadStoolResult<String> {
         // Generate JCL based on job type
         let template = self
@@ -305,6 +317,10 @@ impl COBOLCompiler {
     }
 
     /// Initializes the compiler with COBOL settings.
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`.
     pub async fn initialize(&mut self, settings: &COBOLSettings) -> ToadStoolResult<()> {
         self.settings = settings.clone();
         Ok(())
@@ -350,6 +366,10 @@ impl Terminal3270 {
     }
 
     /// Connects to the mainframe using the given connection settings.
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`.
     pub async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()> {
         self.connection = settings.clone();
         // In a real implementation, this would establish a 3270 connection
@@ -361,6 +381,10 @@ impl Terminal3270 {
     }
 
     /// Disconnects from the 3270 terminal session.
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`.
     pub async fn disconnect(&mut self) -> ToadStoolResult<()> {
         self.session = None;
         info!("Disconnected from 3270 terminal");
@@ -384,6 +408,10 @@ impl DatasetManager {
     }
 
     /// Initializes with the given dataset configurations.
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`.
     pub async fn initialize(
         &mut self,
         datasets: &HashMap<String, DatasetConfig>,
@@ -396,7 +424,8 @@ impl DatasetManager {
 impl Default for RPGCompiler {
     fn default() -> Self {
         Self {
-            compiler_path: PathBuf::from("/QSYS.LIB/CRTRPGPGM.PGM"),
+            compiler_path: std::env::var_os("TOADSTOOL_RPG_COMPILER")
+                .map_or_else(|| find_compiler_in_path("CRTRPGPGM"), PathBuf::from),
             compiler_options: vec![],
             source_library: "QRPGSRC".to_string(),
             object_library: "QRPGOBJ".to_string(),

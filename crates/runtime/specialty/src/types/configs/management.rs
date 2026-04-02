@@ -102,8 +102,7 @@ impl From<CanonicalJobPriority> for JobPriority {
             CanonicalJobPriority::Critical => Self::Critical,
             CanonicalJobPriority::High => Self::High,
             CanonicalJobPriority::Normal => Self::Normal,
-            CanonicalJobPriority::Low => Self::Low,
-            CanonicalJobPriority::Background => Self::Low, // Map Background to Low
+            CanonicalJobPriority::Low | CanonicalJobPriority::Background => Self::Low, // Background → Low
         }
     }
 }

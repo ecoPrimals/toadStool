@@ -48,7 +48,7 @@ impl UnifiedBuffer {
     ///
     /// # Guarantees
     /// - Pointer is validated (not null, properly aligned, allocation exists)
-    /// - Size is valid (checked at creation and validate_cpu_ptr)
+    /// - Size is valid (checked at creation and `validate_cpu_ptr`)
     /// - Bounds: slice covers [0..size], caller must bounds-check offset+len
     /// - Exclusive access via &mut self
     pub(in crate::unified_memory::buffer) fn as_cpu_slice_mut(
@@ -74,7 +74,7 @@ impl UnifiedBuffer {
     ///
     /// # Guarantees
     /// - Pointer is validated (not null, properly aligned, allocation exists)
-    /// - Size is valid (checked at creation and validate_cpu_ptr)
+    /// - Size is valid (checked at creation and `validate_cpu_ptr`)
     /// - Bounds: slice covers [0..size], caller must bounds-check offset+len
     /// - Shared access via &self (Rust ensures no concurrent writes)
     pub(in crate::unified_memory::buffer) fn as_cpu_slice(&self) -> ToadStoolResult<&[u8]> {

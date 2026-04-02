@@ -11,7 +11,7 @@ use std::borrow::Cow;
 
 /// Domain categories for spring contributions.
 ///
-/// String representation uses SCREAMING_SNAKE_CASE per wetSpring V109
+/// String representation uses `SCREAMING_SNAKE_CASE` per wetSpring V109
 /// naming convention for cross-primal identifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[non_exhaustive]
@@ -57,7 +57,7 @@ pub enum SpringDomain {
 }
 
 impl SpringDomain {
-    /// SCREAMING_SNAKE_CASE identifier per wetSpring V109 convention.
+    /// `SCREAMING_SNAKE_CASE` identifier per wetSpring V109 convention.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -94,7 +94,7 @@ pub enum Spring {
     WetSpring,
     /// neuralSpring: ML, coralForge, metalForge.
     NeuralSpring,
-    /// airSpring: hydrology, IoT, ET₀.
+    /// airSpring: hydrology, `IoT`, ET₀.
     AirSpring,
     /// groundSpring: condensed matter, Anderson.
     GroundSpring,

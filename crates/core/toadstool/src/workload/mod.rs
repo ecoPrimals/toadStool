@@ -142,6 +142,10 @@ impl WorkloadSpec {
     }
 
     /// Validate the workload specification
+    ///
+    /// # Errors
+    ///
+    /// Returns error if any required field is invalid for the workload variant.
     pub fn validate(&self) -> ToadStoolResult<()> {
         match self {
             Self::Native { executable, .. } => {

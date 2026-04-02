@@ -2,7 +2,12 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(async_fn_in_trait)]
-#![allow(clippy::must_use_candidate)]
+#![allow(
+    clippy::must_use_candidate,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+)]
 
 //! Performance Management and Optimization for `ToadStool`
 //!

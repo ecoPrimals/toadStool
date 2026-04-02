@@ -90,7 +90,7 @@ impl CompositionRequest {
         self.constraints.iter().filter(|c| c.is_soft()).collect()
     }
 
-    /// Returns (hard_count, soft_count).
+    /// Returns (`hard_count`, `soft_count`).
     pub fn constraint_count(&self) -> (usize, usize) {
         let hard = self.hard_constraints().len();
         let soft = self.soft_constraints().len();

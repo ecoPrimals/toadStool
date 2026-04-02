@@ -57,6 +57,10 @@ impl ResultAggregator {
     /// Aggregate partial results into final result
     ///
     /// Handles partial failures gracefully using recovery strategies
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] when there are insufficient successful partial results, or aggregation fails.
     pub async fn aggregate(
         &self,
         partial_results: PartialResultSet,
@@ -213,6 +217,7 @@ impl ResultAggregator {
     }
 
     /// Average results across all partial results
+    #[allow(clippy::cast_precision_loss)] // count as f32 for mean
     async fn average_results(&self, results: &PartialResultSet) -> ToadStoolResult<Vec<u8>> {
         // First sum, then divide
         let summed = self.reduce_results(results, ReductionOp::Sum).await?;
@@ -222,7 +227,7 @@ impl ResultAggregator {
             return Ok(Vec::new());
         }
 
-        // Divide by count
+        // Divide by count (`count` from `successful_count` as f32)
         let values: Vec<f32> = summed
             .chunks_exact(4)
             .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) / count)

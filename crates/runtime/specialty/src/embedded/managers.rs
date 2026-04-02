@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 use crate::types::configs::embedded::PeripheralConfig;
 use crate::{LegacyArchitecture, MemoryLayout};
 
-use super::types::*;
+use super::types::PeripheralInterface;
 
 /// Memory layout manager
 #[derive(Debug)]

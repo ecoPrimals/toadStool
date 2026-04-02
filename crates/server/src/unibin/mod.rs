@@ -7,7 +7,8 @@ mod capabilities;
 mod execution;
 mod format;
 
-// Re-export for integration tests (coverage)
+// Re-exports: capability probe, execution helpers, socket layout (integration tests / coverage)
+pub use capabilities::query_local_capabilities;
 pub use execution::{
     create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
     write_tcp_discovery_file,

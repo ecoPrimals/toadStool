@@ -34,7 +34,7 @@ impl Default for EngineConfig {
 /// Main inference engine
 pub struct InferenceEngine {
     device: BurnDevice,
-    #[allow(dead_code, reason = "stored for future batch/precision/fusion overrides")]
+    #[expect(dead_code, reason = "stored for future batch/precision/fusion overrides")]
     config: EngineConfig,
 }
 

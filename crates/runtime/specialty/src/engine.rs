@@ -72,6 +72,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Initialize the legacy runtime engine
+    ///
+    /// # Errors
+    ///
+    /// Returns when any subsystem initialization fails.
     pub async fn initialize(&mut self) -> ToadStoolResult<()> {
         info!("Initializing Legacy Runtime Engine");
 
@@ -199,6 +203,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Submit a legacy job for execution
+    ///
+    /// # Errors
+    ///
+    /// Returns when no adapter exists for the job's target system or submission fails.
     pub async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         info!("Submitting legacy job: {:?}", job.job_id);
 
@@ -222,6 +230,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Get the status of a legacy job
+    ///
+    /// # Errors
+    ///
+    /// Returns when the job is unknown or the adapter lookup fails.
     pub async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus> {
         let jobs = self.active_jobs.read().await;
         let target_system = jobs
@@ -244,6 +256,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Cancel a legacy job
+    ///
+    /// # Errors
+    ///
+    /// Returns when the job is unknown, the adapter is missing, or cancellation fails.
     pub async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()> {
         let jobs = self.active_jobs.read().await;
         let target_system = jobs
@@ -272,6 +288,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Get legacy job output
+    ///
+    /// # Errors
+    ///
+    /// Returns when the job is unknown, the adapter is missing, or output retrieval fails.
     pub async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput> {
         let jobs = self.active_jobs.read().await;
         let target_system = jobs
@@ -294,6 +314,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Get runtime metrics
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok` (metrics are cloned from an async mutex).
     pub async fn get_metrics(&self) -> ToadStoolResult<SpecialtyRuntimeMetrics> {
         let metrics = self.metrics.lock().await;
         Ok(metrics.clone())
@@ -305,6 +329,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Test connectivity to a legacy system
+    ///
+    /// # Errors
+    ///
+    /// Returns when no adapter exists for `system_type` or the connectivity check fails.
     pub async fn test_connectivity(&self, system_type: LegacySystemType) -> ToadStoolResult<bool> {
         let adapters = self.adapters.read().await;
         let adapter = Arc::clone(adapters.get(&system_type).ok_or_else(|| {
@@ -319,6 +347,10 @@ impl SpecialtyRuntimeEngine {
     }
 
     /// Shutdown the specialty hardware runtime engine
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future shutdown validation.
     pub async fn shutdown(&mut self) -> ToadStoolResult<()> {
         info!("Shutting down Specialty Hardware Runtime Engine");
 

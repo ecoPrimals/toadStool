@@ -11,7 +11,7 @@
 //! - Automatic resource selection based on capabilities
 //! - Future-proof architecture for unknown compute paradigms
 
-use crate::types::*;
+use crate::types::DataType;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -256,6 +256,7 @@ impl ComputeCapabilities {
     }
 
     /// Calculate capability score for a workload (0.0 = poor, 1.0 = perfect)
+    #[allow(clippy::cast_precision_loss)] // normalized scoring ratios
     pub fn score_for_workload(&self, requirements: &ComputeRequirements) -> f64 {
         let mut score = 0.0;
         let mut factors = 0;
@@ -542,11 +543,11 @@ pub enum UniversalKernel {
 /// Supported kernel languages.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum KernelLanguage {
-    /// WGSL (WebGPU Shading Language).
+    /// WGSL (`WebGPU` Shading Language).
     Wgsl,
     /// SPIR-V.
     Spirv,
-    /// OpenCL C.
+    /// `OpenCL` C.
     OpenClC,
     /// CUDA.
     Cuda,

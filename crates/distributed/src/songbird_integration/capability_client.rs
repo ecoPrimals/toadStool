@@ -31,7 +31,7 @@ pub struct CapabilityClient {
     required_capabilities: Vec<String>,
 
     /// Timeout for operations
-    #[allow(dead_code, reason = "reserved for future request timeout")]
+    #[expect(dead_code, reason = "reserved for future request timeout")]
     timeout: Duration,
 
     /// Preferred protocol

@@ -15,6 +15,10 @@ use tracing::{debug, info};
 
 impl MigrationCoordinator {
     /// Evaluate if workload should migrate
+    ///
+    /// # Errors
+    ///
+    /// Returns error if composition evaluation fails.
     pub async fn should_migrate(
         &self,
         workload_id: &str,

@@ -95,6 +95,7 @@ impl SwapJournal {
     }
 
     /// Iterate over all entries in chronological order.
+    #[must_use]
     pub fn entries(&self) -> &[JournalEntry] {
         &self.entries
     }
@@ -106,6 +107,7 @@ impl SwapJournal {
     }
 
     /// All entries of a specific event type.
+    #[must_use]
     pub fn events_of_type(&self, target: &JournalEvent) -> Vec<&JournalEntry> {
         self.entries
             .iter()

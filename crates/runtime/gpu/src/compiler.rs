@@ -60,6 +60,10 @@ impl UniversalKernelCompiler {
     ///
     /// Cached kernels are returned via `Arc::clone` (cheap pointer bump)
     /// rather than deep-copying the compiled binary.
+    ///
+    /// # Errors
+    ///
+    /// Returns when internal compilation or optimization fails.
     pub async fn compile_kernel(
         &self,
         kernel_source: &str,
@@ -93,7 +97,7 @@ impl UniversalKernelCompiler {
 
     /// Internal kernel compilation — returns optimized source for JIT frameworks.
     ///
-    /// WGSL and OpenCL compile shaders at pipeline creation / runtime, so this
+    /// WGSL and `OpenCL` compile shaders at pipeline creation / runtime, so this
     /// stage applies optimizations and returns source bytes. AOT compilation
     /// (e.g. nvrtc for CUDA, naga for SPIR-V) would be added here when
     /// targeting specific binary formats.

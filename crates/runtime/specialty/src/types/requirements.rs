@@ -76,7 +76,7 @@ pub enum CompilerType {
     AsmSystem360,
     /// Generic cross-compiler.
     CrossCompiler {
-        /// Host architecture (e.g. x86_64).
+        /// Host architecture (e.g. `x86_64`).
         host_arch: String,
         /// Target architecture for generated code.
         target_arch: LegacyArchitecture,
@@ -317,7 +317,7 @@ pub enum CommunicationProtocol {
     Ethernet,
     /// Token ring
     TokenRing,
-    /// DECnet
+    /// `DECnet`
     DECnet,
     /// SNA (Systems Network Architecture)
     SNA,
@@ -379,9 +379,9 @@ pub enum NetworkProtocol {
     TCPIP,
     /// IPX/SPX
     IPXSPX,
-    /// NetBIOS
+    /// `NetBIOS`
     NetBIOS,
-    /// DECnet
+    /// `DECnet`
     DECnet,
     /// SNA
     SNA,
@@ -389,7 +389,7 @@ pub enum NetworkProtocol {
     TokenRing,
     /// Ethernet
     Ethernet,
-    /// AppleTalk
+    /// `AppleTalk`
     AppleTalk,
     /// Banyan VINES
     BanyanVINES,

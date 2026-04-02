@@ -42,8 +42,8 @@ pub trait NpuBackend: Debug + Send + Sync {
 
     /// Load reservoir weights for echo state networks
     ///
-    /// w_in: input -> reservoir weights
-    /// w_res: reservoir -> reservoir (recurrent) weights
+    /// `w_in`: input -> reservoir weights
+    /// `w_res`: reservoir -> reservoir (recurrent) weights
     ///
     /// # Errors
     ///

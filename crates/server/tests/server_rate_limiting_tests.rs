@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![allow(
+    clippy::doc_markdown,
     clippy::cast_precision_loss,
     clippy::float_cmp,
     clippy::unreadable_literal,

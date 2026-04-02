@@ -230,6 +230,10 @@ pub async fn init_with_ecosystem() -> ToadStoolResult<UniversalComputePlatform> 
 }
 
 /// Initialize `ToadStool` with biomeOS as a primal (same as ecosystem init)
+///
+/// # Errors
+///
+/// Returns error if core initialization or [`init_with_ecosystem`] fails.
 pub async fn init_with_biomeos() -> ToadStoolResult<UniversalComputePlatform> {
     init()?;
 

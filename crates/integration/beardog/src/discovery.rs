@@ -36,7 +36,7 @@ impl Default for SeedRequest {
 /// Uses capability-based discovery (no hardcoded URLs!).
 pub struct EntropyClient {
     /// Service endpoint (discovered at runtime)
-    #[allow(dead_code, reason = "stored for diagnostics and connection tracing")]
+    #[allow(dead_code)] // Set for tracing; read by unit tests
     endpoint: Option<String>,
     /// RPC client for communication (pure Rust unix socket!)
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,

@@ -12,7 +12,7 @@ use std::sync::Arc;
 ///
 /// Uses toadstool-sysmon and wgpu for pure Rust discovery (zero C).
 /// Returns `Arc<str>` per capability — clone is cheap (refcount bump).
-#[expect(clippy::unused_async, reason = "may add async GPU discovery")]
+#[allow(clippy::unused_async)] // API may await GPU discovery in the future
 pub async fn query_local_capabilities() -> Vec<Arc<str>> {
     let mut capabilities: Vec<Arc<str>> = vec![Arc::from("compute"), Arc::from("cpu")];
 

@@ -16,7 +16,7 @@ use super::types::{AgentInfo, DeployAgentRequest, LoadModelRequest, ModelInfo};
 ///
 /// 1. **Self-knowledge only**: Knows it needs AI agent deployment
 /// 2. **Runtime discovery**: Finds provider by capability
-/// 3. **Proper errors**: No unwrap(), all errors handled
+/// 3. **Proper errors**: No `unwrap()`, all errors handled
 /// 4. **Agnostic**: Doesn't care which primal provides agents
 pub struct AgentBackend {
     /// Agent provider (discovered at runtime)

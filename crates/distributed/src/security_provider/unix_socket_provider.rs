@@ -29,8 +29,14 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
-use super::provider::*;
-use super::types::*;
+use super::provider::{
+    EncryptionOptions, PermissionValidationResult, ProviderHealth, SecurityCapability,
+    SecurityProvider, SigningOptions,
+};
+use super::types::{
+    DecryptionResult, EncryptionMetadata, EncryptionResult, PermissionRequest, ProviderMetadata,
+    SecurityPermission, SignatureResult, VerificationResult,
+};
 use toadstool_common::constants::timeouts;
 
 /// Unix socket security provider
@@ -181,14 +187,14 @@ struct JsonRpcRequest<P> {
 /// JSON-RPC 2.0 response
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<R> {
-    #[allow(
+    #[expect(
         dead_code,
         reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
     )]
     jsonrpc: String,
     result: Option<R>,
     error: Option<JsonRpcError>,
-    #[allow(
+    #[expect(
         dead_code,
         reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
     )]
@@ -345,6 +351,10 @@ impl SecurityProvider for UnixSocketSecurityProvider {
 
 #[cfg(test)]
 mod tests {
+    use super::super::types::{
+        CloudProvider, ExternalTarget, PermissionScope, ResourceLimits, SecurityProof,
+        SignatureAlgorithm,
+    };
     use super::*;
 
     #[test]

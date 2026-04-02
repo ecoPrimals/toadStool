@@ -139,6 +139,10 @@ impl UniversalComputePlatform {
     }
 
     /// Execute a universal job
+    ///
+    /// # Errors
+    ///
+    /// Returns error if scheduling or execution fails.
     pub async fn execute_universal_job(
         &self,
         job: UniversalJob,
@@ -147,6 +151,10 @@ impl UniversalComputePlatform {
     }
 
     /// Register a runtime engine
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn register_runtime_engine(
         &self,
         runtime_type: RuntimeType,
@@ -173,6 +181,10 @@ impl UniversalComputePlatform {
     }
 
     /// Route primal request
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the target primal is unknown or request handling fails.
     pub async fn route_primal_request(
         &self,
         request: super::requests::PrimalRequest,
@@ -217,6 +229,10 @@ impl UniversalComputePlatform {
 }
 
 /// Initialize platform with runtime engines
+///
+/// # Errors
+///
+/// Returns error if platform creation or engine registration fails.
 pub async fn init_with_runtime_engines(
     engines: Vec<(RuntimeType, Box<dyn RuntimeEngine>)>,
 ) -> ToadStoolResult<UniversalComputePlatform> {

@@ -53,7 +53,7 @@ pub struct PersistentVolume {
 
 /// Storage provisioning request to `NestGate`
 ///
-/// Uses `Arc<str>` for volume_name and size (wateringHole zero-copy): clone = refcount bump.
+/// Uses `Arc<str>` for `volume_name` and size (wateringHole zero-copy): clone = refcount bump.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageProvisioningRequest {
     /// Volume name

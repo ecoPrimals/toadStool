@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(clippy::doc_markdown)] // VFIO ioctl names (VFIO_GET_API_VERSION, etc.) are kernel ABI identifiers
 //! VFIO-based BAR0 access for NVIDIA GPUs.
 //!
 //! Alternative to sysfs-based `Bar0Access` that works through VFIO's

@@ -37,7 +37,7 @@ impl ToadStoolCryptoLock {
         let permission_validator = SecurityPermissionValidator::new().await?;
         let active_permissions = HashMap::new();
         let permission_cache = PermissionCache::new();
-        let access_policies = AccessPolicies;
+        let access_policies = AccessPolicies::default();
 
         let mut crypto_lock = Self {
             permission_validator,

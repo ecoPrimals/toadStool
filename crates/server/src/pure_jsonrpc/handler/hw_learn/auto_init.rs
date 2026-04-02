@@ -166,7 +166,10 @@ impl HwLearnHandler {
             .first()
             .map(|g| g.card_path().to_string_lossy().into_owned());
         let card_path_owned;
-        let card_path = match params.and_then(|p| p.get("card_path")).and_then(serde_json::Value::as_str) {
+        let card_path = match params
+            .and_then(|p| p.get("card_path"))
+            .and_then(serde_json::Value::as_str)
+        {
             Some(p) => p,
             None => {
                 card_path_owned = default_card.unwrap_or_else(|| "/dev/dri/card0".to_string());

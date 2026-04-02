@@ -49,9 +49,9 @@ pub enum IndustrialProtocol {
     Profibus,
     /// Profinet
     Profinet,
-    /// DeviceNet
+    /// `DeviceNet`
     DeviceNet,
-    /// ControlNet
+    /// `ControlNet`
     ControlNet,
     /// EtherNet/IP
     EtherNetIP,

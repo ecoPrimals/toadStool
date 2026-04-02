@@ -43,6 +43,10 @@ pub fn get_default_songbird_socket() -> String {
 }
 
 /// Register ToadStool with Songbird discovery service
+///
+/// # Errors
+///
+/// Returns error if Songbird is unreachable, JSON-RPC framing fails, or registration is rejected.
 pub async fn register_with_songbird() -> ToadStoolResult<()> {
     let socket_path =
         std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
@@ -66,13 +70,9 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
-        "method": "ipc.register",
+        "method": "capability.register",
         "params": {
             "primal_name": PRIMAL_NAME,
-            // biomeOS Node Atomic capabilities (node_atomic_compute.toml):
-            //   compute, workload, orchestration, ai_local
-            // Plus implementation-level capabilities advertised to consumers:
-            //   gpu, wasm, container
             "capabilities": [
                 "compute", "workload", "orchestration", "ai_local",
                 "gpu", "wasm", "container", "shader.dispatch"
@@ -98,6 +98,14 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 }
 
 /// Resolve a primal's endpoint via Songbird
+///
+/// # Errors
+///
+/// Returns error if Songbird is unreachable, the response is invalid, or resolution fails.
+#[deprecated(
+    since = "0.92.0",
+    note = "Identity-based discovery — use find_by_capability() then connect via socket"
+)]
 pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
     let socket_path =
         std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
@@ -115,7 +123,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
-        "method": "ipc.resolve",
+        "method": "capability.resolve",
         "params": {
             "primal_name": primal_name
         },
@@ -148,6 +156,15 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
 }
 
 /// Connect to another primal
+///
+/// # Errors
+///
+/// Returns error if endpoint resolution or the Unix connection fails.
+#[deprecated(
+    since = "0.92.0",
+    note = "Identity-based discovery — use find_by_capability() then connect via socket"
+)]
+#[allow(deprecated)]
 pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream> {
     let endpoint = resolve_primal(primal_name).await?;
 
@@ -172,6 +189,10 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
 }
 
 /// Find primals by capability
+///
+/// # Errors
+///
+/// Returns error if Songbird is unreachable, the response is invalid, or the query fails.
 pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>> {
     let socket_path =
         std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
@@ -185,7 +206,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
-        "method": "ipc.capabilities",
+        "method": "capability.find",
         "params": {
             "capability": capability
         },

@@ -84,7 +84,7 @@ async fn test_install_crypto_permission_valid_succeeds() {
         valid_from: now - Duration::from_secs(3600),
         valid_until: now + Duration::from_secs(3600),
         crypto_proof: SecurityProof {
-            signature: vec![],
+            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
             public_key_id: "k1".to_string(),
             timestamp: now,
@@ -140,7 +140,7 @@ async fn test_check_external_access_with_valid_permission_granted() {
         valid_from: now - Duration::from_secs(3600),
         valid_until: now + Duration::from_secs(3600),
         crypto_proof: SecurityProof {
-            signature: vec![],
+            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
             public_key_id: "k1".to_string(),
             timestamp: now,
@@ -230,7 +230,7 @@ async fn test_request_delegation_succeeds_when_holder_matches() {
         // Leave headroom so `now + delegation_duration` at request time stays within validity.
         valid_until: now + Duration::from_secs(86400),
         crypto_proof: SecurityProof {
-            signature: vec![],
+            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
             public_key_id: "k1".to_string(),
             timestamp: now,
@@ -307,7 +307,7 @@ async fn test_request_delegation_fails_wrong_holder() {
         valid_from: now - Duration::from_secs(3600),
         valid_until: now + Duration::from_secs(86400),
         crypto_proof: SecurityProof {
-            signature: vec![],
+            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
             public_key_id: "k1".to_string(),
             timestamp: now,

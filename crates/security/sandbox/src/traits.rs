@@ -4,7 +4,7 @@
 use toadstool::error::ToadStoolResult;
 use toadstool_security_policies::SecurityPolicy;
 
-use super::types::*;
+use super::types::{ResourceUsage, SandboxInfo, SandboxSpec};
 
 /// Trait for platform-agnostic sandbox management.
 pub trait SandboxManager: Send + Sync {

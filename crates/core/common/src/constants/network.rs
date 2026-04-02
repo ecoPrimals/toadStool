@@ -9,8 +9,12 @@
 // ToadStool self-knowledge ports
 // ============================================================================
 
-/// Default metrics/monitoring port (Prometheus-style scrape target).
-pub const METRICS_PORT: u16 = 9090;
+/// Legacy metrics default (0 = OS-assigned at bind; same default as `toadstool_config::ports::metrics_port()`).
+#[deprecated(
+    since = "0.1.0",
+    note = "Use toadstool_config::ports::metrics_port() instead"
+)]
+pub const METRICS_PORT: u16 = 0;
 
 /// Default BYOB (Bring Your Own Biome) coordinator/daemon port.
 /// Port 0 = OS-assigned at bind time (capability-based discovery resolves the actual port).
@@ -29,7 +33,7 @@ pub const LOCALHOST_IPV6: &str = "::1";
 /// Bind to all interfaces `IPv4`
 pub const BIND_ALL_IPV4: &str = "0.0.0.0";
 
-/// Bind to any IPv4 interface with OS-assigned port (e.g. for mDNS socket)
+/// Bind to any `IPv4` interface with OS-assigned port (e.g. for mDNS socket)
 pub const BIND_ANY: &str = "0.0.0.0:0";
 
 /// Bind to all interfaces `IPv6`
@@ -53,8 +57,9 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(deprecated)]
     fn test_toadstool_ports() {
-        assert_eq!(METRICS_PORT, 9090);
+        assert_eq!(METRICS_PORT, 0);
         assert_eq!(BYOB_DEFAULT_PORT, 0);
     }
 

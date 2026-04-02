@@ -63,8 +63,9 @@ fn test_crypto_lock_status_constructor() {
 
 #[test]
 fn test_access_policies_default() {
-    let policies = AccessPolicies;
-    let _ = policies;
+    let policies = AccessPolicies::default();
+    assert!(policies.allow_without_provider);
+    assert_eq!(policies.max_delegation_depth, 3);
 }
 
 #[test]
@@ -273,9 +274,11 @@ fn test_crypto_lock_status_clone() {
 }
 
 #[test]
-fn test_access_policies_unit_struct() {
-    let p = AccessPolicies;
-    let _ = p;
+fn test_access_policies_serde_roundtrip() {
+    let p = AccessPolicies::default();
+    let json = serde_json::to_string(&p).expect("serialize");
+    let parsed: AccessPolicies = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(p, parsed);
 }
 
 #[test]

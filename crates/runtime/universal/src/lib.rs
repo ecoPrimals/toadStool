@@ -3,7 +3,13 @@
 #![warn(missing_docs)]
 #![allow(
     clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::doc_markdown,
     clippy::must_use_candidate,
+    clippy::wildcard_imports,
     clippy::return_self_not_must_use,
     clippy::match_same_arms,
     clippy::match_wildcard_for_single_variants,

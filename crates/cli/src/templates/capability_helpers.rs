@@ -6,9 +6,9 @@
 
 use std::collections::HashMap;
 use toadstool_common::constants::PRIMAL_NAME;
+use toadstool_common::interned_strings::CapabilityDomain;
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::interned_strings::runtime_types;
-use toadstool_common::interned_strings::CapabilityDomain;
 
 /// Resolve a manifest or template dependency label to a canonical capability id.
 ///

@@ -23,7 +23,10 @@ pub(super) async fn handle_request(
     }
 
     let result = match request.method.as_str() {
-        "daemon.health" => handle_health(state).await,
+        "daemon.health" | "health.liveness" | "health.readiness" | "health.check" => {
+            handle_health(state).await
+        }
+        "identity.get" => handle_identity(state).await,
         "daemon.metrics" => handle_metrics(state).await,
         "daemon.submit_workload" => handle_submit_workload(request.params, state).await,
         "daemon.get_workload" => handle_get_workload(request.params, state).await,
@@ -54,6 +57,16 @@ pub(super) async fn handle_request(
             id: request.id,
         },
     }
+}
+
+async fn handle_identity(_state: &ServerState) -> Result<Value, JsonRpcError> {
+    Ok(json!({
+        "primal": toadstool_common::constants::PRIMAL_NAME,
+        "version": env!("CARGO_PKG_VERSION"),
+        "protocol": "JSON-RPC 2.0",
+        "capabilities": ["compute", "workload", "daemon"],
+        "transport": "unix-socket",
+    }))
 }
 
 async fn handle_health(state: &ServerState) -> Result<Value, JsonRpcError> {
@@ -102,10 +115,7 @@ async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
     }))
 }
 
-async fn handle_submit_workload(
-    params: Value,
-    state: &ServerState,
-) -> Result<Value, JsonRpcError> {
+async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
     let request: SubmitWorkloadRequest =
         serde_json::from_value(params).map_err(|e| JsonRpcError {
             code: super::jsonrpc_server::error_codes::INVALID_PARAMS,
@@ -156,10 +166,7 @@ async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value
         )
 }
 
-async fn handle_delete_workload(
-    params: Value,
-    state: &ServerState,
-) -> Result<Value, JsonRpcError> {
+async fn handle_delete_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
     let workload_id = params["id"].as_str().ok_or_else(|| JsonRpcError {
         code: super::jsonrpc_server::error_codes::INVALID_PARAMS,
         message: "Missing or invalid 'id' parameter".to_string(),

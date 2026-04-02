@@ -21,6 +21,10 @@ impl LayerDetector {
     }
 
     /// Detect the current deployment layer
+    ///
+    /// # Errors
+    ///
+    /// Returns error if filesystem or environment probing fails during detection.
     pub async fn detect(&mut self) -> Result<DeploymentLayer, DetectionError> {
         if let Some(layer) = &self.cached_layer {
             return Ok(layer.clone());

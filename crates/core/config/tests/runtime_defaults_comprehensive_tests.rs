@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive concurrent tests for `runtime_defaults` module
 //!
-//! ✅ MODERN CONCURRENT TESTING - Uses temp_env for parallel execution
+//! ✅ MODERN CONCURRENT TESTING - Uses `temp_env` for parallel execution
 
 use std::sync::Mutex;
 use tempfile::NamedTempFile;

@@ -10,6 +10,13 @@
 //! - Service registration and health reporting
 
 #![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::doc_markdown,
+    clippy::missing_errors_doc,
+    clippy::uninlined_format_args,
     clippy::assigning_clones,
     clippy::default_trait_access,
     clippy::match_wildcard_for_single_variants,

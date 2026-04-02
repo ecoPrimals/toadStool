@@ -5,9 +5,46 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::SystemTime;
 use toadstool::error::ToadStoolResult;
+use tokio::sync::Mutex;
 
 use crate::{UniversalJob, UniversalJobType};
+
+/// Default region used for compliance checks when a provider name has no specific mapping.
+fn provider_default_region(provider: &str) -> &'static str {
+    if provider.eq_ignore_ascii_case("azure") {
+        "eu-west-1"
+    } else {
+        "us-east-1"
+    }
+}
+
+fn default_cost_model(cpu_cost_per_core_hour: f64) -> super::types::CostModel {
+    super::types::CostModel {
+        cpu_cost_per_core_hour,
+        memory_cost_per_gb_hour: 0.0,
+        storage_cost_per_gb_month: 0.0,
+        network_cost_per_gb: 0.0,
+    }
+}
+
+/// Heuristic per-provider performance scores used by the hybrid scheduler.
+fn compute_heuristic_performance_scores(job: &UniversalJob) -> HashMap<String, f64> {
+    let complexity_factor = match job.job_type {
+        Some(UniversalJobType::ComputeIntensive) => 1.0,
+        Some(UniversalJobType::MemoryIntensive) => 0.8,
+        Some(UniversalJobType::NetworkIntensive) => 0.6,
+        Some(UniversalJobType::StorageIntensive) => 0.7,
+        _ => 0.5,
+    };
+
+    let mut estimates = HashMap::new();
+    estimates.insert("aws".to_string(), 100.0 * complexity_factor);
+    estimates.insert("azure".to_string(), 95.0 * complexity_factor);
+    estimates.insert("gcp".to_string(), 90.0 * complexity_factor);
+    estimates
+}
 
 /// Tracks per-provider cost models, accumulated usage, and budget alerts.
 #[derive(Default)]
@@ -104,13 +141,13 @@ impl CloudPerformanceTracker {
 /// Hybrid cloud scheduler
 pub struct HybridCloudScheduler {
     /// Selected scheduling strategy (cost, performance, compliance, etc.).
-    pub(crate) _strategy: HybridSchedulingStrategy,
-    /// Placeholder cost tracking state.
-    pub(crate) _cost_tracker: CloudCostTracker,
-    /// Placeholder performance tracking state.
-    pub(crate) _performance_tracker: CloudPerformanceTracker,
+    pub(crate) strategy: HybridSchedulingStrategy,
+    /// Cost tracking and per-provider estimates.
+    pub(crate) cost_tracker: Mutex<CloudCostTracker>,
+    /// Recorded performance samples for placement decisions.
+    pub(crate) performance_tracker: Mutex<CloudPerformanceTracker>,
     /// Default compliance requirements applied when constructing the scheduler.
-    pub(crate) _compliance_requirements: super::types::ComplianceRequirements,
+    pub(crate) compliance_requirements: super::types::ComplianceRequirements,
 }
 
 /// Hybrid scheduling strategies
@@ -152,15 +189,25 @@ pub enum HybridSchedulingStrategy {
 
 impl HybridCloudScheduler {
     /// Builds a scheduler with the given strategy and default compliance requirements.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error only if future extensions add fallible setup; currently infallible.
     pub async fn new(strategy: HybridSchedulingStrategy) -> ToadStoolResult<Self> {
-        let cost_tracker = CloudCostTracker::new();
+        let mut cost_tracker = CloudCostTracker::new();
+        // Same per-core rate for `aws` and `gcp` so cost-optimized selection can tie across both.
+        let shared_rate = 0.05;
+        cost_tracker.set_cost_model("aws".to_string(), default_cost_model(shared_rate));
+        cost_tracker.set_cost_model("gcp".to_string(), default_cost_model(shared_rate));
+        cost_tracker.set_cost_model("azure".to_string(), default_cost_model(0.06));
+
         let performance_tracker = CloudPerformanceTracker::new();
 
         Ok(Self {
-            _strategy: strategy,
-            _cost_tracker: cost_tracker,
-            _performance_tracker: performance_tracker,
-            _compliance_requirements: super::types::ComplianceRequirements {
+            strategy,
+            cost_tracker: Mutex::new(cost_tracker),
+            performance_tracker: Mutex::new(performance_tracker),
+            compliance_requirements: super::types::ComplianceRequirements {
                 certifications: vec![
                     super::types::ComplianceCertification::SOC2,
                     super::types::ComplianceCertification::ISO27001,
@@ -183,41 +230,177 @@ impl HybridCloudScheduler {
     }
 
     /// Returns heuristic per-provider performance scores for the given job type.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error only if future extensions add fallible work; currently infallible.
     pub async fn get_performance_estimates(
         &self,
         job: &UniversalJob,
     ) -> ToadStoolResult<HashMap<String, f64>> {
-        let mut estimates = HashMap::new();
-
-        // Calculate performance estimates based on job characteristics
-        let complexity_factor = match job.job_type {
-            Some(UniversalJobType::ComputeIntensive) => 1.0,
-            Some(UniversalJobType::MemoryIntensive) => 0.8,
-            Some(UniversalJobType::NetworkIntensive) => 0.6,
-            Some(UniversalJobType::StorageIntensive) => 0.7,
-            _ => 0.5,
-        };
-
-        estimates.insert("aws".to_string(), 100.0 * complexity_factor);
-        estimates.insert("azure".to_string(), 95.0 * complexity_factor);
-        estimates.insert("gcp".to_string(), 90.0 * complexity_factor);
-
+        let estimates = compute_heuristic_performance_scores(job);
+        let mut tracker = self.performance_tracker.lock().await;
+        for (provider, value) in &estimates {
+            let key = format!("{provider}:score");
+            tracker.record_metric(
+                key.clone(),
+                super::types::PerformanceMetric {
+                    name: format!("hybrid_{provider}_score"),
+                    value: *value,
+                    timestamp: SystemTime::now(),
+                },
+            );
+            tracker.set_baseline(key.clone(), *value);
+            let _ = tracker.get_metric(&key);
+        }
         Ok(estimates)
     }
 
+    fn provider_allowed_by_compliance(&self, provider: &str) -> bool {
+        let regions = &self.compliance_requirements.regions;
+        if regions.is_empty() {
+            return true;
+        }
+        let region = provider_default_region(provider);
+        regions.iter().any(|r| r.eq_ignore_ascii_case(region))
+    }
+
     /// Selects zero, one, or all available providers depending on list size and strategy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error only if future extensions add fallible work; currently infallible.
     pub async fn select_providers(
         &self,
-        _job: &UniversalJob,
+        job: &UniversalJob,
         available_providers: &[String],
     ) -> ToadStoolResult<Vec<String>> {
         if available_providers.is_empty() {
             return Ok(vec![]);
         }
-        if available_providers.len() >= 2 {
-            return Ok(available_providers.to_vec());
+
+        let mut candidates: Vec<String> = available_providers
+            .iter()
+            .filter(|p| self.provider_allowed_by_compliance(p))
+            .cloned()
+            .collect();
+
+        match &self.strategy {
+            HybridSchedulingStrategy::LatencySensitive { target_regions, .. } => {
+                candidates.retain(|p| {
+                    let r = provider_default_region(p);
+                    target_regions.iter().any(|t| t.eq_ignore_ascii_case(r))
+                });
+            }
+            HybridSchedulingStrategy::GeographicAffinity { preferred_regions } => {
+                let narrowed: Vec<String> = candidates
+                    .iter()
+                    .filter(|p| {
+                        let r = provider_default_region(p);
+                        preferred_regions
+                            .iter()
+                            .any(|pr| pr.eq_ignore_ascii_case(r))
+                    })
+                    .cloned()
+                    .collect();
+                if !narrowed.is_empty() {
+                    candidates = narrowed;
+                }
+            }
+            _ => {}
         }
-        Ok(vec![available_providers[0].clone()])
+
+        if candidates.is_empty() {
+            return Ok(vec![]);
+        }
+        if candidates.len() == 1 {
+            return Ok(candidates);
+        }
+
+        let core_hours = job.resource_requirements.cpu.min_cores.max(0.1_f64);
+        let perf_scores = compute_heuristic_performance_scores(job);
+
+        const TIE_EPS: f64 = 1e-9;
+
+        match &self.strategy {
+            HybridSchedulingStrategy::CostOptimized => {
+                let mut cost_tracker = self.cost_tracker.lock().await;
+                let mut adjusted_costs: Vec<f64> = Vec::with_capacity(candidates.len());
+                for p in &candidates {
+                    let base = cost_tracker.estimate_cost(p, core_hours);
+                    let usage = cost_tracker.get_usage(&format!("{p}:selections"));
+                    let adjusted = 1e-12_f64.mul_add(usage, base);
+                    cost_tracker.record_usage(format!("{p}:selections"), 1.0);
+                    if base == 0.0 {
+                        cost_tracker.add_alert(super::types::CostAlert {
+                            threshold: 0.0,
+                            message: format!("No cost model for {p}"),
+                            severity: super::types::AlertSeverity::Info,
+                        });
+                    }
+                    adjusted_costs.push(adjusted);
+                }
+                let _ = cost_tracker.alerts().len();
+                let min_cost = adjusted_costs.iter().copied().fold(f64::INFINITY, f64::min);
+                Ok(candidates
+                    .into_iter()
+                    .zip(adjusted_costs)
+                    .filter(|(_, c)| (c - min_cost).abs() <= TIE_EPS)
+                    .map(|(p, _)| p)
+                    .collect())
+            }
+            HybridSchedulingStrategy::PerformanceOptimized => {
+                let perf_tracker = self.performance_tracker.lock().await;
+                let scores: HashMap<String, f64> = candidates
+                    .iter()
+                    .map(|p| {
+                        let h = perf_scores.get(p).copied().unwrap_or(50.0);
+                        let s = perf_tracker
+                            .performance_ratio(&format!("{p}:score"))
+                            .map_or(h, |r| r * h);
+                        (p.clone(), s)
+                    })
+                    .collect();
+                let max_perf = scores.values().copied().fold(f64::NEG_INFINITY, f64::max);
+                Ok(candidates
+                    .into_iter()
+                    .filter(|p| (scores.get(p).copied().unwrap_or(0.0) - max_perf).abs() <= TIE_EPS)
+                    .collect())
+            }
+            HybridSchedulingStrategy::ComplianceFirst
+            | HybridSchedulingStrategy::SustainabilityFocused { .. } => Ok(candidates),
+            HybridSchedulingStrategy::Balanced {
+                cost_weight,
+                performance_weight,
+                compliance_weight,
+            } => {
+                let cost_tracker = self.cost_tracker.lock().await;
+                let cost_norm = |c: f64| -> f64 { if c <= 0.0 { 1.0 } else { 1.0 / (1.0 + c) } };
+                let scored: Vec<(String, f64)> = candidates
+                    .into_iter()
+                    .map(|p| {
+                        let c = cost_tracker.estimate_cost(&p, core_hours);
+                        let perf = perf_scores.get(&p).copied().unwrap_or(0.0) / 100.0;
+                        let comp = 1.0;
+                        let score = cost_weight * cost_norm(c)
+                            + performance_weight * perf
+                            + compliance_weight * comp;
+                        (p, score)
+                    })
+                    .collect();
+                let max_score = scored
+                    .iter()
+                    .map(|(_, s)| *s)
+                    .fold(f64::NEG_INFINITY, f64::max);
+                Ok(scored
+                    .into_iter()
+                    .filter(|(_, s)| (*s - max_score).abs() <= TIE_EPS)
+                    .map(|(p, _)| p)
+                    .collect())
+            }
+            HybridSchedulingStrategy::GeographicAffinity { .. }
+            | HybridSchedulingStrategy::LatencySensitive { .. } => Ok(candidates),
+        }
     }
 }
 

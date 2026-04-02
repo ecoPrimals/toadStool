@@ -9,9 +9,7 @@ use crate::byob::byob_types::{
     ByobDeploymentRequest, DeploymentStatus, HealthCheck, NetworkInfo, ServiceEndpoint, ServiceSpec,
 };
 use crate::byob::deployment::ActiveDeployment;
-use crate::{
-    ExecutionRequest, ExecutionStatus, ToadStoolError, ToadStoolResult, WorkloadSpec,
-};
+use crate::{ExecutionRequest, ExecutionStatus, ToadStoolError, ToadStoolResult, WorkloadSpec};
 use toadstool_common::constants::timeouts;
 
 use super::ByobComputeExecutor;
@@ -120,7 +118,10 @@ impl ByobComputeExecutor {
     }
 
     /// Execute services in a deployment
-    pub(super) async fn execute_services(&self, deployment: &mut ActiveDeployment) -> ToadStoolResult<()> {
+    pub(super) async fn execute_services(
+        &self,
+        deployment: &mut ActiveDeployment,
+    ) -> ToadStoolResult<()> {
         info!(
             "Starting service execution for deployment {}",
             deployment.request.deployment_id
@@ -181,7 +182,10 @@ impl ByobComputeExecutor {
     }
 
     /// Create network for deployment
-    pub(super) fn create_deployment_network(&self, deployment: &ByobDeploymentRequest) -> NetworkInfo {
+    pub(super) fn create_deployment_network(
+        &self,
+        deployment: &ByobDeploymentRequest,
+    ) -> NetworkInfo {
         let network_name = format!("byob-{}-{}", deployment.team_id, deployment.deployment_id);
         let subnet_cidr = deployment.network_config.subnet_cidr.clone();
         let gateway_ip = "10.0.0.1".to_string(); // Default gateway
@@ -214,7 +218,10 @@ impl ByobComputeExecutor {
     }
 
     /// Run one health-check pass for a deployment.
-    pub(super) async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
+    pub(super) async fn monitor_deployment_health(
+        &self,
+        deployment_id: Uuid,
+    ) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);
 
         if let Some(deployment) = self
@@ -341,11 +348,13 @@ impl ByobComputeExecutor {
                     let guard = deployments.read().await;
                     guard
                         .get(&deployment_id)
-                        .map_or(false, |d| matches!(d.status, DeploymentStatus::Running))
+                        .is_some_and(|d| matches!(d.status, DeploymentStatus::Running))
                 };
 
                 if !still_running {
-                    debug!("Health monitor stopping for deployment {deployment_id} (no longer running)");
+                    debug!(
+                        "Health monitor stopping for deployment {deployment_id} (no longer running)"
+                    );
                     break;
                 }
 
@@ -365,7 +374,11 @@ impl ByobComputeExecutor {
     }
 
     /// Allocate external IP for a service
-    pub(super) fn allocate_external_ip(&self, service_spec: &ServiceSpec, team_id: &str) -> Option<String> {
+    pub(super) fn allocate_external_ip(
+        &self,
+        service_spec: &ServiceSpec,
+        team_id: &str,
+    ) -> Option<String> {
         // Check if service needs external access
         let needs_external_ip = service_spec.ports.iter().any(|port| {
             // Allocate external IP for services that expose common web ports

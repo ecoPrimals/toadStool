@@ -2,6 +2,11 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(clippy::unused_async)] // Async stubs for future I/O implementation
+#![allow(
+    clippy::must_use_candidate,
+    clippy::uninlined_format_args,
+    clippy::too_long_first_doc_paragraph
+)] // pedantic noise vs API churn
 
 //! # ToadStool Specialty Hardware Runtime Engine
 //!
@@ -12,7 +17,7 @@
 //! - Embedded systems (8-bit microcontrollers, 16-bit systems, Arduino, ESP32)
 //! - Industrial control systems (PLCs, SCADA, real-time systems)
 //! - Exotic Unix systems (PDP-11, early UNIX variants)
-//! - Real-time operating systems (VxWorks, QNX, RT-11)
+//! - Real-time operating systems (`VxWorks`, `QNX`, RT-11)
 //!
 //! ## Architecture
 //!

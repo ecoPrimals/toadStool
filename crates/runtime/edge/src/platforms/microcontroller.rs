@@ -163,7 +163,7 @@ impl MicrocontrollerDevice {
 
     /// Create a device from connection parameters.
     /// Returns `Err` when the platform cannot create a device.
-    #[allow(dead_code, reason = "microcontroller platform constructor; requires target hardware")]
+    #[expect(dead_code, reason = "microcontroller platform constructor; requires target hardware")]
     pub fn new(
         _arch: MicrocontrollerArch,
         _vendor: String,

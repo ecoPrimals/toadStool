@@ -77,6 +77,10 @@ impl TowerManager {
     /// 3. Most recent health check (availability)
     ///
     /// **Deep Debt**: Capability-based selection, no hardcoded preferences
+    ///
+    /// # Errors
+    ///
+    /// Returns when no tower can be selected (unexpected empty selection).
     pub async fn select_best_tower(
         &self,
         requirements: &ComputeRequirements,
@@ -126,6 +130,10 @@ impl TowerManager {
     }
 
     /// Select multiple towers for redundant/parallel execution
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future validation failures.
     pub async fn select_multiple_towers(
         &self,
         _requirements: &ComputeRequirements,
@@ -159,6 +167,10 @@ impl TowerManager {
     /// let towers = songbird.find_by_capability(capability).await?;
     /// select_lowest_latency(towers)
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future capability resolution failures.
     pub async fn select_by_capability(&self, capability: &str) -> ToadStoolResult<String> {
         let towers = self.remote_towers.read().await;
 

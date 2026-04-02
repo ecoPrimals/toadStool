@@ -284,9 +284,7 @@ impl CapabilityDomain {
     pub fn from_label(s: &str) -> Option<Self> {
         match s.to_ascii_lowercase().as_str() {
             "crypto" | "security" | "beardog" | "bear-dog" | "pki" => Some(Self::Security),
-            "coordination" | "orchestration" | "songbird" | "song-bird" => {
-                Some(Self::Coordination)
-            }
+            "coordination" | "orchestration" | "songbird" | "song-bird" => Some(Self::Coordination),
             "storage" | "nestgate" | "nest-gate" => Some(Self::Storage),
             "compute" | "toadstool" | "toad-stool" => Some(Self::Compute),
             "routing" | "squirrel" => Some(Self::Routing),
@@ -478,7 +476,10 @@ mod tests {
     #[test]
     fn test_capability_domain_display() {
         assert_eq!(format!("{}", CapabilityDomain::Security), "crypto");
-        assert_eq!(format!("{}", CapabilityDomain::Coordination), "coordination");
+        assert_eq!(
+            format!("{}", CapabilityDomain::Coordination),
+            "coordination"
+        );
     }
 
     #[test]

@@ -90,14 +90,22 @@ impl OptimizedResourceMonitor {
             // High load - sample more frequently
             let base_ms = self.config.base_sampling_interval.as_millis();
             let mult = self.config.high_load_multiplier;
-            #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+            #[allow(
+                clippy::cast_precision_loss,
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss
+            )]
             let ms = (base_ms as f64 * mult) as u64;
             *sampling_interval = Duration::from_millis(ms);
         } else if load < 0.2 {
             // Low load - sample less frequently
             let base_ms = self.config.base_sampling_interval.as_millis();
             let mult = self.config.low_load_multiplier;
-            #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+            #[allow(
+                clippy::cast_precision_loss,
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss
+            )]
             let ms = (base_ms as f64 * mult) as u64;
             *sampling_interval = Duration::from_millis(ms);
         } else {
@@ -133,9 +141,15 @@ mod tests {
             },
             memory: MemoryMetrics {
                 usage_percent: memory_percent,
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss
+                )] // synthetic test metrics; non-negative
                 used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss
+                )]
                 peak_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
             },
             ..Default::default()

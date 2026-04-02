@@ -16,12 +16,12 @@ use crate::coordination_integration::{
 
 /// Main distributed computing coordinator - uses capability-based coordination discovery
 pub struct DistributedCoordinator {
-    #[allow(
+    #[expect(
         dead_code,
         reason = "stored for future reconfiguration and capability queries"
     )]
     config: DistributedConfig,
-    #[allow(dead_code, reason = "stored for future capability-based routing")]
+    #[expect(dead_code, reason = "stored for future capability-based routing")]
     capabilities: Arc<RwLock<ToadStoolCapabilities>>,
     coordination_client: Option<Arc<CoordinationClient>>,
     standalone_executor: Arc<StandaloneExecutor>,
@@ -34,7 +34,7 @@ pub struct StandaloneExecutor {
 }
 
 #[derive(Debug)]
-#[allow(
+#[expect(
     dead_code,
     reason = "execution session tracking; cancel_token used for cancellation"
 )]
@@ -238,8 +238,7 @@ impl StandaloneExecutor {
         let mut active_executions = self.active_executions.write().await;
         let session = active_executions.remove(&execution_id).ok_or_else(|| {
             toadstool::ToadStoolError::execution(format!(
-                "Execution {} not found (already completed or never submitted)",
-                execution_id
+                "Execution {execution_id} not found (already completed or never submitted)"
             ))
         })?;
         drop(active_executions);

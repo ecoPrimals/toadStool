@@ -377,9 +377,9 @@ pub struct LoggingConfig {
 ///
 /// - **Initialization**: O(1) - Called once at startup
 /// - **Execute**: Variable - Depends on workload complexity
-/// - **get_capabilities**: O(1) - Should be fast (called frequently)
-/// - **supports_workload**: O(1) - Should be fast (called frequently)
-/// - **get_metrics**: O(1) - Should be fast (called for health checks)
+/// - **`get_capabilities`**: O(1) - Should be fast (called frequently)
+/// - **`supports_workload`**: O(1) - Should be fast (called frequently)
+/// - **`get_metrics`**: O(1) - Should be fast (called for health checks)
 /// - **Shutdown**: O(1) - Called once at teardown
 ///
 /// # Concurrency
@@ -396,7 +396,7 @@ pub struct LoggingConfig {
 /// );
 /// ```
 ///
-/// Implementations must use internal synchronization (Mutex, RwLock, etc.) if needed.
+/// Implementations must use internal synchronization (Mutex, `RwLock`, etc.) if needed.
 ///
 /// # Error Handling
 ///
@@ -460,7 +460,7 @@ pub struct LoggingConfig {
 ///
 /// # Performance Note: Native Async Traits
 ///
-/// This trait uses native async Rust (`Pin<Box<dyn Future<...>>>`) instead of the async_trait macro.
+/// This trait uses native async Rust (`Pin<Box<dyn Future<...>>>`) instead of the `async_trait` macro.
 /// This provides zero-cost abstraction and improved performance.
 ///
 /// **Benefits**: Zero macro overhead, faster compilation, more efficient stack usage

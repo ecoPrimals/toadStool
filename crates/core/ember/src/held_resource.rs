@@ -4,7 +4,7 @@
 //!
 //! [`HeldResource`] is the core type that ember manages. It pairs an
 //! exclusive [`ResourceHandle`] with persistent [`MetadataStore`] and
-//! an optional event channel for kernel notifications (e.g. VFIO REQ_IRQ,
+//! an optional event channel for kernel notifications (e.g. VFIO `REQ_IRQ`,
 //! USB disconnect, HSM tamper alert).
 
 use std::time::Instant;

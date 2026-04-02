@@ -1,49 +1,49 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! WebGPU unified memory backend
+//! `WebGPU` unified memory backend
 //!
 //! **Status**: ✅ IMPLEMENTED - Pure Rust, vendor-agnostic
 //!
-//! This provides unified memory via WebGPU's mappable buffers.
+//! This provides unified memory via `WebGPU`'s mappable buffers.
 //! It's the sovereignty-first backend, using pure Rust with wgpu.
 //!
 //! # Known Limitations
 //!
-//! WebGPU's safe API doesn't expose raw pointers like Vulkan/OpenCL.
+//! `WebGPU`'s safe API doesn't expose raw pointers like Vulkan/`OpenCL`.
 //! Instead, it uses `BufferSlice` with `get_mapped_range()`. This means:
 //!
 //! - **CPU pointer**: Returns sentinel value (buffer address)
 //! - **Device pointer**: Returns opaque handle (buffer address)
-//! - **Actual access**: Must use wgpu's BufferSlice API
+//! - **Actual access**: Must use wgpu's `BufferSlice` API
 //!
-//! For true zero-copy with WebGPU, applications should use wgpu's
+//! For true zero-copy with `WebGPU`, applications should use wgpu's
 //! native API directly. This backend provides compatibility with
 //! the unified memory interface.
 //!
 //! # Future Work
 //!
 //! - Implement buffer pool with persistent mappings
-//! - Add wgpu-specific fast path for direct BufferSlice access
+//! - Add wgpu-specific fast path for direct `BufferSlice` access
 //! - Integrate with ToadStool's kernel execution system
 
 use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, UnifiedMemoryBackend, WebGpuAllocation},
-    types::*,
+    types::{BackendType, MemoryFlags, UnifiedMemoryCapabilities},
 };
 use async_trait::async_trait;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use wgpu;
 
-/// WebGPU unified memory backend
+/// `WebGPU` unified memory backend
 ///
 /// Uses `wgpu` for pure Rust, vendor-agnostic GPU access.
-/// Provides unified memory via MAP_READ + MAP_WRITE buffers.
+/// Provides unified memory via `MAP_READ` + `MAP_WRITE` buffers.
 pub struct WebGpuBackend {
     /// wgpu device
     device: Arc<wgpu::Device>,
 
     /// wgpu queue (for future sync operations)
-    #[allow(dead_code, reason = "reserved for future sync operations")]
+    #[expect(dead_code, reason = "reserved for future sync operations")]
     queue: Arc<wgpu::Queue>,
 
     /// Backend capabilities
@@ -54,7 +54,12 @@ pub struct WebGpuBackend {
 }
 
 impl WebGpuBackend {
-    /// Create new WebGPU backend with given device and queue
+    /// Create new `WebGPU` backend with given device and queue
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future limit validation failures.
+    #[allow(clippy::cast_possible_truncation)] // wgpu limits fit host `usize` on supported targets
     pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> ToadStoolResult<Self> {
         let limits = device.limits();
 
@@ -76,7 +81,7 @@ impl WebGpuBackend {
         })
     }
 
-    /// Initialize WebGPU with automatic adapter selection
+    /// Initialize `WebGPU` with automatic adapter selection
     async fn init_device() -> ToadStoolResult<(wgpu::Device, wgpu::Queue)> {
         // Create instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -120,7 +125,7 @@ impl WebGpuBackend {
         Ok((device, queue))
     }
 
-    /// Check if WebGPU is available on this system
+    /// Check if `WebGPU` is available on this system
     fn check_availability() -> bool {
         // Quick sync check - just see if we can create an instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -160,6 +165,7 @@ impl UnifiedMemoryBackend for WebGpuBackend {
         &self.capabilities
     }
 
+    #[allow(clippy::cast_possible_truncation)] // compare against wgpu device limits
     async fn allocate_unified(
         &self,
         size: usize,

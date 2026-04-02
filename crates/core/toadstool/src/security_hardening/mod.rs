@@ -77,6 +77,10 @@ impl SecurityHardeningManager {
     }
 
     /// Check security context
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the client is banned, rate limited, or the context fails validation.
     pub async fn check_security_context(
         &self,
         client_id: &str,
@@ -136,6 +140,10 @@ impl SecurityHardeningManager {
     }
 
     /// Validate input
+    ///
+    /// # Errors
+    ///
+    /// Returns error if validation is enabled and the input violates rules.
     pub fn validate_input(&self, input: &str) -> ToadStoolResult<()> {
         if self.config.enable_input_validation {
             self.input_validator.validate_input(input)

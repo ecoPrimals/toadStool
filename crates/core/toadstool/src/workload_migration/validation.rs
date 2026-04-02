@@ -63,7 +63,7 @@ pub fn validate_recommendation(recommendation: &MigrationRecommendation) -> bool
 pub struct ResourceRequirements {
     /// Minimum available CPU cores at destination.
     pub min_cpu_cores: u32,
-    /// Minimum available memory in MiB at destination.
+    /// Minimum available memory in `MiB` at destination.
     pub min_memory_mib: u64,
     /// Whether the workload requires a GPU at the destination.
     pub requires_gpu: bool,
@@ -240,6 +240,10 @@ impl PreMigrationSnapshot {
 ///
 /// Convenience wrapper over `validate_preflight` that derives resource
 /// requirements from the workload spec automatically.
+///
+/// # Errors
+///
+/// Returns error if pre-flight validation fails against the derived requirements.
 pub fn validate_migration(
     recommendation: &MigrationRecommendation,
     spec: &WorkloadSpec,

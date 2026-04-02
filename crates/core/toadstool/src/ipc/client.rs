@@ -209,6 +209,10 @@ impl IpcClient {
     /// Connect with smart fallback
     ///
     /// **Deep Debt**: Tries all transports in order, returns first success
+    ///
+    /// # Errors
+    ///
+    /// Returns error if every endpoint fails or no endpoints are configured.
     pub async fn connect(&self) -> ToadStoolResult<IpcStream> {
         let mut last_error = None;
 

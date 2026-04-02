@@ -31,13 +31,17 @@ use tokio::net::{UnixListener, UnixStream};
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Returns error if the parent directory cannot be created, a stale socket cannot be removed, or binding fails.
 pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
     let path = path.as_ref();
 
-    // Create parent directory if needed
+    // Create parent directory if needed — async to avoid blocking the runtime
     if let Some(parent) = path.parent() {
         if !parent.exists() {
-            std::fs::create_dir_all(parent).map_err(|e| {
+            tokio::fs::create_dir_all(parent).await.map_err(|e| {
                 ToadStoolError::integration(format!(
                     "Failed to create socket directory {}: {}",
                     parent.display(),
@@ -49,7 +53,7 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
 
     // Remove stale socket if exists
     if path.exists() {
-        std::fs::remove_file(path).map_err(|e| {
+        tokio::fs::remove_file(path).await.map_err(|e| {
             ToadStoolError::integration(format!(
                 "Failed to remove stale socket {}: {}",
                 path.display(),
@@ -59,18 +63,50 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
     }
 
     // Bind socket
-    UnixListener::bind(path).map_err(|e| {
+    let listener = UnixListener::bind(path).map_err(|e| {
         ToadStoolError::integration(format!(
             "Failed to bind Unix socket {}: {}",
             path.display(),
             e
         ))
-    })
+    })?;
+
+    // Per CAPABILITY_BASED_DISCOVERY_STANDARD v1.1: create capability
+    // symlinks so peers can discover by capability name rather than
+    // primal identity. Best-effort — failure doesn't block binding.
+    create_capability_symlinks(path).await;
+
+    Ok(listener)
+}
+
+/// Create capability symlinks pointing to the primal socket.
+///
+/// Per wateringHole v1.1 SHOULD: `compute.sock` → `toadstool.sock` so
+/// peers discover by capability (`compute`) not primal name (`toadstool`).
+async fn create_capability_symlinks(socket_path: &Path) {
+    let Some(parent) = socket_path.parent() else {
+        return;
+    };
+
+    for capability in &["compute"] {
+        let symlink = parent.join(format!("{capability}.sock"));
+        if symlink.exists() {
+            continue;
+        }
+        let target = socket_path.to_path_buf();
+        let link = symlink.clone();
+        let _ =
+            tokio::task::spawn_blocking(move || std::os::unix::fs::symlink(&target, &link)).await;
+    }
 }
 
 /// Connect to Unix socket
 ///
 /// **Deep Debt**: Async, timeout-aware
+///
+/// # Errors
+///
+/// Returns error if the connection fails.
 pub async fn connect<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixStream> {
     let path = path.as_ref();
 
@@ -87,7 +123,7 @@ pub async fn connect<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixStream> {
 ///
 /// **Deep Debt**: Platform-agnostic, ecoBin v2.0 compliant
 ///
-/// Uses `platform_paths` for proper XDG and temp_dir resolution.
+/// Uses `platform_paths` for proper XDG and `temp_dir` resolution.
 /// No hardcoded paths like `/run/user/` or `/tmp/`.
 pub fn default_path() -> PathBuf {
     toadstool_common::platform_paths::toadstool_socket()

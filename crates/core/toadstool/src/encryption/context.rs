@@ -44,6 +44,10 @@ impl EncryptionContext {
     /// Discover and set crypto provider
     ///
     /// **Capability-based**: Query registry for crypto capability
+    ///
+    /// # Errors
+    ///
+    /// Returns error if provider lookup fails.
     pub async fn discover_provider(
         &mut self,
         registry: &CryptoProviderRegistry,
@@ -64,6 +68,10 @@ impl EncryptionContext {
     /// Decrypt input data
     ///
     /// **Design**: Transparent decryption, returns raw bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns error if security level is too low, no provider is configured, key fetch fails, or decryption fails.
     pub async fn decrypt_input(&mut self, encrypted: &EncryptedInput) -> ToadStoolResult<Vec<u8>> {
         if encrypted.security_level < self.config.min_security_level {
             return Err(ToadStoolError::security(format!(
@@ -92,6 +100,10 @@ impl EncryptionContext {
     /// Encrypt output data
     ///
     /// **Design**: Symmetric encryption using same key
+    ///
+    /// # Errors
+    ///
+    /// Returns error if result encryption is disabled, no provider is configured, key generation fails, or encryption fails.
     pub async fn encrypt_output(&mut self, data: &[u8]) -> ToadStoolResult<EncryptedOutput> {
         if !self.config.encrypt_results {
             return Err(ToadStoolError::configuration(

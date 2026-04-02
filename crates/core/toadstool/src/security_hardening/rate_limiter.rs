@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Rate limiting for security hardening
 //!
-//! Extracted from security_hardening.rs for modularity (Feb 14, 2026).
+//! Extracted from `security_hardening.rs` for modularity (Feb 14, 2026).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -48,6 +48,10 @@ impl RateLimiter {
     }
 
     /// Check if client is allowed to make request
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok` with `true` or `false`.
     #[allow(clippy::significant_drop_tightening)] // client_data borrows from lock for many operations
     pub async fn check_rate_limit(&self, client_id: &str) -> ToadStoolResult<bool> {
         let mut clients = self.client_requests.write().await;

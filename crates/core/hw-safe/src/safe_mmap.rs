@@ -137,6 +137,11 @@ impl SafeMmapRegion {
     /// Get a [`VolatileMmio`] view for bounds-checked volatile register access.
     ///
     /// The returned view borrows this region — the mapping stays alive.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `memmap2` returned a null pointer, which should never happen
+    /// after a successful `map_raw` call.
     #[must_use]
     pub fn as_volatile(&self) -> VolatileMmio<'_> {
         // SAFETY: mmap is valid (from a successful map_raw call). as_mut_ptr
@@ -153,6 +158,11 @@ impl SafeMmapRegion {
 
     /// Raw pointer to the mapped region. Use [`as_volatile`](Self::as_volatile)
     /// for safe register access instead.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `memmap2` returned a null pointer, which should never happen
+    /// after a successful `map_raw` call.
     #[must_use]
     pub fn as_ptr(&self) -> NonNull<u8> {
         NonNull::new(self.mmap.as_mut_ptr())

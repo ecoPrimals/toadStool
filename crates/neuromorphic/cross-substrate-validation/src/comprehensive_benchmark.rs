@@ -27,15 +27,15 @@ pub struct WorkloadSpec {
 /// Workload category for grouping benchmark results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkloadCategory {
-    /// Simple per-element operations (ReLU, Tanh, etc.).
+    /// Simple per-element operations (`ReLU`, `Tanh`, etc.).
     ElementWise,
     /// Aggregate operations (sum, max, etc.).
     Reduction,
     /// Gather/scatter, transpose.
     MemoryBound,
-    /// MatMul, convolution.
+    /// `MatMul`, convolution.
     ComputeBound,
-    /// LayerNorm, BatchNorm.
+    /// `LayerNorm`, `BatchNorm`.
     Normalization,
     /// Complex multi-stage operations.
     Mixed,

@@ -16,12 +16,17 @@ use crate::{
 
 use super::dos::DOSInterface;
 #[cfg(feature = "embedded-placeholder-impls")]
-use super::emulators::*;
+use super::emulators::{Emulator6502, EmulatorZ80};
 use super::managers::{MemoryLayoutManager, PeripheralManager};
 #[cfg(feature = "embedded-placeholder-impls")]
-use super::programmers::*;
-use super::toolchains::*;
-use super::types::*;
+use super::programmers::{EPROMProgrammer, GenericProgrammer};
+use super::toolchains::{
+    Toolchain6502, Toolchain8051, Toolchain8080, Toolchain8086, Toolchain68000, ToolchainZ80,
+};
+use super::types::{
+    EmbeddedEmulator, EmbeddedJob, EmbeddedJobType, EmbeddedLanguage, EmbeddedToolchain,
+    OptimizationLevel, ProgrammerInterface,
+};
 
 /// 8-bit Microcontroller Adapter
 #[derive(Debug)]

@@ -48,6 +48,10 @@ impl PluginManager {
     }
 
     /// Register a plugin from manifest
+    ///
+    /// # Errors
+    ///
+    /// Returns error if plugins are disabled, limits are reached, the manifest is invalid, or dependencies are unsatisfied.
     pub fn register_plugin(&mut self, manifest: PluginManifest) -> Result<(), PluginError> {
         if !self.config.enabled {
             return Err(PluginError::ConfigError(
@@ -84,6 +88,10 @@ impl PluginManager {
     }
 
     /// Load a plugin
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the plugin is not registered.
     pub fn load_plugin(&mut self, name: &str) -> Result<(), PluginError> {
         let plugin = self
             .plugins
@@ -109,6 +117,10 @@ impl PluginManager {
     }
 
     /// Unload a plugin
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the plugin is not registered.
     pub fn unload_plugin(&mut self, name: &str) -> Result<(), PluginError> {
         let plugin = self
             .plugins

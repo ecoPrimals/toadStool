@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(clippy::doc_markdown)]
 //! Coverage expansion S162 — hw_learn handler routes, tarpc server, unibin paths
 //!
 //! Targets: auto_init.rs, hw_learn module dispatch, tarpc_server.rs, unibin paths

@@ -15,8 +15,16 @@ pub trait PluginCapability: Send + Sync {
     fn capability_version(&self) -> &str;
 
     /// Initialize the capability
+    ///
+    /// # Errors
+    ///
+    /// Returns error if initialization fails.
     fn initialize(&mut self) -> Result<(), String>;
 
     /// Cleanup the capability
+    ///
+    /// # Errors
+    ///
+    /// Returns error if cleanup fails.
     fn cleanup(&mut self) -> Result<(), String>;
 }

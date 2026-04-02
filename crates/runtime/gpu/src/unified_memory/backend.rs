@@ -2,7 +2,9 @@
 #![allow(unsafe_code)] // Unsafe Send/Sync impls for GPU allocation handles
 //! Backend trait for unified memory implementations
 
-use crate::unified_memory::types::*;
+use crate::unified_memory::types::{
+    AccessPattern, BackendType, MemoryFlags, UnifiedMemoryCapabilities,
+};
 use async_trait::async_trait;
 use toadstool::error::ToadStoolResult;
 
@@ -15,10 +17,10 @@ pub enum BackendAllocation {
     /// Vulkan memory allocation
     Vulkan(VulkanAllocation),
 
-    /// OpenCL SVM allocation
+    /// `OpenCL` SVM allocation
     OpenCL(OpenClAllocation),
 
-    /// WebGPU buffer allocation
+    /// `WebGPU` buffer allocation
     WebGpu(WebGpuAllocation),
 
     /// CPU shared memory allocation
@@ -45,7 +47,7 @@ pub struct VulkanAllocation {
 unsafe impl Send for VulkanAllocation {}
 unsafe impl Sync for VulkanAllocation {}
 
-/// OpenCL SVM allocation details
+/// `OpenCL` SVM allocation details
 #[derive(Debug)]
 pub struct OpenClAllocation {
     /// SVM pointer (unified CPU/GPU address)
@@ -54,7 +56,7 @@ pub struct OpenClAllocation {
     /// Size in bytes
     pub size: usize,
 
-    /// OpenCL context handle (for cleanup)
+    /// `OpenCL` context handle (for cleanup)
     pub context_handle: u64,
 }
 
@@ -65,7 +67,7 @@ pub struct OpenClAllocation {
 unsafe impl Send for OpenClAllocation {}
 unsafe impl Sync for OpenClAllocation {}
 
-/// WebGPU allocation details
+/// `WebGPU` allocation details
 pub struct WebGpuAllocation {
     /// Actual wgpu buffer (kept alive)
     pub buffer: Option<wgpu::Buffer>,
@@ -130,11 +132,11 @@ impl CpuAllocation {
 /// Unified memory backend trait
 ///
 /// Implementations provide vendor-specific unified memory allocation
-/// and management via open standards (Vulkan, OpenCL, WebGPU).
+/// and management via open standards (Vulkan, `OpenCL`, `WebGPU`).
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait UnifiedMemoryBackend: Send + Sync {
-    /// Backend name (e.g., "Vulkan", "OpenCL", "WebGPU", "CPU")
+    /// Backend name (e.g., "Vulkan", "`OpenCL`", "`WebGPU`", "CPU")
     fn name(&self) -> &'static str;
 
     /// Backend type
@@ -188,7 +190,7 @@ pub trait UnifiedMemoryBackend: Send + Sync {
 
     /// Unmap CPU pointer (if needed)
     ///
-    /// Some backends (WebGPU) require explicit unmapping.
+    /// Some backends (`WebGPU`) require explicit unmapping.
     ///
     /// # Arguments
     ///

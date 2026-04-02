@@ -446,8 +446,9 @@ fn test_circuit_breaker_state_variants() {
 #[test]
 fn test_crypto_validator_construction() {
     let v = CryptoValidator::new();
-    let _ = v;
-    let d = CryptoValidator;
+    assert!(v.validate_signature(b"sig", std::time::SystemTime::now()));
+    assert!(!v.validate_signature(b"", std::time::SystemTime::now()));
+    let d = CryptoValidator::default();
     let _ = d;
 }
 
@@ -455,16 +456,19 @@ fn test_crypto_validator_construction() {
 fn test_delegation_validator_construction() {
     let v = DelegationValidator::new();
     let _ = v;
-    let d = DelegationValidator;
+    let d = DelegationValidator::default();
     let _ = d;
 }
 
 #[test]
 fn test_permission_revocation_list_construction() {
-    let v = PermissionRevocationList::new();
-    let _ = v;
-    let d = PermissionRevocationList;
-    let _ = d;
+    let mut v = PermissionRevocationList::new();
+    let id = uuid::Uuid::new_v4();
+    assert!(!v.is_revoked(&id));
+    v.revoke(id);
+    assert!(v.is_revoked(&id));
+    let d = PermissionRevocationList::default();
+    assert!(!d.is_revoked(&id));
 }
 
 #[test]

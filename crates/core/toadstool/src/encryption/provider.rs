@@ -109,6 +109,10 @@ impl CryptoProviderRegistry {
     /// Register a crypto provider
     ///
     /// **Design**: Providers announce themselves, no pre-configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the provider ID is already registered.
     pub async fn register(&self, provider: Arc<dyn CryptoProvider>) -> ToadStoolResult<()> {
         let provider_id = provider.provider_id().to_string();
         let mut providers = self.providers.write().await;
@@ -126,6 +130,10 @@ impl CryptoProviderRegistry {
     }
 
     /// Unregister a provider
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `provider_id` is not registered.
     pub async fn unregister(&self, provider_id: &str) -> ToadStoolResult<()> {
         self.providers
             .write()
@@ -140,6 +148,10 @@ impl CryptoProviderRegistry {
     /// Find provider matching capability
     ///
     /// **Design**: Capability-based lookup, returns best match
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     pub async fn find_provider(
         &self,
         capability: &CryptoCapability,
@@ -169,6 +181,10 @@ impl CryptoProviderRegistry {
     }
 
     /// Find all providers matching capability
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     pub async fn find_all_providers(
         &self,
         capability: &CryptoCapability,
@@ -186,6 +202,10 @@ impl CryptoProviderRegistry {
     }
 
     /// Get provider by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `provider_id` is not registered.
     pub async fn get_provider(
         &self,
         provider_id: &str,

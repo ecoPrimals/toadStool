@@ -4,7 +4,7 @@
 use super::UnifiedBuffer;
 use crate::unified_memory::{
     backend::{BackendAllocation, UnifiedMemoryBackend},
-    types::*,
+    types::{BufferId, SyncState, UnifiedBufferMetadata, UnifiedMemoryStats},
 };
 use std::collections::HashMap;
 use std::ptr::NonNull;

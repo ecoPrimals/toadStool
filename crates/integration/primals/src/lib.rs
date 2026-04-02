@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(clippy::must_use_candidate)]
+#![allow(
+    clippy::must_use_candidate,
+    clippy::match_same_arms,
+    clippy::doc_markdown
+)]
 
 //! # Universal Primal Integration Framework
 //!

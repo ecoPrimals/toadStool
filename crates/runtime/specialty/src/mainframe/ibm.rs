@@ -7,7 +7,7 @@ use tokio::sync::{Mutex, RwLock};
 use tracing::info;
 use uuid::Uuid;
 
-use super::types::*;
+use super::types::{COBOLCompiler, DatasetManager, JCLGenerator, MainframeJob, Terminal3270};
 use crate::{JobOutput, JobStatus, SpecialtyRuntimeConfig};
 use crate::{
     LegacyAdapter, LegacyJob, LegacySystemType, MainframeConfig, SystemInfo, ToadStoolError,
@@ -60,6 +60,7 @@ impl IBMMainframeAdapter {
     }
 
     /// Submit JCL job
+    #[allow(clippy::cast_possible_truncation)] // label uses low bits of UUID only
     async fn submit_jcl_job(&self, jcl: &str) -> ToadStoolResult<Uuid> {
         let job_id = Uuid::new_v4();
         let job_name = format!("JOB{:08X}", job_id.as_u128() as u32);

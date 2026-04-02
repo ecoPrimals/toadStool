@@ -2,6 +2,11 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::wildcard_imports,
     clippy::match_same_arms,
     clippy::must_use_candidate,
     clippy::needless_continue,

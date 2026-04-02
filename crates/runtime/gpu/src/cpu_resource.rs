@@ -3,7 +3,13 @@
 //!
 //! Treats CPU cores as a legitimate compute resource, not just a "fallback"
 
-use crate::universal::*;
+use crate::universal::{
+    BranchingEfficiency, CacheLevel, ComputeCapabilities, ComputeContext, ComputeRequirements,
+    ExecutionMetrics, KernelLanguage, MemoryAccessPattern, MemoryCapabilities, Operation,
+    OperationCapabilities, ParallelismCapabilities, ParallelismModel, PerformanceCapabilities,
+    PrecisionCapabilities, UniversalComputeResource, UniversalKernel, UniversalWorkload,
+    WorkloadResult,
+};
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,6 +34,10 @@ pub struct CpuComputeResource {
 
 impl CpuComputeResource {
     /// Create new CPU compute resource
+    ///
+    /// # Errors
+    ///
+    /// Returns when the Rayon thread pool cannot be constructed.
     pub fn new() -> ToadStoolResult<Self> {
         let num_cores = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
@@ -56,6 +66,7 @@ impl CpuComputeResource {
     }
 
     /// Detect CPU capabilities
+    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // heuristic perf model
     fn detect_cpu_capabilities(num_cores: usize) -> ComputeCapabilities {
         ComputeCapabilities {
             parallelism: ParallelismCapabilities {
@@ -227,6 +238,11 @@ impl UniversalComputeResource for CpuComputeResource {
         *self.utilization.read().await
     }
 
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation
+    )] // heuristic timing model
     fn estimate_execution_time(&self, requirements: &ComputeRequirements) -> Duration {
         // Simple CPU performance model
         let ops_per_thread = requirements.min_parallel_threads.max(1);
@@ -480,6 +496,7 @@ impl Default for CpuComputeResource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::universal::{ComputeBuffer, OptimizationHints, Precision};
 
     #[test]
     fn test_cpu_resource_creation() {

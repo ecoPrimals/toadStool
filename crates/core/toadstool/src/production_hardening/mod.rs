@@ -88,6 +88,10 @@ impl ProductionHardeningManager {
 
     /// Start background tasks: resource-leak cleanup loop and memory-pressure
     /// monitoring. Idempotent — safe to call multiple times.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         if self.config.enable_leak_detection {
             self.leak_detector.start_cleanup_task().await;

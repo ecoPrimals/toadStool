@@ -75,7 +75,7 @@ fn make_valid_permission(target: ExternalTarget) -> SecurityProviderPermission {
         valid_from: now - Duration::from_secs(3600),
         valid_until: now + Duration::from_secs(3600),
         crypto_proof: SecurityProof {
-            signature: vec![],
+            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
             algorithm: CryptoAlgorithm::Ed25519,
             public_key_id: "k1".to_string(),
             timestamp: now,

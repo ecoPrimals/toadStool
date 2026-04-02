@@ -51,11 +51,11 @@ pub struct WasmRuntimeEngine {
     metrics: Arc<MetricsCollector>,
 
     /// Module cache (reserved for future use)
-    #[allow(dead_code, reason = "preserved for future module caching")]
+    #[expect(dead_code, reason = "preserved for future module caching")]
     cache: Arc<ModuleCache>,
 
     /// Module loader (reserved for future use)
-    #[allow(dead_code, reason = "preserved for future loader features")]
+    #[expect(dead_code, reason = "preserved for future loader features")]
     loader: Arc<ModuleLoader>,
 
     /// Module executor

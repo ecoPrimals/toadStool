@@ -38,6 +38,10 @@ impl ComputeResourceCoordinator {
     }
 
     /// Initialize resource pool for device
+    ///
+    /// # Errors
+    ///
+    /// Currently always succeeds; reserved for future validation failures.
     pub async fn initialize_device_pool(
         &self,
         device: &UniversalComputeDevice,
@@ -58,6 +62,10 @@ impl ComputeResourceCoordinator {
     }
 
     /// Select optimal device for workload
+    ///
+    /// # Errors
+    ///
+    /// Returns when the load balancer cannot select a device (e.g. empty list).
     pub async fn select_device(
         &self,
         available_devices: &[DeviceId],
@@ -68,6 +76,10 @@ impl ComputeResourceCoordinator {
     }
 
     /// Allocate resources for session
+    ///
+    /// # Errors
+    ///
+    /// Returns when the device pool is missing or lacks memory or compute units.
     pub async fn allocate_resources(
         &self,
         device_id: &DeviceId,
@@ -111,6 +123,10 @@ impl ComputeResourceCoordinator {
     }
 
     /// Release resources for session
+    ///
+    /// # Errors
+    ///
+    /// Returns when the device pool is not found for `device_id`.
     pub async fn release_resources(
         &self,
         device_id: &DeviceId,
@@ -133,6 +149,7 @@ impl ComputeResourceCoordinator {
     }
 
     /// Get resource pool statistics
+    #[allow(clippy::cast_precision_loss)] // utilization ratios for display
     pub async fn get_pool_stats(&self, device_id: &DeviceId) -> Option<ResourcePoolStats> {
         let pools = self.resource_pools.read().await;
         pools.get(device_id).map(|pool| ResourcePoolStats {
@@ -224,6 +241,7 @@ impl LoadBalancer for WeightedRoundRobinBalancer {
         self.device_weights.insert(device_id.clone(), weight);
     }
 
+    #[allow(clippy::cast_precision_loss)] // stats map uses f64 for JSON-friendly values
     fn get_statistics(&self) -> HashMap<String, f64> {
         let mut stats = HashMap::new();
         stats.insert(

@@ -20,7 +20,7 @@ pub struct RealtimeConfig {
 /// Real-time operating systems
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RealtimeOS {
-    /// VxWorks
+    /// `VxWorks`
     VxWorks,
     /// QNX
     QNX,
@@ -28,7 +28,7 @@ pub enum RealtimeOS {
     RT11,
     /// RTOS-32
     RTOS32,
-    /// FreeRTOS
+    /// `FreeRTOS`
     FreeRTOS,
     /// embOS
     EmbOS,

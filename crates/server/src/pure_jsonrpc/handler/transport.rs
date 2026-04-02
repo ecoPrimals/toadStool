@@ -358,7 +358,10 @@ mod tests {
         let mut rx = LoopbackTransport::new("rx", TransportDirection::Rx);
         rx.buf = b"chunk".to_vec();
         router.register(Box::new(rx));
-        router.register(Box::new(LoopbackTransport::new("tx", TransportDirection::Tx)));
+        router.register(Box::new(LoopbackTransport::new(
+            "tx",
+            TransportDirection::Tx,
+        )));
     }
 
     #[tokio::test]

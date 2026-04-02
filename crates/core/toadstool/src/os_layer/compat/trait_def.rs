@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Compatibility layer trait definition.
 //!
-//! Canonical definition of the CompatibilityLayer trait. All OS-specific
+//! Canonical definition of the `CompatibilityLayer` trait. All OS-specific
 //! implementations use this trait.
 
 use std::future::Future;
@@ -11,10 +11,10 @@ use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 
 /// Compatibility layer trait for different operating systems
 ///
-/// This is the canonical definition of the CompatibilityLayer trait.
+/// This is the canonical definition of the `CompatibilityLayer` trait.
 /// All OS-specific compatibility implementations should use this trait.
 ///
-/// Migrated from async_trait to native async for zero-cost abstraction.
+/// Migrated from `async_trait` to native async for zero-cost abstraction.
 pub trait CompatibilityLayer: Send + Sync {
     /// Get the name of this compatibility layer
     fn name(&self) -> &str;

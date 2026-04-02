@@ -123,6 +123,10 @@ impl OSLayerManager {
     }
 
     /// Initialize the OS layer manager
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         info!("Initializing OS layer manager");
 
@@ -157,6 +161,10 @@ impl OSLayerManager {
     }
 
     /// Execute a job with OS layer compatibility
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the selected compatibility layer fails to execute the request.
     pub async fn execute_with_os_layer(
         &self,
         _job: &UniversalJob,

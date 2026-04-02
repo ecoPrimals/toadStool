@@ -18,7 +18,7 @@ use std::time::Duration;
 ///
 /// Deep Debt: These are NOT hardcoded - they're hardware constants
 /// that are part of the Akida AKD1000 specification.
-#[allow(
+#[expect(
     dead_code,
     reason = "hardware register definitions used in future driver phases"
 )]

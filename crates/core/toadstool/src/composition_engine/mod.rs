@@ -41,7 +41,9 @@ mod estimators;
 mod evaluators;
 
 use crate::ToadStoolResult;
-use crate::composition_constraints::*;
+use crate::composition_constraints::{
+    CompositionRequest, ConstraintEvaluation, ConstraintSatisfaction,
+};
 use crate::fractal_integration::FractalRuntime;
 use crate::layer_adaptation::AdaptedCapabilities;
 use std::collections::HashMap;
@@ -81,12 +83,20 @@ pub struct EngineStats {
 
 impl CompositionEngine {
     /// Create engine from current runtime
+    ///
+    /// # Errors
+    ///
+    /// Returns error if fractal runtime initialization fails.
     pub async fn from_runtime() -> ToadStoolResult<Self> {
         let runtime = FractalRuntime::init().await?;
         Self::new(Arc::new(runtime))
     }
 
     /// Create engine with specific runtime
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future validation.
     pub fn new(runtime: Arc<FractalRuntime>) -> ToadStoolResult<Self> {
         let capabilities = runtime.capabilities().clone();
 
@@ -100,6 +110,10 @@ impl CompositionEngine {
     /// Evaluate a composition request
     ///
     /// Returns detailed evaluation showing which constraints are satisfied.
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     pub async fn evaluate(
         &self,
         request: &CompositionRequest,

@@ -34,59 +34,79 @@ impl CoralReefClient {
         }
     }
 
-    /// Attempt to discover and connect to coralReef.
+    /// Attempt to discover a shader compiler via capability-based discovery.
     ///
-    /// Discovery order:
-    /// 1. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit socket path)
-    /// 2. `CORALREEF_SOCKET` env var (socket path — preferred over deprecated `CORALREEF_URL`)
-    /// 3. `CORALREEF_URL` env var (deprecated: treated as socket path, not HTTP)
-    /// 4. XDG runtime dir manifest: `$XDG_RUNTIME_DIR/ecoPrimals/coralreef-core.json`
-    /// 5. Socket directory scan: `$XDG_RUNTIME_DIR/biomeos/coralreef*.sock` (matches
-    ///    any coralReef naming variant, e.g. `coralreef-core-default.sock`)
-    /// 6. ecoPrimals socket fallback: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
+    /// Per `wateringHole/CAPABILITY_BASED_DISCOVERY_STANDARD.md`, toadStool
+    /// discovers the "shader" capability, not a specific primal. The caller
+    /// never needs to know that coralReef is the provider.
+    ///
+    /// Discovery tiers:
+    /// 1. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit override)
+    /// 2. Capability socket: `$XDG_RUNTIME_DIR/biomeos/shader.sock` (standard)
+    /// 3. ecoPrimals capability: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
+    /// 4. Legacy identity fallback: `CORALREEF_SOCKET` env / manifest / name scan
     async fn discover() -> Option<UnixJsonRpcClient> {
+        // All filesystem probing runs on the blocking pool so we never
+        // stall the async runtime on directory scans or manifest reads.
+        tokio::task::spawn_blocking(Self::discover_blocking)
+            .await
+            .ok()
+            .flatten()
+    }
+
+    fn discover_blocking() -> Option<UnixJsonRpcClient> {
+        // Tier 0: Explicit override (always wins)
         if let Ok(addr) = std::env::var("TOADSTOOL_SHADER_COMPILER_ADDR") {
             let path = PathBuf::from(&addr);
             if path.exists() {
-                debug!(path = %path.display(), "coralReef discovered via TOADSTOOL_SHADER_COMPILER_ADDR");
+                debug!(path = %path.display(), "shader compiler discovered via TOADSTOOL_SHADER_COMPILER_ADDR");
                 return Some(UnixJsonRpcClient::new(path));
             }
         }
 
+        let runtime_dir = std::env::var("XDG_RUNTIME_DIR").ok()?;
+        let runtime = PathBuf::from(&runtime_dir);
+        let biomeos = runtime.join("biomeos");
+
+        // Tier 2: Capability-named socket (per discovery standard v1.1)
+        let capability_sock = biomeos.join("shader.sock");
+        if capability_sock.exists() {
+            debug!(path = %capability_sock.display(), "shader compiler discovered via capability socket");
+            return Some(UnixJsonRpcClient::new(capability_sock));
+        }
+
+        // Tier 3: ecoPrimals capability socket
+        let eco_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
+        if eco_sock.exists() {
+            debug!(path = %eco_sock.display(), "shader compiler discovered via ecoPrimals capability socket");
+            return Some(UnixJsonRpcClient::new(eco_sock));
+        }
+
+        // Tier 4: Legacy identity-based fallbacks (backward compat)
         for env_name in ["CORALREEF_SOCKET", "CORALREEF_URL"] {
             if let Ok(val) = std::env::var(env_name) {
                 let path = PathBuf::from(&val);
                 if path.exists() {
-                    debug!(path = %path.display(), env = env_name, "coralReef discovered via env");
+                    debug!(path = %path.display(), env = env_name, "shader compiler discovered via legacy env");
                     return Some(UnixJsonRpcClient::new(path));
                 }
             }
         }
 
-        if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-            let runtime = PathBuf::from(&runtime_dir);
-
-            let manifest = runtime.join("ecoPrimals").join("coralreef-core.json");
-            if let Some(socket) = read_socket_from_manifest(&manifest)
-                && socket.exists()
-            {
-                debug!(path = %socket.display(), "coralReef discovered via XDG manifest");
-                return Some(UnixJsonRpcClient::new(socket));
-            }
-
-            if let Some(sock) = scan_dir_for_socket(&runtime.join("biomeos"), "coralreef") {
-                debug!(path = %sock.display(), "coralReef discovered via biomeos socket directory scan");
-                return Some(UnixJsonRpcClient::new(sock));
-            }
-
-            let capability_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
-            if capability_sock.exists() {
-                debug!(path = %capability_sock.display(), "coralReef discovered via ecoPrimals capability socket");
-                return Some(UnixJsonRpcClient::new(capability_sock));
-            }
+        let manifest = runtime.join("ecoPrimals").join("coralreef-core.json");
+        if let Some(socket) = read_socket_from_manifest(&manifest)
+            && socket.exists()
+        {
+            debug!(path = %socket.display(), "shader compiler discovered via legacy manifest");
+            return Some(UnixJsonRpcClient::new(socket));
         }
 
-        debug!("coralReef not discovered — shader compilation will use naga-only pipeline");
+        if let Some(sock) = scan_dir_for_socket(&biomeos, "coralreef") {
+            debug!(path = %sock.display(), "shader compiler discovered via legacy socket scan");
+            return Some(UnixJsonRpcClient::new(sock));
+        }
+
+        debug!("No shader compiler discovered — compilation will use naga-only pipeline");
         None
     }
 

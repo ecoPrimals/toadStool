@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Input validation for security hardening
 //!
-//! Extracted from security_hardening.rs for modularity (Feb 14, 2026).
+//! Extracted from `security_hardening.rs` for modularity (Feb 14, 2026).
 
 use crate::{ToadStoolError, ToadStoolResult};
 
@@ -21,6 +21,10 @@ impl InputValidator {
     }
 
     /// Validate input string
+    ///
+    /// # Errors
+    ///
+    /// Returns error if length or content violates configured rules.
     pub fn validate_input(&self, input: &str) -> ToadStoolResult<()> {
         // Check length
         if input.len() > self.rules.max_input_length {

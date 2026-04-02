@@ -22,9 +22,17 @@ use super::types::{
 /// the runtime with `block_in_place` or `block_on` anti-patterns.
 pub trait ResourceMonitor: Send + Sync {
     /// Start monitoring resources for a workload
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
 
     /// Stop monitoring resources for a workload
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future failures.
     fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
 
     /// Get current resource metrics (async to avoid blocking)
@@ -81,6 +89,10 @@ impl SystemResourceMonitor {
     }
 
     /// Get detailed process information for a specific workload
+    ///
+    /// # Errors
+    ///
+    /// Returns error if process enumeration fails.
     pub async fn get_process_info(
         &self,
         workload_id: &str,
@@ -101,6 +113,10 @@ impl SystemResourceMonitor {
     }
 
     /// Get network statistics
+    ///
+    /// # Errors
+    ///
+    /// Returns error if network statistics cannot be read.
     pub async fn get_network_stats(&self) -> ToadStoolResult<NetworkStats> {
         let interfaces = toadstool_sysmon::network_stats()
             .map_err(|e| crate::ToadStoolError::Runtime(e.to_string()))?;
@@ -127,6 +143,10 @@ impl SystemResourceMonitor {
     }
 
     /// Get system load averages
+    ///
+    /// # Errors
+    ///
+    /// Returns error if load averages cannot be read.
     pub async fn get_load_averages(&self) -> ToadStoolResult<LoadAverages> {
         let la = toadstool_sysmon::load_average()
             .map_err(|e| crate::ToadStoolError::Runtime(e.to_string()))?;
@@ -138,6 +158,10 @@ impl SystemResourceMonitor {
     }
 
     /// Start real-time monitoring for a workload
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`.
     pub async fn start_real_time_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
         let metrics = RuntimeMetrics {
             cpu: CpuMetrics::default(),
@@ -157,6 +181,10 @@ impl SystemResourceMonitor {
     }
 
     /// Update metrics for a workload in real-time
+    ///
+    /// # Errors
+    ///
+    /// Returns error if any underlying system metric query fails.
     pub async fn update_workload_metrics(&self, workload_id: &str) -> ToadStoolResult<()> {
         let cpu_usage = self.get_cpu_usage().await?;
         let (used_memory, total_memory) = self.get_memory_info().await?;

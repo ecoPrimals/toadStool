@@ -169,6 +169,8 @@ impl TRpcTransport {
     /// [`ProtocolError::TRpcTransportNotAvailable`] at runtime.
     /// JSON-RPC (primary) via `pure_jsonrpc` is the required IPC path;
     /// tarpc is the optional high-performance secondary.
+    ///
+    /// See DEBT.md `D-TARPC-PHASE3` for stabilization plan.
     pub async fn send_message(
         &self,
         _message: &ProtocolMessage,
@@ -176,8 +178,6 @@ impl TRpcTransport {
     ) -> ProtocolResult<ProtocolMessage> {
         #[cfg(feature = "tarpc-transport")]
         {
-            // TODO(tarpc-phase3): wire real tarpc call here once
-            //   toadstool_common::tarpc_service is stabilized.
             let _ = (_message, _endpoint);
             Err(ProtocolError::TRpcTransportNotAvailable)
         }

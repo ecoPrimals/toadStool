@@ -72,6 +72,9 @@ pub(super) async fn discover_capabilities(
     let semantic_methods: Vec<&str> = semantic_registry.semantic_names().into_iter().collect();
 
     let mut direct_methods = vec![
+        "identity.get",
+        "health.liveness",
+        "health.readiness",
         "toadstool.health",
         "toadstool.version",
         "toadstool.query_capabilities",
@@ -137,6 +140,42 @@ pub(super) async fn discover_capabilities(
         "primal": toadstool_common::constants::PRIMAL_NAME
     });
     Ok(capabilities)
+}
+
+/// Returns primal identity per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
+///
+/// Every primal MUST implement `identity.get` so orchestrators and peers
+/// can discover name, version, capabilities, and protocol.
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
+pub(super) async fn identity_get(
+    version: &str,
+    semantic_registry: &SemanticMethodRegistry,
+) -> JsonRpcResult {
+    let semantic_methods: Vec<&str> = semantic_registry.semantic_names().into_iter().collect();
+
+    let capabilities: Vec<&str> = vec![
+        "compute",
+        "workload",
+        "gpu",
+        "wasm",
+        "container",
+        "hardware_transport",
+        "shader_dispatch",
+        "hardware_learning",
+    ];
+
+    Ok(serde_json::json!({
+        "primal": toadstool_common::constants::PRIMAL_NAME,
+        "version": version,
+        "protocol": "JSON-RPC 2.0",
+        "capabilities": capabilities,
+        "methods": semantic_methods,
+        "transport": "unix-socket",
+        "socket_name": format!("{}.sock", toadstool_common::constants::PRIMAL_NAME),
+    }))
 }
 
 /// Returns GPU device, backend, NVVM safety, and firmware information.

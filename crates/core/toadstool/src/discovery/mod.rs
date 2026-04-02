@@ -3,7 +3,7 @@
 //!
 //! Implements capability-based runtime discovery for primals.
 //!
-//! ## WateringHole Sovereignty Principle
+//! ## `WateringHole` Sovereignty Principle
 //!
 //! **Discover by CAPABILITY, not by hardcoded name.** Code should scan for what a
 //! service CAN DO, not what it IS CALLED. Use `service.has_capability("crypto.encrypt")`
@@ -99,6 +99,10 @@ impl DiscoveredService {
     }
 
     /// Parse socket address from endpoint
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `endpoint` is not a valid socket address string.
     pub fn socket_addr(&self) -> ToadStoolResult<SocketAddr> {
         self.endpoint
             .parse()
@@ -134,7 +138,7 @@ pub struct DiscoveryConfig {
     pub service_timeout: Duration,
     /// Maximum services to track
     pub max_services: usize,
-    /// Enable IPv6
+    /// Enable `IPv6`
     pub enable_ipv6: bool,
 }
 

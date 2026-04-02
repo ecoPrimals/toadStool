@@ -59,6 +59,7 @@ impl AggregatedResult {
     }
 
     /// Get completion percentage
+    #[allow(clippy::cast_precision_loss)] // display percentage from counts
     pub fn completion_percentage(&self) -> f32 {
         if self.metadata.expected_count == 0 {
             return 0.0;

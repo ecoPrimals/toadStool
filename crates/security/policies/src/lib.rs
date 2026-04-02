@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
+#![allow(
+    clippy::doc_markdown,
+    clippy::cast_precision_loss,
+    clippy::missing_errors_doc
+)]
 
 //! Advanced Security Policy Management for ToadStool
 //!

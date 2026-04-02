@@ -2,7 +2,11 @@
 //! GPU Framework Implementations
 
 use super::traits::ParallelComputeFramework;
-use super::types::*;
+use super::types::{
+    CompiledKernel, DataType, DeviceCapabilities, DeviceId, DeviceInfo, DeviceType, DeviceUsage,
+    FrameworkHandle, GpuFramework, KernelFormat, KernelInput, KernelOutput,
+    PerformanceCharacteristics, ResourceAllocation, UniversalComputeDevice,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 #[cfg(feature = "webgpu")]
@@ -12,7 +16,7 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-/// WebGPU adapter wrapper for conditional compilation.
+/// `WebGPU` adapter wrapper for conditional compilation.
 pub struct WebGPUAdapter {
     #[cfg(feature = "webgpu")]
     /// wgpu instance.
@@ -24,18 +28,22 @@ pub struct WebGPUAdapter {
     _private: (),
 }
 
-/// WebGPU framework implementation.
+/// `WebGPU` framework implementation.
 pub struct WebGpuFramework;
 
 impl WebGpuFramework {
-    /// Creates a new WebGPU framework (initialization deferred to first use).
+    /// Creates a new `WebGPU` framework (initialization deferred to first use).
+    ///
+    /// # Errors
+    ///
+    /// Currently always returns `Ok`; reserved for future validation.
     pub const fn new() -> ToadStoolResult<Self> {
         // Initialize WebGPU adapter with proper error handling
         // Note: WebGPU initialization is async, so we defer to first usage
         Ok(Self)
     }
 
-    /// Initialize WebGPU instance and adapter
+    /// Initialize `WebGPU` instance and adapter
     ///
     /// Note: Only used when `webgpu` feature is enabled
     async fn initialize_webgpu(&self) -> ToadStoolResult<WebGPUAdapter> {

@@ -216,7 +216,7 @@ impl VulkanBackend {
     /// - Memory properties match the device
     ///
     /// SAFETY: FFI boundary — caller guarantees valid Vulkan handles.
-    #[allow(
+    #[expect(
         dead_code,
         reason = "Vulkan device constructor; used when Vulkan runtime is available"
     )]

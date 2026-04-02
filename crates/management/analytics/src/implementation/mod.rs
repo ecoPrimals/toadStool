@@ -36,6 +36,10 @@ pub struct IntelligentAnalyticsEngine {
 
 impl IntelligentAnalyticsEngine {
     /// Create a new analytics engine with the given config.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if engine initialization fails.
     #[expect(
         clippy::unused_async,
         reason = "API designed for async; future persistence will require await"
@@ -59,6 +63,10 @@ impl IntelligentAnalyticsEngine {
     }
 
     /// Start background processing (collection and alert evaluation).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToadStoolError`] if background task setup fails.
     #[expect(
         clippy::unused_async,
         reason = "spawned tasks use await; outer fn must stay async for API consistency"

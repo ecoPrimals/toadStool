@@ -44,6 +44,10 @@ impl UniversalPrimalRegistry {
     }
 
     /// Register a primal provider
+    ///
+    /// # Errors
+    ///
+    /// This function currently always returns `Ok`; the `Result` type is reserved for future validation.
     pub async fn register_primal(
         &self,
         provider: Arc<dyn UniversalPrimalProvider>,
@@ -132,6 +136,10 @@ impl UniversalPrimalRegistry {
     }
 
     /// Route a request to appropriate provider
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the target primal is not registered or handling fails.
     pub async fn route_request(&self, request: PrimalRequest) -> ToadStoolResult<PrimalResponse> {
         let providers = self.providers.read().await;
 

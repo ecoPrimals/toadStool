@@ -53,7 +53,7 @@ pub enum Endpoint {
     /// Doesn't create filesystem entry, better for Android (SELinux-friendly).
     #[cfg(target_os = "linux")]
     Abstract {
-        /// Abstract socket name (e.g. @biomeos_toadstool).
+        /// Abstract socket name (e.g. `@biomeos_toadstool`).
         name: String,
     },
 
@@ -169,9 +169,9 @@ fn is_android() -> bool {
     false
 }
 
-/// Get XDG_RUNTIME_DIR or fallback
+/// Get `XDG_RUNTIME_DIR` or fallback
 ///
-/// **Deep Debt**: Pure Rust UID detection (evolved from toadstool_common)
+/// **Deep Debt**: Pure Rust UID detection (evolved from `toadstool_common`)
 fn get_runtime_dir() -> String {
     std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
         // Pure Rust UID fallback (no unsafe libc!)

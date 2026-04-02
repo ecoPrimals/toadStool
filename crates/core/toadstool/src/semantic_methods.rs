@@ -2,7 +2,7 @@
 //! Semantic Method Name Registry
 //!
 //! Maps semantic method names to implementation functions following
-//! wateringHole/SEMANTIC_METHOD_NAMING_STANDARD.md
+//! `wateringHole/SEMANTIC_METHOD_NAMING_STANDARD.md`
 //!
 //! ## Semantic Namespace Structure
 //!
@@ -52,10 +52,10 @@ use std::collections::HashMap;
 /// method names (e.g., `execute_workload`) for backward compatibility.
 #[derive(Debug, Clone)]
 pub struct SemanticMethodRegistry {
-    /// Method aliases: semantic_name → implementation_name
+    /// Method aliases: `semantic_name` → `implementation_name`
     aliases: HashMap<String, String>,
 
-    /// Reverse mapping: implementation_name → semantic_name
+    /// Reverse mapping: `implementation_name` → `semantic_name`
     reverse: HashMap<String, String>,
 }
 

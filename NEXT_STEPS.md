@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 2, 2026 -- S172 Deep Debt Evolution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,500+ tests (0 failures) | **~65 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **glowPlug/ember** absorbed from coralReef — toadStool-native hardware lifecycle | **~22 irreducible unsafe** ops in `hw-safe` + drivers | **IPC compliant** (health.liveness/readiness/check, capabilities.list, XDG socket)
-**Latest**: S172 — Deep debt evolution: CapabilityDomain enum, LockedMemory RAII, memmap2 migration (4 unsafe blocks eliminated), typed ioctl wrappers, BYOB health loop, 3 large file refactors, +55 hw_learn/transport tests, sysfs discovery helpers.
+**Updated**: April 2, 2026 -- S172-4 Deep Debt Execution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,537 tests (0 failures) | **~67 JSON-RPC methods** (`identity.get` added) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **glowPlug/ember** absorbed from coralReef — toadStool-native hardware lifecycle | **~22 irreducible unsafe** ops in `hw-safe` + drivers | **IPC compliant** (identity.get, health.liveness/readiness/check, capabilities.list, XDG socket, capability symlinks)
+**Latest**: S172-4 — Deep debt execution: `identity.get` JSON-RPC (wateringHole MUST), daemon health alignment, `capability.*` Neural API naming, capability symlinks (`compute.sock`), crypto validation evolved from placeholders, `AccessPolicies` real struct, shared VFIO DMA in `hw-safe`, `SecurityClient` RPC dedup, `syn v1` eliminated, blocking-in-async evolution (6 files), `await_holding_lock` CI guard.
 
 ---
 

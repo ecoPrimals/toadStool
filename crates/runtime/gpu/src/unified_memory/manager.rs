@@ -4,7 +4,10 @@
 use crate::unified_memory::{
     backend::{BackendInitializer, UnifiedMemoryBackend},
     buffer::UnifiedBuffer,
-    types::*,
+    types::{
+        BackendStrategy, BackendType, BufferId, BufferIdGenerator, MemoryFlags,
+        UnifiedBufferMetadata, UnifiedMemoryCapabilities, UnifiedMemoryConfig, UnifiedMemoryStats,
+    },
 };
 use std::collections::HashMap;
 use std::sync::{
@@ -63,9 +66,9 @@ impl UniversalUnifiedMemory {
     /// Initialize with automatic backend selection (sovereignty-first)
     ///
     /// Priority order:
-    /// 1. WebGPU (pure Rust, sovereign)
+    /// 1. `WebGPU` (pure Rust, sovereign)
     /// 2. Vulkan (cross-vendor, modern)
-    /// 3. OpenCL (cross-vendor, legacy)
+    /// 3. `OpenCL` (cross-vendor, legacy)
     /// 4. CPU (always works)
     ///
     /// # Example
@@ -78,6 +81,10 @@ impl UniversalUnifiedMemory {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns when no suitable backend could be initialized.
     pub async fn new() -> ToadStoolResult<Self> {
         Self::with_strategy(BackendStrategy::Automatic).await
     }
@@ -100,6 +107,10 @@ impl UniversalUnifiedMemory {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns when backend selection or initialization fails.
     pub async fn with_strategy(strategy: BackendStrategy) -> ToadStoolResult<Self> {
         let config = UnifiedMemoryConfig {
             backend_strategy: strategy.clone(),
@@ -114,6 +125,10 @@ impl UniversalUnifiedMemory {
     /// # Arguments
     ///
     /// * `config` - Unified memory configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns when backend selection or initialization fails.
     pub async fn with_config(config: UnifiedMemoryConfig) -> ToadStoolResult<Self> {
         let backend = Self::select_backend(&config.backend_strategy).await?;
         let backend_name = backend.name().to_string();
@@ -185,7 +200,7 @@ impl UniversalUnifiedMemory {
         Ok(Arc::new(backend))
     }
 
-    /// Sovereign-only selection (WebGPU or fail)
+    /// Sovereign-only selection (`WebGPU` or fail)
     async fn select_sovereign() -> ToadStoolResult<Arc<dyn UnifiedMemoryBackend>> {
         #[cfg(feature = "webgpu")]
         {
@@ -301,6 +316,10 @@ impl UniversalUnifiedMemory {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns when size is invalid or backend allocation fails.
     pub async fn allocate(&self, size: usize) -> ToadStoolResult<UnifiedBuffer> {
         self.allocate_with_flags(size, self.config.default_flags)
             .await
@@ -312,6 +331,10 @@ impl UniversalUnifiedMemory {
     ///
     /// * `size` - Size in bytes
     /// * `flags` - Memory allocation flags
+    ///
+    /// # Errors
+    ///
+    /// Returns when size is invalid, exceeds backend limits, or allocation fails.
     pub async fn allocate_with_flags(
         &self,
         size: usize,

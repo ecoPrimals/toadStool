@@ -18,8 +18,14 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 
-use super::provider::*;
-use super::types::*;
+use super::provider::{
+    EncryptionOptions, PermissionValidationResult, ProviderHealth, SecurityCapability,
+    SecurityProvider, SigningOptions,
+};
+use super::types::{
+    DecryptionResult, EncryptionMetadata, EncryptionResult, PermissionRequest, ProviderMetadata,
+    SecurityPermission, SignatureResult, VerificationResult,
+};
 use toadstool_common::constants::timeouts;
 
 /// TCP security provider
@@ -148,14 +154,14 @@ struct JsonRpcRequest<P> {
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<R> {
-    #[allow(
+    #[expect(
         dead_code,
         reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
     )]
     jsonrpc: String,
     result: Option<R>,
     error: Option<JsonRpcError>,
-    #[allow(
+    #[expect(
         dead_code,
         reason = "JSON-RPC 2.0 response shape; required for serde deserialization"
     )]

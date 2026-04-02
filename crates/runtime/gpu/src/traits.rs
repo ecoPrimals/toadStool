@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Trait definitions for Universal GPU Compute Runtime
 
-use super::types::*;
+use super::types::{
+    CompiledKernel, DeviceId, DeviceRequirements, DeviceUsage, GpuFramework, KernelFormat,
+    KernelInput, KernelOutput, UniversalComputeDevice,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use toadstool::error::ToadStoolResult;
@@ -56,6 +59,10 @@ pub trait ParallelComputeFramework: Send + Sync {
 /// Trait for kernel optimization
 pub trait KernelOptimizer: Send + Sync {
     /// Optimize kernel for specific device
+    ///
+    /// # Errors
+    ///
+    /// Returns when optimization cannot be applied for this kernel or device.
     fn optimize(&self, kernel: &str, device: &UniversalComputeDevice) -> ToadStoolResult<String>;
 
     /// Get supported optimization passes
@@ -65,6 +72,10 @@ pub trait KernelOptimizer: Send + Sync {
 /// Trait for load balancing
 pub trait LoadBalancer: Send + Sync {
     /// Select optimal device for new workload
+    ///
+    /// # Errors
+    ///
+    /// Returns when no device satisfies the requirements or selection fails.
     fn select_device(
         &self,
         devices: &[DeviceId],

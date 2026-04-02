@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // Memory isolation requires mlock/madvise kernel FFI via rustix
 //! Isolated memory region for secure computation
 //!
 //! Provides memory regions that are:
@@ -14,54 +13,37 @@
 //! # Evolution (Feb 12, 2026)
 //!
 //! Evolved from `libc` raw C bindings to `rustix` safe Rust wrappers.
-//! This eliminates unsafe libc FFI while maintaining identical functionality.
+//! Allocation and `mlock`/`munlock` are delegated to [`toadstool_hw_safe::LockedMemory`]
+//! so this module avoids duplicating those unsafe operations.
 
 use crate::error::{Error, Result};
-use std::alloc::{Layout, alloc, dealloc};
-use std::ptr::NonNull;
 
-#[cfg(target_family = "unix")]
-use rustix::mm::{mlock, munlock};
-
-#[cfg(target_os = "linux")]
-use rustix::mm::{Advice, madvise};
-
-use std::ffi::c_void;
+use toadstool_hw_safe::LockedMemory;
+use toadstool_hw_safe::locked_memory::LockError;
 
 /// Size of a memory page (4KB on most systems)
 const PAGE_SIZE: usize = 4096;
 
-/// Allocate page-aligned memory and lock it (mlock) to prevent swapping.
-///
-/// Encapsulates the alloc+mlock pattern to reduce repeated unsafe blocks.
-/// On mlock failure, deallocates and returns Err.
-///
-/// # Safety
-/// All unsafe operations are contained here. Caller receives valid `NonNull`
-/// and must dealloc with the returned Layout (or use in RAII wrapper).
-fn alloc_and_lock(size: usize) -> Result<(NonNull<u8>, Layout)> {
-    let layout = Layout::from_size_align(size, PAGE_SIZE)
-        .map_err(|e| Error::memory_allocation(format!("Invalid layout: {e}")))?;
-
-    // SAFETY: Layout is valid (from_size_align succeeded, PAGE_SIZE power-of-two). alloc returns a
-    // pointer valid for layout.size() bytes, or null on OOM.
-    let raw = unsafe { alloc(layout) };
-    let ptr = NonNull::new(raw).ok_or_else(|| Error::memory_allocation("alloc returned null"))?;
-
-    #[cfg(target_family = "unix")]
-    {
-        // SAFETY: ptr from alloc(layout), size matches layout.size(), region is page-aligned.
-        // mlock requires page-aligned address; our layout uses PAGE_SIZE alignment.
-        let result = unsafe { mlock(ptr.as_ptr().cast::<c_void>(), size) };
-        if let Err(e) = result {
-            // SAFETY: ptr from alloc above, layout unchanged, no references exist. Cleanup on
-            // mlock failure before returning Err.
-            unsafe { dealloc(ptr.as_ptr(), layout) };
-            return Err(Error::memory_lock(format!("mlock failed: {e}")));
-        }
+fn map_lock_error(e: LockError) -> Error {
+    match e {
+        LockError::Alloc(a) => Error::memory_allocation(a.to_string()),
+        LockError::Mlock(io) => Error::memory_lock(format!("mlock failed: {io}")),
     }
+}
 
-    Ok((ptr, layout))
+/// Best-effort: exclude region from core dumps (`MADV_DONTDUMP`).
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)] // rustix `madvise` is `unsafe` — pointer is our live `LockedMemory` allocation
+fn madvise_linux_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
+    use rustix::mm::{Advice, madvise};
+    use std::ffi::c_void;
+
+    // SAFETY: `ptr`/`len` describe the same page-aligned region locked by `LockedMemory` in the
+    // caller. `LinuxDontDump` does not alter buffer bytes for heap memory.
+    let result = unsafe { madvise(ptr.as_ptr().cast::<c_void>(), len, Advice::LinuxDontDump) };
+    if let Err(e) = result {
+        tracing::warn!("madvise(MADV_DONTDUMP) failed: {e}");
+    }
 }
 
 /// Isolated memory region with security guarantees
@@ -97,30 +79,12 @@ fn alloc_and_lock(size: usize) -> Result<(NonNull<u8>, Layout)> {
 /// // Memory automatically wiped on drop
 /// ```
 pub struct IsolatedMemoryRegion {
-    /// Pointer to allocated memory (never null)
-    ptr: NonNull<u8>,
+    /// Locked, page-aligned backing store (`mlock` + zeroed alloc via hw-safe)
+    inner: LockedMemory,
 
     /// Logical size (as requested by user)
     logical_size: usize,
-
-    /// Physical size (rounded up to page boundary)
-    physical_size: usize,
-
-    /// Memory layout (for deallocation)
-    layout: Layout,
 }
-
-// SAFETY: IsolatedMemoryRegion can be sent between threads because:
-// - ptr points to heap-allocated memory that we own exclusively
-// - No shared mutable state
-// - mlock ensures memory stays resident (thread-safe)
-unsafe impl Send for IsolatedMemoryRegion {}
-
-// SAFETY: IsolatedMemoryRegion can be shared between threads with &self because:
-// - We only provide &[u8] access via as_slice(), which is thread-safe
-// - mlock is thread-safe
-// - No interior mutability
-unsafe impl Sync for IsolatedMemoryRegion {}
 
 impl IsolatedMemoryRegion {
     /// Create a new isolated memory region
@@ -134,18 +98,13 @@ impl IsolatedMemoryRegion {
     /// Returns error if:
     /// - Memory allocation fails
     /// - Memory locking fails (mlock)
-    /// - Memory protection fails (madvise)
+    ///
+    /// On Linux, `madvise(MADV_DONTDUMP)` is attempted best-effort (failure is logged, not fatal).
     ///
     /// # Security
     ///
     /// Memory is immediately locked and protected after allocation,
     /// before returning to caller.
-    ///
-    /// # Panics
-    ///
-    /// Never panics. The internal `expect()` is infallible because the null
-    /// case is returned as `Err` above; it exists only to satisfy the
-    /// `NonNull` API.
     pub fn new(size: usize) -> Result<Self> {
         if size == 0 {
             return Err(Error::invalid_layout(size, PAGE_SIZE));
@@ -154,26 +113,11 @@ impl IsolatedMemoryRegion {
         // Round size up to page boundary for optimal performance
         let aligned_size = (size + PAGE_SIZE - 1) & !(PAGE_SIZE - 1);
 
-        // Allocate and lock in one encapsulated helper (reduces repeated unsafe)
-        let (ptr, layout) = alloc_and_lock(aligned_size)?;
+        let inner = LockedMemory::new(aligned_size, PAGE_SIZE).map_err(map_lock_error)?;
 
         // Prevent memory from appearing in core dumps
         #[cfg(target_os = "linux")]
-        {
-            // SAFETY: ptr from alloc_and_lock; aligned_size matches physical allocation. Region is
-            // page-aligned; [ptr, ptr+aligned_size) is valid and within the allocation.
-            let result = unsafe {
-                madvise(
-                    ptr.as_ptr().cast::<c_void>(),
-                    aligned_size,
-                    Advice::LinuxDontDump,
-                )
-            };
-            if let Err(e) = result {
-                tracing::warn!("madvise(MADV_DONTDUMP) failed: {e}");
-                // Non-fatal: continue but log warning
-            }
-        }
+        madvise_linux_dontdump(inner.as_ptr(), aligned_size);
 
         tracing::debug!(
             "Allocated isolated memory: {} bytes (aligned to {} bytes)",
@@ -182,10 +126,8 @@ impl IsolatedMemoryRegion {
         );
 
         Ok(Self {
-            ptr,
+            inner,
             logical_size: size,
-            physical_size: aligned_size,
-            layout,
         })
     }
 
@@ -197,21 +139,13 @@ impl IsolatedMemoryRegion {
     /// # Bounds
     ///
     /// Slice covers `[0..logical_size]`. Use `read_at` for bounds-checked subslice access.
-    ///
-    /// # Safety
-    ///
-    /// - Returns a slice with lifetime tied to &self
-    /// - Memory is valid for the lifetime of the struct
-    /// - No concurrent mutable access (enforced by Rust)
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
         debug_assert!(
-            self.logical_size <= self.physical_size,
-            "logical_size must be <= physical_size (invariant)"
+            self.logical_size <= self.inner.size(),
+            "logical_size must be <= physical size (invariant)"
         );
-        // SAFETY: ptr from alloc_and_lock, valid for physical_size bytes. logical_size <=
-        // physical_size by construction. Lifetime tied to &self; no concurrent mutable access.
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.logical_size) }
+        &self.inner.as_slice()[..self.logical_size]
     }
 
     /// Get mutable slice view of memory
@@ -222,21 +156,13 @@ impl IsolatedMemoryRegion {
     /// # Bounds
     ///
     /// Slice covers `[0..logical_size]`. Use `write_at` for bounds-checked writes.
-    ///
-    /// # Safety
-    ///
-    /// - Returns a mutable slice with lifetime tied to &mut self
-    /// - Ensures exclusive access (only one mutable reference)
-    /// - Memory is valid for the lifetime of the struct
     #[must_use]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         debug_assert!(
-            self.logical_size <= self.physical_size,
-            "logical_size must be <= physical_size (invariant)"
+            self.logical_size <= self.inner.size(),
+            "logical_size must be <= physical size (invariant)"
         );
-        // SAFETY: ptr valid for physical_size bytes. logical_size <= physical_size. &mut self
-        // gives exclusive access (no aliasing).
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.logical_size) }
+        &mut self.inner.as_mut_slice()[..self.logical_size]
     }
 
     /// Read a subslice with bounds checking.
@@ -292,7 +218,7 @@ impl IsolatedMemoryRegion {
     /// Get the physical size of this memory region (rounded to page boundary)
     #[must_use]
     pub const fn physical_size(&self) -> usize {
-        self.physical_size
+        self.inner.size()
     }
 
     /// Explicitly wipe memory contents
@@ -307,54 +233,24 @@ impl IsolatedMemoryRegion {
     /// Uses slice-based `fill(0)` instead of raw `write_bytes` for safer code.
     /// The compiler fence ensures the optimizer cannot remove the zeroing.
     pub fn wipe(&mut self) {
-        // Safe Rust: Use slice fill instead of raw write_bytes
-        // SAFETY: as_physical_slice_mut is safe (we own the memory)
-        self.as_physical_slice_mut().fill(0);
+        self.inner.as_mut_slice().fill(0);
 
         // Compiler fence to prevent optimizer from removing the write
         // This is critical for security - ensures memory is actually zeroed
         std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 
-        tracing::trace!("Wiped {} bytes of isolated memory", self.physical_size);
-    }
-
-    /// Get mutable slice of the physical allocation (for internal use like wiping)
-    fn as_physical_slice_mut(&mut self) -> &mut [u8] {
-        debug_assert!(
-            self.physical_size > 0,
-            "physical_size must be > 0 (invariant)"
-        );
-        // SAFETY: ptr from alloc_and_lock, valid for physical_size bytes. &mut self gives
-        // exclusive access. physical_size matches layout.size() from allocation.
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.physical_size) }
+        tracing::trace!("Wiped {} bytes of isolated memory", self.inner.size());
     }
 }
 
 impl Drop for IsolatedMemoryRegion {
     fn drop(&mut self) {
-        // Step 1: Wipe memory before unlocking/deallocating
-        // Uses safe slice-based fill via self.wipe()
+        // Step 1: Wipe memory before unlock/dealloc (LockedMemory::drop does munlock + dealloc)
         self.wipe();
-
-        // Step 2: Unlock memory (reverse of mlock)
-        #[cfg(target_family = "unix")]
-        {
-            // SAFETY: ptr from alloc in new(); physical_size matches the mlocked region. Region was
-            // mlocked in new(); munlock must be called with same ptr and size.
-            let result = unsafe { munlock(self.ptr.as_ptr().cast::<c_void>(), self.physical_size) };
-            if let Err(e) = result {
-                tracing::error!("munlock failed during drop: {e}");
-            }
-        }
-
-        // Step 3: Deallocate memory
-        // SAFETY: ptr from alloc_and_lock in new(); self.layout matches allocation. Drop runs at
-        // most once; no references exist (wipe/munlock complete, self is being dropped).
-        unsafe { dealloc(self.ptr.as_ptr(), self.layout) }
 
         tracing::trace!(
             "Dropped isolated memory region of {} bytes (physical)",
-            self.physical_size
+            self.inner.size()
         );
     }
 }
@@ -444,7 +340,7 @@ mod tests {
         }
         // After drop, memory is deallocated and cannot be inspected
         // But Drop implementation guarantees:
-        // 1. Memory is zeroed (write_bytes)
+        // 1. Memory is zeroed (fill)
         // 2. Compiler fence prevents optimization
         // 3. Memory is unlocked (munlock)
         // 4. Memory is deallocated

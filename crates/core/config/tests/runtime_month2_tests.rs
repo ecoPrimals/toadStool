@@ -4,7 +4,7 @@
 //! Tier 1 tests: Coverage-measured runtime config tests
 //! Focus: Runtime defaults, overrides, validation, edge cases
 //!
-//! ✅ MODERNIZED: Uses temp_env for thread-safe env var testing
+//! ✅ MODERNIZED: Uses `temp_env` for thread-safe env var testing
 
 use std::env;
 use std::sync::Mutex;
