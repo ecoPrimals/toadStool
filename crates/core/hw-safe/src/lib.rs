@@ -12,7 +12,7 @@
 //! - [`SafeMmapRegion`] — RAII memory-mapped file region (mmap/munmap)
 //! - [`VolatileMmio`] — bounds-checked volatile MMIO register access
 //! - [`AlignedAlloc`] — heap allocation with arbitrary alignment
-//! - (future) `LockedMemory` — mlock/munlock for DMA-safe and secure memory
+//! - [`LockedMemory`] — mlock/munlock for DMA-safe and secure memory
 //!
 //! ## Design principle
 //!
@@ -25,9 +25,11 @@
 //! alternatives (e.g. `memmap2` for mmap, `aligned-vec` for allocation).
 
 pub mod aligned_alloc;
+pub mod locked_memory;
 pub mod safe_mmap;
 pub mod volatile_mmio;
 
 pub use aligned_alloc::AlignedAlloc;
+pub use locked_memory::LockedMemory;
 pub use safe_mmap::SafeMmapRegion;
 pub use volatile_mmio::VolatileMmio;

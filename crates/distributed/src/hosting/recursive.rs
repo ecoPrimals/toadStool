@@ -192,10 +192,7 @@ mod tests {
             instance_id: "inst-1".to_string(),
             process_handle: ProcessHandle::default(),
             resource_allocation: ResourceAllocation::default(),
-            endpoint: format!(
-                "{}/inst-1",
-                format!("{HTTP_PROTOCOL}{TEST_LOOPBACK_HOST}:{TEST_CHILD_API_PORT}")
-            ),
+            endpoint: format!("{HTTP_PROTOCOL}{TEST_LOOPBACK_HOST}:{TEST_CHILD_API_PORT}/inst-1"),
             status: InstanceStatus::Starting,
             started_at: SystemTime::now(),
         };

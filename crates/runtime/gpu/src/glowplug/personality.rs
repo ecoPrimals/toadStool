@@ -95,7 +95,14 @@ impl PersonalityRegistry for GpuPersonalityRegistry {
 
     fn supported(&self) -> Vec<&str> {
         vec![
-            "vfio", "nouveau", "nvidia", "nvidia-open", "amdgpu", "xe", "i915", "unbound",
+            "vfio",
+            "nouveau",
+            "nvidia",
+            "nvidia-open",
+            "amdgpu",
+            "xe",
+            "i915",
+            "unbound",
         ]
     }
 

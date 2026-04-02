@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 1, 2026 — S171
+**Date**: April 2, 2026 — S172
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -19,18 +19,44 @@ MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
 
-### D-IOCTL-TYPED
-**Crate**: `akida-driver`, `nvpmu` | VFIO ioctl dispatch uses generic `DmaIoctl<OP, T>`.
-Evolve to typed per-operation dispatch modules for stronger compile-time safety.
+## S172 Resolved Debt
 
-### D-LOCKED-MEMORY
-**Crate**: `nvpmu` | DMA buffers use separate alloc + mlock/munlock.
-Compose `AlignedAlloc` + `mlock`/`munlock` into a single `LockedMemory` RAII type.
+### D-IOCTL-TYPED — RESOLVED S172
+Replaced generic ioctl dispatch with typed helper functions in `nvpmu/src/vfio.rs` (`vfio_get_api_version`, `vfio_group_get_status`, `vfio_device_get_bar0_info`). Stronger compile-time safety.
 
-### D-BYOB-HEALTH-LOOP
-**Crate**: `core/toadstool` | `byob/byob_impl/mod.rs`
-`monitor_deployment_health` and `perform_health_check` are complete implementations
-but not yet wired into a production background loop. Phase 2+ integration.
+### D-LOCKED-MEMORY — RESOLVED S172
+Created `LockedMemory` RAII type in `hw-safe` composing `AlignedAlloc` + `rustix::mm::mlock`/`munlock`. Includes `Send`/`Sync`, `Drop`-based `munlock`, page-aligned convenience constructor. 5 tests.
+
+### D-BYOB-HEALTH-LOOP — RESOLVED S172
+Wired `monitor_deployment_health` into a background `tokio::spawn` task. Added `health_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>` to `ByobComputeExecutor`. `deploy_biome` spawns health monitor; `stop_deployment` aborts it.
+
+### Deep debt evolution (S172 Plan)
+- **D-IOCTL-TYPED-S172**: Replaced generic ioctl dispatch in `nvpmu/vfio.rs` with typed helper functions for stronger compile-time safety.
+- **D-LOCKED-MEMORY-S172**: Created `LockedMemory` RAII type in `hw-safe` composing `AlignedAlloc` + `mlock`/`munlock`.
+- **D-BYOB-HEALTH-S172**: Wired `monitor_deployment_health` into background `tokio::spawn` task with `JoinHandle` tracking.
+- **D-EMBEDDED-EVOLVE-S172**: Evolved embedded placeholder macros with clearer feature gating (`embedded-placeholder-impls` vs `embedded-hw`).
+
+### Production stubs evolved
+- **D-STUBS-DISTRIBUTED-S172**: Evolved 6 production stubs in `distributed/` to real implementations: `validate_delegation_proof` (crypto_lock), `CachedResult` with TTL (crypto_lock cache), `CloudCostTracker`/`CloudPerformanceTracker` (cloud scheduling), `update_node_health` (songbird registry), `UniversalJobProcessor` with `new()` constructor.
+- **D-TARPC-GATE-S172**: Gated `TRpcTransport::send_message` stub behind `#[cfg(feature = "tarpc-transport")]` feature flag.
+- **D-CUDA-ERRORS-S172**: Evolved CUDA "not implemented" runtime error to typed `ToadStoolError::runtime` with operation name and alternative suggestions.
+
+### Hardcoding elimination
+- **D-CAPABILITY-DOMAIN-S172**: Created `CapabilityDomain` enum with 7 variants (Security, Coordination, Storage, Compute, Routing, Intelligence, Monitoring). `from_label()` resolves legacy primal names. Replaced ~30 hardcoded primal name sites across `capability_helpers.rs`, `paths.rs`, `ecosystem/types.rs`.
+- **D-SYSFS-DISCOVERY-S172**: Routed hardcoded `/dev/dri/card0` and PCI BDF paths through `toadstool_sysmon::gpu::discover_gpus()` and `GpuDevice::card_path()`. Hostname resolution via new `toadstool_sysmon::system::hostname()`.
+- **D-FALLBACK-PORTS-S172**: Migrated legacy fallback port constants to `resolve_env_port()` helper in `primal_discovery_complete`.
+
+### Unsafe reduction
+- **D-MEMMAP2-S172**: Replaced hand-rolled `rustix::mm::mmap`/`munmap` in `hw-safe/safe_mmap.rs` with `memmap2::MmapRaw`. Eliminated 4 unsafe blocks (mmap syscall ×2, manual munmap Drop, unsafe Send/Sync impls). Only 1 irreducible unsafe remains (`VolatileMmio::new`).
+
+### Smart refactoring (files >600L → coherent submodules)
+- **D-REFACTOR-JSONRPC-S172**: `cli/daemon/jsonrpc_server.rs` → extracted route handlers into `routes.rs`.
+- **D-REFACTOR-RUNTIME-S172**: `core/toadstool/runtime.rs` → extracted engine management into `runtime/engine_registry.rs`.
+- **D-REFACTOR-BYOB-S172**: `core/toadstool/byob/byob_impl/mod.rs` → extracted deployment lifecycle into `deployment_lifecycle.rs`.
+
+### Coverage expansion
+- **D-COV-HWLEARN-S172**: Added tests for 5 hw_learn handler files (apply, observe_distill, share_recipe, status, telemetry) — all from 0% to 80%+.
+- **D-COV-TRANSPORT-S172**: Added 18 tests to `handler/transport.rs` — from 2% to comprehensive coverage.
 
 ## S171 Resolved Debt
 
@@ -409,7 +435,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (187K lines, llvm-cov). **21,514+ tests passing**. Target 90%. **S161**: +10 large file refactors, stubs evolved, unsafe reduced; expanded coverage for `byob_impl`, `agent_backend`, `auto_init`. Remaining gaps e.g. `science_domains.rs`. Push ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (187K lines, llvm-cov). **21,500+ tests passing**. Target 90%. **S172**: +55 tests (hw_learn handlers 0%→80%+, transport handler 2%→comprehensive). **S161**: +10 large file refactors, stubs evolved, unsafe reduced. Remaining gaps: hardware-dependent paths. Push ongoing. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |

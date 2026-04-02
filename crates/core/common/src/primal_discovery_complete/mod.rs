@@ -48,6 +48,14 @@ use crate::{ToadStoolError, ToadStoolResult};
 /// Fallback HTTP port when URL parsing yields an invalid port segment (last-resort fallback).
 const DISCOVERY_URL_HTTP_FALLBACK_PORT: u16 = 8080;
 
+/// Resolve a port from an environment variable, falling back to `default`.
+fn resolve_env_port(env_var: &str, default: u16) -> u16 {
+    std::env::var(env_var)
+        .ok()
+        .and_then(|v| v.parse::<u16>().ok())
+        .unwrap_or(default)
+}
+
 #[cfg(test)]
 mod tests;
 
@@ -124,9 +132,9 @@ impl DiscoveryConfig {
     /// Each capability URL is resolved from env vars, falling back to
     /// `{bind_host}:{port}` using `toadstool_config::ports::capability_fallback`.
     fn default_fallbacks() -> HashMap<String, String> {
-        const COORDINATION_PORT: u16 = 8080;
-        const SECURITY_PORT: u16 = 8081;
-        const STORAGE_PORT: u16 = 8082;
+        let coordination_port = resolve_env_port("TOADSTOOL_COORDINATION_PORT", 8080);
+        let security_port = resolve_env_port("TOADSTOOL_SECURITY_PORT", 8081);
+        let storage_port = resolve_env_port("TOADSTOOL_STORAGE_PORT", 8082);
 
         let dev_mode = std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
             || std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "development");
@@ -143,19 +151,19 @@ impl DiscoveryConfig {
             (
                 "TOADSTOOL_COORDINATION_URL",
                 "SONGBIRD_URL",
-                COORDINATION_PORT,
+                coordination_port,
                 &["orchestration", "coordination"],
             ),
             (
                 "TOADSTOOL_SECURITY_URL",
                 "BEARDOG_URL",
-                SECURITY_PORT,
+                security_port,
                 &["security", "authentication"],
             ),
             (
                 "TOADSTOOL_STORAGE_URL",
                 "NESTGATE_URL",
-                STORAGE_PORT,
+                storage_port,
                 &["storage"],
             ),
         ];

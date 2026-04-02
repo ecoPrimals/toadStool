@@ -162,10 +162,17 @@ impl HwLearnHandler {
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
 
-        let card_path = params
-            .and_then(|p| p.get("card_path"))
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("/dev/dri/card0");
+        let default_card = toadstool_sysmon::gpu::discover_gpus()
+            .first()
+            .map(|g| g.card_path().to_string_lossy().into_owned());
+        let card_path_owned;
+        let card_path = match params.and_then(|p| p.get("card_path")).and_then(serde_json::Value::as_str) {
+            Some(p) => p,
+            None => {
+                card_path_owned = default_card.unwrap_or_else(|| "/dev/dri/card0".to_string());
+                &card_path_owned
+            }
+        };
 
         if dry_run {
             let mut applicator = hw_learn::RecipeApplicator::new(true);
@@ -300,6 +307,7 @@ impl HwLearnHandler {
             sysmon_gpus
                 .iter()
                 .find(|g| g.pci_slot == bdf)
+                .or_else(|| sysmon_gpus.first())
                 .map(|g| g.card_path().to_string_lossy().into_owned())
                 .unwrap_or_else(|| "/dev/dri/card0".to_string())
         };

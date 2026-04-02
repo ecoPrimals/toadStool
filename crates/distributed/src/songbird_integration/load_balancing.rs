@@ -35,9 +35,7 @@ impl SongbirdLoadBalancer {
     fn self_node_id(&self) -> String {
         std::env::var("TOADSTOOL_GATE_ID")
             .or_else(|_| std::env::var("HOSTNAME"))
-            .unwrap_or_else(|_| {
-                toadstool_common::constants::network::LOCALHOST_IPV4.to_string()
-            })
+            .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.to_string())
     }
 
     /// Recommend target nodes for the given resource requirements using current load data.

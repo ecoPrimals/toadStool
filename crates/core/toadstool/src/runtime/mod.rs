@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Runtime engine orchestration for `ToadStool`
 
-use std::collections::HashMap;
+mod engine_registry;
+
+pub use engine_registry::RuntimeSelectionStrategy;
+
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -14,10 +16,12 @@ use crate::{
 
 use crate::workload::{BackendSelector, WorkloadAnalyzer};
 
+use engine_registry::EngineRegistry;
+
 /// Runtime orchestrator that manages multiple runtime engines
 pub struct RuntimeOrchestrator {
     /// Registered runtime engines
-    engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
+    registry: EngineRegistry,
     /// Runtime selection strategy
     selection_strategy: RuntimeSelectionStrategy,
     /// Workload analyzer for intelligent routing (AI/ML, CUDA)
@@ -31,7 +35,7 @@ impl RuntimeOrchestrator {
     #[must_use]
     pub fn new(selection_strategy: RuntimeSelectionStrategy) -> Self {
         Self {
-            engines: Arc::new(RwLock::new(HashMap::new())),
+            registry: EngineRegistry::new(),
             selection_strategy,
             workload_analyzer: Arc::new(WorkloadAnalyzer::new()),
             backend_selector: Arc::new(BackendSelector::new()),
@@ -45,7 +49,7 @@ impl RuntimeOrchestrator {
         backend_selector: BackendSelector,
     ) -> Self {
         Self {
-            engines: Arc::new(RwLock::new(HashMap::new())),
+            registry: EngineRegistry::new(),
             selection_strategy,
             workload_analyzer: Arc::new(WorkloadAnalyzer::new()),
             backend_selector: Arc::new(backend_selector),
@@ -58,30 +62,23 @@ impl RuntimeOrchestrator {
         runtime_type: RuntimeType,
         engine: Box<dyn RuntimeEngine>,
     ) -> ToadStoolResult<()> {
-        info!("Registering runtime engine: {:?}", runtime_type);
-
-        self.engines.write().await.insert(runtime_type, engine);
-        info!("Successfully registered runtime engine");
-        Ok(())
+        self.registry.register_engine(runtime_type, engine).await
     }
 
     /// Execute a workload using the appropriate runtime
-    #[allow(clippy::significant_drop_tightening)] // engine borrows from guard; must hold lock across execute().await
+    #[allow(clippy::significant_drop_tightening)]
     pub async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
         let execution_id = request.execution_id;
         info!("Starting execution: {}", execution_id);
 
-        // Validate the workload specification
         request.workload.validate()?;
 
-        // Validate the security context
         request.security_context.validate()?;
 
-        // Select the appropriate runtime
         let runtime_type = self.select_runtime(&request).await?;
         debug!("Selected runtime: {:?}", runtime_type);
 
-        let engines = self.engines.read().await;
+        let engines = self.registry.engines().read().await;
         let engine = engines.get(&runtime_type).ok_or_else(|| {
             ToadStoolError::not_found(format!("Runtime engine {runtime_type:?} not available"))
         })?;
@@ -103,38 +100,32 @@ impl RuntimeOrchestrator {
         result
     }
 
-    /// Select the appropriate runtime for a workload
     async fn select_runtime(&self, request: &ExecutionRequest) -> ToadStoolResult<RuntimeType> {
-        // If a runtime hint is provided, try to use it
         if let Some(hint) = &request.runtime_hint {
-            if let Some(engine) = self.engines.read().await.get(hint) {
+            if let Some(engine) = self.registry.engines().read().await.get(hint) {
                 if engine.supports_workload(&request.workload.workload_type()) {
                     return Ok(hint.clone());
                 }
             }
         }
 
-        // For AI/ML and CUDA workloads, use intelligent backend selection
         let workload_type = request.workload.workload_type();
         match workload_type {
             WorkloadType::AiMl | WorkloadType::Cuda => {
                 self.select_intelligent_backend(request).await
             }
             _ => {
-                // Use standard selection strategy for other workloads
                 self.selection_strategy
-                    .select_runtime(request, &self.engines)
+                    .select_runtime(request, self.registry.engines())
                     .await
             }
         }
     }
 
-    /// Intelligent backend selection for AI/ML and CUDA workloads
     async fn select_intelligent_backend(
         &self,
         request: &ExecutionRequest,
     ) -> ToadStoolResult<RuntimeType> {
-        // Analyze workload characteristics
         let characteristics = self.workload_analyzer.analyze(&request.workload);
 
         debug!(
@@ -146,7 +137,6 @@ impl RuntimeOrchestrator {
             characteristics.cpu_viable
         );
 
-        // For CUDA workloads, use backend selector to choose optimal backend
         if matches!(request.workload.workload_type(), WorkloadType::Cuda) {
             let decision = self.backend_selector.select_cuda_backend(&characteristics);
 
@@ -157,18 +147,14 @@ impl RuntimeOrchestrator {
                 decision.reasoning
             );
 
-            // Map CUDA backend to runtime type
-            // For now, all CUDA backends use the GPU runtime
-            // In the future, we might have separate runtimes for CPU fallback
-            if self.engines.read().await.contains_key(&RuntimeType::Gpu) {
+            if self.registry.engines().read().await.contains_key(&RuntimeType::Gpu) {
                 Ok(RuntimeType::Gpu)
             } else {
                 warn!("GPU runtime not available for CUDA workload, falling back to Native");
                 Ok(RuntimeType::Native)
             }
         } else {
-            // For AI/ML workloads, prefer GPU if available, otherwise use Native
-            let engines = self.engines.read().await;
+            let engines = self.registry.engines().read().await;
             let result = if engines.contains_key(&RuntimeType::Gpu) {
                 info!("AI/ML workload: using GPU runtime");
                 Ok(RuntimeType::Gpu)
@@ -185,54 +171,6 @@ impl RuntimeOrchestrator {
     }
 }
 
-/// Runtime selection strategies
-#[derive(Debug, Clone)]
-pub enum RuntimeSelectionStrategy {
-    /// Always use the first available runtime
-    FirstAvailable,
-    /// Use the runtime with the lowest load
-    LoadBalanced,
-    /// Use the runtime best suited for the workload (with intelligent backend selection for AI/ML and CUDA)
-    OptimalMatch,
-}
-
-impl RuntimeSelectionStrategy {
-    async fn select_runtime(
-        &self,
-        request: &ExecutionRequest,
-        engines: &Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
-    ) -> ToadStoolResult<RuntimeType> {
-        let engines_guard = engines.read().await;
-        let workload_type = request.workload.workload_type();
-
-        let result = match self {
-            Self::FirstAvailable => engines_guard
-                .iter()
-                .find(|(_, engine)| engine.supports_workload(&workload_type))
-                .map(|(rt, _)| rt.clone())
-                .or_else(|| engines_guard.keys().next().cloned())
-                .ok_or_else(|| ToadStoolError::not_found("No runtime engines available")),
-            Self::LoadBalanced => engines_guard
-                .iter()
-                .find(|(_, engine)| engine.supports_workload(&workload_type))
-                .map(|(rt, _)| rt.clone())
-                .or_else(|| engines_guard.keys().next().cloned())
-                .ok_or_else(|| ToadStoolError::not_found("No runtime engines available")),
-            Self::OptimalMatch => engines_guard
-                .iter()
-                .find(|(_, engine)| engine.supports_workload(&workload_type))
-                .map(|(rt, _)| rt.clone())
-                .ok_or_else(|| {
-                    ToadStoolError::not_found(format!(
-                        "No runtime engine supports workload type: {workload_type:?}"
-                    ))
-                }),
-        };
-        drop(engines_guard);
-        result
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,8 +183,6 @@ mod tests {
     use crate::workload::{AiFramework, AiMlWorkload, AiOperation, CudaLaunchConfig, CudaSource};
     use crate::workload::{CudaWorkload, ModelSize, WorkloadSpec};
 
-    /// Mock RuntimeEngine for testing - supports configurable workload types and returns
-    /// configurable success/failure from execute.
     struct MockRuntimeEngine {
         supported_types: Vec<WorkloadType>,
         execute_result: Option<ToadStoolResult<ExecutionResponse>>,
@@ -404,7 +340,6 @@ mod tests {
             .register_engine(RuntimeType::Wasm, Box::new(engine))
             .await
             .unwrap();
-        // Request with no engines registered - use OptimalMatch + workload no engine supports
         let orch_no_engine = RuntimeOrchestrator::new(RuntimeSelectionStrategy::OptimalMatch);
         let request = ExecutionRequest {
             workload: wasm_workload_spec(),
@@ -417,7 +352,6 @@ mod tests {
             err_str.contains("not available") || err_str.contains("not found"),
             "Expected 'not available' or 'not found', got: {err_str}"
         );
-        // With registered engine, execute succeeds
         let request2 = ExecutionRequest {
             workload: wasm_workload_spec(),
             ..ExecutionRequest::default()

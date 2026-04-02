@@ -40,7 +40,11 @@ impl MetadataStore {
     }
 
     /// Set a metadata value, returning the previous value if any.
-    pub fn set(&mut self, key: impl Into<String>, value: serde_json::Value) -> Option<serde_json::Value> {
+    pub fn set(
+        &mut self,
+        key: impl Into<String>,
+        value: serde_json::Value,
+    ) -> Option<serde_json::Value> {
         self.generation += 1;
         self.entries.insert(key.into(), value)
     }

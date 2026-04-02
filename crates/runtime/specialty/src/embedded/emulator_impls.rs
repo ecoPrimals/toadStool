@@ -9,7 +9,11 @@
 //! `clear_breakpoint`) return [`crate::SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder`]
 //! (mapped to [`toadstool::SystemError::NotSupported`]) until emulator cores exist.
 //!
-//! Compile this module with Cargo feature **`embedded-placeholder-impls`** (enabled by default).
+//! ## Feature Gates
+//!
+//! - **`embedded-placeholder-impls`** (current): compile these stub impls as placeholders.
+//! - When `embedded-hw` is added (real emulator cores), this module will be gated behind
+//!   `#[cfg(not(feature = "embedded-hw"))]` so the real impls take precedence.
 //!
 //! See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
 //!

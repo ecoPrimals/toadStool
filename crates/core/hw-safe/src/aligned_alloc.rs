@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // Aligned alloc/dealloc requires unsafe — this is the containment zone
 
 //! Aligned heap allocation with RAII cleanup.
 //!
@@ -58,11 +59,8 @@ impl AlignedAlloc {
     /// Returns [`AllocError::InvalidLayout`] if the size/alignment is invalid,
     /// or [`AllocError::OutOfMemory`] if allocation fails.
     pub fn new(size: usize, align: usize) -> Result<Self, AllocError> {
-        let layout =
-            Layout::from_size_align(size, align).map_err(|_| AllocError::InvalidLayout {
-                size,
-                align,
-            })?;
+        let layout = Layout::from_size_align(size, align)
+            .map_err(|_| AllocError::InvalidLayout { size, align })?;
 
         if size == 0 {
             return Err(AllocError::InvalidLayout { size, align });

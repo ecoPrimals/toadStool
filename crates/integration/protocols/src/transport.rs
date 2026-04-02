@@ -165,15 +165,26 @@ impl TRpcTransport {
 
     /// Send message via tarpc over Unix sockets.
     ///
-    /// Phase 3: tarpc binary transport is planned but not yet wired for
-    /// production primal-to-primal communication. Use JSON-RPC (primary)
-    /// via `pure_jsonrpc` for all current IPC needs.
+    /// Requires the `tarpc-transport` feature. Without it, returns
+    /// [`ProtocolError::TRpcTransportNotAvailable`] at runtime.
+    /// JSON-RPC (primary) via `pure_jsonrpc` is the required IPC path;
+    /// tarpc is the optional high-performance secondary.
     pub async fn send_message(
         &self,
         _message: &ProtocolMessage,
         _endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        Err(ProtocolError::TRpcTransportNotAvailable)
+        #[cfg(feature = "tarpc-transport")]
+        {
+            // TODO(tarpc-phase3): wire real tarpc call here once
+            //   toadstool_common::tarpc_service is stabilized.
+            let _ = (_message, _endpoint);
+            Err(ProtocolError::TRpcTransportNotAvailable)
+        }
+        #[cfg(not(feature = "tarpc-transport"))]
+        {
+            Err(ProtocolError::TRpcTransportNotAvailable)
+        }
     }
 
     /// Check if endpoint uses tRPC transport

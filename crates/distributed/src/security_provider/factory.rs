@@ -186,14 +186,19 @@ impl SecurityProviderFactory {
         ))
     }
 
-    /// Create custom protocol provider
+    /// Custom protocol providers are not supported.
+    ///
+    /// ecoBin-compliant transports are: Unix sockets (preferred), TCP (cross-machine),
+    /// and InProcess. If you need a custom transport, contribute an implementation
+    /// behind a feature flag.
     async fn create_custom_provider(
-        _protocol: &str,
-        _address: &str,
+        protocol: &str,
+        address: &str,
     ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
-        Err(ToadStoolError::not_found(
-            "Custom protocol security provider not yet implemented".to_string(),
-        ))
+        Err(ToadStoolError::runtime(format!(
+            "Custom protocol '{protocol}' at '{address}' is not supported. \
+             ecoBin-compliant transports: UnixSocket (preferred), TCP (cross-machine), InProcess.",
+        )))
     }
 
     /// Create a mock provider for testing

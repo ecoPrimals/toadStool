@@ -8,25 +8,19 @@ use std::collections::HashMap;
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::interned_strings::runtime_types;
+use toadstool_common::interned_strings::CapabilityDomain;
 
 /// Resolve a manifest or template dependency label to a canonical capability id.
 ///
-/// Capability strings are primary; legacy primal names map to their historical capability.
+/// Delegates to [`CapabilityDomain::from_label`] for legacy primal names and capability
+/// strings, with special-cases for `biomeos` -> `"os"`.
 #[must_use]
 pub fn dependency_label_to_capability(label: &str) -> &'static str {
+    if let Some(domain) = CapabilityDomain::from_label(label) {
+        return domain.as_str();
+    }
     match label.to_lowercase().as_str() {
-        "beardog" => capabilities::CRYPTO,
-        "songbird" => capabilities::COORDINATION,
-        "nestgate" => capabilities::STORAGE,
-        "squirrel" => capabilities::ROUTING,
-        "toadstool" => capabilities::COMPUTE,
-        capabilities::CRYPTO => capabilities::CRYPTO,
         capabilities::SECURITY => capabilities::SECURITY,
-        capabilities::COORDINATION => capabilities::COORDINATION,
-        capabilities::STORAGE => capabilities::STORAGE,
-        capabilities::INTELLIGENCE => capabilities::INTELLIGENCE,
-        capabilities::ROUTING => capabilities::ROUTING,
-        capabilities::COMPUTE => capabilities::COMPUTE,
         runtime_types::BIOMEOS => "os",
         _ => "unknown",
     }

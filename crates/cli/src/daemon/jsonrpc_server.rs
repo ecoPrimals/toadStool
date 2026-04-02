@@ -51,7 +51,7 @@
 //! - `ai.nautilus.shell.import` - Restore brain from serialized JSON
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -59,7 +59,6 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tracing::{error, info};
 
-use super::api_types::*;
 use super::workload_manager::WorkloadManager;
 
 /// Shared server state
@@ -76,43 +75,43 @@ pub struct ServerState {
 
 /// JSON-RPC 2.0 request
 #[derive(Debug, Deserialize)]
-struct JsonRpcRequest {
+pub(crate) struct JsonRpcRequest {
     /// Protocol version (must be "2.0")
-    jsonrpc: String,
+    pub(crate) jsonrpc: String,
     /// Method name (e.g., "daemon.health")
-    method: String,
+    pub(crate) method: String,
     /// Request parameters (deserialized from JSON)
-    params: Value,
+    pub(crate) params: Value,
     /// Request ID for matching request/response
-    id: Option<Value>,
+    pub(crate) id: Option<Value>,
 }
 
 /// JSON-RPC 2.0 response
 #[derive(Debug, Serialize)]
-struct JsonRpcResponse {
+pub(crate) struct JsonRpcResponse {
     /// Protocol version ("2.0")
-    jsonrpc: String,
+    pub(crate) jsonrpc: String,
     /// Success result (present on success, omitted on error)
     #[serde(skip_serializing_if = "Option::is_none")]
-    result: Option<Value>,
+    pub(crate) result: Option<Value>,
     /// Error object (present on failure, omitted on success)
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<JsonRpcError>,
+    pub(crate) error: Option<JsonRpcError>,
     /// Request ID from original request
-    id: Option<Value>,
+    pub(crate) id: Option<Value>,
 }
 
 /// JSON-RPC 2.0 error
 #[derive(Debug, Serialize)]
-struct JsonRpcError {
-    code: i32,
-    message: String,
+pub(crate) struct JsonRpcError {
+    pub(crate) code: i32,
+    pub(crate) message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    data: Option<Value>,
+    pub(crate) data: Option<Value>,
 }
 
 /// Error codes -- re-exported from shared ecosystem constants
-mod error_codes {
+pub(crate) mod error_codes {
     pub use toadstool_common::constants::jsonrpc::error_codes::*;
 }
 
@@ -232,7 +231,7 @@ async fn handle_tcp_connection(
         }
 
         let response = match serde_json::from_slice::<JsonRpcRequest>(line.as_bytes()) {
-            Ok(request) => handle_request(request, &state).await,
+            Ok(request) => super::routes::handle_request(request, &state).await,
             Err(e) => JsonRpcResponse {
                 jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
                 result: None,
@@ -270,7 +269,7 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Res
         }
 
         let response = match serde_json::from_slice::<JsonRpcRequest>(line.as_bytes()) {
-            Ok(request) => handle_request(request, &state).await,
+            Ok(request) => super::routes::handle_request(request, &state).await,
             Err(e) => JsonRpcResponse {
                 jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
                 result: None,
@@ -293,210 +292,10 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Res
     Ok(())
 }
 
-/// Handle JSON-RPC request
-async fn handle_request(request: JsonRpcRequest, state: &ServerState) -> JsonRpcResponse {
-    // Validate JSON-RPC version
-    if request.jsonrpc != toadstool_common::constants::jsonrpc::VERSION {
-        return JsonRpcResponse {
-            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
-            result: None,
-            error: Some(JsonRpcError {
-                code: error_codes::INVALID_REQUEST,
-                message: "Invalid JSON-RPC version (must be \"2.0\")".to_string(),
-                data: None,
-            }),
-            id: request.id,
-        };
-    }
-
-    let result = match request.method.as_str() {
-        "daemon.health" => handle_health(state).await,
-        "daemon.metrics" => handle_metrics(state).await,
-        "daemon.submit_workload" => handle_submit_workload(request.params, state).await,
-        "daemon.get_workload" => handle_get_workload(request.params, state).await,
-        "daemon.delete_workload" => handle_delete_workload(request.params, state).await,
-        "daemon.list_workloads" => handle_list_workloads(state).await,
-        #[cfg(feature = "nautilus")]
-        method if method.starts_with("ai.nautilus.") => {
-            route_nautilus(method, &request.params).await
-        }
-        _ => Err(JsonRpcError {
-            code: error_codes::METHOD_NOT_FOUND,
-            message: format!("Method not found: {}", request.method),
-            data: None,
-        }),
-    };
-
-    match result {
-        Ok(value) => JsonRpcResponse {
-            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
-            result: Some(value),
-            error: None,
-            id: request.id,
-        },
-        Err(error) => JsonRpcResponse {
-            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
-            result: None,
-            error: Some(error),
-            id: request.id,
-        },
-    }
-}
-
-/// Health check handler
-async fn handle_health(state: &ServerState) -> Result<Value, JsonRpcError> {
-    let uptime_secs = state.start_time.elapsed().as_secs();
-    let active_workloads = state.workload_manager.active_workload_count().await;
-
-    Ok(json!({
-        "status": "ok",
-        "version": env!("CARGO_PKG_VERSION"),
-        "uptime_secs": uptime_secs,
-        "active_workloads": active_workloads,
-        "ecosystem_connected": false,
-    }))
-}
-
-/// Metrics handler
-async fn handle_metrics(state: &ServerState) -> Result<Value, JsonRpcError> {
-    let workload_ids = state.workload_manager.list_workloads().await;
-
-    let statuses = futures::future::join_all(
-        workload_ids
-            .iter()
-            .map(|id| state.workload_manager.get_workload_status(id)),
-    )
-    .await;
-
-    let (mut queued, mut running, mut completed, mut failed) = (0, 0, 0, 0);
-    for status_resp in statuses.into_iter().flatten() {
-        match status_resp.status {
-            WorkloadStatus::Queued => queued += 1,
-            WorkloadStatus::Running => running += 1,
-            WorkloadStatus::Completed => completed += 1,
-            WorkloadStatus::Failed => failed += 1,
-            WorkloadStatus::Cancelled => {}
-        }
-    }
-
-    Ok(json!({
-        "uptime_secs": state.start_time.elapsed().as_secs(),
-        "workloads": {
-            "queued": queued,
-            "running": running,
-            "completed": completed,
-            "failed": failed,
-        },
-        "ecosystem_connected": false,
-    }))
-}
-
-/// Submit workload handler
-async fn handle_submit_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
-    let request: SubmitWorkloadRequest =
-        serde_json::from_value(params).map_err(|e| JsonRpcError {
-            code: error_codes::INVALID_PARAMS,
-            message: format!("Invalid params: {e}"),
-            data: None,
-        })?;
-
-    match state.workload_manager.submit_workload(request).await {
-        Ok(response) => serde_json::to_value(response).map_err(|e| JsonRpcError {
-            code: error_codes::INTERNAL_ERROR,
-            message: format!("Serialization failed: {e}"),
-            data: None,
-        }),
-        Err(e) => Err(JsonRpcError {
-            code: error_codes::WORKLOAD_SUBMIT_FAILED,
-            message: format!("Workload submission failed: {e}"),
-            data: None,
-        }),
-    }
-}
-
-/// Get workload handler
-async fn handle_get_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
-    let workload_id = params["id"].as_str().ok_or_else(|| JsonRpcError {
-        code: error_codes::INVALID_PARAMS,
-        message: "Missing or invalid 'id' parameter".to_string(),
-        data: None,
-    })?;
-
-    state
-        .workload_manager
-        .get_workload_status(workload_id)
-        .await
-        .map_or_else(
-            || {
-                Err(JsonRpcError {
-                    code: error_codes::WORKLOAD_NOT_FOUND,
-                    message: format!("Workload not found: {workload_id}"),
-                    data: None,
-                })
-            },
-            |status| {
-                serde_json::to_value(status).map_err(|e| JsonRpcError {
-                    code: error_codes::INTERNAL_ERROR,
-                    message: format!("Serialization failed: {e}"),
-                    data: None,
-                })
-            },
-        )
-}
-
-/// Delete workload handler
-async fn handle_delete_workload(params: Value, state: &ServerState) -> Result<Value, JsonRpcError> {
-    let workload_id = params["id"].as_str().ok_or_else(|| JsonRpcError {
-        code: error_codes::INVALID_PARAMS,
-        message: "Missing or invalid 'id' parameter".to_string(),
-        data: None,
-    })?;
-
-    match state.workload_manager.cancel_workload(workload_id).await {
-        Ok(()) => Ok(json!({"success": true, "workload_id": workload_id})),
-        Err(e) => Err(JsonRpcError {
-            code: error_codes::WORKLOAD_DELETE_FAILED,
-            message: format!("Workload deletion failed: {e}"),
-            data: None,
-        }),
-    }
-}
-
-/// List workloads handler
-async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcError> {
-    let workload_ids = state.workload_manager.list_workloads().await;
-
-    let workloads: Vec<_> = futures::future::join_all(
-        workload_ids
-            .iter()
-            .map(|id| state.workload_manager.get_workload_status(id)),
-    )
-    .await
-    .into_iter()
-    .flatten()
-    .collect();
-
-    Ok(json!({
-        "workloads": workloads,
-        "count": workloads.len(),
-    }))
-}
-
-/// Proxy `ai.nautilus.*` methods to barraCuda via capability-based IPC.
-#[cfg(feature = "nautilus")]
-async fn route_nautilus(method: &str, params: &Value) -> Result<Value, JsonRpcError> {
-    super::nautilus_handlers::proxy_to_barracuda(method, params)
-        .await
-        .map_err(|e| JsonRpcError {
-            code: e.code,
-            message: e.message,
-            data: None,
-        })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     use std::path::PathBuf;
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
     use tokio::net::{UnixListener, UnixStream};

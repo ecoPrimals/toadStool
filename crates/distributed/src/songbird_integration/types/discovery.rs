@@ -161,18 +161,30 @@ pub struct DiscoveryClient {
     pub(crate) rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
-/// Registry of discovered nodes.
-#[derive(Default)]
+/// Registry of discovered nodes with per-node health tracking.
 pub struct NodeRegistry {
     /// Node ID to registration mapping.
     pub nodes: HashMap<NodeId, NodeRegistration>,
+    /// Last successful health heartbeat per node.
+    pub health_timestamps: HashMap<NodeId, std::time::Instant>,
+}
+
+impl Default for NodeRegistry {
+    fn default() -> Self {
+        Self {
+            nodes: HashMap::new(),
+            health_timestamps: HashMap::new(),
+        }
+    }
 }
 
 impl NodeRegistry {
-    /// Registers a node.
+    /// Registers a node and records its initial health timestamp.
     pub fn register(&mut self, registration: NodeRegistration) {
-        self.nodes
-            .insert(registration.node_id.clone(), registration);
+        let node_id = registration.node_id.clone();
+        self.nodes.insert(node_id.clone(), registration);
+        self.health_timestamps
+            .insert(node_id, std::time::Instant::now());
     }
 
     /// Returns registration for a node ID.

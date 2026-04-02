@@ -15,7 +15,7 @@
 //! # Evolution
 //!
 //! Migrated from hand-rolled mmap/munmap to [`toadstool_hw_safe::SafeMmapRegion`],
-//! which owns the mapping lifetime and provides [`VolatileMmio`] for
+//! which owns the mapping lifetime and provides [`toadstool_hw_safe::VolatileMmio`] for
 //! bounds-checked volatile reads and writes.
 
 use crate::error::{NvPmuError, Result};
@@ -45,11 +45,15 @@ impl Bar0Access {
     }
 
     fn open_path(bdf: &str, path: &Path) -> Result<Self> {
-        let inner = SafeMmapRegion::map_shared_rw(path).map_err(|e| {
-            NvPmuError::SensorNotFound(format!("BAR0 mmap for {bdf}: {e}"))
-        })?;
+        let inner = SafeMmapRegion::map_shared_rw(path)
+            .map_err(|e| NvPmuError::SensorNotFound(format!("BAR0 mmap for {bdf}: {e}")))?;
 
-        tracing::info!(bdf, size = inner.size(), "BAR0 mapped ({} MB)", inner.size() / (1024 * 1024));
+        tracing::info!(
+            bdf,
+            size = inner.size(),
+            "BAR0 mapped ({} MB)",
+            inner.size() / (1024 * 1024)
+        );
 
         Ok(Self {
             inner,

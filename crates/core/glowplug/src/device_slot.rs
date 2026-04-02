@@ -6,9 +6,9 @@
 //! an ember [`HeldResource`] (if held), health status, and a lifecycle
 //! journal.
 
+use toadstool_ember::HeldResource;
 use toadstool_ember::journal::SwapJournal;
 use toadstool_ember::resource_handle::ResourceHandle;
-use toadstool_ember::HeldResource;
 
 use crate::device_id::DeviceId;
 use crate::health::HealthStatus;

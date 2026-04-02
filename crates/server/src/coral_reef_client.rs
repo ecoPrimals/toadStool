@@ -207,7 +207,7 @@ mod tests {
         std::fs::write(&sock, b"").unwrap();
 
         let result = scan_dir_for_socket(&dir, "coralreef");
-        assert_eq!(result, Some(sock.clone()));
+        assert_eq!(result, Some(sock));
 
         let _ = std::fs::remove_dir_all(&dir);
     }

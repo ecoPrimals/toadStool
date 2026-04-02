@@ -214,6 +214,7 @@ lto = true
  
 # Production code quality: warnings as errors
 [workspace.lints.rust]
+unsafe_code = "deny"
 
 # Pedantic + Nursery clippy enabled for production-grade code quality
 [workspace.lints.clippy]

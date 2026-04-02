@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // Volatile reads/writes require unsafe — this is the containment zone
 
 //! Bounds-checked volatile MMIO register access.
 //!
@@ -85,7 +86,10 @@ impl VolatileMmio<'_> {
         // SAFETY: bounds checked above. ptr is valid for size bytes
         // (caller invariant from constructor). Volatile read is correct
         // for MMIO registers — prevents compiler reordering/elision.
-        #[allow(clippy::cast_ptr_alignment, reason = "MMIO registers are naturally u32-aligned")]
+        #[allow(
+            clippy::cast_ptr_alignment,
+            reason = "MMIO registers are naturally u32-aligned"
+        )]
         let val = unsafe {
             let p = self.ptr.as_ptr().add(offset).cast::<u32>();
             std::ptr::read_volatile(p)
@@ -108,7 +112,10 @@ impl VolatileMmio<'_> {
         }
         // SAFETY: bounds checked above. ptr is valid and mapped (caller
         // invariant). Volatile write is correct for MMIO.
-        #[allow(clippy::cast_ptr_alignment, reason = "MMIO registers are naturally u32-aligned")]
+        #[allow(
+            clippy::cast_ptr_alignment,
+            reason = "MMIO registers are naturally u32-aligned"
+        )]
         unsafe {
             let p = self.ptr.as_ptr().add(offset).cast::<u32>();
             std::ptr::write_volatile(p, value);

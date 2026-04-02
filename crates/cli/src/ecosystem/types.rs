@@ -263,23 +263,19 @@ impl ServiceType {
             "discovery" | "orchestration" | "coordination" => Self::Discovery,
             "crypto" | "pki" | "security" => Self::Crypto,
             "storage" => Self::Storage,
-            "compute" | "compute:execution" | "intelligence" => Self::Compute,
+            "compute" | "compute:execution" | "intelligence" | "routing" => Self::Compute,
             _ => Self::Generic,
         }
     }
 
     /// Create from service name (backward compatibility when parsing discovered services).
-    /// Resolves legacy primal names to capability categories.
+    /// Resolves legacy primal names via [`CapabilityDomain::from_label`].
     pub fn from_name(name: &str) -> Self {
-        use toadstool_common::interned_strings::capabilities;
-        Self::from_capability(match name.to_lowercase().as_str() {
-            "songbird" | capabilities::COORDINATION => capabilities::COORDINATION,
-            "beardog" | capabilities::CRYPTO => capabilities::CRYPTO,
-            "nestgate" | capabilities::STORAGE => capabilities::STORAGE,
-            "toadstool" | capabilities::COMPUTE => capabilities::COMPUTE,
-            "squirrel" => capabilities::INTELLIGENCE,
-            other => other,
-        })
+        use toadstool_common::interned_strings::CapabilityDomain;
+        match CapabilityDomain::from_label(name) {
+            Some(domain) => Self::from_capability(domain.as_str()),
+            None => Self::from_capability(name),
+        }
     }
 }
 

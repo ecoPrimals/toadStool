@@ -65,7 +65,8 @@ impl JsonRpcHandler {
         let local_gate_id = std::env::var("TOADSTOOL_GATE_ID")
             .or_else(|_| std::env::var("HOSTNAME"))
             .or_else(|_| {
-                std::fs::read_to_string("/etc/hostname").map(|h| h.trim().to_string())
+                toadstool_sysmon::system::hostname()
+                    .ok_or_else(|| std::env::VarError::NotPresent)
             })
             .unwrap_or_else(|_| String::from("local"));
         Self {
@@ -310,14 +311,15 @@ impl JsonRpcHandler {
 
     async fn ember_list(&self) -> Result<serde_json::Value, JsonRpcError> {
         let list = self.glowplug.list_devices();
-        Ok(serde_json::to_value(list)
-            .unwrap_or_else(|_| serde_json::json!({"devices": []})))
+        Ok(serde_json::to_value(list).unwrap_or_else(|_| serde_json::json!({"devices": []})))
     }
 
     async fn ember_status(&self) -> Result<serde_json::Value, JsonRpcError> {
         let status = self.glowplug.status();
-        Ok(serde_json::to_value(status)
-            .unwrap_or_else(|_| serde_json::json!({"available": false})))
+        Ok(
+            serde_json::to_value(status)
+                .unwrap_or_else(|_| serde_json::json!({"available": false})),
+        )
     }
 }
 

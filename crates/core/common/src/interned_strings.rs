@@ -240,6 +240,80 @@ pub mod primals {
     pub const TOADSTOOL: &str = "toadstool";
 }
 
+/// Typed capability domain — use instead of scattered string literals.
+///
+/// Each variant carries the canonical `&str` constant so callers can go from
+/// enum to string (`domain.as_str()`) and back (`CapabilityDomain::from_str`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CapabilityDomain {
+    /// Security / cryptography / PKI.
+    Security,
+    /// Coordination / discovery / mesh.
+    Coordination,
+    /// Storage / artifacts / pipelines.
+    Storage,
+    /// Compute / CPU / GPU / specialized hardware.
+    Compute,
+    /// AI routing / MCP-style agent IPC.
+    Routing,
+    /// AI/ML inference / training.
+    Intelligence,
+    /// Monitoring / metrics / tracing.
+    Monitoring,
+}
+
+impl CapabilityDomain {
+    /// Canonical capability string for this domain.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Security => capabilities::CRYPTO,
+            Self::Coordination => capabilities::COORDINATION,
+            Self::Storage => capabilities::STORAGE,
+            Self::Compute => capabilities::COMPUTE,
+            Self::Routing => capabilities::ROUTING,
+            Self::Intelligence => capabilities::INTELLIGENCE,
+            Self::Monitoring => capabilities::MONITORING,
+        }
+    }
+
+    /// Resolve a legacy primal name or capability string to a domain.
+    ///
+    /// Returns `None` for unrecognised strings.
+    #[must_use]
+    pub fn from_label(s: &str) -> Option<Self> {
+        match s.to_ascii_lowercase().as_str() {
+            "crypto" | "security" | "beardog" | "bear-dog" | "pki" => Some(Self::Security),
+            "coordination" | "orchestration" | "songbird" | "song-bird" => {
+                Some(Self::Coordination)
+            }
+            "storage" | "nestgate" | "nest-gate" => Some(Self::Storage),
+            "compute" | "toadstool" | "toad-stool" => Some(Self::Compute),
+            "routing" | "squirrel" => Some(Self::Routing),
+            "intelligence" | "ai" => Some(Self::Intelligence),
+            "monitoring" | "metrics" => Some(Self::Monitoring),
+            _ => None,
+        }
+    }
+
+    /// All known domains.
+    pub const ALL: [CapabilityDomain; 7] = [
+        Self::Security,
+        Self::Coordination,
+        Self::Storage,
+        Self::Compute,
+        Self::Routing,
+        Self::Intelligence,
+        Self::Monitoring,
+    ];
+}
+
+impl std::fmt::Display for CapabilityDomain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Common status strings
 pub mod status {
     /// Service/process is running; used in health checks and status reports.
@@ -363,6 +437,53 @@ mod tests {
     fn test_deprecated_primals() {
         assert_eq!(primals::BEARDOG, "beardog");
         assert_eq!(primals::SONGBIRD, "songbird");
+    }
+
+    #[test]
+    fn test_capability_domain_as_str() {
+        assert_eq!(CapabilityDomain::Security.as_str(), "crypto");
+        assert_eq!(CapabilityDomain::Coordination.as_str(), "coordination");
+        assert_eq!(CapabilityDomain::Storage.as_str(), "storage");
+        assert_eq!(CapabilityDomain::Compute.as_str(), "compute");
+        assert_eq!(CapabilityDomain::Routing.as_str(), "routing");
+        assert_eq!(CapabilityDomain::Intelligence.as_str(), "intelligence");
+        assert_eq!(CapabilityDomain::Monitoring.as_str(), "monitoring");
+    }
+
+    #[test]
+    fn test_capability_domain_from_label_legacy_names() {
+        assert_eq!(
+            CapabilityDomain::from_label("beardog"),
+            Some(CapabilityDomain::Security)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label("songbird"),
+            Some(CapabilityDomain::Coordination)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label("nestgate"),
+            Some(CapabilityDomain::Storage)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label("squirrel"),
+            Some(CapabilityDomain::Routing)
+        );
+        assert_eq!(
+            CapabilityDomain::from_label("toadstool"),
+            Some(CapabilityDomain::Compute)
+        );
+        assert_eq!(CapabilityDomain::from_label("unknown-thing"), None);
+    }
+
+    #[test]
+    fn test_capability_domain_display() {
+        assert_eq!(format!("{}", CapabilityDomain::Security), "crypto");
+        assert_eq!(format!("{}", CapabilityDomain::Coordination), "coordination");
+    }
+
+    #[test]
+    fn test_capability_domain_all() {
+        assert_eq!(CapabilityDomain::ALL.len(), 7);
     }
 
     #[test]

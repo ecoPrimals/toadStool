@@ -2,7 +2,7 @@
 //! Node registry, capability tracker, and health monitor implementations
 
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use toadstool::error::ToadStoolResult;
 
@@ -50,12 +50,37 @@ impl NodeRegistry {
         Ok(())
     }
 
-    /// No-op placeholder when discovery reports health for a known node id.
-    pub fn update_node_health(&mut self, node_id: &NodeId, _healthy: bool) {
-        // Mark node as active if it exists
-        if self.nodes.contains_key(node_id) {
-            // Node remains in registry as active
+    /// Update the health state for a known node.
+    ///
+    /// Healthy nodes are kept in the registry. Unhealthy nodes are removed so
+    /// they stop appearing in `get_active_nodes` results. Unknown nodes are
+    /// silently ignored (not yet registered).
+    pub fn update_node_health(&mut self, node_id: &NodeId, healthy: bool) {
+        if healthy {
+            if let Some(entry) = self.health_timestamps.get_mut(node_id) {
+                *entry = Instant::now();
+            } else if self.nodes.contains_key(node_id) {
+                self.health_timestamps.insert(node_id.clone(), Instant::now());
+            }
+        } else {
+            self.nodes.remove(node_id);
+            self.health_timestamps.remove(node_id);
+            tracing::info!("Removed unhealthy node {} from registry", node_id);
         }
+    }
+
+    /// Return references to nodes whose health heartbeat is within `max_age`.
+    pub fn get_healthy_nodes(&self, max_age: Duration) -> Vec<&NodeRegistration> {
+        let now = Instant::now();
+        self.nodes
+            .iter()
+            .filter(|(id, _)| {
+                self.health_timestamps
+                    .get(*id)
+                    .map_or(false, |ts| now.duration_since(*ts) <= max_age)
+            })
+            .map(|(_, reg)| reg)
+            .collect()
     }
 }
 

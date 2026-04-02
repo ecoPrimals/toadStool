@@ -323,7 +323,7 @@ mod tests {
     fn test_workload_request_serialization() {
         let request = WorkloadRequest {
             request_id: "test-123".to_string(),
-            from_primal: "songbird".to_string(),
+            from_primal: toadstool_common::interned_strings::capabilities::COORDINATION.to_string(),
             required_capability: "compute_gpu".to_string(),
             workload_type: WorkloadType::Native {
                 executable: "python".to_string(),

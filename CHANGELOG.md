@@ -5,7 +5,43 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 1, 2026 (Sessions 43-171)
+## [Unreleased] - April 2, 2026 (Sessions 43-172)
+
+### Session S172 (Apr 2, 2026) — Deep Debt Evolution Plan (6 Phases)
+
+#### Phase 1: Production stubs → real implementations
+- Evolved 6 distributed/ stubs: `validate_delegation_proof` (crypto_lock), `CachedResult` with TTL, `CloudCostTracker`/`CloudPerformanceTracker`, `update_node_health`, `UniversalJobProcessor::new()`
+- Feature-gated `TRpcTransport::send_message` behind `tarpc-transport` feature
+- Evolved CUDA "not implemented" to typed `ToadStoolError::runtime` with alternatives
+
+#### Phase 2: Hardcoding → capability-based
+- Created `CapabilityDomain` enum (7 variants: Security, Coordination, Storage, Compute, Routing, Intelligence, Monitoring) with `from_label()` for legacy primal name resolution
+- Replaced ~30 hardcoded primal name sites across `capability_helpers.rs`, `paths.rs`, `ecosystem/types.rs`
+- Routed hardcoded sysfs paths (`/dev/dri/card0`, PCI BDF, `/etc/hostname`) through `toadstool_sysmon` discovery
+- Created `toadstool_sysmon::system::hostname()` module
+- Migrated legacy fallback ports to `resolve_env_port()` helper
+
+#### Phase 3: Unsafe evolution
+- Created `LockedMemory` RAII type in hw-safe (AlignedAlloc + mlock/munlock, 5 tests)
+- Replaced generic ioctl dispatch with typed helper functions in nvpmu/vfio.rs
+- Wired BYOB `monitor_deployment_health` into background `tokio::spawn` task
+- Evolved embedded placeholder macros with clearer `embedded-placeholder-impls` vs `embedded-hw` feature gating
+
+#### Phase 4: Smart refactoring (3 large files → submodules)
+- `cli/daemon/jsonrpc_server.rs` → extracted route handlers into `routes.rs`
+- `core/toadstool/runtime.rs` → extracted engine management into `runtime/engine_registry.rs`
+- `core/toadstool/byob/byob_impl/mod.rs` → extracted deployment lifecycle into `deployment_lifecycle.rs`
+
+#### Phase 5: memmap2 migration
+- Replaced hand-rolled `rustix::mm::mmap`/`munmap` in `hw-safe/safe_mmap.rs` with `memmap2::MmapRaw`
+- Eliminated 4 unsafe blocks: mmap syscall (×2 paths), manual munmap Drop, unsafe Send/Sync impls
+- Only 1 irreducible unsafe remains in safe_mmap.rs (`VolatileMmio::new`)
+- Removed `map_with_flags`/`map_file` (unused externally); `MmapFailed` source → `std::io::Error`
+
+#### Phase 6: Coverage expansion
+- Added tests for 5 hw_learn handler files (apply, observe_distill, share_recipe, status, telemetry)
+- Added 18 tests to `handler/transport.rs` (LoopbackTransport, happy path streaming, error paths)
+- Fixed `ServiceType::from_capability("routing")` regression in ecosystem types test
 
 ### Session S171 (Apr 1, 2026) — Ember Absorption + Unsafe Evolution + Deep Debt
 

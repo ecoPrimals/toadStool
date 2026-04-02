@@ -101,3 +101,114 @@ impl HwLearnHandler {
         }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::pure_jsonrpc::handler::hw_learn::HwLearnHandler;
+    use serde_json::json;
+
+    fn handler_with_temp_store() -> (HwLearnHandler, tempfile::TempDir) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let handler = HwLearnHandler {
+            store_dir: dir.path().to_path_buf(),
+        };
+        (handler, dir)
+    }
+
+    /// Minimal mmiotrace line (see `hw_learn::observer::mmio_trace` tests).
+    fn minimal_mmiotrace_text() -> &'static str {
+        "W 4 1.000000 1 0xfee00000 0x00000001 0x0\n"
+    }
+
+    #[tokio::test]
+    async fn observe_missing_params_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let err = handler.hw_learn_observe(None).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("trace_data"));
+    }
+
+    #[tokio::test]
+    async fn observe_missing_trace_data_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({});
+        let err = handler.hw_learn_observe(Some(&params)).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("trace_data"));
+    }
+
+    #[tokio::test]
+    async fn observe_valid_mmiotrace_parses() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "trace_data": minimal_mmiotrace_text(),
+            "mode": "mmiotrace",
+        });
+        let value = handler.hw_learn_observe(Some(&params)).await.unwrap();
+        assert_eq!(value.get("domain"), Some(&json!("compute.hardware")));
+        assert_eq!(value.get("operation"), Some(&json!("observe")));
+        assert_eq!(value.get("events_count"), Some(&json!(1)));
+        assert_eq!(value.get("driver"), Some(&json!("mmiotrace")));
+    }
+
+    #[tokio::test]
+    async fn distill_missing_params_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let err = handler.hw_learn_distill(None).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+    }
+
+    #[tokio::test]
+    async fn distill_missing_baseline_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "compute": minimal_mmiotrace_text(),
+            "chip": "gv100",
+        });
+        let err = handler.hw_learn_distill(Some(&params)).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("baseline"));
+    }
+
+    #[tokio::test]
+    async fn distill_missing_compute_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "baseline": minimal_mmiotrace_text(),
+            "chip": "gv100",
+        });
+        let err = handler.hw_learn_distill(Some(&params)).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("compute"));
+    }
+
+    #[tokio::test]
+    async fn distill_missing_chip_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "baseline": minimal_mmiotrace_text(),
+            "compute": minimal_mmiotrace_text(),
+        });
+        let err = handler.hw_learn_distill(Some(&params)).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("chip"));
+    }
+
+    #[tokio::test]
+    async fn distill_valid_traces_returns_recipe() {
+        let (handler, _dir) = handler_with_temp_store();
+        let t = minimal_mmiotrace_text();
+        let params = json!({
+            "baseline": t,
+            "compute": t,
+            "chip": "gv100",
+        });
+        let value = handler.hw_learn_distill(Some(&params)).await.unwrap();
+        assert_eq!(value.get("domain"), Some(&json!("compute.hardware")));
+        assert_eq!(value.get("operation"), Some(&json!("distill")));
+        assert_eq!(value.get("chip"), Some(&json!("gv100")));
+        assert!(value.get("diff_count").is_some());
+        assert!(value.get("recipe_steps").is_some());
+        assert!(value.get("recipe").is_some());
+    }
+}

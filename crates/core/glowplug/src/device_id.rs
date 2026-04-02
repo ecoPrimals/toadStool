@@ -37,15 +37,11 @@ impl DeviceId {
             Self::UsbPath(path) => format!("usb:{path}"),
             Self::SysfsPath(path) => format!(
                 "sysfs:{}",
-                path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("?")
+                path.file_name().and_then(|n| n.to_str()).unwrap_or("?")
             ),
             Self::DevNode(path) => format!(
                 "dev:{}",
-                path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("?")
+                path.file_name().and_then(|n| n.to_str()).unwrap_or("?")
             ),
             Self::Serial(s) => format!("serial:{}", &s[..s.len().min(12)]),
             Self::Platform(p) => format!("platform:{p}"),

@@ -121,3 +121,123 @@ impl HwLearnHandler {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::pure_jsonrpc::handler::hw_learn::HwLearnHandler;
+    use serde_json::json;
+
+    fn handler_with_temp_store() -> (HwLearnHandler, tempfile::TempDir) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let handler = HwLearnHandler {
+            store_dir: dir.path().to_path_buf(),
+        };
+        (handler, dir)
+    }
+
+    fn minimal_recipe_json() -> String {
+        use hw_learn::distiller::{DriverKind, GpuArch, InitRecipe, InitStep, RegFunction, Vendor};
+        let arch = GpuArch {
+            vendor: Vendor::Nvidia,
+            generation: "Volta".into(),
+            chip: "GV100".into(),
+            compute_class: "sm70".into(),
+        };
+        let recipe = InitRecipe {
+            source_arch: arch.clone(),
+            source_driver: DriverKind::Nouveau,
+            target_arch: arch,
+            steps: vec![InitStep::RegisterWrite {
+                offset: 0x20000,
+                value: 1,
+                function: RegFunction::PowerGate,
+            }],
+            confidence: 0.0,
+            description: "unit test".into(),
+        };
+        serde_json::to_string(&recipe).unwrap()
+    }
+
+    #[tokio::test]
+    async fn missing_params_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let err = handler.hw_learn_apply(None).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("recipe_json") || err.message.contains("recipe_id"));
+    }
+
+    #[tokio::test]
+    async fn missing_recipe_json_and_recipe_id_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({});
+        let err = handler
+            .hw_learn_apply(Some(&params))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("recipe_json") || err.message.contains("recipe_id"));
+    }
+
+    #[tokio::test]
+    async fn dry_run_with_recipe_json_succeeds() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "recipe_json": minimal_recipe_json(),
+        });
+        let value = handler.hw_learn_apply(Some(&params)).await.unwrap();
+        assert_eq!(value.get("mode"), Some(&json!("dry_run")));
+        assert_eq!(value.get("domain"), Some(&json!("compute.hardware")));
+        assert_eq!(value.get("operation"), Some(&json!("apply")));
+        assert!(value.get("verdict").is_some());
+    }
+
+    #[tokio::test]
+    async fn invalid_recipe_json_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "recipe_json": "not valid json {{{",
+        });
+        let err = handler
+            .hw_learn_apply(Some(&params))
+            .await
+            .unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("Invalid recipe JSON"));
+    }
+
+    #[tokio::test]
+    async fn apply_with_recipe_id_loads_from_store() {
+        let (handler, _dir) = handler_with_temp_store();
+        let recipe_str = minimal_recipe_json();
+        let save = json!({
+            "action": "save",
+            "recipe_json": recipe_str.clone(),
+        });
+        let saved = handler.hw_learn_share_recipe(Some(&save)).await.unwrap();
+        let id = saved.get("recipe_id").and_then(|v| v.as_str()).unwrap();
+
+        let apply_params = json!({ "recipe_id": id });
+        let value = handler.hw_learn_apply(Some(&apply_params)).await.unwrap();
+        assert_eq!(value.get("mode"), Some(&json!("dry_run")));
+    }
+
+    #[tokio::test]
+    async fn live_apply_without_working_bar0_returns_error() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = json!({
+            "recipe_json": minimal_recipe_json(),
+            "live": true,
+            "bdf": "0000:ff:00.0",
+        });
+        let err = handler.hw_learn_apply(Some(&params)).await.unwrap_err();
+        assert_eq!(err.code, crate::pure_jsonrpc::types::JsonRpcError::INTERNAL_ERROR);
+        assert!(
+            err.message.contains("BAR0")
+                || err.message.contains("GPU")
+                || err.message.contains("thermal")
+                || err.message.contains("refusing live apply"),
+            "unexpected message: {}",
+            err.message
+        );
+    }
+}

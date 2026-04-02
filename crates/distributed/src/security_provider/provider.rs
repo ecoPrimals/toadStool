@@ -285,6 +285,7 @@ impl Default for MockSecurityProvider {
 
 #[cfg(test)]
 impl MockSecurityProvider {
+    /// Create a new mock security provider with default settings.
     pub fn new() -> Self {
         Self::default()
     }

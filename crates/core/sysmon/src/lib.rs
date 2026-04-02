@@ -42,6 +42,7 @@ pub mod memory;
 pub mod network;
 pub mod pcie_topology;
 pub mod process;
+pub mod system;
 
 pub use cpu::{cpu_brand, cpu_count, cpu_usage, per_cpu_usage};
 pub use disk::{DiskInfo, disk_usage};

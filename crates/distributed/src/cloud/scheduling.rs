@@ -9,12 +9,12 @@ use toadstool::error::ToadStoolResult;
 
 use crate::{UniversalJob, UniversalJobType};
 
-/// Tracks per-provider cost models, usage, and alerts (placeholder implementation).
+/// Tracks per-provider cost models, accumulated usage, and budget alerts.
 #[derive(Default)]
 pub struct CloudCostTracker {
-    _cost_models: HashMap<String, super::types::CostModel>,
-    _usage_metrics: HashMap<String, f64>,
-    _alerts: Vec<super::types::CostAlert>,
+    cost_models: HashMap<String, super::types::CostModel>,
+    usage_metrics: HashMap<String, f64>,
+    alerts: Vec<super::types::CostAlert>,
 }
 
 impl CloudCostTracker {
@@ -22,19 +22,82 @@ impl CloudCostTracker {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Register a cost model for a named provider (e.g. "aws", "gcp").
+    pub fn set_cost_model(&mut self, provider: String, model: super::types::CostModel) {
+        self.cost_models.insert(provider, model);
+    }
+
+    /// Record usage (accumulates) for a named metric key.
+    pub fn record_usage(&mut self, key: String, amount: f64) {
+        *self.usage_metrics.entry(key).or_default() += amount;
+    }
+
+    /// Returns current accumulated usage for a metric key.
+    #[must_use]
+    pub fn get_usage(&self, key: &str) -> f64 {
+        self.usage_metrics.get(key).copied().unwrap_or(0.0)
+    }
+
+    /// Estimate cost for a provider given `core_hours` of compute.
+    #[must_use]
+    pub fn estimate_cost(&self, provider: &str, core_hours: f64) -> f64 {
+        self.cost_models
+            .get(provider)
+            .map(|m| m.cpu_cost_per_core_hour * core_hours)
+            .unwrap_or(0.0)
+    }
+
+    /// Return any active alerts.
+    #[must_use]
+    pub fn alerts(&self) -> &[super::types::CostAlert] {
+        &self.alerts
+    }
+
+    /// Push a cost alert.
+    pub fn add_alert(&mut self, alert: super::types::CostAlert) {
+        self.alerts.push(alert);
+    }
 }
 
-/// Tracks performance samples and baselines per provider (placeholder implementation).
+/// Tracks performance samples and baselines per provider.
 #[derive(Default)]
 pub struct CloudPerformanceTracker {
-    _performance_metrics: HashMap<String, super::types::PerformanceMetric>,
-    _baseline_metrics: HashMap<String, f64>,
+    performance_metrics: HashMap<String, super::types::PerformanceMetric>,
+    baseline_metrics: HashMap<String, f64>,
 }
 
 impl CloudPerformanceTracker {
     /// Creates an empty performance tracker.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Record a performance sample for a metric key.
+    pub fn record_metric(&mut self, key: String, metric: super::types::PerformanceMetric) {
+        self.performance_metrics.insert(key, metric);
+    }
+
+    /// Set the baseline value for a metric key.
+    pub fn set_baseline(&mut self, key: String, value: f64) {
+        self.baseline_metrics.insert(key, value);
+    }
+
+    /// Get the current metric value for a key.
+    #[must_use]
+    pub fn get_metric(&self, key: &str) -> Option<&super::types::PerformanceMetric> {
+        self.performance_metrics.get(key)
+    }
+
+    /// Returns the ratio of current metric to baseline (>1.0 means above baseline).
+    #[must_use]
+    pub fn performance_ratio(&self, key: &str) -> Option<f64> {
+        let current = self.performance_metrics.get(key)?;
+        let baseline = self.baseline_metrics.get(key)?;
+        if *baseline == 0.0 {
+            return None;
+        }
+        Some(current.value / baseline)
     }
 }
 

@@ -116,16 +116,11 @@ impl GpuFirmwareAccess {
     /// Create a firmware access that will fail (no BDF configured).
     #[must_use]
     pub fn unavailable() -> Self {
-        Self {
-            bdf: String::new(),
-        }
+        Self { bdf: String::new() }
     }
 
     /// Read a single Falcon engine's state from BAR0.
-    fn read_falcon(
-        bar0: &nvpmu::Bar0Access,
-        base: u64,
-    ) -> Result<FalconState, GpuFirmwareError> {
+    fn read_falcon(bar0: &nvpmu::Bar0Access, base: u64) -> Result<FalconState, GpuFirmwareError> {
         let cpuctl = bar0
             .read_u32(base + regs::FALCON_CPUCTL)
             .map_err(|e| GpuFirmwareError::RegisterReadFailed(e.to_string()))?;
@@ -150,9 +145,8 @@ impl FirmwareInterface for GpuFirmwareAccess {
             ));
         }
 
-        let bar0 = nvpmu::Bar0Access::open(&self.bdf).map_err(|e| {
-            GpuFirmwareError::Bar0Unavailable(format!("{}: {e}", self.bdf))
-        })?;
+        let bar0 = nvpmu::Bar0Access::open(&self.bdf)
+            .map_err(|e| GpuFirmwareError::Bar0Unavailable(format!("{}: {e}", self.bdf)))?;
 
         let fecs = Self::read_falcon(&bar0, regs::FECS_BASE).ok();
         let gpccs = Self::read_falcon(&bar0, regs::GPCCS_BASE).ok();
@@ -242,7 +236,11 @@ mod tests {
     #[test]
     fn send_command_unavailable() {
         let access = GpuFirmwareAccess::unavailable();
-        assert!(access.send_command(GpuFirmwareCommand::RefreshStatus).is_err());
+        assert!(
+            access
+                .send_command(GpuFirmwareCommand::RefreshStatus)
+                .is_err()
+        );
     }
 
     #[test]

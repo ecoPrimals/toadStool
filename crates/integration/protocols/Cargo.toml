@@ -12,6 +12,7 @@ categories = ["api-bindings", "network-programming"]
 [features]
 default = []
 networking = []
+tarpc-transport = []
 
 [dependencies]
 # Core ToadStool types

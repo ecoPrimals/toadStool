@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 1, 2026 -- S171 Ember Absorption + Unsafe Evolution + Deep Debt
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,700+ tests (0 failures) | **~65 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **glowPlug/ember** absorbed from coralReef — toadStool-native hardware lifecycle | **~26 irreducible unsafe** ops in `hw-safe` + drivers | **IPC compliant** (health.liveness/readiness/check, capabilities.list, XDG socket)
-**Latest**: S171 — Created `toadstool-hw-safe` (unsafe containment zone), `toadstool-glowplug`, `toadstool-ember` crates. Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess` (direct BAR0 reads). Evolved `glowplug_client.rs` to toadStool-native sysfs service. Migrated mmap/alloc to hw-safe. All ~400 distributed missing_docs resolved. Hardcoding evolved (bind address, gate ID, configurator).
+**Updated**: April 2, 2026 -- S172 Deep Debt Evolution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,500+ tests (0 failures) | **~65 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **glowPlug/ember** absorbed from coralReef — toadStool-native hardware lifecycle | **~22 irreducible unsafe** ops in `hw-safe` + drivers | **IPC compliant** (health.liveness/readiness/check, capabilities.list, XDG socket)
+**Latest**: S172 — Deep debt evolution: CapabilityDomain enum, LockedMemory RAII, memmap2 migration (4 unsafe blocks eliminated), typed ioctl wrappers, BYOB health loop, 3 large file refactors, +55 hw_learn/transport tests, sysfs discovery helpers.
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80% line coverage** (lib-only, 185K lines instrumented). **21,700+ tests** (0 failures). Target 90%.
+**~80% line coverage** (lib-only, 185K lines instrumented). **21,500+ tests** (0 failures). Target 90%. S172 added 55+ tests across hw_learn handlers and transport handler.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)

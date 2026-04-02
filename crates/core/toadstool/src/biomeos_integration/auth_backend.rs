@@ -354,11 +354,12 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_auth_backend_request() {
+        use toadstool_common::interned_strings::capabilities;
         let backend = InMemoryAuthBackend::new();
         let request = TokenRequest {
             requesting_primal: "toadstool".to_string(),
             scope: vec!["cross-primal".to_string()],
-            audience: vec!["songbird".to_string()],
+            audience: vec![capabilities::COORDINATION.to_string()],
             timestamp: SystemTime::now(),
         };
 
@@ -388,11 +389,12 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_token_validation() {
+        use toadstool_common::interned_strings::capabilities;
         let backend = InMemoryAuthBackend::new();
         let request = TokenRequest {
             requesting_primal: "toadstool".to_string(),
             scope: vec!["cross-primal".to_string()],
-            audience: vec!["songbird".to_string()],
+            audience: vec![capabilities::COORDINATION.to_string()],
             timestamp: SystemTime::now(),
         };
 

@@ -33,8 +33,8 @@ impl MmapRegion {
 
         tracing::debug!("Mapping PCIe BAR: {path}");
 
-        let inner = toadstool_hw_safe::SafeMmapRegion::map_shared_rw(Path::new(&path))
-            .map_err(|e| {
+        let inner =
+            toadstool_hw_safe::SafeMmapRegion::map_shared_rw(Path::new(&path)).map_err(|e| {
                 AkidaError::capability_query_failed(format!(
                     "BAR{bar_index} mmap for {pcie_address}: {e}"
                 ))
@@ -59,9 +59,9 @@ impl MmapRegion {
     /// Returns error if offset is out of bounds
     pub fn read_u32(&self, offset: usize) -> Result<u32> {
         let volatile = self.inner.as_volatile();
-        let value = volatile.read_u32(offset).map_err(|e| {
-            AkidaError::transfer_failed(format!("BAR read_u32 @ {offset:#x}: {e}"))
-        })?;
+        let value = volatile
+            .read_u32(offset)
+            .map_err(|e| AkidaError::transfer_failed(format!("BAR read_u32 @ {offset:#x}: {e}")))?;
         tracing::trace!("Read u32 @ {offset:#x} = {value:#x}");
         Ok(value)
     }
@@ -74,9 +74,9 @@ impl MmapRegion {
     pub fn write_u32(&mut self, offset: usize, value: u32) -> Result<()> {
         tracing::trace!("Write u32 @ {offset:#x} = {value:#x}");
         let volatile = self.inner.as_volatile();
-        volatile.write_u32(offset, value).map_err(|e| {
-            AkidaError::transfer_failed(format!("BAR write_u32 @ {offset:#x}: {e}"))
-        })
+        volatile
+            .write_u32(offset, value)
+            .map_err(|e| AkidaError::transfer_failed(format!("BAR write_u32 @ {offset:#x}: {e}")))
     }
 
     /// Read bytes at offset
@@ -100,9 +100,7 @@ impl MmapRegion {
         self.inner
             .as_volatile()
             .write_bytes(offset, data)
-            .map_err(|e| {
-                AkidaError::transfer_failed(format!("BAR write_bytes @ {offset:#x}: {e}"))
-            })
+            .map_err(|e| AkidaError::transfer_failed(format!("BAR write_bytes @ {offset:#x}: {e}")))
     }
 
     /// Get region size
@@ -146,9 +144,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         let msg = err.to_string();
-        assert!(
-            msg.contains("mmap") || msg.contains("capability") || msg.contains("BAR")
-        );
+        assert!(msg.contains("mmap") || msg.contains("capability") || msg.contains("BAR"));
     }
 
     #[test]

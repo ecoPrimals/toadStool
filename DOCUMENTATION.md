@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 1, 2026 — S171
+**Last Updated**: April 2, 2026 — S172
 
 ---
 
@@ -30,14 +30,15 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S171 — April 1, 2026)
+## Current State (S172 — April 2, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **21,700+ tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
+- **21,500+ tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
 - **~65 JSON-RPC methods**. IPC compliant (`health.liveness/readiness/check`, `capabilities.list`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
 - **glowPlug/ember subsystem** — toadStool-native hardware lifecycle (absorbed from coralReef). `toadstool-glowplug`, `toadstool-ember`, `toadstool-hw-safe` crates.
-- **~26 irreducible unsafe ops** — all in `hw-safe` + drivers, with `// SAFETY:` comments. 23 crates forbid, 20 deny `unsafe_code`.
+- **~22 irreducible unsafe ops** — all in `hw-safe` + drivers, with `// SAFETY:` comments. 23 crates forbid, 20 deny `unsafe_code`.
+- **memmap2 migration** — replaced hand-rolled mmap/munmap in hw-safe with memmap2, eliminating 4 unsafe blocks.
 - **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to BearDog. HTTP delegated to Songbird.
 - **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.

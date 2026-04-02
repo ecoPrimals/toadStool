@@ -59,3 +59,46 @@ impl HwLearnHandler {
         }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::pure_jsonrpc::handler::hw_learn::HwLearnHandler;
+
+    fn handler_with_temp_store() -> (HwLearnHandler, tempfile::TempDir) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let handler = HwLearnHandler {
+            store_dir: dir.path().to_path_buf(),
+        };
+        (handler, dir)
+    }
+
+    #[tokio::test]
+    async fn no_params_returns_valid_json() {
+        let (handler, _dir) = handler_with_temp_store();
+        let value = handler.hw_learn_status(None).await.unwrap();
+        assert_eq!(value.get("domain"), Some(&serde_json::json!("compute.hardware")));
+        assert_eq!(value.get("operation"), Some(&serde_json::json!("status")));
+    }
+
+    #[tokio::test]
+    async fn result_has_expected_fields() {
+        let (handler, _dir) = handler_with_temp_store();
+        let value = handler.hw_learn_status(None).await.unwrap();
+        assert!(value.get("pipeline").is_some());
+        let pipeline = value.get("pipeline").unwrap();
+        assert!(pipeline.get("phase").is_some());
+        assert!(value.get("recipes").is_some());
+        let recipes = value.get("recipes").unwrap();
+        assert!(recipes.get("stored_architectures").is_some());
+        assert!(value.get("gpus_detected").is_some());
+    }
+
+    #[tokio::test]
+    async fn optional_chip_param_still_succeeds() {
+        let (handler, _dir) = handler_with_temp_store();
+        let params = serde_json::json!({ "chip": "gv100" });
+        let value = handler.hw_learn_status(Some(&params)).await.unwrap();
+        assert_eq!(value.get("domain"), Some(&serde_json::json!("compute.hardware")));
+        assert!(value.get("firmware").is_some());
+    }
+}

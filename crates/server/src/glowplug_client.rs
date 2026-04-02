@@ -109,10 +109,10 @@ impl GlowPlugClient {
         let bind_path = format!("/sys/bus/pci/drivers/{target}/bind");
 
         // Unbind current driver
-        if let Some(ref unbind) = unbind_path {
-            if std::fs::write(unbind, bdf).is_err() {
-                tracing::warn!(bdf, "unbind failed (device may not be bound)");
-            }
+        if let Some(ref unbind) = unbind_path
+            && std::fs::write(unbind, bdf).is_err()
+        {
+            tracing::warn!(bdf, "unbind failed (device may not be bound)");
         }
 
         // Set driver override

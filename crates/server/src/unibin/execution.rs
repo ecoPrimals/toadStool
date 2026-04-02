@@ -169,8 +169,7 @@ async fn start_tcp_servers(
 
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
-    let bind_addr =
-        std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| bind_any());
+    let bind_addr = std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| bind_any());
 
     let tarpc_listener = TcpListener::bind(&bind_addr)
         .await

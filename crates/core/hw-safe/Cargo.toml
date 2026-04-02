@@ -13,6 +13,7 @@ keywords = ["hardware", "mmap", "mmio", "unsafe", "wrapper"]
 categories.workspace = true
 
 [dependencies]
+memmap2 = "0.9"
 rustix = { version = "1", features = ["mm"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }

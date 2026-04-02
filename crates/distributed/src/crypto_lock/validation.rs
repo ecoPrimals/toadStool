@@ -127,9 +127,38 @@ impl SecurityPermissionValidator {
         }
     }
 
-    /// Validates a delegation proof (stub; always succeeds).
-    pub async fn validate_delegation_proof(&self, _proof: &SecurityProof) -> ToadStoolResult<()> {
-        // Validate delegation proof
+    /// Validates a delegation proof by checking signature presence, timestamp
+    /// freshness, and delegating to the discovered security provider when available.
+    pub async fn validate_delegation_proof(&self, proof: &SecurityProof) -> ToadStoolResult<()> {
+        if proof.signature.is_empty() {
+            return Err(toadstool::error::ToadStoolError::validation(
+                "delegation proof has empty signature".to_string(),
+            ));
+        }
+
+        let elapsed = proof
+            .timestamp
+            .elapsed()
+            .unwrap_or(std::time::Duration::MAX);
+        const MAX_PROOF_AGE: std::time::Duration = std::time::Duration::from_secs(86_400);
+        if elapsed > MAX_PROOF_AGE {
+            return Err(toadstool::error::ToadStoolError::validation(
+                "delegation proof expired (older than 24h)".to_string(),
+            ));
+        }
+
+        if proof.public_key_id.is_empty() {
+            return Err(toadstool::error::ToadStoolError::validation(
+                "delegation proof missing public key id".to_string(),
+            ));
+        }
+
+        if let Some(provider) = &self.security_provider {
+            provider
+                .verify(&proof.signature, &proof.signature, &proof.public_key_id)
+                .await?;
+        }
+
         Ok(())
     }
 }
@@ -398,7 +427,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_validate_delegation_proof() {
+    async fn test_validate_delegation_proof_valid() {
+        let validator = SecurityPermissionValidator::new().await.unwrap();
+        let proof = SecurityProof {
+            signature: vec![1, 2, 3, 4],
+            algorithm: CryptoAlgorithm::Ed25519,
+            public_key_id: "key1".to_string(),
+            timestamp: SystemTime::now(),
+            metadata: ProofMetadata {
+                issuer: "test".to_string(),
+                purpose: "test".to_string(),
+                additional_claims: HashMap::new(),
+            },
+        };
+        let result = validator.validate_delegation_proof(&proof).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_delegation_proof_rejects_empty_signature() {
         let validator = SecurityPermissionValidator::new().await.unwrap();
         let proof = SecurityProof {
             signature: vec![],
@@ -412,7 +459,43 @@ mod tests {
             },
         };
         let result = validator.validate_delegation_proof(&proof).await;
-        assert!(result.is_ok());
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_validate_delegation_proof_rejects_missing_key_id() {
+        let validator = SecurityPermissionValidator::new().await.unwrap();
+        let proof = SecurityProof {
+            signature: vec![1, 2, 3],
+            algorithm: CryptoAlgorithm::Ed25519,
+            public_key_id: String::new(),
+            timestamp: SystemTime::now(),
+            metadata: ProofMetadata {
+                issuer: "test".to_string(),
+                purpose: "test".to_string(),
+                additional_claims: HashMap::new(),
+            },
+        };
+        let result = validator.validate_delegation_proof(&proof).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_validate_delegation_proof_rejects_expired() {
+        let validator = SecurityPermissionValidator::new().await.unwrap();
+        let proof = SecurityProof {
+            signature: vec![1, 2, 3],
+            algorithm: CryptoAlgorithm::Ed25519,
+            public_key_id: "key1".to_string(),
+            timestamp: SystemTime::now() - Duration::from_secs(100_000),
+            metadata: ProofMetadata {
+                issuer: "test".to_string(),
+                purpose: "test".to_string(),
+                additional_claims: HashMap::new(),
+            },
+        };
+        let result = validator.validate_delegation_proof(&proof).await;
+        assert!(result.is_err());
     }
 
     #[test]

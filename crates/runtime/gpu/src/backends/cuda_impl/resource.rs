@@ -231,9 +231,10 @@ impl ComputeContext for CudaComputeContext {
                 Operation::GeneralCompute => Err(ToadStoolError::runtime(
                     "GeneralCompute operation requires explicit CUDA kernel source",
                 )),
-                _ => Err(ToadStoolError::runtime(format!(
-                    "Operation {:?} not yet implemented for CUDA. Use WebGPU backend.",
-                    operation
+                unsupported => Err(ToadStoolError::runtime(format!(
+                    "CUDA backend does not support operation {unsupported:?}. \
+                     Supported: MatrixMultiply, Reduction. \
+                     For {unsupported:?}, use the WebGPU backend or provide a PTX kernel.",
                 ))),
             },
 

@@ -601,12 +601,24 @@ async fn test_recovery_from_node_failure_update_health_on_existing_node() {
             100.0,
         ))
         .unwrap();
+    assert_eq!(registry.get_active_nodes().len(), 1);
+
+    // Marking unhealthy removes node from registry
     registry.update_node_health(&"failing-node".to_string(), false);
-    let nodes = registry.get_active_nodes();
-    assert_eq!(nodes.len(), 1);
+    assert_eq!(registry.get_active_nodes().len(), 0);
+
+    // Re-register and mark healthy
+    registry
+        .register_node(make_node_registration(
+            "failing-node",
+            NodeType::ToadStool,
+            4.0,
+            8.0,
+            100.0,
+        ))
+        .unwrap();
     registry.update_node_health(&"failing-node".to_string(), true);
-    let nodes_after = registry.get_active_nodes();
-    assert_eq!(nodes_after.len(), 1);
+    assert_eq!(registry.get_active_nodes().len(), 1);
 }
 
 #[tokio::test]

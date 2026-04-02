@@ -9,7 +9,11 @@
 //! return [`crate::SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder`] (mapped to
 //! [`toadstool::ToadStoolError::not_supported`]) until hardware-specific implementations exist.
 //!
-//! Compile this module with Cargo feature **`embedded-placeholder-impls`** (enabled by default).
+//! ## Feature Gates
+//!
+//! - **`embedded-placeholder-impls`** (current): compile these stub impls as placeholders.
+//! - When `embedded-hw` is added (real programmer support), this module will be gated
+//!   behind `#[cfg(not(feature = "embedded-hw"))]` so real impls take precedence.
 //!
 //! See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
 //!

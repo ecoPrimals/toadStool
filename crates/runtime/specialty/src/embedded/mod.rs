@@ -14,11 +14,21 @@
 // Module declarations
 pub mod adapters;
 pub mod dos;
-#[cfg(feature = "embedded-placeholder-impls")]
+/// Placeholder trait impls for emulators — compiled only when real hardware
+/// support (`embedded-hw`) is absent. When `embedded-hw` lands, these stubs
+/// will be superseded by real implementations.
+#[cfg(all(
+    feature = "embedded-placeholder-impls",
+    not(feature = "embedded-hw")
+))]
 pub mod emulator_impls;
 pub mod emulators;
 pub mod managers;
-#[cfg(feature = "embedded-placeholder-impls")]
+/// Placeholder trait impls for programmers — same gating as emulator_impls.
+#[cfg(all(
+    feature = "embedded-placeholder-impls",
+    not(feature = "embedded-hw")
+))]
 pub mod programmer_impls;
 pub mod programmers;
 pub mod toolchains;

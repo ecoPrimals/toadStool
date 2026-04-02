@@ -74,8 +74,8 @@ fn test_songbird_integration_config_constructor() {
 
 #[test]
 fn test_universal_job_processor_constructor() {
-    let p = UniversalJobProcessor {
-        processor_id: "proc-1".to_string(),
-    };
+    let p = UniversalJobProcessor::new("proc-1".to_string());
     assert_eq!(p.processor_id, "proc-1");
+    assert!(!p.display_name.is_empty());
+    assert!(p.max_concurrent_jobs > 0);
 }

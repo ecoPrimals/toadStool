@@ -4,18 +4,20 @@
 use std::path::PathBuf;
 
 use super::env::SocketPathEnv;
+use crate::interned_strings::CapabilityDomain;
 
 pub(super) const SELF_SOCKET: &str = "toadstool.sock";
 
-/// Map a service label (legacy primal name or capability ID) to a canonical capability id.
+/// Map a *peer* service label (legacy primal name or capability ID) to a canonical capability id.
+///
+/// Self-names ("toadstool", "toad-stool") and platform names ("nucleus", "biomeos")
+/// are intentionally excluded — they have dedicated socket resolution paths.
 #[must_use]
 pub fn service_label_to_capability_id(label: &str) -> Option<&'static str> {
-    match label.to_lowercase().as_str() {
-        "crypto" | "security" | "beardog" | "bear-dog" => Some("crypto"),
-        "coordination" | "songbird" | "song-bird" => Some("coordination"),
-        "storage" | "nestgate" | "nest-gate" => Some("storage"),
-        "routing" | "intelligence" | "squirrel" | "ai" => Some("routing"),
-        _ => None,
+    let lower = label.to_ascii_lowercase();
+    match lower.as_str() {
+        "toadstool" | "toad-stool" | "nucleus" | "biomeos" => None,
+        _ => CapabilityDomain::from_label(&lower).map(|d| d.as_str()),
     }
 }
 

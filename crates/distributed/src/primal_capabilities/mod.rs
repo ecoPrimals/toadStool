@@ -236,7 +236,7 @@ mod tests {
         let provider = CapabilityProvider::default();
         let req = WorkloadRequest {
             request_id: "req-1".to_string(),
-            from_primal: "songbird".to_string(),
+            from_primal: toadstool_common::interned_strings::capabilities::COORDINATION.to_string(),
             required_capability: "compute_heavy".to_string(),
             workload_type: WorkloadType::Native {
                 executable: "echo".to_string(),
