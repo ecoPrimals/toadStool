@@ -137,21 +137,59 @@ impl ZeroConfigDeployment {
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
     async fn deploy_coordination_integration(&self) -> Result<()> {
-        debug!("Coordination: discovered via capability registry at runtime");
+        let status = verify_capability_socket("coordination");
+        match status {
+            SocketStatus::Available(path) => {
+                info!(path = %path.display(), "Coordination service: socket discovered");
+            }
+            SocketStatus::NotFound => {
+                debug!("Coordination service: socket not yet available, will discover at runtime");
+            }
+        }
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
     async fn deploy_security_integration(&self) -> Result<()> {
-        debug!("Security: discovered via capability registry at runtime");
+        let status = verify_capability_socket("security");
+        match status {
+            SocketStatus::Available(path) => {
+                info!(path = %path.display(), "Security service: socket discovered");
+            }
+            SocketStatus::NotFound => {
+                debug!("Security service: socket not yet available, will discover at runtime");
+            }
+        }
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
     async fn deploy_storage_integration(&self) -> Result<()> {
-        debug!("Storage: discovered via capability registry at runtime");
+        let status = verify_capability_socket("storage");
+        match status {
+            SocketStatus::Available(path) => {
+                info!(path = %path.display(), "Storage service: socket discovered");
+            }
+            SocketStatus::NotFound => {
+                debug!("Storage service: socket not yet available, will discover at runtime");
+            }
+        }
         Ok(())
+    }
+}
+
+enum SocketStatus {
+    Available(std::path::PathBuf),
+    NotFound,
+}
+
+fn verify_capability_socket(capability: &str) -> SocketStatus {
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".into());
+    let socket_path = std::path::PathBuf::from(&runtime_dir)
+        .join("biomeos")
+        .join(format!("{capability}.sock"));
+    if socket_path.exists() {
+        SocketStatus::Available(socket_path)
+    } else {
+        SocketStatus::NotFound
     }
 }

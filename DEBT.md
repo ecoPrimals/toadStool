@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 2, 2026 — S172-5
+**Date**: April 3, 2026 — S173
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,33 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S173 Resolved Debt (Deep Debt Execution — 6 Phases)
+
+### D-HARDCODING-LITERALS — RESOLVED S173
+Hardcoded `"0.0.0.0"` (3 sites) replaced with `BIND_ALL_IPV4` constant. Hardcoded
+`"/dev/dri/card0"` (3 sites) replaced with `DEFAULT_DRI_CARD` constant. Bench
+`unsafe { set_var }` replaced with `temp_env`. `"coralreef"` socket scan evolved
+to capability-first `"shader"` scan.
+
+### D-LARGE-FILE-REFACTOR — RESOLVED S173
+8 production files >650 LOC smart-refactored into cohesive submodules:
+`as400.rs`, `universal.rs`, `monitoring/lib.rs`, `workload/mod.rs`,
+`federation.rs`, `client_evolved.rs`, `provider_registry.rs`, `auto_config/lib.rs`.
+
+### D-UNSAFE-CONSOLIDATION — RESOLVED S173
+Consolidated duplicate unsafe patterns from akida-driver (35→25 blocks) and nvpmu
+(32→25 blocks) into hw-safe. Added `read_u64`/`write_u64` to `VolatileMmio`.
+Migrated DMA allocation to `LockedMemory` + `vfio_dma`. Net reduction: 101→89 blocks.
+
+### D-DEPLOYMENT-STUBS — RESOLVED S173
+`deploy_coordination_integration`, `deploy_security_integration`,
+`deploy_storage_integration` evolved from no-ops to capability socket verification
+(`$XDG_RUNTIME_DIR/biomeos/{capability}.sock`).
+
+### D-DEPENDENCY-HYGIENE — RESOLVED S173
+`config` 0.14→0.15 (eliminated `base64` 0.21/0.22 duplication). Fixed all clippy
+warnings. Remaining transitive duplicates (nix, rand, thiserror) are upstream-controlled.
 
 ## S172-5 Resolved Debt (Capability-Based Discovery Compliance)
 

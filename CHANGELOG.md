@@ -5,7 +5,47 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 2, 2026 (Sessions 43-172)
+## [Unreleased] - April 3, 2026 (Sessions 43-173)
+
+### Session S173 (Apr 3, 2026) — Deep Debt Execution (6 Phases)
+
+#### Phase 1: Hardcoding elimination
+- Replaced 3 hardcoded `"0.0.0.0"` literals with `toadstool_common::constants::network::BIND_ALL_IPV4`
+- Created `DEFAULT_DRI_CARD` constant, replaced 3 hardcoded `"/dev/dri/card0"` fallbacks
+- Added capability-first `"shader"` socket scan before legacy `"coralreef"` scan in `coral_reef_client.rs`
+- Replaced `unsafe { set_var }` in bench with `temp_env::with_var` closure
+
+#### Phase 2: Smart refactoring (8 production files >650 LOC → submodules)
+- `runtime/specialty/src/mainframe/as400.rs` (866L) → `compiler`, `jobs`, `terminal`, `connection`
+- `runtime/gpu/src/universal.rs` (707L) → `detection`, `policy`, `execution`
+- `management/monitoring/src/lib.rs` (705L) → `metric_types`, `collection`, `reporting`
+- `core/toadstool/src/workload/mod.rs` (704L) → `validators` (per-domain validation functions)
+- `distributed/src/cloud/federation.rs` (703L) → `discovery`, `policy`, `state`
+- `distributed/src/beardog_integration/client_evolved.rs` (700L) → `errors`, `protocol`
+- `core/common/src/universal_adapter/provider_registry.rs` (698L) → `registration`, `lookup`, `lifecycle`
+- `auto_config/src/lib.rs` (698L) → `error`, `bootstrap`, `config_builder`, `system_summary`
+
+#### Phase 3: Unsafe consolidation (101 → 89 unsafe blocks)
+- Added `read_u64`/`write_u64` to `VolatileMmio` in hw-safe
+- Migrated akida-driver DMA to `LockedMemory` + `vfio_dma` from hw-safe (35→25 blocks)
+- Migrated nvpmu DMA to `LockedMemory` + `vfio_dma` from hw-safe (32→25 blocks)
+- Migrated nvpmu `VfioBar0Access` volatile ops to `VolatileMmio`
+
+#### Phase 4: Coverage expansion (+79 new tests across 5 modules)
+- +14 tests for `provider_registry` (scoring, edge cases, lifecycle)
+- +14 tests for monitoring crate (threshold boundaries, process isolation)
+- +10 tests for auto_config (error variants, builder methods, system summary)
+- +11 tests for federation (heartbeat rate limiting, staleness, capability aggregation)
+- +30 tests for workload validators (all source variants, edge cases)
+
+#### Phase 5: Production stub evolution
+- Evolved 3 deployment no-ops (`deploy_coordination_integration`, `deploy_security_integration`, `deploy_storage_integration`) to verify capability socket existence at `$XDG_RUNTIME_DIR/biomeos/{capability}.sock`
+
+#### Phase 6: Dependency hygiene
+- Upgraded `config` 0.14→0.15, eliminating `base64` 0.21/0.22 duplication
+- Fixed all clippy warnings (unfulfilled lint expectations, redundant closures, strict f64 comparisons)
+- Remaining transitive duplicates (nix, rand, thiserror) are upstream-controlled
+- All quality gates green: clippy, fmt, doc, tests
 
 ### Session S172-5 (Apr 2, 2026) — Capability-Based Discovery Compliance
 

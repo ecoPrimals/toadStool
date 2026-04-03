@@ -3,7 +3,7 @@
 
 //! Bounds-checked volatile MMIO register access.
 //!
-//! [`VolatileMmio`] provides safe `read_u32`/`write_u32` over a memory-mapped
+//! [`VolatileMmio`] provides safe `read_u32`/`write_u32`/`read_u64`/`write_u64` over a memory-mapped
 //! hardware region. Construction is unsafe (caller proves pointer validity);
 //! all subsequent access is safe with runtime bounds checking.
 //!
@@ -36,9 +36,9 @@ pub enum MmioError {
 /// # Alignment
 ///
 /// Hardware MMIO registers are naturally aligned by specification. The
-/// `read_u32`/`write_u32` methods assume 4-byte alignment of the base
-/// pointer and that offsets are 4-byte aligned. This is guaranteed by
-/// PCI BAR mappings and NPU MMIO regions on Linux.
+/// `read_u32`/`write_u32` methods assume 4-byte alignment; `read_u64`/
+/// `write_u64` assume 8-byte alignment. This is guaranteed by PCI BAR
+/// mappings and NPU MMIO regions on Linux.
 pub struct VolatileMmio<'a> {
     ptr: NonNull<u8>,
     size: usize,
@@ -118,6 +118,56 @@ impl VolatileMmio<'_> {
         )]
         unsafe {
             let p = self.ptr.as_ptr().add(offset).cast::<u32>();
+            std::ptr::write_volatile(p, value);
+        }
+        Ok(())
+    }
+
+    /// Read a 64-bit register at the given byte offset.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MmioError::OutOfBounds`] if `offset + 8 > size`.
+    pub fn read_u64(&self, offset: usize) -> Result<u64, MmioError> {
+        if offset + 8 > self.size {
+            return Err(MmioError::OutOfBounds {
+                offset,
+                width: 8,
+                region_size: self.size,
+            });
+        }
+        // SAFETY: bounds checked above. ptr valid for size bytes (constructor invariant).
+        #[allow(
+            clippy::cast_ptr_alignment,
+            reason = "MMIO registers are naturally u64-aligned at 8-byte offsets"
+        )]
+        let val = unsafe {
+            let p = self.ptr.as_ptr().add(offset).cast::<u64>();
+            std::ptr::read_volatile(p)
+        };
+        Ok(val)
+    }
+
+    /// Write a 64-bit register at the given byte offset.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`MmioError::OutOfBounds`] if `offset + 8 > size`.
+    pub fn write_u64(&self, offset: usize, value: u64) -> Result<(), MmioError> {
+        if offset + 8 > self.size {
+            return Err(MmioError::OutOfBounds {
+                offset,
+                width: 8,
+                region_size: self.size,
+            });
+        }
+        // SAFETY: bounds checked above. ptr valid and mapped (constructor invariant).
+        #[allow(
+            clippy::cast_ptr_alignment,
+            reason = "MMIO registers are naturally u64-aligned at 8-byte offsets"
+        )]
+        unsafe {
+            let p = self.ptr.as_ptr().add(offset).cast::<u64>();
             std::ptr::write_volatile(p, value);
         }
         Ok(())

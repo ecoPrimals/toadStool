@@ -11,7 +11,7 @@ use rustix::ioctl::{Ioctl, IoctlOutput, Opcode};
 use std::os::fd::BorrowedFd;
 
 use super::types::ioctls;
-use super::types::{VfioDeviceInfo, VfioDmaMap, VfioDmaUnmap, VfioGroupStatus};
+use super::types::{VfioDeviceInfo, VfioGroupStatus};
 
 /// Ioctl adapter for VFIO commands that return an i32 (no-arg or integer-arg).
 pub struct VfioIoctlReturn<const OP: Opcode> {
@@ -115,28 +115,6 @@ pub fn device_info(fd: BorrowedFd<'_>, arg: &mut VfioDeviceInfo) -> Result<()> {
     // Satisfied: fd from device open; VfioDeviceInfo is #[repr(C)]. Violation: layout mismatch → kernel corruption.
     let ioctl = VfioIoctlPtr::<{ ioctls::OP_DEVICE_GET_INFO }, _> {
         ptr: std::ptr::from_mut(arg),
-    };
-    unsafe { rustix::ioctl::ioctl(fd, ioctl) }.map_err(ioctl_err)
-}
-
-#[inline]
-pub fn dma_map(fd: BorrowedFd<'_>, arg: &VfioDmaMap) -> Result<()> {
-    // SAFETY: Invariants: fd valid VFIO container; arg repr(C) matching kernel VfioDmaMap.
-    // Satisfied: fd from container; VfioDmaMap is #[repr(C)]; vaddr/iova/size from alloc.
-    // Violation: layout mismatch → kernel corruption; invalid vaddr → DMA to wrong memory.
-    let ioctl = VfioIoctlPtr::<{ ioctls::OP_IOMMU_MAP_DMA }, VfioDmaMap> {
-        ptr: std::ptr::from_ref(arg).cast_mut(),
-    };
-    unsafe { rustix::ioctl::ioctl(fd, ioctl) }.map_err(ioctl_err)
-}
-
-#[inline]
-pub fn dma_unmap(fd: BorrowedFd<'_>, arg: &VfioDmaUnmap) -> Result<()> {
-    // SAFETY: Invariants: fd valid; arg repr(C) matching kernel VfioDmaUnmap; iova/size must match prior map.
-    // Satisfied: fd from container; VfioDmaUnmap is #[repr(C)]; iova/size from DmaBuffer.
-    // Violation: layout mismatch → kernel corruption; wrong iova → unmapping wrong region.
-    let ioctl = VfioIoctlPtr::<{ ioctls::OP_IOMMU_UNMAP_DMA }, VfioDmaUnmap> {
-        ptr: std::ptr::from_ref(arg).cast_mut(),
     };
     unsafe { rustix::ioctl::ioctl(fd, ioctl) }.map_err(ioctl_err)
 }

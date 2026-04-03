@@ -6,22 +6,19 @@
 //! indicate what is available.
 
 use std::collections::HashMap;
-use std::time::Duration;
+
 use thiserror::Error;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-use super::types::{
-    ConnectionStatus, DataReplica, FederationConfig, FederationNode, NetworkConfig,
-    NetworkConnection, NodeConnection, ReplicationConfig, TopologyType,
-};
+use crate::cloud::types::{FederationConfig, NetworkConfig, ReplicationConfig, TopologyType};
 
-// ─── Named Constants ─────────────────────────────────────────────────────────
+pub mod discovery;
+pub mod policy;
+mod state;
 
-/// Default heartbeat timeout; members without heartbeat in this interval are considered stale.
-pub const DEFAULT_HEARTBEAT_TIMEOUT_SECS: u64 = 60;
-
-/// Minimum interval between heartbeats (rate limit).
-pub const MIN_HEARTBEAT_INTERVAL_SECS: u64 = 1;
+// Re-export heartbeat constants; `MIN_HEARTBEAT_INTERVAL_SECS` is only used in `policy`.
+#[allow(unused_imports)]
+pub use policy::{DEFAULT_HEARTBEAT_TIMEOUT_SECS, FederationMember, MIN_HEARTBEAT_INTERVAL_SECS};
 
 // ─── Federation Errors ───────────────────────────────────────────────────────
 
@@ -75,336 +72,30 @@ impl From<FederationError> for ToadStoolError {
     }
 }
 
-// ─── Federation Member (with heartbeat) ───────────────────────────────────────
-
-/// Federation member with heartbeat tracking and capability advertisement.
-#[derive(Debug, Clone)]
-pub struct FederationMember {
-    /// Federation node info.
-    pub node: FederationNode,
-    /// Last heartbeat timestamp (monotonic for timeout checks).
-    /// Uses tokio::time::Instant so tests can advance virtual time.
-    pub last_heartbeat: tokio::time::Instant,
-    /// Advertised capabilities (e.g., "compute", "gpu", "storage").
-    pub capabilities: Vec<String>,
-}
-
-impl FederationMember {
-    fn new(node: FederationNode) -> Self {
-        let capabilities = node.capabilities.clone();
-        Self {
-            node,
-            last_heartbeat: tokio::time::Instant::now(),
-            capabilities,
-        }
-    }
-}
-
 // ─── CloudFederationManager ───────────────────────────────────────────────────
 
 /// Cloud federation manager with membership, heartbeats, and capability exchange.
 pub struct CloudFederationManager {
-    topology: CloudFederationTopology,
-    network: InterCloudNetworkManager,
-    replication: CloudDataReplicationManager,
+    pub(in crate::cloud::federation) topology: state::CloudFederationTopology,
+    pub(in crate::cloud::federation) network: state::InterCloudNetworkManager,
+    pub(in crate::cloud::federation) replication: state::CloudDataReplicationManager,
     pub(crate) config: FederationConfig,
     /// Membership: node_id -> member with heartbeat
-    members: HashMap<String, FederationMember>,
-    heartbeat_timeout_secs: u64,
+    pub(in crate::cloud::federation) members: HashMap<String, FederationMember>,
+    pub(in crate::cloud::federation) heartbeat_timeout_secs: u64,
 }
 
 impl CloudFederationManager {
     /// Creates a new cloud federation manager.
     pub async fn new(config: FederationConfig) -> ToadStoolResult<Self> {
         Ok(Self {
-            topology: CloudFederationTopology::new(TopologyType::default()),
-            network: InterCloudNetworkManager::new(NetworkConfig::default()),
-            replication: CloudDataReplicationManager::new(ReplicationConfig::default()),
+            topology: state::CloudFederationTopology::new(TopologyType::default()),
+            network: state::InterCloudNetworkManager::new(NetworkConfig::default()),
+            replication: state::CloudDataReplicationManager::new(ReplicationConfig::default()),
             config,
             members: HashMap::new(),
             heartbeat_timeout_secs: DEFAULT_HEARTBEAT_TIMEOUT_SECS,
         })
-    }
-
-    /// Add a federation node (membership) and register it in the topology and network layer.
-    pub fn add_node(
-        &mut self,
-        node: FederationNode,
-        connections: Vec<NodeConnection>,
-    ) -> ToadStoolResult<()> {
-        if node.id.is_empty() {
-            return Err(FederationError::InvalidNode("node id cannot be empty".to_string()).into());
-        }
-        if self.members.contains_key(&node.id) {
-            return Err(FederationError::AlreadyMember { node_id: node.id }.into());
-        }
-
-        let member = FederationMember::new(node.clone());
-        self.members.insert(node.id.clone(), member);
-        self.topology.nodes.push(node.clone());
-        self.topology.connections.extend(connections);
-        self.network
-            .connections
-            .entry(node.id.clone())
-            .or_insert_with(|| NetworkConnection {
-                id: node.id,
-                provider: node.provider,
-                status: ConnectionStatus::Active,
-            });
-        Ok(())
-    }
-
-    /// Remove a node from the federation (leave membership).
-    pub fn remove_node(&mut self, node_id: &str) -> ToadStoolResult<()> {
-        if !self.members.contains_key(node_id) {
-            return Err(FederationError::NotAMember {
-                node_id: node_id.to_string(),
-            }
-            .into());
-        }
-        self.members.remove(node_id);
-        self.topology.nodes.retain(|n| n.id != node_id);
-        self.topology
-            .connections
-            .retain(|c| c.from != *node_id && c.to != *node_id);
-        self.network.connections.remove(node_id);
-        Ok(())
-    }
-
-    /// Record a heartbeat from a member. Returns error if not a member or rate-limited.
-    pub fn record_heartbeat(&mut self, node_id: &str) -> ToadStoolResult<()> {
-        let member = self
-            .members
-            .get_mut(node_id)
-            .ok_or_else(|| FederationError::NotAMember {
-                node_id: node_id.to_string(),
-            })?;
-
-        let elapsed = member.last_heartbeat.elapsed();
-        if elapsed < Duration::from_secs(MIN_HEARTBEAT_INTERVAL_SECS) {
-            return Err(FederationError::HeartbeatRateLimited {
-                min_interval_secs: MIN_HEARTBEAT_INTERVAL_SECS,
-            }
-            .into());
-        }
-
-        member.last_heartbeat = tokio::time::Instant::now();
-        Ok(())
-    }
-
-    /// Record heartbeat with optional capability update.
-    pub fn record_heartbeat_with_capabilities(
-        &mut self,
-        node_id: &str,
-        capabilities: Vec<String>,
-    ) -> ToadStoolResult<()> {
-        self.record_heartbeat(node_id)?;
-        if let Some(member) = self.members.get_mut(node_id) {
-            member.capabilities = capabilities;
-        }
-        Ok(())
-    }
-
-    /// Check if a member is alive (has sent heartbeat within timeout).
-    pub fn is_member_alive(&self, node_id: &str) -> bool {
-        self.members
-            .get(node_id)
-            .map(|m| m.last_heartbeat.elapsed() < Duration::from_secs(self.heartbeat_timeout_secs))
-            .unwrap_or(false)
-    }
-
-    /// Get all alive member IDs.
-    pub fn alive_members(&self) -> Vec<String> {
-        self.members
-            .iter()
-            .filter(|(_, m)| {
-                m.last_heartbeat.elapsed() < Duration::from_secs(self.heartbeat_timeout_secs)
-            })
-            .map(|(id, _)| id.clone())
-            .collect()
-    }
-
-    /// Exchange: get all capabilities from alive members, aggregated by capability name.
-    pub fn get_federation_capabilities(&self) -> HashMap<String, Vec<String>> {
-        let mut agg: HashMap<String, Vec<String>> = HashMap::new();
-        for (node_id, member) in &self.members {
-            if member.last_heartbeat.elapsed() < Duration::from_secs(self.heartbeat_timeout_secs) {
-                for cap in &member.capabilities {
-                    agg.entry(cap.clone()).or_default().push(node_id.clone());
-                }
-            }
-        }
-        agg
-    }
-
-    /// Get capabilities advertised by a specific member.
-    pub fn get_member_capabilities(&self, node_id: &str) -> ToadStoolResult<Vec<String>> {
-        let member = self
-            .members
-            .get(node_id)
-            .ok_or_else(|| FederationError::NotAMember {
-                node_id: node_id.to_string(),
-            })?;
-        Ok(member.capabilities.clone())
-    }
-
-    /// Discover federation nodes from configured discovery endpoints.
-    ///
-    /// Iterates `config.discovery_endpoints` and attempts to connect to each
-    /// as a federation peer. Endpoints that respond with valid node metadata
-    /// are returned as `FederationNode` candidates for `add_node()`.
-    ///
-    /// Returns an empty vec (not an error) if no discovery endpoints are configured
-    /// or none respond -- federation can still function with manually-added nodes.
-    pub async fn discover_nodes(&self) -> ToadStoolResult<Vec<FederationNode>> {
-        if self.config.discovery_endpoints.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut discovered = Vec::new();
-        for endpoint in &self.config.discovery_endpoints {
-            match self.probe_endpoint(endpoint).await {
-                Ok(node) => discovered.push(node),
-                Err(e) => {
-                    tracing::debug!("Federation endpoint {endpoint} unreachable: {e}");
-                }
-            }
-        }
-
-        tracing::info!(
-            "Federation discovery: {} of {} endpoints responded",
-            discovered.len(),
-            self.config.discovery_endpoints.len()
-        );
-        Ok(discovered)
-    }
-
-    async fn probe_endpoint(&self, endpoint: &str) -> ToadStoolResult<FederationNode> {
-        use tokio::net::TcpStream;
-        use tokio::time::timeout;
-
-        let addr = endpoint
-            .trim_start_matches("http://")
-            .trim_start_matches("https://");
-        let stream = timeout(Duration::from_secs(5), TcpStream::connect(addr))
-            .await
-            .map_err(|_| FederationError::InvalidNode(format!("Timeout connecting to {endpoint}")))?
-            .map_err(|_| FederationError::InvalidNode(format!("Cannot connect to {endpoint}")))?;
-
-        let peer_addr = stream
-            .peer_addr()
-            .map_err(|e| FederationError::InvalidNode(e.to_string()))?;
-
-        Ok(FederationNode {
-            id: format!("discovered-{peer_addr}"),
-            provider: endpoint.to_string(),
-            capabilities: vec!["compute".to_string()],
-            region: String::new(),
-        })
-    }
-
-    /// Register a data replica managed by this federation
-    pub fn register_replica(&mut self, replica: DataReplica) {
-        self.replication
-            .replicas
-            .insert(replica.id.clone(), replica);
-    }
-
-    /// Return the IDs of all nodes in this federation (includes stale members).
-    pub fn node_ids(&self) -> impl Iterator<Item = &str> {
-        self.topology.nodes.iter().map(|n| n.id.as_str())
-    }
-
-    /// Return the number of tracked data replicas
-    pub fn replica_count(&self) -> usize {
-        self.replication.replicas.len()
-    }
-
-    /// Return the federation topology type
-    pub const fn topology_type(&self) -> &TopologyType {
-        self.topology.topology_type()
-    }
-
-    /// Return whether inter-node links use encryption
-    pub const fn is_network_encrypted(&self) -> bool {
-        self.network.is_encrypted()
-    }
-
-    /// Return the replication factor configured for this federation
-    pub const fn replication_factor(&self) -> u32 {
-        self.replication.replication_factor()
-    }
-
-    /// Return the federation ID
-    pub fn federation_id(&self) -> &str {
-        &self.config.federation_id
-    }
-
-    /// Set heartbeat timeout in seconds.
-    #[allow(clippy::missing_const_for_fn)] // Mutates self
-    pub fn set_heartbeat_timeout(&mut self, secs: u64) {
-        self.heartbeat_timeout_secs = secs;
-    }
-
-    /// Return number of registered members.
-    pub fn member_count(&self) -> usize {
-        self.members.len()
-    }
-}
-
-struct CloudFederationTopology {
-    topology_type: TopologyType,
-    nodes: Vec<FederationNode>,
-    connections: Vec<NodeConnection>,
-}
-
-impl CloudFederationTopology {
-    const fn new(topology_type: TopologyType) -> Self {
-        Self {
-            topology_type,
-            nodes: Vec::new(),
-            connections: Vec::new(),
-        }
-    }
-
-    const fn topology_type(&self) -> &TopologyType {
-        &self.topology_type
-    }
-}
-
-struct InterCloudNetworkManager {
-    network_config: NetworkConfig,
-    connections: HashMap<String, NetworkConnection>,
-}
-
-impl InterCloudNetworkManager {
-    fn new(network_config: NetworkConfig) -> Self {
-        Self {
-            network_config,
-            connections: HashMap::new(),
-        }
-    }
-
-    const fn is_encrypted(&self) -> bool {
-        self.network_config.encryption
-    }
-}
-
-struct CloudDataReplicationManager {
-    replication_config: ReplicationConfig,
-    replicas: HashMap<String, DataReplica>,
-}
-
-impl CloudDataReplicationManager {
-    fn new(replication_config: ReplicationConfig) -> Self {
-        Self {
-            replication_config,
-            replicas: HashMap::new(),
-        }
-    }
-
-    const fn replication_factor(&self) -> u32 {
-        self.replication_config.factor
     }
 }
 
@@ -414,6 +105,8 @@ impl CloudDataReplicationManager {
 mod tests {
     use super::*;
     use crate::cloud::ReplicaStatus;
+
+    use super::super::types::{DataReplica, FederationConfig, FederationNode, TopologyType};
 
     fn make_config(id: &str) -> FederationConfig {
         FederationConfig {
@@ -699,5 +392,199 @@ mod tests {
             .await
             .unwrap();
         let _ = mgr.is_network_encrypted();
+    }
+
+    #[tokio::test]
+    async fn test_record_heartbeat_immediately_rate_limited() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-rl"))
+            .await
+            .unwrap();
+        mgr.add_node(make_node("n1", "aws"), vec![]).unwrap();
+        let err = mgr.record_heartbeat("n1").unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("rate limit") || msg.contains("Heartbeat"),
+            "unexpected error: {msg}"
+        );
+        assert!(msg.contains('1') || msg.contains("interval"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_is_member_alive_false_when_stale() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-stale"))
+            .await
+            .unwrap();
+        mgr.add_node(make_node("n1", "aws"), vec![]).unwrap();
+        assert!(mgr.is_member_alive("n1"));
+        tokio::time::advance(std::time::Duration::from_secs(
+            DEFAULT_HEARTBEAT_TIMEOUT_SECS + 1,
+        ))
+        .await;
+        assert!(!mgr.is_member_alive("n1"));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_alive_members_excludes_stale() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-alive"))
+            .await
+            .unwrap();
+        mgr.add_node(make_node("fresh", "aws"), vec![]).unwrap();
+        mgr.add_node(make_node("stale", "gcp"), vec![]).unwrap();
+        tokio::time::advance(std::time::Duration::from_secs(
+            DEFAULT_HEARTBEAT_TIMEOUT_SECS + 1,
+        ))
+        .await;
+        assert!(mgr.alive_members().is_empty());
+        mgr.record_heartbeat("fresh").unwrap();
+        let mut alive = mgr.alive_members();
+        alive.sort();
+        assert_eq!(alive, vec!["fresh".to_string()]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_get_federation_capabilities_aggregates_only_alive() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-agg"))
+            .await
+            .unwrap();
+        mgr.add_node(
+            FederationNode {
+                id: "a".to_string(),
+                provider: "aws".to_string(),
+                region: "r1".to_string(),
+                capabilities: vec!["compute".to_string()],
+            },
+            vec![],
+        )
+        .unwrap();
+        mgr.add_node(
+            FederationNode {
+                id: "b".to_string(),
+                provider: "gcp".to_string(),
+                region: "r2".to_string(),
+                capabilities: vec!["storage".to_string()],
+            },
+            vec![],
+        )
+        .unwrap();
+        tokio::time::advance(std::time::Duration::from_secs(
+            DEFAULT_HEARTBEAT_TIMEOUT_SECS + 1,
+        ))
+        .await;
+        assert!(mgr.get_federation_capabilities().is_empty());
+        mgr.record_heartbeat("a").unwrap();
+        let caps = mgr.get_federation_capabilities();
+        assert_eq!(caps.get("compute").map(Vec::len), Some(1));
+        assert!(!caps.contains_key("storage"));
+    }
+
+    #[tokio::test]
+    async fn test_is_member_alive_unknown_node_false() {
+        let mgr = CloudFederationManager::new(make_config("fed-ghost"))
+            .await
+            .unwrap();
+        assert!(!mgr.is_member_alive("no-such-node"));
+    }
+
+    #[tokio::test]
+    async fn test_set_heartbeat_timeout_zero_all_considered_stale() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-t0"))
+            .await
+            .unwrap();
+        mgr.set_heartbeat_timeout(0);
+        mgr.add_node(make_node("n1", "aws"), vec![]).unwrap();
+        assert!(!mgr.is_member_alive("n1"));
+        assert!(mgr.alive_members().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_replica_same_id_replaces() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-repl-dup"))
+            .await
+            .unwrap();
+        mgr.register_replica(make_replica("r1", "us-east-1"));
+        mgr.register_replica(DataReplica {
+            id: "r1".to_string(),
+            location: "eu-west-1".to_string(),
+            status: ReplicaStatus::Syncing,
+        });
+        assert_eq!(mgr.replica_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_default_replication_factor_and_network_encryption() {
+        let mgr = CloudFederationManager::new(make_config("fed-def"))
+            .await
+            .unwrap();
+        assert_eq!(mgr.replication_factor(), 0);
+        assert!(!mgr.is_network_encrypted());
+    }
+
+    #[tokio::test]
+    async fn test_federation_id_accepts_uuid_like_string() {
+        let id = "550e8400-e29b-41d4-a716-446655440000";
+        let mgr = CloudFederationManager::new(make_config(id)).await.unwrap();
+        assert_eq!(mgr.federation_id(), id);
+    }
+
+    #[tokio::test]
+    async fn test_federation_error_display_variants() {
+        let cases: Vec<(FederationError, &str)> = vec![
+            (
+                FederationError::NotAMember {
+                    node_id: "x".into(),
+                },
+                "not a federation member",
+            ),
+            (
+                FederationError::AlreadyMember {
+                    node_id: "y".into(),
+                },
+                "already a member",
+            ),
+            (
+                FederationError::DiscoveryNotImplemented("peek".into()),
+                "Discovery not yet implemented",
+            ),
+            (
+                FederationError::CrossFederationNotImplemented("join".into()),
+                "Cross-federation coordination not yet implemented",
+            ),
+            (
+                FederationError::MemberStale {
+                    node_id: "z".into(),
+                    timeout_secs: 30,
+                },
+                "heartbeat within timeout",
+            ),
+            (
+                FederationError::HeartbeatRateLimited {
+                    min_interval_secs: MIN_HEARTBEAT_INTERVAL_SECS,
+                },
+                "Heartbeat rate limit",
+            ),
+            (FederationError::InvalidNode("bad".into()), "Invalid node"),
+        ];
+        for (err, needle) in cases {
+            let s = err.to_string();
+            assert!(
+                s.contains(needle),
+                "expected {needle:?} in message, got: {s}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_add_duplicate_and_remove_errors_surface_reason() {
+        let mut mgr = CloudFederationManager::new(make_config("fed-err-msg"))
+            .await
+            .unwrap();
+        mgr.add_node(make_node("only", "aws"), vec![]).unwrap();
+        let dup = mgr
+            .add_node(make_node("only", "gcp"), vec![])
+            .unwrap_err()
+            .to_string();
+        assert!(dup.contains("already a member"));
+        let rm = mgr.remove_node("missing").unwrap_err().to_string();
+        assert!(rm.contains("not a federation member"));
     }
 }

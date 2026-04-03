@@ -27,6 +27,8 @@ use crate::error::{NvPmuError, Result};
 use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd, RawFd};
+use std::ptr::NonNull;
+use toadstool_hw_safe::VolatileMmio;
 
 const VFIO_TYPE: u8 = b';';
 const VFIO_BASE: u8 = 100;
@@ -341,6 +343,18 @@ impl VfioBar0Access {
         Ok(())
     }
 
+    /// Volatile MMIO view over the BAR0 mapping (same lifetime as `self`).
+    fn mmio(&self) -> VolatileMmio<'_> {
+        // SAFETY: `base_ptr`/`region_size` come from the single BAR0 mmap in `open()` and remain
+        // valid until `Drop` runs.
+        unsafe {
+            VolatileMmio::new(
+                NonNull::new(self.base_ptr).expect("BAR0 mmap base is non-null"),
+                self.region_size,
+            )
+        }
+    }
+
     /// Read a 32-bit register at a BAR0-relative offset.
     ///
     /// # Errors
@@ -352,10 +366,9 @@ impl VfioBar0Access {
     )]
     pub fn read_u32(&self, offset: u64) -> Result<u32> {
         self.check_offset(offset)?;
-        // SAFETY: base_ptr valid from mmap; offset bounds-checked above; volatile for MMIO.
-        let val =
-            unsafe { std::ptr::read_volatile(self.base_ptr.add(offset as usize).cast::<u32>()) };
-        Ok(val)
+        self.mmio()
+            .read_u32(offset as usize)
+            .map_err(|e| NvPmuError::Hardware(e.to_string()))
     }
 
     /// Write a 32-bit register at a BAR0-relative offset.
@@ -369,11 +382,9 @@ impl VfioBar0Access {
     )]
     pub fn write_u32(&mut self, offset: u64, value: u32) -> Result<()> {
         self.check_offset(offset)?;
-        // SAFETY: base_ptr valid from mmap; offset bounds-checked; volatile for MMIO; &mut self.
-        unsafe {
-            std::ptr::write_volatile(self.base_ptr.add(offset as usize).cast::<u32>(), value);
-        }
-        Ok(())
+        self.mmio()
+            .write_u32(offset as usize, value)
+            .map_err(|e| NvPmuError::Hardware(e.to_string()))
     }
 }
 

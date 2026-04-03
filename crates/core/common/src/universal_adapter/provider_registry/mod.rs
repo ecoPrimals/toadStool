@@ -7,281 +7,37 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus};
-use crate::ToadStoolResult;
+use super::capability_types::CapabilityInfo;
+
+mod lifecycle;
+mod lookup;
+mod registration;
 
 /// Runtime registry of capability providers
 pub struct ProviderRegistry {
     /// Providers indexed by ID
-    providers: HashMap<String, RegisteredProvider>,
+    pub(super) providers: HashMap<String, RegisteredProvider>,
 
     /// Provider health check interval (for future use)
     #[expect(dead_code, reason = "reserved for periodic health checks")]
-    health_check_interval: Duration,
+    pub(super) health_check_interval: Duration,
 }
 
 /// Registered provider with metadata
-struct RegisteredProvider {
-    info: CapabilityInfo,
-    registered_at: Instant,
-    last_health_check: Option<Instant>,
-    request_count: u64,
-    failure_count: u64,
-}
-
-impl ProviderRegistry {
-    /// Create a new provider registry
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            providers: HashMap::new(),
-            health_check_interval: Duration::from_secs(30),
-        }
-    }
-
-    /// Register a capability provider
-    ///
-    /// # Errors
-    ///
-    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
-    pub fn register(&mut self, info: CapabilityInfo) -> ToadStoolResult<()> {
-        let provider_id = info.provider_id.clone();
-
-        let registered = RegisteredProvider {
-            info,
-            registered_at: Instant::now(),
-            last_health_check: None,
-            request_count: 0,
-            failure_count: 0,
-        };
-
-        self.providers.insert(provider_id, registered);
-        Ok(())
-    }
-
-    /// Unregister a provider
-    ///
-    /// # Errors
-    ///
-    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
-    pub fn unregister(&mut self, provider_id: &str) -> ToadStoolResult<()> {
-        self.providers.remove(provider_id);
-        Ok(())
-    }
-
-    /// Find the best matching provider for a capability request
-    ///
-    /// # Errors
-    ///
-    /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
-    pub fn find_best_match(
-        &self,
-        requested: &CapabilityType,
-    ) -> ToadStoolResult<Option<CapabilityInfo>> {
-        let mut candidates: Vec<&RegisteredProvider> = self
-            .providers
-            .values()
-            .filter(|p| Self::matches_capability(requested, &p.info.capability))
-            .filter(|p| {
-                p.info.health == HealthStatus::Healthy || p.info.health == HealthStatus::Unknown
-            })
-            .collect();
-
-        if candidates.is_empty() {
-            return Ok(None);
-        }
-
-        // Sort by quality score (lower is better)
-        candidates.sort_by_key(|p| Self::calculate_quality_score(p));
-
-        // Return the best match
-        Ok(candidates.first().map(|p| p.info.clone()))
-    }
-
-    /// Check if a capability type matches another
-    fn matches_capability(requested: &CapabilityType, available: &CapabilityType) -> bool {
-        match (requested, available) {
-            (
-                CapabilityType::Security {
-                    features: req_features,
-                    min_trust_level,
-                },
-                CapabilityType::Security {
-                    features: avail_features,
-                    min_trust_level: avail_trust,
-                },
-            ) => {
-                // Check if available provider has all requested features
-                let has_features = req_features.iter().all(|f| avail_features.contains(f));
-                // Check if trust level is sufficient
-                let trust_ok = avail_trust >= min_trust_level;
-                has_features && trust_ok
-            }
-
-            (
-                CapabilityType::Storage {
-                    features: req_features,
-                    min_throughput_mbps,
-                },
-                CapabilityType::Storage {
-                    features: avail_features,
-                    min_throughput_mbps: avail_throughput,
-                },
-            ) => {
-                let has_features = req_features.iter().all(|f| avail_features.contains(f));
-                let throughput_ok = match (min_throughput_mbps, avail_throughput) {
-                    (Some(req), Some(avail)) => avail >= req,
-                    (None, _) => true,
-                    (Some(_), None) => false,
-                };
-                has_features && throughput_ok
-            }
-
-            (
-                CapabilityType::Coordination {
-                    features: req_features,
-                    max_latency_ms,
-                },
-                CapabilityType::Coordination {
-                    features: avail_features,
-                    max_latency_ms: avail_latency,
-                },
-            ) => {
-                let has_features = req_features.iter().all(|f| avail_features.contains(f));
-                let latency_ok = match (max_latency_ms, avail_latency) {
-                    (Some(req), Some(avail)) => avail <= req,
-                    (None, _) => true,
-                    (Some(_), None) => false,
-                };
-                has_features && latency_ok
-            }
-
-            (
-                CapabilityType::Intelligence {
-                    features: req_features,
-                    model_types: req_models,
-                },
-                CapabilityType::Intelligence {
-                    features: avail_features,
-                    model_types: avail_models,
-                },
-            ) => {
-                let has_features = req_features.iter().all(|f| avail_features.contains(f));
-                let has_models = req_models.iter().all(|m| avail_models.contains(m));
-                has_features && has_models
-            }
-
-            (
-                CapabilityType::Compute {
-                    features: req_features,
-                    min_memory_gb,
-                },
-                CapabilityType::Compute {
-                    features: avail_features,
-                    min_memory_gb: avail_memory,
-                },
-            ) => {
-                let has_features = req_features.iter().all(|f| avail_features.contains(f));
-                let memory_ok = match (min_memory_gb, avail_memory) {
-                    (Some(req), Some(avail)) => avail >= req,
-                    (None, _) => true,
-                    (Some(_), None) => false,
-                };
-                has_features && memory_ok
-            }
-
-            // For other capability types, just match the variant
-            (CapabilityType::Network { .. }, CapabilityType::Network { .. })
-            | (CapabilityType::Monitoring { .. }, CapabilityType::Monitoring { .. }) => true,
-
-            // Different capability types don't match
-            _ => false,
-        }
-    }
-
-    /// Calculate quality score for a provider (lower is better)
-    fn calculate_quality_score(provider: &RegisteredProvider) -> u64 {
-        let mut score = 0u64;
-
-        // Health status affects score
-        score += match provider.info.health {
-            HealthStatus::Healthy => 0,
-            HealthStatus::Unknown => 10,
-            HealthStatus::Degraded => 50,
-            HealthStatus::Unhealthy => 1000,
-        };
-
-        // Failure rate affects score
-        if provider.request_count > 0 {
-            let failure_rate = (provider.failure_count * 100) / provider.request_count;
-            score += failure_rate;
-        }
-
-        // Age affects score (prefer established providers)
-        let age_seconds = provider.registered_at.elapsed().as_secs();
-        if age_seconds < 60 {
-            score += 5; // New provider, slightly penalize
-        }
-
-        score
-    }
-
-    /// List all available capabilities
-    #[must_use]
-    pub fn list_capabilities(&self) -> Vec<CapabilityInfo> {
-        self.providers.values().map(|p| p.info.clone()).collect()
-    }
-
-    /// Get provider by ID
-    #[must_use]
-    pub fn get_provider(&self, provider_id: &str) -> Option<&CapabilityInfo> {
-        self.providers.get(provider_id).map(|p| &p.info)
-    }
-
-    /// Update provider health status
-    pub fn update_health(&mut self, provider_id: &str, health: HealthStatus) {
-        if let Some(provider) = self.providers.get_mut(provider_id) {
-            provider.info.health = health;
-            provider.last_health_check = Some(Instant::now());
-        }
-    }
-
-    /// Record a successful request to a provider
-    pub fn record_success(&mut self, provider_id: &str) {
-        if let Some(provider) = self.providers.get_mut(provider_id) {
-            provider.request_count += 1;
-        }
-    }
-
-    /// Record a failed request to a provider
-    pub fn record_failure(&mut self, provider_id: &str) {
-        if let Some(provider) = self.providers.get_mut(provider_id) {
-            provider.request_count += 1;
-            provider.failure_count += 1;
-        }
-    }
-
-    /// Get provider count
-    #[must_use]
-    pub fn provider_count(&self) -> usize {
-        self.providers.len()
-    }
-
-    /// Clear all providers
-    pub fn clear(&mut self) {
-        self.providers.clear();
-    }
-}
-
-impl Default for ProviderRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
+pub(super) struct RegisteredProvider {
+    pub(super) info: CapabilityInfo,
+    pub(super) registered_at: Instant,
+    pub(super) last_health_check: Option<Instant>,
+    pub(super) request_count: u64,
+    pub(super) failure_count: u64,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::collections::HashMap;
+
+    use super::super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus};
+    use super::ProviderRegistry;
     use crate::universal_adapter::{
         ComputeFeature, CoordinationFeature, IntelligenceFeature, ModelType, SecurityFeature,
         ServiceEndpoint, StorageFeature, TrustLevel,
@@ -345,6 +101,23 @@ mod tests {
             capability: CapabilityType::Intelligence {
                 features: vec![IntelligenceFeature::NaturalLanguage],
                 model_types: vec![ModelType::LLM],
+            },
+            metadata: HashMap::new(),
+            endpoint: ServiceEndpoint::InProcess,
+            health: HealthStatus::Healthy,
+        }
+    }
+
+    fn security_provider_with_id(
+        id: &str,
+        features: Vec<SecurityFeature>,
+        trust: TrustLevel,
+    ) -> CapabilityInfo {
+        CapabilityInfo {
+            provider_id: id.to_string(),
+            capability: CapabilityType::Security {
+                features,
+                min_trust_level: trust,
             },
             metadata: HashMap::new(),
             endpoint: ServiceEndpoint::InProcess,
@@ -694,5 +467,283 @@ mod tests {
     fn test_get_provider_nonexistent() {
         let registry = ProviderRegistry::new();
         assert!(registry.get_provider("missing").is_none());
+    }
+
+    #[test]
+    fn test_register_duplicate_id_overwrites() {
+        let mut registry = ProviderRegistry::new();
+        let mut first = security_provider_with_id(
+            "dup-id",
+            vec![SecurityFeature::Encryption],
+            TrustLevel::Medium,
+        );
+        first.metadata.insert("v".to_string(), "1".to_string());
+        registry.register(first).unwrap();
+
+        let mut second = security_provider_with_id(
+            "dup-id",
+            vec![SecurityFeature::Encryption, SecurityFeature::Signing],
+            TrustLevel::High,
+        );
+        second.metadata.insert("v".to_string(), "2".to_string());
+        registry.register(second).unwrap();
+
+        assert_eq!(registry.provider_count(), 1);
+        let info = registry.get_provider("dup-id").unwrap();
+        assert_eq!(info.metadata.get("v"), Some(&"2".to_string()));
+        match &info.capability {
+            CapabilityType::Security { features, .. } => {
+                assert!(features.contains(&SecurityFeature::Signing));
+            }
+            _ => panic!("expected Security capability"),
+        }
+    }
+
+    #[test]
+    fn test_unregister_nonexistent_is_ok() {
+        let mut registry = ProviderRegistry::new();
+        registry.unregister("never-registered").unwrap();
+        assert_eq!(registry.provider_count(), 0);
+    }
+
+    #[test]
+    fn test_find_best_match_prefers_healthy_over_unknown() {
+        let mut registry = ProviderRegistry::new();
+        let mut unknown = security_provider_with_id(
+            "sec-unknown",
+            vec![SecurityFeature::Encryption],
+            TrustLevel::High,
+        );
+        unknown.health = HealthStatus::Unknown;
+        registry.register(unknown).unwrap();
+
+        let healthy = security_provider_with_id(
+            "sec-healthy",
+            vec![SecurityFeature::Encryption],
+            TrustLevel::High,
+        );
+        registry.register(healthy).unwrap();
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::Medium,
+        };
+        let best = registry.find_best_match(&request).unwrap().unwrap();
+        assert_eq!(best.provider_id, "sec-healthy");
+    }
+
+    #[test]
+    fn test_find_best_match_prefers_lower_failure_rate() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(security_provider_with_id(
+                "reliable",
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+        registry
+            .register(security_provider_with_id(
+                "flaky",
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+
+        for _ in 0..10 {
+            registry.record_success("reliable");
+        }
+        for _ in 0..10 {
+            registry.record_failure("flaky");
+        }
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::Medium,
+        };
+        let best = registry.find_best_match(&request).unwrap().unwrap();
+        assert_eq!(best.provider_id, "reliable");
+    }
+
+    #[test]
+    fn test_matches_security_requested_feature_not_available() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(security_provider_with_id(
+                "enc-only",
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption, SecurityFeature::Signing],
+            min_trust_level: TrustLevel::Medium,
+        };
+        assert!(registry.find_best_match(&request).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_matches_storage_requested_feature_not_available() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(CapabilityInfo {
+                provider_id: "st-1".to_string(),
+                capability: CapabilityType::Storage {
+                    features: vec![StorageFeature::Compression],
+                    min_throughput_mbps: Some(100),
+                },
+                metadata: HashMap::new(),
+                endpoint: ServiceEndpoint::InProcess,
+                health: HealthStatus::Healthy,
+            })
+            .unwrap();
+
+        let request = CapabilityType::Storage {
+            features: vec![StorageFeature::Compression, StorageFeature::Encryption],
+            min_throughput_mbps: None,
+        };
+        assert!(registry.find_best_match(&request).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_matches_coordination_requested_feature_not_available() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(create_coordination_provider(Some(50)))
+            .unwrap();
+
+        let request = CapabilityType::Coordination {
+            features: vec![
+                CoordinationFeature::ServiceDiscovery,
+                CoordinationFeature::LoadBalancing,
+            ],
+            max_latency_ms: Some(100),
+        };
+        assert!(registry.find_best_match(&request).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_matches_compute_requested_feature_not_available() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(create_compute_provider(Some(32.0)))
+            .unwrap();
+
+        let request = CapabilityType::Compute {
+            features: vec![ComputeFeature::GPU, ComputeFeature::MultiCore],
+            min_memory_gb: Some(8.0),
+        };
+        assert!(registry.find_best_match(&request).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_update_health_transitions_round_trip() {
+        let mut registry = ProviderRegistry::new();
+        let id = "health-id";
+        registry
+            .register(security_provider_with_id(
+                id,
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+        assert_eq!(
+            registry.get_provider(id).unwrap().health,
+            HealthStatus::Healthy
+        );
+
+        registry.update_health(id, HealthStatus::Degraded);
+        assert_eq!(
+            registry.get_provider(id).unwrap().health,
+            HealthStatus::Degraded
+        );
+
+        registry.update_health(id, HealthStatus::Healthy);
+        assert_eq!(
+            registry.get_provider(id).unwrap().health,
+            HealthStatus::Healthy
+        );
+    }
+
+    #[test]
+    fn test_record_success_and_failure_counts_affect_ranking() {
+        let mut registry = ProviderRegistry::new();
+        registry
+            .register(security_provider_with_id(
+                "a",
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+        registry
+            .register(security_provider_with_id(
+                "b",
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+
+        registry.record_success("a");
+        registry.record_success("a");
+        registry.record_failure("b");
+        registry.record_failure("b");
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::Medium,
+        };
+        let best = registry.find_best_match(&request).unwrap().unwrap();
+        assert_eq!(best.provider_id, "a");
+    }
+
+    #[test]
+    fn test_list_capabilities_empty_registry() {
+        let registry = ProviderRegistry::new();
+        assert!(registry.list_capabilities().is_empty());
+    }
+
+    #[test]
+    fn test_provider_count_multiple() {
+        let mut registry = ProviderRegistry::new();
+        assert_eq!(registry.provider_count(), 0);
+        registry
+            .register(security_provider_with_id(
+                "p1",
+                vec![SecurityFeature::Encryption],
+                TrustLevel::High,
+            ))
+            .unwrap();
+        registry
+            .register(security_provider_with_id(
+                "p2",
+                vec![SecurityFeature::Signing],
+                TrustLevel::High,
+            ))
+            .unwrap();
+        assert_eq!(registry.provider_count(), 2);
+    }
+
+    #[test]
+    fn test_clear_resets_list_and_count() {
+        let mut registry = ProviderRegistry::new();
+        registry.register(create_test_security_provider()).unwrap();
+        registry.clear();
+        assert_eq!(registry.provider_count(), 0);
+        assert!(registry.list_capabilities().is_empty());
+    }
+
+    #[test]
+    fn test_degraded_provider_excluded_from_find_best_match() {
+        let mut registry = ProviderRegistry::new();
+        let mut p = create_test_security_provider();
+        p.health = HealthStatus::Degraded;
+        registry.register(p).unwrap();
+
+        let request = CapabilityType::Security {
+            features: vec![SecurityFeature::Encryption],
+            min_trust_level: TrustLevel::Medium,
+        };
+        assert!(registry.find_best_match(&request).unwrap().is_none());
     }
 }

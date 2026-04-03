@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)]
 //! Hot Path Benchmarks for ToadStool
 //!
 //! Benchmarks for the most frequently executed code paths to identify
@@ -175,30 +174,26 @@ fn bench_json_operations(c: &mut Criterion) {
 
 /// Benchmark common configuration parsing patterns
 fn bench_config_parsing(c: &mut Criterion) {
-    let mut group = c.benchmark_group("config_parsing");
+    temp_env::with_var("TEST_VAR", Some("test_value"), || {
+        let mut group = c.benchmark_group("config_parsing");
 
-    // Simulate environment variable reads
-    // SAFETY: Test-only; not called concurrently
-    unsafe {
-        std::env::set_var("TEST_VAR", "test_value");
-    }
-
-    group.bench_function("env_var_read", |b| {
-        b.iter(|| {
-            let val = std::env::var(black_box("TEST_VAR")).unwrap_or_default();
-            black_box(val);
+        group.bench_function("env_var_read", |b| {
+            b.iter(|| {
+                let val = std::env::var(black_box("TEST_VAR")).unwrap_or_default();
+                black_box(val);
+            });
         });
-    });
 
-    group.bench_function("env_var_with_default", |b| {
-        b.iter(|| {
-            let val =
-                std::env::var(black_box("NONEXISTENT")).unwrap_or_else(|_| "default".to_string());
-            black_box(val);
+        group.bench_function("env_var_with_default", |b| {
+            b.iter(|| {
+                let val = std::env::var(black_box("NONEXISTENT"))
+                    .unwrap_or_else(|_| "default".to_string());
+                black_box(val);
+            });
         });
-    });
 
-    group.finish();
+        group.finish();
+    });
 }
 
 // Configure criterion groups

@@ -172,7 +172,9 @@ impl HwLearnHandler {
         {
             Some(p) => p,
             None => {
-                card_path_owned = default_card.unwrap_or_else(|| "/dev/dri/card0".to_string());
+                card_path_owned = default_card.unwrap_or_else(|| {
+                    toadstool_common::constants::compute::DEFAULT_DRI_CARD.to_string()
+                });
                 &card_path_owned
             }
         };
@@ -312,7 +314,9 @@ impl HwLearnHandler {
                 .find(|g| g.pci_slot == bdf)
                 .or_else(|| sysmon_gpus.first())
                 .map(|g| g.card_path().to_string_lossy().into_owned())
-                .unwrap_or_else(|| "/dev/dri/card0".to_string())
+                .unwrap_or_else(|| {
+                    toadstool_common::constants::compute::DEFAULT_DRI_CARD.to_string()
+                })
         };
 
         let store_dir = self.store_dir();

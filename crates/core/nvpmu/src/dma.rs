@@ -24,6 +24,8 @@
 use crate::error::{NvPmuError, Result};
 use rustix::mm::{MapFlags, ProtFlags, mlock, mmap_anonymous, munlock, munmap};
 use std::os::fd::{BorrowedFd, RawFd};
+use toadstool_hw_safe::LockedMemory;
+use toadstool_hw_safe::vfio_dma::{self, VfioDmaMap, VfioDmaUnmap, flags};
 
 const PAGE_SIZE: usize = 4096;
 const HUGE_PAGE_2M: usize = 2 * 1024 * 1024;
@@ -53,71 +55,19 @@ impl HugePageSize {
 }
 const IOVA_BASE: u64 = 0x1000_0000;
 
-/// VFIO DMA mapping request (matches kernel ABI).
-#[repr(C)]
-struct VfioDmaMap {
-    argsz: u32,
-    flags: u32,
-    vaddr: u64,
-    iova: u64,
-    size: u64,
-}
-
-/// VFIO DMA unmapping request (matches kernel ABI).
-#[repr(C)]
-struct VfioDmaUnmap {
-    argsz: u32,
-    flags: u32,
-    iova: u64,
-    size: u64,
-}
-
-const VFIO_DMA_MAP_FLAG_READ: u32 = 1;
-const VFIO_DMA_MAP_FLAG_WRITE: u32 = 2;
-
-use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
-
-const VFIO_TYPE: u8 = b';';
-const VFIO_BASE: u8 = 100;
-const OP_IOMMU_MAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 13);
-const OP_IOMMU_UNMAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 14);
-
-struct DmaIoctl<const OP: Opcode, T> {
-    ptr: *mut T,
-}
-
-// SAFETY: T is repr(C) matching kernel ABI; opcode is compile-time constant.
-unsafe impl<const OP: Opcode, T> Ioctl for DmaIoctl<OP, T> {
-    type Output = ();
-    const IS_MUTATING: bool = true;
-
-    fn opcode(&self) -> Opcode {
-        OP
-    }
-    fn as_ptr(&mut self) -> *mut std::ffi::c_void {
-        self.ptr.cast()
-    }
-    // SAFETY: output_from_ptr is trivial — we discard the raw output and
-    // return Ok(()). No pointer dereference; no memory access.
-    unsafe fn output_from_ptr(
-        _: IoctlOutput,
-        _: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
-        Ok(())
-    }
-}
-
 /// DMA buffer: page-aligned, mlock'd, IOMMU-mapped memory.
 ///
 /// The buffer is accessible from both host (via slice) and device (via IOVA).
 /// Automatically unmapped and freed on drop.
 pub struct DmaBuffer {
+    /// Standard allocations use [`LockedMemory`]; huge-page path uses raw `vaddr` only.
+    locked: Option<LockedMemory>,
     vaddr: *mut u8,
     iova: u64,
     size: usize,
     container_fd: RawFd,
     /// When true, memory was allocated via `mmap` (huge pages); use `munmap` on drop.
-    /// When false, memory was allocated via `alloc_zeroed`; use `dealloc` on drop.
+    /// When false, memory is owned by `locked`.
     huge_page: bool,
 }
 
@@ -137,13 +87,19 @@ impl DmaBuffer {
     /// Host-accessible immutable view.
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
+        if let Some(mem) = &self.locked {
+            return mem.as_slice();
+        }
         debug_assert!(!self.vaddr.is_null());
-        // SAFETY: vaddr from alloc in allocate(), valid for size bytes; &self prevents mutation.
+        // SAFETY: vaddr from allocate_huge(); valid for size bytes; &self prevents mutation.
         unsafe { std::slice::from_raw_parts(self.vaddr, self.size) }
     }
 
     /// Host-accessible mutable view for writing data.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        if let Some(mem) = &mut self.locked {
+            return mem.as_mut_slice();
+        }
         debug_assert!(!self.vaddr.is_null());
         // SAFETY: vaddr valid for size; &mut self guarantees exclusive access.
         unsafe { std::slice::from_raw_parts_mut(self.vaddr, self.size) }
@@ -153,12 +109,7 @@ impl DmaBuffer {
 impl Drop for DmaBuffer {
     #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     fn drop(&mut self) {
-        // SAFETY: munlock matches mlock from allocate() or allocate_huge().
-        unsafe {
-            let _ = munlock(self.vaddr.cast(), self.size);
-        }
-
-        let mut unmap = VfioDmaUnmap {
+        let unmap = VfioDmaUnmap {
             argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
             flags: 0,
             iova: self.iova,
@@ -167,22 +118,15 @@ impl Drop for DmaBuffer {
 
         // SAFETY: container_fd still valid — DmaBuffer dropped before container.
         let fd = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
-        let ioctl = DmaIoctl::<OP_IOMMU_UNMAP_DMA, _> {
-            ptr: std::ptr::from_mut(&mut unmap),
-        };
-        // SAFETY: fd is valid (borrowed above); struct matches kernel VFIO unmap ABI.
-        let _ = unsafe { rustix::ioctl::ioctl(fd, ioctl) };
+        // SAFETY: fd valid; unmap matches prior dma_map for this IOVA range.
+        let _ = unsafe { vfio_dma::dma_unmap(fd, &unmap) };
 
         if self.huge_page {
-            // SAFETY: munmap matches mmap_anonymous from allocate_huge(); same ptr and size.
+            // SAFETY: munlock/munmap match mmap_anonymous from allocate_huge(); same ptr and size.
             unsafe {
+                let _ = munlock(self.vaddr.cast(), self.size);
                 let _ = munmap(self.vaddr.cast(), self.size);
             }
-        } else {
-            let layout = std::alloc::Layout::from_size_align(self.size, PAGE_SIZE)
-                .expect("Layout valid: matches alloc");
-            // SAFETY: dealloc matches alloc_zeroed from allocate(); same layout.
-            unsafe { std::alloc::dealloc(self.vaddr, layout) };
         }
 
         tracing::debug!(iova = %format!("{:#x}", self.iova), "freed DMA buffer");
@@ -229,28 +173,15 @@ impl DmaAllocator {
             ));
         }
 
-        let aligned_size = size.div_ceil(PAGE_SIZE) * PAGE_SIZE;
-        let layout = std::alloc::Layout::from_size_align(aligned_size, PAGE_SIZE)
-            .map_err(|e| NvPmuError::Hardware(format!("Invalid DMA buffer layout: {e}")))?;
-
-        // SAFETY: Page-aligned allocation; layout validated above; checked for null below.
-        let vaddr = unsafe { std::alloc::alloc_zeroed(layout) };
-        if vaddr.is_null() {
-            return Err(NvPmuError::Hardware(
-                "DMA buffer allocation failed (OOM)".to_string(),
-            ));
-        }
-
-        // SAFETY: mlock prevents page-out; vaddr valid for aligned_size bytes.
-        if let Err(e) = unsafe { mlock(vaddr.cast(), aligned_size) } {
-            unsafe { std::alloc::dealloc(vaddr, layout) };
-            return Err(NvPmuError::Hardware(format!("mlock failed: {e}")));
-        }
+        let aligned_size = vfio_dma::page_align_up(size, PAGE_SIZE);
+        let mem = LockedMemory::page_aligned(aligned_size)
+            .map_err(|e| NvPmuError::Hardware(format!("locked DMA buffer: {e}")))?;
+        let vaddr = mem.as_ptr().as_ptr();
 
         let iova = self.next_iova;
-        let mut dma_map = VfioDmaMap {
+        let dma_map = VfioDmaMap {
             argsz: std::mem::size_of::<VfioDmaMap>() as u32,
-            flags: VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
+            flags: flags::READ | flags::WRITE,
             vaddr: vaddr as u64,
             iova,
             size: aligned_size as u64,
@@ -258,17 +189,8 @@ impl DmaAllocator {
 
         // SAFETY: container_fd is a valid VFIO container fd held for the lifetime of DmaAllocator.
         let fd = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
-        let ioctl = DmaIoctl::<OP_IOMMU_MAP_DMA, _> {
-            ptr: std::ptr::from_mut(&mut dma_map),
-        };
-
-        // SAFETY: container_fd from valid VFIO open; struct has correct argsz and layout.
-        if let Err(e) = unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
-            // SAFETY: cleanup on failed DMA map — munlock and dealloc match the alloc above.
-            unsafe {
-                let _ = munlock(vaddr.cast(), aligned_size);
-                std::alloc::dealloc(vaddr, layout);
-            }
+        // SAFETY: vaddr from LockedMemory; map describes that region; IOVA range unused.
+        if let Err(e) = unsafe { vfio_dma::dma_map(fd, &dma_map) } {
             return Err(NvPmuError::Hardware(format!("VFIO DMA map failed: {e}")));
         }
 
@@ -281,6 +203,7 @@ impl DmaAllocator {
         );
 
         Ok(DmaBuffer {
+            locked: Some(mem),
             vaddr,
             iova,
             size: aligned_size,
@@ -354,9 +277,9 @@ impl DmaAllocator {
         }
 
         let iova = self.next_iova;
-        let mut dma_map = VfioDmaMap {
+        let dma_map = VfioDmaMap {
             argsz: std::mem::size_of::<VfioDmaMap>() as u32,
-            flags: VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
+            flags: flags::READ | flags::WRITE,
             vaddr: vaddr as u64,
             iova,
             size: aligned_size as u64,
@@ -364,12 +287,8 @@ impl DmaAllocator {
 
         // SAFETY: container_fd is a valid VFIO container fd held for the lifetime of DmaAllocator.
         let fd = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
-        let ioctl = DmaIoctl::<OP_IOMMU_MAP_DMA, _> {
-            ptr: std::ptr::from_mut(&mut dma_map),
-        };
-
-        // SAFETY: container_fd valid; struct layout matches kernel ABI.
-        if let Err(e) = unsafe { rustix::ioctl::ioctl(fd, ioctl) } {
+        // SAFETY: vaddr from mmap; map describes that region; IOVA range unused.
+        if let Err(e) = unsafe { vfio_dma::dma_map(fd, &dma_map) } {
             // SAFETY: cleanup on failed DMA map — munlock and munmap match the mmap above.
             unsafe {
                 let _ = munlock(vaddr.cast(), aligned_size);
@@ -388,6 +307,7 @@ impl DmaAllocator {
         );
 
         Ok(DmaBuffer {
+            locked: None,
             vaddr,
             iova,
             size: aligned_size,
@@ -422,10 +342,10 @@ mod tests {
 
     #[test]
     fn page_alignment_math() {
-        assert_eq!(1usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 4096);
-        assert_eq!(4096usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 4096);
-        assert_eq!(4097usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 8192);
-        assert_eq!(8192usize.div_ceil(PAGE_SIZE) * PAGE_SIZE, 8192);
+        assert_eq!(vfio_dma::page_align_up(1, PAGE_SIZE), 4096);
+        assert_eq!(vfio_dma::page_align_up(4096, PAGE_SIZE), 4096);
+        assert_eq!(vfio_dma::page_align_up(4097, PAGE_SIZE), 8192);
+        assert_eq!(vfio_dma::page_align_up(8192, PAGE_SIZE), 8192);
     }
 
     #[test]

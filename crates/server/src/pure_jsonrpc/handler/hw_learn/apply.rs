@@ -63,7 +63,7 @@ impl HwLearnHandler {
         let card_path = p
             .get("card_path")
             .and_then(serde_json::Value::as_str)
-            .unwrap_or("/dev/dri/card0");
+            .unwrap_or(toadstool_common::constants::compute::DEFAULT_DRI_CARD);
 
         if live {
             let bdf = resolve_bdf(p)?;

@@ -17,7 +17,8 @@ use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 ///
 /// Overridable via `TOADSTOOL_BIND_ADDRESS` environment variable.
 fn bind_any() -> String {
-    let host = std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+        .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
     format!("{host}:0")
 }
 
@@ -211,7 +212,8 @@ async fn start_tcp_servers(
 async fn start_tcp_jsonrpc_on_port(handler: Arc<JsonRpcHandler>, port: u16) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
-    let host = std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+        .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
     let addr = format!("{host}:{port}");
     let listener = TcpListener::bind(&addr)
         .await

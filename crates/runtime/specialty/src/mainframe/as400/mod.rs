@@ -2,31 +2,18 @@
 //! AS/400 System Adapter
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
 use tracing::info;
 use uuid::Uuid;
 
-use super::types::{
-    COBOLCompiler, DatasetManager, IFSManager, JCLGenerator, MainframeJob, RPGCompiler,
-    Terminal3270, Terminal3270Attributes, Terminal5250,
-};
+use super::types::{IFSManager, MainframeJob, RPGCompiler, Terminal5250};
 
-/// PATH-based compiler lookup (no hardcoded `/usr/bin` paths).
-fn find_compiler_in_path(name: &str) -> PathBuf {
-    std::env::var_os("PATH")
-        .and_then(|path_var| {
-            std::env::split_paths(&path_var)
-                .map(|dir| dir.join(name))
-                .find(|candidate| candidate.is_file())
-        })
-        .unwrap_or_else(|| PathBuf::from(name))
-}
-use crate::{
-    AuthenticationSettings, COBOLSettings, ConnectionSettings, DatasetConfig, JCLSettings,
-};
+mod compiler;
+mod connection;
+mod jobs;
+mod terminal;
+
 use crate::{JobOutput, JobStatus, SpecialtyRuntimeConfig};
 use crate::{
     LegacyAdapter, LegacyJob, LegacySystemType, MainframeConfig, SystemInfo, ToadStoolError,
@@ -228,278 +215,16 @@ impl LegacyAdapter for AS400Adapter {
     }
 }
 
-// Implementation for supporting components
-impl Default for JCLGenerator {
-    fn default() -> Self {
-        Self {
-            templates: HashMap::new(),
-            settings: JCLSettings {
-                job_class: "A".to_string(),
-                message_class: "A".to_string(),
-                priority: 1,
-                time_limit: Duration::from_secs(3600),
-                region_size: 1024 * 1024,
-            },
-        }
-    }
-}
-
-impl JCLGenerator {
-    /// Creates a new JCL generator with default templates.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Initializes the generator with JCL settings and loads templates.
-    ///
-    /// # Errors
-    ///
-    /// Reserved for future I/O failures when loading templates.
-    pub async fn initialize(&mut self, settings: &JCLSettings) -> ToadStoolResult<()> {
-        self.settings = settings.clone();
-
-        // Load JCL templates
-        self.templates.insert(
-            "COBOL_COMPILE".to_string(),
-            "//COBOLJOB JOB (ACCT),CLASS={job_class},MSGCLASS={message_class}\n\
-             //COMPILE  EXEC PGM=IGYCRCTL\n\
-             //STEPLIB  DD  DSN=IGY.SIGYCOMP,DISP=SHR\n\
-             //SYSPRINT DD  SYSOUT=*\n\
-             //SYSLIN   DD  DSN=&&LOADSET,DISP=(MOD,PASS),\n\
-             //             UNIT=SYSDA,SPACE=(CYL,(1,1))\n\
-             //SYSIN    DD  DSN={source_dataset},DISP=SHR\n"
-                .to_string(),
-        );
-
-        Ok(())
-    }
-
-    /// Generates JCL for the given legacy job.
-    ///
-    /// # Errors
-    ///
-    /// Returns when a required JCL template is missing.
-    pub async fn generate_jcl(&self, _job: &LegacyJob) -> ToadStoolResult<String> {
-        // Generate JCL based on job type
-        let template = self
-            .templates
-            .get("COBOL_COMPILE")
-            .ok_or_else(|| ToadStoolError::runtime("JCL template not found"))?;
-
-        let jcl = template
-            .replace("{job_class}", &self.settings.job_class)
-            .replace("{message_class}", &self.settings.message_class)
-            .replace("{source_dataset}", "USER.SOURCE(HELLO)");
-
-        Ok(jcl)
-    }
-}
-
-impl Default for COBOLCompiler {
-    fn default() -> Self {
-        Self {
-            settings: COBOLSettings {
-                compiler: "IGYCRCTL".to_string(),
-                compile_options: vec![],
-                link_options: vec![],
-                runtime_options: vec![],
-            },
-            compiler_path: find_compiler_in_path("cobc"),
-            library_paths: vec![],
-        }
-    }
-}
-
-impl COBOLCompiler {
-    /// Creates a new COBOL compiler with default settings.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Initializes the compiler with COBOL settings.
-    ///
-    /// # Errors
-    ///
-    /// Currently always returns `Ok`.
-    pub async fn initialize(&mut self, settings: &COBOLSettings) -> ToadStoolResult<()> {
-        self.settings = settings.clone();
-        Ok(())
-    }
-}
-
-impl Default for Terminal3270 {
-    fn default() -> Self {
-        Self {
-            connection: ConnectionSettings {
-                host: std::env::var("TOADSTOOL_MAINFRAME_3270_HOST").unwrap_or_else(|_| {
-                    std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| {
-                        toadstool_common::constants::network::LOCALHOST_IPV4.to_string()
-                    })
-                }),
-                port: 3270,
-                connection_type: crate::MainframeConnectionType::IBM3270,
-                authentication: AuthenticationSettings {
-                    auth_type: crate::AuthenticationType::None,
-                    username: None,
-                    password: None,
-                    key_file: None,
-                    certificate: None,
-                },
-            },
-            session: None,
-            screen_buffer: vec![vec![' '; 80]; 24],
-            cursor_position: (0, 0),
-            attributes: Terminal3270Attributes {
-                width: 80,
-                height: 24,
-                color_support: false,
-                extended_attributes: false,
-            },
-        }
-    }
-}
-
-impl Terminal3270 {
-    /// Creates a new 3270 terminal emulator.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Connects to the mainframe using the given connection settings.
-    ///
-    /// # Errors
-    ///
-    /// Currently always returns `Ok`.
-    pub async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()> {
-        self.connection = settings.clone();
-        // In a real implementation, this would establish a 3270 connection
-        info!(
-            "Connected to 3270 terminal at {}:{}",
-            settings.host, settings.port
-        );
-        Ok(())
-    }
-
-    /// Disconnects from the 3270 terminal session.
-    ///
-    /// # Errors
-    ///
-    /// Currently always returns `Ok`.
-    pub async fn disconnect(&mut self) -> ToadStoolResult<()> {
-        self.session = None;
-        info!("Disconnected from 3270 terminal");
-        Ok(())
-    }
-}
-
-impl Default for DatasetManager {
-    fn default() -> Self {
-        Self {
-            datasets: HashMap::new(),
-            active_datasets: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-}
-
-impl DatasetManager {
-    /// Creates a new dataset manager.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Initializes with the given dataset configurations.
-    ///
-    /// # Errors
-    ///
-    /// Currently always returns `Ok`.
-    pub async fn initialize(
-        &mut self,
-        datasets: &HashMap<String, DatasetConfig>,
-    ) -> ToadStoolResult<()> {
-        self.datasets.clone_from(datasets);
-        Ok(())
-    }
-}
-
-impl Default for RPGCompiler {
-    fn default() -> Self {
-        Self {
-            compiler_path: std::env::var_os("TOADSTOOL_RPG_COMPILER")
-                .map_or_else(|| find_compiler_in_path("CRTRPGPGM"), PathBuf::from),
-            compiler_options: vec![],
-            source_library: "QRPGSRC".to_string(),
-            object_library: "QRPGOBJ".to_string(),
-        }
-    }
-}
-
-impl RPGCompiler {
-    /// Creates a new RPG compiler for AS/400.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for Terminal5250 {
-    fn default() -> Self {
-        Self {
-            connection: ConnectionSettings {
-                host: std::env::var("TOADSTOOL_MAINFRAME_5250_HOST").unwrap_or_else(|_| {
-                    std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| {
-                        toadstool_common::constants::network::LOCALHOST_IPV4.to_string()
-                    })
-                }),
-                port: 5250,
-                connection_type: crate::MainframeConnectionType::IBM5250,
-                authentication: AuthenticationSettings {
-                    auth_type: crate::AuthenticationType::None,
-                    username: None,
-                    password: None,
-                    key_file: None,
-                    certificate: None,
-                },
-            },
-            session: None,
-            screen_buffer: vec![vec![' '; 80]; 24],
-            field_definitions: vec![],
-        }
-    }
-}
-
-impl Terminal5250 {
-    /// Creates a new 5250 terminal emulator for AS/400.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl Default for IFSManager {
-    fn default() -> Self {
-        Self {
-            root_paths: vec![PathBuf::from("/")],
-            file_cache: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-}
-
-impl IFSManager {
-    /// Creates a new IFS (Integrated File System) manager for AS/400.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::types::{
-        DCLProcessor, Field5250, Field5250Attributes, Field5250Type, IFSFile, IFSFileAttributes,
-        MainframeJob, Terminal3270Attributes, VAXFortranCompiler, VAXTerminal,
+        COBOLCompiler, DCLProcessor, DatasetManager, Field5250, Field5250Attributes, Field5250Type,
+        IFSFile, IFSFileAttributes, IFSManager, JCLGenerator, MainframeJob, RPGCompiler,
+        Terminal3270, Terminal3270Attributes, Terminal5250, VAXFortranCompiler, VAXTerminal,
         VAXTerminalAttributes, VMSFileSpec, VMSFileSystem,
     };
-    use super::{
-        AS400Adapter, COBOLCompiler, DatasetManager, IFSManager, JCLGenerator, RPGCompiler,
-        Terminal3270, Terminal5250, find_compiler_in_path,
-    };
+    use super::AS400Adapter;
+    use super::compiler::find_compiler_in_path;
     use crate::{
         AuthenticationSettings, AuthenticationType, COBOLSettings, CommunicationRequirements,
         CommunicationSettings, CompilationRequirements, CompilerType, ConnectionSettings,

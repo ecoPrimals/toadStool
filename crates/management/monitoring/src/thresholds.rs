@@ -28,7 +28,7 @@ impl SystemResourceMonitor {
     }
 
     /// Check thresholds and take action if exceeded
-    pub(super) fn check_thresholds(
+    pub(crate) fn check_thresholds(
         workload_id: &str,
         metrics: &RuntimeMetrics,
         requirements: &ResourceRequirements,

@@ -8,7 +8,7 @@ use std::time::Duration;
 use toadstool::ToadStoolError;
 
 /// Monitoring granularity for high-precision resource tracking
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringGranularity {
     /// Sub-millisecond monitoring (100μs intervals) - for high-frequency trading, real-time systems
     SubMillisecond,
@@ -40,7 +40,7 @@ impl MonitoringGranularity {
 }
 
 /// Monitoring configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MonitoringConfig {
     /// Monitoring granularity
     pub granularity: MonitoringGranularity,
@@ -67,7 +67,7 @@ impl Default for MonitoringConfig {
 }
 
 /// Action to take when thresholds are exceeded
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThresholdAction {
     /// Log the violation
     Log,

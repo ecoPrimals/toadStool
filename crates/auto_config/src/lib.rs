@@ -136,360 +136,15 @@ pub use natural_language::{
     SecurityPreference, UsagePattern,
 };
 
-/// Result type for auto-configuration operations.
-pub type ToadStoolResult<T> = Result<T, ToadStoolError>;
+mod bootstrap;
+mod config_builder;
+mod error;
+mod system_summary;
 
-/// Errors that can occur during auto-configuration.
-#[derive(Debug, thiserror::Error)]
-pub enum ToadStoolError {
-    /// Configuration validation or application failed.
-    #[error("Configuration error: {0}")]
-    Configuration(String),
-
-    /// Hardware detection failed.
-    #[error("Hardware detection error: {0}")]
-    Hardware(String),
-
-    /// Network discovery or connectivity failed.
-    #[error("Network error: {0}")]
-    Network(String),
-
-    /// Ecosystem service discovery failed.
-    #[error("Ecosystem discovery error: {0}")]
-    EcosystemDiscovery(String),
-
-    /// I/O error during config file operations.
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-
-    /// JSON parsing failed.
-    #[error("JSON parsing error: {0}")]
-    Json(#[from] serde_json::Error),
-
-    /// External HTTP not supported; use Songbird for external HTTP.
-    #[error("External HTTP not supported - use Songbird for external HTTP")]
-    ExternalHttpNotSupported,
-
-    /// Other auto-configuration error.
-    #[error("Other error: {0}")]
-    Other(String),
-}
-
-impl ToadStoolError {
-    /// Creates a configuration error.
-    pub fn configuration<S: Into<String>>(message: S) -> Self {
-        Self::Configuration(message.into())
-    }
-
-    /// Creates a hardware detection error.
-    pub fn hardware<S: Into<String>>(message: S) -> Self {
-        Self::Hardware(message.into())
-    }
-
-    /// Creates a network error.
-    pub fn network<S: Into<String>>(message: S) -> Self {
-        Self::Network(message.into())
-    }
-
-    /// Creates an ecosystem discovery error.
-    pub fn ecosystem_discovery<S: Into<String>>(message: S) -> Self {
-        Self::EcosystemDiscovery(message.into())
-    }
-
-    /// Creates an other error.
-    pub fn other<S: Into<String>>(message: S) -> Self {
-        Self::Other(message.into())
-    }
-}
-
-/// Quick start function for zero-touch configuration
-///
-/// This is the simplest way to get `ToadStool` configured and running.
-/// It performs all auto-configuration steps and returns a ready-to-use configuration.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// // Example usage (API may change)
-/// use toadstool_auto_config::quick_start;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = quick_start().await?;
-///     println!("ToadStool is ready!");
-///     Ok(())
-/// }
-/// ```
-///
-/// # Errors
-///
-/// This function will return an error if:
-/// - Hardware detection fails
-/// - System capabilities cannot be determined
-/// - Configuration validation fails
-/// - File system permissions prevent writing configuration files
-pub async fn quick_start() -> ToadStoolResult<toadstool_config::ToadStoolConfig> {
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .try_init()
-        .ok(); // Ignore if already initialized
-
-    tracing::info!("🍄 ToadStool Universal Compute Platform");
-    tracing::info!("🎯 Zero-Touch Auto-Configuration Starting...");
-
-    IntelligentAutoConfig::auto_configure().await
-}
-
-/// Advanced configuration builder for fine-grained control
-///
-/// Use this when you need more control over the auto-configuration process
-/// or want to inspect intermediate results.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use toadstool_auto_config::ConfigBuilder;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = ConfigBuilder::new()
-///         .with_hardware_detection(true)
-///         .with_ecosystem_discovery(true)
-///         .with_performance_optimization(true)
-///         .build()
-///         .await?;
-///     
-///     println!("Advanced configuration complete!");
-///     Ok(())
-/// }
-/// ```
-#[expect(clippy::struct_excessive_bools, reason = "configuration type")]
-pub struct ConfigBuilder {
-    enable_hardware_detection: bool,
-    enable_ecosystem_discovery: bool,
-    enable_performance_optimization: bool,
-    enable_usage_learning: bool,
-    discovery_timeout: std::time::Duration,
-}
-
-impl ConfigBuilder {
-    /// Create a new configuration builder with default settings
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            enable_hardware_detection: true,
-            enable_ecosystem_discovery: true,
-            enable_performance_optimization: true,
-            enable_usage_learning: true,
-            discovery_timeout: std::time::Duration::from_secs(30),
-        }
-    }
-
-    /// Enable or disable hardware detection
-    #[must_use]
-    pub const fn with_hardware_detection(mut self, enable: bool) -> Self {
-        self.enable_hardware_detection = enable;
-        self
-    }
-
-    /// Enable or disable ecosystem service discovery
-    #[must_use]
-    pub const fn with_ecosystem_discovery(mut self, enable: bool) -> Self {
-        self.enable_ecosystem_discovery = enable;
-        self
-    }
-
-    /// Enable or disable performance optimization
-    #[must_use]
-    pub const fn with_performance_optimization(mut self, enable: bool) -> Self {
-        self.enable_performance_optimization = enable;
-        self
-    }
-
-    /// Enable or disable usage pattern learning
-    #[must_use]
-    pub const fn with_usage_learning(mut self, enable: bool) -> Self {
-        self.enable_usage_learning = enable;
-        self
-    }
-
-    /// Set the discovery timeout
-    #[must_use]
-    pub const fn with_discovery_timeout(mut self, timeout: std::time::Duration) -> Self {
-        self.discovery_timeout = timeout;
-        self
-    }
-
-    /// Build the configuration using the specified settings
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if:
-    /// - Hardware detection fails and hardware detection is enabled
-    /// - Ecosystem discovery times out and ecosystem discovery is enabled
-    /// - Performance optimization fails and performance optimization is enabled
-    /// - Configuration validation fails
-    pub async fn build(self) -> ToadStoolResult<toadstool_config::ToadStoolConfig> {
-        use tracing::info;
-
-        info!("🔧 Building custom ToadStool configuration...");
-
-        let mut auto_config = IntelligentAutoConfig::new();
-
-        // Initialize components based on builder settings
-        let hardware = if self.enable_hardware_detection {
-            info!("🖥️ Hardware detection enabled");
-            auto_config.hardware_detector.scan_system().await?
-        } else {
-            info!("🖥️ Hardware detection disabled - using defaults");
-            SystemCapabilities::default()
-        };
-
-        let ecosystem = if self.enable_ecosystem_discovery {
-            info!("🌐 Ecosystem discovery enabled");
-            auto_config.ecosystem_discoverer.discover_services().await?
-        } else {
-            info!("🌐 Ecosystem discovery disabled");
-            DiscoveredServices {
-                discovered_services: std::collections::HashMap::new(),
-                discovery_summary: ecosystem::DiscoverySummary::default(),
-                discovery_timestamp: std::time::SystemTime::now(),
-            }
-        };
-
-        let platform_config = if self.enable_performance_optimization {
-            info!("⚡ Performance optimization enabled");
-            auto_config
-                .platform_optimizer
-                .optimize_for_platform(&hardware)?
-        } else {
-            info!("⚡ Performance optimization disabled");
-            intelligent::PlatformConfig {
-                platform_name: std::env::consts::OS.to_string(),
-                supported_features: std::collections::HashSet::new(),
-                optimizations: Vec::new(),
-            }
-        };
-
-        let usage_hints = if self.enable_usage_learning {
-            info!("📊 Usage pattern learning enabled");
-            auto_config.usage_learner.analyze_environment().await?
-        } else {
-            info!("📊 Usage pattern learning disabled");
-            UsageHints::default()
-        };
-
-        // Generate the final configuration
-        let config = auto_config
-            .config_generator
-            .generate_optimal_config(&hardware, &platform_config, &ecosystem, &usage_hints)
-            .await?;
-
-        info!("✅ Custom configuration build complete");
-        Ok(config)
-    }
-}
-
-impl Default for ConfigBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// System information summary for display and debugging.
-#[derive(Debug, Clone)]
-pub struct SystemSummary {
-    /// CPU model and core count.
-    pub cpu_info: String,
-    /// Memory size summary.
-    pub memory_info: String,
-    /// GPU count or type.
-    pub gpu_info: String,
-    /// Storage capacity summary.
-    pub storage_info: String,
-    /// Discovered ecosystem services.
-    pub ecosystem_services: Vec<String>,
-    /// Performance class (e.g. low, medium, high).
-    pub performance_class: String,
-    /// Recommended runtime types.
-    pub optimal_runtimes: Vec<String>,
-}
-
-impl SystemSummary {
-    /// Create a system summary from detected capabilities
-    #[must_use]
-    pub fn from_capabilities(
-        capabilities: &SystemCapabilities,
-        ecosystem: &DiscoveredServices,
-    ) -> Self {
-        Self {
-            cpu_info: format!(
-                "{} ({} cores)",
-                capabilities.cpu_info.model_name, capabilities.cpu_cores
-            ),
-            memory_info: format!("{:.1} GB", capabilities.memory_gb),
-            gpu_info: if capabilities.gpu_count > 0 {
-                format!("{} GPU(s)", capabilities.gpu_count)
-            } else {
-                "Integrated Graphics".to_string()
-            },
-            storage_info: format!(
-                "{:.1} GB {:?}",
-                capabilities.storage_gb, capabilities.storage_info.storage_type
-            ),
-            ecosystem_services: ecosystem.discovered_services.keys().cloned().collect(),
-            performance_class: format!("{:?}", capabilities.performance_class),
-            optimal_runtimes: vec!["Native".to_string()], // Would be determined by configuration
-        }
-    }
-
-    /// Pretty print the system summary
-    pub fn display(&self) {
-        println!("🖥️  System Summary:");
-        println!("   CPU: {}", self.cpu_info);
-        println!("   Memory: {}", self.memory_info);
-        println!("   GPU: {}", self.gpu_info);
-        println!("   Storage: {}", self.storage_info);
-        println!("   Performance: {}", self.performance_class);
-        println!(
-            "   Ecosystem Services: {}",
-            if self.ecosystem_services.is_empty() {
-                "None".to_string()
-            } else {
-                self.ecosystem_services.join(", ")
-            }
-        );
-        println!("   Optimal Runtimes: {}", self.optimal_runtimes.join(", "));
-    }
-}
-
-/// Get a human-readable system summary
-///
-/// This function performs basic hardware detection and ecosystem discovery
-/// to provide a summary of the system capabilities and available services.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use toadstool_auto_config::get_system_summary;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let summary = get_system_summary().await?;
-///     summary.display();
-///     Ok(())
-/// }
-/// ```
-pub async fn get_system_summary() -> ToadStoolResult<SystemSummary> {
-    let mut hardware_detector = HardwareDetector::new();
-    let mut ecosystem_discoverer = EcosystemDiscoverer::new();
-
-    // Run hardware detection and ecosystem discovery sequentially (both need &mut self)
-    let capabilities = hardware_detector.scan_system().await?;
-    let ecosystem = ecosystem_discoverer.discover_services().await?;
-
-    Ok(SystemSummary::from_capabilities(&capabilities, &ecosystem))
-}
+pub use bootstrap::quick_start;
+pub use config_builder::ConfigBuilder;
+pub use error::{ToadStoolError, ToadStoolResult};
+pub use system_summary::{SystemSummary, get_system_summary};
 
 #[cfg(test)]
 mod tests {
@@ -601,6 +256,75 @@ mod tests {
         assert!(err.to_string().contains("External HTTP"));
     }
 
+    #[test]
+    fn test_toadstool_error_io_and_json_display() {
+        let io_err: ToadStoolError = std::io::Error::other("disk full").into();
+        let io_msg = io_err.to_string();
+        assert!(io_msg.contains("IO error"), "got: {io_msg}");
+        assert!(io_msg.contains("disk full"), "got: {io_msg}");
+
+        let json_err = serde_json::from_str::<serde_json::Value>("not valid json").unwrap_err();
+        let json_e: ToadStoolError = json_err.into();
+        let json_msg = json_e.to_string();
+        assert!(json_msg.contains("JSON"), "got: {json_msg}");
+    }
+
+    #[test]
+    fn test_config_builder_default_matches_new() {
+        let d = ConfigBuilder::default();
+        let n = ConfigBuilder::new();
+        assert_eq!(d.enable_hardware_detection, n.enable_hardware_detection);
+        assert_eq!(d.enable_ecosystem_discovery, n.enable_ecosystem_discovery);
+        assert_eq!(
+            d.enable_performance_optimization,
+            n.enable_performance_optimization
+        );
+        assert_eq!(d.enable_usage_learning, n.enable_usage_learning);
+        assert_eq!(d.discovery_timeout, n.discovery_timeout);
+        assert!(d.enable_hardware_detection);
+        assert!(d.enable_ecosystem_discovery);
+        assert!(d.enable_performance_optimization);
+        assert!(d.enable_usage_learning);
+        assert_eq!(d.discovery_timeout, std::time::Duration::from_secs(30));
+    }
+
+    /// Chains `with_*` toggles (fine-grained “custom” build) and checks final flag state.
+    #[test]
+    fn test_config_builder_chained_with_methods() {
+        let b = ConfigBuilder::new()
+            .with_hardware_detection(true)
+            .with_ecosystem_discovery(false)
+            .with_performance_optimization(true)
+            .with_usage_learning(false)
+            .with_discovery_timeout(std::time::Duration::from_secs(7));
+        assert!(b.enable_hardware_detection);
+        assert!(!b.enable_ecosystem_discovery);
+        assert!(b.enable_performance_optimization);
+        assert!(!b.enable_usage_learning);
+        assert_eq!(b.discovery_timeout, std::time::Duration::from_secs(7));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_config_builder_build_with_hardware_detection_disabled() {
+        let builder = ConfigBuilder::new().with_hardware_detection(false);
+        let result = builder.build().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_config_builder_build_with_usage_learning_disabled() {
+        let builder = ConfigBuilder::new().with_usage_learning(false);
+        let result = builder.build().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_config_builder_build_with_performance_optimization_disabled() {
+        let builder = ConfigBuilder::new().with_performance_optimization(false);
+        let result = builder.build().await;
+        assert!(result.is_ok());
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_system_summary_creation() {
         let capabilities = SystemCapabilities::default();
@@ -633,6 +357,58 @@ mod tests {
         summary.display();
     }
 
+    #[test]
+    fn test_system_summary_display_empty_ecosystem_services() {
+        let summary = SystemSummary {
+            cpu_info: "CPU".to_string(),
+            memory_info: "1.0 GB".to_string(),
+            gpu_info: "Integrated Graphics".to_string(),
+            storage_info: "10.0 GB".to_string(),
+            ecosystem_services: vec![],
+            performance_class: "LowEnd".to_string(),
+            optimal_runtimes: vec!["Native".to_string()],
+        };
+        summary.display();
+    }
+
+    #[test]
+    fn test_system_summary_from_capabilities_gpu_branch() {
+        let capabilities = SystemCapabilities {
+            gpu_count: 2,
+            ..SystemCapabilities::default()
+        };
+        let ecosystem = DiscoveredServices {
+            discovered_services: std::collections::HashMap::new(),
+            discovery_summary: ecosystem::DiscoverySummary::default(),
+            discovery_timestamp: std::time::SystemTime::now(),
+        };
+        let summary = SystemSummary::from_capabilities(&capabilities, &ecosystem);
+        assert!(
+            summary.gpu_info.contains("2 GPU"),
+            "got: {}",
+            summary.gpu_info
+        );
+    }
+
+    #[test]
+    fn test_system_summary_from_capabilities_formatting() {
+        let mut capabilities = SystemCapabilities::default();
+        capabilities.cpu_info.model_name = "TestModel".to_string();
+        capabilities.cpu_cores = 8.0;
+        capabilities.memory_gb = 16.0;
+        capabilities.performance_class = PerformanceClass::HighEnd;
+        let ecosystem = DiscoveredServices {
+            discovered_services: std::collections::HashMap::new(),
+            discovery_summary: ecosystem::DiscoverySummary::default(),
+            discovery_timestamp: std::time::SystemTime::now(),
+        };
+        let summary = SystemSummary::from_capabilities(&capabilities, &ecosystem);
+        assert!(summary.cpu_info.contains("TestModel"));
+        assert!(summary.cpu_info.contains('8'));
+        assert!(summary.memory_info.contains("16.0"));
+        assert!(summary.performance_class.contains("HighEnd"));
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_config_builder_build_with_all_disabled() {
         let builder = ConfigBuilder::new()
@@ -661,6 +437,15 @@ mod tests {
         assert!(!summary.cpu_info.is_empty());
         assert!(!summary.memory_info.is_empty());
         assert!(!summary.performance_class.is_empty());
+    }
+
+    /// Basic smoke: `get_system_summary` returns a summary usable for display.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_get_system_summary_basic_call() {
+        let summary = get_system_summary().await.expect("get_system_summary");
+        summary.display();
+        assert!(!summary.gpu_info.is_empty());
+        assert!(!summary.storage_info.is_empty());
     }
 
     #[test]

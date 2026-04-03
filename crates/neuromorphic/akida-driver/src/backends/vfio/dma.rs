@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // DMA allocation requires unsafe alloc/mlock/ioctl for IOMMU mapping
+#![allow(unsafe_code)] // VFIO DMA ioctls + BorrowedFd::borrow_raw(container_fd)
 //! DMA buffer management for VFIO NPU backend
 //!
 //! Provides page-aligned, mlock'd, IOMMU-mapped memory buffers for
 //! zero-copy data transfer between host and NPU hardware.
 
 use crate::error::{AkidaError, Result};
-use rustix::mm::{mlock, munlock};
 use std::os::fd::{BorrowedFd, RawFd};
 
-use super::ioctl;
-use super::types::ioctls;
-use super::types::{VfioDmaMap, VfioDmaUnmap};
+use toadstool_hw_safe::LockedMemory;
+use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap, dma_map, dma_unmap, flags};
 
 /// DMA buffer for fast host-to-device data transfer.
 ///
@@ -19,7 +17,7 @@ use super::types::{VfioDmaMap, VfioDmaUnmap};
 /// so the device can access it via IOVA. Cleanup is automatic on drop.
 #[derive(Debug)]
 pub struct DmaBuffer {
-    vaddr: *mut u8,
+    mem: LockedMemory,
     iova: u64,
     size: usize,
     container_fd: RawFd,
@@ -36,33 +34,16 @@ impl DmaBuffer {
             return Err(AkidaError::transfer_failed("DMA buffer size must be > 0"));
         }
 
-        let layout = std::alloc::Layout::from_size_align(size, 4096)
-            .map_err(|e| AkidaError::transfer_failed(format!("Invalid DMA buffer layout: {e}")))?;
+        let mem = LockedMemory::page_aligned(size)
+            .map_err(|e| AkidaError::transfer_failed(format!("Failed to lock DMA memory: {e}")))?;
 
-        // SAFETY: Invariants: layout must be valid (size>0, align power-of-two).
-        // Satisfied: Layout::from_size_align succeeded; align 4096 is valid.
-        // Dealloc'd in Drop with same layout. Violation: invalid layout → UB; mismatched dealloc → use-after-free.
-        let vaddr = unsafe { std::alloc::alloc_zeroed(layout) };
-        if vaddr.is_null() {
-            return Err(AkidaError::transfer_failed("Failed to allocate DMA buffer"));
-        }
-
-        // SAFETY: Invariants: ptr must point to valid, allocated memory for size bytes.
-        // Satisfied: vaddr from alloc_zeroed above; mlock requires mapped memory.
-        // Violation: invalid ptr → kernel panic or UB.
-        if let Err(e) = unsafe { mlock(vaddr.cast(), size) } {
-            // SAFETY: vaddr from alloc_zeroed above; layout matches. Cleanup on mlock failure.
-            unsafe { std::alloc::dealloc(vaddr, layout) };
-            return Err(AkidaError::transfer_failed(format!(
-                "Failed to lock DMA memory: {e}"
-            )));
-        }
+        let vaddr = mem.as_ptr().as_ptr() as u64;
 
         #[allow(clippy::cast_possible_truncation)]
         let dma_map_arg = VfioDmaMap {
             argsz: std::mem::size_of::<VfioDmaMap>() as u32,
-            flags: ioctls::VFIO_DMA_MAP_FLAG_READ | ioctls::VFIO_DMA_MAP_FLAG_WRITE,
-            vaddr: vaddr as u64,
+            flags: flags::READ | flags::WRITE,
+            vaddr,
             iova,
             size: size as u64,
         };
@@ -79,23 +60,22 @@ impl DmaBuffer {
         // while BorrowedFd is used. Satisfied: container_fd from VFIO container open; used
         // only for this ioctl call. Violation: invalid fd → UB; use-after-close → UB.
         let container_borrowed = unsafe { BorrowedFd::borrow_raw(container_fd) };
-        if let Err(e) = ioctl::dma_map(container_borrowed, &dma_map_arg) {
+        // SAFETY: Same fd invariants as `BorrowedFd` above. `map` points at `mem`'s allocation
+        // for `size` bytes; IOVA range is chosen by caller to be free.
+        if let Err(e) = unsafe { dma_map(container_borrowed, &dma_map_arg) } {
             tracing::warn!("DMA map failed: {e}");
-            // SAFETY: Invariants: vaddr/size must match prior mlock; layout must match alloc.
-            // Satisfied: vaddr from alloc, mlock succeeded above. Violation: mismatched params → UB.
-            unsafe {
-                let _ = munlock(vaddr.cast(), size);
-                std::alloc::dealloc(vaddr, layout);
-            };
             return Err(AkidaError::transfer_failed(format!(
                 "Failed to map DMA: {e}"
             )));
         }
 
-        tracing::debug!("Created DMA buffer: vaddr={vaddr:p}, iova={iova:#x}, size={size:#x}");
+        tracing::debug!(
+            "Created DMA buffer: vaddr={:p}, iova={iova:#x}, size={size:#x}",
+            mem.as_ptr().as_ptr(),
+        );
 
         Ok(Self {
-            vaddr,
+            mem,
             iova,
             size,
             container_fd,
@@ -104,22 +84,12 @@ impl DmaBuffer {
 
     /// Immutable slice view of the buffer contents.
     pub fn as_slice(&self) -> &[u8] {
-        debug_assert!(!self.vaddr.is_null(), "DmaBuffer vaddr is null");
-        debug_assert!(self.size > 0, "DmaBuffer size is 0");
-        // SAFETY: Invariants: ptr valid for size bytes; properly aligned; no concurrent mutation.
-        // Satisfied: vaddr from alloc_zeroed; size matches; &self prevents mutation.
-        // Violation: invalid ptr/size → UB; concurrent mutation → data race.
-        unsafe { std::slice::from_raw_parts(self.vaddr, self.size) }
+        self.mem.as_slice()
     }
 
     /// Mutable slice view for writing data into the buffer.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        debug_assert!(!self.vaddr.is_null(), "DmaBuffer vaddr is null");
-        debug_assert!(self.size > 0, "DmaBuffer size is 0");
-        // SAFETY: Invariants: ptr valid for size bytes; properly aligned; exclusive access.
-        // Satisfied: vaddr from alloc_zeroed; &mut self guarantees no aliasing.
-        // Violation: invalid ptr/size → UB; aliasing → data race.
-        unsafe { std::slice::from_raw_parts_mut(self.vaddr, self.size) }
+        self.mem.as_mut_slice()
     }
 
     /// Device-visible I/O virtual address.
@@ -139,13 +109,7 @@ impl Drop for DmaBuffer {
         reason = "struct sizes always fit u32"
     )]
     fn drop(&mut self) {
-        // SAFETY: Invariants: ptr/size must match prior mlock. Satisfied: self.vaddr/self.size
-        // from new() where mlock succeeded. Violation: mismatched params → kernel UB.
-        unsafe {
-            let _ = munlock(self.vaddr.cast(), self.size);
-        };
-
-        let dma_unmap = VfioDmaUnmap {
+        let dma_unmap_arg = VfioDmaUnmap {
             argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
             flags: 0,
             iova: self.iova,
@@ -155,28 +119,17 @@ impl Drop for DmaBuffer {
         // SAFETY: Invariants: fd must be valid; not closed during borrow. Satisfied: DmaBuffer
         // dropped before VfioBackend (parent); container fd still open. Violation: invalid fd → UB.
         let container_borrowed = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
-        let _ = ioctl::dma_unmap(container_borrowed, &dma_unmap);
-
-        let layout = std::alloc::Layout::from_size_align(self.size, 4096)
-            .expect("Layout valid: matches alloc in new()");
-        // SAFETY: Invariants: ptr and layout must match original alloc; no outstanding refs.
-        // Satisfied: vaddr/layout from new(); munlock above; no slices outstanding (Drop).
-        // Violation: mismatched layout → UB; use-after-free if refs exist.
-        unsafe { std::alloc::dealloc(self.vaddr, layout) };
+        // SAFETY: Same fd invariants as `BorrowedFd` above. iova/size match the prior dma_map.
+        let _ = unsafe { dma_unmap(container_borrowed, &dma_unmap_arg) };
 
         tracing::debug!("Freed DMA buffer at iova={:#x}", self.iova);
     }
 }
 
-// SAFETY: DmaBuffer owns its allocation exclusively — no shared mutable state.
-unsafe impl Send for DmaBuffer {}
-
-// SAFETY: Reads via &self are safe from multiple threads; writes require &mut self.
-unsafe impl Sync for DmaBuffer {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
     #[test]
     fn test_dma_buffer_new_size_zero() {
@@ -237,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_dma_buffer_vfio_dma_map_argsz_layout() {
-        let argsz = std::mem::size_of::<super::super::types::VfioDmaMap>();
+        let argsz = std::mem::size_of::<VfioDmaMap>();
         assert!(
             argsz >= 32,
             "VfioDmaMap kernel ABI expects at least 32 bytes"
@@ -246,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_dma_buffer_vfio_dma_unmap_argsz_layout() {
-        let argsz = std::mem::size_of::<super::super::types::VfioDmaUnmap>();
+        let argsz = std::mem::size_of::<VfioDmaUnmap>();
         assert!(
             argsz >= 24,
             "VfioDmaUnmap kernel ABI expects at least 24 bytes"

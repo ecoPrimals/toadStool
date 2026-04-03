@@ -118,7 +118,7 @@ async-trait = "0.1"
 regex = "1.10"
 
 # Configuration
-config = "0.14"
+config = "0.15"
 toml = "0.8"
 
 # RPC Protocols - PRIMARY (following Songbird pattern)

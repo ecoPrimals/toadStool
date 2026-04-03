@@ -47,7 +47,15 @@ pub mod ioctls {
     )]
     pub const OP_DEVICE_RESET: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 11);
 
+    #[expect(
+        dead_code,
+        reason = "VFIO ioctl opcode; DMA map/unmap use toadstool_hw_safe::vfio_dma"
+    )]
     pub const OP_IOMMU_MAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 13);
+    #[expect(
+        dead_code,
+        reason = "VFIO ioctl opcode; DMA map/unmap use toadstool_hw_safe::vfio_dma"
+    )]
     pub const OP_IOMMU_UNMAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 14);
 
     pub const VFIO_API_VERSION: i32 = 0;
@@ -60,7 +68,9 @@ pub mod ioctls {
     #[expect(dead_code, reason = "VFIO group flag; used to verify container state")]
     pub const VFIO_GROUP_FLAGS_CONTAINER_SET: u32 = 1 << 1;
 
+    #[allow(dead_code)] // DMA uses hw_safe::vfio_dma::flags; kept for ABI reference
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
+    #[allow(dead_code)] // DMA uses hw_safe::vfio_dma::flags; kept for ABI reference
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
 
@@ -107,26 +117,8 @@ pub struct VfioGroupStatus {
     pub flags: u32,
 }
 
-/// VFIO DMA map structure (kernel ABI)
-#[repr(C)]
-#[derive(Debug, Default)]
-pub struct VfioDmaMap {
-    pub argsz: u32,
-    pub flags: u32,
-    pub vaddr: u64,
-    pub iova: u64,
-    pub size: u64,
-}
-
-/// VFIO DMA unmap structure (kernel ABI)
-#[repr(C)]
-#[derive(Debug, Default)]
-pub struct VfioDmaUnmap {
-    pub argsz: u32,
-    pub flags: u32,
-    pub iova: u64,
-    pub size: u64,
-}
+#[allow(unused_imports)] // Public re-export of VFIO DMA ABI types for `types` module users.
+pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
 #[cfg(test)]
 mod tests {
@@ -156,16 +148,27 @@ mod tests {
     }
 
     #[test]
-    fn test_vfio_dma_map_default() {
-        let map = VfioDmaMap::default();
+    fn test_vfio_dma_map_zeroed() {
+        let map = VfioDmaMap {
+            argsz: 0,
+            flags: 0,
+            vaddr: 0,
+            iova: 0,
+            size: 0,
+        };
         assert_eq!(map.vaddr, 0);
         assert_eq!(map.iova, 0);
         assert_eq!(map.size, 0);
     }
 
     #[test]
-    fn test_vfio_dma_unmap_default() {
-        let unmap = VfioDmaUnmap::default();
+    fn test_vfio_dma_unmap_zeroed() {
+        let unmap = VfioDmaUnmap {
+            argsz: 0,
+            flags: 0,
+            iova: 0,
+            size: 0,
+        };
         assert_eq!(unmap.iova, 0);
         assert_eq!(unmap.size, 0);
     }
@@ -205,7 +208,8 @@ mod tests {
 
     #[test]
     fn test_vfio_dma_map_flags_combined() {
-        let flags = ioctls::VFIO_DMA_MAP_FLAG_READ | ioctls::VFIO_DMA_MAP_FLAG_WRITE;
+        let flags =
+            toadstool_hw_safe::vfio_dma::flags::READ | toadstool_hw_safe::vfio_dma::flags::WRITE;
         assert_eq!(flags, 3);
     }
 
@@ -213,7 +217,8 @@ mod tests {
     fn test_vfio_dma_map_struct_layout_repr_c() {
         let map = VfioDmaMap {
             argsz: 32,
-            flags: ioctls::VFIO_DMA_MAP_FLAG_READ | ioctls::VFIO_DMA_MAP_FLAG_WRITE,
+            flags: toadstool_hw_safe::vfio_dma::flags::READ
+                | toadstool_hw_safe::vfio_dma::flags::WRITE,
             vaddr: 0x1000_0000,
             iova: 0x2000_0000,
             size: 4096,

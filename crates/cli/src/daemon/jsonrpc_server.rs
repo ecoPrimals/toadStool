@@ -188,7 +188,8 @@ pub async fn start_tcp_jsonrpc_server(
         workload_manager,
     };
 
-    let bind_host = std::env::var("TOADSTOOL_BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".into());
+    let bind_host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+        .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
     let addr = format!("{bind_host}:{port}");
     let listener = TcpListener::bind(&addr).await?;
     info!(

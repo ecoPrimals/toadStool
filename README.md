@@ -42,7 +42,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,500+ tests, 0 failures** (S172), 220 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,617 tests, 0 failures** (S173), 220 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | ~22 irreducible (4 eliminated by memmap2 in safe_mmap.rs; all in `hw-safe` + drivers), SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
@@ -244,7 +244,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,500+** (S172), 0 failures |
+| Workspace tests | **21,617** (S173), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | ~22 irreducible (all in `hw-safe` + drivers), SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -265,7 +265,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,500+ tests (S172); ~80% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,617 tests (S173); ~80-85% lib-only line (185K lines instrumented); S173: +79 tests across 5 modules; remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -303,7 +303,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,500+ tests (S172); ~80% lib-only line (185K instrumented); S168: 11 specialty runtime files 0%→covered + 18 shader.dispatch tests; remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,617 tests (S173); ~80-85% lib-only line (185K instrumented); S173: +79 tests (provider_registry, monitoring, auto_config, federation, workload); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -347,7 +347,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 2, 2026 — S172-5. 21,537 workspace tests, 0 failures, 220 ignored. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~22 irreducible unsafe ops (all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **Capability-based discovery compliant** — all struct fields, config types, DNS defaults, socket names, and env vars evolved from primal-identity to capability-domain naming per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2; serde aliases preserve backward compat. `security.sock` replaces `beardog.sock`. `coordination.{base}` replaces `songbird.{base}`.
+**Last Updated**: April 3, 2026 — S173. **21,617** workspace tests, 0 failures, 220 ignored. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~89 unsafe blocks** (down from ~101; all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S173**: 8 production files >650 LOC smart-refactored into submodules; akida-driver/nvpmu DMA consolidated into hw-safe; +79 new tests; `config` 0.14→0.15; deployment stubs evolved to capability socket verification. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -18,3 +18,6 @@ pub const GELU_TANH_SCALE: f64 = 0.842_7;
 
 /// Error function approximation coefficient
 pub const ERF_APPROX_A1: f64 = 0.327_591_1;
+
+/// Default DRI render node path (Linux kernel GPU subsystem)
+pub const DEFAULT_DRI_CARD: &str = "/dev/dri/card0";

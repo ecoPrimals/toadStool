@@ -101,6 +101,11 @@ impl CoralReefClient {
             return Some(UnixJsonRpcClient::new(socket));
         }
 
+        if let Some(sock) = scan_dir_for_socket(&biomeos, "shader") {
+            debug!(path = %sock.display(), "shader compiler discovered via capability socket scan");
+            return Some(UnixJsonRpcClient::new(sock));
+        }
+
         if let Some(sock) = scan_dir_for_socket(&biomeos, "coralreef") {
             debug!(path = %sock.display(), "shader compiler discovered via legacy socket scan");
             return Some(UnixJsonRpcClient::new(sock));

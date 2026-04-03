@@ -2,6 +2,7 @@
 //! Workload types and specifications
 
 mod types;
+mod validators;
 
 pub mod ai_ml;
 pub mod analyzer;
@@ -149,10 +150,10 @@ impl WorkloadSpec {
     pub fn validate(&self) -> ToadStoolResult<()> {
         match self {
             Self::Native { executable, .. } => {
-                self.validate_executable(executable)?;
+                validators::validate_executable(executable)?;
             }
             Self::Wasm { module, .. } => {
-                self.validate_wasm_module(module)?;
+                validators::validate_wasm_module(module)?;
             }
             Self::Container { image, .. } => {
                 if image.is_empty() {
@@ -162,10 +163,10 @@ impl WorkloadSpec {
                 }
             }
             Self::Gpu { program, .. } => {
-                self.validate_gpu_program(program)?;
+                validators::validate_gpu_program(program)?;
             }
             Self::Python { source, .. } => {
-                self.validate_python_source(source)?;
+                validators::validate_python_source(source)?;
             }
             Self::AiMl { workload } => {
                 // AI/ML workloads are self-validating
@@ -174,117 +175,6 @@ impl WorkloadSpec {
             Self::Cuda { workload } => {
                 // CUDA workloads are self-validating
                 let _ = workload.launch_config.total_threads(); // Verify it computes
-            }
-        }
-        Ok(())
-    }
-
-    /// Validate executable source
-    ///
-    /// Inlined for performance - called on every native workload execution
-    #[inline]
-    fn validate_executable(&self, executable: &ExecutableSource) -> ToadStoolResult<()> {
-        match executable {
-            ExecutableSource::File { path } => {
-                if !path.exists() {
-                    return Err(ToadStoolError::validation(format!(
-                        "Executable file not found: {}",
-                        path.display()
-                    )));
-                }
-            }
-            ExecutableSource::Url { url } => {
-                if url.is_empty() {
-                    return Err(ToadStoolError::validation("Executable URL cannot be empty"));
-                }
-            }
-            ExecutableSource::Bytes { data } => {
-                if data.is_empty() {
-                    return Err(ToadStoolError::validation(
-                        "Executable data cannot be empty",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Validate WASM module source
-    ///
-    /// Inlined for performance - called on every WASM workload execution
-    #[inline]
-    fn validate_wasm_module(&self, module: &WasmModuleSource) -> ToadStoolResult<()> {
-        match module {
-            WasmModuleSource::File { path } => {
-                if !path.exists() {
-                    return Err(ToadStoolError::validation(format!(
-                        "WASM module file not found: {}",
-                        path.display()
-                    )));
-                }
-            }
-            WasmModuleSource::Bytes { data } => {
-                if data.is_empty() {
-                    return Err(ToadStoolError::validation(
-                        "WASM module data cannot be empty",
-                    ));
-                }
-            }
-            WasmModuleSource::Url { url } => {
-                if url.is_empty() {
-                    return Err(ToadStoolError::validation(
-                        "WASM module URL cannot be empty",
-                    ));
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Validate GPU program source
-    fn validate_gpu_program(&self, program: &GpuProgramSource) -> ToadStoolResult<()> {
-        match program {
-            GpuProgramSource::OpenCL { source } => {
-                if source.is_empty() {
-                    return Err(ToadStoolError::validation("OpenCL source cannot be empty"));
-                }
-            }
-            GpuProgramSource::Cuda { source } => {
-                if source.is_empty() {
-                    return Err(ToadStoolError::validation("CUDA source cannot be empty"));
-                }
-            }
-            GpuProgramSource::Vulkan { spirv } => {
-                if spirv.is_empty() {
-                    return Err(ToadStoolError::validation("Vulkan SPIR-V cannot be empty"));
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Validate Python source
-    fn validate_python_source(&self, source: &PythonSource) -> ToadStoolResult<()> {
-        match source {
-            PythonSource::Code { code } => {
-                if code.is_empty() {
-                    return Err(ToadStoolError::validation("Python code cannot be empty"));
-                }
-            }
-            PythonSource::File { path } => {
-                if !path.exists() {
-                    return Err(ToadStoolError::validation(format!(
-                        "Python file not found: {}",
-                        path.display()
-                    )));
-                }
-            }
-            PythonSource::Module { name } => {
-                if name.is_empty() {
-                    return Err(ToadStoolError::validation(
-                        "Python module name cannot be empty",
-                    ));
-                }
             }
         }
         Ok(())
@@ -312,7 +202,10 @@ pub enum WorkloadType {
 
 #[cfg(test)]
 mod tests {
+    use super::validators;
     use super::*;
+    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_workload_spec_default() {
@@ -638,6 +531,328 @@ mod tests {
                     entry_point: "k".to_string(),
                 },
                 cuda::CudaLaunchConfig::new((2, 1, 1), (64, 1, 1)),
+            ),
+        };
+        assert!(spec.validate().is_ok());
+    }
+
+    // --- validators.rs: validate_executable (File / Url / Bytes) ---
+
+    #[test]
+    fn test_validators_executable_file_not_found() {
+        let path = PathBuf::from("/nonexistent/toadstool_workload_exec.bin");
+        let err = validators::validate_executable(&ExecutableSource::File { path }).unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_validators_executable_file_ok() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+        validators::validate_executable(&ExecutableSource::File { path }).unwrap();
+    }
+
+    #[test]
+    fn test_validators_executable_url_empty() {
+        assert!(
+            validators::validate_executable(&ExecutableSource::Url { url: String::new() }).is_err()
+        );
+    }
+
+    #[test]
+    fn test_validators_executable_url_ok() {
+        validators::validate_executable(&ExecutableSource::Url {
+            url: "https://example.com/bin".to_string(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_validators_executable_url_very_long() {
+        let url = format!("https://example.com/{}", "x".repeat(16 * 1024));
+        validators::validate_executable(&ExecutableSource::Url { url }).unwrap();
+    }
+
+    #[test]
+    fn test_validators_executable_bytes_empty() {
+        assert!(
+            validators::validate_executable(&ExecutableSource::Bytes {
+                data: bytes::Bytes::new()
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validators_executable_bytes_ok() {
+        validators::validate_executable(&ExecutableSource::Bytes {
+            data: bytes::Bytes::from_static(b"\0"),
+        })
+        .unwrap();
+    }
+
+    // --- validators.rs: validate_wasm_module (File / Bytes / Url) ---
+
+    #[test]
+    fn test_validators_wasm_file_not_found() {
+        let path = PathBuf::from("/nonexistent/toadstool_workload.wasm");
+        let err = validators::validate_wasm_module(&WasmModuleSource::File { path }).unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_validators_wasm_file_ok() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), [0x00, 0x61, 0x73, 0x6D]).unwrap();
+        let path = tmp.path().to_path_buf();
+        validators::validate_wasm_module(&WasmModuleSource::File { path }).unwrap();
+    }
+
+    #[test]
+    fn test_validators_wasm_bytes_empty() {
+        assert!(
+            validators::validate_wasm_module(&WasmModuleSource::Bytes {
+                data: bytes::Bytes::new()
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validators_wasm_bytes_ok() {
+        validators::validate_wasm_module(&WasmModuleSource::Bytes {
+            data: bytes::Bytes::from(vec![0, 97, 115, 109]),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_validators_wasm_url_empty() {
+        assert!(
+            validators::validate_wasm_module(&WasmModuleSource::Url { url: String::new() })
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validators_wasm_url_ok() {
+        validators::validate_wasm_module(&WasmModuleSource::Url {
+            url: "https://cdn.example.com/mod.wasm".to_string(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_validators_wasm_url_very_long() {
+        let url = format!("https://example.com/{}", "w".repeat(32 * 1024));
+        validators::validate_wasm_module(&WasmModuleSource::Url { url }).unwrap();
+    }
+
+    // --- validators.rs: validate_gpu_program (OpenCL / Cuda / Vulkan) ---
+
+    #[test]
+    fn test_validators_gpu_opencl_ok() {
+        validators::validate_gpu_program(&GpuProgramSource::OpenCL {
+            source: "kernel void k() {}".to_string(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_validators_gpu_cuda_ok() {
+        validators::validate_gpu_program(&GpuProgramSource::Cuda {
+            source: "__global__ void k() {}".to_string(),
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn test_validators_gpu_vulkan_ok() {
+        validators::validate_gpu_program(&GpuProgramSource::Vulkan {
+            spirv: vec![0x03, 0x02, 0x23, 0x07],
+        })
+        .unwrap();
+    }
+
+    // --- validators.rs: validate_python_source (Code / File / Module) ---
+
+    #[test]
+    fn test_validators_python_code_empty() {
+        assert!(
+            validators::validate_python_source(&PythonSource::Code {
+                code: String::new()
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validators_python_code_very_long() {
+        let code = "x = 1\n".repeat(4096);
+        validators::validate_python_source(&PythonSource::Code { code }).unwrap();
+    }
+
+    #[test]
+    fn test_validators_python_file_not_found() {
+        let path = PathBuf::from("/nonexistent/toadstool_workload_script.py");
+        let err = validators::validate_python_source(&PythonSource::File { path }).unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_validators_python_file_ok() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), b"print(1)\n").unwrap();
+        let path = tmp.path().to_path_buf();
+        validators::validate_python_source(&PythonSource::File { path }).unwrap();
+    }
+
+    #[test]
+    fn test_validators_python_module_empty() {
+        assert!(
+            validators::validate_python_source(&PythonSource::Module {
+                name: String::new()
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn test_validators_python_module_ok() {
+        validators::validate_python_source(&PythonSource::Module {
+            name: "numpy.linalg".to_string(),
+        })
+        .unwrap();
+    }
+
+    // --- WorkloadSpec::validate per variant (incl. file paths, AiMl, Cuda) ---
+
+    #[test]
+    fn test_validate_native_executable_file_missing() {
+        let spec = WorkloadSpec::Native {
+            executable: ExecutableSource::File {
+                path: PathBuf::from("/nonexistent/native_bin"),
+            },
+            args: None,
+            working_dir: None,
+            env_vars: HashMap::new(),
+            user: None,
+        };
+        assert!(spec.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_native_executable_file_ok() {
+        let tmp = NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+        let spec = WorkloadSpec::Native {
+            executable: ExecutableSource::File { path },
+            args: None,
+            working_dir: None,
+            env_vars: HashMap::new(),
+            user: None,
+        };
+        assert!(spec.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_wasm_module_file_ok() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), [0x00, 0x61, 0x73, 0x6D]).unwrap();
+        let path = tmp.path().to_path_buf();
+        let spec = WorkloadSpec::Wasm {
+            module: WasmModuleSource::File { path },
+            args: None,
+            wasi_config: None,
+            env_vars: HashMap::new(),
+        };
+        assert!(spec.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_wasm_module_url_ok() {
+        let spec = WorkloadSpec::Wasm {
+            module: WasmModuleSource::Url {
+                url: "https://wasm.example.com/pkg.wasm".to_string(),
+            },
+            args: None,
+            wasi_config: None,
+            env_vars: HashMap::new(),
+        };
+        assert!(spec.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_gpu_cuda_and_vulkan_sources_ok() {
+        let cuda_spec = WorkloadSpec::Gpu {
+            program: GpuProgramSource::Cuda {
+                source: "__global__ void k() {}".to_string(),
+            },
+            kernel_name: "k".to_string(),
+            work_group_size: None,
+            global_work_size: (1, 1, 1),
+            args: vec![],
+        };
+        assert!(cuda_spec.validate().is_ok());
+
+        let vk_spec = WorkloadSpec::Gpu {
+            program: GpuProgramSource::Vulkan {
+                spirv: vec![0x01; 16],
+            },
+            kernel_name: "main".to_string(),
+            work_group_size: None,
+            global_work_size: (8, 1, 1),
+            args: vec![],
+        };
+        assert!(vk_spec.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_python_file_and_module_ok() {
+        let tmp = NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), b"# ok\n").unwrap();
+        let path = tmp.path().to_path_buf();
+        let file_spec = WorkloadSpec::Python {
+            source: PythonSource::File { path },
+            python_version: None,
+            requirements: vec![],
+            env_vars: HashMap::new(),
+        };
+        assert!(file_spec.validate().is_ok());
+
+        let mod_spec = WorkloadSpec::Python {
+            source: PythonSource::Module {
+                name: "mymod".to_string(),
+            },
+            python_version: Some("3.12".to_string()),
+            requirements: vec![],
+            env_vars: HashMap::new(),
+        };
+        assert!(mod_spec.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_aiml_training_variant() {
+        let spec = WorkloadSpec::AiMl {
+            workload: ai_ml::AiMlWorkload::new(
+                AiFramework::TensorFlow,
+                AiOperation::Training,
+                ModelSize::Medium,
+                4,
+            ),
+        };
+        assert!(spec.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_cuda_ptx_source() {
+        let spec = WorkloadSpec::Cuda {
+            workload: cuda::CudaWorkload::new(
+                cuda::CudaSource::Ptx {
+                    source: ".version 7.0".to_string(),
+                    entry_point: "k".to_string(),
+                },
+                cuda::CudaLaunchConfig::new((4, 1, 1), (256, 1, 1)),
             ),
         };
         assert!(spec.validate().is_ok());

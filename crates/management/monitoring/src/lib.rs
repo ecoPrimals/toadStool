@@ -18,361 +18,25 @@ pub mod process;
 pub mod thresholds;
 pub mod types;
 
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-use tokio::sync::RwLock;
-use tokio::time;
-use tracing::{debug, error, info, warn};
-
-use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool::resources::{
-    ResourceMonitor, ResourceRequirements, RuntimeMetrics, SystemResources,
-};
+mod collection;
+mod metric_types;
+mod reporting;
 
 // Re-export types for backward compatibility
+pub use metric_types::SystemResourceMonitor;
 pub use types::{MonitoringConfig, MonitoringGranularity, ResourceMonitorError, ThresholdAction};
-
-use crate::process::ProcessInfo;
-
-/// Concrete implementation of `ResourceMonitor` trait that provides
-/// configurable, high-granularity resource monitoring
-#[derive(Debug)]
-pub struct SystemResourceMonitor {
-    pub(crate) process_map: Arc<RwLock<HashMap<String, ProcessInfo>>>,
-    pub(crate) usage_data: Arc<RwLock<HashMap<String, RuntimeMetrics>>>,
-    pub(crate) threshold_data: Arc<RwLock<HashMap<String, ResourceRequirements>>>,
-    pub(crate) config: MonitoringConfig,
-    pub(crate) is_monitoring: Arc<RwLock<bool>>,
-}
-
-impl SystemResourceMonitor {
-    /// Creates a new `SystemResourceMonitor` instance with default configuration
-    #[must_use]
-    pub fn new() -> Self {
-        Self::with_config(MonitoringConfig::default())
-    }
-
-    /// Creates a new `SystemResourceMonitor` instance with custom configuration
-    #[must_use]
-    pub fn with_config(config: MonitoringConfig) -> Self {
-        Self {
-            process_map: Arc::new(RwLock::new(HashMap::new())),
-            usage_data: Arc::new(RwLock::new(HashMap::new())),
-            threshold_data: Arc::new(RwLock::new(HashMap::new())),
-            config,
-            is_monitoring: Arc::new(RwLock::new(false)),
-        }
-    }
-
-    /// Updates the monitoring configuration
-    pub async fn update_config(&mut self, config: MonitoringConfig) -> ToadStoolResult<()> {
-        self.config = config;
-
-        // Restart monitoring with new configuration if currently monitoring
-        let is_monitoring = *self.is_monitoring.read().await;
-        if is_monitoring {
-            self.stop_monitoring_loop().await?;
-            self.start_monitoring_loop().await?;
-        }
-
-        Ok(())
-    }
-
-    /// Starts the monitoring loop
-    pub async fn start_monitoring_loop(&self) -> Result<(), ToadStoolError> {
-        let mut is_monitoring = self.is_monitoring.write().await;
-        if *is_monitoring {
-            return Ok(());
-        }
-
-        *is_monitoring = true;
-        drop(is_monitoring);
-        let interval = self.config.granularity.to_duration();
-        info!("Starting resource monitoring with interval {:?}", interval);
-
-        let process_map = Arc::clone(&self.process_map);
-        let usage_data = Arc::clone(&self.usage_data);
-        let threshold_data = Arc::clone(&self.threshold_data);
-        let config = self.config.clone();
-        let is_monitoring_flag = Arc::clone(&self.is_monitoring);
-
-        tokio::spawn(async move {
-            let mut interval_timer = time::interval(interval);
-
-            while *is_monitoring_flag.read().await {
-                interval_timer.tick().await;
-
-                // Snapshot process list and release lock before await (avoid holding lock across .await)
-                let process_snapshot: Vec<(String, ProcessInfo)> = {
-                    let processes = process_map.read().await;
-                    processes
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.clone()))
-                        .collect()
-                };
-
-                let mut updated_metrics = HashMap::new();
-                for (workload_id, process_info) in process_snapshot {
-                    match Self::measure_process_resources(
-                        process_info.pid,
-                        &process_info.name,
-                        process_info.start_time,
-                        &process_info.last_cpu_time,
-                        &process_info.memory_usage,
-                        &config,
-                    )
-                    .await
-                    {
-                        Ok(metrics) => {
-                            updated_metrics.insert(workload_id.clone(), metrics);
-                        }
-                        Err(err) => {
-                            warn!(
-                                "Failed to measure resources for process {}: {}",
-                                workload_id, err
-                            );
-                        }
-                    }
-                }
-
-                // Update usage data and check thresholds
-                let mut usage_data_guard = usage_data.write().await;
-                let thresholds = threshold_data.read().await;
-
-                for (workload_id, metrics) in updated_metrics {
-                    usage_data_guard.insert(workload_id.clone(), metrics.clone());
-
-                    // Check thresholds if enabled
-                    if config.enable_threshold_monitoring
-                        && let Some(requirements) = thresholds.get(&workload_id)
-                        && let Err(err) = Self::check_thresholds(
-                            &workload_id,
-                            &metrics,
-                            requirements,
-                            &config.threshold_action,
-                        )
-                    {
-                        error!("Threshold violation: {}", err);
-                    }
-                }
-                drop(usage_data_guard);
-                drop(thresholds);
-            }
-        });
-
-        Ok(())
-    }
-
-    /// Stops the monitoring loop
-    pub async fn stop_monitoring_loop(&self) -> ToadStoolResult<()> {
-        {
-            let mut is_monitoring = self.is_monitoring.write().await;
-            *is_monitoring = false;
-        }
-        info!("Stopped resource monitoring");
-        Ok(())
-    }
-
-    /// Measures resources for a specific process
-    async fn measure_process_resources(
-        pid: u32,
-        _name: &str,
-        start_time: u64,
-        last_cpu_time: &u64,
-        memory_usage: &u64,
-        config: &MonitoringConfig,
-    ) -> Result<RuntimeMetrics, ResourceMonitorError> {
-        let elapsed_secs = start_time.saturating_sub(*last_cpu_time);
-
-        // Get platform-specific metrics
-        let mut platform_metrics = platform::get_platform_metrics(pid, config).await?;
-
-        // Update timing information
-        platform_metrics.timing.start_time = SystemTime::now() - Duration::from_secs(elapsed_secs);
-        platform_metrics.timing.end_time = None;
-        platform_metrics.timing.duration = Duration::from_secs(elapsed_secs);
-
-        // Update CPU usage
-        platform_metrics.cpu.usage_percent = *last_cpu_time as f64 / 100.0;
-        platform_metrics.cpu.cores_used = 1.0;
-        platform_metrics.cpu.cpu_time_seconds = *last_cpu_time as f64 / 1000.0;
-
-        // Update memory usage
-        platform_metrics.memory.used_bytes = *memory_usage;
-        platform_metrics.memory.peak_bytes = *memory_usage;
-        platform_metrics.memory.usage_percent = (*memory_usage as f64 / 1024.0 / 1024.0) * 100.0;
-
-        // Update storage usage
-        platform_metrics.storage.usage_percent = 0.0;
-        platform_metrics.storage.used_bytes = 0;
-        platform_metrics.storage.bytes_read = 0;
-        platform_metrics.storage.bytes_written = 0;
-
-        Ok(platform_metrics)
-    }
-}
-
-impl ResourceMonitor for SystemResourceMonitor {
-    fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
-        debug!("Starting monitoring for workload: {}", workload_id);
-        // Individual workload monitoring is handled by the background loop
-        // This could be extended to enable per-workload monitoring configuration
-        Ok(())
-    }
-
-    fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
-        debug!("Stopping monitoring for workload: {}", workload_id);
-        // Remove from tracking maps
-        let process_map = Arc::clone(&self.process_map);
-        let usage_data = Arc::clone(&self.usage_data);
-        let threshold_data = Arc::clone(&self.threshold_data);
-        let workload_id = workload_id.to_string();
-
-        tokio::spawn(async move {
-            process_map.write().await.remove(&workload_id);
-            usage_data.write().await.remove(&workload_id);
-            threshold_data.write().await.remove(&workload_id);
-        });
-        Ok(())
-    }
-
-    fn get_metrics(
-        &self,
-        workload_id: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        let workload_id = workload_id.to_string();
-        Box::pin(async move {
-            // Modern async access - no blocking!
-            let usage_data = self.usage_data.read().await;
-
-            usage_data.get(&workload_id).cloned().ok_or_else(|| {
-                ResourceMonitorError::ProcessNotRegistered(workload_id.clone()).into()
-            })
-        })
-    }
-
-    fn get_system_resources(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
-        Box::pin(async move {
-            // /proc and sysctl reads are blocking I/O — run on the blocking
-            // pool so we don't stall the async runtime under load.
-            let (total_cpu_cores, total_memory_bytes, available_memory_bytes) =
-                tokio::task::spawn_blocking(read_system_info)
-                    .await
-                    .unwrap_or((1, 1024 * 1024 * 1024, 1024 * 1024 * 1024));
-
-            let available_storage_bytes = 10 * 1024 * 1024 * 1024u64; // 10GB default
-
-            // Calculate usage percentages
-            let memory_usage_percent = if total_memory_bytes > 0 {
-                let used = total_memory_bytes.saturating_sub(available_memory_bytes);
-                (used as f64 / total_memory_bytes as f64) * 100.0
-            } else {
-                0.0
-            };
-
-            // CPU usage requires sampling over time - use 0% as snapshot
-            // Real usage tracking would need historical data
-            let cpu_usage_percent = 0.0;
-            let available_cpu_cores = total_cpu_cores as f64;
-
-            Ok(SystemResources {
-                available_cpu_cores,
-                available_memory_bytes,
-                available_storage_bytes,
-                available_network_bandwidth: None,
-                available_gpu_units: 0,
-                cpu_usage_percent,
-                memory_usage_percent,
-                total_cpu_cores,
-                total_memory_bytes,
-            })
-        })
-    }
-}
-
-/// Read CPU core count and memory stats from OS interfaces.
-///
-/// Returns `(total_cpu_cores, total_memory_bytes, available_memory_bytes)`.
-/// Designed to run on a blocking thread pool via `spawn_blocking`.
-fn read_system_info() -> (usize, u64, u64) {
-    let mut total_cpu_cores = 1usize;
-    let mut total_memory_bytes = 1024 * 1024 * 1024u64;
-    let mut available_memory_bytes = total_memory_bytes;
-
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
-            total_cpu_cores = cpuinfo
-                .lines()
-                .filter(|line| line.starts_with("processor"))
-                .count()
-                .max(1);
-        }
-
-        if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
-            for line in meminfo.lines() {
-                if line.starts_with("MemTotal:") {
-                    if let Some(value) = line.split_whitespace().nth(1)
-                        && let Ok(mem_kb) = value.parse::<u64>()
-                    {
-                        total_memory_bytes = mem_kb * 1024;
-                    }
-                } else if line.starts_with("MemAvailable:")
-                    && let Some(value) = line.split_whitespace().nth(1)
-                    && let Ok(mem_kb) = value.parse::<u64>()
-                {
-                    available_memory_bytes = mem_kb * 1024;
-                }
-            }
-        }
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        if let Ok(output) = std::process::Command::new("sysctl")
-            .args(["-n", "hw.ncpu"])
-            .output()
-        {
-            if let Ok(cpu_str) = String::from_utf8(output.stdout) {
-                if let Ok(cpu_count) = cpu_str.trim().parse::<usize>() {
-                    total_cpu_cores = cpu_count.max(1);
-                }
-            }
-        }
-
-        if let Ok(output) = std::process::Command::new("sysctl")
-            .args(["-n", "hw.memsize"])
-            .output()
-        {
-            if let Ok(mem_str) = String::from_utf8(output.stdout) {
-                if let Ok(mem_bytes) = mem_str.trim().parse::<u64>() {
-                    total_memory_bytes = mem_bytes;
-                    available_memory_bytes = mem_bytes / 2;
-                }
-            }
-        }
-    }
-
-    (total_cpu_cores, total_memory_bytes, available_memory_bytes)
-}
-
-impl Default for SystemResourceMonitor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::ProcessInfo;
+    use crate::reporting::{memory_usage_percent, read_system_info};
     use std::path::Path;
     use std::time::Duration;
-    use toadstool::resources::{CpuRequirements, MemoryRequirements, StorageRequirements};
+    use toadstool::resources::{
+        CpuMetrics, CpuRequirements, MemoryMetrics, MemoryRequirements, ResourceMonitor,
+        ResourceRequirements, RuntimeMetrics, StorageMetrics, StorageRequirements,
+    };
 
     #[test]
     fn system_resource_monitor_new() {
@@ -382,9 +46,22 @@ mod tests {
 
     #[test]
     fn system_resource_monitor_with_config() {
-        let config = MonitoringConfig::default();
+        let config = MonitoringConfig {
+            granularity: MonitoringGranularity::HighFrequency,
+            enable_network_monitoring: false,
+            enable_threshold_monitoring: true,
+            threshold_action: ThresholdAction::Alert,
+            metrics_retention: Duration::from_secs(120),
+        };
         let monitor = SystemResourceMonitor::with_config(config);
-        let _ = monitor;
+        assert_eq!(
+            monitor.config.granularity,
+            MonitoringGranularity::HighFrequency
+        );
+        assert!(!monitor.config.enable_network_monitoring);
+        assert!(monitor.config.enable_threshold_monitoring);
+        assert_eq!(monitor.config.threshold_action, ThresholdAction::Alert);
+        assert_eq!(monitor.config.metrics_retention, Duration::from_secs(120));
     }
 
     #[test]
@@ -439,8 +116,14 @@ mod tests {
             threshold_action: ThresholdAction::Log,
             metrics_retention: Duration::from_secs(1800),
         };
-        let result = monitor.update_config(new_config).await;
+        let result = monitor.update_config(new_config.clone()).await;
         assert!(result.is_ok());
+        assert_eq!(
+            monitor.config.granularity,
+            MonitoringGranularity::LowFrequency
+        );
+        assert!(!monitor.config.enable_network_monitoring);
+        assert_eq!(monitor.config.metrics_retention, Duration::from_secs(1800));
     }
 
     #[tokio::test]
@@ -455,8 +138,16 @@ mod tests {
             threshold_action: ThresholdAction::Alert,
             metrics_retention: Duration::from_secs(7200),
         };
-        let result = monitor.update_config(new_config).await;
+        let result = monitor.update_config(new_config.clone()).await;
         assert!(result.is_ok());
+        assert_eq!(
+            monitor.config.granularity,
+            MonitoringGranularity::HighFrequency
+        );
+        assert!(monitor.config.enable_network_monitoring);
+        assert!(monitor.config.enable_threshold_monitoring);
+        assert_eq!(monitor.config.threshold_action, ThresholdAction::Alert);
+        assert_eq!(monitor.config.metrics_retention, Duration::from_secs(7200));
 
         monitor.stop_monitoring_loop().await.unwrap();
     }
@@ -700,6 +391,322 @@ mod tests {
         let r2 = monitor.start_monitoring_loop().await;
         assert!(r1.is_ok());
         assert!(r2.is_ok());
+        monitor.stop_monitoring_loop().await.unwrap();
+    }
+
+    // -------------------------------------------------------------------------
+    // measure_process_resources path via injected ProcessInfo (mock fields)
+    // -------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn monitoring_tick_applies_injected_process_info_fields() {
+        let monitor = SystemResourceMonitor::new();
+        let path = Path::new("mock_exec");
+        let pid = std::process::id();
+        monitor.register_process("mock-w", pid, path).await.unwrap();
+
+        let last_cpu_time = 4_200u64;
+        let memory_usage = 512 * 1024u64;
+        {
+            let mut map = monitor.process_map.write().await;
+            map.insert(
+                "mock-w".to_string(),
+                ProcessInfo {
+                    pid,
+                    name: "mock_exec".to_string(),
+                    last_cpu_time,
+                    memory_usage,
+                    start_time: 60,
+                },
+            );
+        }
+
+        monitor.start_monitoring_loop().await.unwrap();
+        let metrics = tokio::time::timeout(Duration::from_millis(800), async {
+            loop {
+                if let Ok(m) = monitor.get_metrics_async("mock-w").await {
+                    return m;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("metrics within timeout");
+
+        assert!((metrics.cpu.usage_percent - (last_cpu_time as f64 / 100.0)).abs() < f64::EPSILON);
+        assert_eq!(metrics.memory.used_bytes, memory_usage);
+        assert_eq!(metrics.memory.peak_bytes, memory_usage);
+
+        monitor.stop_monitoring_loop().await.unwrap();
+    }
+
+    // -------------------------------------------------------------------------
+    // get_system_resources / read_system_info / memory_usage_percent
+    // -------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_system_resources_memory_percent_is_valid_range() {
+        let monitor = SystemResourceMonitor::new();
+        let resources = monitor.get_system_resources().await.unwrap();
+        assert!(resources.total_cpu_cores >= 1);
+        assert!(resources.total_memory_bytes > 0);
+        assert!(resources.memory_usage_percent >= 0.0);
+        assert!(resources.memory_usage_percent <= 100.0);
+    }
+
+    #[test]
+    fn memory_usage_percent_zero_total_yields_zero() {
+        assert!(memory_usage_percent(0, 0).abs() < f64::EPSILON);
+        assert!(memory_usage_percent(0, 1024).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn memory_usage_percent_when_available_exceeds_total_saturates_used() {
+        let p = memory_usage_percent(1024, 2048);
+        assert!(p.abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn memory_usage_percent_half_used() {
+        let p = memory_usage_percent(1000, 500);
+        assert!((p - 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn read_system_info_sane_values() {
+        let (cores, total, avail) = read_system_info();
+        assert!(cores >= 1);
+        assert!(total > 0);
+        assert!(avail > 0);
+    }
+
+    // -------------------------------------------------------------------------
+    // check_thresholds boundary conditions
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn check_thresholds_cpu_exactly_at_max_cores_ok_with_terminate() {
+        let metrics = RuntimeMetrics {
+            cpu: CpuMetrics {
+                usage_percent: 100.0,
+                cores_used: 1.0,
+                cpu_time_seconds: 0.0,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 0.1,
+                max_cores: Some(1.0),
+                architecture: None,
+            },
+            ..ResourceRequirements::default()
+        };
+        let r = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    fn check_thresholds_cpu_just_over_max_cores_terminate_err() {
+        let metrics = RuntimeMetrics {
+            cpu: CpuMetrics {
+                usage_percent: 100.01,
+                cores_used: 1.0,
+                cpu_time_seconds: 0.0,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 0.1,
+                max_cores: Some(1.0),
+                architecture: None,
+            },
+            ..ResourceRequirements::default()
+        };
+        let r = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn check_thresholds_memory_exactly_at_max_bytes_ok_with_terminate() {
+        let metrics = RuntimeMetrics {
+            memory: MemoryMetrics {
+                usage_percent: 0.0,
+                used_bytes: 4096,
+                peak_bytes: 4096,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            memory: MemoryRequirements {
+                min_bytes: 1024,
+                max_bytes: Some(4096),
+            },
+            ..ResourceRequirements::default()
+        };
+        let r = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    fn check_thresholds_memory_one_byte_over_max_terminate_err() {
+        let metrics = RuntimeMetrics {
+            memory: MemoryMetrics {
+                usage_percent: 0.0,
+                used_bytes: 4097,
+                peak_bytes: 4097,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            memory: MemoryRequirements {
+                min_bytes: 1024,
+                max_bytes: Some(4096),
+            },
+            ..ResourceRequirements::default()
+        };
+        let r = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn check_thresholds_storage_exactly_at_max_io_ok_with_terminate() {
+        let metrics = RuntimeMetrics {
+            storage: StorageMetrics {
+                usage_percent: 0.0,
+                used_bytes: 0,
+                bytes_read: 60,
+                bytes_written: 40,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            storage: StorageRequirements {
+                min_bytes: 0,
+                max_bytes: Some(100),
+                storage_type: None,
+            },
+            ..ResourceRequirements::default()
+        };
+        let r = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(r.is_ok());
+    }
+
+    #[test]
+    fn check_thresholds_storage_one_byte_over_max_io_terminate_err() {
+        let metrics = RuntimeMetrics {
+            storage: StorageMetrics {
+                usage_percent: 0.0,
+                used_bytes: 0,
+                bytes_read: 101,
+                bytes_written: 0,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            storage: StorageRequirements {
+                min_bytes: 0,
+                max_bytes: Some(100),
+                storage_type: None,
+            },
+            ..ResourceRequirements::default()
+        };
+        let r = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn check_thresholds_terminate_returns_err_on_cpu_violation() {
+        let metrics = RuntimeMetrics {
+            cpu: CpuMetrics {
+                usage_percent: 200.0,
+                cores_used: 2.0,
+                cpu_time_seconds: 0.0,
+            },
+            ..Default::default()
+        };
+        let requirements = ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 0.1,
+                max_cores: Some(0.5),
+                architecture: None,
+            },
+            ..ResourceRequirements::default()
+        };
+        let err = SystemResourceMonitor::check_thresholds(
+            "w",
+            &metrics,
+            &requirements,
+            &ThresholdAction::Terminate,
+        );
+        assert!(err.is_err());
+    }
+
+    // -------------------------------------------------------------------------
+    // Multiple process registration / deregistration
+    // -------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn multiple_processes_register_unregister_and_metrics_isolated() {
+        let monitor = SystemResourceMonitor::new();
+        let path = Path::new("proc_a");
+        let pid = std::process::id();
+        monitor.register_process("a", pid, path).await.unwrap();
+        monitor.register_process("b", pid, path).await.unwrap();
+
+        monitor.start_monitoring_loop().await.unwrap();
+
+        tokio::time::timeout(Duration::from_millis(800), async {
+            loop {
+                let a_ok = monitor.get_metrics_async("a").await.is_ok();
+                let b_ok = monitor.get_metrics_async("b").await.is_ok();
+                if a_ok && b_ok {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("both workloads should get metrics");
+
+        monitor.unregister_process("a").await.unwrap();
+        assert!(monitor.get_metrics_async("a").await.is_err());
+        assert!(monitor.get_metrics_async("b").await.is_ok());
+
+        monitor.unregister_process("b").await.unwrap();
+        assert!(monitor.get_metrics_async("b").await.is_err());
+
         monitor.stop_monitoring_loop().await.unwrap();
     }
 }
