@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 3, 2026 (Sessions 43-173)
 
+### Session S173-2 (Apr 3, 2026) — primalSpring Audit: Discovery Compliance + TS-01 + Unsafe Policy
+
+#### Discovery compliance: P → C
+- Evolved 5 config files: `TOADSTOOL_SONGBIRD_ENDPOINT` → `TOADSTOOL_COORDINATION_ENDPOINT` primary (with legacy fallback)
+- Same pattern for `BEARDOG` → `SECURITY`, `NESTGATE` → `STORAGE`, `SQUIRREL` → `AI`
+- CLI configurator: `SECURITY_ENDPOINT` + `TOADSTOOL_SECURITY_PORT` as primary env vars
+- `integration/beardog/discovery.rs`: `SECURITY_URL` before `BEARDOG_URL`
+- `distributed/beardog_integration/discovery.rs`: `COORDINATION_ENDPOINT` before `SONGBIRD_ENDPOINT`
+- Error messages now reference capability-domain env vars, not primal names
+
+#### TS-01 resolved: coralReef capability.discover migration
+- `coral_reef_client.rs` now attempts Tier 1 coordination-plane discovery (`capability.discover("shader")`) via `CapabilityProvider::discover()` before filesystem probing
+- Added `socket_path()` accessor to `CapabilityProvider` for downstream clients
+- Discovery order: coordination-plane → env override → capability socket → ecoPrimals socket → legacy identity
+
+#### Workspace `unsafe_code` policy documented
+- `Cargo.toml` `[workspace.lints.rust]` annotated with rationale: `deny` (not `forbid`) at workspace because hardware crates need module-scoped `#[allow(unsafe_code)]`
+- Per-crate `forbid` on all non-hardware roots (23 forbid + 20 deny = 43/43)
+- Central containment via `hw-safe` crate documented
+
+#### Quality gates
+- All gates green: `cargo clippy --all-targets -D warnings`, `cargo fmt`, `cargo check`
+
 ### Session S173 (Apr 3, 2026) — Deep Debt Execution (6 Phases)
 
 #### Phase 1: Hardcoding elimination

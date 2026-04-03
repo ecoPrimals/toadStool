@@ -98,6 +98,15 @@ impl CapabilityProvider {
             .map_err(|e| CapabilityError::RpcFailed(e.to_string()))
     }
 
+    /// Get the socket path for this provider.
+    ///
+    /// Used by callers that need to construct their own client connection
+    /// (e.g., when wrapping in a domain-specific client type).
+    #[must_use]
+    pub fn socket_path(&self) -> &std::path::Path {
+        &self.socket_path
+    }
+
     /// Get service name (for logging/debugging only!)
     ///
     /// WARNING: Do NOT use this for logic decisions!

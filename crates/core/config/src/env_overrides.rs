@@ -43,20 +43,28 @@ impl ToadStoolConfig {
             self.network.bind_address.set_port(port);
         }
 
-        if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            self.network.endpoints.coordination = songbird_endpoint;
+        if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
+        {
+            self.network.endpoints.coordination = coordination;
         }
 
-        if let Ok(beardog_endpoint) = std::env::var("TOADSTOOL_BEARDOG_ENDPOINT") {
-            self.network.endpoints.security = beardog_endpoint;
+        if let Ok(security) = std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_ENDPOINT"))
+        {
+            self.network.endpoints.security = security;
         }
 
-        if let Ok(nestgate_endpoint) = std::env::var("TOADSTOOL_NESTGATE_ENDPOINT") {
-            self.network.endpoints.storage = nestgate_endpoint;
+        if let Ok(storage) = std::env::var("TOADSTOOL_STORAGE_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_NESTGATE_ENDPOINT"))
+        {
+            self.network.endpoints.storage = storage;
         }
 
-        if let Ok(squirrel_endpoint) = std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT") {
-            self.network.endpoints.ai_processing = squirrel_endpoint;
+        if let Ok(ai) = std::env::var("TOADSTOOL_AI_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT"))
+        {
+            self.network.endpoints.ai_processing = ai;
         }
 
         if let Ok(max_cpu) = std::env::var("TOADSTOOL_MAX_CPU") {

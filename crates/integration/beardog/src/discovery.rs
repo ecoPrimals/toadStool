@@ -107,8 +107,8 @@ impl EntropyClient {
 
         // DEEP DEBT EVOLUTION: Check Unix socket first (no hardcoded ports!)
         // Environment variable override takes precedence
-        if let Ok(url) = std::env::var("BEARDOG_URL") {
-            tracing::debug!("Using bearDog URL from environment: {}", url);
+        if let Ok(url) = std::env::var("SECURITY_URL").or_else(|_| std::env::var("BEARDOG_URL")) {
+            tracing::debug!("Using crypto service URL from environment: {}", url);
             return Ok(url);
         }
 
@@ -130,11 +130,9 @@ impl EntropyClient {
             return Ok(format!("unix://{}", socket_path.display()));
         }
 
-        // No HTTP fallbacks - capability-based discovery only
-        // Users must ensure Unix socket exists or set BEARDOG_URL environment variable
         Err(BeardogError::Other(
             "No crypto service found via capability discovery. \
-             Ensure bearDog is running or set BEARDOG_URL environment variable."
+             Ensure the security provider is running or set SECURITY_URL environment variable."
                 .to_string(),
         ))
     }

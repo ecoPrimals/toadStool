@@ -261,7 +261,10 @@ mod tests {
                 ("TOADSTOOL_DEBUG", Some("true")),
                 ("TOADSTOOL_LOG_LEVEL", Some("debug")),
                 ("TOADSTOOL_WORKER_THREADS", Some("8")),
-                ("TOADSTOOL_SONGBIRD_ENDPOINT", Some("http://localhost:8080")),
+                (
+                    "TOADSTOOL_COORDINATION_ENDPOINT",
+                    Some("http://localhost:8080"),
+                ),
                 ("TOADSTOOL_BIND_ADDRESS", Some("127.0.0.1:3000")),
             ],
             || {

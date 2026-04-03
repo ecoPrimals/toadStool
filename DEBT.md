@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 3, 2026 — S173
+**Date**: April 3, 2026 — S173-2
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,24 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S173-2 Resolved Debt (primalSpring Audit Response)
+
+### D-GAP-TS01 — RESOLVED S173-2
+coralReef discovery now uses Tier 1 coordination-plane `capability.discover("shader")` via
+`CapabilityProvider::discover()` before filesystem probing. Falls back gracefully when
+coordination service is unavailable. Added `socket_path()` accessor to `CapabilityProvider`.
+
+### D-DISCOVERY-ENV-CLEANUP — RESOLVED S173-2
+5 config files evolved: `TOADSTOOL_SONGBIRD_ENDPOINT` → `TOADSTOOL_COORDINATION_ENDPOINT`
+as primary (with primal-name fallback). Same for BEARDOG/SECURITY, NESTGATE/STORAGE,
+SQUIRREL/AI. CLI configurator, beardog discovery, and distributed discovery all evolved.
+Error messages reference capability-domain names.
+
+### D-UNSAFE-POLICY-DOC — RESOLVED S173-2
+Workspace `Cargo.toml` `[workspace.lints.rust]` now documents the `deny` (not `forbid`)
+rationale: hardware crates need module-scoped `#[allow(unsafe_code)]`. 23 crate roots use
+`forbid`, 20 use `deny` = 43/43 covered.
 
 ## S173 Resolved Debt (Deep Debt Execution — 6 Phases)
 

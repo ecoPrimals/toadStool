@@ -201,10 +201,12 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     },
                     beardog_integration: BearDogIntegrationConfig {
                         enabled: true,
-                        endpoint: std::env::var("BEARDOG_ENDPOINT")
+                        endpoint: std::env::var("SECURITY_ENDPOINT")
+                            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
                             .or_else(|_| {
                                 let domains = ServiceDomainsConfig::from_env();
-                                let port = std::env::var("TOADSTOOL_BEARDOG_PORT")
+                                let port = std::env::var("TOADSTOOL_SECURITY_PORT")
+                                    .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_PORT"))
                                     .unwrap_or_else(|_| "8000".to_string());
                                 Ok::<_, std::env::VarError>(format!(
                                     "http://{}:{}",

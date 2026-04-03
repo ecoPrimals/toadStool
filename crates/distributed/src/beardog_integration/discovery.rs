@@ -117,10 +117,12 @@ impl BearDogDiscovery {
             ..Default::default()
         };
 
-        if let Ok(songbird_endpoint) = std::env::var("SONGBIRD_ENDPOINT") {
+        if let Ok(coordination_endpoint) =
+            std::env::var("COORDINATION_ENDPOINT").or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+        {
             discovery_config
                 .fallbacks
-                .insert("orchestration".to_string(), songbird_endpoint);
+                .insert("orchestration".to_string(), coordination_endpoint);
         }
 
         match PrimalDiscovery::with_config(discovery_config) {

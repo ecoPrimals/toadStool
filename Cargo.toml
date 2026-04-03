@@ -212,7 +212,20 @@ debug = false
 lto = true
 
  
-# Production code quality: warnings as errors
+# Unsafe policy (wateringHole: STANDARDS_AND_EXPECTATIONS.md)
+#
+# Workspace level: `deny` (not `forbid`). Rationale:
+#   - `forbid` cannot be overridden — hardware crates (hw-safe, nvpmu, akida-driver,
+#     runtime/gpu, runtime/display) need module-scoped `#[allow(unsafe_code)]` for
+#     VFIO ioctls, DMA, volatile MMIO, and V4L2 FFI.
+#   - Per-crate `#![forbid(unsafe_code)]` is set on all non-hardware crate roots
+#     (23 forbid + 20 deny = 43/43 crates covered).
+#   - Hardware crates use `#![deny(unsafe_code)]` with narrow `#[allow(unsafe_code)]`
+#     on specific modules, each with `// SAFETY:` documentation.
+#   - Central unsafe containment: `hw-safe` crate wraps all low-level primitives
+#     (LockedMemory, VolatileMmio, vfio_dma) so downstream crates stay safe.
+#
+# Net: every crate enforces at least `deny`; most enforce `forbid`.
 [workspace.lints.rust]
 unsafe_code = "deny"
 

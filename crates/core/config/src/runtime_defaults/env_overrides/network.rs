@@ -7,10 +7,14 @@
 //! |----------|----------|-------------|
 //! | `TOADSTOOL_BIND_ADDRESS` | `127.0.0.1` (from config) | Full socket address (host:port) |
 //! | `TOADSTOOL_PORT` | port from config | Override port only |
-//! | `TOADSTOOL_SONGBIRD_ENDPOINT` | (deprecated) | Legacy coordination endpoint |
-//! | `TOADSTOOL_BEARDOG_ENDPOINT` | (deprecated) | Legacy PKI endpoint |
-//! | `TOADSTOOL_NESTGATE_ENDPOINT` | (deprecated) | Legacy storage endpoint |
-//! | `TOADSTOOL_SQUIRREL_ENDPOINT` | (deprecated) | Legacy AI endpoint |
+//! | `TOADSTOOL_COORDINATION_ENDPOINT` | (none) | Coordination service endpoint |
+//! | `TOADSTOOL_SECURITY_ENDPOINT` | (none) | Security / PKI endpoint |
+//! | `TOADSTOOL_STORAGE_ENDPOINT` | (none) | Storage endpoint |
+//! | `TOADSTOOL_AI_ENDPOINT` | (none) | AI processing endpoint |
+//! | `TOADSTOOL_SONGBIRD_ENDPOINT` | (deprecated) | Legacy alias for coordination |
+//! | `TOADSTOOL_BEARDOG_ENDPOINT` | (deprecated) | Legacy alias for security |
+//! | `TOADSTOOL_NESTGATE_ENDPOINT` | (deprecated) | Legacy alias for storage |
+//! | `TOADSTOOL_SQUIRREL_ENDPOINT` | (deprecated) | Legacy alias for AI |
 
 use super::super::{ConfigError, ConfigResult};
 use super::parse;
@@ -34,20 +38,28 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     // Legacy endpoint overrides (deprecated - use capability-based discovery)
     #[allow(deprecated)]
     {
-        if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            config.network.endpoints.coordination = songbird_endpoint;
+        if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
+        {
+            config.network.endpoints.coordination = coordination;
         }
 
-        if let Ok(beardog_endpoint) = std::env::var("TOADSTOOL_BEARDOG_ENDPOINT") {
-            config.network.endpoints.security = beardog_endpoint;
+        if let Ok(security) = std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_ENDPOINT"))
+        {
+            config.network.endpoints.security = security;
         }
 
-        if let Ok(nestgate_endpoint) = std::env::var("TOADSTOOL_NESTGATE_ENDPOINT") {
-            config.network.endpoints.storage = nestgate_endpoint;
+        if let Ok(storage) = std::env::var("TOADSTOOL_STORAGE_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_NESTGATE_ENDPOINT"))
+        {
+            config.network.endpoints.storage = storage;
         }
 
-        if let Ok(squirrel_endpoint) = std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT") {
-            config.network.endpoints.ai_processing = squirrel_endpoint;
+        if let Ok(ai) = std::env::var("TOADSTOOL_AI_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT"))
+        {
+            config.network.endpoints.ai_processing = ai;
         }
     }
 

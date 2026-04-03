@@ -150,10 +150,11 @@ impl ToadStoolConfig {
             config.network.bind_address = bind_address.parse()?;
         }
 
-        // Legacy endpoint override (deprecated - use capability-based discovery)
         #[allow(deprecated)]
-        if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            config.network.endpoints.coordination = songbird_endpoint;
+        if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
+        {
+            config.network.endpoints.coordination = coordination;
         }
 
         config.validate()?;

@@ -41,13 +41,38 @@ impl CoralReefClient {
     /// never needs to know that coralReef is the provider.
     ///
     /// Discovery tiers:
-    /// 1. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit override)
-    /// 2. Capability socket: `$XDG_RUNTIME_DIR/biomeos/shader.sock` (standard)
+    /// 0. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit override)
+    /// 1. Coordination-plane: `capability.discover("shader")` via biomeOS (Tier 1)
+    /// 2. Capability socket: `$XDG_RUNTIME_DIR/biomeos/shader.sock` (Tier 2)
     /// 3. ecoPrimals capability: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
     /// 4. Legacy identity fallback: `CORALREEF_SOCKET` env / manifest / name scan
     async fn discover() -> Option<UnixJsonRpcClient> {
-        // All filesystem probing runs on the blocking pool so we never
-        // stall the async runtime on directory scans or manifest reads.
+        // Tier 1: Ask the coordination service who provides "shader" capability.
+        // This is the preferred path per CAPABILITY_BASED_DISCOVERY_STANDARD.md.
+        match toadstool_common::capability_provider::CapabilityProvider::discover(
+            toadstool_common::primal_identity::Capability::Custom {
+                name: "shader".to_string(),
+                version: "1.0".to_string(),
+            },
+        )
+        .await
+        {
+            Ok(provider) if provider.socket_path().exists() => {
+                debug!(
+                    path = %provider.socket_path().display(),
+                    "shader compiler discovered via coordination-plane capability.discover"
+                );
+                return Some(UnixJsonRpcClient::new(provider.socket_path()));
+            }
+            Ok(_) => {
+                debug!("coordination returned shader provider but socket not found on disk");
+            }
+            Err(_) => {
+                debug!("coordination-plane discovery unavailable, falling back to filesystem");
+            }
+        }
+
+        // Tiers 0, 2-4: filesystem probing on the blocking pool
         tokio::task::spawn_blocking(Self::discover_blocking)
             .await
             .ok()
