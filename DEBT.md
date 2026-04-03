@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 3, 2026 — S173-2
+**Date**: April 3, 2026 — S173-3
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,19 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S173-3 Resolved Debt (Deep Debt: Refactoring + Coverage)
+
+### D-LARGE-FILE-REFACTOR-2 — RESOLVED S173-3
+6 production files >650L smart-refactored into submodules: `workload/mod.rs` (919L),
+`neurobench-runner/data.rs` (707L), `esp32.rs` (688L), `universal/types.rs` (681L),
+`workload_routing.rs` (675L), `runtime_discovery.rs` (670L). Combined with S173 (8 files),
+total: 14 large files refactored.
+
+### D-COV-EXPANSION-S173-3 — RESOLVED S173-3
++48 tests across 6 previously-uncovered production modules: monitoring/reporting (+9),
+monitoring/collection (+8), federation/policy (+10), capability_provider/provider (+7),
+handler/core (+6), runtime_discovery/localhost (+8).
 
 ## S173-2 Resolved Debt (primalSpring Audit Response)
 

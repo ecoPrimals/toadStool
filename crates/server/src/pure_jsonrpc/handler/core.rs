@@ -19,7 +19,7 @@ type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(super) async fn health(
+pub(crate) async fn health(
     version: &str,
     start_time: std::time::Instant,
     error_count: &AtomicU64,
@@ -48,7 +48,7 @@ pub(super) async fn health(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(super) async fn version_info(version: &str) -> JsonRpcResult {
+pub(crate) async fn version_info(version: &str) -> JsonRpcResult {
     let mut info = HashMap::new();
     info.insert(String::from("version"), version.to_string());
     info.insert(String::from("protocol"), String::from("JSON-RPC 2.0"));
@@ -65,7 +65,7 @@ pub(super) async fn version_info(version: &str) -> JsonRpcResult {
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(super) async fn discover_capabilities(
+pub(crate) async fn discover_capabilities(
     semantic_registry: &SemanticMethodRegistry,
     version: &str,
 ) -> JsonRpcResult {
@@ -150,7 +150,7 @@ pub(super) async fn discover_capabilities(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(super) async fn identity_get(
+pub(crate) async fn identity_get(
     version: &str,
     semantic_registry: &SemanticMethodRegistry,
 ) -> JsonRpcResult {
@@ -190,7 +190,7 @@ pub(super) async fn identity_get(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(super) async fn gpu_info() -> JsonRpcResult {
+pub(crate) async fn gpu_info() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_devices(),
         "driver": "wgpu",
@@ -205,8 +205,104 @@ pub(super) async fn gpu_info() -> JsonRpcResult {
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(super) async fn gpu_memory() -> JsonRpcResult {
+pub(crate) async fn gpu_memory() -> JsonRpcResult {
     Ok(serde_json::json!({
         "devices": crate::gpu_system::query_gpu_memory(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{Duration, Instant};
+
+    use toadstool::semantic_methods::SemanticMethodRegistry;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn health_includes_version_uptime_and_error_count() {
+        let ver = "unit-test-9.9.9";
+        let start = Instant::now()
+            .checked_sub(Duration::from_secs(2))
+            .expect("instant");
+        let errors = AtomicU64::new(7);
+        let v = health(ver, start, &errors).await.expect("health ok");
+        assert_eq!(v["healthy"], true);
+        assert_eq!(v["version"], ver);
+        assert!(v["uptime_secs"].as_u64().unwrap() >= 2);
+        assert_eq!(v["error_count"], 7);
+        errors.fetch_add(1, Ordering::Relaxed);
+        let v2 = health(ver, start, &errors).await.expect("health ok");
+        assert_eq!(v2["error_count"], 8);
+    }
+
+    #[tokio::test]
+    async fn version_info_maps_expected_keys() {
+        let v = version_info("v-x").await.expect("version_info");
+        assert_eq!(v["version"], "v-x");
+        assert_eq!(v["protocol"], "JSON-RPC 2.0");
+        assert_eq!(v["service"], "ToadStool Compute");
+        assert!(v["implementation"].as_str().unwrap().contains("Pure Rust"));
+    }
+
+    #[tokio::test]
+    async fn discover_capabilities_merges_registry_and_sorts_methods() {
+        let reg = SemanticMethodRegistry::new();
+        let cap = discover_capabilities(&reg, "cap-ver-1")
+            .await
+            .expect("discover_capabilities");
+        let methods = cap["methods"].as_array().expect("methods array");
+        assert!(!methods.is_empty(), "methods should be non-empty");
+        let as_strs: Vec<&str> = methods
+            .iter()
+            .map(|m| m.as_str().expect("string"))
+            .collect();
+        let mut sorted = as_strs.clone();
+        sorted.sort_unstable();
+        assert_eq!(as_strs, sorted, "methods must be sorted");
+        assert!(
+            as_strs.contains(&"compute.execute"),
+            "registry-only semantic should be merged in"
+        );
+        assert_eq!(cap["version"], "cap-ver-1");
+        let node_caps = cap["node_capabilities"].as_array().expect("node caps");
+        assert!(node_caps.iter().any(|c| c.as_str() == Some("compute")));
+    }
+
+    #[tokio::test]
+    async fn identity_get_lists_core_capabilities_and_methods() {
+        let reg = SemanticMethodRegistry::new();
+        let id = identity_get("id-ver", &reg).await.expect("identity_get");
+        assert_eq!(id["primal"], toadstool_common::constants::PRIMAL_NAME);
+        assert_eq!(id["version"], "id-ver");
+        assert_eq!(id["protocol"], "JSON-RPC 2.0");
+        assert_eq!(id["transport"], "unix-socket");
+        let sock = id["socket_name"].as_str().expect("socket_name");
+        assert!(
+            std::path::Path::new(sock)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
+        );
+        let caps = id["capabilities"].as_array().expect("capabilities");
+        assert!(caps.iter().any(|c| c.as_str() == Some("compute")));
+        let methods = id["methods"].as_array().expect("methods");
+        assert!(methods.len() > 3);
+    }
+
+    #[tokio::test]
+    async fn gpu_info_returns_device_and_driver_shape() {
+        let g = gpu_info().await.expect("gpu_info");
+        assert!(g.get("devices").is_some());
+        assert_eq!(g["driver"], "wgpu");
+        assert!(g.get("compute_backends").is_some());
+        assert!(g.get("spirv_codegen_safety").is_some());
+        assert!(g.get("firmware_inventory").is_some());
+    }
+
+    #[tokio::test]
+    async fn gpu_memory_returns_devices_array() {
+        let m = gpu_memory().await.expect("gpu_memory");
+        assert!(m.get("devices").is_some());
+    }
 }

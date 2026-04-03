@@ -188,3 +188,86 @@ impl Default for SystemResourceMonitor {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[allow(unused_imports)]
+    use super::*;
+    use crate::{MonitoringConfig, MonitoringGranularity, SystemResourceMonitor, ThresholdAction};
+    use std::time::Duration;
+
+    #[test]
+    fn new_matches_default_monitoring_config() {
+        let a = SystemResourceMonitor::new();
+        let b = MonitoringConfig::default();
+        assert_eq!(a.config, b);
+    }
+
+    #[test]
+    fn with_config_stores_custom_fields() {
+        let config = MonitoringConfig {
+            granularity: MonitoringGranularity::LowFrequency,
+            enable_network_monitoring: false,
+            enable_threshold_monitoring: false,
+            threshold_action: ThresholdAction::Terminate,
+            metrics_retention: Duration::from_secs(42),
+        };
+        let m = SystemResourceMonitor::with_config(config.clone());
+        assert_eq!(m.config, config);
+    }
+
+    #[test]
+    fn default_impl_matches_new() {
+        let a = SystemResourceMonitor::default();
+        let b = SystemResourceMonitor::new();
+        assert_eq!(a.config, b.config);
+    }
+
+    #[tokio::test]
+    async fn not_monitoring_after_construction() {
+        let m = SystemResourceMonitor::new();
+        assert!(!*m.is_monitoring.read().await);
+    }
+
+    #[tokio::test]
+    async fn stop_monitoring_loop_without_start_succeeds() {
+        let m = SystemResourceMonitor::new();
+        assert!(m.stop_monitoring_loop().await.is_ok());
+        assert!(!*m.is_monitoring.read().await);
+    }
+
+    #[tokio::test]
+    async fn start_then_stop_monitoring_loop() {
+        let m = SystemResourceMonitor::new();
+        assert!(m.start_monitoring_loop().await.is_ok());
+        assert!(*m.is_monitoring.read().await);
+        assert!(m.stop_monitoring_loop().await.is_ok());
+        assert!(!*m.is_monitoring.read().await);
+    }
+
+    #[tokio::test]
+    async fn start_monitoring_loop_twice_is_idempotent() {
+        let m = SystemResourceMonitor::new();
+        assert!(m.start_monitoring_loop().await.is_ok());
+        assert!(m.start_monitoring_loop().await.is_ok());
+        assert!(m.stop_monitoring_loop().await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn update_config_while_idle_updates_fields() {
+        let mut m = SystemResourceMonitor::new();
+        let new_config = MonitoringConfig {
+            granularity: MonitoringGranularity::Millisecond,
+            enable_network_monitoring: true,
+            enable_threshold_monitoring: false,
+            threshold_action: ThresholdAction::Alert,
+            metrics_retention: Duration::from_secs(99),
+        };
+        assert!(m.update_config(new_config.clone()).await.is_ok());
+        assert_eq!(m.config.granularity, MonitoringGranularity::Millisecond);
+        assert!(m.config.enable_network_monitoring);
+        assert!(!m.config.enable_threshold_monitoring);
+        assert_eq!(m.config.threshold_action, ThresholdAction::Alert);
+        assert_eq!(m.config.metrics_retention, Duration::from_secs(99));
+    }
+}

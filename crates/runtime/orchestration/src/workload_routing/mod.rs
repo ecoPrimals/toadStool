@@ -11,106 +11,16 @@
 //! The router uses these to select the optimal substrate (CPU vs GPU) for a given
 //! workload pattern and problem size.
 
-use serde::{Deserialize, Serialize};
+mod defaults;
+mod multi_gpu;
+mod pattern;
+mod types;
 
-/// Kinds of GPU compute patterns used by springs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum WorkloadPattern {
-    /// Aggregate reduction (sum, max, etc.).
-    Reduction,
-    /// Scatter write pattern.
-    Scatter,
-    /// Monte Carlo simulation.
-    MonteCarlo,
-    /// ODE batch integration.
-    OdeBatch,
-    /// NLME iteration.
-    NlmeIteration,
-    /// Matrix multiplication.
-    MatMul,
-    /// Fast Fourier transform.
-    Fft,
-    /// Sparse matrix-vector product.
-    SpMV,
-    /// Element-wise operations.
-    ElementWise,
-    /// Smith-Waterman alignment.
-    SmithWaterman,
-    /// Pairwise distance / similarity (N×N or N×M).
-    /// neuralSpring: `PairwiseL2Gpu`, `PairwiseHammingGpu`.
-    Pairwise,
-    /// Batch fitness evaluation (population × genome).
-    /// neuralSpring: `BatchFitnessGpu`, `SwarmNnGpu`.
-    BatchFitness,
-    /// HMM forward/backward (states × observations).
-    /// neuralSpring/wetSpring: `HmmBatchForwardF64`.
-    HmmBatch,
-    /// Spatial game / lattice payoff computation.
-    /// neuralSpring: `SpatialPayoffGpu`.
-    SpatialPayoff,
-    /// Stochastic population simulation (populations × loci).
-    /// neuralSpring: `WrightFisherGpu`, `BatchedMultinomialGpu`.
-    Stochastic,
-    /// Population pharmacokinetics (subjects × timepoints).
-    /// healthSpring: `PopulationPkGpu`, `NlmeDispatch`.
-    PopulationPk,
-    /// Dose-response sweep (concentrations × parameters).
-    /// healthSpring: `HillDoseResponseGpu`.
-    DoseResponse,
-    /// Diversity index computation (samples × taxa).
-    /// healthSpring/wetSpring: `ShannonGpu`, `SimpsonGpu`.
-    DiversityIndex,
-}
+pub use pattern::WorkloadPattern;
+pub use types::{MultiGpuPlacement, RoutingThreshold, SubstrateTarget};
 
-impl WorkloadPattern {
-    /// Estimated GPU memory (VRAM) in bytes for a given problem size.
-    ///
-    /// Absorbed from healthSpring V19 `gpu_memory_estimate()` proposal.
-    /// Estimates are conservative upper bounds, suitable for scheduling
-    /// decisions (rejecting workloads that won't fit in available VRAM).
-    ///
-    /// The formula is pattern-dependent:
-    /// - N×N patterns (Pairwise, `SpatialPayoff`): `8 * N²` (f64 matrix)
-    /// - Batch patterns: `8 * N` per element (f64 vector)
-    /// - FFT: `16 * N` (complex f64 in + out)
-    /// - Sparse (`SpMV`): `24 * N` (CSR triple per row, pessimistic)
-    #[must_use]
-    pub const fn gpu_memory_estimate_bytes(self, problem_size: u64) -> u64 {
-        match self {
-            Self::Pairwise | Self::SpatialPayoff => {
-                problem_size.saturating_mul(problem_size).saturating_mul(8)
-            }
-            Self::Fft => problem_size.saturating_mul(16),
-            Self::SpMV => problem_size.saturating_mul(24),
-            Self::Stochastic | Self::PopulationPk | Self::DoseResponse => {
-                problem_size.saturating_mul(16)
-            }
-            _ => problem_size.saturating_mul(8),
-        }
-    }
-}
-
-/// Target compute substrate for workload execution.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum SubstrateTarget {
-    /// CPU execution.
-    Cpu,
-    /// GPU execution.
-    Gpu,
-    /// NPU execution.
-    Npu,
-}
-
-/// Routing threshold for a workload pattern, validated by cross-spring benchmarks.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RoutingThreshold {
-    /// Workload pattern this threshold applies to.
-    pub pattern: WorkloadPattern,
-    /// Problem size (element count) below which CPU is faster.
-    pub gpu_crossover_n: u64,
-    /// Source spring and version that validated this threshold.
-    pub provenance: &'static str,
-}
+use defaults::default_thresholds;
+use multi_gpu::{combinations, evaluate_group};
 
 /// Routes workloads to the best substrate based on problem size and pattern.
 pub struct WorkloadRouter {
@@ -174,17 +84,6 @@ impl WorkloadRouter {
     }
 }
 
-/// Multi-GPU placement recommendation from topology analysis.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MultiGpuPlacement {
-    /// Recommended GPU card indices, ordered by interconnect affinity.
-    pub gpu_indices: Vec<u32>,
-    /// Whether all recommended GPUs share a `PCIe` switch (fast P2P).
-    pub shared_switch: bool,
-    /// Minimum effective inter-GPU bandwidth in bytes/sec.
-    pub min_interconnect_bps: u64,
-}
-
 impl WorkloadRouter {
     /// Place a cooperating multi-GPU workload on GPUs that share a `PCIe`
     /// switch for fast P2P communication (e.g. halo exchange in lattice QCD).
@@ -238,152 +137,15 @@ impl WorkloadRouter {
     }
 }
 
-fn evaluate_group(
-    gpus: &[u32],
-    topology: &toadstool_sysmon::pcie_topology::PcieTopologyGraph,
-) -> (bool, u64) {
-    let mut all_shared_switch = true;
-    let mut min_bw = u64::MAX;
-
-    for i in 0..gpus.len() {
-        for j in (i + 1)..gpus.len() {
-            let bw = topology.effective_bandwidth_bps(gpus[i], gpus[j]);
-            min_bw = min_bw.min(bw);
-
-            if let Some(pair) = topology.pair(gpus[i], gpus[j]) {
-                if pair.common_bridge.is_none() || pair.hops > 1 {
-                    all_shared_switch = false;
-                }
-            } else {
-                all_shared_switch = false;
-            }
-        }
-    }
-
-    (all_shared_switch, min_bw)
-}
-
-fn combinations(items: &[u32], k: usize) -> Vec<Vec<u32>> {
-    if k == 0 {
-        return vec![vec![]];
-    }
-    if items.len() < k {
-        return vec![];
-    }
-
-    let mut result = Vec::new();
-    for (i, &item) in items.iter().enumerate() {
-        for mut rest in combinations(&items[i + 1..], k - 1) {
-            rest.insert(0, item);
-            result.push(rest);
-        }
-    }
-    result
-}
-
 impl Default for WorkloadRouter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-fn default_thresholds() -> Vec<RoutingThreshold> {
-    vec![
-        RoutingThreshold {
-            pattern: WorkloadPattern::Reduction,
-            gpu_crossover_n: 10_000,
-            provenance: "healthSpring V14.1 kokkos_reduction",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::Scatter,
-            gpu_crossover_n: 50_000,
-            provenance: "healthSpring V14.1 kokkos_scatter",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::MonteCarlo,
-            gpu_crossover_n: 100_000,
-            provenance: "healthSpring V14.1 kokkos_monte_carlo",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::OdeBatch,
-            gpu_crossover_n: 5_000,
-            provenance: "healthSpring V14.1 kokkos_ode_batch",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::NlmeIteration,
-            gpu_crossover_n: 100,
-            provenance: "healthSpring V14.1 kokkos_nlme_iteration",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::MatMul,
-            gpu_crossover_n: 256,
-            provenance: "neuralSpring S139 bench_kokkos_parity",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::Fft,
-            gpu_crossover_n: 4_096,
-            provenance: "neuralSpring S139",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::SpMV,
-            gpu_crossover_n: 1_000,
-            provenance: "hotSpring v0.6.25 spectral",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::ElementWise,
-            gpu_crossover_n: 100_000,
-            provenance: "neuralSpring S139",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::SmithWaterman,
-            gpu_crossover_n: 1_000,
-            provenance: "neuralSpring S139 BLAST pipeline",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::Pairwise,
-            gpu_crossover_n: 500_000,
-            provenance: "neuralSpring S140 pairwise_substrate bench",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::BatchFitness,
-            gpu_crossover_n: 50_000,
-            provenance: "neuralSpring S140 batch_fitness_substrate bench",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::HmmBatch,
-            gpu_crossover_n: 5_000,
-            provenance: "neuralSpring S140 hmm_substrate bench",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::SpatialPayoff,
-            gpu_crossover_n: 4_000,
-            provenance: "neuralSpring S140 spatial_substrate bench",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::Stochastic,
-            gpu_crossover_n: 100_000,
-            provenance: "neuralSpring S140 stochastic_substrate bench",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::PopulationPk,
-            gpu_crossover_n: 100,
-            provenance: "healthSpring V14.1 metalForge parallel_gpu_min",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::DoseResponse,
-            gpu_crossover_n: 1_000,
-            provenance: "healthSpring V14.1 metalForge sweep_gpu_min",
-        },
-        RoutingThreshold {
-            pattern: WorkloadPattern::DiversityIndex,
-            gpu_crossover_n: 500,
-            provenance: "healthSpring V14.1 metalForge reduce_gpu_min",
-        },
-    ]
-}
-
 #[cfg(test)]
 mod tests {
+    use super::multi_gpu::combinations;
     use super::*;
 
     #[test]
@@ -474,15 +236,12 @@ mod tests {
     #[test]
     fn combinations_basic() {
         assert_eq!(
-            super::combinations(&[0, 1, 2], 2),
+            combinations(&[0, 1, 2], 2),
             vec![vec![0, 1], vec![0, 2], vec![1, 2]]
         );
-        assert_eq!(
-            super::combinations(&[0, 1, 2], 1),
-            vec![vec![0], vec![1], vec![2]]
-        );
-        assert_eq!(super::combinations(&[0, 1, 2], 3), vec![vec![0, 1, 2]]);
-        assert!(super::combinations(&[0], 2).is_empty());
+        assert_eq!(combinations(&[0, 1, 2], 1), vec![vec![0], vec![1], vec![2]]);
+        assert_eq!(combinations(&[0, 1, 2], 3), vec![vec![0, 1, 2]]);
+        assert!(combinations(&[0], 2).is_empty());
     }
 
     #[test]

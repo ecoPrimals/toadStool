@@ -164,3 +164,77 @@ pub(crate) fn read_system_info() -> (usize, u64, u64) {
 
     (total_cpu_cores, total_memory_bytes, available_memory_bytes)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::metric_types::SystemResourceMonitor;
+    use toadstool::resources::ResourceMonitor;
+
+    #[test]
+    fn memory_usage_percent_zero_total_returns_zero() {
+        assert!(memory_usage_percent(0, 0).abs() < f64::EPSILON);
+        assert!(memory_usage_percent(0, 10).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn memory_usage_percent_full_usage_when_no_memory_available() {
+        let p = memory_usage_percent(8 * 1024 * 1024, 0);
+        assert!((p - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn memory_usage_percent_when_all_available_is_zero_percent() {
+        let total = 4096u64;
+        assert!(memory_usage_percent(total, total).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn memory_usage_percent_saturates_when_available_exceeds_total() {
+        let p = memory_usage_percent(100, 200);
+        assert!(p.abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn memory_usage_percent_quarter_used() {
+        let p = memory_usage_percent(400, 300);
+        assert!((p - 25.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn read_system_info_returns_nonzero_memory_and_at_least_one_core() {
+        let (cores, total, avail) = read_system_info();
+        assert!(cores >= 1);
+        assert!(total > 0);
+        assert!(avail > 0);
+    }
+
+    #[tokio::test]
+    async fn get_metrics_missing_workload_returns_err() {
+        let monitor = SystemResourceMonitor::new();
+        let err = monitor.get_metrics("missing-workload").await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn start_and_stop_monitoring_trait_ok() {
+        let monitor = SystemResourceMonitor::new();
+        assert!(monitor.start_monitoring("w-1").is_ok());
+        assert!(monitor.stop_monitoring("w-1").is_ok());
+        tokio::task::yield_now().await;
+    }
+
+    #[tokio::test]
+    async fn get_system_resources_sets_cpu_snapshot_to_zero_and_valid_percentages() {
+        let monitor = SystemResourceMonitor::new();
+        let res = monitor
+            .get_system_resources()
+            .await
+            .expect("system resources");
+        assert!(res.total_cpu_cores >= 1);
+        assert!(res.total_memory_bytes > 0);
+        assert!(res.memory_usage_percent >= 0.0 && res.memory_usage_percent <= 100.0);
+        assert!(res.cpu_usage_percent.abs() < f64::EPSILON);
+        assert!(res.available_storage_bytes > 0);
+    }
+}

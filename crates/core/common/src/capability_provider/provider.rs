@@ -128,3 +128,106 @@ impl CapabilityProvider {
         self.capabilities.contains(cap)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::primal_identity::{
+        Capability, ComputeCapability, CryptoCapability, StorageCapability,
+    };
+
+    use super::CapabilityProvider;
+
+    #[test]
+    fn from_service_info_sets_socket_path_and_service_name() {
+        let path = std::path::PathBuf::from("/tmp/cap-provider-test.sock");
+        let p = CapabilityProvider::from_service_info(
+            "alpha-service".to_string(),
+            path,
+            vec![Capability::Crypto(CryptoCapability::Encryption)],
+        );
+        assert_eq!(p.service_name(), "alpha-service");
+        assert_eq!(p.socket_path(), Path::new("/tmp/cap-provider-test.sock"));
+    }
+
+    #[test]
+    fn socket_path_accessor_returns_inner_path() {
+        let p = CapabilityProvider::from_service_info(
+            "x".to_string(),
+            std::path::PathBuf::from("/var/run/custom.sock"),
+            vec![],
+        );
+        assert_eq!(p.socket_path().as_os_str(), "/var/run/custom.sock");
+    }
+
+    #[test]
+    fn capabilities_empty_slice_when_none_registered() {
+        let p = CapabilityProvider::from_service_info(
+            "empty".to_string(),
+            std::path::PathBuf::from("/tmp/e.sock"),
+            vec![],
+        );
+        assert!(p.capabilities().is_empty());
+        assert!(!p.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
+    }
+
+    #[test]
+    fn capabilities_and_has_capability_reflect_vector_contents() {
+        let caps = vec![
+            Capability::Compute(ComputeCapability::NativeExecution),
+            Capability::Storage(StorageCapability::ObjectStorage),
+        ];
+        let p = CapabilityProvider::from_service_info(
+            "multi".to_string(),
+            std::path::PathBuf::from("/tmp/m.sock"),
+            caps.clone(),
+        );
+        assert_eq!(p.capabilities(), caps.as_slice());
+        assert!(p.has_capability(&Capability::Compute(ComputeCapability::NativeExecution)));
+        assert!(p.has_capability(&Capability::Storage(StorageCapability::ObjectStorage)));
+        assert!(!p.has_capability(&Capability::Compute(ComputeCapability::GpuCompute)));
+    }
+
+    #[test]
+    fn has_capability_requires_exact_variant_match() {
+        let p = CapabilityProvider::from_service_info(
+            "crypto-only".to_string(),
+            std::path::PathBuf::from("/tmp/c.sock"),
+            vec![Capability::Crypto(CryptoCapability::Encryption)],
+        );
+        assert!(!p.has_capability(&Capability::Crypto(CryptoCapability::KeyManagement)));
+        assert!(p.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
+    }
+
+    #[test]
+    fn clone_shares_same_logical_fields() {
+        let a = CapabilityProvider::from_service_info(
+            "svc".to_string(),
+            std::path::PathBuf::from("/tmp/a.sock"),
+            vec![Capability::Crypto(CryptoCapability::DigitalSignatures)],
+        );
+        let b = a.clone();
+        assert_eq!(a.service_name(), b.service_name());
+        assert_eq!(a.socket_path(), b.socket_path());
+        assert_eq!(a.capabilities(), b.capabilities());
+    }
+
+    #[test]
+    fn independent_instances_do_not_share_state() {
+        let p1 = CapabilityProvider::from_service_info(
+            "a".to_string(),
+            std::path::PathBuf::from("/tmp/one.sock"),
+            vec![Capability::Crypto(CryptoCapability::Encryption)],
+        );
+        let p2 = CapabilityProvider::from_service_info(
+            "b".to_string(),
+            std::path::PathBuf::from("/tmp/two.sock"),
+            vec![Capability::Storage(StorageCapability::BlockStorage)],
+        );
+        assert_ne!(p1.service_name(), p2.service_name());
+        assert_ne!(p1.socket_path(), p2.socket_path());
+        assert!(!p1.has_capability(&Capability::Storage(StorageCapability::BlockStorage)));
+        assert!(p2.has_capability(&Capability::Storage(StorageCapability::BlockStorage)));
+    }
+}

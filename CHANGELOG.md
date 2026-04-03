@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 3, 2026 (Sessions 43-173)
 
+### Session S173-3 (Apr 3, 2026) — Deep Debt: Smart Refactoring + Coverage Expansion
+
+#### Phase 1: Smart refactoring (6 production files >650L → submodules)
+- `core/toadstool/src/workload/mod.rs` (919L) → `spec.rs`, `workload_type.rs`, `spec_tests.rs`
+- `neurobench-runner/src/data.rs` (707L) → `sample`, `npy`, `csv`, `benchmarks`, `dataset`, `tests`
+- `runtime/edge/src/platforms/esp32.rs` (688L) → `chip_profiles`, `connection`, `flash`, `discovery`
+- `runtime/universal/src/types.rs` (681L) → `capabilities`, `workload`, `output`, `error`, `compute_unit`
+- `runtime/orchestration/src/workload_routing.rs` (675L) → `pattern`, `types`, `defaults`, `multi_gpu`
+- `core/common/src/runtime_discovery.rs` (670L) → `client`, `cache`, `localhost`, `service`
+
+#### Phase 2: Test coverage expansion (+48 new tests across 6 modules)
+- +9 tests for `monitoring/reporting` (memory%, system info, resource monitoring)
+- +8 tests for `monitoring/collection` (constructors, config, lifecycle)
+- +10 tests for `federation/policy` (heartbeat, membership, capabilities)
+- +7 tests for `capability_provider/provider` (accessors, capabilities, clone)
+- +6 tests for `handler/core` (health, version, discovery, identity)
+- +8 tests for `runtime_discovery/localhost` (discovery, filtering, health)
+
+#### Phase 3: Cleanup
+- All production code clean: zero `todo!()`, zero `unimplemented!()`, zero hardcoded IPs outside constants
+- Fixed unfulfilled lint expectations and clippy warnings from refactoring
+
 ### Session S173-2 (Apr 3, 2026) — primalSpring Audit: Discovery Compliance + TS-01 + Unsafe Policy
 
 #### Discovery compliance: P → C

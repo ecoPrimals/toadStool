@@ -1,6 +1,6 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 3, 2026 -- S173-2 primalSpring Audit Response
+**Updated**: April 3, 2026 -- S173-3 Deep Debt Refactoring + Coverage
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,617 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | 8 large files smart-refactored | **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 | **~89 unsafe blocks** (down from ~101; all in `hw-safe` + drivers)
 **Latest**: S173 — Deep Debt Execution (6 phases): hardcoding elimination, 8 production files >650L→submodules, unsafe consolidation (akida-driver/nvpmu DMA→hw-safe), +79 new tests across 5 modules, deployment stubs→capability socket verification, `config` 0.14→0.15. All quality gates green.
 

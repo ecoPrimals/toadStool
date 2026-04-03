@@ -172,3 +172,124 @@ impl super::CloudFederationManager {
         self.members.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cloud::federation::CloudFederationManager;
+    use crate::cloud::types::{FederationConfig, FederationNode, NodeConnection};
+
+    fn sample_config() -> FederationConfig {
+        FederationConfig {
+            federation_id: "policy-unit-tests".to_string(),
+            discovery_endpoints: vec![],
+            trust_anchors: vec![],
+        }
+    }
+
+    fn sample_node(id: &str) -> FederationNode {
+        FederationNode {
+            id: id.to_string(),
+            provider: "test".to_string(),
+            region: "test-region".to_string(),
+            capabilities: vec!["compute".to_string(), "storage".to_string()],
+        }
+    }
+
+    #[test]
+    fn default_heartbeat_timeout_matches_documented_default() {
+        assert_eq!(DEFAULT_HEARTBEAT_TIMEOUT_SECS, 60);
+    }
+
+    #[test]
+    fn min_heartbeat_interval_is_one_second() {
+        assert_eq!(MIN_HEARTBEAT_INTERVAL_SECS, 1);
+    }
+
+    #[test]
+    fn federation_member_clone_preserves_capabilities_vector() {
+        let node = sample_node("n-clone");
+        let m1 = FederationMember {
+            node: node.clone(),
+            last_heartbeat: tokio::time::Instant::now(),
+            capabilities: node.capabilities.clone(),
+        };
+        let m2 = m1.clone();
+        assert_eq!(m2.capabilities, m1.capabilities);
+        assert_eq!(m2.node.id, node.id);
+    }
+
+    #[tokio::test]
+    async fn add_node_rejects_empty_id() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        let node = FederationNode {
+            id: String::new(),
+            provider: "p".to_string(),
+            region: "r".to_string(),
+            capabilities: vec![],
+        };
+        assert!(mgr.add_node(node, vec![]).is_err());
+        assert_eq!(mgr.member_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn add_node_with_connections_extends_topology() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        let node = sample_node("edge-a");
+        let conns = vec![NodeConnection {
+            from: "edge-a".to_string(),
+            to: "edge-b".to_string(),
+            latency: 1.0,
+            bandwidth: 10.0,
+        }];
+        mgr.add_node(node, conns).unwrap();
+        assert_eq!(mgr.member_count(), 1);
+        assert_eq!(mgr.topology.connections.len(), 1);
+        assert_eq!(mgr.topology.nodes.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn remove_node_drops_member_and_topology_node() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        mgr.add_node(sample_node("leave-me"), vec![]).unwrap();
+        assert_eq!(mgr.member_count(), 1);
+        mgr.remove_node("leave-me").unwrap();
+        assert_eq!(mgr.member_count(), 0);
+        assert!(mgr.topology.nodes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn record_heartbeat_non_member_errors() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        assert!(mgr.record_heartbeat("ghost").is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn member_becomes_stale_after_heartbeat_timeout_without_refresh() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        mgr.add_node(sample_node("stale-node"), vec![]).unwrap();
+        assert!(mgr.is_member_alive("stale-node"));
+        tokio::time::advance(Duration::from_secs(DEFAULT_HEARTBEAT_TIMEOUT_SECS + 1)).await;
+        assert!(!mgr.is_member_alive("stale-node"));
+        assert!(mgr.alive_members().is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn first_heartbeat_immediately_after_join_is_rate_limited() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        mgr.add_node(sample_node("rl-node"), vec![]).unwrap();
+        assert!(mgr.record_heartbeat("rl-node").is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn get_federation_capabilities_skips_stale_members() {
+        let mut mgr = CloudFederationManager::new(sample_config()).await.unwrap();
+        mgr.add_node(sample_node("cap-old"), vec![]).unwrap();
+        tokio::time::advance(Duration::from_secs(DEFAULT_HEARTBEAT_TIMEOUT_SECS + 1)).await;
+        assert!(mgr.get_federation_capabilities().is_empty());
+        mgr.record_heartbeat("cap-old").unwrap();
+        let caps = mgr.get_federation_capabilities();
+        assert!(caps.contains_key("compute"));
+        assert!(caps.contains_key("storage"));
+    }
+}
