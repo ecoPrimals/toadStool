@@ -50,15 +50,18 @@ pub async fn create_executor(
                 max_queue_size: 100,
             },
             songbird_integration: Some(toadstool_distributed::SongbirdConfig {
-                endpoint: std::env::var("SONGBIRD_ENDPOINT")
-                    .or_else(|_| std::env::var("TOADSTOOL_COORDINATION_ENDPOINT"))
+                endpoint: std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
+                    .or_else(|_| std::env::var("COORDINATION_ENDPOINT"))
+                    .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
                     .unwrap_or_else(|_| {
                         tracing::info!(
-                            "No SONGBIRD_ENDPOINT configured, will use runtime discovery"
+                            "No coordination endpoint configured, will use runtime discovery"
                         );
                         String::new()
                     }),
-                auth_token: std::env::var("SONGBIRD_AUTH_TOKEN").ok(),
+                auth_token: std::env::var("COORDINATION_AUTH_TOKEN")
+                    .or_else(|_| std::env::var("SONGBIRD_AUTH_TOKEN"))
+                    .ok(),
                 health_reporting_interval_secs: 60,
             }),
         };

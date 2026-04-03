@@ -9,15 +9,9 @@ use std::process::Command;
 #[derive(Debug, Clone)]
 pub struct AkidaDevice {
     pub pcie_address: String,
-    #[expect(
-        dead_code,
-        reason = "hardware identity fields populated by lspci for caller inspection"
-    )]
+    #[allow(dead_code)] // populated by lspci for caller inspection
     pub vendor_id: String,
-    #[expect(
-        dead_code,
-        reason = "hardware identity fields populated by lspci for caller inspection"
-    )]
+    #[allow(dead_code)] // populated by lspci for caller inspection
     pub device_id: String,
 }
 

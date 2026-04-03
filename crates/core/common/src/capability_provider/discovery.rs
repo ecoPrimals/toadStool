@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Capability discovery via Songbird/discovery service.
+//! Capability discovery via coordination service.
 //!
 //! Queries the discovery service to find providers for a given capability.
 
@@ -13,8 +13,14 @@ use super::serialize;
 
 /// Query discovery service for all providers of a capability
 pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
-    let discovery_socket =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| "/primal/songbird".to_string());
+    let discovery_socket = std::env::var("BIOMEOS_COORDINATION_SOCKET")
+        .or_else(|_| std::env::var("COORDINATION_SOCKET"))
+        .or_else(|_| std::env::var("SONGBIRD_SOCKET"))
+        .unwrap_or_else(|_| {
+            let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+                .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
+            format!("{runtime_dir}/biomeos/coordination.sock")
+        });
 
     let client = UnixJsonRpcClient::new(&discovery_socket);
 

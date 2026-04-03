@@ -4,7 +4,7 @@
 //! Uses `temp_env` for safe, isolated environment variable testing. No unsafe
 //! env var manipulation; `temp_env` handles serialization and restoration.
 
-use super::connection::{IPC_TIMEOUT, get_default_songbird_socket};
+use super::connection::{IPC_TIMEOUT, get_default_coordination_socket};
 use super::*;
 use serde_json::json;
 
@@ -22,11 +22,11 @@ fn test_register_with_songbird_graceful_failure() {
                 .build()
                 .expect("runtime");
             rt.block_on(async {
-                let result = register_with_songbird().await;
+                let result = register_with_coordination().await;
                 assert!(result.is_err());
                 let err = result.unwrap_err();
                 let err_msg = format!("{err}");
-                assert!(err_msg.contains("Songbird") || err_msg.contains("connection"));
+                assert!(err_msg.contains("coordination") || err_msg.contains("connection"));
             });
         })
         .join()
@@ -331,8 +331,8 @@ fn test_edge_cases_semantic_resolution() {
 // ── Socket path helpers ───────────────────────────────────────────────────────
 
 #[test]
-fn test_get_default_songbird_socket_contains_songbird_sock() {
-    let path = get_default_songbird_socket();
+fn test_get_default_coordination_socket_format() {
+    let path = get_default_coordination_socket();
     assert!(
         path.ends_with("coordination.sock"),
         "socket path should end with coordination.sock, got: {path}"
@@ -340,9 +340,9 @@ fn test_get_default_songbird_socket_contains_songbird_sock() {
 }
 
 #[test]
-fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
+fn test_get_default_coordination_socket_with_xdg_runtime_dir() {
     temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/test-xdg-runtime"), || {
-        let path = get_default_songbird_socket();
+        let path = get_default_coordination_socket();
         assert!(path.starts_with("/tmp/test-xdg-runtime"));
         assert!(path.ends_with("coordination.sock"));
     });
@@ -384,13 +384,13 @@ async fn spawn_mock_songbird(
 #[test]
 fn test_register_with_songbird_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
-    let socket_path = dir.path().join("songbird.sock");
+    let socket_path = dir.path().join("coordination.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
 
     let inner_path = path_str.clone();
-    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
         let p = inner_path.clone();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -399,7 +399,7 @@ fn test_register_with_songbird_success_via_mock() {
                 .expect("runtime");
             rt.block_on(async {
                 let handle = spawn_mock_songbird(&p, reply).await;
-                let result = register_with_songbird().await;
+                let result = register_with_coordination().await;
                 handle.abort();
                 assert!(result.is_ok(), "registration should succeed: {result:?}");
             });
@@ -412,13 +412,13 @@ fn test_register_with_songbird_success_via_mock() {
 #[test]
 fn test_register_with_songbird_error_reply_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
-    let socket_path = dir.path().join("songbird_err.sock");
+    let socket_path = dir.path().join("coordination_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "error": {"code": -32000, "message": "already registered"}, "id": 1});
 
     let inner_path = path_str.clone();
-    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
         let p = inner_path.clone();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -427,14 +427,14 @@ fn test_register_with_songbird_error_reply_via_mock() {
                 .expect("runtime");
             rt.block_on(async {
                 let handle = spawn_mock_songbird(&p, reply).await;
-                let result = register_with_songbird().await;
+                let result = register_with_coordination().await;
                 handle.abort();
                 assert!(result.is_err());
                 assert!(
                     result
                         .unwrap_err()
                         .to_string()
-                        .contains("Songbird registration failed")
+                        .contains("registration failed")
                 );
             });
         })

@@ -74,9 +74,10 @@ impl AgentDeploymentManager {
             }
         }
 
-        // Priority 2: Check environment variables (backward compatibility)
-        if let Ok(endpoint) =
-            std::env::var("SQUIRREL_ENDPOINT").or_else(|_| std::env::var("TOADSTOOL_AI_ENDPOINT"))
+        // Priority 2: Check environment variables (capability-domain first)
+        if let Ok(endpoint) = std::env::var("TOADSTOOL_AI_ENDPOINT")
+            .or_else(|_| std::env::var("AI_PROCESSING_ENDPOINT"))
+            .or_else(|_| std::env::var("SQUIRREL_ENDPOINT"))
         {
             tracing::info!("Discovered ML service via environment: {}", endpoint);
             let mut config = config;
@@ -95,7 +96,7 @@ impl AgentDeploymentManager {
         // Priority 4: Fall back to in-memory backend for development
         tracing::warn!(
             "No AI provider discovered, using in-memory backend. \
-             Ensure a ML provider is running or set SQUIRREL_ENDPOINT."
+             Set TOADSTOOL_AI_ENDPOINT or AI_PROCESSING_ENDPOINT."
         );
         Ok(Self::with_inmemory(config))
     }

@@ -4,16 +4,16 @@
 //! ## Deep Debt Principles
 //!
 //! - **Services, Not Libraries**: Communicate via services, not code embedding
-//! - **Runtime Discovery**: Discover primals at runtime via Songbird
+//! - **Runtime Discovery**: Discover primals at runtime via coordination service
 //! - **Self-Knowledge**: Only know ourselves, discover others
 //! - **Standard Protocol**: JSON-RPC 2.0 over Unix sockets
 //!
 //! ## Architecture
 //!
 //! ```text
-//! ToadStool ──[discover]──> Songbird ──[resolve]──> Other Primal
-//!     │                         │
-//!     └─────[register]──────────┘
+//! ToadStool ──[discover]──> Coordination ──[resolve]──> Other Primal
+//!     │                          │
+//!     └─────[register]───────────┘
 //! ```
 
 mod connection;
@@ -23,10 +23,10 @@ use crate::semantic_methods::SemanticMethodRegistry;
 use std::sync::OnceLock;
 use tracing::debug;
 
-// Re-export connection APIs
 #[allow(deprecated)]
 pub use connection::{
-    connect_to_primal, find_by_capability, get_default_songbird_socket, register_with_songbird,
+    connect_to_primal, find_by_capability, get_default_coordination_socket,
+    get_default_songbird_socket, register_with_coordination, register_with_songbird,
     resolve_primal,
 };
 

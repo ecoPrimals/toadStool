@@ -26,10 +26,7 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[expect(
-    dead_code,
-    reason = "variants constructed via BiomeProcess; some arms not yet matched in all paths"
-)]
+#[allow(dead_code)] // variants constructed only in #[cfg(test)]; clippy --all-targets sees usage
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),
@@ -46,10 +43,7 @@ impl ProcessType {
         }
     }
 
-    #[expect(
-        dead_code,
-        reason = "diagnostic helper for tests and future runtime logging"
-    )]
+    #[allow(dead_code)] // called from #[cfg(test)] only
     pub(super) const fn type_str(&self) -> &str {
         match self {
             Self::Primal(_) => "primal",

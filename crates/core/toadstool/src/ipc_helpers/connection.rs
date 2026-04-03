@@ -35,35 +35,47 @@ fn get_runtime_dir() -> String {
         })
 }
 
-/// Default coordination-capability socket path (legacy callers said “Songbird”).
+fn resolve_coordination_socket() -> String {
+    std::env::var("BIOMEOS_COORDINATION_SOCKET")
+        .or_else(|_| std::env::var("COORDINATION_SOCKET"))
+        .or_else(|_| std::env::var("SONGBIRD_SOCKET"))
+        .unwrap_or_else(|_| get_default_coordination_socket())
+}
+
+/// Default coordination-capability socket path.
 ///
 /// biomeOS convention: `$XDG_RUNTIME_DIR/biomeos/coordination.sock`
-pub fn get_default_songbird_socket() -> String {
+pub fn get_default_coordination_socket() -> String {
     format!("{}/biomeos/coordination.sock", get_runtime_dir())
 }
 
-/// Register ToadStool with Songbird discovery service
+/// Legacy alias for [`get_default_coordination_socket`].
+#[deprecated(since = "0.172.5", note = "Use get_default_coordination_socket()")]
+pub fn get_default_songbird_socket() -> String {
+    get_default_coordination_socket()
+}
+
+/// Register ToadStool with coordination/discovery service
 ///
 /// # Errors
 ///
-/// Returns error if Songbird is unreachable, JSON-RPC framing fails, or registration is rejected.
-pub async fn register_with_songbird() -> ToadStoolResult<()> {
-    let socket_path =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
+/// Returns error if the coordination service is unreachable, JSON-RPC framing
+/// fails, or registration is rejected.
+pub async fn register_with_coordination() -> ToadStoolResult<()> {
+    let socket_path = resolve_coordination_socket();
 
-    info!("🌍 Registering with Songbird at {}", socket_path);
+    info!("Registering with coordination service at {}", socket_path);
 
     let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
         .await
-        .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to coordination service"))?
         .map_err(|e| {
             ToadStoolError::integration(format!(
-                "Failed to connect to Songbird at {socket_path}: {e}. Is Songbird running?"
+                "Failed to connect to coordination service at {socket_path}: {e}"
             ))
         })?;
 
     let socket_endpoint = std::env::var("TOADSTOOL_SOCKET").unwrap_or_else(|_| {
-        // XDG-compliant biomeOS standard path: $XDG_RUNTIME_DIR/biomeos/toadstool.sock
         let runtime_dir = get_runtime_dir();
         format!("{runtime_dir}/biomeos/{PRIMAL_NAME}.sock")
     });
@@ -87,38 +99,41 @@ pub async fn register_with_songbird() -> ToadStoolResult<()> {
 
     if let Some(error) = response.get("error") {
         return Err(ToadStoolError::integration(format!(
-            "Songbird registration failed: {error}"
+            "Coordination service registration failed: {error}"
         )));
     }
 
-    info!("✅ Successfully registered with Songbird discovery service");
-    debug!("   Registration response: {:?}", response);
+    info!("Successfully registered with coordination service");
+    debug!("Registration response: {:?}", response);
 
     Ok(())
 }
 
-/// Resolve a primal's endpoint via Songbird
+/// Legacy alias for [`register_with_coordination`].
+#[deprecated(since = "0.172.5", note = "Use register_with_coordination()")]
+pub async fn register_with_songbird() -> ToadStoolResult<()> {
+    register_with_coordination().await
+}
+
+/// Resolve a primal's endpoint via coordination service
 ///
 /// # Errors
 ///
-/// Returns error if Songbird is unreachable, the response is invalid, or resolution fails.
+/// Returns error if coordination is unreachable, the response is invalid, or resolution fails.
 #[deprecated(
     since = "0.92.0",
     note = "Identity-based discovery — use find_by_capability() then connect via socket"
 )]
 pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
-    let socket_path =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
+    let socket_path = resolve_coordination_socket();
 
-    debug!("🔍 Resolving {} via Songbird", primal_name);
+    debug!("Resolving {} via coordination service", primal_name);
 
     let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
         .await
-        .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to coordination service"))?
         .map_err(|e| {
-            ToadStoolError::integration(format!(
-                "Failed to connect to Songbird: {e}. Is Songbird running?"
-            ))
+            ToadStoolError::integration(format!("Failed to connect to coordination service: {e}"))
         })?;
 
     let request = json!({
@@ -145,12 +160,12 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
         .and_then(|e| e.as_str())
         .ok_or_else(|| {
             ToadStoolError::integration(format!(
-                "Invalid response from Songbird: missing endpoint for {primal_name}"
+                "Invalid response: missing endpoint for {primal_name}"
             ))
         })?
         .to_string();
 
-    debug!("✅ Resolved {} -> {}", primal_name, endpoint);
+    debug!("Resolved {} -> {}", primal_name, endpoint);
 
     Ok(endpoint)
 }
@@ -168,7 +183,7 @@ pub async fn resolve_primal(primal_name: &str) -> ToadStoolResult<String> {
 pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream> {
     let endpoint = resolve_primal(primal_name).await?;
 
-    info!("🔗 Connecting to {} at {}", primal_name, endpoint);
+    info!("Connecting to {} at {}", primal_name, endpoint);
 
     let stream = timeout(IPC_TIMEOUT, UnixStream::connect(&endpoint))
         .await
@@ -183,26 +198,28 @@ pub async fn connect_to_primal(primal_name: &str) -> ToadStoolResult<UnixStream>
             ))
         })?;
 
-    debug!("✅ Connected to {}", primal_name);
+    debug!("Connected to {}", primal_name);
 
     Ok(stream)
 }
 
-/// Find primals by capability
+/// Find primals by capability via coordination service
 ///
 /// # Errors
 ///
-/// Returns error if Songbird is unreachable, the response is invalid, or the query fails.
+/// Returns error if the coordination service is unreachable, the response is
+/// invalid, or the query fails.
 pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>> {
-    let socket_path =
-        std::env::var("SONGBIRD_SOCKET").unwrap_or_else(|_| get_default_songbird_socket());
+    let socket_path = resolve_coordination_socket();
 
-    debug!("🔍 Finding primals with capability: {}", capability);
+    debug!("Finding primals with capability: {}", capability);
 
     let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
         .await
-        .map_err(|_| ToadStoolError::integration("Timeout connecting to Songbird"))?
-        .map_err(|e| ToadStoolError::integration(format!("Failed to connect to Songbird: {e}")))?;
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to coordination service"))?
+        .map_err(|e| {
+            ToadStoolError::integration(format!("Failed to connect to coordination service: {e}"))
+        })?;
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
@@ -240,7 +257,7 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
         .unwrap_or_default();
 
     debug!(
-        "✅ Found {} primals with capability {}",
+        "Found {} primals with capability {}",
         primals.len(),
         capability
     );
@@ -253,22 +270,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_default_songbird_socket_format() {
-        let socket = get_default_songbird_socket();
+    fn test_get_default_coordination_socket_format() {
+        let socket = get_default_coordination_socket();
         assert!(socket.contains("biomeos"));
         assert!(socket.ends_with("coordination.sock"));
         assert!(!socket.is_empty());
     }
 
     #[test]
-    fn test_get_default_songbird_socket_with_xdg_runtime_dir() {
+    fn test_get_default_coordination_socket_with_xdg_runtime_dir() {
         temp_env::with_vars(
             [
                 ("BIOMEOS_RUNTIME_DIR", None),
                 ("XDG_RUNTIME_DIR", Some("/tmp/xdg-socket-test")),
             ],
             || {
-                let socket = get_default_songbird_socket();
+                let socket = get_default_coordination_socket();
                 assert!(
                     socket.starts_with("/tmp/xdg-socket-test"),
                     "expected socket to start with XDG path, got: {socket}"

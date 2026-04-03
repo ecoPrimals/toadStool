@@ -123,36 +123,35 @@ impl ZeroConfigDeployment {
         debug!("Deploying ecosystem integrations");
 
         if self.config.network.coordination_enabled {
-            self.deploy_songbird_integration().await?;
+            self.deploy_coordination_integration().await?;
         }
 
         if self.config.security.security_provider_enabled {
-            self.deploy_beardog_integration().await?;
+            self.deploy_security_integration().await?;
         }
 
         if self.config.storage.storage_provider_enabled {
-            self.deploy_nestgate_integration().await?;
+            self.deploy_storage_integration().await?;
         }
 
         Ok(())
     }
 
-    /// Ecosystem primal integrations use runtime capability discovery, not hardcoded deployment.
     #[allow(clippy::unused_async)]
-    async fn deploy_songbird_integration(&self) -> Result<()> {
-        debug!("Songbird: discovered via capability registry at runtime");
+    async fn deploy_coordination_integration(&self) -> Result<()> {
+        debug!("Coordination: discovered via capability registry at runtime");
         Ok(())
     }
 
     #[allow(clippy::unused_async)]
-    async fn deploy_beardog_integration(&self) -> Result<()> {
-        debug!("BearDog: discovered via capability registry at runtime");
+    async fn deploy_security_integration(&self) -> Result<()> {
+        debug!("Security: discovered via capability registry at runtime");
         Ok(())
     }
 
     #[allow(clippy::unused_async)]
-    async fn deploy_nestgate_integration(&self) -> Result<()> {
-        debug!("NestGate: discovered via capability registry at runtime");
+    async fn deploy_storage_integration(&self) -> Result<()> {
+        debug!("Storage: discovered via capability registry at runtime");
         Ok(())
     }
 }

@@ -10,8 +10,6 @@ use tracing::debug;
 use toadstool::error::ToadStoolError;
 use toadstool::error::ToadStoolResult;
 
-use toadstool_common::constants::ecosystem::well_known;
-
 use crate::songbird_integration::types::{DiscoveryClient, NodeRegistration, SongbirdConnection};
 #[cfg(test)]
 use crate::songbird_integration::types::{NodeCapabilities, NodeMetadata, NodeType};
@@ -19,16 +17,7 @@ use crate::songbird_integration::types::{NodeCapabilities, NodeMetadata, NodeTyp
 impl Clone for DiscoveryClient {
     fn clone(&self) -> Self {
         let biomeos = toadstool_common::primal_sockets::get_biomeos_dir();
-        // Capability-based: prefer coordination.sock (capability domain)
-        // over songbird.sock (identity) per CAPABILITY_BASED_DISCOVERY_STANDARD
-        let socket_path = {
-            let cap_sock = biomeos.join("coordination.sock");
-            if cap_sock.exists() {
-                cap_sock
-            } else {
-                biomeos.join(format!("{}.sock", well_known::SONGBIRD))
-            }
-        };
+        let socket_path = biomeos.join("coordination.sock");
 
         Self {
             connection: Arc::clone(&self.connection),
@@ -38,13 +27,12 @@ impl Clone for DiscoveryClient {
 }
 
 impl DiscoveryClient {
-    /// Create a client bound to the Songbird Unix JSON-RPC coordination socket.
+    /// Create a client bound to the coordination Unix JSON-RPC socket.
     pub async fn new(connection: Arc<SongbirdConnection>) -> ToadStoolResult<Self> {
         let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
             .await
             .unwrap_or_else(|_| {
-                toadstool_common::primal_sockets::get_biomeos_dir()
-                    .join(format!("{}.sock", well_known::SONGBIRD))
+                toadstool_common::primal_sockets::get_biomeos_dir().join("coordination.sock")
             });
 
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);

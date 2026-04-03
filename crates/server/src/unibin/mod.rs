@@ -126,14 +126,14 @@ pub async fn run_server_main(
         Some(Arc::clone(&error_count)),
     );
 
-    info!("🌍 Attempting registration with Songbird discovery service...");
-    match toadstool::ipc_helpers::register_with_songbird().await {
+    info!("Attempting registration with coordination service...");
+    match toadstool::ipc_helpers::register_with_coordination().await {
         Ok(()) => {
-            info!("✅ Successfully registered with Songbird!");
+            info!("Successfully registered with coordination service");
         }
         Err(e) => {
-            warn!("⚠️  Could not register with Songbird: {}", e);
-            warn!("   Operating in standalone mode (no discovery)");
+            warn!("Could not register with coordination service: {}", e);
+            warn!("Operating in standalone mode (no discovery)");
         }
     }
 

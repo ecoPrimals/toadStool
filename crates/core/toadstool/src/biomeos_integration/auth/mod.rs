@@ -131,8 +131,9 @@ impl AuthenticationManager {
             Err(e) => tracing::debug!("Capability discovery failed: {}, trying fallbacks", e),
         }
 
-        if let Ok(endpoint) = std::env::var("BEARDOG_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_SECURITY_ENDPOINT"))
+        if let Ok(endpoint) = std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
+            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
         {
             tracing::info!("Discovered crypto service via environment: {}", endpoint);
             let mut config = config;
@@ -147,8 +148,8 @@ impl AuthenticationManager {
         }
 
         Err(crate::ToadStoolError::configuration(
-            "No crypto provider discovered. Set BEARDOG_ENDPOINT or TOADSTOOL_SECURITY_ENDPOINT, \
-             configure beardog_endpoint in the auth manager config, or ensure a BearDog/crypto \
+            "No crypto provider discovered. Set TOADSTOOL_SECURITY_ENDPOINT or SECURITY_ENDPOINT, \
+             configure beardog_endpoint in the auth manager config, or ensure a crypto/security \
              service is running.",
         ))
     }

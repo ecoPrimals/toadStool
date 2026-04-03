@@ -29,16 +29,20 @@ impl FallbackSource {
     pub fn new() -> Self {
         let mut fallbacks = HashMap::new();
 
-        if let Ok(songbird) =
-            std::env::var("SONGBIRD_URL").or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+        if let Ok(coordination) = std::env::var("COORDINATION_URL")
+            .or_else(|_| std::env::var("COORDINATION_ENDPOINT"))
+            .or_else(|_| std::env::var("SONGBIRD_URL"))
+            .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
         {
-            fallbacks.insert("ai_processing".to_string(), songbird);
+            fallbacks.insert("coordination".to_string(), coordination);
         }
 
-        if let Ok(beardog) =
-            std::env::var("BEARDOG_URL").or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
+        if let Ok(security) = std::env::var("SECURITY_URL")
+            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
+            .or_else(|_| std::env::var("BEARDOG_URL"))
+            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
         {
-            fallbacks.insert("service_orchestration".to_string(), beardog);
+            fallbacks.insert("security".to_string(), security);
         }
 
         if let Ok(auth) = std::env::var("AUTHENTICATION_URL") {
@@ -111,18 +115,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_fallback_source() {
-        temp_env::with_var("SONGBIRD_URL", Some("http://test-songbird:8081"), || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                let source = FallbackSource::new();
-                let result = source.resolve("ai_processing").await.unwrap();
-                assert!(result.is_some());
-                let endpoint = result.unwrap();
-                assert!(endpoint.starts_with("http://"));
-                assert!(endpoint.contains("8081"));
-            });
-        });
+    fn test_fallback_source_coordination() {
+        temp_env::with_var(
+            "COORDINATION_URL",
+            Some("http://test-coordination:8081"),
+            || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let source = FallbackSource::new();
+                    let result = source.resolve("coordination").await.unwrap();
+                    assert!(result.is_some());
+                    let endpoint = result.unwrap();
+                    assert!(endpoint.starts_with("http://"));
+                    assert!(endpoint.contains("8081"));
+                });
+            },
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -195,12 +203,12 @@ mod tests {
     }
 
     #[test]
-    fn test_fallback_source_orchestration() {
-        temp_env::with_var("BEARDOG_URL", Some("http://beardog:8082"), || {
+    fn test_fallback_source_security() {
+        temp_env::with_var("SECURITY_URL", Some("http://security:8082"), || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
                 let source = FallbackSource::new();
-                let result = source.resolve("service_orchestration").await.unwrap();
+                let result = source.resolve("security").await.unwrap();
                 assert!(result.is_some());
                 let endpoint = result.unwrap();
                 assert!(endpoint.starts_with("http://"));

@@ -190,9 +190,9 @@ pub(crate) async fn check_config_health() -> ConfigReport {
     let env_vars = [
         "TOADSTOOL_BIND_HOST",
         "TOADSTOOL_API_PORT",
-        "SONGBIRD_URL",
-        "BEARDOG_URL",
-        "NESTGATE_URL",
+        "TOADSTOOL_COORDINATION_ENDPOINT",
+        "TOADSTOOL_SECURITY_ENDPOINT",
+        "TOADSTOOL_STORAGE_ENDPOINT",
         "XDG_RUNTIME_DIR",
     ];
 
