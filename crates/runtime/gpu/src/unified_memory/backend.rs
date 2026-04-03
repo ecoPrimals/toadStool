@@ -8,6 +8,54 @@ use crate::unified_memory::types::{
 use async_trait::async_trait;
 use toadstool::error::ToadStoolResult;
 
+/// Thread-safe raw pointer for GPU/SVM allocations.
+///
+/// Wraps `*mut u8` with `Send + Sync` so that allocation structs containing
+/// GPU-owned memory can be transferred across threads without per-type
+/// `unsafe impl Send/Sync`.
+///
+/// # Safety (of the `Send + Sync` impls)
+///
+/// GPU-allocated memory is owned exclusively by the allocation handle.
+/// The underlying GPU APIs (Vulkan, OpenCL, wgpu) are thread-safe per their
+/// specifications. Correct synchronization of actual memory *access* is
+/// enforced by the `UnifiedMemoryBackend` protocol (map/unmap/sync), not
+/// by the pointer itself.
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct GpuPtr(*mut u8);
+
+// SAFETY: see struct-level doc.
+unsafe impl Send for GpuPtr {}
+// SAFETY: see struct-level doc.
+unsafe impl Sync for GpuPtr {}
+
+impl GpuPtr {
+    /// A null GPU pointer.
+    #[must_use]
+    pub const fn null() -> Self {
+        Self(std::ptr::null_mut())
+    }
+
+    /// Create from a raw pointer.
+    #[must_use]
+    pub const fn from_raw(ptr: *mut u8) -> Self {
+        Self(ptr)
+    }
+
+    /// Extract the raw pointer.
+    #[must_use]
+    pub const fn as_ptr(self) -> *mut u8 {
+        self.0
+    }
+
+    /// Whether the pointer is null.
+    #[must_use]
+    pub fn is_null(self) -> bool {
+        self.0.is_null()
+    }
+}
+
 /// Backend-specific allocation handle
 ///
 /// This is an opaque type that backends use to track their allocations.
@@ -37,21 +85,14 @@ pub struct VulkanAllocation {
     pub size: usize,
 
     /// Mapped CPU pointer
-    pub cpu_ptr: *mut u8,
+    pub cpu_ptr: GpuPtr,
 }
-
-// SAFETY: VulkanAllocation is Send/Sync because: (1) The inner allocation (memory, cpu_ptr)
-// is heap-allocated and owned exclusively; (2) Vulkan device/context handles are thread-safe
-// per Vulkan spec; (3) No interior mutability; shared access requires external sync.
-// Violation: moving while mapped or concurrent unsynchronized access could cause UB.
-unsafe impl Send for VulkanAllocation {}
-unsafe impl Sync for VulkanAllocation {}
 
 /// `OpenCL` SVM allocation details
 #[derive(Debug)]
 pub struct OpenClAllocation {
     /// SVM pointer (unified CPU/GPU address)
-    pub ptr: *mut u8,
+    pub ptr: GpuPtr,
 
     /// Size in bytes
     pub size: usize,
@@ -59,13 +100,6 @@ pub struct OpenClAllocation {
     /// `OpenCL` context handle (for cleanup)
     pub context_handle: u64,
 }
-
-// SAFETY: OpenClAllocation is Send/Sync because: (1) The SVM pointer is heap-allocated and
-// owned exclusively; not shared without synchronization; (2) OpenCL context handles are
-// thread-safe per OpenCL spec; (3) No interior mutability.
-// Violation: concurrent unsynchronized access to SVM region could cause data races.
-unsafe impl Send for OpenClAllocation {}
-unsafe impl Sync for OpenClAllocation {}
 
 /// `WebGPU` allocation details
 pub struct WebGpuAllocation {
@@ -76,10 +110,9 @@ pub struct WebGpuAllocation {
     pub size: usize,
 
     /// Mapped pointer (when mapped)
-    pub mapped_ptr: Option<*mut u8>,
+    pub mapped_ptr: Option<GpuPtr>,
 }
 
-// Manual Debug impl since wgpu::Buffer doesn't implement Debug
 impl std::fmt::Debug for WebGpuAllocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WebGpuAllocation")
@@ -89,13 +122,6 @@ impl std::fmt::Debug for WebGpuAllocation {
             .finish()
     }
 }
-
-// SAFETY: WebGpuAllocation is Send/Sync because: (1) wgpu::Buffer is Send+Sync; mapped_ptr
-// is only set when buffer is mapped and used under proper sync (map_async + get_mapped_range);
-// (2) Inner allocation is owned exclusively; not shared without synchronization.
-// Violation: accessing mapped_ptr after unmap or during concurrent map would cause UB.
-unsafe impl Send for WebGpuAllocation {}
-unsafe impl Sync for WebGpuAllocation {}
 
 /// CPU allocation details.
 ///

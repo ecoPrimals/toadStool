@@ -26,183 +26,14 @@
 use crate::error::{NvPmuError, Result};
 use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 use std::fs::OpenOptions;
-use std::os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd, RawFd};
-use std::ptr::NonNull;
-use toadstool_hw_safe::VolatileMmio;
+use std::os::fd::{AsFd, AsRawFd, OwnedFd};
+use toadstool_hw_safe::vfio_setup::{self, VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU};
+use toadstool_hw_safe::{DeviceMmap, VolatileMmio};
 
-const VFIO_TYPE: u8 = b';';
-const VFIO_BASE: u8 = 100;
-
-const OP_GET_API_VERSION: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE);
-const OP_CHECK_EXTENSION: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 1);
-const OP_SET_IOMMU: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 2);
-const OP_GROUP_GET_STATUS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 3);
-const OP_GROUP_SET_CONTAINER: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 4);
-const OP_GROUP_GET_DEVICE_FD: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 6);
-const OP_DEVICE_GET_REGION_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 8);
-
-const VFIO_API_VERSION: i32 = 0;
-const VFIO_TYPE1V2_IOMMU: u32 = 3;
-const VFIO_GROUP_FLAGS_VIABLE: u32 = 1;
 const BAR0_REGION_INDEX: u32 = 0;
 
-#[repr(C)]
-#[derive(Debug, Default)]
-struct VfioGroupStatus {
-    argsz: u32,
-    flags: u32,
-}
-
-#[repr(C)]
-#[derive(Debug, Default)]
-struct VfioRegionInfo {
-    argsz: u32,
-    flags: u32,
-    index: u32,
-    cap_offset: u32,
-    size: u64,
-    offset: u64,
-}
-
-struct VfioReturnIoctl<const OP: Opcode> {
-    arg: usize,
-}
-
-// SAFETY: VFIO no-arg or integer-arg ioctl; opcode is compile-time constant.
-unsafe impl<const OP: Opcode> Ioctl for VfioReturnIoctl<OP> {
-    type Output = i32;
-    const IS_MUTATING: bool = false;
-
-    fn opcode(&self) -> Opcode {
-        OP
-    }
-    fn as_ptr(&mut self) -> *mut std::ffi::c_void {
-        self.arg as *mut std::ffi::c_void
-    }
-    // SAFETY: trivial — wraps kernel return code, no pointer dereference.
-    unsafe fn output_from_ptr(
-        out: IoctlOutput,
-        _: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
-        Ok(out)
-    }
-}
-
-struct VfioPtrIoctl<const OP: Opcode, T> {
-    ptr: *mut T,
-}
-
-// SAFETY: VFIO struct ioctl; T is repr(C) matching kernel ABI.
-unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
-    type Output = ();
-    const IS_MUTATING: bool = true;
-
-    fn opcode(&self) -> Opcode {
-        OP
-    }
-    fn as_ptr(&mut self) -> *mut std::ffi::c_void {
-        self.ptr.cast()
-    }
-    // SAFETY: trivial — discards output, no pointer dereference.
-    unsafe fn output_from_ptr(
-        _: IoctlOutput,
-        _: *mut std::ffi::c_void,
-    ) -> rustix::io::Result<Self::Output> {
-        Ok(())
-    }
-}
-
-fn ioctl_err(op: &str, e: rustix::io::Errno) -> NvPmuError {
+fn vfio_err(op: &str, e: &std::io::Error) -> NvPmuError {
     NvPmuError::Hardware(format!("VFIO {op}: {e}"))
-}
-
-// ── Typed ioctl wrappers ─────────────────────────────────────────────────
-// Each function encapsulates one VFIO ioctl so callers never assemble
-// generic VfioReturnIoctl/VfioPtrIoctl directly.
-
-/// VFIO_GET_API_VERSION ioctl.
-fn vfio_get_api_version(container: impl AsFd) -> Result<i32> {
-    let ioctl = VfioReturnIoctl::<OP_GET_API_VERSION> { arg: 0 };
-    // SAFETY: container fd from valid open; no-arg ioctl.
-    unsafe { rustix::ioctl::ioctl(container.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("GET_API_VERSION", e))
-}
-
-/// VFIO_CHECK_EXTENSION ioctl for Type1v2 IOMMU.
-fn vfio_check_type1v2(container: impl AsFd) -> Result<i32> {
-    let ioctl = VfioReturnIoctl::<OP_CHECK_EXTENSION> {
-        arg: VFIO_TYPE1V2_IOMMU as usize,
-    };
-    // SAFETY: container fd valid; arg is extension id.
-    unsafe { rustix::ioctl::ioctl(container.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("CHECK_EXTENSION", e))
-}
-
-/// VFIO_GROUP_GET_STATUS ioctl.
-fn vfio_group_get_status(group: impl AsFd) -> Result<VfioGroupStatus> {
-    #[allow(clippy::cast_possible_truncation)]
-    let mut status = VfioGroupStatus {
-        argsz: std::mem::size_of::<VfioGroupStatus>() as u32,
-        flags: 0,
-    };
-    let ioctl = VfioPtrIoctl::<OP_GROUP_GET_STATUS, _> {
-        ptr: std::ptr::from_mut(&mut status),
-    };
-    // SAFETY: group fd from valid open; struct has correct argsz.
-    unsafe { rustix::ioctl::ioctl(group.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("GROUP_GET_STATUS", e))?;
-    Ok(status)
-}
-
-/// VFIO_GROUP_SET_CONTAINER ioctl.
-fn vfio_group_set_container(group: impl AsFd, container_fd: RawFd) -> Result<()> {
-    let ioctl = VfioReturnIoctl::<OP_GROUP_SET_CONTAINER> {
-        arg: std::ptr::from_ref(&container_fd) as usize,
-    };
-    // SAFETY: group fd valid; arg points to container fd.
-    unsafe { rustix::ioctl::ioctl(group.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("GROUP_SET_CONTAINER", e))?;
-    Ok(())
-}
-
-/// VFIO_SET_IOMMU ioctl (Type1v2).
-fn vfio_set_iommu_type1v2(container: impl AsFd) -> Result<()> {
-    let ioctl = VfioReturnIoctl::<OP_SET_IOMMU> {
-        arg: VFIO_TYPE1V2_IOMMU as usize,
-    };
-    // SAFETY: container fd valid; arg is IOMMU type.
-    unsafe { rustix::ioctl::ioctl(container.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("SET_IOMMU", e))?;
-    Ok(())
-}
-
-/// VFIO_GROUP_GET_DEVICE_FD ioctl.
-fn vfio_group_get_device_fd(group: impl AsFd, bdf: &std::ffi::CStr) -> Result<OwnedFd> {
-    let ioctl = VfioReturnIoctl::<OP_GROUP_GET_DEVICE_FD> {
-        arg: bdf.as_ptr() as usize,
-    };
-    // SAFETY: group fd valid; arg is C string BDF address.
-    let raw = unsafe { rustix::ioctl::ioctl(group.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("GROUP_GET_DEVICE_FD", e))?;
-    // SAFETY: kernel returns a valid fd on success.
-    Ok(unsafe { OwnedFd::from_raw_fd(raw) })
-}
-
-/// VFIO_DEVICE_GET_REGION_INFO ioctl for BAR0.
-fn vfio_device_get_bar0_info(device: impl AsFd) -> Result<VfioRegionInfo> {
-    #[allow(clippy::cast_possible_truncation)]
-    let mut info = VfioRegionInfo {
-        argsz: std::mem::size_of::<VfioRegionInfo>() as u32,
-        index: BAR0_REGION_INDEX,
-        ..Default::default()
-    };
-    let ioctl = VfioPtrIoctl::<OP_DEVICE_GET_REGION_INFO, _> {
-        ptr: std::ptr::from_mut(&mut info),
-    };
-    // SAFETY: device fd valid; struct has correct argsz and index.
-    unsafe { rustix::ioctl::ioctl(device.as_fd(), ioctl) }
-        .map_err(|e| ioctl_err("DEVICE_GET_REGION_INFO", e))?;
-    Ok(info)
 }
 
 /// VFIO-based BAR0 MMIO access for NVIDIA GPUs.
@@ -211,15 +42,11 @@ fn vfio_device_get_bar0_info(device: impl AsFd) -> Result<VfioRegionInfo> {
 /// giving userspace full BAR0 MMIO access through IOMMU isolation.
 pub struct VfioBar0Access {
     bdf: String,
-    base_ptr: *mut u8,
-    region_size: usize,
+    bar0: DeviceMmap,
     _container: std::fs::File,
     _group: std::fs::File,
     device: OwnedFd,
 }
-
-// SAFETY: All mutable access is via &mut self methods; mmap region is process-private.
-unsafe impl Send for VfioBar0Access {}
 
 impl VfioBar0Access {
     /// Open BAR0 for a VFIO-bound NVIDIA GPU.
@@ -238,14 +65,17 @@ impl VfioBar0Access {
             .open("/dev/vfio/vfio")
             .map_err(|e| NvPmuError::Hardware(format!("/dev/vfio/vfio: {e}")))?;
 
-        let api_version = vfio_get_api_version(&container)?;
+        let api_version = vfio_setup::get_api_version(container.as_fd())
+            .map_err(|e| vfio_err("GET_API_VERSION", &e))?;
         if api_version != VFIO_API_VERSION {
             return Err(NvPmuError::Hardware(format!(
                 "VFIO API version mismatch: got {api_version}, expected {VFIO_API_VERSION}"
             )));
         }
 
-        if vfio_check_type1v2(&container)? != 1 {
+        if vfio_setup::check_extension(container.as_fd(), VFIO_TYPE1V2_IOMMU)
+            .map_err(|e| vfio_err("CHECK_EXTENSION", &e))? != 1
+        {
             return Err(NvPmuError::Hardware(
                 "VFIO Type1v2 IOMMU not supported".into(),
             ));
@@ -258,21 +88,26 @@ impl VfioBar0Access {
             .open(&group_path)
             .map_err(|e| NvPmuError::Hardware(format!("{group_path}: {e}")))?;
 
-        let group_status = vfio_group_get_status(&group)?;
+        let group_status = vfio_setup::group_get_status(group.as_fd())
+            .map_err(|e| vfio_err("GROUP_GET_STATUS", &e))?;
         if (group_status.flags & VFIO_GROUP_FLAGS_VIABLE) == 0 {
             return Err(NvPmuError::Hardware(
                 "VFIO group not viable — all devices must be bound to vfio-pci".into(),
             ));
         }
 
-        vfio_group_set_container(&group, container.as_raw_fd())?;
-        vfio_set_iommu_type1v2(&container)?;
+        vfio_setup::group_set_container(group.as_fd(), &container)
+            .map_err(|e| vfio_err("GROUP_SET_CONTAINER", &e))?;
+        vfio_setup::set_iommu(container.as_fd(), VFIO_TYPE1V2_IOMMU)
+            .map_err(|e| vfio_err("SET_IOMMU", &e))?;
 
         let bdf_cstr = std::ffi::CString::new(bdf)
             .map_err(|e| NvPmuError::Hardware(format!("Invalid BDF: {e}")))?;
-        let device = vfio_group_get_device_fd(&group, &bdf_cstr)?;
+        let device = vfio_setup::group_get_device_fd(group.as_fd(), &bdf_cstr)
+            .map_err(|e| vfio_err("GROUP_GET_DEVICE_FD", &e))?;
 
-        let region_info = vfio_device_get_bar0_info(&device)?;
+        let region_info = vfio_setup::device_get_region_info(device.as_fd(), BAR0_REGION_INDEX)
+            .map_err(|e| vfio_err("DEVICE_GET_REGION_INFO", &e))?;
 
         if region_info.size == 0 {
             return Err(NvPmuError::Hardware("BAR0 region has size 0".into()));
@@ -280,20 +115,8 @@ impl VfioBar0Access {
 
         let region_size = region_info.size as usize;
 
-        // SAFETY: device fd valid; region offset from kernel; size verified non-zero;
-        // MAP_SHARED for MMIO semantics; ProtFlags R|W for register access.
-        let base_ptr = unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                region_size,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                &device,
-                region_info.offset,
-            )
-            .map_err(|e| NvPmuError::Hardware(format!("BAR0 mmap failed: {e}")))?
-        }
-        .cast::<u8>();
+        let bar0 = DeviceMmap::map_shared_rw(&device, region_info.offset, region_size)
+            .map_err(|e| NvPmuError::Hardware(format!("BAR0 mmap failed: {e}")))?;
 
         tracing::info!(
             bdf,
@@ -303,8 +126,7 @@ impl VfioBar0Access {
 
         Ok(Self {
             bdf: bdf.to_string(),
-            base_ptr,
-            region_size,
+            bar0,
             _container: container,
             _group: group,
             device,
@@ -319,8 +141,8 @@ impl VfioBar0Access {
 
     /// Size of the BAR0 MMIO region in bytes.
     #[must_use]
-    pub const fn region_size(&self) -> usize {
-        self.region_size
+    pub fn region_size(&self) -> usize {
+        self.bar0.size()
     }
 
     /// The VFIO device file descriptor for MSI-X configuration.
@@ -334,10 +156,10 @@ impl VfioBar0Access {
         reason = "BAR0 offsets and sizes are always within usize on 64-bit targets"
     )]
     fn check_offset(&self, offset: u64) -> Result<()> {
-        if (offset as usize) + 4 > self.region_size {
+        if (offset as usize) + 4 > self.bar0.size() {
             return Err(NvPmuError::Hardware(format!(
                 "BAR0 offset {offset:#x} out of range (size {:#x})",
-                self.region_size
+                self.bar0.size()
             )));
         }
         Ok(())
@@ -345,14 +167,7 @@ impl VfioBar0Access {
 
     /// Volatile MMIO view over the BAR0 mapping (same lifetime as `self`).
     fn mmio(&self) -> VolatileMmio<'_> {
-        // SAFETY: `base_ptr`/`region_size` come from the single BAR0 mmap in `open()` and remain
-        // valid until `Drop` runs.
-        unsafe {
-            VolatileMmio::new(
-                NonNull::new(self.base_ptr).expect("BAR0 mmap base is non-null"),
-                self.region_size,
-            )
-        }
+        self.bar0.as_volatile()
     }
 
     /// Read a 32-bit register at a BAR0-relative offset.
@@ -398,22 +213,36 @@ impl hw_learn::applicator::RegisterAccess for VfioBar0Access {
     }
 }
 
-impl Drop for VfioBar0Access {
-    fn drop(&mut self) {
-        // SAFETY: base_ptr from mmap in open(); region_size unchanged.
-        unsafe {
-            let _ = rustix::mm::munmap(self.base_ptr.cast(), self.region_size);
-        }
-        tracing::debug!(bdf = %self.bdf, "VFIO BAR0 unmapped");
-    }
-}
-
 // ═══════════════════════════════════════════════════════════
 // MSI-X interrupt support for VFIO completion notification
 // ═══════════════════════════════════════════════════════════
 
-const VFIO_DEVICE_SET_IRQS: u8 = VFIO_BASE + 10;
-const OP_DEVICE_SET_IRQS: Opcode = opcode::none(VFIO_TYPE, VFIO_DEVICE_SET_IRQS);
+const VFIO_TYPE: u8 = b';';
+const VFIO_BASE: u8 = 100;
+const OP_DEVICE_SET_IRQS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 10);
+
+struct VfioPtrIoctl<const OP: Opcode, T> {
+    ptr: *mut T,
+}
+
+// SAFETY: VFIO struct ioctl; T is repr(C) matching kernel ABI.
+unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
+    type Output = ();
+    const IS_MUTATING: bool = true;
+
+    fn opcode(&self) -> Opcode {
+        OP
+    }
+    fn as_ptr(&mut self) -> *mut std::ffi::c_void {
+        self.ptr.cast()
+    }
+    unsafe fn output_from_ptr(
+        _: IoctlOutput,
+        _: *mut std::ffi::c_void,
+    ) -> rustix::io::Result<Self::Output> {
+        Ok(())
+    }
+}
 
 const VFIO_IRQ_SET_DATA_EVENTFD: u32 = 1 << 2;
 const VFIO_IRQ_SET_ACTION_TRIGGER: u32 = 1 << 5;
@@ -572,17 +401,17 @@ mod tests {
 
     #[test]
     fn vfio_constants_match_kernel() {
-        assert_eq!(VFIO_API_VERSION, 0);
-        assert_eq!(VFIO_TYPE1V2_IOMMU, 3);
-        assert_eq!(VFIO_GROUP_FLAGS_VIABLE, 1);
+        assert_eq!(vfio_setup::VFIO_API_VERSION, 0);
+        assert_eq!(vfio_setup::VFIO_TYPE1V2_IOMMU, 3);
+        assert_eq!(vfio_setup::VFIO_GROUP_FLAGS_VIABLE, 1);
         assert_eq!(BAR0_REGION_INDEX, 0);
     }
 
     #[test]
     fn region_info_layout_is_repr_c() {
-        let info = VfioRegionInfo::default();
+        let info = vfio_setup::VfioRegionInfo::default();
         assert_eq!(info.size, 0);
         assert_eq!(info.offset, 0);
-        assert!(std::mem::size_of::<VfioRegionInfo>() >= 32);
+        assert!(std::mem::size_of::<vfio_setup::VfioRegionInfo>() >= 32);
     }
 }

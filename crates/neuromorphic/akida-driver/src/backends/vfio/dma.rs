@@ -6,10 +6,10 @@
 //! zero-copy data transfer between host and NPU hardware.
 
 use crate::error::{AkidaError, Result};
-use std::os::fd::{BorrowedFd, RawFd};
+use std::os::fd::RawFd;
 
 use toadstool_hw_safe::LockedMemory;
-use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap, dma_map, dma_unmap, flags};
+use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap, dma_map_fd, dma_unmap_fd, flags};
 
 /// DMA buffer for fast host-to-device data transfer.
 ///
@@ -56,13 +56,9 @@ impl DmaBuffer {
             dma_map_arg.flags
         );
 
-        // SAFETY: Invariants: fd must be a valid, open file descriptor; must not be closed
-        // while BorrowedFd is used. Satisfied: container_fd from VFIO container open; used
-        // only for this ioctl call. Violation: invalid fd → UB; use-after-close → UB.
-        let container_borrowed = unsafe { BorrowedFd::borrow_raw(container_fd) };
-        // SAFETY: Same fd invariants as `BorrowedFd` above. `map` points at `mem`'s allocation
-        // for `size` bytes; IOVA range is chosen by caller to be free.
-        if let Err(e) = unsafe { dma_map(container_borrowed, &dma_map_arg) } {
+        // SAFETY: container_fd from VFIO container open (valid and not closed);
+        // map.vaddr points at mem's allocation for size bytes; IOVA range chosen by caller.
+        if let Err(e) = unsafe { dma_map_fd(container_fd, &dma_map_arg) } {
             tracing::warn!("DMA map failed: {e}");
             return Err(AkidaError::transfer_failed(format!(
                 "Failed to map DMA: {e}"
@@ -116,11 +112,9 @@ impl Drop for DmaBuffer {
             size: self.size as u64,
         };
 
-        // SAFETY: Invariants: fd must be valid; not closed during borrow. Satisfied: DmaBuffer
-        // dropped before VfioBackend (parent); container fd still open. Violation: invalid fd → UB.
-        let container_borrowed = unsafe { BorrowedFd::borrow_raw(self.container_fd) };
-        // SAFETY: Same fd invariants as `BorrowedFd` above. iova/size match the prior dma_map.
-        let _ = unsafe { dma_unmap(container_borrowed, &dma_unmap_arg) };
+        // SAFETY: DmaBuffer dropped before VfioBackend (parent), so container_fd is still
+        // valid and open; iova/size match the prior dma_map_fd call.
+        let _ = unsafe { dma_unmap_fd(self.container_fd, &dma_unmap_arg) };
 
         tracing::debug!("Freed DMA buffer at iova={:#x}", self.iova);
     }

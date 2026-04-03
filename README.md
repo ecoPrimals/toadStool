@@ -45,7 +45,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo test --workspace` | **21,617 tests, 0 failures** (S173), 220 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | ~22 irreducible (4 eliminated by memmap2 in safe_mmap.rs; all in `hw-safe` + drivers), SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
+| `unsafe` blocks | **~59 actual** (48 in `hw-safe`/`v4l2::ioctl` containment zones, 11 in consumer/driver code); SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
 | Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) **`#[cfg(test)]` only** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -234,7 +234,7 @@ toadStool/
 7. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 8. **Vendor-agnostic** -- WGPU/Vulkan for GPU discovery, any vendor works
 9. **Sovereign compute** -- no vendor lock-in, pure Rust core
-10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (~60+ blocks, all justified)
+10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (~59 blocks, all justified; 48 in containment zones)
 11. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -246,7 +246,7 @@ toadStool/
 | Build warnings | 0 |
 | Workspace tests | **21,617** (S173), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | ~22 irreducible (all in `hw-safe` + drivers), SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
+| `unsafe` blocks | **~59 actual** (48 in containment zones, 11 in consumer code); SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
@@ -270,6 +270,8 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S175 (Apr 3, 2026)**: Unsafe code reduction Phase 1+2. V4L2 ioctls extracted to `v4l2::ioctl` containment module (device.rs now pure safe Rust). GPU backend constructors (`with_device`/`with_context`) made safe. 6 `unsafe impl Send/Sync` consolidated into single `GpuPtr` newtype. `HugePageMemory` RAII type in hw-safe absorbs raw mmap/mlock from nvpmu/dma.rs. Consumer `unsafe {}` blocks reduced 80% (56→11). Total: 59 actual unsafe blocks (48 in containment zones). 0 clippy warnings.
+- **S174 (Apr 3, 2026)**: Unsafe audit — deleted duplicate `VolatileSlice` from akida-driver (replaced with `hw-safe::VolatileMmio`). Added `dma_map_fd`/`dma_unmap_fd` safe wrappers in hw-safe. Net −10 unsafe blocks (89→79 grep, 77 actual). All quality gates green.
 - **S172-5 (Apr 2, 2026)**: Capability-based discovery compliance per primalSpring audit. Evolved ~105 foreign primal references across 40 files: `ServiceDomainsConfig` fields (`songbird`→`coordination`, `beardog`→`security`, `nestgate`→`storage`, `squirrel`→`ai_processing`); `SOCKET_FILENAME` from `beardog.sock`→`security.sock` (Tier 3 capability-domain socket); `EndpointConfig` fields; `EcosystemServices` fields; `PrimalCapabilitiesConfig` fields; all with `#[serde(alias)]` for backward compat and legacy env var fallbacks. 0 clippy warnings, 0 doc warnings, 0 test failures.
 - **S172 (Apr 2, 2026)**: Deep debt evolution plan (6 phases). Created `CapabilityDomain` enum (7 variants, replaces ~30 hardcoded primal name sites). Created `LockedMemory` RAII type in hw-safe. Typed ioctl wrappers in nvpmu/vfio.rs. BYOB health monitoring wired to background task. Replaced hand-rolled mmap with `memmap2` (eliminated 4 unsafe blocks). Smart-refactored 3 large files into submodules. +55 tests across hw_learn and transport handlers. Sysfs path discovery via toadstool-sysmon. Feature-gated embedded placeholders.
 - **S171 (Apr 1, 2026)**: Ember absorption + unsafe evolution. Created `toadstool-hw-safe` (unsafe containment zone), `toadstool-glowplug`, `toadstool-ember` crates. Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess` (direct BAR0 reads, zero coral-ember dependency). Evolved `glowplug_client.rs` to toadStool-native sysfs-based service. Migrated mmap/alloc to hw-safe across akida-driver, nvpmu, gpu. All ~400 distributed crate missing_docs resolved. Hardcoding evolved (bind address, gate ID, configurator constants).
@@ -347,7 +349,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 3, 2026 — S173-3. **21,617** workspace tests, 0 failures, 220 ignored. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~89 unsafe blocks** (down from ~101; all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S173**: 8 production files >650 LOC smart-refactored into submodules; akida-driver/nvpmu DMA consolidated into hw-safe; +79 new tests; `config` 0.14→0.15; deployment stubs evolved to capability socket verification. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 3, 2026 — S175. **21,617** workspace tests, 0 failures, 220 ignored. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~59 unsafe blocks** (48 in hw-safe/ioctl containment zones, 11 in consumer code; down from ~101 at S173); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S175**: Unsafe reduction Phase 1+2 — V4L2 ioctl containment, `HugePageMemory` RAII, `GpuPtr` newtype, GPU backend constructors made safe; consumer unsafe −80%. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

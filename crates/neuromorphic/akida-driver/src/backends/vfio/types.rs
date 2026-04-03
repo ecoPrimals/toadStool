@@ -1,76 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! VFIO kernel ABI types and ioctl opcodes
+//! VFIO ABI types and constants — re-exported from `hw-safe::vfio_setup`.
 //!
-//! Linux VFIO ioctl numbers (from kernel headers) and repr(C) structures
-//! matching the kernel ABI for VFIO container, group, device, and IOMMU operations.
+//! Kernel ABI structs and setup ioctl wrappers live in `hw-safe`. This
+//! module re-exports what the akida VFIO backend needs and adds
+//! backend-specific types (`PollConfig`).
 
-// FFI/ioctl casts are intentional - VFIO API requires specific types
-#![allow(clippy::cast_possible_truncation)]
-
-/// VFIO ioctl opcodes
+/// VFIO constants re-exported from `hw-safe::vfio_setup`.
 ///
-/// Uses rustix `opcode::none()` for `_IO(';', base + offset)`.
-/// VFIO uses `_IO` for extensibility (no size in opcode).
+/// Setup ioctls are handled by `hw-safe::vfio_setup`. This module
+/// retains the ABI constants needed by this backend (API version,
+/// IOMMU type, group flags, DMA flags).
 pub mod ioctls {
-    use rustix::ioctl::{Opcode, opcode};
+    pub use toadstool_hw_safe::vfio_setup::{
+        VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
+    };
 
-    pub const VFIO_TYPE: u8 = b';';
-    pub const VFIO_BASE: u8 = 100;
-
-    pub const OP_GET_API_VERSION: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE);
-    pub const OP_CHECK_EXTENSION: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 1);
-    pub const OP_SET_IOMMU: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 2);
-
-    pub const OP_GROUP_GET_STATUS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 3);
-    pub const OP_GROUP_SET_CONTAINER: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 4);
-    pub const OP_GROUP_GET_DEVICE_FD: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 6);
-
-    pub const OP_DEVICE_GET_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 7);
-    #[expect(
-        dead_code,
-        reason = "VFIO ioctl opcode; used in future driver operations"
-    )]
-    pub const OP_DEVICE_GET_REGION_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 8);
-    #[expect(
-        dead_code,
-        reason = "VFIO ioctl opcode; used in future driver operations"
-    )]
-    pub const OP_DEVICE_GET_IRQ_INFO: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 9);
-    #[expect(
-        dead_code,
-        reason = "VFIO ioctl opcode; used in future driver operations"
-    )]
-    pub const OP_DEVICE_SET_IRQS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 10);
-    #[expect(
-        dead_code,
-        reason = "VFIO ioctl opcode; used in future driver operations"
-    )]
-    pub const OP_DEVICE_RESET: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 11);
-
-    #[expect(
-        dead_code,
-        reason = "VFIO ioctl opcode; DMA map/unmap use toadstool_hw_safe::vfio_dma"
-    )]
-    pub const OP_IOMMU_MAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 13);
-    #[expect(
-        dead_code,
-        reason = "VFIO ioctl opcode; DMA map/unmap use toadstool_hw_safe::vfio_dma"
-    )]
-    pub const OP_IOMMU_UNMAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 14);
-
-    pub const VFIO_API_VERSION: i32 = 0;
-
-    #[expect(dead_code, reason = "VFIO IOMMU type; reserved for Type1 fallback")]
-    pub const VFIO_TYPE1_IOMMU: u32 = 1;
-    pub const VFIO_TYPE1V2_IOMMU: u32 = 3;
-
-    pub const VFIO_GROUP_FLAGS_VIABLE: u32 = 1 << 0;
-    #[expect(dead_code, reason = "VFIO group flag; used to verify container state")]
-    pub const VFIO_GROUP_FLAGS_CONTAINER_SET: u32 = 1 << 1;
-
-    #[allow(dead_code)] // DMA uses hw_safe::vfio_dma::flags; kept for ABI reference
+    #[allow(dead_code)]
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
-    #[allow(dead_code)] // DMA uses hw_safe::vfio_dma::flags; kept for ABI reference
+    #[allow(dead_code)]
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
 
@@ -86,36 +33,9 @@ pub struct PollConfig<'a> {
     pub error_msg: &'a str,
 }
 
-/// VFIO device info structure (kernel ABI)
-#[repr(C)]
-#[derive(Debug, Default)]
-pub struct VfioDeviceInfo {
-    pub argsz: u32,
-    pub flags: u32,
-    pub num_regions: u32,
-    pub num_irqs: u32,
-}
-
-/// VFIO region info structure (kernel ABI)
-#[repr(C)]
-#[derive(Debug, Default)]
-#[allow(dead_code)] // VFIO kernel struct; construction reserved for driver init and tests
-pub struct VfioRegionInfo {
-    pub argsz: u32,
-    pub flags: u32,
-    pub index: u32,
-    pub cap_offset: u32,
-    pub size: u64,
-    pub offset: u64,
-}
-
-/// VFIO group status structure (kernel ABI)
-#[repr(C)]
-#[derive(Debug, Default)]
-pub struct VfioGroupStatus {
-    pub argsz: u32,
-    pub flags: u32,
-}
+// VFIO kernel ABI structs are now in hw-safe::vfio_setup (used by tests).
+#[allow(unused_imports)]
+pub use toadstool_hw_safe::vfio_setup::{VfioDeviceInfo, VfioGroupStatus, VfioRegionInfo};
 
 #[allow(unused_imports)] // Public re-export of VFIO DMA ABI types for `types` module users.
 pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};

@@ -25,12 +25,17 @@
 //! alternatives (e.g. `memmap2` for mmap, `aligned-vec` for allocation).
 
 pub mod aligned_alloc;
+pub mod device_mmap;
+pub mod huge_page;
 pub mod locked_memory;
 pub mod safe_mmap;
 pub mod vfio_dma;
+pub mod vfio_setup;
 pub mod volatile_mmio;
 
 pub use aligned_alloc::AlignedAlloc;
+pub use device_mmap::DeviceMmap;
+pub use huge_page::HugePageMemory;
 pub use locked_memory::LockedMemory;
 pub use safe_mmap::SafeMmapRegion;
 pub use volatile_mmio::VolatileMmio;

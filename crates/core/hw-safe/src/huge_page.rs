@@ -1,0 +1,206 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+#![allow(unsafe_code)] // mmap/munmap/mlock/munlock for huge pages — containment zone
+
+//! Locked huge-page memory for high-performance DMA.
+//!
+//! [`HugePageMemory`] allocates memory via `mmap_anonymous` with `MAP_HUGETLB`,
+//! locks it into RAM via `mlock`, and cleans up on drop. This removes the need
+//! for consumers to write inline `mmap_anonymous`/`mlock`/`munmap` unsafe blocks.
+
+use std::ptr::NonNull;
+
+use rustix::mm::{MapFlags, ProtFlags, mlock, mmap_anonymous, munlock, munmap};
+
+/// Supported huge page sizes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HugePageSize {
+    /// 2 MiB huge pages (log2 = 21).
+    Huge2M,
+    /// 1 GiB huge pages (log2 = 30).
+    Huge1G,
+}
+
+impl HugePageSize {
+    /// Page size in bytes.
+    #[must_use]
+    pub const fn bytes(self) -> usize {
+        match self {
+            Self::Huge2M => 2 * 1024 * 1024,
+            Self::Huge1G => 1024 * 1024 * 1024,
+        }
+    }
+
+    fn log2(self) -> u32 {
+        match self {
+            Self::Huge2M => 21,
+            Self::Huge1G => 30,
+        }
+    }
+}
+
+/// Errors from huge-page allocation.
+#[derive(Debug, thiserror::Error)]
+pub enum HugePageError {
+    /// Zero-size allocation requested.
+    #[error("cannot allocate 0 bytes")]
+    ZeroSize,
+    /// `MAP_HUGETLB` flags not supported on this platform.
+    #[error("MAP_HUGETLB unsupported for {0:?}")]
+    Unsupported(HugePageSize),
+    /// `mmap_anonymous` failed.
+    #[error("huge page mmap failed: {0}")]
+    MmapFailed(std::io::Error),
+    /// `mlock` failed (e.g. `RLIMIT_MEMLOCK` exceeded).
+    #[error("mlock failed: {0}")]
+    MlockFailed(std::io::Error),
+}
+
+/// RAII huge-page memory — `mmap_anonymous` + `MAP_HUGETLB` + `mlock`.
+///
+/// On drop: `munlock` then `munmap`. All unsafe is contained here.
+pub struct HugePageMemory {
+    ptr: NonNull<u8>,
+    size: usize,
+}
+
+impl HugePageMemory {
+    /// Allocate `size` bytes using huge pages and lock into RAM.
+    ///
+    /// `size` is rounded up to the next multiple of the huge page boundary.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `size` is 0
+    /// - `MAP_HUGETLB` flags are unavailable
+    /// - `mmap_anonymous` or `mlock` fails
+    pub fn new(size: usize, page_size: HugePageSize) -> Result<Self, HugePageError> {
+        if size == 0 {
+            return Err(HugePageError::ZeroSize);
+        }
+
+        let page_bytes = page_size.bytes();
+        let aligned_size = size.div_ceil(page_bytes) * page_bytes;
+
+        let map_flags = MapFlags::hugetlb_with_size_log2(page_size.log2())
+            .ok_or(HugePageError::Unsupported(page_size))?;
+
+        // SAFETY: mmap_anonymous creates a fresh anonymous mapping; no fd involved.
+        // We own the returned pointer exclusively.
+        let raw = unsafe {
+            mmap_anonymous(
+                std::ptr::null_mut(),
+                aligned_size,
+                ProtFlags::READ | ProtFlags::WRITE,
+                map_flags,
+            )
+        }
+        .map_err(|e| HugePageError::MmapFailed(e.into()))?;
+
+        let ptr = NonNull::new(raw.cast::<u8>()).expect("mmap_anonymous returned null after Ok");
+
+        // SAFETY: ptr is valid for aligned_size bytes from the mmap above.
+        if let Err(e) = unsafe { mlock(ptr.as_ptr().cast(), aligned_size) } {
+            // Cleanup: munmap the region we just mapped.
+            // SAFETY: ptr and aligned_size from the successful mmap above.
+            unsafe {
+                let _ = munmap(ptr.as_ptr().cast(), aligned_size);
+            }
+            return Err(HugePageError::MlockFailed(e.into()));
+        }
+
+        Ok(Self {
+            ptr,
+            size: aligned_size,
+        })
+    }
+
+    /// Allocation size in bytes (rounded up to page boundary).
+    #[must_use]
+    pub const fn size(&self) -> usize {
+        self.size
+    }
+
+    /// Raw pointer for FFI (e.g. VFIO DMA map).
+    #[must_use]
+    pub fn as_ptr(&self) -> NonNull<u8> {
+        self.ptr
+    }
+
+    /// Immutable byte slice.
+    #[must_use]
+    pub fn as_slice(&self) -> &[u8] {
+        // SAFETY: ptr valid for size bytes; &self prevents mutation.
+        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
+    }
+
+    /// Mutable byte slice.
+    #[must_use]
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        // SAFETY: ptr valid for size bytes; &mut self guarantees exclusive access.
+        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
+    }
+}
+
+impl Drop for HugePageMemory {
+    fn drop(&mut self) {
+        // SAFETY: ptr and size from successful mmap_anonymous + mlock in new().
+        unsafe {
+            let _ = munlock(self.ptr.as_ptr().cast(), self.size);
+            let _ = munmap(self.ptr.as_ptr().cast(), self.size);
+        }
+    }
+}
+
+// SAFETY: HugePageMemory owns the mapping exclusively; no aliasing.
+unsafe impl Send for HugePageMemory {}
+// SAFETY: Reads via &self; writes require &mut self.
+unsafe impl Sync for HugePageMemory {}
+
+impl std::fmt::Debug for HugePageMemory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HugePageMemory")
+            .field("size", &self.size)
+            .field("ptr", &self.ptr)
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_size_rejected() {
+        let result = HugePageMemory::new(0, HugePageSize::Huge2M);
+        assert!(matches!(result, Err(HugePageError::ZeroSize)));
+    }
+
+    #[test]
+    fn page_size_constants() {
+        assert_eq!(HugePageSize::Huge2M.bytes(), 2 * 1024 * 1024);
+        assert_eq!(HugePageSize::Huge1G.bytes(), 1024 * 1024 * 1024);
+    }
+
+    #[test]
+    fn alignment_rounding() {
+        let page = HugePageSize::Huge2M.bytes();
+        assert_eq!(1usize.div_ceil(page) * page, page);
+        assert_eq!((page + 1).div_ceil(page) * page, 2 * page);
+        assert_eq!(page.div_ceil(page) * page, page);
+    }
+
+    #[test]
+    fn alloc_may_fail_without_huge_pages() {
+        match HugePageMemory::new(HugePageSize::Huge2M.bytes(), HugePageSize::Huge2M) {
+            Ok(mem) => {
+                assert_eq!(mem.size(), HugePageSize::Huge2M.bytes());
+                assert!(mem.as_slice().iter().all(|&b| b == 0));
+            }
+            Err(HugePageError::MmapFailed(_) | HugePageError::MlockFailed(_)) => {
+                // No huge pages configured — expected in CI
+            }
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+}

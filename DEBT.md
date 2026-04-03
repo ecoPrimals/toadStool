@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 3, 2026 — S173-3
+**Date**: April 3, 2026 — S175
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,32 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S175 Resolved Debt (Unsafe Reduction Phase 1+2)
+
+### D-V4L2-IOCTL-CONTAINMENT — RESOLVED S175
+Extracted all 9 inline `unsafe { rustix::ioctl::ioctl(...) }` blocks from `display/v4l2/device.rs`
+into a dedicated `v4l2/ioctl.rs` containment module with 8 safe public wrapper functions.
+`device.rs` is now pure safe Rust. Kernel ABI structs moved to `v4l2/types.rs`.
+
+### D-GPU-BACKEND-SAFE — RESOLVED S175
+Removed `unsafe fn` markers from `VulkanBackend::with_device()` and `OpenClBackend::with_context()`
+(bodies contained no unsafe operations). Removed `#![allow(unsafe_code)]` from both files.
+Consolidated 6 `unsafe impl Send/Sync` for `VulkanAllocation`, `OpenClAllocation`,
+`WebGpuAllocation` into a single `GpuPtr` newtype (`#[repr(transparent)]` wrapper for `*mut u8`).
+
+### D-HUGE-PAGE-RAII — RESOLVED S175
+Created `HugePageMemory` RAII type in `hw-safe` encapsulating `mmap_anonymous` with `MAP_HUGETLB`,
+`mlock`, and RAII `munlock`/`munmap`. Refactored `nvpmu/dma.rs` to use `HugePageMemory` instead of
+raw pointer management, reducing its unsafe blocks from ~9 to 2. `DmaBuffer` now uses a `DmaMemory`
+enum (`Locked(LockedMemory)` | `HugePage(HugePageMemory)`) instead of raw fields.
+
+### D-UNSAFE-CONSUMER-REDUCTION — RESOLVED S175
+Consumer `unsafe {}` blocks reduced 80% (56→11). Total unsafe: 59 actual (48 in containment zones,
+11 in consumer/driver code). Containment zones: `hw-safe` (40 blocks), `v4l2/ioctl.rs` (8 blocks).
+Consumer residual: `nvpmu/dma.rs` (2), `nvpmu/vfio.rs` (1), `akida-driver/vfio/dma.rs` (2),
+`nouveau_drm.rs` (1), `unified_memory/buffer/access.rs` (2), `cuda_impl/kernels.rs` (1),
+`opencl_impl/backend.rs` (1), `isolated_memory.rs` (1).
 
 ## S173-3 Resolved Debt (Deep Debt: Refactoring + Coverage)
 
@@ -51,6 +77,13 @@ coordination service is unavailable. Added `socket_path()` accessor to `Capabili
 as primary (with primal-name fallback). Same for BEARDOG/SECURITY, NESTGATE/STORAGE,
 SQUIRREL/AI. CLI configurator, beardog discovery, and distributed discovery all evolved.
 Error messages reference capability-domain names.
+
+### D-UNSAFE-VOLATILE-DEDUP — RESOLVED S174
+Deleted `akida-driver/backends/volatile_access.rs` (195 lines, 6 unsafe blocks) — full duplicate
+of `hw-safe::VolatileMmio`. Replaced per-access `VolatileSlice::from_raw_parts()` in `mmio.rs`
+with single `mmio()` helper (−3 blocks). Added `dma_map_fd`/`dma_unmap_fd` to `hw-safe::vfio_dma`
+absorbing `BorrowedFd::borrow_raw` + DMA ioctl pairs from nvpmu (−3) and akida-driver (−2).
+Net: −10 unsafe blocks (89→79 grep, 77 actual excluding doc-comment false positives).
 
 ### D-UNSAFE-POLICY-DOC — RESOLVED S173-2
 Workspace `Cargo.toml` `[workspace.lints.rust]` now documents the `deny` (not `forbid`)

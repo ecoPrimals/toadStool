@@ -1,9 +1,13 @@
 # BYOB Refactoring Pattern - Trait-Based Composition
 
-**File**: `crates/core/toadstool/src/byob/byob_impl.rs`  
-**Current Size**: 927 lines  
-**Target Size**: ~400 lines (coordinator only)  
-**Status**: ✅ Analysis Complete | 🔄 Implementation Ready
+> **FOSSIL (S175):** This refactoring was executed. `byob_impl.rs` was split into
+> `byob_impl/` directory module with `deployment_lifecycle.rs`, `network_manager.rs`,
+> `health_monitor.rs`, and test submodules. File path and line counts below are
+> historical. Retained as pattern reference for future refactoring.
+
+**File**: `crates/core/toadstool/src/byob/byob_impl/` (was `byob_impl.rs`)  
+**Original Size**: 927 lines  
+**Status**: ✅ Executed
 
 ---
 

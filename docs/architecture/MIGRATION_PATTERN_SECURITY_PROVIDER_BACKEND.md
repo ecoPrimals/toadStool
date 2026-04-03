@@ -1,21 +1,28 @@
 # Migration Pattern: SecurityProvider Backend for BiomeOS Auth
 
-## Problem
+> **FOSSIL (S175):** This migration pattern predates the IPC-first architecture (S169+).
+> BearDog integration now uses Unix socket JSON-RPC via capability-based discovery
+> (`get_socket_path_for_capability("security")`), not HTTP calls. The circular dependency
+> concern was resolved by the `beardog_integration/client_evolved.rs` generic RPC helper
+> (S172-4). Retained as historical design note.
 
-`biomeos_integration/auth_backend.rs` currently has a `BearDogBackend` implementation that:
-- Makes direct HTTP calls to BearDog
-- Has hardcoded endpoint URLs
-- Is not pluggable (can't swap for other providers)
+## Problem (Historical)
+
+`biomeos_integration/auth_backend.rs` had a `BearDogBackend` implementation that:
+- Made direct HTTP calls to BearDog
+- Had hardcoded endpoint URLs
+- Was not pluggable (couldn't swap for other providers)
 
 ## Solution Pattern
 
 Create a `SecurityProviderBackend` that uses SecurityProvider trait via Universal Adapter.
 
-## Implementation (Blocked by Circular Dependency)
+## Implementation (Resolved via IPC-first architecture)
 
-The implementation is **conceptually ready** but blocked by a circular dependency:
-- `toadstool` (core) → `toadstool-distributed` (would create cycle)
-- `toadstool-distributed` already depends on `toadstool`
+The circular dependency concern was resolved by moving to Unix socket JSON-RPC:
+- `beardog_integration/client_evolved.rs` provides a generic `rpc()` helper (S172-4)
+- Auth delegation uses `crypto.sign`/`crypto.verify`/`crypto.public_key` JSON-RPC (S166)
+- No direct crate dependency needed — communication is IPC-based
 
 ## Code Pattern (for future implementation)
 

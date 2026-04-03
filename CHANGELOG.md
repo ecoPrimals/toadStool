@@ -5,7 +5,54 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 3, 2026 (Sessions 43-173)
+## [Unreleased] - April 3, 2026 (Sessions 43-175)
+
+### Session S175 (Apr 3, 2026) — Unsafe Reduction Phase 1+2 + Doc Cleanup
+
+#### Phase 1: V4L2 Ioctl Containment
+- Extracted all 9 inline `unsafe { ioctl(...) }` blocks from `v4l2/device.rs` into
+  `v4l2/ioctl.rs` containment module with 8 safe wrapper functions
+- Created `v4l2/types.rs` for `#[repr(C)]` kernel ABI struct definitions
+- `device.rs` is now pure safe Rust (0 unsafe blocks)
+
+#### Phase 2: GPU Backend Collapse
+- Removed `unsafe fn` from `VulkanBackend::with_device()` and `OpenClBackend::with_context()`
+  (bodies contained no unsafe operations)
+- Created `GpuPtr` newtype (`#[repr(transparent)]` wrapper for `*mut u8`) consolidating
+  6 `unsafe impl Send/Sync` into 2
+- Removed `#![allow(unsafe_code)]` from `vulkan.rs` and `opencl.rs`
+
+#### Phase 2: HugePageMemory RAII
+- Created `hw-safe::HugePageMemory` RAII type for mmap_anonymous+MAP_HUGETLB+mlock
+- Refactored `nvpmu/dma.rs` to use `DmaMemory` enum (`Locked | HugePage`) instead of
+  raw pointer fields; unsafe blocks reduced from ~9 to 2
+
+#### Doc Cleanup
+- Root docs (README, NEXT_STEPS, DEBT, DOCUMENTATION) updated with S175 unsafe counts
+- Fixed NEXT_STEPS coverage checkbox contradiction
+- Fixed showcase/QUICK_START `serve` → `server` CLI command
+- Fixed ADR README wrong count and broken links
+- Added fossil headers to stale architecture docs (BYOB pattern, security migration)
+- wateringHole handoff: `TOADSTOOL_S175_UNSAFE_REDUCTION_PHASE12_HANDOFF_APR03_2026.md`
+- Archived S171 handoff (>48 hours)
+
+#### Net: consumer unsafe −80% (56→11); total 59 actual (48 containment + 11 consumer)
+
+### Session S174 (Apr 3, 2026) — Unsafe Audit + Reduction
+
+#### Phase 1: Eliminate duplicate VolatileSlice (−9 unsafe blocks)
+- Deleted `akida-driver/backends/volatile_access.rs` (195 lines, 6 unsafe blocks) — full
+  duplicate of `hw-safe::VolatileMmio` with identical u32/u64 volatile read/write pattern
+- Replaced 4 per-method `VolatileSlice::from_raw_parts()` in `mmio.rs` with single `mmio()`
+  helper returning `VolatileMmio<'_>` — matches nvpmu pattern
+
+#### Phase 2: Safe DMA fd helpers (−5 unsafe blocks)
+- Added `dma_map_fd(RawFd, &VfioDmaMap)` and `dma_unmap_fd(RawFd, &VfioDmaUnmap)` to
+  `hw-safe::vfio_dma` — encapsulates `BorrowedFd::borrow_raw` + DMA ioctl in one call
+- Updated `nvpmu/dma.rs` (−3 blocks: allocate, allocate_huge, Drop)
+- Updated `akida-driver/vfio/dma.rs` (−2 blocks: new, Drop)
+
+#### Net: −10 unsafe blocks (89→79 grep count; 77 actual, 2 are doc-comment false positives)
 
 ### Session S173-3 (Apr 3, 2026) — Deep Debt: Smart Refactoring + Coverage Expansion
 

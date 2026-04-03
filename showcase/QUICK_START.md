@@ -43,7 +43,7 @@ Expected output: Workload submission, status polling, result retrieval, cancella
 ```bash
 # In a separate terminal:
 cd /path/to/toadStool
-cargo run --release --bin toadstool -- serve
+cargo run --release --bin toadstool -- server
 
 # Then run compute-pattern demos:
 cd showcase/02-compute-patterns/01-capability-discovery

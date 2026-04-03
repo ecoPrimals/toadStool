@@ -180,9 +180,9 @@ Architecture Decision Records (ADRs) capture important architectural decisions a
 
 ## Quick Reference
 
-**Current Count**: 1 ADR (1 accepted, 0 proposed, 0 deprecated)
+**Current Count**: 4 ADRs (4 accepted, 2 proposed, 0 deprecated)
 
-**Last Updated**: February 5, 2026
+**Last Updated**: April 3, 2026
 
 **Maintainer**: ToadStool/BarraCuda Core Team
 
@@ -195,13 +195,11 @@ Architecture Decision Records (ADRs) capture important architectural decisions a
 ## Related Documentation
 
 - **Architecture Docs**: `docs/architecture/`
-- **Deep Debt Reports**: Root directory (`DEEP_DEBT_*.md`)
-- **Phase 2 Roadmap**: `PHASE2_ROADMAP_FEB05_2026.md`
-- **Master Index**: `DEEP_DEBT_MASTER_INDEX.md`
+- **Debt Register**: Root `DEBT.md`
+- **Changelog**: Root `CHANGELOG.md`
 
 ---
 
 **Document**: `docs/architecture/adrs/README.md`  
 **Purpose**: Guide to Architecture Decision Records  
-**Status**: ✅ Active  
-**Next**: Write ADRs 002-004
+**Status**: ✅ Active

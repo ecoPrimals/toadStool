@@ -44,6 +44,9 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 # Common utilities
 toadstool-common = { path = "../../core/common" }
 
+# Safe hardware primitives (DeviceMmap for V4L2 buffer mapping)
+toadstool-hw-safe = { path = "../../core/hw-safe" }
+
 # Core hardware transport traits
 toadstool-core = { path = "../../toadstool-core" }
 

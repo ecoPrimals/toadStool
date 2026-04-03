@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // Vulkan memory mapping requires raw pointer dereference
 //! Vulkan unified memory backend
 //!
 //! **Status**: ✅ PRODUCTION READY with wgpu fallback
@@ -42,10 +41,8 @@
 //! // Path 1: Pure Rust (recommended)
 //! let backend = VulkanBackend::try_init_with_wgpu().await?;
 //!
-//! // Path 2: Existing Vulkan context (advanced)
-//! let backend = unsafe {
-//!     VulkanBackend::with_device(device_handle, physical_device_handle, max_alloc)?
-//! };
+//! // Path 2: Existing Vulkan context (advanced, stub)
+//! let backend = VulkanBackend::with_device(device_handle, physical_device_handle, max_alloc)?;
 //! ```
 
 use crate::unified_memory::{
@@ -180,47 +177,25 @@ impl VulkanBackend {
         });
 
         let adapters = instance.enumerate_adapters(wgpu::Backends::VULKAN);
-        if !adapters.is_empty() {
-            return true;
-        }
-
-        // Fallback: check direct Vulkan (FFI - loads libvulkan)
-        #[cfg(feature = "vulkan")]
-        {
-            // UNAVOIDABLE UNSAFE: ash::Entry::load() is FFI - loads Vulkan loader.
-            // SAFETY: We only check if loading succeeds; no pointers or memory involved.
-            unsafe {
-                if ash::Entry::load().is_ok() {
-                    return true;
-                }
-            }
-        }
-
-        false
+        !adapters.is_empty()
     }
 
     /// Create backend with existing Vulkan device (advanced usage)
     ///
     /// For applications that already have a Vulkan context.
+    /// The device/physical_device handles are recorded for future direct-Vulkan
+    /// support but not dereferenced today (stub — all allocation goes through wgpu).
     ///
     /// # Arguments
     ///
-    /// * `device` - Existing vk::Device handle
-    /// * `physical_device` - Physical device handle
+    /// * `device` - Existing vk::Device handle (reserved)
+    /// * `physical_device` - Physical device handle (reserved)
     /// * `max_allocation` - Maximum allocation size
-    ///
-    /// # Safety
-    ///
-    /// Caller must ensure:
-    /// - Device is valid for the lifetime of this backend
-    /// - Memory properties match the device
-    ///
-    /// SAFETY: FFI boundary — caller guarantees valid Vulkan handles.
     #[expect(
         dead_code,
         reason = "Vulkan device constructor; used when Vulkan runtime is available"
     )]
-    pub const unsafe fn with_device(
+    pub const fn with_device(
         _device: u64,          // vk::Device as u64
         _physical_device: u64, // vk::PhysicalDevice as u64
         max_allocation: usize,
@@ -368,7 +343,7 @@ impl UnifiedMemoryBackend for VulkanBackend {
                 |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
             ),
             // Handle direct Vulkan allocations
-            BackendAllocation::Vulkan(alloc) => Ok(alloc.cpu_ptr),
+            BackendAllocation::Vulkan(alloc) => Ok(alloc.cpu_ptr.as_ptr()),
             _ => Err(ToadStoolError::runtime(
                 "Invalid allocation type for Vulkan backend",
             )),
@@ -385,6 +360,7 @@ impl UnifiedMemoryBackend for VulkanBackend {
             }
             // Handle direct Vulkan allocations
             BackendAllocation::Vulkan(alloc) => alloc.memory as *const u8,
+
             _ => std::ptr::null(),
         }
     }

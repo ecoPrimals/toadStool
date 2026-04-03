@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // OpenCL SVM requires unsafe pointer operations
 //! OpenCL SVM unified memory backend
 //!
 //! **Status**: ✅ PRODUCTION READY with wgpu fallback
@@ -42,10 +41,8 @@
 //! // Path 1: Pure Rust (recommended)
 //! let backend = OpenClBackend::try_init_with_wgpu().await?;
 //!
-//! // Path 2: Existing OpenCL context (advanced)
-//! let backend = unsafe {
-//!     OpenClBackend::with_context(context_handle, device_handle, has_svm, max_alloc)?
-//! };
+//! // Path 2: Existing OpenCL context (advanced, stub)
+//! let backend = OpenClBackend::with_context(context_handle, device_handle, has_svm, max_alloc)?;
 //! ```
 //!
 //! # Native OpenCL Support
@@ -219,19 +216,13 @@ impl OpenClBackend {
     /// * `has_svm` - Whether device supports SVM
     /// * `max_allocation` - Maximum allocation size
     ///
-    /// # Safety
-    ///
-    /// Caller must ensure:
-    /// - Context is valid for the lifetime of this backend
-    /// - Device matches the context
-    /// - SVM flag is correct for the device
-    ///
-    /// SAFETY: FFI boundary — caller guarantees valid OpenCL handles.
+    /// The context/device handles are recorded for future direct-OpenCL
+    /// support but not dereferenced today (stub — all allocation goes through wgpu).
     #[expect(
         dead_code,
         reason = "OpenCL context constructor; used when OpenCL runtime is available"
     )]
-    pub unsafe fn with_context(
+    pub fn with_context(
         _context_handle: u64,
         _device_handle: u64,
         has_svm: bool,
@@ -379,7 +370,7 @@ impl UnifiedMemoryBackend for OpenClBackend {
                 |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
             ),
             // Handle direct OpenCL allocations
-            BackendAllocation::OpenCL(alloc) => Ok(alloc.ptr),
+            BackendAllocation::OpenCL(alloc) => Ok(alloc.ptr.as_ptr()),
             _ => Err(ToadStoolError::runtime(
                 "Invalid allocation type for OpenCL backend",
             )),
@@ -395,7 +386,7 @@ impl UnifiedMemoryBackend for OpenClBackend {
                 })
             }
             // Handle direct OpenCL allocations
-            BackendAllocation::OpenCL(alloc) => alloc.ptr as *const u8,
+            BackendAllocation::OpenCL(alloc) => alloc.ptr.as_ptr().cast_const(),
             _ => std::ptr::null(),
         }
     }

@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 3, 2026 -- S173-3 Deep Debt Refactoring + Coverage
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,617 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | 8 large files smart-refactored | **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 | **~89 unsafe blocks** (down from ~101; all in `hw-safe` + drivers)
-**Latest**: S173 — Deep Debt Execution (6 phases): hardcoding elimination, 8 production files >650L→submodules, unsafe consolidation (akida-driver/nvpmu DMA→hw-safe), +79 new tests across 5 modules, deployment stubs→capability socket verification, `config` 0.14→0.15. All quality gates green.
+**Updated**: April 3, 2026 -- S175 Unsafe Reduction Phase 1+2 + Doc Cleanup
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,617 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%)
+**Latest**: S175 — Unsafe code reduction Phase 1+2: V4L2 ioctls to containment module (`device.rs` now pure safe Rust), `HugePageMemory` RAII in hw-safe (absorbs mmap/mlock from nvpmu/dma.rs), `GpuPtr` newtype consolidates 6 `unsafe impl Send/Sync`, GPU backend constructors made safe. Consumer unsafe blocks 56→11 (−80%). All quality gates green.
 
 ---
 
@@ -125,7 +125,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [x] **Test coverage target 90%** -- 20,285 tests (S154); 83.09% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 21,617 tests (S173); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)

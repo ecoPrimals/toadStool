@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // VFIO ioctls and OwnedFd construction require unsafe
 //! VFIO NPU backend — Pure Rust with DMA support
 //!
 //! Uses Linux VFIO (Virtual Function I/O) for:
@@ -8,26 +7,10 @@
 //! - IOMMU isolation (security)
 //! - Pure Rust implementation (no C kernel module)
 //!
-//! # Requirements
-//!
-//! 1. IOMMU enabled in BIOS and kernel (`intel_iommu=on` or `amd_iommu=on`)
-//! 2. Device unbound from native driver and bound to `vfio-pci`
-//! 3. User in `vfio` group or root permissions
-//!
 //! # Architecture
 //!
-//! ```text
-//! ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-//! │  User App   │────▶│  VFIO API   │────▶│   IOMMU     │
-//! │  (Rust)     │     │  (Rust)     │     │  (Hardware) │
-//! └─────────────┘     └─────────────┘     └─────────────┘
-//!                            │                   │
-//!                            ▼                   ▼
-//!                     ┌─────────────┐     ┌─────────────┐
-//!                     │  DMA Buffer │────▶│   Akida     │
-//!                     │  (Pinned)   │     │   NPU       │
-//!                     └─────────────┘     └─────────────┘
-//! ```
+//! All VFIO setup ioctls delegate to `hw-safe::vfio_setup` — zero local
+//! `unsafe` blocks for container/group/device setup.
 
 mod dma;
 mod ioctl;
@@ -41,10 +24,15 @@ use crate::capabilities::Capabilities;
 use crate::error::{AkidaError, Result};
 use crate::mmio::{Bar, MappedRegion, regs};
 use std::fs::OpenOptions;
-use std::os::fd::{AsFd, FromRawFd, OwnedFd};
+use std::os::fd::{AsFd, OwnedFd};
 use std::os::unix::io::AsRawFd;
+use toadstool_hw_safe::vfio_setup;
 use types::PollConfig;
 use types::ioctls;
+
+fn vfio_err(op: &str, e: &std::io::Error) -> AkidaError {
+    AkidaError::capability_query_failed(format!("VFIO {op}: {e}"))
+}
 
 /// VFIO NPU backend with DMA support.
 #[derive(Debug)]
@@ -168,14 +156,16 @@ impl NpuBackend for VfioBackend {
                 AkidaError::capability_query_failed(format!("Cannot open /dev/vfio/vfio: {e}"))
             })?;
 
-        let api_version = ioctl::get_api_version(container.as_fd())?;
+        let api_version = vfio_setup::get_api_version(container.as_fd())
+            .map_err(|e| vfio_err("GET_API_VERSION", &e))?;
         if api_version != ioctls::VFIO_API_VERSION {
             return Err(AkidaError::capability_query_failed(format!(
                 "Unsupported VFIO API version: {api_version}"
             )));
         }
 
-        let has_type1 = ioctl::check_extension(container.as_fd(), ioctls::VFIO_TYPE1V2_IOMMU)?;
+        let has_type1 = vfio_setup::check_extension(container.as_fd(), ioctls::VFIO_TYPE1V2_IOMMU)
+            .map_err(|e| vfio_err("CHECK_EXTENSION", &e))?;
         if has_type1 != 1 {
             return Err(AkidaError::capability_query_failed(
                 "VFIO Type1v2 IOMMU not supported",
@@ -191,11 +181,8 @@ impl NpuBackend for VfioBackend {
                 AkidaError::capability_query_failed(format!("Cannot open {group_path}: {e}"))
             })?;
 
-        let mut group_status = types::VfioGroupStatus {
-            argsz: std::mem::size_of::<types::VfioGroupStatus>() as u32,
-            flags: 0,
-        };
-        ioctl::group_status(group.as_fd(), &mut group_status)?;
+        let group_status = vfio_setup::group_get_status(group.as_fd())
+            .map_err(|e| vfio_err("GROUP_GET_STATUS", &e))?;
 
         if (group_status.flags & ioctls::VFIO_GROUP_FLAGS_VIABLE) == 0 {
             return Err(AkidaError::capability_query_failed(
@@ -203,26 +190,19 @@ impl NpuBackend for VfioBackend {
             ));
         }
 
-        let container_fd = container.as_raw_fd();
-        ioctl::group_set_container(group.as_fd(), std::ptr::from_ref(&container_fd).cast())?;
-        ioctl::set_iommu(container.as_fd(), ioctls::VFIO_TYPE1V2_IOMMU)?;
+        vfio_setup::group_set_container(group.as_fd(), &container)
+            .map_err(|e| vfio_err("GROUP_SET_CONTAINER", &e))?;
+        vfio_setup::set_iommu(container.as_fd(), ioctls::VFIO_TYPE1V2_IOMMU)
+            .map_err(|e| vfio_err("SET_IOMMU", &e))?;
 
         let pcie_address_cstr = std::ffi::CString::new(pcie_address).map_err(|e| {
             AkidaError::capability_query_failed(format!("Invalid PCIe address: {e}"))
         })?;
-        let device_fd =
-            ioctl::group_get_device_fd(group.as_fd(), pcie_address_cstr.as_ptr().cast())?;
+        let device = vfio_setup::group_get_device_fd(group.as_fd(), &pcie_address_cstr)
+            .map_err(|e| vfio_err("GROUP_GET_DEVICE_FD", &e))?;
 
-        // SAFETY: Invariants: fd must be a valid, open fd; caller takes ownership (must not close).
-        // Satisfied: device_fd from VFIO_GROUP_GET_DEVICE_FD ioctl success; kernel returns valid fd.
-        // Violation: invalid fd → double-close on drop; already-closed fd → use-after-close.
-        let device = unsafe { OwnedFd::from_raw_fd(device_fd) };
-
-        let mut dev_info = types::VfioDeviceInfo {
-            argsz: std::mem::size_of::<types::VfioDeviceInfo>() as u32,
-            ..Default::default()
-        };
-        ioctl::device_info(device.as_fd(), &mut dev_info)?;
+        let dev_info = vfio_setup::device_get_info(device.as_fd())
+            .map_err(|e| vfio_err("DEVICE_GET_INFO", &e))?;
 
         tracing::info!(
             "VFIO device: {} regions, {} IRQs",

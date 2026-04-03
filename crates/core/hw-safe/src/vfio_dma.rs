@@ -7,7 +7,7 @@
 //! so that `nvpmu` and `akida-driver` share the same kernel ABI structs
 //! and unsafe ioctl wrappers instead of duplicating them.
 
-use std::os::fd::BorrowedFd;
+use std::os::fd::{BorrowedFd, RawFd};
 
 use rustix::ioctl::{self, Ioctl, IoctlOutput, Opcode, opcode};
 
@@ -131,6 +131,48 @@ pub unsafe fn dma_map(container_fd: BorrowedFd<'_>, map: &VfioDmaMap) -> std::io
 pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
     // SAFETY: invariants documented above and enforced by the caller.
     unsafe { ioctl::ioctl(container_fd, DmaUnmapIoctl(unmap)).map_err(Into::into) }
+}
+
+/// Map a host buffer into the device IOMMU using a raw file descriptor.
+///
+/// Convenience wrapper that combines [`BorrowedFd::borrow_raw`] and [`dma_map`]
+/// into a single call, eliminating the duplicate `unsafe` at each call site.
+///
+/// # Errors
+///
+/// Returns an I/O error if the ioctl fails.
+///
+/// # Safety
+///
+/// Same invariants as [`dma_map`], plus:
+/// - `fd` must be a valid, open VFIO container file descriptor that remains
+///   open for the duration of this call.
+pub unsafe fn dma_map_fd(fd: RawFd, map: &VfioDmaMap) -> std::io::Result<()> {
+    // SAFETY: caller guarantees fd is valid and open.
+    let borrowed = unsafe { BorrowedFd::borrow_raw(fd) };
+    // SAFETY: caller guarantees map invariants (see dma_map docs).
+    unsafe { dma_map(borrowed, map) }
+}
+
+/// Remove a device IOMMU mapping using a raw file descriptor.
+///
+/// Convenience wrapper that combines [`BorrowedFd::borrow_raw`] and [`dma_unmap`]
+/// into a single call, eliminating the duplicate `unsafe` at each call site.
+///
+/// # Errors
+///
+/// Returns an I/O error if the ioctl fails.
+///
+/// # Safety
+///
+/// Same invariants as [`dma_unmap`], plus:
+/// - `fd` must be a valid, open VFIO container file descriptor that remains
+///   open for the duration of this call.
+pub unsafe fn dma_unmap_fd(fd: RawFd, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
+    // SAFETY: caller guarantees fd is valid and open.
+    let borrowed = unsafe { BorrowedFd::borrow_raw(fd) };
+    // SAFETY: caller guarantees unmap invariants (see dma_unmap docs).
+    unsafe { dma_unmap(borrowed, unmap) }
 }
 
 /// Align `size` up to the nearest multiple of `page`.

@@ -15,7 +15,6 @@ pub mod kernel;
 pub mod mmap;
 pub mod userspace;
 pub mod vfio;
-pub(crate) mod volatile_access;
 
 pub use kernel::KernelBackend;
 pub use userspace::UserspaceBackend;
