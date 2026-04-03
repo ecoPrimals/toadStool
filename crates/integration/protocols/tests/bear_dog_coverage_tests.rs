@@ -19,7 +19,7 @@ use toadstool_integration_protocols::{
 fn test_beardog_config_default() {
     let config = BearDogConfig::default();
     assert!(!config.socket_path.is_empty());
-    assert!(config.socket_path.contains("beardog") || config.socket_path.contains("sock"));
+    assert!(config.socket_path.contains("security.sock"));
     assert_eq!(config.request_timeout_secs, 30);
     assert_eq!(config.token_refresh_interval_secs, 300);
 }

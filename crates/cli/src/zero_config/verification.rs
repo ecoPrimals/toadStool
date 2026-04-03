@@ -98,16 +98,16 @@ impl ZeroConfigDeployment {
 
         // Count total discovered services across all primals
         let mut total = 0;
-        if services.songbird.is_some() {
+        if services.coordination.is_some() {
             total += 1;
         }
-        if services.beardog.is_some() {
+        if services.security.is_some() {
             total += 1;
         }
-        if services.nestgate.is_some() {
+        if services.storage.is_some() {
             total += 1;
         }
-        if services.squirrel.is_some() {
+        if services.ai_processing.is_some() {
             total += 1;
         }
         total += services.toadstool_peers.len();

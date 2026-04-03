@@ -80,10 +80,10 @@ fn apply_env_overrides_legacy_endpoints() {
         || {
             let mut c = ToadStoolConfig::default();
             c.apply_env_overrides().unwrap();
-            assert_eq!(c.network.endpoints.songbird, "http://sb:8000");
-            assert_eq!(c.network.endpoints.beardog, "http://bd:8001");
-            assert_eq!(c.network.endpoints.nestgate, "http://ng:8002");
-            assert_eq!(c.network.endpoints.squirrel, "http://sq:8003");
+            assert_eq!(c.network.endpoints.coordination, "http://sb:8000");
+            assert_eq!(c.network.endpoints.security, "http://bd:8001");
+            assert_eq!(c.network.endpoints.storage, "http://ng:8002");
+            assert_eq!(c.network.endpoints.ai_processing, "http://sq:8003");
         },
     );
 }

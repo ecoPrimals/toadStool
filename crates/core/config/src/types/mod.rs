@@ -153,7 +153,7 @@ impl ToadStoolConfig {
         // Legacy endpoint override (deprecated - use capability-based discovery)
         #[allow(deprecated)]
         if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            config.network.endpoints.songbird = songbird_endpoint;
+            config.network.endpoints.coordination = songbird_endpoint;
         }
 
         config.validate()?;
@@ -180,7 +180,7 @@ impl ToadStoolConfig {
 
         // Validate legacy network configuration (deprecated - use capability-based discovery)
         #[allow(deprecated)]
-        if self.network.endpoints.songbird.is_empty() {
+        if self.network.endpoints.coordination.is_empty() {
             return Err(crate::ConfigError::Invalid(
                 "Songbird endpoint cannot be empty (use capability-based discovery instead)"
                     .to_string(),

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 2, 2026 (Sessions 43-172)
 
+### Session S172-5 (Apr 2, 2026) — Capability-Based Discovery Compliance
+
+#### primalSpring audit: ~105 foreign primal references evolved
+- `ServiceDomainsConfig`: `songbird`→`coordination`, `beardog`→`security`, `nestgate`→`storage`, `squirrel`→`ai_processing`, `toadstool`→`compute` (all with `#[serde(alias)]`)
+- `EndpointConfig`: same capability-domain rename pattern with `#[deprecated]` + `#[serde(alias)]`
+- `EcosystemServices`: `songbird`→`coordination`, `beardog`→`security`, `nestgate`→`storage`, `squirrel`→`ai_processing`; boolean flags `beardog_enabled`→`security_provider_enabled`, `songbird_enabled`→`coordination_enabled`, `nestgate_enabled`→`storage_provider_enabled`
+- `PrimalCapabilitiesConfig`: `songbird_endpoint`→`coordination_endpoint`, `squirrel_endpoint`→`ai_processing_endpoint`
+- `SOCKET_FILENAME`: `beardog.sock`→`security.sock` (Tier 3 capability-domain socket per `PRIMAL_IPC_PROTOCOL.md`)
+- DNS defaults: `songbird.{base}`→`coordination.{base}`, `beardog.{base}`→`security.{base}`, `nestgate.{base}`→`storage.{base}`, `squirrel.{base}`→`ai_processing.{base}`
+- All env var lookups prioritize capability-domain names with legacy primal-name fallbacks
+- 40 files changed, 313 insertions, 301 deletions
+- All quality gates green: `cargo check`, `cargo fmt`, `cargo clippy -D warnings`, `cargo doc`, `cargo test` (0 failures)
+
 ### Session S172 (Apr 2, 2026) — Deep Debt Evolution Plan (6 Phases)
 
 #### Phase 1: Production stubs → real implementations

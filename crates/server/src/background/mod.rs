@@ -251,11 +251,14 @@ mod tests {
             health_check: HealthCheckConfig {
                 check_resources: true,
                 check_runtime_engines: true,
+                cpu_threshold_percent: 99.0,
+                memory_threshold_percent: 99.0,
                 ..HealthCheckConfig::default()
             },
             ..ServerConfig::default()
         };
-        let state = create_test_state(config);
+        let mut state = create_test_state(config);
+        state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
         {
             let mut engines = state.runtime_engines.write().await;
             engines.insert(
@@ -479,7 +482,8 @@ mod tests {
             },
             ..ServerConfig::default()
         };
-        let state = create_test_state(config);
+        let mut state = create_test_state(config);
+        state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
         let healthy = perform_health_check(&state).await;
         assert!(healthy);
     }

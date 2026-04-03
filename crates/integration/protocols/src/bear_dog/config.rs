@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! BearDog configuration for Unix socket communication
+//! Security capability provider configuration (crypto / PKI).
 //!
-//! Socket discovery uses capability-based resolution (`crypto` capability)
-//! with env var and XDG fallbacks.
+//! Socket discovery follows `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2:
+//!   1. `BIOMEOS_CRYPTO_SOCKET` env var (capability-based, preferred)
+//!   2. `BEARDOG_SOCKET` env var (legacy identity-based fallback)
+//!   3. `$XDG_RUNTIME_DIR/biomeos/security.sock` (capability-domain socket)
 
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_TOKEN_REFRESH_INTERVAL_SECS: u64 = 300;
 const DEFAULT_ZERO_TRUST_VALIDATION_INTERVAL_SECS: u64 = 60;
-const SOCKET_FILENAME: &str = "beardog.sock";
 
-/// BearDog PKI security service configuration
+/// Capability-domain socket filename per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` Tier 3.
+const CAPABILITY_SOCKET_FILENAME: &str = "security.sock";
+
+/// Security capability provider configuration (crypto / PKI).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BearDogConfig {
-    /// Unix socket path for JSON-RPC
+    /// Unix socket path for JSON-RPC (resolved via capability discovery)
     pub socket_path: String,
     /// Request timeout in seconds
     pub request_timeout_secs: u64,
@@ -28,11 +32,13 @@ pub struct BearDogConfig {
 
 impl Default for BearDogConfig {
     fn default() -> Self {
-        let socket_path = std::env::var("BEARDOG_SOCKET").unwrap_or_else(|_| {
-            let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-                .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
-            format!("{runtime_dir}/{SOCKET_FILENAME}")
-        });
+        let socket_path = std::env::var("BIOMEOS_CRYPTO_SOCKET")
+            .or_else(|_| std::env::var("BEARDOG_SOCKET"))
+            .unwrap_or_else(|_| {
+                let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+                    .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
+                format!("{runtime_dir}/biomeos/{CAPABILITY_SOCKET_FILENAME}")
+            });
 
         Self {
             socket_path,

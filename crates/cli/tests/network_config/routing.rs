@@ -318,11 +318,11 @@ fn create_test_dns_discovery_config() -> DnsDiscoveryConfig {
 
 fn create_test_service_domains_config() -> ServiceDomainsConfig {
     ServiceDomainsConfig {
-        toadstool: "toadstool.svc.local".to_string(),
-        songbird: "songbird.svc.local".to_string(),
-        beardog: "beardog.svc.local".to_string(),
-        nestgate: "nestgate.svc.local".to_string(),
-        squirrel: "squirrel.svc.local".to_string(),
+        compute: "compute.svc.local".to_string(),
+        coordination: "coordination.svc.local".to_string(),
+        security: "security.svc.local".to_string(),
+        storage: "storage.svc.local".to_string(),
+        ai_processing: "ai.svc.local".to_string(),
         biomeos: "biomeos.svc.local".to_string(),
     }
 }

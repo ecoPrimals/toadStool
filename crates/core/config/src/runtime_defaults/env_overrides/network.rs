@@ -35,19 +35,19 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     #[allow(deprecated)]
     {
         if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            config.network.endpoints.songbird = songbird_endpoint;
+            config.network.endpoints.coordination = songbird_endpoint;
         }
 
         if let Ok(beardog_endpoint) = std::env::var("TOADSTOOL_BEARDOG_ENDPOINT") {
-            config.network.endpoints.beardog = beardog_endpoint;
+            config.network.endpoints.security = beardog_endpoint;
         }
 
         if let Ok(nestgate_endpoint) = std::env::var("TOADSTOOL_NESTGATE_ENDPOINT") {
-            config.network.endpoints.nestgate = nestgate_endpoint;
+            config.network.endpoints.storage = nestgate_endpoint;
         }
 
         if let Ok(squirrel_endpoint) = std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT") {
-            config.network.endpoints.squirrel = squirrel_endpoint;
+            config.network.endpoints.ai_processing = squirrel_endpoint;
         }
     }
 

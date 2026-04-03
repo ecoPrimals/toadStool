@@ -92,13 +92,13 @@ impl ZeroConfigDeployment {
         count += self.config.runtime.preferred_runtimes.len() as u32;
 
         // Count ecosystem integrations
-        if self.config.network.songbird_enabled {
+        if self.config.network.coordination_enabled {
             count += 1;
         }
-        if self.config.security.beardog_enabled {
+        if self.config.security.security_provider_enabled {
             count += 1;
         }
-        if self.config.storage.nestgate_enabled {
+        if self.config.storage.storage_provider_enabled {
             count += 1;
         }
 

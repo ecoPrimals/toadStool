@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 2, 2026 — S172
+**Date**: April 2, 2026 — S172-5
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,20 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S172-5 Resolved Debt (Capability-Based Discovery Compliance)
+
+### D-CAPABILITY-DISCOVERY-PRIMALSPRING
+**Status**: RESOLVED
+primalSpring audit identified ~105 foreign primal references (DNS defaults, socket filenames,
+struct fields, env vars). All evolved to capability-domain naming:
+- `ServiceDomainsConfig`: `songbird`→`coordination`, `beardog`→`security`, `nestgate`→`storage`, `squirrel`→`ai_processing`
+- `EndpointConfig`: same pattern with `#[deprecated]` + `#[serde(alias)]`
+- `EcosystemServices`: primal fields→capability fields; boolean flags renamed
+- `PrimalCapabilitiesConfig`: `songbird_endpoint`→`coordination_endpoint`, `squirrel_endpoint`→`ai_processing_endpoint`
+- `SOCKET_FILENAME`: `beardog.sock`→`security.sock`
+- DNS defaults: `{primal}.{base}`→`{capability}.{base}`
+- Legacy env vars retained as fallbacks. 40 files, 313 insertions, 301 deletions.
 
 ## S172-4 Resolved Debt (Deep Debt Execution)
 

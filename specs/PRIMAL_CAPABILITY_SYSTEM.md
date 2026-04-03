@@ -1,8 +1,15 @@
-# 🌐 Primal-Agnostic Capability System
-**Version**: 1.0  
+# Primal-Agnostic Capability System
+**Version**: 1.0 (FOSSIL — November 10, 2025)  
 **Date**: November 10, 2025  
-**Status**: ✅ IMPLEMENTED  
+**Status**: SUPERSEDED — see `CAPABILITY_BASED_DISCOVERY_STANDARD.md` in `wateringHole/`  
 **Architecture**: Primal-Agnostic, Future-Proof
+
+> **NOTE (April 2, 2026):** This spec predates the current architecture.
+> Method names (`compute.workload.execute`), adapter names (`SongbirdAdapter`,
+> `BearDogAdapter`), and transport details have all evolved. The current
+> capability system uses capability-domain discovery per
+> `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2, JSON-RPC `compute.submit`,
+> and `get_socket_path_for_capability()`. Retained as fossil record.
 
 ---
 

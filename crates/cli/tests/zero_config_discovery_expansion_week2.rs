@@ -203,33 +203,33 @@ fn test_service_endpoint_with_auth() {
 #[test]
 fn test_ecosystem_services_all_available() {
     let services = EcosystemServices {
-        songbird: Some(ServiceEndpoint {
+        coordination: Some(ServiceEndpoint {
             name: "songbird".to_string(),
-            endpoint: "http://songbird:8080".to_string(),
+            endpoint: "http://coordination:8080".to_string(),
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
             discovered_at: std::time::SystemTime::now(),
         }),
-        beardog: Some(ServiceEndpoint {
+        security: Some(ServiceEndpoint {
             name: "beardog".to_string(),
-            endpoint: "http://beardog:8081".to_string(),
+            endpoint: "http://security:8081".to_string(),
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: true,
             discovered_at: std::time::SystemTime::now(),
         }),
-        nestgate: Some(ServiceEndpoint {
+        storage: Some(ServiceEndpoint {
             name: "nestgate".to_string(),
-            endpoint: "http://nestgate:9000".to_string(),
+            endpoint: "http://storage:9000".to_string(),
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
             discovered_at: std::time::SystemTime::now(),
         }),
-        squirrel: Some(ServiceEndpoint {
+        ai_processing: Some(ServiceEndpoint {
             name: "squirrel".to_string(),
-            endpoint: "http://squirrel:6000".to_string(),
+            endpoint: "http://ai_processing:6000".to_string(),
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
@@ -238,31 +238,31 @@ fn test_ecosystem_services_all_available() {
         toadstool_peers: vec![],
     };
 
-    assert!(services.songbird.is_some());
-    assert!(services.beardog.is_some());
-    assert!(services.nestgate.is_some());
-    assert!(services.squirrel.is_some());
+    assert!(services.coordination.is_some());
+    assert!(services.security.is_some());
+    assert!(services.storage.is_some());
+    assert!(services.ai_processing.is_some());
 }
 
 #[test]
 fn test_ecosystem_services_partial_availability() {
     let services = EcosystemServices {
-        songbird: Some(ServiceEndpoint {
+        coordination: Some(ServiceEndpoint {
             name: "songbird".to_string(),
-            endpoint: "http://songbird:8080".to_string(),
+            endpoint: "http://coordination:8080".to_string(),
             version: "1.0.0".to_string(),
             status: "healthy".to_string(),
             auth_required: false,
             discovered_at: std::time::SystemTime::now(),
         }),
-        beardog: None,
-        nestgate: None,
-        squirrel: None,
+        security: None,
+        storage: None,
+        ai_processing: None,
         toadstool_peers: vec![],
     };
 
-    assert!(services.songbird.is_some());
-    assert!(services.beardog.is_none());
+    assert!(services.coordination.is_some());
+    assert!(services.security.is_none());
 }
 
 #[test]
@@ -292,10 +292,10 @@ fn test_service_endpoint_status() {
 #[test]
 fn test_ecosystem_services_default() {
     let services = EcosystemServices::default();
-    assert!(services.songbird.is_none());
-    assert!(services.beardog.is_none());
-    assert!(services.nestgate.is_none());
-    assert!(services.squirrel.is_none());
+    assert!(services.coordination.is_none());
+    assert!(services.security.is_none());
+    assert!(services.storage.is_none());
+    assert!(services.ai_processing.is_none());
 }
 
 // ============================================================================
@@ -391,10 +391,10 @@ fn test_container_runtime_info_defaults() {
 fn test_ecosystem_services_structure() {
     let services = EcosystemServices::default();
     // All should start as None
-    assert!(services.songbird.is_none());
-    assert!(services.beardog.is_none());
-    assert!(services.nestgate.is_none());
-    assert!(services.squirrel.is_none());
+    assert!(services.coordination.is_none());
+    assert!(services.security.is_none());
+    assert!(services.storage.is_none());
+    assert!(services.ai_processing.is_none());
 }
 
 // ============================================================================
@@ -459,5 +459,5 @@ fn test_default_implementations_work() {
     let _ = system.cpu.cores;
     let _ = runtime.docker;
     let _ = network.interfaces;
-    assert!(services.songbird.is_none());
+    assert!(services.coordination.is_none());
 }

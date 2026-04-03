@@ -21,7 +21,7 @@ fn test_toadstool_config_default() {
     let config = ToadStoolConfig::default();
     assert!(!config.app.name.is_empty());
     assert!(!config.app.version.is_empty());
-    assert!(!config.network.endpoints.songbird.is_empty());
+    assert!(!config.network.endpoints.coordination.is_empty());
     assert!(config.features.enable_distributed);
 }
 
@@ -93,9 +93,9 @@ fn test_application_config_custom_values() {
 fn test_network_config_default() {
     let config = NetworkConfig::default();
 
-    assert!(!config.endpoints.songbird.is_empty());
-    assert!(!config.endpoints.beardog.is_empty());
-    assert!(!config.endpoints.nestgate.is_empty());
+    assert!(!config.endpoints.coordination.is_empty());
+    assert!(!config.endpoints.security.is_empty());
+    assert!(!config.endpoints.storage.is_empty());
     assert!(config.connection.request_timeout.as_secs() > 0);
 }
 
@@ -113,10 +113,10 @@ fn test_network_config_tls_optional() {
 fn test_endpoint_config_all_services() {
     let config = EndpointConfig::default();
 
-    assert!(config.songbird.starts_with("http"));
-    assert!(config.beardog.starts_with("http"));
-    assert!(config.nestgate.starts_with("http"));
-    assert!(config.squirrel.starts_with("http"));
+    assert!(config.coordination.starts_with("http"));
+    assert!(config.security.starts_with("http"));
+    assert!(config.storage.starts_with("http"));
+    assert!(config.ai_processing.starts_with("http"));
     assert!(config.federation.starts_with("http"));
     assert!(config.metrics.starts_with("http"));
     assert!(config.health.starts_with("http"));

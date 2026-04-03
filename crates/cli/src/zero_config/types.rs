@@ -141,17 +141,24 @@ pub struct GpuInfo {
     pub opencl: bool,
 }
 
-/// Detected ecosystem services
+/// Detected ecosystem capability providers.
+///
+/// Fields use capability-domain names per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
+/// Serde aliases accept legacy primal names in existing config files.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EcosystemServices {
-    /// Songbird discovery service
-    pub songbird: Option<ServiceEndpoint>,
-    /// BearDog authentication service
-    pub beardog: Option<ServiceEndpoint>,
-    /// NestGate storage service
-    pub nestgate: Option<ServiceEndpoint>,
-    /// Squirrel AI service
-    pub squirrel: Option<ServiceEndpoint>,
+    /// Coordination / orchestration capability provider
+    #[serde(alias = "songbird")]
+    pub coordination: Option<ServiceEndpoint>,
+    /// Security / crypto capability provider
+    #[serde(alias = "beardog")]
+    pub security: Option<ServiceEndpoint>,
+    /// Storage capability provider
+    #[serde(alias = "nestgate")]
+    pub storage: Option<ServiceEndpoint>,
+    /// AI processing capability provider
+    #[serde(alias = "squirrel")]
+    pub ai_processing: Option<ServiceEndpoint>,
     /// Other ToadStool instances
     pub toadstool_peers: Vec<ServiceEndpoint>,
 }
@@ -222,8 +229,9 @@ pub struct SecurityConfig {
     pub level: String,
     /// Isolation level
     pub isolation: String,
-    /// BearDog integration
-    pub beardog_enabled: bool,
+    /// Security capability provider integration
+    #[serde(alias = "beardog_enabled")]
+    pub security_provider_enabled: bool,
     /// Crypto policies
     pub crypto_policies: Vec<String>,
 }
@@ -237,8 +245,9 @@ pub struct NetworkConfig {
     pub port_mappings: Vec<PortMapping>,
     /// DNS servers
     pub dns_servers: Vec<String>,
-    /// Songbird integration
-    pub songbird_enabled: bool,
+    /// Coordination capability provider integration
+    #[serde(alias = "songbird_enabled")]
+    pub coordination_enabled: bool,
 }
 
 /// Storage configuration
@@ -246,8 +255,9 @@ pub struct NetworkConfig {
 pub struct StorageConfig {
     /// Storage backend
     pub backend: String,
-    /// NestGate integration
-    pub nestgate_enabled: bool,
+    /// Storage capability provider integration
+    #[serde(alias = "nestgate_enabled")]
+    pub storage_provider_enabled: bool,
     /// Volume configurations
     pub volumes: Vec<VolumeConfig>,
     /// Backup enabled
@@ -394,7 +404,7 @@ impl Default for SecurityConfig {
         Self {
             level: String::from("standard"),
             isolation: String::from("process"),
-            beardog_enabled: false,
+            security_provider_enabled: false,
             crypto_policies: vec![String::from("tls1.3"), String::from("aes256")],
         }
     }
@@ -407,7 +417,7 @@ impl Default for NetworkConfig {
             port_mappings: Vec::new(),
             // Empty: DNS servers are provided by the environment or operator config.
             dns_servers: Vec::new(),
-            songbird_enabled: false,
+            coordination_enabled: false,
         }
     }
 }
@@ -416,7 +426,7 @@ impl Default for StorageConfig {
     fn default() -> Self {
         Self {
             backend: String::from("local"),
-            nestgate_enabled: false,
+            storage_provider_enabled: false,
             volumes: Vec::new(),
             backup_enabled: false,
         }

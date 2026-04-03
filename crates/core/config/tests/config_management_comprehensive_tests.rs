@@ -27,7 +27,7 @@ fn test_toadstool_config_default() {
 
     assert!(!config.app.name.is_empty());
     assert!(config.app.worker_threads > 0);
-    assert!(!config.network.endpoints.songbird.is_empty());
+    assert!(!config.network.endpoints.coordination.is_empty());
 }
 
 #[test]
@@ -45,9 +45,9 @@ fn test_application_config_default_values() {
 fn test_network_config_default_values() {
     let config = NetworkConfig::default();
 
-    assert!(!config.endpoints.songbird.is_empty());
-    assert!(!config.endpoints.beardog.is_empty());
-    assert!(!config.endpoints.nestgate.is_empty());
+    assert!(!config.endpoints.coordination.is_empty());
+    assert!(!config.endpoints.security.is_empty());
+    assert!(!config.endpoints.storage.is_empty());
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn test_config_validation_zero_worker_threads() {
 #[test]
 fn test_config_validation_empty_songbird_endpoint() {
     let mut config = ToadStoolConfig::default();
-    config.network.endpoints.songbird = String::new();
+    config.network.endpoints.coordination = String::new();
 
     let result = config.validate();
     assert!(result.is_err());
@@ -335,27 +335,27 @@ fn test_config_load_from_invalid_toml() {
 fn test_endpoints_default_values() {
     let endpoints = EndpointConfig::default();
 
-    assert!(!endpoints.songbird.is_empty());
-    assert!(!endpoints.beardog.is_empty());
-    assert!(!endpoints.nestgate.is_empty());
-    assert!(!endpoints.squirrel.is_empty());
+    assert!(!endpoints.coordination.is_empty());
+    assert!(!endpoints.security.is_empty());
+    assert!(!endpoints.storage.is_empty());
+    assert!(!endpoints.ai_processing.is_empty());
     assert!(!endpoints.federation.is_empty());
 }
 
 #[test]
 fn test_endpoints_custom_values() {
     let endpoints = EndpointConfig {
-        songbird: "http://localhost:8080".to_string(),
-        beardog: "http://localhost:8081".to_string(),
-        nestgate: "http://localhost:8082".to_string(),
-        squirrel: "http://localhost:8083".to_string(),
+        coordination: "http://localhost:8080".to_string(),
+        security: "http://localhost:8081".to_string(),
+        storage: "http://localhost:8082".to_string(),
+        ai_processing: "http://localhost:8083".to_string(),
         federation: "http://localhost:8084".to_string(),
         metrics: "http://localhost:8085/metrics".to_string(),
         health: "http://localhost:8086/health".to_string(),
     };
 
-    assert_eq!(endpoints.songbird, "http://localhost:8080");
-    assert_eq!(endpoints.beardog, "http://localhost:8081");
+    assert_eq!(endpoints.coordination, "http://localhost:8080");
+    assert_eq!(endpoints.security, "http://localhost:8081");
 }
 
 // ============================================================================

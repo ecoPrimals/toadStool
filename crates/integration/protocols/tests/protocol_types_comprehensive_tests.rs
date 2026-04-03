@@ -17,7 +17,7 @@ fn test_beardog_config_default() {
     let config = BearDogConfig::default();
 
     // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
-    assert!(config.socket_path.contains("beardog.sock"));
+    assert!(config.socket_path.contains("security.sock"));
     assert_eq!(config.request_timeout_secs, 30);
     assert_eq!(config.token_refresh_interval_secs, 300);
     assert_eq!(config.zero_trust_validation_interval_secs, 60);

@@ -208,7 +208,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                                     .unwrap_or_else(|_| "8000".to_string());
                                 Ok::<_, std::env::VarError>(format!(
                                     "http://{}:{}",
-                                    domains.beardog, port
+                                    domains.security, port
                                 ))
                             })
                             .unwrap_or_default(),
@@ -412,7 +412,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                     vec![
                         HealthEndpoint {
                             name: "orchestration".to_string(), // Capability-based name
-                            url: format!("http://{}:{songbird_port}/health", domains.songbird),
+                            url: format!("http://{}:{songbird_port}/health", domains.coordination),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -429,7 +429,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         },
                         HealthEndpoint {
                             name: "pki".to_string(), // Capability-based name
-                            url: format!("http://{}:{beardog_port}/health", domains.beardog),
+                            url: format!("http://{}:{beardog_port}/health", domains.security),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -446,7 +446,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         },
                         HealthEndpoint {
                             name: "storage".to_string(), // Capability-based name
-                            url: format!("http://{}:{nestgate_port}/health", domains.nestgate),
+                            url: format!("http://{}:{nestgate_port}/health", domains.storage),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,
@@ -463,7 +463,7 @@ impl ConfiguratorCore for super::SongbirdNetworkConfigurator {
                         },
                         HealthEndpoint {
                             name: "ai".to_string(), // Capability-based name
-                            url: format!("http://{}:{squirrel_port}/health", domains.squirrel),
+                            url: format!("http://{}:{squirrel_port}/health", domains.ai_processing),
                             health_check: HttpHealthCheckConfig {
                                 base: HealthCheckConfig {
                                     enabled: true,

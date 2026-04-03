@@ -79,10 +79,10 @@ fn test_network_config_endpoints_non_empty() {
     let network = NetworkConfig::default();
     // Deprecated endpoints are still populated by default for backward compatibility
     #[allow(deprecated)]
-    let songbird_non_empty = !network.endpoints.songbird.is_empty();
+    let coordination_non_empty = !network.endpoints.coordination.is_empty();
     assert!(
-        songbird_non_empty,
-        "Songbird endpoint should have a default value"
+        coordination_non_empty,
+        "Coordination endpoint should have a default value"
     );
 }
 

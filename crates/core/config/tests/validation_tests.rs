@@ -30,7 +30,7 @@ fn test_validation_port_zero_allowed() {
 #[allow(deprecated)]
 fn test_validation_empty_songbird_endpoint() {
     let mut config = ToadStoolConfig::default();
-    config.network.endpoints.songbird = String::new();
+    config.network.endpoints.coordination = String::new();
 
     let result = config.validate_runtime_config();
     assert!(result.is_err());

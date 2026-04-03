@@ -361,8 +361,8 @@ mod zero_config_tests {
     #[test]
     fn test_zero_config_ecosystem_services_default() {
         let svc = EcosystemServices::default();
-        assert!(svc.songbird.is_none());
-        assert!(svc.beardog.is_none());
+        assert!(svc.coordination.is_none());
+        assert!(svc.security.is_none());
     }
 
     #[test]

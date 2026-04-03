@@ -169,14 +169,14 @@ impl ToadStoolConfig {
         {
             info!(
                 "    Coordination (fallback): {}",
-                self.network.endpoints.songbird
+                self.network.endpoints.coordination
             );
-            info!("    Crypto (fallback): {}", self.network.endpoints.beardog);
+            info!("    Crypto (fallback): {}", self.network.endpoints.security);
+            info!("    Storage (fallback): {}", self.network.endpoints.storage);
             info!(
-                "    Storage (fallback): {}",
-                self.network.endpoints.nestgate
+                "    AI (fallback): {}",
+                self.network.endpoints.ai_processing
             );
-            info!("    AI (fallback): {}", self.network.endpoints.squirrel);
         }
         info!("    💡 Use ServiceDiscovery::find_by_capability() for runtime discovery");
         info!("  Security:");
@@ -272,7 +272,10 @@ mod tests {
                 assert!(config.features.enable_debug);
                 assert_eq!(config.logging.level, "debug");
                 assert_eq!(config.app.worker_threads, 8);
-                assert_eq!(config.network.endpoints.songbird, "http://localhost:8080");
+                assert_eq!(
+                    config.network.endpoints.coordination,
+                    "http://localhost:8080"
+                );
             },
         );
     }

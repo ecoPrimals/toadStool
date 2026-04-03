@@ -52,7 +52,7 @@ Nest    = Tower  + NestGate           <- storage
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
-| Hardcoded primal names | 0 -- all capability-based discovery via `get_socket_path_for_capability()` |
+| Hardcoded primal names | 0 -- all capability-based discovery per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2; struct fields use capability-domain names with `#[serde(alias)]` for backward compat |
 | `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
@@ -270,6 +270,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S172-5 (Apr 2, 2026)**: Capability-based discovery compliance per primalSpring audit. Evolved ~105 foreign primal references across 40 files: `ServiceDomainsConfig` fields (`songbird`→`coordination`, `beardog`→`security`, `nestgate`→`storage`, `squirrel`→`ai_processing`); `SOCKET_FILENAME` from `beardog.sock`→`security.sock` (Tier 3 capability-domain socket); `EndpointConfig` fields; `EcosystemServices` fields; `PrimalCapabilitiesConfig` fields; all with `#[serde(alias)]` for backward compat and legacy env var fallbacks. 0 clippy warnings, 0 doc warnings, 0 test failures.
 - **S172 (Apr 2, 2026)**: Deep debt evolution plan (6 phases). Created `CapabilityDomain` enum (7 variants, replaces ~30 hardcoded primal name sites). Created `LockedMemory` RAII type in hw-safe. Typed ioctl wrappers in nvpmu/vfio.rs. BYOB health monitoring wired to background task. Replaced hand-rolled mmap with `memmap2` (eliminated 4 unsafe blocks). Smart-refactored 3 large files into submodules. +55 tests across hw_learn and transport handlers. Sysfs path discovery via toadstool-sysmon. Feature-gated embedded placeholders.
 - **S171 (Apr 1, 2026)**: Ember absorption + unsafe evolution. Created `toadstool-hw-safe` (unsafe containment zone), `toadstool-glowplug`, `toadstool-ember` crates. Rewrote `GpuFirmwareProxy` → `GpuFirmwareAccess` (direct BAR0 reads, zero coral-ember dependency). Evolved `glowplug_client.rs` to toadStool-native sysfs-based service. Migrated mmap/alloc to hw-safe across akida-driver, nvpmu, gpu. All ~400 distributed crate missing_docs resolved. Hardcoding evolved (bind address, gate ID, configurator constants).
 - **S170 (Mar 31, 2026)**: Concurrent test evolution. Fixed 16+ stale test failures, eliminated test sleeps, IPC compliance verification.
@@ -346,7 +347,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 2, 2026 — S172-4. 21,537 workspace tests, 0 failures, 220 ignored. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~22 irreducible unsafe ops (all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **glowPlug/ember** subsystem absorbed from coralReef — toadStool-native hardware lifecycle. Shared VFIO DMA in `hw-safe::vfio_dma`. Crypto validation evolved from placeholders.
+**Last Updated**: April 2, 2026 — S172-5. 21,537 workspace tests, 0 failures, 220 ignored. ~80% lib-only line coverage (185K lines instrumented, target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). ~22 irreducible unsafe ops (all in `hw-safe` + drivers, SAFETY-documented); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **Capability-based discovery compliant** — all struct fields, config types, DNS defaults, socket names, and env vars evolved from primal-identity to capability-domain naming per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2; serde aliases preserve backward compat. `security.sock` replaces `beardog.sock`. `coordination.{base}` replaces `songbird.{base}`.
 
 ---
 

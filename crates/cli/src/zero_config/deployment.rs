@@ -122,18 +122,15 @@ impl ZeroConfigDeployment {
     pub(crate) async fn deploy_ecosystem_integrations(&self) -> Result<()> {
         debug!("Deploying ecosystem integrations");
 
-        // Deploy Songbird integration
-        if self.config.network.songbird_enabled {
+        if self.config.network.coordination_enabled {
             self.deploy_songbird_integration().await?;
         }
 
-        // Deploy BearDog integration
-        if self.config.security.beardog_enabled {
+        if self.config.security.security_provider_enabled {
             self.deploy_beardog_integration().await?;
         }
 
-        // Deploy NestGate integration
-        if self.config.storage.nestgate_enabled {
+        if self.config.storage.storage_provider_enabled {
             self.deploy_nestgate_integration().await?;
         }
 

@@ -53,19 +53,16 @@ impl DiscoveryExt for ZeroConfigDeployment {
         // Use capability-based discovery instead of hardcoded names
         use toadstool_common::infant_discovery::capabilities::capabilities::*;
 
-        // Discover orchestration service (formerly Songbird)
-        self.ecosystem_services.songbird = self
+        self.ecosystem_services.coordination = self
             .discover_by_capability(ORCHESTRATION, "orchestration")
             .await?;
 
-        // Discover PKI service (formerly BearDog)
-        self.ecosystem_services.beardog = self.discover_by_capability(PKI, "pki").await?;
+        self.ecosystem_services.security = self.discover_by_capability(PKI, "pki").await?;
 
-        // Discover storage service (formerly NestGate)
-        self.ecosystem_services.nestgate = self.discover_by_capability(STORAGE, "storage").await?;
+        self.ecosystem_services.storage = self.discover_by_capability(STORAGE, "storage").await?;
 
-        // Discover AI service (formerly Squirrel)
-        self.ecosystem_services.squirrel = self.discover_by_capability(AI_PROCESSING, "ai").await?;
+        self.ecosystem_services.ai_processing =
+            self.discover_by_capability(AI_PROCESSING, "ai").await?;
 
         // Discover ToadStool peers
         self.ecosystem_services.toadstool_peers = self.discover_toadstool_peers().await?;

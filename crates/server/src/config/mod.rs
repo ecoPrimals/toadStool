@@ -212,17 +212,21 @@ impl Default for HealthCheckConfig {
     }
 }
 
-/// Primal capability system configuration
+/// Primal capability system configuration.
+///
+/// Fields use capability-domain names per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
+/// Legacy primal-name env vars (`SONGBIRD_ENDPOINT`, `SQUIRREL_ENDPOINT`) are accepted
+/// as fallbacks for backward compatibility.
 #[derive(Debug, Clone)]
 pub struct PrimalCapabilitiesConfig {
     /// Enable capability provider
     pub enabled: bool,
 
-    /// Songbird endpoint (if available)
-    pub songbird_endpoint: Option<String>,
+    /// Coordination capability endpoint (formerly songbird)
+    pub coordination_endpoint: Option<String>,
 
-    /// Squirrel endpoint (if available)
-    pub squirrel_endpoint: Option<String>,
+    /// AI processing capability endpoint (formerly squirrel)
+    pub ai_processing_endpoint: Option<String>,
 
     /// Heartbeat interval in seconds
     pub heartbeat_interval_secs: u64,
@@ -237,8 +241,12 @@ impl Default for PrimalCapabilitiesConfig {
             enabled: std::env::var("ENABLE_PRIMAL_CAPABILITIES")
                 .map(|v| v == "true")
                 .unwrap_or_default(),
-            songbird_endpoint: std::env::var("SONGBIRD_ENDPOINT").ok(),
-            squirrel_endpoint: std::env::var("SQUIRREL_ENDPOINT").ok(),
+            coordination_endpoint: std::env::var("COORDINATION_ENDPOINT")
+                .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+                .ok(),
+            ai_processing_endpoint: std::env::var("AI_PROCESSING_ENDPOINT")
+                .or_else(|_| std::env::var("SQUIRREL_ENDPOINT"))
+                .ok(),
             heartbeat_interval_secs: std::env::var("PRIMAL_HEARTBEAT_INTERVAL")
                 .ok()
                 .and_then(|v| v.parse().ok())

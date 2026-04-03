@@ -26,7 +26,10 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Variants used via `BiomeProcess` / pattern matching
+#[expect(
+    dead_code,
+    reason = "variants constructed via BiomeProcess; some arms not yet matched in all paths"
+)]
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),
@@ -43,7 +46,10 @@ impl ProcessType {
         }
     }
 
-    #[allow(dead_code)] // Used from tests and future diagnostics
+    #[expect(
+        dead_code,
+        reason = "diagnostic helper for tests and future runtime logging"
+    )]
     pub(super) const fn type_str(&self) -> &str {
         match self {
             Self::Primal(_) => "primal",

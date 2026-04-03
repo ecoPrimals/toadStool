@@ -3,7 +3,7 @@
 
 //! Locked (pinned) memory for DMA and security-sensitive buffers.
 //!
-//! [`LockedMemory`] composes [`AlignedAlloc`](super::AlignedAlloc) with
+//! [`LockedMemory`] composes [`AlignedAlloc`] with
 //! `mlock`/`munlock` into a single RAII type so callers never need to write
 //! unsafe mlock/munlock code themselves.
 //!

@@ -6,28 +6,28 @@ use crate::runtime_defaults::{ConfigError, ConfigResult};
 pub(super) fn validate(config: &ToadStoolConfig) -> ConfigResult<()> {
     #[allow(deprecated)]
     {
-        if config.network.endpoints.songbird.is_empty() {
+        if config.network.endpoints.coordination.is_empty() {
             return Err(ConfigError::Invalid(
                 "Songbird endpoint cannot be empty (use capability-based discovery instead)"
                     .to_string(),
             ));
         }
 
-        if config.network.endpoints.beardog.is_empty() {
+        if config.network.endpoints.security.is_empty() {
             return Err(ConfigError::Invalid(
                 "BearDog endpoint cannot be empty (use capability-based discovery instead)"
                     .to_string(),
             ));
         }
 
-        if config.network.endpoints.nestgate.is_empty() {
+        if config.network.endpoints.storage.is_empty() {
             return Err(ConfigError::Invalid(
                 "NestGate endpoint cannot be empty (use capability-based discovery instead)"
                     .to_string(),
             ));
         }
 
-        if config.network.endpoints.squirrel.is_empty() {
+        if config.network.endpoints.ai_processing.is_empty() {
             return Err(ConfigError::Invalid(
                 "Squirrel endpoint cannot be empty (use capability-based discovery instead)"
                     .to_string(),

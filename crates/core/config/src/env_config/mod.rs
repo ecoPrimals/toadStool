@@ -90,10 +90,10 @@ impl EnvironmentConfig {
 
         #[allow(deprecated)]
         {
-            config.network.endpoints.songbird = self.network.songbird_endpoint();
-            config.network.endpoints.beardog = self.network.beardog_endpoint();
-            config.network.endpoints.nestgate = self.network.nestgate_endpoint();
-            config.network.endpoints.squirrel = self.network.squirrel_endpoint();
+            config.network.endpoints.coordination = self.network.songbird_endpoint();
+            config.network.endpoints.security = self.network.beardog_endpoint();
+            config.network.endpoints.storage = self.network.nestgate_endpoint();
+            config.network.endpoints.ai_processing = self.network.squirrel_endpoint();
         }
 
         config.network.connection.request_timeout =

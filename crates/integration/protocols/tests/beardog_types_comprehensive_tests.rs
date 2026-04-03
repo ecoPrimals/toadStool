@@ -17,7 +17,7 @@ fn test_beardog_config_default() {
     // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
     let config = BearDogConfig::default();
 
-    assert!(config.socket_path.contains("beardog.sock"));
+    assert!(config.socket_path.contains("security.sock"));
 }
 
 #[test]

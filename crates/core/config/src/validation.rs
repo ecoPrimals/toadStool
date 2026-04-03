@@ -18,25 +18,25 @@ impl ToadStoolConfig {
         // Bind address port 0 is valid (OS-assigned at bind time)
 
         // Validate endpoints
-        if self.network.endpoints.songbird.is_empty() {
+        if self.network.endpoints.coordination.is_empty() {
             return Err(ConfigError::Invalid(
                 "Songbird endpoint cannot be empty".to_string(),
             ));
         }
 
-        if self.network.endpoints.beardog.is_empty() {
+        if self.network.endpoints.security.is_empty() {
             return Err(ConfigError::Invalid(
                 "BearDog endpoint cannot be empty".to_string(),
             ));
         }
 
-        if self.network.endpoints.nestgate.is_empty() {
+        if self.network.endpoints.storage.is_empty() {
             return Err(ConfigError::Invalid(
                 "NestGate endpoint cannot be empty".to_string(),
             ));
         }
 
-        if self.network.endpoints.squirrel.is_empty() {
+        if self.network.endpoints.ai_processing.is_empty() {
             return Err(ConfigError::Invalid(
                 "Squirrel endpoint cannot be empty".to_string(),
             ));

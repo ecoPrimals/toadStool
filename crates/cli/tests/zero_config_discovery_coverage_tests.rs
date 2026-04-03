@@ -106,10 +106,10 @@ async fn test_discover_ecosystem_succeeds() {
 async fn test_discover_ecosystem_populates_services() {
     let mut deployment = ZeroConfigDeployment::new();
     if matches!(deployment.discover_ecosystem().await, Ok(())) {
-        let _ = &deployment.ecosystem_services.songbird;
-        let _ = &deployment.ecosystem_services.beardog;
-        let _ = &deployment.ecosystem_services.nestgate;
-        let _ = &deployment.ecosystem_services.squirrel;
+        let _ = &deployment.ecosystem_services.coordination;
+        let _ = &deployment.ecosystem_services.security;
+        let _ = &deployment.ecosystem_services.storage;
+        let _ = &deployment.ecosystem_services.ai_processing;
         let _ = &deployment.ecosystem_services.toadstool_peers;
     }
 }
@@ -191,7 +191,7 @@ async fn test_discover_system_gpu_vendor() {
 async fn test_zero_config_deployment_new() {
     let deployment = ZeroConfigDeployment::new();
     let _ = deployment.system_info.cpu.cores;
-    let _ = deployment.ecosystem_services.songbird.is_none();
+    let _ = deployment.ecosystem_services.coordination.is_none();
 }
 
 // ─── Additional coverage: types, edge cases, platform detection ───

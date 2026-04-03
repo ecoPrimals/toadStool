@@ -67,7 +67,7 @@ mod tests {
     #[allow(deprecated)]
     fn test_empty_songbird_endpoint() {
         let mut config = valid_config();
-        config.network.endpoints.songbird = String::new();
+        config.network.endpoints.coordination = String::new();
         let err = config.validate_runtime_config().unwrap_err();
         assert!(err.to_string().contains("Songbird endpoint"));
     }
@@ -76,7 +76,7 @@ mod tests {
     #[allow(deprecated)]
     fn test_empty_beardog_endpoint() {
         let mut config = valid_config();
-        config.network.endpoints.beardog = String::new();
+        config.network.endpoints.security = String::new();
         let err = config.validate_runtime_config().unwrap_err();
         assert!(err.to_string().contains("BearDog endpoint"));
     }
@@ -85,7 +85,7 @@ mod tests {
     #[allow(deprecated)]
     fn test_empty_nestgate_endpoint() {
         let mut config = valid_config();
-        config.network.endpoints.nestgate = String::new();
+        config.network.endpoints.storage = String::new();
         let err = config.validate_runtime_config().unwrap_err();
         assert!(err.to_string().contains("NestGate endpoint"));
     }
@@ -94,7 +94,7 @@ mod tests {
     #[allow(deprecated)]
     fn test_empty_squirrel_endpoint() {
         let mut config = valid_config();
-        config.network.endpoints.squirrel = String::new();
+        config.network.endpoints.ai_processing = String::new();
         let err = config.validate_runtime_config().unwrap_err();
         assert!(err.to_string().contains("Squirrel endpoint"));
     }

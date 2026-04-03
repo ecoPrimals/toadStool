@@ -106,13 +106,13 @@ impl ZeroConfigDeployment {
         debug!("Generating security configuration");
 
         // ✅ DEEP DEBT: Check for security CAPABILITY, not specific primal
-        let security_provider_available = self.ecosystem_services.beardog.is_some()
+        let security_provider_available = self.ecosystem_services.security.is_some()
             || std::env::var("TOADSTOOL_SECURITY_PROVIDER").is_ok();
 
         Ok(SecurityConfig {
             level: "standard".to_string(),
             isolation: "process".to_string(),
-            beardog_enabled: security_provider_available, // Renamed from beardog_enabled
+            security_provider_enabled: security_provider_available,
             crypto_policies: vec!["default".to_string()],
         })
     }
@@ -123,7 +123,7 @@ impl ZeroConfigDeployment {
         debug!("Generating network configuration");
 
         // ✅ DEEP DEBT: Check for coordination CAPABILITY, not specific primal
-        let coordination_provider_available = self.ecosystem_services.songbird.is_some()
+        let coordination_provider_available = self.ecosystem_services.coordination.is_some()
             || std::env::var("TOADSTOOL_COORDINATION_PROVIDER").is_ok();
 
         let host_port = toadstool_config::config_utils::ConfigUtils::get_toadstool_port();
@@ -141,7 +141,7 @@ impl ZeroConfigDeployment {
                 .ok()
                 .map(|v| v.split(',').map(str::trim).map(String::from).collect())
                 .unwrap_or_default(),
-            songbird_enabled: coordination_provider_available,
+            coordination_enabled: coordination_provider_available,
         })
     }
 
@@ -151,12 +151,12 @@ impl ZeroConfigDeployment {
         debug!("Generating storage configuration");
 
         // ✅ DEEP DEBT: Check for storage CAPABILITY, not specific primal
-        let storage_provider_available = self.ecosystem_services.nestgate.is_some()
+        let storage_provider_available = self.ecosystem_services.storage.is_some()
             || std::env::var("TOADSTOOL_STORAGE_PROVIDER").is_ok();
 
         Ok(StorageConfig {
             backend: "local".to_string(),
-            nestgate_enabled: storage_provider_available, // Capability-based check
+            storage_provider_enabled: storage_provider_available,
             volumes: vec![VolumeConfig {
                 name: "data".to_string(),
                 size: "10GB".to_string(),

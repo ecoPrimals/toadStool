@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 2, 2026 -- S172-4 Deep Debt Execution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,537 tests (0 failures) | **~67 JSON-RPC methods** (`identity.get` added) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **glowPlug/ember** absorbed from coralReef — toadStool-native hardware lifecycle | **~22 irreducible unsafe** ops in `hw-safe` + drivers | **IPC compliant** (identity.get, health.liveness/readiness/check, capabilities.list, XDG socket, capability symlinks)
-**Latest**: S172-4 — Deep debt execution: `identity.get` JSON-RPC (wateringHole MUST), daemon health alignment, `capability.*` Neural API naming, capability symlinks (`compute.sock`), crypto validation evolved from placeholders, `AccessPolicies` real struct, shared VFIO DMA in `hw-safe`, `SecurityClient` RPC dedup, `syn v1` eliminated, blocking-in-async evolution (6 files), `await_holding_lock` CI guard.
+**Updated**: April 2, 2026 -- S172-5 Capability-Based Discovery Compliance
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,537 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | All production files < 400L | **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 | **~22 irreducible unsafe** ops in `hw-safe` + drivers
+**Latest**: S172-5 — Capability-based discovery compliance (primalSpring audit). 40 files, ~105 foreign primal references evolved: `ServiceDomainsConfig`/`EndpointConfig`/`EcosystemServices`/`PrimalCapabilitiesConfig` fields from primal-identity to capability-domain names. `beardog.sock`→`security.sock`. DNS defaults from `songbird.{base}`→`coordination.{base}`. `#[serde(alias)]` backward compat + legacy env var fallbacks. 0 clippy/doc warnings, 0 test failures.
 
 ---
 

@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive concurrent tests for GPU Runtime
 //!
-//! ⚠️ TEMPORARY: Tests temporarily disabled due to segfault investigation
-//! Issue: SIGSEGV in concurrent access patterns
-//! Status: Core GPU functionality works (55 tests passing)
-//! Action: Deep investigation needed for concurrent memory safety
+//! Tests with `#[ignore]` require NVIDIA GPU + Vulkan driver; they trigger
+//! SIGSEGV inside wgpu's Vulkan drop path on some driver versions (NVK).
+//! Core GPU functionality is covered by the non-ignored test suite.
 //!
-//! ✅ MODERN CONCURRENT TESTING - Zero sleeps, fully concurrent
-//! Tests GPU engine creation, device discovery, kernel compilation, execution
+//! Zero sleeps, fully concurrent.
 
 #![cfg(test)]
 #![allow(dead_code, unused_imports)]

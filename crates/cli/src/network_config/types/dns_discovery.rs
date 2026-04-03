@@ -2,10 +2,9 @@
 
 //! DNS service discovery configuration types.
 //!
-//! **Compatibility defaults**: The hardcoded primal service domains (songbird, beardog, nestgate,
-//! etc.) are compatibility defaults for legacy deployments. New discovery should use
-//! capability-based resolution (e.g., discover by ORCHESTRATION, PKI, STORAGE capabilities)
-//! rather than by primal name.
+//! Domain fields use **capability names** (coordination, security, storage, ai\_processing)
+//! per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2. Serde aliases accept legacy primal
+//! names (songbird, beardog, nestgate, squirrel) in existing config files.
 
 use std::time::Duration;
 
@@ -29,76 +28,71 @@ pub struct DnsDiscoveryConfig {
     pub cache: DnsCacheConfig,
 }
 
-/// Service domains configuration
+/// Capability-domain DNS configuration.
 ///
-/// **DEPRECATED**: This configuration uses hardcoded primal names.
-/// New code should use capability-based discovery instead.
-///
-/// For backward compatibility, this can be constructed from environment
-/// variables or a base domain.
+/// Fields are named by **capability domain**, not primal identity, per
+/// `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2. Serde aliases preserve
+/// backward compatibility with config files that still use primal names.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceDomainsConfig {
-    /// ToadStool domain
-    pub toadstool: String,
-    /// Songbird domain (DEPRECATED: use ORCHESTRATION capability)
-    pub songbird: String,
-    /// BearDog domain (DEPRECATED: use PKI capability)
-    pub beardog: String,
-    /// NestGate domain (DEPRECATED: use STORAGE capability)
-    pub nestgate: String,
-    /// Squirrel domain (DEPRECATED: use AI_PROCESSING capability)
-    pub squirrel: String,
+    /// Compute capability domain (self — toadStool)
+    #[serde(alias = "toadstool")]
+    pub compute: String,
+    /// Coordination / orchestration capability domain
+    #[serde(alias = "songbird")]
+    pub coordination: String,
+    /// Security / crypto capability domain
+    #[serde(alias = "beardog")]
+    pub security: String,
+    /// Storage capability domain
+    #[serde(alias = "nestgate")]
+    pub storage: String,
+    /// AI processing capability domain
+    #[serde(alias = "squirrel")]
+    pub ai_processing: String,
     /// BiomeOS domain
     pub biomeos: String,
 }
 
 impl ServiceDomainsConfig {
-    /// Create service domains from environment or defaults
+    /// Create capability-domain config from environment or defaults.
     ///
-    /// **Compatibility defaults**: These domain names are legacy compatibility defaults.
-    /// Discovery should prefer capability-based resolution over primal-name domains.
-    ///
-    /// Reads TOADSTOOL_BASE_DOMAIN (default: "primal.local")
-    /// and constructs service-specific domains.
-    ///
-    /// Individual services can be overridden with:
-    /// - TOADSTOOL_DOMAIN
-    /// - SONGBIRD_DOMAIN
-    /// - BEARDOG_DOMAIN
-    /// - NESTGATE_DOMAIN
-    /// - SQUIRREL_DOMAIN
-    /// - BIOMEOS_DOMAIN
+    /// Primary env vars use capability names (`COORDINATION_DOMAIN`, etc.);
+    /// legacy primal-name env vars (`SONGBIRD_DOMAIN`, etc.) are accepted as
+    /// fallbacks for backward compatibility.
     pub fn from_env() -> Self {
         let base_domain =
             std::env::var("TOADSTOOL_BASE_DOMAIN").unwrap_or_else(|_| "primal.local".to_string());
 
         Self {
-            toadstool: std::env::var("TOADSTOOL_DOMAIN")
-                .unwrap_or_else(|_| format!("toadstool.{base_domain}")),
-            songbird: std::env::var("SONGBIRD_DOMAIN")
-                .unwrap_or_else(|_| format!("songbird.{base_domain}")),
-            beardog: std::env::var("BEARDOG_DOMAIN")
-                .unwrap_or_else(|_| format!("beardog.{base_domain}")),
-            nestgate: std::env::var("NESTGATE_DOMAIN")
-                .unwrap_or_else(|_| format!("nestgate.{base_domain}")),
-            squirrel: std::env::var("SQUIRREL_DOMAIN")
-                .unwrap_or_else(|_| format!("squirrel.{base_domain}")),
+            compute: std::env::var("COMPUTE_DOMAIN")
+                .or_else(|_| std::env::var("TOADSTOOL_DOMAIN"))
+                .unwrap_or_else(|_| format!("compute.{base_domain}")),
+            coordination: std::env::var("COORDINATION_DOMAIN")
+                .or_else(|_| std::env::var("SONGBIRD_DOMAIN"))
+                .unwrap_or_else(|_| format!("coordination.{base_domain}")),
+            security: std::env::var("SECURITY_DOMAIN")
+                .or_else(|_| std::env::var("BEARDOG_DOMAIN"))
+                .unwrap_or_else(|_| format!("security.{base_domain}")),
+            storage: std::env::var("STORAGE_DOMAIN")
+                .or_else(|_| std::env::var("NESTGATE_DOMAIN"))
+                .unwrap_or_else(|_| format!("storage.{base_domain}")),
+            ai_processing: std::env::var("AI_PROCESSING_DOMAIN")
+                .or_else(|_| std::env::var("SQUIRREL_DOMAIN"))
+                .unwrap_or_else(|_| format!("ai.{base_domain}")),
             biomeos: std::env::var("BIOMEOS_DOMAIN")
                 .unwrap_or_else(|_| format!("biomeos.{base_domain}")),
         }
     }
 
-    /// Create with a custom base domain
-    ///
-    /// **Compatibility defaults**: Primal-name subdomains (songbird, beardog, nestgate, etc.)
-    /// are for legacy compatibility. Prefer capability-based discovery.
+    /// Create with a custom base domain using capability-based subdomains.
     pub fn with_base_domain(base_domain: &str) -> Self {
         Self {
-            toadstool: format!("toadstool.{base_domain}"),
-            songbird: format!("songbird.{base_domain}"),
-            beardog: format!("beardog.{base_domain}"),
-            nestgate: format!("nestgate.{base_domain}"),
-            squirrel: format!("squirrel.{base_domain}"),
+            compute: format!("compute.{base_domain}"),
+            coordination: format!("coordination.{base_domain}"),
+            security: format!("security.{base_domain}"),
+            storage: format!("storage.{base_domain}"),
+            ai_processing: format!("ai.{base_domain}"),
             biomeos: format!("biomeos.{base_domain}"),
         }
     }

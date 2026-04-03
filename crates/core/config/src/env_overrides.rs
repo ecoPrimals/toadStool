@@ -44,19 +44,19 @@ impl ToadStoolConfig {
         }
 
         if let Ok(songbird_endpoint) = std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT") {
-            self.network.endpoints.songbird = songbird_endpoint;
+            self.network.endpoints.coordination = songbird_endpoint;
         }
 
         if let Ok(beardog_endpoint) = std::env::var("TOADSTOOL_BEARDOG_ENDPOINT") {
-            self.network.endpoints.beardog = beardog_endpoint;
+            self.network.endpoints.security = beardog_endpoint;
         }
 
         if let Ok(nestgate_endpoint) = std::env::var("TOADSTOOL_NESTGATE_ENDPOINT") {
-            self.network.endpoints.nestgate = nestgate_endpoint;
+            self.network.endpoints.storage = nestgate_endpoint;
         }
 
         if let Ok(squirrel_endpoint) = std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT") {
-            self.network.endpoints.squirrel = squirrel_endpoint;
+            self.network.endpoints.ai_processing = squirrel_endpoint;
         }
 
         if let Ok(max_cpu) = std::env::var("TOADSTOOL_MAX_CPU") {

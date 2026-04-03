@@ -8,7 +8,7 @@
 //!
 //! **Old Pattern** (Hardcoded):
 //! ```rust,ignore
-//! let songbird_url = config.endpoints.songbird;
+//! let songbird_url = config.endpoints.coordination;
 //! ```
 //!
 //! **New Pattern** (Capability-Based):
@@ -26,7 +26,7 @@
 //! let endpoint = discover_or_fallback(
 //!     &discovery,
 //!     Capability::Coordination,
-//!     &config.endpoints.songbird
+//!     &config.endpoints.coordination
 //! ).await?;
 //! ```
 

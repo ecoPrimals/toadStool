@@ -67,70 +67,53 @@ impl Default for NetworkConfig {
     }
 }
 
-/// External service endpoints configuration
+/// External service endpoints configuration.
 ///
-/// ⚠️ **ARCHITECTURE EVOLUTION**: This struct is transitioning to capability-based discovery.
-///
-/// **Legacy Mode** (current): Hardcoded endpoint fields (songbird, beardog, etc.)
-/// **Future Mode**: Discovery-based lookup via `ServiceDiscovery`
-///
-/// These hardcoded fields are kept for backward compatibility but will be deprecated.
-/// New code should use `toadstool_common::runtime_discovery::ServiceDiscovery` to find
-/// services by capability, not by name.
-///
-/// **Migration Path**:
-/// 1. Old: `config.endpoints.songbird` - Hardcoded primal name
-/// 2. New: `ServiceDiscovery::find_by_capability(Capability::Coordination).await?` - Capability-based
-///
-/// See `DOCUMENTATION.md` for the self-knowledge migration path.
+/// Fields use **capability-domain names** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
+/// Serde aliases accept the legacy primal names (`songbird`, `beardog`, etc.) in
+/// existing config files. All capability fields are deprecated — prefer runtime
+/// discovery via `ServiceDiscovery::find_by_capability(...)`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EndpointConfig {
-    /// Songbird coordination service endpoint (LEGACY - use discovery)
-    ///
-    /// ⚠️ DEPRECATED: Use `ServiceDiscovery::find_by_capability(Capability::Coordination)`
+    /// Coordination capability endpoint (legacy fallback)
     #[deprecated(
         since = "0.7.0",
         note = "Use ServiceDiscovery::find_by_capability(Capability::Coordination) instead"
     )]
-    pub songbird: String,
+    #[serde(alias = "songbird")]
+    pub coordination: String,
 
-    /// BearDog cryptography service endpoint (LEGACY - use discovery)
-    ///
-    /// ⚠️ DEPRECATED: Use `ServiceDiscovery::find_by_capability(Capability::Crypto)`
+    /// Security / crypto capability endpoint (legacy fallback)
     #[deprecated(
         since = "0.7.0",
         note = "Use ServiceDiscovery::find_by_capability(Capability::Crypto) instead"
     )]
-    pub beardog: String,
+    #[serde(alias = "beardog")]
+    pub security: String,
 
-    /// NestGate storage service endpoint (LEGACY - use discovery)
-    ///
-    /// ⚠️ DEPRECATED: Use `ServiceDiscovery::find_by_capability(Capability::Storage)`
+    /// Storage capability endpoint (legacy fallback)
     #[deprecated(
         since = "0.7.0",
         note = "Use ServiceDiscovery::find_by_capability(Capability::Storage) instead"
     )]
-    pub nestgate: String,
+    #[serde(alias = "nestgate")]
+    pub storage: String,
 
-    /// Squirrel MCP platform endpoint (LEGACY - use discovery)
-    ///
-    /// ⚠️ DEPRECATED: Use `ServiceDiscovery::find_by_capability(Capability::AI)`
+    /// AI processing capability endpoint (legacy fallback)
     #[deprecated(
         since = "0.7.0",
         note = "Use ServiceDiscovery::find_by_capability(Capability::AI) instead"
     )]
-    pub squirrel: String,
+    #[serde(alias = "squirrel")]
+    pub ai_processing: String,
 
-    /// Federation endpoint for multi-instance coordination
-    /// This is still valid as it's self-knowledge (our own federation endpoint)
+    /// Federation endpoint for multi-instance coordination (self-knowledge)
     pub federation: String,
 
-    /// Metrics endpoint for Prometheus/monitoring
-    /// This is still valid as it's self-knowledge (our own metrics endpoint)
+    /// Metrics endpoint for Prometheus/monitoring (self-knowledge)
     pub metrics: String,
 
-    /// Health check endpoint
-    /// This is still valid as it's self-knowledge (our own health endpoint)
+    /// Health check endpoint (self-knowledge)
     pub health: String,
 }
 
@@ -138,35 +121,33 @@ impl Default for EndpointConfig {
     fn default() -> Self {
         let config = crate::env_config::EnvironmentConfig::from_env();
 
-        // ✅ DEEP DEBT EVOLUTION: Capability-based discovery instead of hardcoded endpoints
-        // Check environment variables first, then fall back to localhost defaults
-        let songbird = std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
-            let port = crate::ports::capability_fallback::COORDINATION;
-            format!("http://{}:{}", config.network.bind_address, port)
-        });
-        let beardog = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").unwrap_or_else(|_| {
+        let coordination =
+            std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
+                let port = crate::ports::capability_fallback::COORDINATION;
+                format!("http://{}:{}", config.network.bind_address, port)
+            });
+        let security = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::SECURITY;
             format!("http://{}:{}", config.network.bind_address, port)
         });
-        let nestgate = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").unwrap_or_else(|_| {
+        let storage = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::STORAGE;
             format!("http://{}:{}", config.network.bind_address, port)
         });
-        let squirrel = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
+        let ai_processing = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::PLATFORM;
             format!("http://{}:{}", config.network.bind_address, port)
         });
 
         Self {
-            // Capability-based endpoints - discovered via environment
             #[allow(deprecated)]
-            songbird,
+            coordination,
             #[allow(deprecated)]
-            beardog,
+            security,
             #[allow(deprecated)]
-            nestgate,
+            storage,
             #[allow(deprecated)]
-            squirrel,
+            ai_processing,
             // Self-knowledge endpoints (still valid)
             federation: format!(
                 "http://{}:{}",
@@ -264,7 +245,7 @@ mod tests {
     fn test_default_network_config() {
         // Tests backward compatibility with deprecated fields
         let config = NetworkConfig::default();
-        assert!(!config.endpoints.songbird.is_empty());
+        assert!(!config.endpoints.coordination.is_empty());
         assert!(config.connection.max_retries > 0);
     }
 
@@ -273,8 +254,8 @@ mod tests {
     fn test_endpoint_config_defaults() {
         // Tests backward compatibility with deprecated fields
         let config = EndpointConfig::default();
-        assert!(config.songbird.contains("http"));
-        assert!(config.beardog.contains("http"));
+        assert!(config.coordination.contains("http"));
+        assert!(config.security.contains("http"));
         assert!(config.metrics.contains("http"));
     }
 

@@ -76,7 +76,7 @@ fn test_beardog_config_default_socket() {
     // EVOLVED: Unix socket instead of HTTP endpoints
     let config = BearDogConfig::default();
 
-    assert!(config.socket_path.contains("beardog.sock"));
+    assert!(config.socket_path.contains("security.sock"));
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn test_beardog_config_uses_xdg_runtime_dir() {
     // EVOLVED: No API tokens! Unix socket auth via file permissions
     let config = BearDogConfig::default();
     // Should use XDG_RUNTIME_DIR or fallback to /tmp
-    assert!(config.socket_path.ends_with("beardog.sock"));
+    assert!(config.socket_path.ends_with("security.sock"));
 }
 
 #[test]

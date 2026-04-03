@@ -229,11 +229,11 @@ fn test_dns_discovery_config() {
 #[test]
 fn test_service_domains_config() {
     let domains = create_test_service_domains_config();
-    assert!(!domains.toadstool.is_empty());
-    assert!(!domains.songbird.is_empty());
-    assert!(!domains.beardog.is_empty());
-    assert!(!domains.nestgate.is_empty());
-    assert!(!domains.squirrel.is_empty());
+    assert!(!domains.compute.is_empty());
+    assert!(!domains.coordination.is_empty());
+    assert!(!domains.security.is_empty());
+    assert!(!domains.storage.is_empty());
+    assert!(!domains.ai_processing.is_empty());
     assert!(!domains.biomeos.is_empty());
 }
 

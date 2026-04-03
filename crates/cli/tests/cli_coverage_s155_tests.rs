@@ -697,9 +697,9 @@ fn test_zero_config_cpu_info_default() {
 fn test_zero_config_ecosystem_services_default() {
     use toadstool_cli::zero_config::EcosystemServices;
     let svc = EcosystemServices::default();
-    assert!(svc.songbird.is_none());
-    assert!(svc.beardog.is_none());
-    assert!(svc.nestgate.is_none());
+    assert!(svc.coordination.is_none());
+    assert!(svc.security.is_none());
+    assert!(svc.storage.is_none());
 }
 
 #[test]
