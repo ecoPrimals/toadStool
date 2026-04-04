@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 4, 2026 -- S177 Capability-Based Evolution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,624 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%)
-**Latest**: S177 — Capability-based evolution: env_config fields renamed from primal names to capability names (`songbird_port` → `coordination_port`, etc.) with serde aliases. Removed deprecated socket path functions (`get_beardog_socket_path` etc.), IPC `connect_to_primal`/`resolve_primal`. Smart-refactored 5 more files >650L. All quality gates green.
+**Updated**: April 4, 2026 -- S180 Deep Debt Evolution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,853 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%)
+**Latest**: S180 — Fixed blocking `std::fs::read_dir` in async detectors. Smart-refactored 5 more files >640L (cross_gate, infant_discovery/capabilities, crypto_lock/validation, runtime/mod, configurator/core). Evolved 8 files of primal-name string literals in production log/error messages to capability-first naming. All quality gates green.
 
 ---
 

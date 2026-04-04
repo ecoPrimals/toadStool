@@ -10,8 +10,8 @@ pub enum DistributedError {
     #[error("TOADSTOOL_ENDPOINT not set - primal must know its own endpoint for discovery")]
     ToadstoolEndpointNotSet,
 
-    /// Songbird service registration failed with the given reason.
-    #[error("Songbird registration failed: {0}")]
+    /// Coordination service registration failed with the given reason.
+    #[error("Coordination service registration failed: {0}")]
     SongbirdRegistration(String),
 
     /// Workload cannot be converted to UniversalJob without scheduler.
@@ -36,7 +36,7 @@ mod tests {
     #[test]
     fn songbird_registration_display() {
         let err = DistributedError::SongbirdRegistration("connection refused".to_string());
-        assert!(err.to_string().contains("Songbird registration failed"));
+        assert!(err.to_string().contains("Coordination service registration failed"));
         assert!(err.to_string().contains("connection refused"));
     }
 

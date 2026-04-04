@@ -162,14 +162,16 @@ impl BearDogDiscovery {
         let endpoints = self.discovered_endpoints.read().await;
 
         if endpoints.is_empty() {
-            return Err(ToadStoolError::not_found("No BearDog endpoints discovered"));
+            return Err(ToadStoolError::not_found(
+                "No security/crypto endpoints discovered",
+            ));
         }
 
         let healthy_endpoints: Vec<_> = endpoints.iter().filter(|e| e.healthy).collect();
 
         if healthy_endpoints.is_empty() {
             return Err(ToadStoolError::not_found(
-                "No healthy BearDog endpoints available",
+                "No healthy security/crypto endpoints available",
             ));
         }
 

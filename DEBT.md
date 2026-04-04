@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 4, 2026 — S177
+**Date**: April 4, 2026 — S180
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,27 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S180 Resolved Debt (Deep Debt Evolution — Async I/O, Refactoring, String Evolution)
+
+### Async I/O Fix
+- `distributed/universal/detection/mod.rs`: Replaced blocking `std::fs::read_dir` with
+  `tokio::fs::read_dir` in 2 async detector functions (`detect_neuromorphic_platforms`,
+  `detect_edge_iot_platforms`). Graceful fallback on missing `/dev`.
+
+### Large File Smart Refactoring (5 files)
+- `server/cross_gate.rs` (660L) → `cross_gate/{mod,types,dispatcher,router,tests}.rs`
+- `common/infant_discovery/capabilities.rs` (658L) → `capabilities/{mod,discovered,discovery_traits,substrate,endpoint,standard_capabilities,tests}.rs`
+- `distributed/crypto_lock/validation.rs` (652L) → `validation/{mod,types,validators,tests}.rs`
+- `toadstool/runtime/mod.rs` (651L) → `mod.rs` (189L) + `tests.rs` (463L)
+- `cli/configurator/core.rs` (643L) → `core/{mod,defaults,apply_validate,tests}.rs`
+
+### Production String Evolution (8 files)
+- Evolved primal-name string literals in log/error messages to capability-first:
+  `"Songbird"` → `"coordination service"`, `"BearDog"` → `"security/crypto service"`,
+  `"NestGate"` → `"storage service"`, `"Squirrel"` → `"AI/routing service"`
+- Updated `DistributedError::SongbirdRegistration` display text to `"Coordination service registration failed"`
+- All corresponding test assertions updated
 
 ## S177 Resolved Debt (Capability-Based Evolution + Refactoring)
 

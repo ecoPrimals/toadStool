@@ -482,7 +482,7 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
 
         if endpoints.is_empty() {
             return Ok(toadstool::encryption::provider::ProviderHealth::unhealthy(
-                "No BearDog endpoints available",
+                "No security/crypto endpoints available",
             ));
         }
 

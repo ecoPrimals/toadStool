@@ -177,7 +177,7 @@ async fn test_songbird_connection_empty_endpoints_fails() {
         result
             .unwrap_err()
             .to_string()
-            .contains("No Songbird endpoints")
+            .contains("No coordination endpoints")
     );
 }
 

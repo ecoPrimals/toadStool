@@ -48,7 +48,7 @@ impl SongbirdConnection {
         required_capabilities: Vec<String>,
     ) -> ToadStoolResult<Self> {
         info!(
-            "🔍 Discovering Songbird services with capabilities: {:?}",
+            "🔍 Discovering coordination service with capabilities: {:?}",
             required_capabilities
         );
 
@@ -72,7 +72,7 @@ impl SongbirdConnection {
     /// Queries discovery engine for services matching required capabilities.
     /// Updates internal cache with fresh results.
     pub async fn refresh_discovery(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
-        debug!("🔄 Refreshing Songbird service discovery");
+        debug!("🔄 Refreshing coordination service discovery");
 
         let mut all_services = Vec::new();
 
@@ -170,7 +170,7 @@ impl SongbirdConnection {
 
         if services.is_empty() {
             return Err(ToadStoolError::ServiceDiscovery(
-                "No Songbird-compatible services available".to_string(),
+                "No coordination-compatible services available".to_string(),
             ));
         }
 

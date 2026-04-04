@@ -510,8 +510,8 @@ fn test_key_management_response_deleted_roundtrip() {
 
 #[test]
 fn test_toadstool_error_not_found_display() {
-    let err = toadstool_common::ToadStoolError::not_found("No BearDog endpoints");
-    assert!(err.to_string().to_lowercase().contains("bear"));
+    let err = toadstool_common::ToadStoolError::not_found("No security/crypto endpoints");
+    assert!(err.to_string().to_lowercase().contains("security"));
 }
 
 #[test]

@@ -39,7 +39,7 @@ async fn test_beardog_discovery_get_best_endpoint_empty() {
         result
             .unwrap_err()
             .to_string()
-            .contains("No BearDog endpoints")
+            .contains("No security/crypto endpoints")
     );
 }
 

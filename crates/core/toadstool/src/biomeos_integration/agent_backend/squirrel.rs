@@ -100,9 +100,11 @@ impl AgentBackend for SquirrelBackend {
             .rpc_client
             .call("ai.health", serde_json::json!({}))
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to Squirrel: {e}")))?;
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to connect to AI/routing service: {e}"))
+            })?;
 
-        tracing::info!("Successfully connected to Squirrel via unix socket");
+        tracing::info!("Successfully connected to AI/routing service via unix socket");
         Ok(())
     }
 

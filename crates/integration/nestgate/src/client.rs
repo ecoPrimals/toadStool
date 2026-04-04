@@ -203,7 +203,7 @@ impl StorageClient {
             .await
             .map_err(|e| NestGateError::Network(e.to_string()))?;
 
-        debug!("NestGate health check passed via unix socket");
+        debug!("Storage service health check passed via unix socket");
         Ok(())
     }
 

@@ -19,7 +19,7 @@ impl ToadStoolSongbirdIntegration {
         target_nodes: Vec<String>,
     ) -> ToadStoolResult<SubTaskHandle> {
         debug!(
-            "Submitting subtask {} to Songbird for nodes: {:?}",
+            "Submitting subtask {} to coordination service for nodes: {:?}",
             subtask.id, target_nodes
         );
 
@@ -76,8 +76,8 @@ impl ToadStoolSongbirdIntegration {
 
         // Return error indicating this method is deprecated
         Err(ToadStoolError::not_supported(
-            "HTTP job submission removed - use Unix socket RPC via SongbirdClient instead. \
-             External HTTP should go through Songbird primal (Concentrated Gap architecture).",
+            "HTTP job submission removed - use Unix socket RPC via the coordination service client instead. \
+             External HTTP should go through the coordination service (Songbird) (Concentrated Gap architecture).",
         ))
     }
 
@@ -92,8 +92,8 @@ impl ToadStoolSongbirdIntegration {
         );
 
         Err(ToadStoolError::not_supported(
-            "gRPC job submission removed. Migrate to JSON-RPC over Unix socket via SongbirdClient. \
-             (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through Songbird primal.",
+            "gRPC job submission removed. Migrate to JSON-RPC over Unix socket via the coordination service client. \
+             (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through the coordination service (Songbird).",
         ))
     }
 

@@ -14,7 +14,7 @@ impl SongbirdConnection {
     pub async fn new(config: SongbirdConnectionConfig) -> ToadStoolResult<Self> {
         // Validate at least one endpoint is provided
         if config.endpoints.is_empty() {
-            return Err(ToadStoolError::runtime("No Songbird endpoints provided"));
+            return Err(ToadStoolError::runtime("No coordination endpoints provided"));
         }
 
         // Test connectivity to find the best active endpoint
@@ -185,7 +185,7 @@ mod tests {
             result
                 .unwrap_err()
                 .to_string()
-                .contains("No Songbird endpoints")
+                .contains("No coordination endpoints")
         );
     }
 

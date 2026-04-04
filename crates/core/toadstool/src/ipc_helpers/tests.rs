@@ -313,7 +313,7 @@ fn test_get_default_coordination_socket_with_xdg_runtime_dir() {
 // ── Mock Unix socket happy-path tests ────────────────────────────────────────
 //
 // These tests spin up a temporary Unix socket server, point the connection
-// functions at it via SONGBIRD_SOCKET (via temp_env), and exercise the
+// functions at it via BIOMEOS_COORDINATION_SOCKET (via temp_env), and exercise the
 // JSON-RPC send/receive paths that are otherwise unreachable in CI.
 //
 // The mock and connection must run on the SAME tokio runtime to avoid
@@ -423,7 +423,7 @@ fn test_find_by_capability_success_via_mock() {
     });
 
     let inner_path = path_str.clone();
-    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
         let p = inner_path.clone();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -455,7 +455,7 @@ fn test_find_by_capability_error_reply() {
         json!({"jsonrpc": "2.0", "error": {"code": -1, "message": "no capabilities"}, "id": 1});
 
     let inner_path = path_str.clone();
-    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
+    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
         let p = inner_path.clone();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()

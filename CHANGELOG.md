@@ -5,7 +5,32 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 4, 2026 (Sessions 43-177)
+## [Unreleased] - April 4, 2026 (Sessions 43-180)
+
+### Session S180 (Apr 4, 2026) — Deep Debt Evolution: Async I/O, Refactoring, String Evolution
+
+#### Async I/O Fix (1 file)
+- Replaced blocking `std::fs::read_dir` with `tokio::fs::read_dir` in 2 async platform detectors
+  (`detect_neuromorphic_platforms`, `detect_edge_iot_platforms` in `distributed/universal/detection`)
+
+#### Large File Smart Refactoring (5 files)
+- `server/cross_gate.rs` (660L) → `cross_gate/{mod,types,dispatcher,router,tests}.rs`
+- `common/infant_discovery/capabilities.rs` (658L) → `capabilities/{mod,discovered,discovery_traits,substrate,endpoint,standard_capabilities,tests}.rs`
+- `distributed/crypto_lock/validation.rs` (652L) → `validation/{mod,types,validators,tests}.rs`
+- `toadstool/runtime/mod.rs` (651L) → `mod.rs` (189L) + `tests.rs` (463L)
+- `cli/configurator/core.rs` (643L) → `core/{mod,defaults,apply_validate,tests}.rs`
+
+#### Production Log/Error String Evolution (8 files)
+- `"Songbird"` → `"coordination service"` in songbird_integration (transport, connection, capability_discovery)
+- `"BearDog"` → `"security/crypto service"` in beardog_integration discovery + integration/beardog
+- `"NestGate"` → `"storage service"` in integration/nestgate client
+- `"Squirrel"` → `"AI/routing service"` in biomeos agent_backend + CLI executor
+- `DistributedError` display: "Coordination service registration failed"
+
+#### Quality
+- 21,853 tests (0 failures) — net +229 from new module tests
+- `cargo clippy --workspace --all-targets -- -D warnings` clean
+- Remaining `SONGBIRD_SOCKET` env var refs in tests updated to `BIOMEOS_COORDINATION_SOCKET`
 
 ### Session S177 (Apr 4, 2026) — Capability-Based Evolution + Large File Refactoring
 

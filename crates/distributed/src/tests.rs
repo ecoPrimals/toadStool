@@ -190,7 +190,7 @@ mod tests {
         assert!(err.to_string().contains("TOADSTOOL_ENDPOINT"));
 
         let err = DistributedError::SongbirdRegistration("test failure".to_string());
-        assert!(err.to_string().contains("Songbird registration"));
+        assert!(err.to_string().contains("Coordination service registration"));
         assert!(err.to_string().contains("test failure"));
 
         let err = DistributedError::WorkloadConversionRequiresScheduler;

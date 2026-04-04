@@ -63,11 +63,11 @@ impl EntropyClient {
         // Step 2: Try capability discovery
         match Self::discover_via_capability().await {
             Ok(endpoint) => {
-                tracing::info!("Discovered bearDog entropy service: {}", endpoint);
+                tracing::info!("Discovered security/crypto service: {}", endpoint);
                 Self::connect(&endpoint).await
             }
             Err(e) => {
-                tracing::warn!("bearDog service discovery failed: {}", e);
+                tracing::warn!("Security/crypto service discovery failed: {}", e);
                 // Return unavailable client (will fallback to system entropy)
                 // Try capability-based discovery as fallback
                 let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
@@ -241,7 +241,9 @@ impl EntropyClient {
             .call_typed("crypto.entropy.generate_seed", params)
             .await
             .map_err(|e| {
-                BeardogError::Other(format!("Failed to request seed from bearDog: {e}"))
+                BeardogError::Other(format!(
+                    "Failed to request seed from security/crypto service: {e}"
+                ))
             })?;
 
         Ok(seed)
