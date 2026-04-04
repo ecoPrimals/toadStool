@@ -23,12 +23,10 @@ mod paths;
 #[cfg(test)]
 mod tests;
 
-#[allow(deprecated)]
 pub use api::{
-    ensure_biomeos_dir, get_beardog_socket_path, get_biomeos_dir, get_family_id,
-    get_nestgate_socket_path, get_nucleus_socket_path, get_runtime_dir,
-    get_socket_path_for_capability, get_socket_path_for_service, get_songbird_socket_path,
-    get_squirrel_socket_path, get_toadstool_socket_path,
+    ensure_biomeos_dir, get_biomeos_dir, get_family_id, get_nucleus_socket_path,
+    get_routing_socket_path, get_runtime_dir, get_socket_path_for_capability,
+    get_toadstool_socket_path,
 };
 pub use discovery::{
     SocketDiscoveryError, discover_coordination_socket, discover_crypto_socket,

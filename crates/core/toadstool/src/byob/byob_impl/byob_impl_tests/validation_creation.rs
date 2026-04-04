@@ -66,7 +66,7 @@ fn test_byob_executor_creation() {
     #[allow(deprecated)]
     let env_config = toadstool_config::env_config::EnvironmentConfig::from_env();
     #[allow(deprecated)]
-    let expected_port = env_config.network.songbird_port;
+    let expected_port = env_config.network.coordination_port;
     assert_eq!(config.default_host_port, expected_port);
     assert_eq!(
         config.web_service_ports,

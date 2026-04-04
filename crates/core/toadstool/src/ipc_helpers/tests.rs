@@ -35,44 +35,6 @@ fn test_register_with_songbird_graceful_failure() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_resolve_primal_graceful_failure() {
-    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = resolve_primal("beardog").await;
-                assert!(result.is_err());
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_connect_to_primal_graceful_failure() {
-    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = connect_to_primal("beardog").await;
-                assert!(result.is_err());
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
-}
-
-#[test]
 fn test_find_by_capability_graceful_failure() {
     temp_env::with_var_unset("SONGBIRD_SOCKET", || {
         std::thread::spawn(|| {
@@ -436,70 +398,6 @@ fn test_register_with_songbird_error_reply_via_mock() {
                         .to_string()
                         .contains("registration failed")
                 );
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_resolve_primal_success_via_mock() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let socket_path = dir.path().join("resolve.sock");
-    let path_str = socket_path.to_str().unwrap().to_string();
-
-    let reply = json!({
-        "jsonrpc": "2.0",
-        "result": {"endpoint": "/run/user/1000/biomeos/crypto.sock"},
-        "id": 1
-    });
-
-    let inner_path = path_str.clone();
-    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
-        let p = inner_path.clone();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let handle = spawn_mock_songbird(&p, reply).await;
-                let result = resolve_primal("beardog").await;
-                handle.abort();
-                assert!(result.is_ok());
-                assert!(result.unwrap().contains("crypto.sock"));
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_resolve_primal_missing_endpoint_returns_error() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let socket_path = dir.path().join("resolve_bad.sock");
-    let path_str = socket_path.to_str().unwrap().to_string();
-
-    let reply = json!({"jsonrpc": "2.0", "result": {}, "id": 1});
-
-    let inner_path = path_str.clone();
-    temp_env::with_var("SONGBIRD_SOCKET", Some(&path_str), || {
-        let p = inner_path.clone();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let handle = spawn_mock_songbird(&p, reply).await;
-                let result = resolve_primal("beardog").await;
-                handle.abort();
-                assert!(result.is_err());
-                assert!(result.unwrap_err().to_string().contains("missing endpoint"));
             });
         })
         .join()

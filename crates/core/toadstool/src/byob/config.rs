@@ -32,7 +32,7 @@ impl Default for ByobExecutorConfig {
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
 
         #[allow(deprecated)]
-        let coordinator_port = config.network.songbird_port;
+        let coordinator_port = config.network.coordination_port;
 
         Self {
             max_concurrent_deployments: 50,

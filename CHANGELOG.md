@@ -5,7 +5,38 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 4, 2026 (Sessions 43-176)
+## [Unreleased] - April 4, 2026 (Sessions 43-177)
+
+### Session S177 (Apr 4, 2026) — Capability-Based Evolution + Large File Refactoring
+
+#### env_config Primal Name Evolution (14 files)
+- Renamed `NetworkEnvConfig` fields: `songbird_port` → `coordination_port`, `beardog_port` → `security_port`,
+  `nestgate_port` → `storage_port`, `squirrel_port` → `ai_processing_port`
+- Renamed endpoint methods: `songbird_endpoint()` → `coordination_endpoint()`, etc.
+- Added `#[serde(alias = "...")]` for backward-compatible deserialization
+- `apply_to_config()` now uses capability-named methods directly
+- Updated all callers: auto_config, CLI templates, byob config, config tests
+
+#### Deprecated Socket API Removal (7 files)
+- Removed `get_beardog_socket_path`, `get_songbird_socket_path`, `get_nestgate_socket_path`
+- Removed `get_socket_path_for_service` (primal-name-based)
+- Renamed `get_squirrel_socket_path` → `get_routing_socket_path`
+- All callers migrated to `get_socket_path_for_capability()`
+
+#### IPC Helpers Cleanup (5 files)
+- Removed `connect_to_primal` and `resolve_primal` (zero production callers)
+- Modern API: `find_by_capability()` for capability-based peer discovery
+
+#### Large File Smart Refactoring (5 files)
+- `provider_registry/mod.rs` (749L) → `mod.rs` (35L) + `tests.rs` (714L)
+- `monitoring/lib.rs` (712L) → `lib.rs` (30L) + `tests.rs` (683L)
+- `protocols/client/mod.rs` (675L) → `mod.rs` (20L) + `protocol_client.rs` (304L) + `tests.rs` (361L)
+- `display/input/parser.rs` (674L) → `parser/{mod,keyboard,mouse,absolute_sync,tests}.rs`
+- `config_bases.rs` (667L) → `config_bases/{mod,timeout,health,resources_validation,endpoint_retry_pool,cache_telemetry,tests}.rs`
+
+#### Quality
+- 21,624 tests (0 failures) — net −14 from deprecated API test removal
+- `cargo clippy --workspace --all-targets -- -D warnings` clean
 
 ### Session S176 (Apr 4, 2026) — Deep Debt Evolution: Modern Idiomatic Rust + Capability-Based Cleanup
 

@@ -17,7 +17,7 @@
 //! let my_metrics_port = network::METRICS_PORT;
 //!
 //! // ❌ BAD: Don't hardcode other primals
-//! // let songbird_port = network::SONGBIRD_PORT;
+//! // let coordination_port = network::COORDINATION_PORT;
 //!
 //! // ✅ GOOD: Discover other primals at runtime
 //! let discovery = RuntimeDiscovery::new(client);

@@ -63,9 +63,9 @@ struct JsonRpcError<'a> {
 ///
 /// ```rust,ignore
 /// use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
-/// use toadstool_common::primal_sockets::get_beardog_socket_path;
+/// use toadstool_common::primal_sockets::get_socket_path_for_capability;
 ///
-/// let socket_path = get_beardog_socket_path();
+/// let socket_path = get_socket_path_for_capability("crypto");
 /// let client = UnixJsonRpcClient::new(socket_path);
 ///
 /// let params = serde_json::json!({

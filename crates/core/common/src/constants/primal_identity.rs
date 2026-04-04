@@ -22,7 +22,7 @@
 //! ## Migration
 //!
 //! ```text
-//! Before: get_socket_path_for_service("beardog")
+//! Before: legacy service-name helpers (use `get_socket_path_for_capability("crypto")` today)
 //! After:  discovery.resolve_by_capability(capability::CRYPTO_PROVIDER)
 //! ```
 

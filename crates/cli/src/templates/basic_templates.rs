@@ -95,8 +95,8 @@ pub fn create_basic_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],
@@ -111,7 +111,7 @@ pub fn create_basic_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}/health",
-                            config.network.bind_address, config.network.songbird_port
+                            config.network.bind_address, config.network.coordination_port
                         ),
                     ],
                     interval: 30,
@@ -201,8 +201,8 @@ pub fn create_development_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],
@@ -217,7 +217,7 @@ pub fn create_development_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}",
-                            config.network.bind_address, config.network.songbird_port
+                            config.network.bind_address, config.network.coordination_port
                         ),
                     ],
                     interval: 30,

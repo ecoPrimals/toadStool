@@ -48,7 +48,7 @@ pub fn create_science_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}/health",
-                            config.network.bind_address, config.network.nestgate_port
+                            config.network.bind_address, config.network.storage_port
                         ),
                     ],
                     interval: 30,
@@ -86,8 +86,8 @@ pub fn create_science_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],
@@ -104,7 +104,7 @@ pub fn create_science_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}",
-                            config.network.bind_address, config.network.songbird_port
+                            config.network.bind_address, config.network.coordination_port
                         ),
                     ],
                     interval: 30,
@@ -229,8 +229,8 @@ pub fn create_ai_research_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],
@@ -326,8 +326,8 @@ pub fn create_quantum_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],
@@ -385,8 +385,8 @@ pub fn create_genomics_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],
@@ -467,8 +467,8 @@ pub fn create_vision_template() -> TemplateComponents {
             ports: vec![{
                 let config = EnvironmentConfig::from_env();
                 ServicePort {
-                    container_port: config.network.songbird_port,
-                    host_port: Some(config.network.songbird_port),
+                    container_port: config.network.coordination_port,
+                    host_port: Some(config.network.coordination_port),
                     protocol: "tcp".to_string(),
                 }
             }],

@@ -305,7 +305,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,617 tests (S173); ~80-85% lib-only line (185K instrumented); S173: +79 tests (provider_registry, monitoring, auto_config, federation, workload); remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,624 tests (S177); ~80-85% lib-only line (185K instrumented); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -349,7 +349,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 4, 2026 — S176. **21,638** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~59 unsafe blocks** (48 in hw-safe/ioctl containment zones, 11 in consumer code). **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S176**: Deep debt evolution — removed 15 deprecated primal-named APIs, `ollama_*` → `inference_*` semantic method evolution, 5 large files smart-refactored, dead code resolved, `std::fs` → `tokio::fs` in async, Akida stubs feature-gated. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 4, 2026 — S177. **21,624** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~59 unsafe blocks** (48 in hw-safe/ioctl containment zones, 11 in consumer code). **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S177**: Capability-based evolution — env_config fields evolved from primal names (`songbird_port`) to capability names (`coordination_port`) with serde aliases; deprecated socket/IPC functions removed; 5 more large files smart-refactored. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -24,7 +24,6 @@ fn test_env_config_loader() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_network_env_config() {
     temp_env::with_vars(
         [
@@ -33,9 +32,9 @@ fn test_network_env_config() {
         ],
         || {
             let config = NetworkEnvConfig::from_env();
-            assert_eq!(config.songbird_port, 9080);
+            assert_eq!(config.coordination_port, 9080);
             assert_eq!(config.bind_address, "0.0.0.0");
-            assert_eq!(config.songbird_endpoint(), "http://localhost:9080");
+            assert_eq!(config.coordination_endpoint(), "http://localhost:9080");
         },
     );
 }
@@ -103,7 +102,6 @@ fn test_env_config_loader_default_impl() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_network_env_config_toadstool_endpoint() {
     let config = NetworkEnvConfig::from_env();
     let ep = config.toadstool_endpoint();

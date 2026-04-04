@@ -4,8 +4,9 @@
 //! # Self-Knowledge Architecture
 //!
 //! ToadStool only knows itself. `TOADSTOOL_*` variables govern its own ports and
-//! identity. Ports for other primals are deprecated legacy fields; the modern
-//! approach is `RuntimeDiscovery::discover_capability(...)`.
+//! identity. Optional capability ports (`coordination_port`, etc.) are bootstrap
+//! hints for outbound connections; the preferred approach is
+//! `RuntimeDiscovery::discover_capability(...)`.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,8 +21,9 @@ use super::loader::EnvConfigLoader;
 /// - `bind_address` — where we listen
 /// - `external_hostname` — how we identify ourselves
 ///
-/// ## Legacy fields (deprecated):
-/// - `songbird_port`, `beardog_port`, etc. — use `RuntimeDiscovery` instead.
+/// ## Capability-oriented ports (optional bootstrap):
+/// - `coordination_port`, `security_port`, `storage_port`, `ai_processing_port` —
+///   use `RuntimeDiscovery` for capability-based service discovery in production.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkEnvConfig {
     // ── Self-knowledge ──────────────────────────────────────────────────────
@@ -52,34 +54,22 @@ pub struct NetworkEnvConfig {
     /// Max connections per remote host
     pub max_connections_per_host: u32,
 
-    // ── Legacy (deprecated) ──────────────────────────────────────────────────
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Coordination)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery for capability-based service discovery"
-    )]
-    pub songbird_port: u16,
+    // ── Capability bootstrap ports (peer services) ─────────────────────────
+    /// Coordination service port (`RuntimeDiscovery::discover_capability(&Capability::Coordination)`)
+    #[serde(alias = "songbird_port")]
+    pub coordination_port: u16,
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Authentication)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery for capability-based service discovery"
-    )]
-    pub beardog_port: u16,
+    /// Security / PKI port (`RuntimeDiscovery::discover_capability(&Capability::Authentication)`)
+    #[serde(alias = "beardog_port")]
+    pub security_port: u16,
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery for capability-based service discovery"
-    )]
-    pub nestgate_port: u16,
+    /// Storage port (`RuntimeDiscovery::discover_capability(&Capability::Storage)`)
+    #[serde(alias = "nestgate_port")]
+    pub storage_port: u16,
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::MCP)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery for capability-based service discovery"
-    )]
-    pub squirrel_port: u16,
+    /// AI / platform processing port (`RuntimeDiscovery::discover_capability(&Capability::MCP)`)
+    #[serde(alias = "squirrel_port")]
+    pub ai_processing_port: u16,
 
     /// BiomeOS primary port (ecosystem discovery)
     pub biomeos_port: u16,
@@ -88,20 +78,19 @@ pub struct NetworkEnvConfig {
 impl NetworkEnvConfig {
     /// Load network configuration from environment variables.
     #[must_use]
-    #[allow(deprecated)] // Struct fields deprecated; from_env still needed for bootstrap
     pub fn from_env() -> Self {
         use crate::ports::{capability_fallback, resolve_capability_port};
 
         let loader = EnvConfigLoader::new();
 
         Self {
-            songbird_port: resolve_capability_port(
+            coordination_port: resolve_capability_port(
                 "COORDINATION",
                 capability_fallback::COORDINATION,
             ),
-            beardog_port: resolve_capability_port("SECURITY", capability_fallback::SECURITY),
-            nestgate_port: resolve_capability_port("STORAGE", capability_fallback::STORAGE),
-            squirrel_port: resolve_capability_port("PLATFORM", capability_fallback::PLATFORM),
+            security_port: resolve_capability_port("SECURITY", capability_fallback::SECURITY),
+            storage_port: resolve_capability_port("STORAGE", capability_fallback::STORAGE),
+            ai_processing_port: resolve_capability_port("PLATFORM", capability_fallback::PLATFORM),
             biomeos_port: resolve_capability_port(
                 "ECOSYSTEM",
                 capability_fallback::ECOSYSTEM_PRIMARY,
@@ -151,53 +140,29 @@ impl NetworkEnvConfig {
         format!("http://{}:{}", self.external_hostname, self.health_port)
     }
 
-    // ── Legacy endpoints (deprecated) ────────────────────────────────────────
+    // ── Outbound capability endpoints ───────────────────────────────────────
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Coordination)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::Coordination)"
-    )]
+    /// Coordination service endpoint (client-side; port 0 = use capability discovery).
     #[must_use]
-    #[allow(deprecated)]
-    pub fn songbird_endpoint(&self) -> String {
-        // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://{}:{}", DEFAULT_HOSTNAME, self.songbird_port)
+    pub fn coordination_endpoint(&self) -> String {
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.coordination_port)
     }
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Authentication)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::Authentication)"
-    )]
+    /// Security / PKI endpoint (client-side; port 0 = use capability discovery).
     #[must_use]
-    #[allow(deprecated)]
-    pub fn beardog_endpoint(&self) -> String {
-        // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://{}:{}", DEFAULT_HOSTNAME, self.beardog_port)
+    pub fn security_endpoint(&self) -> String {
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.security_port)
     }
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::Storage)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::Storage)"
-    )]
+    /// Storage endpoint (client-side; port 0 = use capability discovery).
     #[must_use]
-    #[allow(deprecated)]
-    pub fn nestgate_endpoint(&self) -> String {
-        // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://{}:{}", DEFAULT_HOSTNAME, self.nestgate_port)
+    pub fn storage_endpoint(&self) -> String {
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.storage_port)
     }
 
-    /// ⚠️ DEPRECATED — use `RuntimeDiscovery::discover_capability(&Capability::MCP)`
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use RuntimeDiscovery::discover_capability(&Capability::MCP)"
-    )]
+    /// AI / platform processing endpoint (client-side; port 0 = use capability discovery).
     #[must_use]
-    #[allow(deprecated)]
-    pub fn squirrel_endpoint(&self) -> String {
-        // Client-side: connect to other primal. Port 0 = use capability discovery.
-        format!("http://{}:{}", DEFAULT_HOSTNAME, self.squirrel_port)
+    pub fn ai_processing_endpoint(&self) -> String {
+        format!("http://{}:{}", DEFAULT_HOSTNAME, self.ai_processing_port)
     }
 }

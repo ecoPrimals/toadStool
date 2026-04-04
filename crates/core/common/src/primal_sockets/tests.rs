@@ -327,29 +327,26 @@ fn get_family_id_returns_string() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn get_beardog_socket_path_is_path() {
-    let path = get_beardog_socket_path();
+fn get_socket_path_for_capability_crypto_is_path() {
+    let path = get_socket_path_for_capability("crypto");
     assert!(path.to_string_lossy().contains("crypto"));
 }
 
 #[test]
-#[allow(deprecated)]
-fn get_songbird_socket_path_is_path() {
-    let path = get_songbird_socket_path();
+fn get_socket_path_for_capability_coordination_is_path() {
+    let path = get_socket_path_for_capability("coordination");
     assert!(path.to_string_lossy().contains("coordination"));
 }
 
 #[test]
-#[allow(deprecated)]
-fn get_nestgate_socket_path_is_path() {
-    let path = get_nestgate_socket_path();
+fn get_socket_path_for_capability_storage_is_path() {
+    let path = get_socket_path_for_capability("storage");
     assert!(path.to_string_lossy().contains("storage"));
 }
 
 #[test]
-fn get_squirrel_socket_path_is_path() {
-    let path = get_squirrel_socket_path();
+fn get_routing_socket_path_is_path() {
+    let path = get_routing_socket_path();
     assert!(path.to_string_lossy().contains("routing"));
 }
 
@@ -399,13 +396,17 @@ fn test_ensure_biomeos_dir_creates_dir() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_get_socket_path_for_service_unknown_with_env_override() {
+fn test_resolve_socket_path_for_service_unknown_with_env_override() {
     let service_name = format!("testsvc_{}", std::process::id());
-    let test_key = format!("TESTSVC_{}_SOCKET", std::process::id());
+    let env_var = format!(
+        "{}_SOCKET",
+        service_name.to_uppercase().replace('-', "_")
+    );
     let custom_path = "/tmp/custom-test.sock";
-    temp_env::with_var(&test_key, Some(custom_path), || {
-        let path = get_socket_path_for_service(&service_name);
+    temp_env::with_var(&env_var, Some(custom_path), || {
+        let env = SocketPathEnv::from_env();
+        let override_path = std::env::var(&env_var).ok().map(PathBuf::from);
+        let path = resolve_socket_path_for_service(&service_name, &env, override_path);
         assert_eq!(path.to_string_lossy(), custom_path);
     });
 }

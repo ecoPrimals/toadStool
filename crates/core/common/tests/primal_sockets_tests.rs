@@ -365,8 +365,8 @@ fn test_get_family_id() {
 }
 
 #[test]
-fn test_get_squirrel_socket_path() {
-    let path = get_squirrel_socket_path();
+fn test_get_routing_socket_path() {
+    let path = get_routing_socket_path();
     assert!(path.to_str().unwrap().contains(".sock"));
 }
 

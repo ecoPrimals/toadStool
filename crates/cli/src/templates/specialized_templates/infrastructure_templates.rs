@@ -46,7 +46,7 @@ pub fn create_distributed_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}/health",
-                            config.network.bind_address, config.network.songbird_port
+                            config.network.bind_address, config.network.coordination_port
                         ),
                     ],
                     interval: 30,
@@ -81,7 +81,7 @@ pub fn create_distributed_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}/health",
-                            config.network.bind_address, config.network.nestgate_port
+                            config.network.bind_address, config.network.storage_port
                         ),
                     ],
                     interval: 30,
@@ -125,7 +125,7 @@ pub fn create_distributed_template() -> TemplateComponents {
                         "-f".to_string(),
                         format!(
                             "http://{}:{}/health",
-                            config.network.bind_address, config.network.songbird_port
+                            config.network.bind_address, config.network.coordination_port
                         ),
                     ],
                     interval: 30,

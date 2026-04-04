@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 4, 2026 — S176
+**Date**: April 4, 2026 — S177
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,34 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S177 Resolved Debt (Capability-Based Evolution + Refactoring)
+
+### D-ENVCONFIG-PRIMAL-NAMES — RESOLVED S177
+Evolved `NetworkEnvConfig` fields from primal names to capability names:
+`songbird_port` → `coordination_port`, `beardog_port` → `security_port`,
+`nestgate_port` → `storage_port`, `squirrel_port` → `ai_processing_port`.
+Endpoint methods renamed similarly. Serde aliases preserve backward compat.
+`apply_to_config()` now uses capability-named endpoints directly. 14 files updated.
+
+### D-PRIMAL-SOCKETS-DEPRECATED — RESOLVED S177
+Removed deprecated primal-named socket functions: `get_beardog_socket_path`,
+`get_songbird_socket_path`, `get_nestgate_socket_path`, `get_socket_path_for_service`.
+Renamed `get_squirrel_socket_path` → `get_routing_socket_path`. All callers migrated
+to `get_socket_path_for_capability()`. 7 files updated.
+
+### D-IPC-HELPERS-DEPRECATED — RESOLVED S177
+Removed deprecated `connect_to_primal` and `resolve_primal` from `ipc_helpers/connection.rs`.
+No production callers existed. Re-exports removed from `ipc_helpers/mod.rs` and `ipc/mod.rs`.
+Modern API: `find_by_capability()`. 5 files updated.
+
+### D-LARGE-FILE-REFACTOR-4 — RESOLVED S177
+5 production files >650L smart-refactored into submodules:
+- `provider_registry/mod.rs` (749L) → extracted `tests.rs` (714L)
+- `monitoring/lib.rs` (712L) → extracted `tests.rs` (683L)
+- `protocols/client/mod.rs` (675L) → `protocol_client.rs` + `tests.rs`
+- `display/input/parser.rs` (674L) → `parser/{mod,keyboard,mouse,absolute_sync,tests}.rs`
+- `config_bases.rs` (667L) → `config_bases/{mod,timeout,health,resources_validation,endpoint_retry_pool,cache_telemetry,tests}.rs`
 
 ## S176 Resolved Debt (Deep Debt Evolution)
 

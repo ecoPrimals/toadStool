@@ -461,7 +461,6 @@ fn cache_and_broker_urls_default_when_missing() {
     );
 }
 
-#[allow(deprecated)]
 fn sample_network_env_config() -> NetworkEnvConfig {
     NetworkEnvConfig {
         toadstool_port: 5000,
@@ -476,10 +475,10 @@ fn sample_network_env_config() -> NetworkEnvConfig {
         request_timeout_secs: 22,
         max_retries: 4,
         max_connections_per_host: 50,
-        songbird_port: 8080,
-        beardog_port: 8081,
-        nestgate_port: 8082,
-        squirrel_port: 8083,
+        coordination_port: 8080,
+        security_port: 8081,
+        storage_port: 8082,
+        ai_processing_port: 8083,
         biomeos_port: 8005,
     }
 }
@@ -633,7 +632,15 @@ fn json_macro_round_trip_network_subset() {
         "biomeos_port": 10
     });
     let n: NetworkEnvConfig = serde_json::from_value(v).expect("from_value");
-    let out = serde_json::to_value(n).expect("to_value");
+    assert_eq!(n.coordination_port, 6);
+    assert_eq!(n.security_port, 7);
+    assert_eq!(n.storage_port, 8);
+    assert_eq!(n.ai_processing_port, 9);
+    let out = serde_json::to_value(&n).expect("to_value");
     assert_eq!(out["toadstool_port"], 1);
     assert_eq!(out["biomeos_port"], 10);
+    assert_eq!(out["coordination_port"], 6);
+    assert_eq!(out["security_port"], 7);
+    assert_eq!(out["storage_port"], 8);
+    assert_eq!(out["ai_processing_port"], 9);
 }

@@ -289,20 +289,17 @@ async fn demonstrate_configuration_validation() -> Result<(), Box<dyn std::error
     // Test various configuration scenarios
     info!("🧪 Testing configuration validation...");
 
-    // Test valid configuration (legacy port fields deprecated — use capability discovery)
+    // Test valid configuration (capability bootstrap ports — prefer capability discovery in production)
     let network_config = NetworkEnvConfig::from_env();
     info!("✅ Network configuration loaded successfully");
-    #[allow(deprecated)]
-    {
-        info!(
-            "   Legacy coordination port (deprecated): {}",
-            network_config.songbird_port
-        );
-        info!(
-            "   Legacy security port (deprecated): {}",
-            network_config.beardog_port
-        );
-    }
+    info!(
+        "   Coordination bootstrap port: {}",
+        network_config.coordination_port
+    );
+    info!(
+        "   Security bootstrap port: {}",
+        network_config.security_port
+    );
     info!("   TLS enabled: {}", network_config.tls_enabled);
 
     // Test resource configuration

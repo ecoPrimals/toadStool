@@ -28,7 +28,6 @@ pub struct EcosystemDiscoverer {
 impl EcosystemDiscoverer {
     /// Create a new ecosystem discoverer (capability-based)
     #[must_use]
-    #[expect(deprecated, reason = "legacy port fields used as bootstrap fallbacks")]
     pub fn new() -> Self {
         let mut service_patterns = HashMap::new();
         let config = EnvironmentConfig::from_env();
@@ -39,7 +38,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: capability_keys::DISCOVERY.to_string(),
                 description: "Service discovery and coordination".to_string(),
-                default_ports: vec![config.network.songbird_port],
+                default_ports: vec![config.network.coordination_port],
                 health_endpoints: vec!["/health".to_string(), "/api/health".to_string()],
                 service_type: ServiceType::NetworkCoordination,
                 required_capabilities: vec!["network".to_string(), "coordination".to_string()],
@@ -52,7 +51,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: capability_keys::CRYPTO.to_string(),
                 description: "Cryptographic operations and security".to_string(),
-                default_ports: vec![config.network.beardog_port],
+                default_ports: vec![config.network.security_port],
                 health_endpoints: vec!["/health".to_string(), "/api/security/health".to_string()],
                 service_type: ServiceType::Security,
                 required_capabilities: vec!["security".to_string(), "authentication".to_string()],
@@ -65,7 +64,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: capability_keys::STORAGE.to_string(),
                 description: "Distributed storage and data management".to_string(),
-                default_ports: vec![config.network.nestgate_port],
+                default_ports: vec![config.network.storage_port],
                 health_endpoints: vec!["/health".to_string(), "/api/storage/health".to_string()],
                 service_type: ServiceType::Storage,
                 required_capabilities: vec!["storage".to_string(), "data_management".to_string()],
@@ -78,7 +77,7 @@ impl EcosystemDiscoverer {
             ServicePattern {
                 name: capability_keys::COMPUTE.to_string(),
                 description: "AI and machine learning services".to_string(),
-                default_ports: vec![config.network.squirrel_port],
+                default_ports: vec![config.network.ai_processing_port],
                 health_endpoints: vec!["/health".to_string(), "/api/ai/health".to_string()],
                 service_type: ServiceType::AI,
                 required_capabilities: vec!["ai".to_string(), "machine_learning".to_string()],

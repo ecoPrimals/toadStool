@@ -12,7 +12,7 @@
 //! - `discover_via_dns()` - DNS discovery
 //! - `discover_via_local_scan()` - local discovery
 //! - `register_primal()` - manual registration
-//! - `connect_to_primal()` - establish connections
+//! - `find_by_capability()` + socket connect - establish connections
 //! - `send_message()` - communication
 //! - `PrimalStatus` transitions
 //! - Configuration management
@@ -492,7 +492,7 @@ async fn test_register_primal_validates_endpoint() {
 }
 
 // ============================================================================
-// connect_to_primal() Tests - Connection Establishment
+// Connection establishment (capability discovery + connect)
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -741,7 +741,7 @@ async fn test_coordinator_lifecycle() {
     let lifecycle = vec![
         "new",
         "discover_primals",
-        "connect_to_primals",
+        "establish_connections",
         "operate",
         "disconnect",
         "shutdown",
@@ -779,7 +779,7 @@ fn test_ecosystem_complete_coverage() {
         "EcosystemConfig",
         "discover_primals",
         "register_primal",
-        "connect_to_primal",
+        "find_by_capability",
         "send_message",
     ];
 

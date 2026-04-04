@@ -25,9 +25,8 @@ use tracing::debug;
 
 #[allow(deprecated)]
 pub use connection::{
-    connect_to_primal, find_by_capability, get_default_coordination_socket,
-    get_default_songbird_socket, register_with_coordination, register_with_songbird,
-    resolve_primal,
+    find_by_capability, get_default_coordination_socket, get_default_songbird_socket,
+    register_with_coordination, register_with_songbird,
 };
 
 /// Global semantic method registry (initialized once)
