@@ -26,7 +26,7 @@ pub(super) struct BiomeProcess {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // variants constructed only in #[cfg(test)]; clippy --all-targets sees usage
+#[allow(dead_code, reason = "Inner names used by tests; HealthCheck reserved for future health-check wiring")]
 pub(super) enum ProcessType {
     Primal(String),
     Service(String),
@@ -40,15 +40,6 @@ impl ProcessType {
             ProcessType::Primal(name) => name,
             ProcessType::Service(name) => name,
             ProcessType::HealthCheck(name) => name,
-        }
-    }
-
-    #[allow(dead_code)] // called from #[cfg(test)] only
-    pub(super) const fn type_str(&self) -> &str {
-        match self {
-            Self::Primal(_) => "primal",
-            Self::Service(_) => "service",
-            Self::HealthCheck(_) => "healthcheck",
         }
     }
 }
@@ -87,13 +78,33 @@ mod tests {
     }
 
     #[test]
-    fn test_process_type_type_str() {
-        assert_eq!(ProcessType::Primal("x".to_string()).type_str(), "primal");
-        assert_eq!(ProcessType::Service("x".to_string()).type_str(), "service");
-        assert_eq!(
-            ProcessType::HealthCheck("x".to_string()).type_str(),
-            "healthcheck"
-        );
+    fn test_process_type_type_labels_match_process_type_name() {
+        let primal = BiomeProcess {
+            name: "p".to_string(),
+            process_type: ProcessType::Primal("x".to_string()),
+            execution_id: Uuid::new_v4(),
+            pid: None,
+            _started_at: std::time::SystemTime::now(),
+        };
+        assert_eq!(primal.process_type_name(), "primal");
+
+        let svc = BiomeProcess {
+            name: "s".to_string(),
+            process_type: ProcessType::Service("x".to_string()),
+            execution_id: Uuid::new_v4(),
+            pid: None,
+            _started_at: std::time::SystemTime::now(),
+        };
+        assert_eq!(svc.process_type_name(), "service");
+
+        let hc = BiomeProcess {
+            name: "h".to_string(),
+            process_type: ProcessType::HealthCheck("x".to_string()),
+            execution_id: Uuid::new_v4(),
+            pid: None,
+            _started_at: std::time::SystemTime::now(),
+        };
+        assert_eq!(hc.process_type_name(), "healthcheck");
     }
 
     #[test]

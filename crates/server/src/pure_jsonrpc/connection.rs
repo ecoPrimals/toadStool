@@ -52,11 +52,13 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&socket_path)
+        let mut perms = tokio::fs::metadata(&socket_path)
+            .await
             .map_err(|e| ServerError::Internal(e.to_string()))?
             .permissions();
         perms.set_mode(0o600);
-        std::fs::set_permissions(&socket_path, perms)
+        tokio::fs::set_permissions(&socket_path, perms)
+            .await
             .map_err(|e| ServerError::Internal(e.to_string()))?;
         info!("Set JSON-RPC socket permissions to 0600");
     }

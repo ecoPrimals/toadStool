@@ -15,9 +15,12 @@
 pub mod broadcasting;
 pub mod capability_client; // ✅ Production-ready capability-based discovery client
 pub mod connection;
+pub(crate) mod capacity;
 pub mod discovery;
 pub mod distribution;
 pub mod integration;
+pub(crate) mod messaging;
+pub(crate) mod transport;
 pub mod load_balancing;
 pub mod types;
 

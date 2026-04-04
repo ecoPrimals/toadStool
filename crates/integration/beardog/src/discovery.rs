@@ -35,9 +35,6 @@ impl Default for SeedRequest {
 /// Discovers and communicates with bearDog entropy service.
 /// Uses capability-based discovery (no hardcoded URLs!).
 pub struct EntropyClient {
-    /// Service endpoint (discovered at runtime)
-    #[allow(dead_code)] // Set for tracing; read by unit tests
-    endpoint: Option<String>,
     /// RPC client for communication (pure Rust unix socket!)
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     /// Whether service is available
@@ -81,7 +78,6 @@ impl EntropyClient {
                     });
 
                 Ok(Self {
-                    endpoint: None,
                     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(
                         socket_path,
                     ),
@@ -163,7 +159,7 @@ impl EntropyClient {
     ///
     /// **PURE RUST**: Uses unix socket instead of HTTP
     /// **CAPABILITY-BASED**: Discovers crypto service by capability
-    async fn connect(endpoint: &str) -> Result<Self, BeardogError> {
+    async fn connect(_endpoint: &str) -> Result<Self, BeardogError> {
         // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
@@ -179,7 +175,6 @@ impl EntropyClient {
         let available = Self::probe_service("").await.is_ok();
 
         Ok(Self {
-            endpoint: Some(endpoint.to_string()),
             rpc_client: socket_client,
             available,
         })
@@ -293,12 +288,11 @@ mod tests {
         // Test client construction without live discovery (avoids nested runtime)
         let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
-            endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: false,
         };
         // Client should exist even if bearDog unavailable (fallback)
-        assert!(client.endpoint.is_none() || !client.available);
+        assert!(!client.available);
     }
 
     #[tokio::test]
@@ -316,7 +310,6 @@ mod tests {
         let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
 
         let client = EntropyClient {
-            endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: false,
         };
@@ -341,7 +334,6 @@ mod tests {
     async fn test_entropy_client_is_available() {
         let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
-            endpoint: Some("unix:///tmp/beardog.sock".to_string()),
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: true,
         };
@@ -352,7 +344,6 @@ mod tests {
     async fn test_entropy_client_not_available() {
         let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
-            endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: false,
         };
@@ -363,7 +354,6 @@ mod tests {
     async fn test_generate_seed_with_request() {
         let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("crypto.sock");
         let client = EntropyClient {
-            endpoint: None,
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: false,
         };
@@ -452,7 +442,6 @@ mod tests {
         let socket_path =
             toadstool_common::primal_sockets::get_biomeos_dir().join("nonexistent.sock");
         let client = EntropyClient {
-            endpoint: Some("unix:///tmp/beardog.sock".to_string()),
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
             available: false,
         };

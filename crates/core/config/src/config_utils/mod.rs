@@ -33,50 +33,6 @@ impl ConfigUtils {
         network::get_primal_default_port(primal_name)
     }
 
-    /// Get Songbird port from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery (RuntimeDiscovery::discover_capability) instead of hardcoded primal endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_songbird_port() -> u16 {
-        network::get_songbird_port()
-    }
-
-    /// Get BearDog port from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery for crypto services instead of hardcoded endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_beardog_port() -> u16 {
-        network::get_beardog_port()
-    }
-
-    /// Get NestGate port from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery for storage services instead of hardcoded endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_nestgate_port() -> u16 {
-        network::get_nestgate_port()
-    }
-
-    /// Get Squirrel port from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery for AI services instead of hardcoded endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_squirrel_port() -> u16 {
-        network::get_squirrel_port()
-    }
-
     /// Get ToadStool port from environment or default
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
@@ -117,50 +73,6 @@ impl ConfigUtils {
     #[must_use]
     pub fn get_external_hostname() -> String {
         network::get_external_hostname()
-    }
-
-    /// Get Songbird endpoint from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Hardcoded endpoints violate self-knowledge principle. Use RuntimeDiscovery for capability-based service location."
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_songbird_endpoint() -> String {
-        network::get_songbird_endpoint()
-    }
-
-    /// Get BearDog endpoint from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery instead of hardcoded crypto service endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_beardog_endpoint() -> String {
-        network::get_beardog_endpoint()
-    }
-
-    /// Get NestGate endpoint from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery instead of hardcoded storage service endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_nestgate_endpoint() -> String {
-        network::get_nestgate_endpoint()
-    }
-
-    /// Get Squirrel endpoint from environment or default
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use capability-based discovery instead of hardcoded AI service endpoints"
-    )]
-    #[must_use]
-    #[allow(deprecated)]
-    pub fn get_squirrel_endpoint() -> String {
-        network::get_squirrel_endpoint()
     }
 
     /// Get ToadStool endpoint from environment or default

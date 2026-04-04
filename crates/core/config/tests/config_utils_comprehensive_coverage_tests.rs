@@ -342,7 +342,6 @@ fn test_get_node_name() {
 // ==================== Collection Tests ====================
 
 #[test]
-#[allow(deprecated)]
 fn test_get_service_ports() {
     let ports = ConfigUtils::get_service_ports();
     assert!(!ports.is_empty());

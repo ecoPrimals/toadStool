@@ -349,7 +349,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 3, 2026 — S175. **21,617** workspace tests, 0 failures, 220 ignored. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~59 unsafe blocks** (48 in hw-safe/ioctl containment zones, 11 in consumer code; down from ~101 at S173); **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S175**: Unsafe reduction Phase 1+2 — V4L2 ioctl containment, `HugePageMemory` RAII, `GpuPtr` newtype, GPU backend constructors made safe; consumer unsafe −80%. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 4, 2026 — S176. **21,638** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~59 unsafe blocks** (48 in hw-safe/ioctl containment zones, 11 in consumer code). **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S176**: Deep debt evolution — removed 15 deprecated primal-named APIs, `ollama_*` → `inference_*` semantic method evolution, 5 large files smart-refactored, dead code resolved, `std::fs` → `tokio::fs` in async, Akida stubs feature-gated. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -2,6 +2,7 @@
 use super::*;
 
 #[test]
+#[allow(deprecated)]
 fn test_config_utils() {
     temp_env::with_vars(
         [
@@ -13,9 +14,9 @@ fn test_config_utils() {
             ("TOADSTOOL_DEBUG", Some("false")),
         ],
         || {
-            assert_eq!(ConfigUtils::get_songbird_port(), 8080);
-            assert_eq!(ConfigUtils::get_beardog_port(), 8081);
-            assert_eq!(ConfigUtils::get_nestgate_port(), 8082);
+            assert_eq!(ConfigUtils::get_primal_default_port("SONGBIRD"), 8080);
+            assert_eq!(ConfigUtils::get_primal_default_port("BEARDOG"), 8081);
+            assert_eq!(ConfigUtils::get_primal_default_port("NESTGATE"), 8082);
             assert_eq!(ConfigUtils::get_bind_address(), "127.0.0.1");
             assert_eq!(ConfigUtils::get_environment(), "development");
             assert!(!ConfigUtils::get_debug_mode());
@@ -26,7 +27,7 @@ fn test_config_utils() {
                     ("TOADSTOOL_DEBUG", Some("true")),
                 ],
                 || {
-                    assert_eq!(ConfigUtils::get_songbird_port(), 9080);
+                    assert_eq!(ConfigUtils::get_primal_default_port("SONGBIRD"), 9080);
                     assert!(ConfigUtils::get_debug_mode());
                 },
             );
@@ -259,17 +260,18 @@ fn test_get_toadstool_endpoint() {
 }
 
 #[test]
-fn test_get_squirrel_port_default() {
+#[allow(deprecated)]
+fn test_get_squirrel_primal_default_port() {
     temp_env::with_vars(
         [
             ("TOADSTOOL_PLATFORM_PORT", None::<&str>),
             ("PLATFORM_PORT", None::<&str>),
         ],
         || {
-            let port = ConfigUtils::get_squirrel_port();
+            let port = ConfigUtils::get_primal_default_port("SQUIRREL");
             assert_eq!(
                 port, 8083,
-                "DEFAULT_SQUIRREL_DISCOVERY_PORT = 8083 for cold-start bootstrap"
+                "PLATFORM cold-start fallback = 8083 for cold-start bootstrap"
             );
         },
     );

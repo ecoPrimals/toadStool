@@ -272,14 +272,14 @@ impl SemanticMethodRegistry {
         // INFERENCE DOMAIN - Model inference (capability, not product)
         // ═══════════════════════════════════════════════════════════
 
-        add_mapping("ollama.list_models", "ollama_list_models"); // deprecated: product name as domain
-        add_mapping("inference.list_models", "ollama_list_models"); // canonical
-        add_mapping("ollama.inference", "ollama_inference"); // deprecated
-        add_mapping("inference.execute", "ollama_inference"); // canonical
-        add_mapping("ollama.load", "ollama_load"); // deprecated
-        add_mapping("inference.load_model", "ollama_load"); // canonical
-        add_mapping("ollama.unload", "ollama_unload"); // deprecated
-        add_mapping("inference.unload_model", "ollama_unload"); // canonical
+        add_mapping("ollama.list_models", "inference_list_models"); // deprecated: product name as domain
+        add_mapping("inference.list_models", "inference_list_models"); // canonical
+        add_mapping("ollama.inference", "inference_execute"); // deprecated
+        add_mapping("inference.execute", "inference_execute"); // canonical
+        add_mapping("ollama.load", "inference_load_model"); // deprecated
+        add_mapping("inference.load_model", "inference_load_model"); // canonical
+        add_mapping("ollama.unload", "inference_unload_model"); // deprecated
+        add_mapping("inference.unload_model", "inference_unload_model"); // canonical
 
         // ═══════════════════════════════════════════════════════════
         // GPU DOMAIN - Query operations (verb form per naming standard)

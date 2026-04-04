@@ -5,7 +5,46 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 3, 2026 (Sessions 43-175)
+## [Unreleased] - April 4, 2026 (Sessions 43-176)
+
+### Session S176 (Apr 4, 2026) — Deep Debt Evolution: Modern Idiomatic Rust + Capability-Based Cleanup
+
+#### Deprecated API Removal
+- Removed 15 deprecated primal-named functions from `config/network.rs` (`default_songbird_endpoint`,
+  `get_songbird_port`, `get_songbird_endpoint` × 5 primals)
+- Removed `constants::ports` module (zero callers; was just aliases to `capability_fallback`)
+- Removed matching deprecated `ConfigUtils` wrapper methods (`get_songbird_port` etc.)
+- Updated all test callers to use `capability_fallback` ports or `get_primal_default_port()`
+
+#### Semantic Method Evolution
+- Renamed handler targets from `ollama_*` to `inference_*` in semantic method registry
+  (`ollama_list_models` → `inference_list_models`, etc.)
+- Deprecated `ollama.*` routing aliases still resolve correctly
+
+#### Large File Smart Refactoring (5 files)
+- `capability_discovery.rs` (686L) → directory module: `types.rs`, `tests.rs`
+- `multi_workload_compositor.rs` (643L) → directory: `types.rs`, `scheduling.rs`, `merging.rs`, `tests.rs`
+- `primal_capabilities.rs` (640L) → directory: `parsing.rs`, `registry.rs`, `tests.rs`
+- `mdns_discovery.rs` (635L) → directory: `client.rs`, `parser.rs`, `tests.rs`
+- `songbird_integration/integration.rs` (661L) → extracted `messaging.rs`, `transport.rs`, `capacity.rs`
+
+#### Dead Code Resolution (12 items)
+- `parse_size_string` → moved to test scope
+- `HardwareDetector::system_info` → removed (always `None`)
+- `EntropyClient::endpoint` → removed (never read)
+- `mdns_to_discovered_service` → moved to test scope
+- 8 remaining items evolved from `#[allow(dead_code)]` to `#[allow(dead_code, reason = "...")]`
+
+#### Async I/O Fix
+- Replaced blocking `std::fs::metadata`/`set_permissions` with `tokio::fs` in `serve_unix`
+
+#### Stub Model Feature-Gating
+- Gated `create_stub_model`/`init_neurobench_stubs` behind `cfg(any(test, feature = "dev-stubs"))`
+- Production builds can opt out with `--no-default-features`
+
+#### Quality
+- 21,638 tests (0 failures)
+- `cargo clippy --workspace --all-targets -- -D warnings` clean
 
 ### Session S175 (Apr 3, 2026) — Unsafe Reduction Phase 1+2 + Doc Cleanup
 

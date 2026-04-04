@@ -3,36 +3,9 @@
 //!
 //! Tests that all utility functions return valid values
 
-#![allow(deprecated)] // Testing legacy config APIs for backwards compatibility
-
 use toadstool_config::config_utils::ConfigUtils;
 
 // ==================== Port Getter Tests ====================
-
-#[test]
-fn test_get_songbird_port() {
-    let port = ConfigUtils::get_songbird_port();
-    // 0 = discovered at runtime (capability resolution); or from env
-    let _ = port;
-}
-
-#[test]
-fn test_get_beardog_port() {
-    let port = ConfigUtils::get_beardog_port();
-    let _ = port;
-}
-
-#[test]
-fn test_get_nestgate_port() {
-    let port = ConfigUtils::get_nestgate_port();
-    let _ = port;
-}
-
-#[test]
-fn test_get_squirrel_port() {
-    let port = ConfigUtils::get_squirrel_port();
-    let _ = port;
-}
 
 #[test]
 fn test_get_toadstool_port() {
@@ -83,38 +56,6 @@ fn test_get_external_hostname() {
 }
 
 // ==================== Endpoint Tests ====================
-
-#[test]
-fn test_get_songbird_endpoint() {
-    let endpoint = ConfigUtils::get_songbird_endpoint();
-    assert!(endpoint.starts_with("http"));
-    assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(':'));
-}
-
-#[test]
-fn test_get_beardog_endpoint() {
-    let endpoint = ConfigUtils::get_beardog_endpoint();
-    assert!(endpoint.starts_with("http"));
-    assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(':'));
-}
-
-#[test]
-fn test_get_nestgate_endpoint() {
-    let endpoint = ConfigUtils::get_nestgate_endpoint();
-    assert!(endpoint.starts_with("http"));
-    assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(':'));
-}
-
-#[test]
-fn test_get_squirrel_endpoint() {
-    let endpoint = ConfigUtils::get_squirrel_endpoint();
-    assert!(endpoint.starts_with("http"));
-    assert!(endpoint.contains("://"));
-    assert!(endpoint.contains(':'));
-}
 
 #[test]
 fn test_get_toadstool_endpoint() {

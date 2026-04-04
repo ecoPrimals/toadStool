@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 3, 2026 -- S175 Unsafe Reduction Phase 1+2 + Doc Cleanup
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,617 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%)
-**Latest**: S175 — Unsafe code reduction Phase 1+2: V4L2 ioctls to containment module (`device.rs` now pure safe Rust), `HugePageMemory` RAII in hw-safe (absorbs mmap/mlock from nvpmu/dma.rs), `GpuPtr` newtype consolidates 6 `unsafe impl Send/Sync`, GPU backend constructors made safe. Consumer unsafe blocks 56→11 (−80%). All quality gates green.
+**Updated**: April 4, 2026 -- S176 Deep Debt Evolution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,638 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%)
+**Latest**: S176 — Deep debt evolution: Removed 15 deprecated primal-named APIs + `constants::ports` module. Evolved `ollama_*` → `inference_*` semantic method handler names. Smart-refactored 5 files >630L into submodules. Resolved 12 `#[allow(dead_code)]` items. Replaced blocking `std::fs` with `tokio::fs` in async server. Feature-gated Akida stub models. All quality gates green.
 
 ---
 

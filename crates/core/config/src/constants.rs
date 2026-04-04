@@ -9,36 +9,6 @@
 //! This module contains legacy well-known constants. For new code, use the
 //! capability-based discovery system to find primals at runtime.
 
-/// **DEPRECATED**: Use `toadstool_config::ports::capability_fallback` for port defaults,
-/// or `RuntimeDiscovery::discover_capability()` for production.
-#[deprecated(
-    since = "0.3.0",
-    note = "Use toadstool_config::ports::capability_fallback for port defaults."
-)]
-pub mod ports {
-    use crate::ports::capability_fallback;
-
-    /// Coordination capability port (legacy).
-    #[deprecated(note = "Use ports::capability_fallback::COORDINATION")]
-    pub const SONGBIRD: u16 = capability_fallback::COORDINATION;
-
-    /// Security capability port (legacy).
-    #[deprecated(note = "Use ports::capability_fallback::SECURITY")]
-    pub const BEARDOG: u16 = capability_fallback::SECURITY;
-
-    /// Storage capability port (legacy).
-    #[deprecated(note = "Use ports::capability_fallback::STORAGE")]
-    pub const NESTGATE: u16 = capability_fallback::STORAGE;
-
-    /// ToadStool API port (0 = OS-assigned).
-    #[deprecated(note = "Use defaults::network::API_PORT for ToadStool self-config")]
-    pub const TOADSTOOL: u16 = 0;
-
-    /// Platform capability port (legacy).
-    #[deprecated(note = "Use ports::capability_fallback::PLATFORM")]
-    pub const SQUIRREL: u16 = capability_fallback::PLATFORM;
-}
-
 /// Capability-based service identifiers (preferred)
 ///
 /// Use these for discovery and routing. Re-exports from `toadstool_common::interned_strings::capabilities`.
@@ -98,11 +68,11 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(deprecated)] // Testing legacy constants during migration
-    fn test_port_constants() {
-        assert_eq!(ports::SONGBIRD, 8080);
-        assert_eq!(ports::BEARDOG, 8081);
-        assert_eq!(ports::NESTGATE, 8082); // Same as capability_fallback::STORAGE
+    fn test_capability_fallback_ports() {
+        use crate::ports::capability_fallback;
+        assert_eq!(capability_fallback::COORDINATION, 8080);
+        assert_eq!(capability_fallback::SECURITY, 8081);
+        assert_eq!(capability_fallback::STORAGE, 8082);
     }
 
     #[test]

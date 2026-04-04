@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Backward compatibility tests for deprecated network configuration functions
-#![allow(deprecated)]
-
 //! Tests for network configuration defaults
 //!
 //! Verifies that network defaults are valid and follow best practices.
 
 use toadstool_config::defaults::network;
 use toadstool_config::defaults::resources;
+use toadstool_config::ports::capability_fallback;
 
 #[test]
 fn test_network_ports_os_assigned() {
@@ -36,19 +34,8 @@ fn test_localhost_is_valid_address() {
 }
 
 #[test]
-fn test_default_songbird_endpoint() {
-    // network::default_songbird_endpoint uses capability_fallback::COORDINATION (8080)
-    let endpoint = toadstool_config::network::default_songbird_endpoint();
-    assert!(
-        endpoint.contains("8080"),
-        "Endpoint should contain Songbird port"
-    );
-    assert!(
-        endpoint.contains("127.0.0.1")
-            || endpoint.contains("localhost")
-            || endpoint.contains("0.0.0.0")
-    );
-    assert!(endpoint.starts_with("http://"), "Should be HTTP URL");
+fn test_coordination_fallback_port_matches_documentation() {
+    assert_eq!(capability_fallback::COORDINATION, 8080);
 }
 
 #[test]

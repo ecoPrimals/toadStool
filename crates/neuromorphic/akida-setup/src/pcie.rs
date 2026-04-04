@@ -9,9 +9,9 @@ use std::process::Command;
 #[derive(Debug, Clone)]
 pub struct AkidaDevice {
     pub pcie_address: String,
-    #[allow(dead_code)] // populated by lspci for caller inspection
+    #[allow(dead_code, reason = "PCI vendor/device IDs populated from lspci; read by callers and tests")]
     pub vendor_id: String,
-    #[allow(dead_code)] // populated by lspci for caller inspection
+    #[allow(dead_code, reason = "PCI vendor/device IDs populated from lspci; read by callers and tests")]
     pub device_id: String,
 }
 

@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 3, 2026 — S175
+**Date**: April 4, 2026 — S176
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,44 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S176 Resolved Debt (Deep Debt Evolution)
+
+### D-DEPRECATED-PRIMAL-APIS — RESOLVED S176
+Removed 15 deprecated primal-named functions from `config/network.rs` (`default_songbird_endpoint`,
+`get_songbird_port`, `get_songbird_endpoint`, etc.) and matching `ConfigUtils` wrapper methods.
+Removed `constants::ports` module (zero callers). Updated all test callers to use
+`capability_fallback` ports or `ConfigUtils::get_primal_default_port()`. EndpointConfig struct
+fields retained for serde backward compatibility.
+
+### D-SEMANTIC-METHODS-NAMING — RESOLVED S176
+Evolved `semantic_methods.rs` handler targets from product-specific names (`ollama_list_models`,
+`ollama_inference`, `ollama_load`, `ollama_unload`) to capability-domain names
+(`inference_list_models`, `inference_execute`, `inference_load_model`, `inference_unload_model`).
+Deprecated `ollama.*` routing aliases still resolve to the new handler names.
+
+### D-LARGE-FILE-REFACTOR-3 — RESOLVED S176
+5 production files >630L smart-refactored into submodules:
+- `capability_discovery.rs` (686L) → `capability_discovery/{mod,types,tests}.rs`
+- `multi_workload_compositor.rs` (643L) → `multi_workload_compositor/{mod,types,scheduling,merging,tests}.rs`
+- `primal_capabilities.rs` (640L) → `primal_capabilities/{mod,parsing,registry,tests}.rs`
+- `mdns_discovery.rs` (635L) → `mdns_discovery/{mod,client,parser,tests}.rs`
+- `songbird_integration/integration.rs` (661L) → extracted `messaging.rs`, `transport.rs`, `capacity.rs`
+
+### D-DEAD-CODE-AUDIT — RESOLVED S176
+Resolved 12 production `#[allow(dead_code)]` items: `parse_size_string` moved to test scope,
+`HardwareDetector::system_info` removed (always `None`), `EntropyClient::endpoint` removed
+(never read), `mdns_to_discovered_service` moved to test scope. Remaining items evolved from
+`#[allow(dead_code)]` to `#[allow(dead_code, reason = "...")]` with documented justifications.
+
+### D-ASYNC-IO — RESOLVED S176
+Replaced blocking `std::fs::metadata` / `std::fs::set_permissions` with `tokio::fs` equivalents
+in `pure_jsonrpc/connection.rs` `serve_unix` async function.
+
+### D-STUB-FEATURE-GATE — RESOLVED S176
+Feature-gated `create_stub_model` and `init_neurobench_stubs` in `akida-models` behind
+`#[cfg(any(test, feature = "dev-stubs"))]`. `default = ["dev-stubs"]` preserves current behavior;
+production builds can opt out with `--no-default-features`.
 
 ## S175 Resolved Debt (Unsafe Reduction Phase 1+2)
 

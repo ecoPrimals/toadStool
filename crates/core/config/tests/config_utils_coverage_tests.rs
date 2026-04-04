@@ -3,8 +3,6 @@
 //! network getters, environment flags, default-backed accessors, env edge cases, serde
 //! stability for env config structs, and [`EnvConfigLoader`]’s [`Default`] implementation.
 
-#![allow(deprecated)]
-
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -33,6 +31,7 @@ fn env_config_loader_default_matches_new() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn get_primal_default_port_unknown_returns_api_port() {
     assert_eq!(
         ConfigUtils::get_primal_default_port("XYZZY"),
@@ -41,6 +40,7 @@ fn get_primal_default_port_unknown_returns_api_port() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn primal_ports_resolve_when_legacy_env_unset() {
     temp_env::with_vars_unset(
         [
@@ -58,21 +58,22 @@ fn primal_ports_resolve_when_legacy_env_unset() {
             "SQUIRREL_PORT",
         ],
         || {
+            use toadstool_config::ports::capability_fallback;
             assert_eq!(
-                ConfigUtils::get_songbird_port(),
-                toadstool_config::ports::capability_fallback::COORDINATION
+                ConfigUtils::get_primal_default_port("SONGBIRD"),
+                capability_fallback::COORDINATION
             );
             assert_eq!(
-                ConfigUtils::get_beardog_port(),
-                toadstool_config::ports::capability_fallback::SECURITY
+                ConfigUtils::get_primal_default_port("BEARDOG"),
+                capability_fallback::SECURITY
             );
             assert_eq!(
-                ConfigUtils::get_nestgate_port(),
-                toadstool_config::ports::capability_fallback::STORAGE
+                ConfigUtils::get_primal_default_port("NESTGATE"),
+                capability_fallback::STORAGE
             );
             assert_eq!(
-                ConfigUtils::get_squirrel_port(),
-                toadstool_config::ports::capability_fallback::PLATFORM
+                ConfigUtils::get_primal_default_port("SQUIRREL"),
+                capability_fallback::PLATFORM
             );
         },
     );
@@ -215,30 +216,6 @@ fn service_maps_reflect_ports_and_endpoint() {
                 endpoints.get(PRIMAL_NAME).map(String::as_str),
                 Some("http://host.test:4444")
             );
-        },
-    );
-}
-
-#[test]
-fn deprecated_endpoints_are_well_formed_urls() {
-    temp_env::with_vars(
-        [
-            ("BIND_ADDRESS", Some("10.0.0.1")),
-            ("TOADSTOOL_COORDINATION_PORT", Some("8080")),
-            ("TOADSTOOL_SECURITY_PORT", Some("8081")),
-            ("TOADSTOOL_STORAGE_PORT", Some("8082")),
-            ("TOADSTOOL_PLATFORM_PORT", Some("8083")),
-        ],
-        || {
-            for ep in [
-                ConfigUtils::get_songbird_endpoint(),
-                ConfigUtils::get_beardog_endpoint(),
-                ConfigUtils::get_nestgate_endpoint(),
-                ConfigUtils::get_squirrel_endpoint(),
-            ] {
-                assert!(ep.starts_with("http://"));
-                assert!(ep.contains(':'));
-            }
         },
     );
 }

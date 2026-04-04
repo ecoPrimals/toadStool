@@ -15,9 +15,9 @@ pub mod ioctls {
         VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
     };
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "Reserved for VFIO DMA map operations")]
     pub const VFIO_DMA_MAP_FLAG_READ: u32 = 1 << 0;
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "Reserved for VFIO DMA map operations")]
     pub const VFIO_DMA_MAP_FLAG_WRITE: u32 = 1 << 1;
 }
 

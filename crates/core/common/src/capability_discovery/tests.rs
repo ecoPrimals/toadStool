@@ -1,0 +1,327 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
+use super::*;
+use std::time::Duration;
+
+#[test]
+fn test_discovery_config_default() {
+    let config = DiscoveryConfig::default();
+    assert_eq!(config.timeout, Duration::from_secs(5));
+    // Fallback enabled in non-production
+    assert!(config.enable_localhost_fallback);
+}
+
+#[test]
+fn test_discovery_config_custom() {
+    let config = DiscoveryConfig {
+        timeout: Duration::from_secs(10),
+        enable_localhost_fallback: false,
+        methods: vec![DiscoveryMethod::Mdns],
+    };
+    assert_eq!(config.timeout, Duration::from_secs(10));
+    assert!(!config.enable_localhost_fallback);
+}
+
+#[test]
+fn test_discovery_method_copy() {
+    let method1 = DiscoveryMethod::Auto;
+    let method2 = method1; // Copy
+    assert!(matches!(method1, DiscoveryMethod::Auto));
+    assert!(matches!(method2, DiscoveryMethod::Auto));
+}
+
+#[test]
+fn test_discovery_method_variants() {
+    // Test non-deprecated variants
+    let auto = DiscoveryMethod::Auto;
+    let mdns = DiscoveryMethod::Mdns;
+    let env = DiscoveryMethod::Environment;
+
+    assert!(matches!(auto, DiscoveryMethod::Auto));
+    assert!(matches!(mdns, DiscoveryMethod::Mdns));
+    assert!(matches!(env, DiscoveryMethod::Environment));
+}
+
+#[test]
+#[allow(deprecated)]
+fn test_discovery_method_deprecated_variants() {
+    // Test deprecated variants still exist for backward compatibility
+    let k8s = DiscoveryMethod::Kubernetes;
+    let consul = DiscoveryMethod::Consul;
+
+    assert!(matches!(k8s, DiscoveryMethod::Kubernetes));
+    assert!(matches!(consul, DiscoveryMethod::Consul));
+}
+
+#[test]
+fn test_discovery_error_timeout() {
+    let err = DiscoveryError::Timeout;
+    assert_eq!(err.to_string(), "Discovery timeout");
+}
+
+#[test]
+fn test_discovery_error_no_services() {
+    let err = DiscoveryError::NoServicesFound("test_capability".to_string());
+    assert!(err.to_string().contains("test_capability"));
+}
+
+#[test]
+fn test_discovery_error_failed() {
+    let err = DiscoveryError::DiscoveryFailed("network error".to_string());
+    assert!(err.to_string().contains("network error"));
+}
+
+#[test]
+fn test_discovery_error_invalid_config() {
+    let err = DiscoveryError::InvalidConfig("bad config".to_string());
+    assert!(err.to_string().contains("bad config"));
+}
+
+#[test]
+fn test_discovery_config_production_env() {
+    temp_env::with_var("TOADSTOOL_ENV", Some("production"), || {
+        let config = DiscoveryConfig::default();
+        assert!(!config.enable_localhost_fallback);
+    });
+}
+
+#[test]
+fn test_discovery_config_development_env() {
+    temp_env::with_var_unset("TOADSTOOL_ENV", || {
+        let config = DiscoveryConfig::default();
+        assert!(config.enable_localhost_fallback);
+    });
+}
+
+#[test]
+fn test_discovery_config_builder_pattern() {
+    let config = DiscoveryConfig {
+        timeout: Duration::from_millis(100),
+        enable_localhost_fallback: true,
+        methods: vec![DiscoveryMethod::Mdns, DiscoveryMethod::Environment],
+    };
+    assert_eq!(config.timeout, Duration::from_millis(100));
+    assert!(config.enable_localhost_fallback);
+    assert_eq!(config.methods.len(), 2);
+}
+
+#[test]
+fn test_discovery_config_clone() {
+    let config1 = DiscoveryConfig::default();
+    let config2 = config1.clone();
+    assert_eq!(config1.timeout, config2.timeout);
+    assert_eq!(
+        config1.enable_localhost_fallback,
+        config2.enable_localhost_fallback
+    );
+}
+
+// Note: CapabilityDiscovery::new() and find_by_capability use block_on internally,
+// which panics when called from within a tokio runtime (e.g. #[tokio::test]).
+// Integration tests that need the full discovery stack should run outside tokio.
+#[test]
+fn test_capability_discovery_new_from_sync() {
+    let result = std::thread::spawn(CapabilityDiscovery::new)
+        .join()
+        .expect("thread should not panic");
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_capability_discovery_with_config() {
+    let config = DiscoveryConfig {
+        timeout: Duration::from_millis(50),
+        enable_localhost_fallback: false,
+        methods: vec![DiscoveryMethod::Environment],
+    };
+    let result = CapabilityDiscovery::with_config(&config);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_find_by_capability_no_services_in_separate_thread() {
+    use crate::primal_identity::{Capability, CryptoCapability};
+
+    let result = std::thread::spawn(|| {
+        let config = DiscoveryConfig {
+            timeout: Duration::from_millis(100),
+            enable_localhost_fallback: false,
+            methods: vec![DiscoveryMethod::Environment],
+        };
+        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        runtime.block_on(
+            discovery.find_by_capability(Capability::Crypto(CryptoCapability::Encryption)),
+        )
+    })
+    .join()
+    .expect("thread ok");
+
+    // In test env with no services, we expect NoServicesFound, Timeout, DiscoveryFailed, or InvalidConfig
+    match &result {
+        Err(
+            DiscoveryError::NoServicesFound(_)
+            | DiscoveryError::Timeout
+            | DiscoveryError::DiscoveryFailed(_)
+            | DiscoveryError::InvalidConfig(_),
+        ) => {}
+        Ok(services) => assert!(
+            services.is_empty(),
+            "expected no services in test env, got {}",
+            services.len()
+        ),
+    }
+}
+
+#[test]
+fn test_find_by_capability_with_localhost_fallback() {
+    use crate::primal_identity::{Capability, CryptoCapability};
+
+    let result = std::thread::spawn(|| {
+        let config = DiscoveryConfig {
+            timeout: Duration::from_millis(100),
+            enable_localhost_fallback: true,
+            methods: vec![DiscoveryMethod::Environment],
+        };
+        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        runtime.block_on(
+            discovery.find_by_capability(Capability::Crypto(CryptoCapability::Encryption)),
+        )
+    })
+    .join()
+    .expect("thread ok");
+
+    // With fallback enabled, empty discovery returns Ok(vec![]) from try_localhost_fallback
+    match &result {
+        Ok(services) => assert!(services.is_empty()),
+        Err(e) => assert!(
+            matches!(
+                e,
+                DiscoveryError::NoServicesFound(_)
+                    | DiscoveryError::Timeout
+                    | DiscoveryError::DiscoveryFailed(_)
+            ),
+            "unexpected error: {e}"
+        ),
+    }
+}
+
+#[test]
+fn test_discovery_error_display_all_variants() {
+    let timeout_err = DiscoveryError::Timeout;
+    assert_eq!(timeout_err.to_string(), "Discovery timeout");
+
+    let no_services = DiscoveryError::NoServicesFound("Capability::Crypto(Encryption)".to_string());
+    assert!(no_services.to_string().contains("Crypto"));
+    assert!(no_services.to_string().contains("Encryption"));
+
+    let failed = DiscoveryError::DiscoveryFailed("network down".to_string());
+    assert!(failed.to_string().contains("network down"));
+
+    let invalid = DiscoveryError::InvalidConfig("bad".to_string());
+    assert!(invalid.to_string().contains("bad"));
+}
+
+#[test]
+fn test_discovery_error_is_std_error() {
+    use std::error::Error;
+    let err = DiscoveryError::Timeout;
+    assert!(err.source().is_none());
+    let _ = format!("{err:?}");
+}
+
+#[test]
+fn test_discovery_method_derive_clone() {
+    let m = DiscoveryMethod::Mdns;
+    let m2 = m;
+    assert!(matches!(m2, DiscoveryMethod::Mdns));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Additional tests for capability discovery logic and error paths
+// ═══════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_find_best_empty_services_returns_error() {
+    use crate::primal_identity::{Capability, CryptoCapability};
+
+    let result = std::thread::spawn(|| {
+        let config = DiscoveryConfig {
+            timeout: Duration::from_millis(50),
+            enable_localhost_fallback: false,
+            methods: vec![DiscoveryMethod::Environment],
+        };
+        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        runtime.block_on(discovery.find_best(Capability::Crypto(CryptoCapability::Encryption)))
+    })
+    .join()
+    .expect("thread ok");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(
+        matches!(
+            err,
+            DiscoveryError::NoServicesFound(_)
+                | DiscoveryError::Timeout
+                | DiscoveryError::DiscoveryFailed(_)
+        ),
+        "unexpected error: {err:?}"
+    );
+}
+
+#[test]
+fn test_discovery_config_default_methods() {
+    let config = DiscoveryConfig::default();
+    assert_eq!(config.methods.len(), 1);
+    assert!(matches!(config.methods[0], DiscoveryMethod::Auto));
+}
+
+#[test]
+fn test_discovery_error_send_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<DiscoveryError>();
+}
+
+#[test]
+fn test_discovery_config_debug() {
+    let config = DiscoveryConfig::default();
+    let debug_str = format!("{config:?}");
+    assert!(debug_str.contains("DiscoveryConfig"));
+}
+
+#[test]
+fn test_discovery_method_debug() {
+    let m = DiscoveryMethod::Auto;
+    let debug_str = format!("{m:?}");
+    assert!(!debug_str.is_empty());
+}
+
+#[test]
+fn test_capability_discovery_new_creates_valid_instance() {
+    let discovery = CapabilityDiscovery::new().expect("discovery");
+    assert!(std::mem::size_of_val(&discovery) > 0);
+}
+
+#[test]
+fn test_capability_discovery_with_config_succeeds() {
+    let config = DiscoveryConfig {
+        timeout: Duration::from_secs(30),
+        enable_localhost_fallback: true,
+        methods: vec![DiscoveryMethod::Auto],
+    };
+    let discovery = CapabilityDiscovery::with_config(&config);
+    assert!(discovery.is_ok());
+}
+
+#[test]
+fn test_try_localhost_fallback_returns_empty() {
+    use crate::primal_identity::{Capability, CryptoCapability};
+
+    let fallback = CapabilityDiscovery::try_localhost_fallback(&Capability::Crypto(
+        CryptoCapability::Encryption,
+    ));
+    assert!(fallback.is_empty());
+}

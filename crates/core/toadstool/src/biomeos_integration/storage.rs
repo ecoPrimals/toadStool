@@ -218,40 +218,36 @@ impl StorageProvisioningManager {
     }
 }
 
-/// Helper function to parse size strings (e.g., "100Gi", "1TB")
-///
-/// Used from unit tests today; production call sites will wire manifest parsing later.
-#[allow(dead_code)]
-fn parse_size_string(size_str: &str) -> Option<u64> {
-    size_str
-        .strip_suffix("Gi")
-        .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_073_741_824))
-        .or_else(|| {
-            size_str
-                .strip_suffix("GB")
-                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000_000))
-        })
-        .or_else(|| {
-            size_str
-                .strip_suffix("Mi")
-                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_048_576))
-        })
-        .or_else(|| {
-            size_str
-                .strip_suffix("MB")
-                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000))
-        })
-        .or_else(|| {
-            size_str
-                .strip_suffix("TB")
-                .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000_000_000))
-        })
-        .or_else(|| size_str.parse::<u64>().ok())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse_size_string(size_str: &str) -> Option<u64> {
+        size_str
+            .strip_suffix("Gi")
+            .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_073_741_824))
+            .or_else(|| {
+                size_str
+                    .strip_suffix("GB")
+                    .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000_000))
+            })
+            .or_else(|| {
+                size_str
+                    .strip_suffix("Mi")
+                    .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_048_576))
+            })
+            .or_else(|| {
+                size_str
+                    .strip_suffix("MB")
+                    .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000))
+            })
+            .or_else(|| {
+                size_str
+                    .strip_suffix("TB")
+                    .and_then(|v| v.parse::<u64>().ok().map(|n| n * 1_000_000_000_000))
+            })
+            .or_else(|| size_str.parse::<u64>().ok())
+    }
 
     fn test_config() -> StorageProvisioningConfig {
         StorageProvisioningConfig {

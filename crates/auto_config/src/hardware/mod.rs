@@ -33,16 +33,13 @@ use tracing::info;
 use crate::ToadStoolResult;
 
 /// Hardware detection and capability assessment system
-pub struct HardwareDetector {
-    #[allow(dead_code)] // Reserved for platform-specific system info
-    system_info: Option<SystemInfo>,
-}
+pub struct HardwareDetector {}
 
 impl HardwareDetector {
     /// Create a new hardware detector
     #[must_use]
     pub const fn new() -> Self {
-        Self { system_info: None }
+        Self {}
     }
 
     /// Comprehensive system scan to detect all hardware capabilities
@@ -192,20 +189,13 @@ pub enum PerformanceClass {
     HighEnd,
 }
 
-/// System information container
-#[derive(Debug)]
-struct SystemInfo {
-    // Platform-specific system information
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_hardware_detector_creation() {
-        let detector = HardwareDetector::new();
-        assert!(detector.system_info.is_none());
+        let _detector = HardwareDetector::new();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

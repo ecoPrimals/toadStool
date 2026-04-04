@@ -5,15 +5,13 @@
 //! and all configuration utilities.
 //!
 //! ✅ MODERNIZED: Uses scoped Mutex for parallel execution
-//! Note: Some tests validate deprecated functions for backward compatibility
-
-#![allow(deprecated)]
 
 mod test_env_fixture;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Duration;
+use toadstool_config::config_utils::ConfigUtils;
 use toadstool_config::*;
 
 // ✅ MODERN: Scoped lock for environment variable tests
@@ -290,69 +288,12 @@ fn test_network_default_max_connections_per_host() {
 }
 
 #[test]
-fn test_get_songbird_port_default() {
-    temp_env::with_vars(
-        [
-            ("TOADSTOOL_COORDINATION_PORT", None::<&str>),
-            ("COORDINATION_PORT", None::<&str>),
-        ],
-        || {
-            let port = network::get_songbird_port();
-            assert_eq!(port, 8080);
-        },
-    );
-}
-
-#[test]
-fn test_get_songbird_port_from_env() {
-    let _guard = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("COORDINATION_PORT", Some("9080"), || {
-        let port = network::get_songbird_port();
-        assert_eq!(port, 9080);
-    });
-}
-
-#[test]
-fn test_get_beardog_port_default() {
-    let _lock = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_vars(
-        [
-            ("TOADSTOOL_SECURITY_PORT", None::<&str>),
-            ("SECURITY_PORT", None::<&str>),
-        ],
-        || {
-            let port = network::get_beardog_port();
-            assert_eq!(port, 8081);
-        },
-    );
-}
-
-#[test]
-fn test_get_beardog_port_from_env() {
-    let _lock = get_env_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("SECURITY_PORT", Some("9081"), || {
-        let port = network::get_beardog_port();
-        assert_eq!(port, 9081);
-    });
-}
-
-// ===== TESTS ALREADY USE TestEnv - NO GLOBAL ENV POLLUTION =====
-// These tests were already modernized with the TestEnv fixture pattern.
-// The TestEnv provides isolated state, making all tests fully concurrent-safe.
-
-#[test]
 fn test_get_toadstool_port_default() {
     let _guard = get_env_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     temp_env::with_vars_unset(["TOADSTOOL_PORT", "TOADSTOOL_API_PORT"], || {
-        let port = network::get_toadstool_port();
+        let port = ConfigUtils::get_toadstool_port();
         assert_eq!(port, 0);
     });
 }
@@ -363,7 +304,7 @@ fn test_get_toadstool_port_from_env() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     temp_env::with_var("TOADSTOOL_PORT", Some("9084"), || {
-        let port = network::get_toadstool_port();
+        let port = ConfigUtils::get_toadstool_port();
         assert_eq!(port, 9084);
     });
 }
@@ -390,83 +331,10 @@ fn test_get_bind_host_from_env() {
     });
 }
 
-// Deprecated endpoint tests - maintained for backward compatibility validation
-// These test the DEPRECATED hardcoded endpoint functions that violate self-knowledge principle
-// Modern code should use RuntimeDiscovery with capability-based discovery instead
-
 #[test]
-#[allow(deprecated)]
-fn test_get_songbird_endpoint_format() {
-    temp_env::with_vars_unset(
-        [
-            "TOADSTOOL_BIND_HOST",
-            "TOADSTOOL_COORDINATION_PORT",
-            "COORDINATION_PORT",
-        ],
-        || {
-            let endpoint = network::get_songbird_endpoint();
-            assert!(endpoint.starts_with("http://"));
-            assert!(endpoint.contains(':'));
-        },
-    );
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_get_beardog_endpoint_format() {
-    temp_env::with_vars_unset(
-        [
-            "TOADSTOOL_BIND_HOST",
-            "TOADSTOOL_SECURITY_PORT",
-            "SECURITY_PORT",
-        ],
-        || {
-            let endpoint = network::get_beardog_endpoint();
-            assert!(endpoint.starts_with("http://"));
-            assert!(endpoint.contains(':'));
-        },
-    );
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_get_nestgate_endpoint_format() {
-    temp_env::with_vars_unset(
-        [
-            "TOADSTOOL_BIND_HOST",
-            "TOADSTOOL_STORAGE_PORT",
-            "STORAGE_PORT",
-        ],
-        || {
-            let endpoint = network::get_nestgate_endpoint();
-            assert!(endpoint.starts_with("http://"));
-            assert!(endpoint.contains(':'));
-        },
-    );
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_get_squirrel_endpoint_format() {
-    temp_env::with_vars_unset(
-        [
-            "TOADSTOOL_BIND_HOST",
-            "TOADSTOOL_PLATFORM_PORT",
-            "PLATFORM_PORT",
-        ],
-        || {
-            let endpoint = network::get_squirrel_endpoint();
-            assert!(endpoint.starts_with("http://"));
-            assert!(endpoint.contains(':'));
-        },
-    );
-}
-
-#[test]
-#[allow(deprecated)]
 fn test_get_toadstool_endpoint_format() {
     temp_env::with_vars_unset(["TOADSTOOL_BIND_HOST", "TOADSTOOL_API_PORT"], || {
-        let endpoint = network::get_toadstool_endpoint();
+        let endpoint = ConfigUtils::get_toadstool_endpoint();
         assert!(endpoint.starts_with("http://"));
         assert!(endpoint.contains(':'));
     });

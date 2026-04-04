@@ -331,6 +331,7 @@ impl ModelZoo {
     /// # Errors
     ///
     /// Returns error if file cannot be written.
+    #[cfg(any(test, feature = "dev-stubs"))]
     pub fn create_stub_model(&mut self, model: ZooModel) -> Result<PathBuf> {
         let path = self.cache_dir.join(model.filename());
 
@@ -383,6 +384,7 @@ impl ModelZoo {
     /// # Errors
     ///
     /// Returns error if any stub cannot be created.
+    #[cfg(any(test, feature = "dev-stubs"))]
     pub fn init_neurobench_stubs(&mut self) -> Result<Vec<PathBuf>> {
         let mut paths = Vec::new();
 

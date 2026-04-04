@@ -28,12 +28,17 @@ akida-driver = { path = "../akida-driver" }
 hex = "0.4"
 tempfile = "3"
 
+[features]
+default = ["dev-stubs"]
+dev-stubs = []
+
 [lib]
 crate-type = ["rlib"]
 
 [[bin]]
 name = "model_zoo"
 path = "src/bin/model_zoo.rs"
+required-features = ["dev-stubs"]
 
 [[example]]
 name = "parse_fbz"
