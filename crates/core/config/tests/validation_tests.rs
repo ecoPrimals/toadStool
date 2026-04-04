@@ -38,7 +38,7 @@ fn test_validation_empty_songbird_endpoint() {
         result
             .unwrap_err()
             .to_string()
-            .contains("Songbird endpoint cannot be empty")
+            .contains("Coordination service endpoint cannot be empty")
     );
 }
 

@@ -38,7 +38,6 @@ fn get_runtime_dir() -> String {
 fn resolve_coordination_socket() -> String {
     std::env::var("BIOMEOS_COORDINATION_SOCKET")
         .or_else(|_| std::env::var("COORDINATION_SOCKET"))
-        .or_else(|_| std::env::var("SONGBIRD_SOCKET"))
         .unwrap_or_else(|_| get_default_coordination_socket())
 }
 
@@ -47,12 +46,6 @@ fn resolve_coordination_socket() -> String {
 /// biomeOS convention: `$XDG_RUNTIME_DIR/biomeos/coordination.sock`
 pub fn get_default_coordination_socket() -> String {
     format!("{}/biomeos/coordination.sock", get_runtime_dir())
-}
-
-/// Legacy alias for [`get_default_coordination_socket`].
-#[deprecated(since = "0.172.5", note = "Use get_default_coordination_socket()")]
-pub fn get_default_songbird_socket() -> String {
-    get_default_coordination_socket()
 }
 
 /// Register ToadStool with coordination/discovery service
@@ -107,12 +100,6 @@ pub async fn register_with_coordination() -> ToadStoolResult<()> {
     debug!("Registration response: {:?}", response);
 
     Ok(())
-}
-
-/// Legacy alias for [`register_with_coordination`].
-#[deprecated(since = "0.172.5", note = "Use register_with_coordination()")]
-pub async fn register_with_songbird() -> ToadStoolResult<()> {
-    register_with_coordination().await
 }
 
 /// Find primals by capability via coordination service

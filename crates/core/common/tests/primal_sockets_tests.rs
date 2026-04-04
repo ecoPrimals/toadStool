@@ -2,7 +2,6 @@
 //! Unit tests for primal socket path resolution
 //!
 //! Extracted from `primal_sockets.rs` to reduce file size.
-#![allow(deprecated)]
 
 use std::path::PathBuf;
 use toadstool_common::primal_sockets::*;
@@ -41,7 +40,7 @@ fn test_beardog_socket_from_env() {
         ..Default::default()
     };
     assert_eq!(
-        resolve_beardog_socket_fallback(&env),
+        resolve_capability_socket_fallback("crypto", &env),
         PathBuf::from("/custom/beardog.sock")
     );
 }
@@ -53,7 +52,7 @@ fn test_beardog_socket_default() {
         biomeos_family_id: Some("nat0".to_string()),
         ..Default::default()
     };
-    let path = resolve_beardog_socket_fallback(&env);
+    let path = resolve_capability_socket_fallback("crypto", &env);
     assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/crypto.sock"));
 }
 
@@ -63,7 +62,7 @@ fn test_songbird_socket_biomeos_standard() {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
     };
-    let path = resolve_songbird_socket_fallback(&env);
+    let path = resolve_capability_socket_fallback("coordination", &env);
     assert_eq!(
         path,
         PathBuf::from("/run/user/1000/biomeos/coordination.sock")
@@ -98,10 +97,10 @@ fn test_all_primals_have_unique_paths() {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
     };
-    let beardog = resolve_beardog_socket_fallback(&env);
-    let songbird = resolve_songbird_socket_fallback(&env);
-    let nestgate = resolve_nestgate_socket_fallback(&env);
-    let squirrel = resolve_squirrel_socket(&env);
+    let beardog = resolve_capability_socket_fallback("crypto", &env);
+    let songbird = resolve_capability_socket_fallback("coordination", &env);
+    let nestgate = resolve_capability_socket_fallback("storage", &env);
+    let squirrel = resolve_routing_socket(&env);
     let toadstool = resolve_toadstool_socket(&env);
 
     assert_ne!(beardog, songbird);
@@ -175,7 +174,7 @@ fn test_nestgate_socket_from_env() {
         ..Default::default()
     };
     assert_eq!(
-        resolve_nestgate_socket_fallback(&env),
+        resolve_capability_socket_fallback("storage", &env),
         PathBuf::from("/custom/nestgate.sock")
     );
 }
@@ -186,7 +185,7 @@ fn test_nestgate_socket_default() {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
     };
-    let path = resolve_nestgate_socket_fallback(&env);
+    let path = resolve_capability_socket_fallback("storage", &env);
     assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/storage.sock"));
 }
 
@@ -197,7 +196,7 @@ fn test_squirrel_socket_from_env() {
         ..Default::default()
     };
     assert_eq!(
-        resolve_squirrel_socket(&env),
+        resolve_routing_socket(&env),
         PathBuf::from("/custom/squirrel.sock")
     );
 }
@@ -208,7 +207,7 @@ fn test_squirrel_socket_default() {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
     };
-    let path = resolve_squirrel_socket(&env);
+    let path = resolve_routing_socket(&env);
     assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/routing.sock"));
 }
 
@@ -276,15 +275,15 @@ fn test_socket_path_for_service_aliases() {
     };
     assert_eq!(
         resolve_socket_path_for_service("bear-dog", &env, None),
-        resolve_beardog_socket_fallback(&env)
+        resolve_capability_socket_fallback("crypto", &env)
     );
     assert_eq!(
         resolve_socket_path_for_service("song-bird", &env, None),
-        resolve_songbird_socket_fallback(&env)
+        resolve_capability_socket_fallback("coordination", &env)
     );
     assert_eq!(
         resolve_socket_path_for_service("nest-gate", &env, None),
-        resolve_nestgate_socket_fallback(&env)
+        resolve_capability_socket_fallback("storage", &env)
     );
     assert_eq!(
         resolve_socket_path_for_service("toad-stool", &env, None),

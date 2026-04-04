@@ -23,10 +23,8 @@ use crate::semantic_methods::SemanticMethodRegistry;
 use std::sync::OnceLock;
 use tracing::debug;
 
-#[allow(deprecated)]
 pub use connection::{
-    find_by_capability, get_default_coordination_socket, get_default_songbird_socket,
-    register_with_coordination, register_with_songbird,
+    find_by_capability, get_default_coordination_socket, register_with_coordination,
 };
 
 /// Global semantic method registry (initialized once)

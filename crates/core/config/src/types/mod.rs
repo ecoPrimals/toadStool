@@ -183,7 +183,7 @@ impl ToadStoolConfig {
         #[allow(deprecated)]
         if self.network.endpoints.coordination.is_empty() {
             return Err(crate::ConfigError::Invalid(
-                "Songbird endpoint cannot be empty (use capability-based discovery instead)"
+                "Coordination service endpoint cannot be empty (use capability-based discovery instead)"
                     .to_string(),
             ));
         }

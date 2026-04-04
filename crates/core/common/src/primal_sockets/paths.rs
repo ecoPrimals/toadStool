@@ -81,50 +81,10 @@ pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv)
     resolve_biomeos_dir(env).join(format!("{cap}.sock"))
 }
 
-/// Pure logic: resolve crypto capability socket fallback (non-discovery path).
-#[deprecated(
-    since = "0.92.0",
-    note = "Use resolve_capability_socket_fallback(\"crypto\", env)"
-)]
-#[must_use]
-pub fn resolve_beardog_socket_fallback(env: &SocketPathEnv) -> PathBuf {
-    resolve_capability_socket_fallback("crypto", env)
-}
-
-/// Pure logic: resolve coordination capability socket fallback (non-discovery path).
-#[deprecated(
-    since = "0.92.0",
-    note = "Use resolve_capability_socket_fallback(\"coordination\", env)"
-)]
-#[must_use]
-pub fn resolve_songbird_socket_fallback(env: &SocketPathEnv) -> PathBuf {
-    resolve_capability_socket_fallback("coordination", env)
-}
-
-/// Pure logic: resolve storage capability socket fallback (non-discovery path).
-#[deprecated(
-    since = "0.92.0",
-    note = "Use resolve_capability_socket_fallback(\"storage\", env)"
-)]
-#[must_use]
-pub fn resolve_nestgate_socket_fallback(env: &SocketPathEnv) -> PathBuf {
-    resolve_capability_socket_fallback("storage", env)
-}
-
 /// Pure logic: resolve routing capability socket (non-discovery path).
 #[must_use]
 pub fn resolve_routing_socket(env: &SocketPathEnv) -> PathBuf {
     resolve_capability_socket_fallback("routing", env)
-}
-
-/// Pure logic: resolve legacy “squirrel” routing socket — same as [`resolve_routing_socket`].
-#[deprecated(
-    since = "0.92.0",
-    note = "Use resolve_routing_socket(env) or resolve_capability_socket_fallback(\"routing\", env)"
-)]
-#[must_use]
-pub fn resolve_squirrel_socket(env: &SocketPathEnv) -> PathBuf {
-    resolve_routing_socket(env)
 }
 
 /// Pure logic: resolve nucleus socket
@@ -247,35 +207,32 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn test_resolve_beardog_socket_with_env_override() {
         let env = SocketPathEnv {
             beardog_socket: Some("/custom/beardog.sock".to_string()),
             ..test_env()
         };
-        let path = resolve_beardog_socket_fallback(&env);
+        let path = resolve_capability_socket_fallback("crypto", &env);
         assert_eq!(path, PathBuf::from("/custom/beardog.sock"));
     }
 
     #[test]
-    #[allow(deprecated)]
     fn test_resolve_songbird_socket_with_env_override() {
         let env = SocketPathEnv {
             songbird_socket: Some("/custom/songbird.sock".to_string()),
             ..test_env()
         };
-        let path = resolve_songbird_socket_fallback(&env);
+        let path = resolve_capability_socket_fallback("coordination", &env);
         assert_eq!(path, PathBuf::from("/custom/songbird.sock"));
     }
 
     #[test]
-    #[allow(deprecated)]
     fn test_resolve_nestgate_socket_with_env_override() {
         let env = SocketPathEnv {
             nestgate_socket: Some("/custom/nestgate.sock".to_string()),
             ..test_env()
         };
-        let path = resolve_nestgate_socket_fallback(&env);
+        let path = resolve_capability_socket_fallback("storage", &env);
         assert_eq!(path, PathBuf::from("/custom/nestgate.sock"));
     }
 

@@ -16,7 +16,7 @@
 //!   ├── Platform layer (Unix, Abstract, TCP)
 //!   ├── Transport selection (auto-fallback)
 //!   ├── JSON-RPC 2.0 protocol
-//!   └── Songbird discovery integration
+//!   └── Coordination service discovery integration
 //! ```
 //!
 //! ## Evolution from Legacy
@@ -39,9 +39,7 @@ pub use server::IpcServer;
 
 // Re-export legacy helpers for backward compatibility
 // These will gradually migrate to use the new platform layer
-#[allow(deprecated)]
 pub use crate::ipc_helpers::{
-    find_by_capability, get_default_coordination_socket, get_default_songbird_socket,
-    get_semantic_name, is_semantic_method, list_semantic_methods, register_with_coordination,
-    register_with_songbird, resolve_method_name,
+    find_by_capability, get_default_coordination_socket, get_semantic_name, is_semantic_method,
+    list_semantic_methods, register_with_coordination, resolve_method_name,
 };

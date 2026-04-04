@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Primal sockets tests
-#![allow(deprecated)]
 
 use std::path::PathBuf;
 
@@ -91,7 +90,7 @@ fn resolve_beardog_socket_uses_env_override() {
         ..test_env()
     };
     assert_eq!(
-        resolve_beardog_socket_fallback(&env),
+        resolve_capability_socket_fallback("crypto", &env),
         PathBuf::from("/custom/beardog.sock")
     );
 }
@@ -100,7 +99,7 @@ fn resolve_beardog_socket_uses_env_override() {
 fn resolve_beardog_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
-        resolve_beardog_socket_fallback(&env),
+        resolve_capability_socket_fallback("crypto", &env),
         PathBuf::from("/run/user/1000/biomeos/crypto.sock")
     );
 }
@@ -112,7 +111,7 @@ fn resolve_songbird_socket_uses_env_override() {
         ..test_env()
     };
     assert_eq!(
-        resolve_songbird_socket_fallback(&env),
+        resolve_capability_socket_fallback("coordination", &env),
         PathBuf::from("/custom/songbird.sock")
     );
 }
@@ -121,7 +120,7 @@ fn resolve_songbird_socket_uses_env_override() {
 fn resolve_songbird_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
-        resolve_songbird_socket_fallback(&env),
+        resolve_capability_socket_fallback("coordination", &env),
         PathBuf::from("/run/user/1000/biomeos/coordination.sock")
     );
 }
@@ -133,7 +132,7 @@ fn resolve_nestgate_socket_uses_env_override() {
         ..test_env()
     };
     assert_eq!(
-        resolve_nestgate_socket_fallback(&env),
+        resolve_capability_socket_fallback("storage", &env),
         PathBuf::from("/custom/nestgate.sock")
     );
 }
@@ -142,7 +141,7 @@ fn resolve_nestgate_socket_uses_env_override() {
 fn resolve_nestgate_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
-        resolve_nestgate_socket_fallback(&env),
+        resolve_capability_socket_fallback("storage", &env),
         PathBuf::from("/run/user/1000/biomeos/storage.sock")
     );
 }
@@ -154,7 +153,7 @@ fn resolve_squirrel_socket_uses_env_override() {
         ..test_env()
     };
     assert_eq!(
-        resolve_squirrel_socket(&env),
+        resolve_routing_socket(&env),
         PathBuf::from("/custom/squirrel.sock")
     );
 }
@@ -163,7 +162,7 @@ fn resolve_squirrel_socket_uses_env_override() {
 fn resolve_squirrel_socket_uses_biomeos_fallback() {
     let env = test_env();
     assert_eq!(
-        resolve_squirrel_socket(&env),
+        resolve_routing_socket(&env),
         PathBuf::from("/run/user/1000/biomeos/routing.sock")
     );
 }
@@ -235,7 +234,6 @@ fn resolve_toadstool_socket_uses_biomeos_fallback() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_override_takes_precedence() {
     let env = test_env();
     let override_path = PathBuf::from("/override/custom.sock");
@@ -244,7 +242,6 @@ fn resolve_service_socket_override_takes_precedence() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_beardog() {
     let env = test_env();
     let result = resolve_socket_path_for_service("beardog", &env, None);
@@ -252,7 +249,6 @@ fn resolve_service_socket_beardog() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_beardog_alias() {
     let env = test_env();
     let result = resolve_socket_path_for_service("bear-dog", &env, None);
@@ -260,7 +256,6 @@ fn resolve_service_socket_beardog_alias() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_songbird() {
     let env = test_env();
     let result = resolve_socket_path_for_service("songbird", &env, None);
@@ -271,7 +266,6 @@ fn resolve_service_socket_songbird() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_toadstool() {
     let env = test_env();
     let result = resolve_socket_path_for_service("toadstool", &env, None);
@@ -282,7 +276,6 @@ fn resolve_service_socket_toadstool() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_nucleus() {
     let env = test_env();
     let result = resolve_socket_path_for_service("nucleus", &env, None);
@@ -290,7 +283,6 @@ fn resolve_service_socket_nucleus() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_unknown_falls_through() {
     let env = test_env();
     let result = resolve_socket_path_for_service("myservice", &env, None);
@@ -301,7 +293,6 @@ fn resolve_service_socket_unknown_falls_through() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn resolve_service_socket_case_insensitive() {
     let env = test_env();
     let result = resolve_socket_path_for_service("BearDog", &env, None);
@@ -398,10 +389,7 @@ fn test_ensure_biomeos_dir_creates_dir() {
 #[test]
 fn test_resolve_socket_path_for_service_unknown_with_env_override() {
     let service_name = format!("testsvc_{}", std::process::id());
-    let env_var = format!(
-        "{}_SOCKET",
-        service_name.to_uppercase().replace('-', "_")
-    );
+    let env_var = format!("{}_SOCKET", service_name.to_uppercase().replace('-', "_"));
     let custom_path = "/tmp/custom-test.sock";
     temp_env::with_var(&env_var, Some(custom_path), || {
         let env = SocketPathEnv::from_env();
@@ -412,7 +400,6 @@ fn test_resolve_socket_path_for_service_unknown_with_env_override() {
 }
 
 #[test]
-#[allow(deprecated)]
 fn test_resolve_service_socket_empty_service_name() {
     let env = test_env();
     let result = resolve_socket_path_for_service("", &env, None);

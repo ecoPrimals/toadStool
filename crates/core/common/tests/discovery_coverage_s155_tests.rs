@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(deprecated)]
 //! Discovery coverage tests for primal discovery, service discovery, primal sockets,
 //! primal identity, universal adapter, and capability provider modules.
 
@@ -16,10 +15,9 @@ use toadstool_common::primal_identity::{
     DiscoveryCapability, ServiceEndpoint, StorageCapability,
 };
 use toadstool_common::primal_sockets::{
-    SocketDiscoveryError, SocketPathEnv, resolve_beardog_socket_fallback, resolve_biomeos_dir,
-    resolve_family_id, resolve_nestgate_socket_fallback, resolve_nucleus_socket,
-    resolve_runtime_dir, resolve_socket_path_for_service, resolve_songbird_socket_fallback,
-    resolve_squirrel_socket, resolve_toadstool_socket,
+    SocketDiscoveryError, SocketPathEnv, resolve_biomeos_dir, resolve_capability_socket_fallback,
+    resolve_family_id, resolve_nucleus_socket, resolve_routing_socket, resolve_runtime_dir,
+    resolve_socket_path_for_service, resolve_toadstool_socket,
 };
 use toadstool_common::service_discovery::{
     DiscoveredService, DiscoveryMethod as SvcDiscoveryMethod,
@@ -304,28 +302,28 @@ fn test_resolve_beardog_socket() {
         beardog_socket: Some("/custom/beardog.sock".to_string()),
         ..test_socket_env()
     };
-    let path = resolve_beardog_socket_fallback(&env);
+    let path = resolve_capability_socket_fallback("crypto", &env);
     assert_eq!(path, PathBuf::from("/custom/beardog.sock"));
 }
 
 #[test]
 fn test_resolve_songbird_socket() {
     let env = test_socket_env();
-    let path = resolve_songbird_socket_fallback(&env);
+    let path = resolve_capability_socket_fallback("coordination", &env);
     assert!(path.to_string_lossy().contains("coordination"));
 }
 
 #[test]
 fn test_resolve_nestgate_socket() {
     let env = test_socket_env();
-    let path = resolve_nestgate_socket_fallback(&env);
+    let path = resolve_capability_socket_fallback("storage", &env);
     assert!(path.to_string_lossy().contains("storage"));
 }
 
 #[test]
-fn test_resolve_squirrel_socket() {
+fn test_resolve_routing_socket() {
     let env = test_socket_env();
-    let path = resolve_squirrel_socket(&env);
+    let path = resolve_routing_socket(&env);
     assert!(path.to_string_lossy().contains("routing"));
 }
 

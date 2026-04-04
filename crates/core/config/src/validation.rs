@@ -20,13 +20,13 @@ impl ToadStoolConfig {
         // Validate endpoints
         if self.network.endpoints.coordination.is_empty() {
             return Err(ConfigError::Invalid(
-                "Songbird endpoint cannot be empty".to_string(),
+                "Coordination service endpoint cannot be empty".to_string(),
             ));
         }
 
         if self.network.endpoints.security.is_empty() {
             return Err(ConfigError::Invalid(
-                "BearDog endpoint cannot be empty".to_string(),
+                "Security/crypto service endpoint cannot be empty".to_string(),
             ));
         }
 
@@ -38,7 +38,7 @@ impl ToadStoolConfig {
 
         if self.network.endpoints.ai_processing.is_empty() {
             return Err(ConfigError::Invalid(
-                "Squirrel endpoint cannot be empty".to_string(),
+                "AI/routing service endpoint cannot be empty".to_string(),
             ));
         }
 

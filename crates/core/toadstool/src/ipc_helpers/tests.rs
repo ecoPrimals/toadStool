@@ -14,8 +14,8 @@ fn test_constants() {
 }
 
 #[test]
-fn test_register_with_songbird_graceful_failure() {
-    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+fn test_register_with_coordination_graceful_failure() {
+    temp_env::with_var_unset("BIOMEOS_COORDINATION_SOCKET", || {
         std::thread::spawn(|| {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -36,7 +36,7 @@ fn test_register_with_songbird_graceful_failure() {
 
 #[test]
 fn test_find_by_capability_graceful_failure() {
-    temp_env::with_var_unset("SONGBIRD_SOCKET", || {
+    temp_env::with_var_unset("BIOMEOS_COORDINATION_SOCKET", || {
         std::thread::spawn(|| {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -344,7 +344,7 @@ async fn spawn_mock_songbird(
 }
 
 #[test]
-fn test_register_with_songbird_success_via_mock() {
+fn test_register_with_coordination_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("coordination.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
@@ -372,7 +372,7 @@ fn test_register_with_songbird_success_via_mock() {
 }
 
 #[test]
-fn test_register_with_songbird_error_reply_via_mock() {
+fn test_register_with_coordination_error_reply_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("coordination_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();

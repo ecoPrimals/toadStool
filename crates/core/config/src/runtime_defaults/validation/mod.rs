@@ -69,7 +69,7 @@ mod tests {
         let mut config = valid_config();
         config.network.endpoints.coordination = String::new();
         let err = config.validate_runtime_config().unwrap_err();
-        assert!(err.to_string().contains("Songbird endpoint"));
+        assert!(err.to_string().contains("Coordination service endpoint"));
     }
 
     #[test]
@@ -78,7 +78,7 @@ mod tests {
         let mut config = valid_config();
         config.network.endpoints.security = String::new();
         let err = config.validate_runtime_config().unwrap_err();
-        assert!(err.to_string().contains("BearDog endpoint"));
+        assert!(err.to_string().contains("Security service endpoint"));
     }
 
     #[test]
@@ -87,7 +87,7 @@ mod tests {
         let mut config = valid_config();
         config.network.endpoints.storage = String::new();
         let err = config.validate_runtime_config().unwrap_err();
-        assert!(err.to_string().contains("NestGate endpoint"));
+        assert!(err.to_string().contains("Storage service endpoint"));
     }
 
     #[test]
@@ -96,7 +96,7 @@ mod tests {
         let mut config = valid_config();
         config.network.endpoints.ai_processing = String::new();
         let err = config.validate_runtime_config().unwrap_err();
-        assert!(err.to_string().contains("Squirrel endpoint"));
+        assert!(err.to_string().contains("AI/routing service endpoint"));
     }
 
     #[test]

@@ -2,33 +2,33 @@
 //! Primal-Agnostic Capability System
 //!
 //! This module provides a universal capability registration and discovery system
-//! that works with ANY primal in the ecoPrimals ecosystem, not just Songbird.
+//! that works with ANY primal in the ecoPrimals ecosystem, not just the coordination primal (Songbird).
 //!
 //! ## Architecture
 //!
 //! ```text
-//! ┌─────────────────────────────────────────┐
-//! │  ToadStool Capability Provider          │
-//! │  (primal-agnostic)                      │
-//! ├─────────────────────────────────────────┤
-//! │  Capability Registry                    │
-//! │  ├── compute_gpu                        │
-//! │  ├── compute_heavy                      │
-//! │  ├── compute_ml_training                │
-//! │  ├── compute_mainframe (future)         │
-//! │  └── compute_embedded (future)          │
-//! ├─────────────────────────────────────────┤
-//! │  Primal Adapters (pluggable)            │
-//! │  ├── SongbirdAdapter                    │
-//! │  ├── SquirrelAdapter (future)           │
-//! │  ├── BearDogAdapter (future)            │
-//! │  └── CustomAdapter (future)             │
-//! └─────────────────────────────────────────┘
+//! ┌──────────────────────────────────────────────────┐
+//! │  ToadStool Capability Provider                   │
+//! │  (primal-agnostic)                             │
+//! ├──────────────────────────────────────────────────┤
+//! │  Capability Registry                           │
+//! │  ├── compute_gpu                               │
+//! │  ├── compute_heavy                             │
+//! │  ├── compute_ml_training                       │
+//! │  ├── compute_mainframe (future)                │
+//! │  └── compute_embedded (future)                 │
+//! ├──────────────────────────────────────────────────┤
+//! │  Primal Adapters (pluggable)                   │
+//! │  ├── SongbirdAdapter (coordination)            │
+//! │  ├── SquirrelAdapter (future, AI/routing)      │
+//! │  ├── BearDogAdapter (future, security)         │
+//! │  └── CustomAdapter (future)                    │
+//! └──────────────────────────────────────────────────┘
 //! ```
 //!
 //! ## Design Principles
 //!
-//! 1. **Primal-Agnostic**: Works with any primal, not hardcoded to Songbird
+//! 1. **Primal-Agnostic**: Works with any primal, not hardcoded to one coordination implementation
 //! 2. **Pluggable**: Easy to add new primal adapters
 //! 3. **Standard Interface**: Consistent capability format across ecosystem
 //! 4. **Future-Proof**: Can evolve as new primals are added
@@ -46,8 +46,8 @@
 //! ]);
 //!
 //! // Register with any primal
-//! provider.register_with_primal("http://songbird:8080").await?;
-//! provider.register_with_primal("http://squirrel:8083").await?;
+//! provider.register_with_primal("http://coordination:8080").await?;
+//! provider.register_with_primal("http://ai-routing:8083").await?;
 //! ```
 
 use std::collections::HashMap;
@@ -90,7 +90,7 @@ impl CapabilityProvider {
 
     /// Register capabilities with a primal endpoint
     ///
-    /// This is primal-agnostic - works with Songbird, Squirrel, or any future primal
+    /// This is primal-agnostic — works with coordination, AI/routing, or any future primal
     pub async fn register_with_primal(
         &self,
         primal_endpoint: &str,
