@@ -90,7 +90,10 @@ impl VfioBackend {
         DmaBuffer::new(self.container.as_raw_fd(), aligned_size, iova)
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )]
     fn write_iova_regs(
         &self,
         addr_lo: usize,
@@ -141,7 +144,6 @@ impl VfioBackend {
 }
 
 impl NpuBackend for VfioBackend {
-    #[allow(clippy::cast_possible_truncation)] // struct sizes always fit u32
     fn init(pcie_address: &str) -> Result<Self> {
         tracing::info!("Initializing VFIO backend for {pcie_address}");
 

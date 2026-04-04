@@ -217,10 +217,14 @@ impl EcosystemServiceDiscoverer for RealEcosystemDiscoverer {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )]
+
     use super::*;
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_mock_hardware_detector() {
         let mut detector = MockHardwareDetector::new();
         let result = detector.scan_system().await;
@@ -242,7 +246,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_mock_is_fast() {
         use std::time::Instant;
 
@@ -260,7 +263,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
     async fn test_mock_hardware_detector_with_custom_capabilities() {
         use crate::hardware::{PerformanceClass, SystemCapabilities};
 

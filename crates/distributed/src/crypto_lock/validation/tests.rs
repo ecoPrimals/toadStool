@@ -2,8 +2,8 @@
 
 use super::*;
 use crate::crypto_lock::permissions::{
-    PermissionHolder, PermissionMetadata, PermissionScope, ResourceLimits, SecurityProviderPermission,
-    TimeRestrictions, UsageQuotas,
+    PermissionHolder, PermissionMetadata, PermissionScope, ResourceLimits,
+    SecurityProviderPermission, TimeRestrictions, UsageQuotas,
 };
 use crate::security_provider::types::ExternalTarget;
 use std::collections::HashMap;

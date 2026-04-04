@@ -644,7 +644,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_runtime_metrics_builder_with_cpu() {
         let metrics = RuntimeMetricsBuilder::new()
             .cpu_metrics(CpuMetrics {
@@ -658,7 +661,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_runtime_metrics_builder_with_memory() {
         let metrics = RuntimeMetricsBuilder::new()
             .memory_metrics(MemoryMetrics {

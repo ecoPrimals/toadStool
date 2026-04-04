@@ -2,7 +2,10 @@
 //! Dispatch command tests
 
 #[cfg(test)]
-#[allow(clippy::module_inception)]
+#[expect(
+    clippy::module_inception,
+    reason = "module name matches parent for API clarity"
+)]
 mod tests {
     use std::path::PathBuf;
 

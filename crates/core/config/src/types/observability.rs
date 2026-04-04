@@ -14,7 +14,10 @@ use crate::app;
 
 /// Logging configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bool fields map directly to hardware flags"
+)]
 pub struct LoggingConfig {
     /// Log level (trace, debug, info, warn, error)
     pub level: String,
@@ -70,7 +73,10 @@ impl Default for LoggingConfig {
 
 /// Metrics configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bool fields map directly to hardware flags"
+)]
 pub struct MetricsConfig {
     /// Enable metrics collection
     pub enabled: bool,

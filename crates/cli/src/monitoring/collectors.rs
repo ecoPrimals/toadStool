@@ -37,7 +37,10 @@ impl MetricsCollector for SystemMetricsCollector {
         "system"
     }
 
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
@@ -118,7 +121,10 @@ impl MetricsCollector for ProcessMetricsCollector {
         "process"
     }
 
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
@@ -164,7 +170,10 @@ impl MetricsCollector for NetworkMetricsCollector {
         "network"
     }
 
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     fn collect(&self) -> Result<MetricBatch> {
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();

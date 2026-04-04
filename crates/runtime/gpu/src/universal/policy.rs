@@ -34,7 +34,10 @@ impl ComputeCapabilities {
     }
 
     /// Calculate capability score for a workload (0.0 = poor, 1.0 = perfect)
-    #[allow(clippy::cast_precision_loss)] // normalized scoring ratios
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // normalized scoring ratios
     pub fn score_for_workload(&self, requirements: &ComputeRequirements) -> f64 {
         let mut score = 0.0;
         let mut factors = 0;

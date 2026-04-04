@@ -79,7 +79,10 @@ impl ServiceDiscovery {
     /// Try filesystem-based discovery (biomeOS runtime directory)
     ///
     /// Scans the biomeOS runtime directory for capability socket files.
-    #[allow(clippy::unused_async)] // Sync filesystem scan; async for API consistency
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // Sync filesystem scan; async for API consistency
     async fn try_filesystem_discovery(
         &self,
         capability_name: &str,

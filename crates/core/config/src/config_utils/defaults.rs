@@ -15,7 +15,10 @@ use super::paths;
 #[must_use]
 pub fn get_worker_threads() -> u32 {
     let loader = EnvConfigLoader::new();
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )]
     loader.get_u32(
         "WORKER_THREADS",
         std::thread::available_parallelism()

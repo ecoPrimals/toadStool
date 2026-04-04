@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #![cfg(test)]
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 
 use super::*;
 use crate::cloud_provider_trait::{

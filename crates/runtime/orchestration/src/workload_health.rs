@@ -130,7 +130,10 @@ impl WorkloadHealthMonitor {
 
     /// Record a healthy interval. May de-escalate if `healthy_streak` >= `yellow_threshold`.
     /// Red never auto-de-escalates; use `reset()` for that.
-    #[allow(clippy::missing_const_for_fn)] // Mutates self
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Mutates self
     pub fn report_healthy(&mut self) {
         self.healthy_streak += 1;
         self.anomaly_streak = 0;
@@ -224,7 +227,10 @@ impl WorkloadHealthMonitor {
     }
 
     /// Reset to Green and clear streaks. Use when starting a new workload or after manual recovery.
-    #[allow(clippy::missing_const_for_fn)] // Mutates self
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Mutates self
     pub fn reset(&mut self) {
         self.state = AttentionState::Green;
         self.healthy_streak = 0;

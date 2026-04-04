@@ -15,7 +15,10 @@ pub fn format_display(t: SystemTime) -> String {
 
 /// Format [`SystemTime`] as RFC3339 string (e.g. "2025-02-27T12:00:00Z")
 #[must_use]
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 pub fn format_rfc3339(t: SystemTime) -> String {
     const SECS_PER_DAY: u64 = 86_400;
     let d = t.duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default();
@@ -43,7 +46,10 @@ fn days_since_epoch_to_ymd(days: u32) -> (u32, u8, u8) {
     (year, month, day)
 }
 
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 fn rd_to_year_doy(rd: u32) -> (u32, u16) {
     // Intermediate u64 arithmetic avoids overflow on large Rata Die values
     let mut year = (u64::from(rd) * 400 / 146_097) as u32;
@@ -64,7 +70,10 @@ fn rd_to_year_doy(rd: u32) -> (u32, u16) {
     (year, doy as u16)
 }
 
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 fn doy_to_month_day(year: u32, doy: u16) -> (u8, u8) {
     let leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
     let days_in_month: [u16; 12] = if leap {

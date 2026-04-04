@@ -184,7 +184,10 @@ impl ResourceEstimator {
             .cpu
             .as_ref()
             .map(|r| {
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "truncation acceptable for this conversion"
+                )]
                 u32::try_from(r.min_cores.round() as i64).unwrap_or(self.default_cpu_cores)
             })
             .unwrap_or(self.default_cpu_cores);

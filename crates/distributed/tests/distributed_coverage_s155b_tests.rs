@@ -6,7 +6,7 @@
 //! universal/detection, network/distributor, cloud/orchestrator, cloud/compliance/validation,
 //! cloud/cost/optimizer, primal_capabilities/workload
 
-#![allow(clippy::float_cmp, clippy::pedantic)]
+#![allow(clippy::pedantic)]
 #![allow(deprecated)]
 
 use std::collections::HashMap;

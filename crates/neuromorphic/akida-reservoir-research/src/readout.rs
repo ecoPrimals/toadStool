@@ -107,7 +107,10 @@ impl ReadoutTrainer {
 
         // Convert back to f32
         // Precision is sufficient for neuromorphic computation
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let weights_f32 = weights.mapv(|x| x as f32);
 
         info!("✅ Readout trained: {} weights", weights_f32.len());

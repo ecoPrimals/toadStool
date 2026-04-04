@@ -39,7 +39,10 @@ impl CapacityInfo {
 
     /// Build capacity info from local sysmon readings (best effort).
     #[must_use]
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     pub fn from_system() -> Self {
         let cpu_cores = toadstool_sysmon::cpu_count() as f64;
         let memory_bytes = toadstool_sysmon::memory_info()

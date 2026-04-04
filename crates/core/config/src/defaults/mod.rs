@@ -170,7 +170,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::assertions_on_constants)]
+    #[expect(
+        clippy::assertions_on_constants,
+        reason = "compile-time assertion by design"
+    )]
     fn test_validation_thresholds_are_valid() {
         // These tests verify that our validation constants are sensible
         // Note: Comparisons of const values are evaluated at compile time

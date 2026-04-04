@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Dot Product and Elementwise Binary Operations Demo
 
-#![allow(clippy::cast_precision_loss)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 //!
 //! Demonstrates fundamental vector operations:
 //! - Dot Product: Inner product of two vectors

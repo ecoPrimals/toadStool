@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Resource module tests
 //!
 //! Tests use both submodule paths and re-exported API (mod.rs pub use) for coverage.

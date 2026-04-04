@@ -351,7 +351,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // literal just set by healthy()/unhealthy()
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // literal just set by healthy()/unhealthy()
     fn test_provider_health_healthy() {
         let health = ProviderHealth::healthy(25);
         assert!(health.available);
@@ -361,7 +364,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // literal just set by unhealthy()
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // literal just set by unhealthy()
     fn test_provider_health_unhealthy() {
         let health = ProviderHealth::unhealthy("connection refused");
         assert!(!health.available);

@@ -39,10 +39,7 @@ pub fn s_fmt(fd: impl AsFd, fmt: &mut v4l2_format) -> Result<(), std::io::Error>
 }
 
 /// `VIDIOC_REQBUFS` — request mmap buffers.
-pub fn reqbufs(
-    fd: impl AsFd,
-    req: &mut v4l2_requestbuffers,
-) -> Result<(), std::io::Error> {
+pub fn reqbufs(fd: impl AsFd, req: &mut v4l2_requestbuffers) -> Result<(), std::io::Error> {
     // SAFETY: fd is valid; kernel reads req and writes back count.
     unsafe {
         ioctl::ioctl(

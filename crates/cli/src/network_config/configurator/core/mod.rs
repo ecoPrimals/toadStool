@@ -15,7 +15,10 @@ use super::*;
 /// Core configurator trait
 ///
 /// Provides construction and main orchestration methods
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) trait ConfiguratorCore {
     /// Create a new configurator
     fn new() -> Self;
@@ -48,4 +51,3 @@ impl super::SongbirdNetworkConfigurator {
         )
     }
 }
-

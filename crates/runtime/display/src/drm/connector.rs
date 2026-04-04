@@ -87,7 +87,10 @@ pub struct DisplayMode {
 }
 
 impl DisplayMode {
-    #[allow(clippy::cast_possible_truncation)] // vrefresh is hardware register width; display rates fit in u16
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // vrefresh is hardware register width; display rates fit in u16
     fn from_drm(mode: drm::control::Mode) -> Self {
         let (w, h) = mode.size();
         Self {

@@ -27,7 +27,9 @@ use crate::error::{NvPmuError, Result};
 use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
-use toadstool_hw_safe::vfio_setup::{self, VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU};
+use toadstool_hw_safe::vfio_setup::{
+    self, VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
+};
 use toadstool_hw_safe::{DeviceMmap, VolatileMmio};
 
 const BAR0_REGION_INDEX: u32 = 0;
@@ -54,7 +56,10 @@ impl VfioBar0Access {
     /// # Errors
     ///
     /// Returns error if VFIO setup fails (GPU not bound, IOMMU disabled, etc.).
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )]
     pub fn open(bdf: &str) -> Result<Self> {
         let iommu_group = find_iommu_group(bdf)?;
         tracing::info!(bdf, iommu_group, "opening VFIO BAR0");
@@ -74,7 +79,8 @@ impl VfioBar0Access {
         }
 
         if vfio_setup::check_extension(container.as_fd(), VFIO_TYPE1V2_IOMMU)
-            .map_err(|e| vfio_err("CHECK_EXTENSION", &e))? != 1
+            .map_err(|e| vfio_err("CHECK_EXTENSION", &e))?
+            != 1
         {
             return Err(NvPmuError::Hardware(
                 "VFIO Type1v2 IOMMU not supported".into(),

@@ -103,7 +103,10 @@ impl CloudComplianceEnforcer {
     }
 
     /// Create enforcer with explicit security tier.
-    #[allow(clippy::missing_const_for_fn)] // Mutates self; CloudComplianceEnforcer contains HashMap
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Mutates self; CloudComplianceEnforcer contains HashMap
     pub fn with_security_tier(mut self, tier: SecurityTier) -> Self {
         self.security_tier = tier;
         self

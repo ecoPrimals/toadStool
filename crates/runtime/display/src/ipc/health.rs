@@ -71,7 +71,10 @@ pub async fn check_display_health() -> Result<HealthCheckResult> {
     // 2. Send health check request (getCapabilities)
     let response_time = Instant::now();
     let capabilities = client.get_capabilities().await?;
-    #[allow(clippy::cast_possible_truncation)] // Response times in ms fit in u64
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // Response times in ms fit in u64
     let response_time_ms = response_time.elapsed().as_millis() as u64;
 
     // 3. Determine health status based on response time

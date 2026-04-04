@@ -23,7 +23,10 @@ const FPGA_TOOLS: &[(&str, &str)] = &[
 ];
 
 /// Detect neuromorphic computing platforms.
-#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
 

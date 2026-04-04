@@ -5,7 +5,7 @@
 //! security_provider (software_hsm, provider, factory), network/load_balancer,
 //! crypto_lock/validation, hosting/resources, cloud/cost/pricing
 
-#![allow(clippy::float_cmp, clippy::pedantic)]
+#![allow(clippy::pedantic)]
 #![allow(deprecated)]
 
 use std::collections::HashMap;

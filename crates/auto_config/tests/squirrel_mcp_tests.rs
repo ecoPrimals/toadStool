@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Comprehensive tests for Squirrel MCP Interface
 //!
 //! Tests cover `squirrel_mcp.rs` functionality (13.18% → 30%+ target)

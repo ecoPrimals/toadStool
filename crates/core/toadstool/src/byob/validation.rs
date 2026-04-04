@@ -62,7 +62,6 @@ impl DeploymentValidator {
             ));
         }
 
-        #[allow(clippy::cast_possible_truncation)]
         if request.services.len() > request.resource_quotas.max_concurrent_services as usize {
             return Err(ToadStoolError::resource(format!(
                 "Service count {} exceeds team quota {}",

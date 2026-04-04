@@ -56,14 +56,20 @@ impl ZeroConfigDeployment {
 
     /// Single-node orchestrator is implicit; multi-node deployment via Kubernetes/Docker
     /// Swarm is a P2 scaling feature.
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn deploy_orchestrator(&self) -> Result<()> {
         debug!("Orchestrator: single-node active (multi-node: P2)");
         Ok(())
     }
 
     /// Built-in tracing/metrics are active; external stack (Prometheus/Grafana) is P2.
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn deploy_monitoring(&self) -> Result<()> {
         debug!("Monitoring: built-in tracing active (external stack: P2)");
         Ok(())
@@ -88,31 +94,46 @@ impl ZeroConfigDeployment {
     }
 
     /// Runtimes are registered via the capability registry; deployment is discovery-based.
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn deploy_native_runtime(&self) -> Result<()> {
         debug!("Native runtime: available via capability registry");
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn deploy_container_runtime(&self) -> Result<()> {
         debug!("Container runtime: available via capability registry");
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn deploy_wasm_runtime(&self) -> Result<()> {
         debug!("WASM runtime: available via capability registry");
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn deploy_gpu_runtime(&self) -> Result<()> {
         debug!("GPU runtime: available via capability registry");
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     pub(crate) async fn deploy_monitoring_services(&self) -> Result<()> {
         debug!("Monitoring services: built-in active");
         Ok(())

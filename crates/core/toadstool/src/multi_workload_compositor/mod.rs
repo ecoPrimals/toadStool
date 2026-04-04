@@ -64,8 +64,8 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 pub use types::{
-    AllocatedResources, CompositionPlan, ConflictResolution, ResourceUtilization,
-    WorkloadConflict, WorkloadPlacement,
+    AllocatedResources, CompositionPlan, ConflictResolution, ResourceUtilization, WorkloadConflict,
+    WorkloadPlacement,
 };
 
 /// Multi-workload compositor

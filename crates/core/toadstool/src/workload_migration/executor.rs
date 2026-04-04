@@ -78,7 +78,10 @@ impl MigrationCoordinator {
             WorkloadLocation::Cloud { .. } => stats.migrations_to_cloud += 1,
         }
 
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let total = stats.total_migrations as f64;
         stats.avg_migration_time_secs = stats
             .avg_migration_time_secs

@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::cast_precision_loss)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 //! Fault injection tests
 //!
 //! Verifies that ToadStool components handle injected faults gracefully:

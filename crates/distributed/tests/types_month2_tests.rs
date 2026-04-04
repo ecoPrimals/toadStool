@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::cast_precision_loss, clippy::float_cmp)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Type serialization tests
 //!
 //! Tier 1 tests: Coverage-measured type and serialization tests

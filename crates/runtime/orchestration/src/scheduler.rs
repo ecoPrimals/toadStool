@@ -23,7 +23,10 @@ impl WorkloadScheduler {
     }
 
     /// Get scheduling strategy
-    #[allow(clippy::missing_const_for_fn)] // Returns reference, Deref not const
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Returns reference, Deref not const
     pub fn strategy(&self) -> &SchedulingStrategy {
         &self.strategy
     }

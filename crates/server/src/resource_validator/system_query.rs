@@ -98,7 +98,6 @@ async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
             const GPU_ESTIMATED_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
             let estimated_memory_per_gpu = GPU_ESTIMATED_MEMORY_BYTES;
-            #[allow(clippy::cast_possible_truncation)]
             let total_gpu_memory = estimated_memory_per_gpu * gpu_count as u64; // fits: GPU count < u64::MAX
 
             (total_gpu_memory, total_gpu_memory, gpu_count, gpu_types)
@@ -112,7 +111,10 @@ async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
 
 /// Discover GPUs using wgpu (vendor-agnostic, part of barraCuda)
 #[cfg(feature = "gpu-discovery")]
-#[allow(clippy::unused_async)] // Sync wgpu enumerate; async for API consistency with fallback
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)] // Sync wgpu enumerate; async for API consistency with fallback
 async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
@@ -143,7 +145,10 @@ async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
 
 /// Fallback when GPU discovery not available
 #[cfg(not(feature = "gpu-discovery"))]
-#[allow(clippy::unused_async)] // Matches gpu-discovery variant; sync fallback
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)] // Matches gpu-discovery variant; sync fallback
 async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
     Ok(Vec::new())
 }

@@ -15,10 +15,17 @@ pub fn estimate_improvement(
 ) -> ImprovementEstimate {
     let current_duration_secs = estimate.estimated_duration.as_secs();
     let total_time_savings: u64 = opportunities.iter().map(|o| o.time_savings_secs).sum();
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        reason = "precision loss and truncation acceptable for this conversion"
+    )]
     let effective_savings = total_time_savings.min((current_duration_secs as f32 * 0.8) as u64);
     let optimized_duration_secs = current_duration_secs.saturating_sub(effective_savings);
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     let speedup_factor = if optimized_duration_secs > 0 {
         current_duration_secs as f32 / optimized_duration_secs as f32
     } else {
@@ -61,7 +68,10 @@ pub fn rank_by_priority(opportunities: &[Opportunity]) -> Vec<String> {
         .iter()
         .map(|o| {
             let id = format!("{:?}-{}", o.opportunity_type, o.affected_nodes.join(","));
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let priority = o.benefit * (o.time_savings_secs as f32 / 60.0);
             (id, priority)
         })

@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Tests for agent deployment configuration and manager behavior.
 
 use super::super::types::{AgentConfig, ModelConfig};
@@ -51,7 +55,10 @@ fn test_agent_deployment_config_serialization_roundtrip() {
     let config = test_config();
     let json = serde_json::to_string(&config).expect("serialize");
     let restored: AgentDeploymentConfig = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(config.ai_processing_endpoint, restored.ai_processing_endpoint);
+    assert_eq!(
+        config.ai_processing_endpoint,
+        restored.ai_processing_endpoint
+    );
 }
 
 #[test]
@@ -101,7 +108,6 @@ fn test_agent_info_serialization_roundtrip() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // literals just assigned in test
 fn test_agent_resource_usage_construction() {
     let usage = AgentResourceUsage {
         cpu_millicores: 1000,
@@ -128,7 +134,6 @@ fn test_agent_resource_usage_serialization_roundtrip() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // literals just assigned in test
 fn test_model_info_construction() {
     let now = SystemTime::now();
     let info = ModelInfo {

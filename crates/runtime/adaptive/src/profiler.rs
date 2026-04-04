@@ -148,7 +148,10 @@ impl RuntimeProfiler {
         workgroup_size: usize,
     ) -> Result<f64, AdaptiveError> {
         let _ = &self.config;
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let estimated_us = Self::simulate_gpu_time(op_type, size, workgroup_size) as f64;
         Ok(estimated_us)
     }
@@ -169,7 +172,10 @@ impl RuntimeProfiler {
         };
 
         // Larger sizes take longer
-        #[allow(clippy::cast_precision_loss)] // size values are well within f64 precision
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )] // size values are well within f64 precision
         let size_factor = (size as f64 / 1000.0).sqrt();
 
         // Suboptimal workgroup sizes are slower
@@ -181,7 +187,11 @@ impl RuntimeProfiler {
             1.0 // Reasonable
         };
 
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
+        #[allow(clippy::cast_sign_loss)]
         // Result is always positive and within u64 range (simulation timing)
         {
             (f64::from(base_time) * size_factor * workgroup_penalty) as u64

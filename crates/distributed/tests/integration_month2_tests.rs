@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Distributed coordinator integration tests
 
-#![allow(clippy::unused_async)]
+#![expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)]
 //!
 //! Tier 1 tests: Coverage-measured integration tests
 //! Focus: Coordinator lifecycle, job scheduling, worker management

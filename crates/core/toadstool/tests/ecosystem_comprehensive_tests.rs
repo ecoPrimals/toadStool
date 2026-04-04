@@ -2,7 +2,11 @@
 //! Comprehensive tests for ecosystem coordination module
 //! Addresses zero-coverage file: core/toadstool/src/ecosystem.rs (643 lines)
 
-#![allow(clippy::unused_async, dead_code, unused_variables)]
+#![expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)]
+#![allow(dead_code, unused_variables)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -68,7 +68,10 @@ impl LatencyMetrics {
         let mean = Duration::from_nanos(u64::try_from(mean_nanos).unwrap_or(0));
 
         // Standard deviation (f64 for variance; precision loss acceptable for stats)
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let variance: f64 = sorted
             .iter()
             .map(|d| {
@@ -77,7 +80,11 @@ impl LatencyMetrics {
             })
             .sum::<f64>()
             / n as f64;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
+        #[allow(clippy::cast_sign_loss)]
         let std_dev_nanos = variance.sqrt().round() as u64;
 
         // Percentiles (integer math to avoid casts)
@@ -210,7 +217,10 @@ impl AccuracyMetrics {
 
             if class_total > 0 {
                 let class_correct = self.confusion_matrix[class * self.num_classes + class];
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 let acc = class_correct as f64 / class_total as f64;
                 self.per_class_accuracy[class] = acc;
                 total_correct += class_correct;
@@ -219,7 +229,10 @@ impl AccuracyMetrics {
         }
 
         if total_samples > 0 {
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let top1 = total_correct as f64 / total_samples as f64;
             self.top1 = top1;
         }

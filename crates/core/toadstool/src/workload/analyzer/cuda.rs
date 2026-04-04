@@ -21,9 +21,7 @@ impl WorkloadAnalyzer {
 
         let shared_mem = workload.launch_config.shared_mem_bytes;
         let blocks = workload.launch_config.total_blocks();
-        #[allow(clippy::cast_possible_truncation)]
         let total_shared = shared_mem.saturating_mul(blocks as usize);
-        #[allow(clippy::cast_possible_truncation)]
         let memory_requirement = Self::classify_memory(total_shared as u64);
 
         let parallelism_level = match total_threads {

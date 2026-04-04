@@ -84,7 +84,10 @@ impl AuditEvent {
         prev_hash: Option<Hash>,
     ) -> Self {
         // Use saturating conversion to handle potential overflow (years 2262+)
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         // Intentional: saturates at u64::MAX for far future timestamps
         let timestamp_micros = SystemTime::now()
             .duration_since(UNIX_EPOCH)

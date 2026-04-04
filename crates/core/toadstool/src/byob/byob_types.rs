@@ -318,7 +318,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // round-trip and literals in tests
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // round-trip and literals in tests
     fn test_byob_deployment_request_serialization_round_trip() {
         let mut services = HashMap::new();
         services.insert("api".to_string(), sample_service_spec());
@@ -401,7 +404,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // literals just assigned in test
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // literals just assigned in test
     fn test_team_resource_quotas_construction() {
         let quotas = TeamResourceQuotas {
             max_cpu_cores: 8.0,
@@ -477,7 +483,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // literal just assigned in test
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // literal just assigned in test
     fn test_resource_usage_construction() {
         let usage = ResourceUsage {
             cpu_usage: 0.5,

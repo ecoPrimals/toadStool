@@ -59,7 +59,10 @@ impl AggregatedResult {
     }
 
     /// Get completion percentage
-    #[allow(clippy::cast_precision_loss)] // display percentage from counts
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // display percentage from counts
     pub fn completion_percentage(&self) -> f32 {
         if self.metadata.expected_count == 0 {
             return 0.0;
@@ -73,7 +76,10 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_aggregated_result_complete() {
         let result = AggregatedResult {
             data: vec![1, 2, 3],
@@ -93,7 +99,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_aggregated_result_partial() {
         let result = AggregatedResult {
             data: vec![1, 2, 3],

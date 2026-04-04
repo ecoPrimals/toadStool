@@ -62,7 +62,10 @@ impl ResourceEnvConfig {
 /// Controls metrics collection, health checks, logging, and alert thresholds.
 /// Valid log levels: trace, debug, info, warn, error.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bool fields map directly to hardware flags"
+)]
 pub struct MonitoringEnvConfig {
     /// Enable metrics collection. Env: `METRICS_ENABLED`.
     pub metrics_enabled: bool,
@@ -117,7 +120,10 @@ impl MonitoringEnvConfig {
 /// Controls authentication, sandboxing, encryption, rate limiting, and CORS.
 /// Isolation levels: Standard, Strict, Minimal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bool fields map directly to hardware flags"
+)]
 pub struct SecurityEnvConfig {
     /// Enable authentication. Env: `AUTH_ENABLED`.
     pub auth_enabled: bool,

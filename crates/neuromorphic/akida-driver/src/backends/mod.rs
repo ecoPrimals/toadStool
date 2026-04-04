@@ -31,7 +31,10 @@ pub(crate) fn read_hwmon_power(pcie_address: &str) -> Option<f32> {
         if let Ok(content) = std::fs::read_to_string(&power_path)
             && let Ok(microwatts) = content.trim().parse::<u64>()
         {
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let watts = microwatts as f32 / 1_000_000.0;
             return Some(watts);
         }

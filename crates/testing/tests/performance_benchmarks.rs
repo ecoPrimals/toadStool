@@ -3,7 +3,10 @@
 //!
 //! These benchmarks measure system performance, throughput, latency, and resource utilization
 //! to ensure the platform meets performance requirements and identify bottlenecks.
-#![allow(clippy::cast_precision_loss)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 
 use std::time::{Duration, Instant};
 

@@ -274,7 +274,10 @@ impl NpuDispatch for AkidaNpuDispatch {
             .map_err(|e| NpuDispatchError::DispatchFailed {
                 reason: e.to_string(),
             })?;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let latency_us = (start.elapsed().as_nanos() as u64).div_ceil(1000);
 
         let power_mw = self.backend.measure_power().ok();

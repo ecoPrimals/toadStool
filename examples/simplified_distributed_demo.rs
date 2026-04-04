@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::unused_async)]
+#![expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)]
 //! # Simplified Distributed Computing Demo
 //!
 //! Demonstrates capability-based discovery (wateringHole standard):

@@ -109,8 +109,7 @@ impl CaptureDevice {
     ///
     /// Returns an error if the `VIDIOC_QUERYCAP` ioctl fails.
     pub fn query_capabilities(&self) -> Result<V4l2Capability> {
-        let cap = ioctl::querycap(&self.fd)
-            .map_err(|e| ioctl_err("VIDIOC_QUERYCAP", &e))?;
+        let cap = ioctl::querycap(&self.fd).map_err(|e| ioctl_err("VIDIOC_QUERYCAP", &e))?;
 
         let to_string = |bytes: &[u8]| {
             let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
@@ -148,8 +147,7 @@ impl CaptureDevice {
         fmt.fmt.height = height;
         fmt.fmt.pixelformat = fourcc;
 
-        ioctl::s_fmt(&self.fd, &mut fmt)
-            .map_err(|e| ioctl_err("VIDIOC_S_FMT", &e))?;
+        ioctl::s_fmt(&self.fd, &mut fmt).map_err(|e| ioctl_err("VIDIOC_S_FMT", &e))?;
 
         let cf = CaptureFormat {
             width: fmt.fmt.width,
@@ -173,8 +171,7 @@ impl CaptureDevice {
         req.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         req.memory = V4L2_MEMORY_MMAP;
 
-        ioctl::reqbufs(&self.fd, &mut req)
-            .map_err(|e| ioctl_err("VIDIOC_REQBUFS", &e))?;
+        ioctl::reqbufs(&self.fd, &mut req).map_err(|e| ioctl_err("VIDIOC_REQBUFS", &e))?;
 
         for i in 0..req.count {
             let mut buf = v4l2_buffer {
@@ -184,8 +181,7 @@ impl CaptureDevice {
                 ..v4l2_buffer::default()
             };
 
-            ioctl::querybuf(&self.fd, &mut buf)
-                .map_err(|e| ioctl_err("VIDIOC_QUERYBUF", &e))?;
+            ioctl::querybuf(&self.fd, &mut buf).map_err(|e| ioctl_err("VIDIOC_QUERYBUF", &e))?;
 
             let mmap = toadstool_hw_safe::DeviceMmap::map_shared_rw(
                 &self.fd,
@@ -218,8 +214,7 @@ impl CaptureDevice {
                 ..v4l2_buffer::default()
             };
 
-            ioctl::qbuf(&self.fd, &mut buf)
-                .map_err(|e| ioctl_err("VIDIOC_QBUF", &e))?;
+            ioctl::qbuf(&self.fd, &mut buf).map_err(|e| ioctl_err("VIDIOC_QBUF", &e))?;
         }
 
         ioctl::streamon(&self.fd, V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -246,8 +241,7 @@ impl CaptureDevice {
             ..v4l2_buffer::default()
         };
 
-        ioctl::dqbuf(&self.fd, &mut buf)
-            .map_err(|e| ioctl_err("VIDIOC_DQBUF", &e))?;
+        ioctl::dqbuf(&self.fd, &mut buf).map_err(|e| ioctl_err("VIDIOC_DQBUF", &e))?;
 
         let idx = buf.index as usize;
         let used = buf.bytesused as usize;
@@ -264,8 +258,7 @@ impl CaptureDevice {
             index: buf.index,
             ..v4l2_buffer::default()
         };
-        ioctl::qbuf(&self.fd, &mut rebuf)
-            .map_err(|e| ioctl_err("VIDIOC_QBUF (re-queue)", &e))?;
+        ioctl::qbuf(&self.fd, &mut rebuf).map_err(|e| ioctl_err("VIDIOC_QBUF (re-queue)", &e))?;
 
         Ok(copy_len)
     }

@@ -9,8 +9,6 @@
 //! Tests for task manager features (queue, priority, cancellation) are marked
 //! #[ignore] until that API exists.
 
-#![allow(clippy::assertions_on_constants)] // For #[ignore] placeholder tests
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;

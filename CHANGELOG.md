@@ -5,7 +5,29 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 4, 2026 (Sessions 43-180)
+## [Unreleased] - April 4, 2026 (Sessions 43-182)
+
+### Session S182 (Apr 4, 2026) — primalSpring Audit Response: fmt, lint migration, UniBin --port
+
+#### T1 Build: cargo fmt --all
+- Applied `cargo fmt --all` — 1,898 lines of formatting drift resolved (instant grade improvement)
+
+#### T8 Presentation: #[allow] → #[expect] migration
+- Migrated ~390 `#[allow(clippy::*)]` → `#[expect(clippy::*, reason = "...")]` for 11 lint categories
+- Removed ~40 stale suppressions where the lint no longer fires (dead attributes cleaned)
+- Ratio flipped: **355 allow / 530 expect** (was 746/229 — from 76% allow to 40% allow)
+
+#### T2 UniBin: --port wiring
+- Wired `--port` argument in legacy `toadstool-server` binary alias (was always passing `None`)
+- Now parses `--port N` from argv and forwards to `run_server_main` for TCP bind
+
+#### Audit findings already resolved
+- **Clippy**: Already clean (exit 0) — manual_let_else and deprecated GenericArray were fixed in prior sessions
+- **License**: All `AGPL-3.0-only` everywhere — no `-or-later` found
+- **PII**: All test fixtures use placeholder data (`@example.com`, RFC 5737 IPs)
+
+#### Quality
+- 21,853 tests (0 failures), `cargo fmt --check` clean, `cargo clippy -D warnings` clean
 
 ### Session S180 (Apr 4, 2026) — Deep Debt Evolution: Async I/O, Refactoring, String Evolution
 

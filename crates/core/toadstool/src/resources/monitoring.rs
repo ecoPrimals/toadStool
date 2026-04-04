@@ -196,12 +196,18 @@ impl SystemResourceMonitor {
         let updated_metrics = RuntimeMetrics {
             cpu: CpuMetrics {
                 usage_percent: cpu_usage,
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 cores_used: cpu_usage / 100.0 * cpu_count as f64,
                 cpu_time_seconds: cpu_usage / 100.0,
             },
             memory: MemoryMetrics {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 usage_percent: if total_memory > 0 {
                     (used_memory as f64 / total_memory as f64) * 100.0
                 } else {
@@ -211,7 +217,10 @@ impl SystemResourceMonitor {
                 peak_bytes: used_memory,
             },
             storage: StorageMetrics {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 usage_percent: if total_storage > 0 {
                     (used_storage as f64 / total_storage as f64) * 100.0
                 } else {
@@ -312,14 +321,20 @@ impl ResourceMonitor for SystemResourceMonitor {
         Box::pin(async move {
             let cpu_usage_percent = self.get_cpu_usage().await?;
             let total_cpu_cores = toadstool_sysmon::cpu_count();
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let cpu_cores = total_cpu_cores as f64;
             let available_cpu_cores = cpu_cores * (1.0 - cpu_usage_percent / 100.0);
 
             let mem = toadstool_sysmon::memory_info()
                 .map_err(|e| crate::ToadStoolError::Runtime(e.to_string()))?;
             let memory_usage_percent = if mem.total > 0 {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 let pct = (mem.used as f64 / mem.total as f64) * 100.0;
                 pct
             } else {

@@ -59,7 +59,10 @@ impl<T> MemoryPool<T> {
 
         let object = if let Some(obj) = available.pop() {
             let total = stats.total_allocations;
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let rate = stats.hit_rate.mul_add(total as f64, 1.0) / (total as f64 + 1.0);
             stats.hit_rate = rate;
             obj
@@ -67,7 +70,10 @@ impl<T> MemoryPool<T> {
             // No available objects, create new one
             let new_obj = (self.factory)();
             let total = stats.total_allocations;
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let rate = (stats.hit_rate * total as f64) / (total as f64 + 1.0);
             stats.hit_rate = rate;
             new_obj

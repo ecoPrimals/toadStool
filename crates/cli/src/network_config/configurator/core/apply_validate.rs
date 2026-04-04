@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! `apply_configuration` / `validate_configuration` orchestration for the network configurator.
 
+use super::super::*;
+use super::super::{DiscoveryExt, ReliabilityExt, SecurityExt, ServiceMeshExt, TrafficExt};
 use super::ConfiguratorCore;
 use super::defaults;
-use super::super::{
-    DiscoveryExt, ReliabilityExt, SecurityExt, ServiceMeshExt, TrafficExt,
-};
-use super::super::*;
 use tracing::info;
 
 impl ConfiguratorCore for SongbirdNetworkConfigurator {

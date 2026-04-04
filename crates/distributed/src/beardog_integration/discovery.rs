@@ -157,7 +157,10 @@ impl BearDogDiscovery {
     }
 
     /// Get best endpoint based on location preference and health
-    #[allow(clippy::significant_drop_tightening)] // healthy_endpoints are refs from endpoints
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // healthy_endpoints are refs from endpoints
     pub async fn get_best_endpoint(&self) -> ToadStoolResult<BearDogEndpoint> {
         let endpoints = self.discovered_endpoints.read().await;
 

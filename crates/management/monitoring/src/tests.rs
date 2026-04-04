@@ -223,8 +223,7 @@ async fn set_thresholds_then_get_metrics_after_monitoring_tick() {
     .expect("metrics should appear within 500ms");
     assert!(metrics.cpu.usage_percent >= 0.0);
     assert!(
-        metrics.memory.used_bytes <= metrics.memory.peak_bytes
-            || metrics.memory.peak_bytes == 0
+        metrics.memory.used_bytes <= metrics.memory.peak_bytes || metrics.memory.peak_bytes == 0
     );
 
     monitor.stop_monitoring_loop().await.unwrap();

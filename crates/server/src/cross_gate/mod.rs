@@ -24,6 +24,4 @@ mod tests;
 
 pub use dispatcher::RemoteDispatcher;
 pub use router::JobRouter;
-pub use types::{
-    GateGpuInfo, RemoteDispatchError, RoutingDecision, RoutingReason,
-};
+pub use types::{GateGpuInfo, RemoteDispatchError, RoutingDecision, RoutingReason};

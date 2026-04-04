@@ -87,7 +87,10 @@ impl ReservoirGenerator {
 
         let w_in_shape = (self.config.reservoir_size, self.config.input_size);
         // Precision is sufficient for neuromorphic computation
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let w_in_vec: Vec<f32> = (0..w_in_shape.0 * w_in_shape.1)
             .map(|_| normal.sample(&mut rng) as f32 * self.config.input_scaling)
             .collect();
@@ -104,7 +107,10 @@ impl ReservoirGenerator {
 
         let w_res_shape = (self.config.reservoir_size, self.config.reservoir_size);
         // Precision is sufficient for neuromorphic computation
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let w_res_vec: Vec<f32> = (0..w_res_shape.0 * w_res_shape.1)
             .map(|_| {
                 // Apply sparsity
@@ -248,7 +254,10 @@ mod tests {
         let (_w_in, w_res) = generator.generate_weights().unwrap();
 
         // Check that weights are non-zero and reasonably scaled
-        #[allow(clippy::cast_precision_loss)] // weight vector length is small (<1000)
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )] // weight vector length is small (<1000)
         let mean_abs = w_res.iter().map(|&x| x.abs()).sum::<f32>() / (w_res.len() as f32);
         assert!(mean_abs > 0.0 && mean_abs < 1.0);
     }

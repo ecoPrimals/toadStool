@@ -7,7 +7,10 @@
 //! - BearDogDiscovery (service discovery)
 
 #[cfg(test)]
-#[allow(clippy::module_inception)]
+#[expect(
+    clippy::module_inception,
+    reason = "module name matches parent for API clarity"
+)]
 mod tests {
     use super::super::client::BearDogSecurityProvider;
     use crate::security_provider::provider::*;

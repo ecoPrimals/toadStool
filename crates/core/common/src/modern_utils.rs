@@ -164,7 +164,10 @@ pub fn safe_divide(numerator: i64, denominator: i64) -> UtilResult<i64> {
 /// assert!((result - 33.33).abs() < 0.01); // Floating point comparison
 /// assert!(safe_percentage(1, 0).is_err());
 /// ```
-#[allow(clippy::cast_precision_loss)] // Intentional for percentage calculation
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)] // Intentional for percentage calculation
 pub fn safe_percentage(part: u64, total: u64) -> UtilResult<f64> {
     if total == 0 {
         return Err(UtilError::InvalidInput("Total cannot be zero".to_string()));
@@ -411,7 +414,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)]
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )]
     fn test_lerp() {
         assert_eq!(lerp(0.0, 10.0, 0.5), 5.0);
         assert_eq!(lerp(0.0, 10.0, 0.0), 0.0);

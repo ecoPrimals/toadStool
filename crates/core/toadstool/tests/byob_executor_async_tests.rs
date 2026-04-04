@@ -353,7 +353,10 @@ fn test_complex_deployment_request_valid() {
     assert_eq!(api_service.dependencies[0], "web");
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_deployment_request_resource_validation() {
     let request = create_complex_deployment_request();
@@ -542,7 +545,10 @@ fn test_total_service_instances() {
 // Resource Quota Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_resource_quotas_within_limits() {
     let request = create_minimal_deployment_request();
@@ -552,7 +558,10 @@ fn test_resource_quotas_within_limits() {
     assert_eq!(request.resource_quotas.max_concurrent_services, 10);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_production_resource_quotas() {
     let request = create_complex_deployment_request();

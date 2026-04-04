@@ -71,7 +71,10 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
     }
 }
 
-#[allow(clippy::unused_async)]
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)]
 async fn check_gpu_available() -> bool {
     #[cfg(target_os = "linux")]
     {
@@ -161,7 +164,6 @@ pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
     }
 }
 
-#[allow(clippy::unused_async)]
 pub(crate) async fn check_config_health() -> ConfigReport {
     let issues = vec![];
 

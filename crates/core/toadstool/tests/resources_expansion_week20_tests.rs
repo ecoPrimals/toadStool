@@ -3,7 +3,10 @@
 //!
 //! Target: Increase resources.rs coverage from 44.12% → 60%+
 //! Focus: Edge cases, error handling, serialization
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 
 use toadstool::resources::*;
 

@@ -38,7 +38,10 @@ pub struct DecompressionStats {
 impl DecompressionStats {
     /// Calculate statistics
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // Intentional: statistics use f64 for calculations
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // Intentional: statistics use f64 for calculations
     pub fn new(compressed_size: usize, decompressed_size: usize, duration_micros: u64) -> Self {
         let compression_ratio = if decompressed_size > 0 {
             compressed_size as f64 / decompressed_size as f64
@@ -134,7 +137,10 @@ pub fn decompress_isolated(
     // Copy decompressed data into isolated memory
     memory.as_mut_slice().copy_from_slice(&decompressed);
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )]
     // Intentional: duration saturates at u64::MAX (>500k years)
     let duration_micros = start.elapsed().as_micros() as u64;
 

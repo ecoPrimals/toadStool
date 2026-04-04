@@ -98,7 +98,10 @@ impl LegacyAdapter for VAXVMSAdapter {
         Ok(())
     }
 
-    #[allow(clippy::cast_possible_truncation)] // label uses low bits of UUID only
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // label uses low bits of UUID only
     async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid> {
         info!("Submitting job to VAX/VMS: {:?}", job.job_id);
 

@@ -258,7 +258,10 @@ impl UniversalServiceAdapter {
         since = "0.92.0",
         note = "HTTP adapter removed. Use Unix socket RPC for primal-to-primal."
     )]
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn invoke_http(
         &self,
         _provider: &ServiceProvider,

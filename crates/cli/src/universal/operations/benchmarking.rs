@@ -324,13 +324,19 @@ impl BenchmarkingOps for crate::universal::UniversalComputeManager {
         })
     }
 
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     fn get_system_info(&self) -> SystemInfo {
         let cpu_model = toadstool_sysmon::cpu_brand().unwrap_or_else(|_| "Unknown CPU".to_string());
         let memory_gb = toadstool_sysmon::memory_info()
             .map(|m| m.total as f64 / 1024.0 / 1024.0 / 1024.0)
             .unwrap_or(0.0);
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let cpu_cores = toadstool_sysmon::cpu_count() as u32;
 
         SystemInfo {

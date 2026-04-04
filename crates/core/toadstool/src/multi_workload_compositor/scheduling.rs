@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2025 ToadStool Project
 
-use crate::composition_constraints::{CompositionRequest, Constraint};
 use super::types::{ConflictResolution, WorkloadConflict, WorkloadPlacement};
+use crate::composition_constraints::{CompositionRequest, Constraint};
 
 /// Sort request indices by descending priority (highest priority first).
 pub(crate) fn sort_indices_by_priority(requests: &[CompositionRequest]) -> Vec<usize> {

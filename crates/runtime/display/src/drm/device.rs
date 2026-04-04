@@ -176,7 +176,10 @@ impl Device {
                 |v| v != 0,
             );
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         // DumbPreferredDepth is hardware register; 32-bit depth fits
         let preferred_depth = self
             .get_driver_capability(drm::DriverCapability::DumbPreferredDepth)

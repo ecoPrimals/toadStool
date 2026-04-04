@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Comprehensive tests for common types (capacity, distribution, load balancing)
 
-#![allow(clippy::float_cmp, clippy::unreadable_literal)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
+#![allow(clippy::unreadable_literal)]
 
 use std::collections::HashMap;
 use std::time::Duration;

@@ -290,7 +290,10 @@ impl KeyCode {
 /// Keyboard modifiers
 ///
 /// Tracks state of modifier keys (Shift, Ctrl, Alt, Meta/Super).
-#[allow(clippy::struct_excessive_bools)] // Modifier state is inherently boolean per key
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bool fields map directly to hardware flags"
+)] // Modifier state is inherently boolean per key
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Modifiers {
     /// Shift key held

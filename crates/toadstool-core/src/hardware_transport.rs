@@ -160,7 +160,10 @@ pub fn encode_frame(sequence: u32, payload: &[u8], pixel_buf: &mut [u8]) -> Opti
     pixel_buf[4] = FRAME_VERSION;
     pixel_buf[5..9].copy_from_slice(&sequence.to_le_bytes());
     // Frame protocol limits payload_len to u32; truncation would require >4GB payload.
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )]
     let payload_len_u32 = payload.len() as u32;
     pixel_buf[9..13].copy_from_slice(&payload_len_u32.to_le_bytes());
 

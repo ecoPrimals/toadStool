@@ -162,7 +162,10 @@ impl super::CloudFederationManager {
     }
 
     /// Set heartbeat timeout in seconds.
-    #[allow(clippy::missing_const_for_fn)] // Mutates self
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Mutates self
     pub fn set_heartbeat_timeout(&mut self, secs: u64) {
         self.heartbeat_timeout_secs = secs;
     }

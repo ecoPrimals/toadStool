@@ -326,7 +326,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::float_cmp, reason = "test asserts exact constructed values")]
+    #[expect(clippy::float_cmp, reason = "test asserts exact constructed values")]
     fn baseline_recipe_has_all_phases() {
         let recipe = amd_gfx10_compute_init();
         assert_eq!(recipe.confidence, 1.0);

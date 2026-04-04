@@ -90,7 +90,10 @@ where
                 stats.hits += 1;
                 let hits = stats.hits;
                 let total = stats.hits + stats.misses;
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 let rate = hits as f64 / total as f64;
                 stats.hit_rate = rate;
 
@@ -103,7 +106,10 @@ where
             stats.misses += 1;
             let hits = stats.hits;
             let total = stats.hits + stats.misses;
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let rate = hits as f64 / total as f64;
             stats.hit_rate = rate;
             None
@@ -157,7 +163,10 @@ where
     }
 
     /// Evict least recently used entry
-    #[allow(clippy::unused_async)] // May have await in future eviction logic
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // May have await in future eviction logic
     async fn evict_lru(
         &self,
         entries: &mut HashMap<K, CacheEntry<V>>,
@@ -178,7 +187,10 @@ where
     }
 
     /// Start cleanup task
-    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // Spawns background task; async for API consistency
     pub async fn start_cleanup_task(&self) {
         let entries = Arc::clone(&self.entries);
         let access_order = Arc::clone(&self.access_order);

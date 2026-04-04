@@ -67,7 +67,10 @@ impl MetricsStore {
         stats.avg = stats.avg.mul_add((stats.count - 1) as f64, value) / stats.count as f64;
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn cleanup_old_data(&mut self) {
         let now = std::time::SystemTime::now();
         if let Some(cutoff_time) = now.checked_sub(self.retention_period) {

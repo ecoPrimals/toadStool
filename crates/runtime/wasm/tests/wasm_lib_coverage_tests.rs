@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Comprehensive Coverage Tests for WASM Runtime Lib
 //!
 //! Targeting lib.rs to increase coverage from 48.72% to 60%+

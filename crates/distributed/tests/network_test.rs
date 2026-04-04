@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp, clippy::unreadable_literal)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
+#![allow(clippy::unreadable_literal)]
 //! Comprehensive tests for Network module
 //!
 //! Tests for network types and fault tolerance

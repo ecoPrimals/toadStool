@@ -60,7 +60,10 @@ impl OptimizedResourceMonitor {
     }
 
     /// Update aggregated metrics
-    #[allow(clippy::significant_drop_tightening)] // agg_metrics borrows from guard for two field updates
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // agg_metrics borrows from guard for two field updates
     async fn update_aggregated_metrics(&self, workload_id: &str, metrics: &RuntimeMetrics) {
         let mut aggregated = self.aggregated_metrics.write().await;
         let agg_metrics = aggregated

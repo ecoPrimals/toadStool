@@ -89,8 +89,7 @@ impl RuntimeEngine for MockRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_>>
-    {
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_>> {
         Box::pin(async { Ok(crate::RuntimeMetrics::default()) })
     }
 

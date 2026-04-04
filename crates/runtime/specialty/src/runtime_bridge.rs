@@ -236,7 +236,10 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
         })
     }
 
-    #[allow(clippy::cast_possible_truncation)] // advertised cap fits u32 for API
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // advertised cap fits u32 for API
     fn get_capabilities(&self) -> RuntimeCapabilities {
         RuntimeCapabilities {
             supported_workloads: vec![WorkloadType::Native],

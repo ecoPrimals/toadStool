@@ -111,7 +111,6 @@ impl BiomeOrchestrator {
     /// # Errors
     ///
     /// Propagates errors from [`Self::with_config`].
-    #[allow(clippy::unused_async)] // API consistency with with_config
     pub async fn new() -> ToadStoolResult<Self> {
         Self::with_config(BiomeOSConfig::default()).await
     }
@@ -121,7 +120,6 @@ impl BiomeOrchestrator {
     /// # Errors
     ///
     /// This function currently always returns `Ok`.
-    #[allow(clippy::unused_async)] // API consistency with trait/async ecosystem
     pub async fn with_config(config: BiomeOSConfig) -> ToadStoolResult<Self> {
         Ok(Self {
             config,
@@ -134,7 +132,6 @@ impl BiomeOrchestrator {
     /// # Errors
     ///
     /// This function currently always returns `Ok`.
-    #[allow(clippy::unused_async)] // API consistency with DeploymentLayer trait
     pub async fn initialize(&self) -> ToadStoolResult<()> {
         tracing::info!("Initializing biome orchestrator");
         Ok(())
@@ -149,7 +146,6 @@ impl BiomeOrchestrator {
     /// # Errors
     ///
     /// Returns error if the job type is wrong, validation fails, or execution cannot complete.
-    #[allow(clippy::unused_async)] // API consistency with DeploymentLayer trait
     pub async fn execute_deployment(
         &self,
         job: UniversalJob,

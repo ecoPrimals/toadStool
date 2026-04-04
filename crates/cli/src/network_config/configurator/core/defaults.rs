@@ -297,10 +297,7 @@ pub(super) fn songbird_default_network_config() -> SongbirdNetworkConfig {
             traffic_splitting: TrafficSplittingConfig {
                 enabled: true,
                 strategy: "weighted".to_string(),
-                weights: HashMap::from([
-                    ("stable".to_string(), 90),
-                    ("canary".to_string(), 10),
-                ]),
+                weights: HashMap::from([("stable".to_string(), 90), ("canary".to_string(), 10)]),
                 header_routing: None,
             },
             canary: CanaryConfig {
@@ -397,8 +394,7 @@ pub(super) fn songbird_default_network_config() -> SongbirdNetworkConfig {
                     resolve_capability_port("COORDINATION", capability_fallback::COORDINATION);
                 let security_port =
                     resolve_capability_port("SECURITY", capability_fallback::SECURITY);
-                let storage_port =
-                    resolve_capability_port("STORAGE", capability_fallback::STORAGE);
+                let storage_port = resolve_capability_port("STORAGE", capability_fallback::STORAGE);
                 let ai_processing_port =
                     resolve_capability_port("PLATFORM", capability_fallback::PLATFORM);
                 vec![
@@ -455,7 +451,10 @@ pub(super) fn songbird_default_network_config() -> SongbirdNetworkConfig {
                     },
                     HealthEndpoint {
                         name: "ai".to_string(), // Capability-based name
-                        url: format!("http://{}:{ai_processing_port}/health", domains.ai_processing),
+                        url: format!(
+                            "http://{}:{ai_processing_port}/health",
+                            domains.ai_processing
+                        ),
                         health_check: HttpHealthCheckConfig {
                             base: HealthCheckConfig {
                                 enabled: true,

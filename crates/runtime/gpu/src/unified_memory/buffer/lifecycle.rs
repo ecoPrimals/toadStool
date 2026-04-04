@@ -15,7 +15,10 @@ use std::sync::{
 
 impl UnifiedBuffer {
     /// Create new unified buffer (internal use only)
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "parameters map directly to hardware/protocol fields"
+    )]
     pub(crate) fn new(
         id: BufferId,
         size: usize,

@@ -59,7 +59,10 @@ impl WebGpuBackend {
     /// # Errors
     ///
     /// Currently always returns `Ok`; reserved for future limit validation failures.
-    #[allow(clippy::cast_possible_truncation)] // wgpu limits fit host `usize` on supported targets
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // wgpu limits fit host `usize` on supported targets
     pub fn new(device: wgpu::Device, queue: wgpu::Queue) -> ToadStoolResult<Self> {
         let limits = device.limits();
 
@@ -165,7 +168,10 @@ impl UnifiedMemoryBackend for WebGpuBackend {
         &self.capabilities
     }
 
-    #[allow(clippy::cast_possible_truncation)] // compare against wgpu device limits
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // compare against wgpu device limits
     async fn allocate_unified(
         &self,
         size: usize,

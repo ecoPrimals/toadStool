@@ -97,7 +97,6 @@ pub fn set_bar0_permissions(bdf: &str, mode: u32) -> io::Result<()> {
     let path = format!("/sys/bus/pci/devices/{bdf}/resource0");
     let metadata = fs::metadata(&path)?;
     let mut perms = metadata.permissions();
-    #[allow(clippy::cast_possible_truncation)]
     {
         use std::os::unix::fs::PermissionsExt;
         perms.set_mode(mode);

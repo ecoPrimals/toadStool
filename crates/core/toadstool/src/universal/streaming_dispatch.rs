@@ -55,7 +55,10 @@ pub struct DispatchStats {
 impl DispatchStats {
     /// Compute the dispatch-to-submission amortization ratio.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // statistical ratios; mantissa loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // statistical ratios; mantissa loss acceptable
     pub fn amortization_ratio(&self) -> f64 {
         if self.n_submissions > 0 {
             self.n_dispatches as f64 / self.n_submissions as f64
@@ -66,7 +69,10 @@ impl DispatchStats {
 
     /// Per-dispatch overhead in microseconds.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // statistical ratios; mantissa loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // statistical ratios; mantissa loss acceptable
     pub fn per_dispatch_us(&self) -> f64 {
         if self.n_dispatches > 0 {
             self.wall_seconds * 1e6 / self.n_dispatches as f64
@@ -77,7 +83,10 @@ impl DispatchStats {
 
     /// Per-submission overhead in microseconds.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // statistical ratios; mantissa loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // statistical ratios; mantissa loss acceptable
     pub fn per_submission_us(&self) -> f64 {
         if self.n_submissions > 0 {
             self.wall_seconds * 1e6 / self.n_submissions as f64
@@ -105,7 +114,10 @@ pub struct StageProgress {
 impl StageProgress {
     /// Fraction of progress in `[0.0, 1.0]`.
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // UI progress; mantissa loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // UI progress; mantissa loss acceptable
     pub fn fraction(&self) -> f64 {
         if self.total_stages > 0 {
             (self.stage_index + 1) as f64 / self.total_stages as f64

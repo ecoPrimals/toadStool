@@ -35,7 +35,10 @@ impl ResourceHandler {
             .map_err(|e| JsonRpcError::invalid_params(format!("Invalid graph parameter: {e}")))
     }
 
-    #[allow(clippy::unused_async)] // JSON-RPC method dispatch; sync estimator.estimate()
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // JSON-RPC method dispatch; sync estimator.estimate()
     pub(super) async fn resources_estimate(
         &self,
         params: Option<&serde_json::Value>,

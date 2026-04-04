@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp, reason = "test asserts exact constructed values")]
+    #[expect(clippy::float_cmp, reason = "test asserts exact constructed values")]
     fn same_arch_similarity_1() {
         assert_eq!(architecture_similarity(&volta(), &volta()), 1.0);
     }

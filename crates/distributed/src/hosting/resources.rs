@@ -81,7 +81,6 @@ impl HostingResourceManager {
     pub fn from_system(config: HostingResourceConfig) -> Self {
         let mut manager = Self::new(config);
 
-        #[allow(clippy::cast_possible_truncation)]
         let cpu_cores = toadstool_sysmon::cpu_count() as u64;
         manager
             .total_resources

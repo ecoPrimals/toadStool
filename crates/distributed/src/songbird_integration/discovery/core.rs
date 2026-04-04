@@ -64,7 +64,10 @@ impl SongbirdNetworkDiscovery {
         }
     }
 
-    #[allow(clippy::significant_drop_tightening)] // nodes are refs from registry
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // nodes are refs from registry
     /// Aggregate CPU, memory, and storage across active registered nodes.
     pub async fn get_network_capacity(&self) -> ToadStoolResult<NetworkCapacity> {
         let registry = self.node_registry.read().await;
@@ -95,7 +98,10 @@ impl SongbirdNetworkDiscovery {
         })
     }
 
-    #[allow(clippy::significant_drop_tightening)] // available_nodes are refs from registry
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // available_nodes are refs from registry
     /// Assign each subtask to a best-matching node and return a distribution plan.
     pub async fn get_optimal_distribution(
         &self,
@@ -186,7 +192,10 @@ impl SongbirdNetworkDiscovery {
         best_node.ok_or_else(|| ToadStoolError::runtime("No suitable node found for subtask"))
     }
 
-    #[allow(clippy::significant_drop_tightening)] // Multiple operations on registry
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // Multiple operations on registry
     /// Register a node in the local registry and return channel assignments.
     pub async fn register_node(
         &self,
@@ -218,7 +227,10 @@ impl SongbirdNetworkDiscovery {
         })
     }
 
-    #[allow(clippy::significant_drop_tightening)] // all_nodes/active_nodes are refs from registry
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // all_nodes/active_nodes are refs from registry
     /// Summarize node counts, pooled capacity, and estimated local utilization.
     pub async fn get_network_status(&self) -> ToadStoolResult<NetworkStatus> {
         let registry = self.node_registry.read().await;
@@ -249,7 +261,10 @@ impl SongbirdNetworkDiscovery {
             let memory_utilization = toadstool_sysmon::memory_info()
                 .map(|m| {
                     if m.total > 0 {
-                        #[allow(clippy::cast_precision_loss)]
+                        #[expect(
+                            clippy::cast_precision_loss,
+                            reason = "precision loss acceptable for this conversion"
+                        )]
                         let pct = m.used as f64 / m.total as f64;
                         pct
                     } else {
@@ -278,7 +293,10 @@ impl SongbirdNetworkDiscovery {
         })
     }
 
-    #[allow(clippy::significant_drop_tightening)] // Must hold lock during loop
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // Must hold lock during loop
     async fn perform_discovery(&self) -> ToadStoolResult<()> {
         let discovered_nodes = self.discovery_client.discover_nodes().await?;
 

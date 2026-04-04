@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Additional comprehensive test coverage for intelligent auto-configuration
 //!
 //! This test suite expands coverage of the intelligent configuration system

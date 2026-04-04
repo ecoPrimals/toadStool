@@ -62,7 +62,6 @@ impl DelegationValidator {
     }
 
     /// Validate a delegation chain: depth ≤ max, all delegators non-empty.
-    #[allow(clippy::cast_possible_truncation)]
     pub fn validate_chain(&self, chain: &DelegationChain) -> bool {
         (chain.delegation_level as usize) <= self.max_depth
             && chain

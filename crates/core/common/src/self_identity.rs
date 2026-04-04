@@ -298,7 +298,10 @@ impl CapabilityMatcher {
                 .filter(|cap| service_capabilities.contains(*cap))
                 .count();
             // Note: count() is always small (< 100 typically), so precision loss is acceptable
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let optional_ratio = optional_matches as f64 / self.optional.len() as f64;
             score += optional_ratio * 0.3;
         }

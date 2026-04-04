@@ -22,7 +22,10 @@ fn test_e2e_decompress_and_process() {
         ruzstd::encoding::CompressionLevel::Fastest,
     );
 
-    #[allow(clippy::cast_precision_loss)] // usize to f64 for ratio display
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // usize to f64 for ratio display
     let ratio = (compressed.len() as f64 / original_data.len() as f64) * 100.0;
     println!(
         "Compressed: {} bytes → {} bytes ({ratio:.1}% ratio)",
@@ -192,7 +195,10 @@ fn test_e2e_performance_monitoring() {
 
     let data_mb = large_data.len() / 1024 / 1024;
     println!("Data size: {data_mb} MB");
-    #[allow(clippy::cast_precision_loss)] // usize to f64 for ratio display
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // usize to f64 for ratio display
     let comp_ratio = (compressed.len() as f64 / large_data.len() as f64) * 100.0;
     println!(
         "Compressed: {} bytes ({comp_ratio:.2}% of original)",

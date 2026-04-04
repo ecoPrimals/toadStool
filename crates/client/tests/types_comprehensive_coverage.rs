@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Comprehensive unit tests for client types module
 //! Target: crates/client/src/client/types.rs
 //! Focus: Type conversions, enums, and struct operations

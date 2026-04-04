@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! `ReLU` and `LayerNorm` Operations Demo
 
-#![allow(clippy::cast_precision_loss)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 //!
 //! Demonstrates:
 //! - `ReLU`: Rectified Linear Unit activation (max(0, x))

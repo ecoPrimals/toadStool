@@ -51,7 +51,10 @@ fn main() -> Result<()> {
         if let Some(power) = caps.power_mw {
             println!("║                                                        ║");
             println!("║  Power & Thermal                                       ║");
-            #[allow(clippy::cast_precision_loss)] // mW to W display; precision loss acceptable
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )] // mW to W display; precision loss acceptable
             let power_w = power as f32 / 1000.0;
             println!("║    Power:         {:.1} W {:28} ║", power_w, "");
         }

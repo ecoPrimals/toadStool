@@ -246,7 +246,10 @@ fn test_env_config_get_f64_default() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // comparing against exact literal initialization
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)] // comparing against exact literal initialization
 fn test_env_config_get_f64_zero() {
     let loader = EnvConfigLoader::new();
     let value = loader.get_f64("NONEXISTENT_F64", 0.0);

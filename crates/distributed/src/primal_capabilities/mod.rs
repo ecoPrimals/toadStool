@@ -114,7 +114,10 @@ impl CapabilityProvider {
     }
 
     /// Send heartbeat to all connected primals
-    #[allow(clippy::significant_drop_tightening)] // Must hold lock during iteration
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // Must hold lock during iteration
     pub async fn send_heartbeats(&self) -> Result<(), DistributedError> {
         let adapters = self.adapters.read().await;
 
@@ -141,7 +144,10 @@ impl CapabilityProvider {
     }
 
     /// Update capabilities (e.g., when GPU becomes available/unavailable)
-    #[allow(clippy::significant_drop_tightening)] // Must hold adapters lock during notify loop
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // Must hold adapters lock during notify loop
     pub async fn update_capability(
         &self,
         capability: Capability,

@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Comprehensive tests for performance hardening module
 //!
 //! Tests for optimized resource monitoring, memory pools, intelligent caching,
@@ -87,7 +91,6 @@ fn test_performance_hardening_config_serialization() {
 // OptimizedMonitoringConfig Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_optimized_monitoring_config_default() {
     let config = OptimizedMonitoringConfig::default();
@@ -132,7 +135,6 @@ fn test_optimized_monitoring_config_serialization() {
 // MemoryPoolConfig Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pool_config_default() {
     let config = MemoryPoolConfig::default();
@@ -142,7 +144,6 @@ fn test_memory_pool_config_default() {
     assert_eq!(config.shrink_threshold, 0.3);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_memory_pool_config_custom() {
     let config = MemoryPoolConfig {
@@ -175,7 +176,6 @@ fn test_memory_pool_config_serialization() {
 // CachingConfig Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_caching_config_default() {
     let config = CachingConfig::default();
@@ -184,7 +184,6 @@ fn test_caching_config_default() {
     assert_eq!(config.hit_rate_threshold, 0.8);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_caching_config_custom() {
     let config = CachingConfig {

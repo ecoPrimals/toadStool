@@ -70,9 +70,15 @@ impl CpuTimes {
         if total == 0 {
             return 0.0;
         }
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let pct = (total_busy as f64 / total as f64) * 100.0;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let result = pct as f32;
         result
     }
@@ -88,9 +94,15 @@ impl CpuTimes {
                 if total == 0 {
                     0.0
                 } else {
-                    #[allow(clippy::cast_precision_loss)]
+                    #[expect(
+                        clippy::cast_precision_loss,
+                        reason = "precision loss acceptable for this conversion"
+                    )]
                     let pct = (busy as f64 / total as f64) * 100.0;
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        reason = "truncation acceptable for this conversion"
+                    )]
                     let result = pct as f32;
                     result
                 }

@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::cast_precision_loss, clippy::missing_errors_doc)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
+#![allow(clippy::missing_errors_doc)]
 //! Chaos Testing - Tower Failures
 //!
 //! Tests system behavior under tower chaos:

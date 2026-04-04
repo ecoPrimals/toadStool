@@ -7,7 +7,10 @@ use toadstool::error::ToadStoolResult;
 use tracing::{debug, info};
 
 /// Service mesh extension trait
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) trait ServiceMeshExt {
     /// Apply service mesh configuration
     async fn apply_service_mesh_config(&self) -> ToadStoolResult<()>;

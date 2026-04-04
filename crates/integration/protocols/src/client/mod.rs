@@ -10,8 +10,8 @@
 mod discovery;
 mod handler;
 mod health;
-mod routing;
 mod protocol_client;
+mod routing;
 
 #[cfg(test)]
 mod tests;

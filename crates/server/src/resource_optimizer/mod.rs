@@ -132,7 +132,10 @@ impl ResourceOptimizer {
     }
 
     #[cfg(feature = "gpu-discovery")]
-    #[allow(clippy::unused_async)] // Sync wgpu enumerate; async for API consistency with fallback
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // Sync wgpu enumerate; async for API consistency with fallback
     async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -161,13 +164,20 @@ impl ResourceOptimizer {
                 gpu_types.push(info.name.clone());
             }
         }
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            reason = "precision loss and truncation acceptable for this conversion"
+        )]
         let available_memory = (total_memory as f64 * 0.8) as u64; // 80% of total, truncation acceptable
         (total_memory, available_memory, gpu_count, gpu_types)
     }
 
     #[cfg(not(feature = "gpu-discovery"))]
-    #[allow(clippy::unused_async)] // Matches gpu-discovery variant; sync fallback
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // Matches gpu-discovery variant; sync fallback
     async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
         (0, 0, 0, Vec::new())
     }

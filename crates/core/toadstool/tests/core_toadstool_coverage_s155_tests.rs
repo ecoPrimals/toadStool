@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)] // test asserts on exact constructed values
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)] // test asserts on exact constructed values
 //! Coverage tests for under-covered modules in toadstool core
 //!
 //! Target modules:

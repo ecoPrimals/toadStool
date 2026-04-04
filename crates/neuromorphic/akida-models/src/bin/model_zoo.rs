@@ -175,7 +175,10 @@ fn list_models() {
 }
 
 fn format_size(bytes: usize) -> String {
-    #[allow(clippy::cast_precision_loss)] // size display; precision loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // size display; precision loss acceptable
     if bytes >= 1_000_000 {
         format!("{:.1} MB", bytes as f64 / 1_000_000.0)
     } else if bytes >= 1_000 {

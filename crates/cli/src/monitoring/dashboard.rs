@@ -120,7 +120,10 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
                                     (0, 1, 0.0, 0.0, std::time::Duration::ZERO),
                                     |p| {
                                         let cpu = f64::from(p.cpu_usage);
-                                        #[allow(clippy::cast_precision_loss)]
+                                        #[expect(
+                                            clippy::cast_precision_loss,
+                                            reason = "precision loss acceptable for this conversion"
+                                        )]
                                         let mem = p.memory as f64 / 1_073_741_824.0;
                                         let uptime_secs = std::time::SystemTime::now()
                                             .duration_since(std::time::UNIX_EPOCH)
@@ -162,7 +165,10 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
 }
 
 /// Collects system resource usage metrics
-#[allow(clippy::cast_precision_loss)]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 pub fn collect_resource_usage() -> Result<SystemResourceUsage> {
     let cpu_percent = f64::from(
         toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(100)).unwrap_or(0.0),

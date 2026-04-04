@@ -50,7 +50,14 @@ async fn main() -> Result<()> {
     if bin_name == "toadstool-server" {
         info!("🍄 ToadStool invoked as 'toadstool-server' (legacy mode)");
         info!("💡 TIP: Use 'toadstool daemon' for the modern UniBin interface");
-        return run_server_daemon(None).await;
+        let port: Option<u16> = {
+            let args: Vec<String> = std::env::args().collect();
+            args.iter()
+                .position(|a| a == "--port")
+                .and_then(|i| args.get(i + 1))
+                .and_then(|v| v.parse().ok())
+        };
+        return run_server_daemon(None, port).await;
     }
 
     // If invoked as "toadstool-byob-server", run BYOB server (UniBin migration)
@@ -119,9 +126,9 @@ async fn main() -> Result<()> {
 }
 
 /// Run server/daemon when invoked via legacy binary name (before CLI parse)
-async fn run_server_daemon(family_id: Option<String>) -> Result<()> {
+async fn run_server_daemon(family_id: Option<String>, port: Option<u16>) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
-    toadstool_server::run_server_main(family_id, None)
+    toadstool_server::run_server_main(family_id, port)
         .await
         .map_err(|e| CliError::Other(format!("Server failed: {e}")))
 }

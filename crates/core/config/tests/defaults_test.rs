@@ -111,7 +111,10 @@ fn test_retries_max_attempts() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // comparing against exact literal initialization
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)] // comparing against exact literal initialization
 fn test_retries_backoff_settings() {
     assert_eq!(retries::BACKOFF_MS, 1_000);
     assert_eq!(retries::BACKOFF_MULTIPLIER, 2.0);

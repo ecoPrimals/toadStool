@@ -15,7 +15,10 @@ use std::collections::HashMap;
 /// - Environment-specific feature sets
 /// - Experimental feature gating
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "bool fields map directly to hardware flags"
+)]
 pub struct FeatureFlags {
     /// Enable experimental features (unstable, may change)
     pub enable_experimental: bool,

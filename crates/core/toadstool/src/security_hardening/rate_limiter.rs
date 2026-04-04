@@ -52,7 +52,10 @@ impl RateLimiter {
     /// # Errors
     ///
     /// This function currently always returns `Ok` with `true` or `false`.
-    #[allow(clippy::significant_drop_tightening)] // client_data borrows from lock for many operations
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // client_data borrows from lock for many operations
     pub async fn check_rate_limit(&self, client_id: &str) -> ToadStoolResult<bool> {
         let mut clients = self.client_requests.write().await;
         let now = Instant::now();
@@ -119,7 +122,10 @@ impl RateLimiter {
     }
 
     /// Ban client for specified duration
-    #[allow(clippy::significant_drop_tightening)] // client_data borrows from guard for two field updates
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // client_data borrows from guard for two field updates
     pub async fn ban_client(&self, client_id: &str, duration: Duration) {
         let now = Instant::now();
 

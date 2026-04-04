@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2024-2025 ToadStool Project
 
+use super::types::{AllocatedResources, CompositionPlan, ResourceUtilization, WorkloadPlacement};
 use crate::composition_constraints::{CompositionRequest, Constraint};
 use crate::composition_engine::CompositionEngine;
 use crate::layer_adaptation::GpuAccess;
-use super::types::{
-    AllocatedResources, CompositionPlan, ResourceUtilization, WorkloadPlacement,
-};
 
 /// Estimate resources that would be allocated to a workload from its constraints.
 pub(crate) fn estimate_allocated_resources(request: &CompositionRequest) -> AllocatedResources {
@@ -34,7 +32,10 @@ pub(crate) fn estimate_allocated_resources(request: &CompositionRequest) -> Allo
 }
 
 /// Calculate overall resource utilization across feasible placements.
-#[allow(clippy::cast_precision_loss)] // GiB fraction from byte counts for utilization display
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)] // GiB fraction from byte counts for utilization display
 pub(crate) fn calculate_resource_utilization(
     engine: &CompositionEngine,
     placements: &[WorkloadPlacement],
@@ -103,7 +104,10 @@ impl CompositionPlan {
         }
         let total: f64 = self.placements.iter().map(|p| p.score).sum();
         let len = self.placements.len();
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let result = total / len as f64;
         result
     }
@@ -135,7 +139,10 @@ impl ResourceUtilization {
         } else {
             let used = self.cpu_cores_used;
             let total = self.cpu_cores_total;
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let pct = (used as f64 / total as f64) * 100.0;
             pct
         }

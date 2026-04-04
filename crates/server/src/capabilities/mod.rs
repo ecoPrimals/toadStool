@@ -111,7 +111,10 @@ impl PrimalCapabilities {
     /// Discover self (self-knowledge!)
     ///
     /// Deep debt principle: Query local system only!
-    #[allow(clippy::unused_async)] // API consistency; may add async discovery in future
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // API consistency; may add async discovery in future
     pub async fn discover_self(primal_type: &str) -> Self {
         info!("🔍 Discovering self capabilities (self-knowledge!)");
 

@@ -19,7 +19,8 @@ impl ToadStoolSongbirdIntegration {
         capacity_config: CapacityConfig,
         scheduler: Arc<UniversalScheduler>,
     ) -> ToadStoolResult<Self> {
-        let local_capacity = Arc::new(super::types::LocalCapacityManager::new(capacity_config).await?);
+        let local_capacity =
+            Arc::new(super::types::LocalCapacityManager::new(capacity_config).await?);
 
         Ok(Self {
             instance_id,

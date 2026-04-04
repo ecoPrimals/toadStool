@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp, clippy::no_effect_underscore_binding)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
+#![allow(clippy::no_effect_underscore_binding)]
 //! Integration tests for Universal Cloud Integration
 //!
 //! Testing strategy:

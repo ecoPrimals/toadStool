@@ -217,7 +217,10 @@ impl ResultAggregator {
     }
 
     /// Average results across all partial results
-    #[allow(clippy::cast_precision_loss)] // count as f32 for mean
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // count as f32 for mean
     async fn average_results(&self, results: &PartialResultSet) -> ToadStoolResult<Vec<u8>> {
         // First sum, then divide
         let summed = self.reduce_results(results, ReductionOp::Sum).await?;

@@ -253,7 +253,10 @@ pub enum ThroughputRequirement {
 
 impl WorkloadProfile {
     /// Analyze a workload and create a profile
-    #[allow(clippy::missing_const_for_fn)] // Workload has non-const fields
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Workload has non-const fields
     pub fn from_workload(workload: &Workload) -> Self {
         let size = match workload.num_operations {
             0..=1_000 => WorkloadSize::Small,

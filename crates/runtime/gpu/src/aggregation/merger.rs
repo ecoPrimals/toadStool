@@ -228,7 +228,10 @@ impl VectorMerger {
     /// # Errors
     ///
     /// Returns [`ToadStoolError`] when [`Self::add`](VectorMerger::add) fails (e.g. length mismatch).
-    #[allow(clippy::cast_precision_loss)] // count as f32 for division
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // count as f32 for division
     pub fn average(vectors: Vec<Vec<f32>>) -> ToadStoolResult<Vec<f32>> {
         let count = vectors.len() as f32;
         if count == 0.0 {
@@ -260,7 +263,10 @@ impl ScalarReducer {
     }
 
     /// Calculate average
-    #[allow(clippy::cast_precision_loss)] // mean of moderate-sized slices
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // mean of moderate-sized slices
     pub fn average(values: Vec<f32>) -> Option<f32> {
         if values.is_empty() {
             return None;
@@ -315,7 +321,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_scalar_reducer() {
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
 

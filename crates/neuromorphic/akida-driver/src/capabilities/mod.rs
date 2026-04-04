@@ -492,7 +492,10 @@ impl Capabilities {
                 && let Ok(temp_millic) = temp_str.trim().parse::<i32>()
             {
                 // Precision loss acceptable: temperature is inherently imprecise
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 let temp_c = temp_millic as f32 / 1000.0;
                 tracing::info!("Queried temperature: {:.1}°C", temp_c);
                 return Some(temp_c);

@@ -52,7 +52,10 @@ pub enum BufferOperation {
 
 impl BufferOperation {
     /// Get the total buffer size for this operation
-    #[allow(clippy::missing_const_for_fn)] // Vec::len() not const
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Vec::len() not const
     pub fn buffer_size(&self) -> usize {
         match self {
             Self::Add { a, b, .. } => a.len() + b.len(),

@@ -52,11 +52,7 @@ impl DeviceMmap {
     ///
     /// Returns [`DeviceMmapError::ZeroSize`] if `size == 0`, or
     /// [`DeviceMmapError::MmapFailed`] if the kernel rejects the mapping.
-    pub fn map_shared_rw(
-        fd: impl AsFd,
-        offset: u64,
-        size: usize,
-    ) -> Result<Self, DeviceMmapError> {
+    pub fn map_shared_rw(fd: impl AsFd, offset: u64, size: usize) -> Result<Self, DeviceMmapError> {
         if size == 0 {
             return Err(DeviceMmapError::ZeroSize);
         }

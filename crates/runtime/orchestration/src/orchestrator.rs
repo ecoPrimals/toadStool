@@ -121,7 +121,10 @@ impl WorkloadOrchestrator {
     }
 
     /// Select optimal substrate for workload
-    #[allow(clippy::significant_drop_tightening)] // selected is from policy using substrates/history
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // selected is from policy using substrates/history
     fn select_substrate(
         &self,
         request: &WorkloadRequest,
@@ -139,7 +142,10 @@ impl WorkloadOrchestrator {
     }
 
     /// Rank substrates by suitability
-    #[allow(clippy::significant_drop_tightening)] // ranked uses substrates and history
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // ranked uses substrates and history
     fn rank_substrates(
         &self,
         request: &WorkloadRequest,

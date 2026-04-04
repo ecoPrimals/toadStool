@@ -95,7 +95,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Parse Performance:");
     println!("   Time:       {parse_time:?}");
-    #[allow(clippy::cast_precision_loss)] // MB/s display; precision loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // MB/s display; precision loss acceptable
     let parse_throughput = (model.program_size() as f64 / 1_048_576.0) / parse_time.as_secs_f64();
     println!("   Throughput: {parse_throughput:.2} MB/s\n");
 
@@ -116,7 +119,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Model info
     println!("Model Statistics:");
-    #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // KB display; precision loss acceptable
     let program_size_kb = model.program_size() as f64 / 1024.0;
     println!(
         "   Size:       {} bytes ({program_size_kb:.2} KB)",

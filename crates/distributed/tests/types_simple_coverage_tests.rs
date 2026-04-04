@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Simple Coverage Tests for Distributed Types
 //!
 //! Targeting types module to increase coverage from 25.62% to 40%+

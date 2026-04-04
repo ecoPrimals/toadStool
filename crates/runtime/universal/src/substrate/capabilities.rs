@@ -46,7 +46,10 @@ impl SubstrateCapabilities {
     ///
     /// **Note**: These are conservative estimates. Real implementations
     /// should measure actual hardware capabilities.
-    #[allow(clippy::missing_const_for_fn)] // Struct has f64 fields
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Struct has f64 fields
     pub fn default_for_type(substrate_type: SubstrateType) -> Self {
         match substrate_type {
             SubstrateType::Cpu => Self {

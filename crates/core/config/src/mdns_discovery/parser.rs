@@ -21,8 +21,8 @@ use std::collections::HashMap;
 use tracing::warn;
 
 use toadstool_common::primal_identity::{
-    AuthCapability, Capability, ComputeCapability, CoordinationCapability, DiscoveryCapability,
-    DiscoveredService, ServiceEndpoint, StorageCapability,
+    AuthCapability, Capability, ComputeCapability, CoordinationCapability, DiscoveredService,
+    DiscoveryCapability, ServiceEndpoint, StorageCapability,
 };
 
 /// Parse mDNS TXT records to extract [`Capability`] values.

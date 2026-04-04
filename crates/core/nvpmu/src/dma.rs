@@ -109,7 +109,7 @@ impl DmaBuffer {
 }
 
 impl Drop for DmaBuffer {
-    #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
+    #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     fn drop(&mut self) {
         let unmap = VfioDmaUnmap {
             argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
@@ -146,7 +146,7 @@ impl DmaAllocator {
         }
     }
 
-    #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
+    #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     fn iommu_map(&self, buf: &DmaBuffer) -> Result<()> {
         let dma_map = VfioDmaMap {
             argsz: std::mem::size_of::<VfioDmaMap>() as u32,
@@ -170,7 +170,6 @@ impl DmaAllocator {
     /// # Errors
     ///
     /// Returns error if allocation, mlock, or IOMMU mapping fails.
-    #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     pub fn allocate(&mut self, size: usize) -> Result<DmaBuffer> {
         if size == 0 {
             return Err(NvPmuError::Hardware(
@@ -210,7 +209,6 @@ impl DmaAllocator {
     ///
     /// Returns error if huge pages are unavailable, allocation, mlock, or
     /// IOMMU mapping fails.
-    #[allow(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     pub fn allocate_huge(&mut self, size: usize, page_size: HugePageSize) -> Result<DmaBuffer> {
         if size == 0 {
             return Err(NvPmuError::Hardware(

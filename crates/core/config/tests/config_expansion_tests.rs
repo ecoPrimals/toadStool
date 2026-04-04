@@ -465,19 +465,28 @@ fn test_app_default_resource_check_interval() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // comparing against exact literal initialization
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)] // comparing against exact literal initialization
 fn test_app_default_max_cpu_usage() {
     assert_eq!(app::DEFAULT_MAX_CPU_USAGE, 80.0);
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // comparing against exact literal initialization
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)] // comparing against exact literal initialization
 fn test_app_default_max_memory_usage() {
     assert_eq!(app::DEFAULT_MAX_MEMORY_USAGE, 85.0);
 }
 
 #[test]
-#[allow(clippy::float_cmp)] // comparing against exact literal initialization
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)] // comparing against exact literal initialization
 fn test_app_default_max_disk_usage() {
     assert_eq!(app::DEFAULT_MAX_DISK_USAGE, 90.0);
 }

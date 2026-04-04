@@ -149,7 +149,10 @@ impl ComputeResourceCoordinator {
     }
 
     /// Get resource pool statistics
-    #[allow(clippy::cast_precision_loss)] // utilization ratios for display
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // utilization ratios for display
     pub async fn get_pool_stats(&self, device_id: &DeviceId) -> Option<ResourcePoolStats> {
         let pools = self.resource_pools.read().await;
         pools.get(device_id).map(|pool| ResourcePoolStats {
@@ -241,7 +244,10 @@ impl LoadBalancer for WeightedRoundRobinBalancer {
         self.device_weights.insert(device_id.clone(), weight);
     }
 
-    #[allow(clippy::cast_precision_loss)] // stats map uses f64 for JSON-friendly values
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // stats map uses f64 for JSON-friendly values
     fn get_statistics(&self) -> HashMap<String, f64> {
         let mut stats = HashMap::new();
         stats.insert(

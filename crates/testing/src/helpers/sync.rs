@@ -272,7 +272,10 @@ impl EventCoordinator {
     }
 
     /// Signal an event
-    #[allow(clippy::unused_async)] // broadcast::Sender::send is sync; async for API consistency
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // broadcast::Sender::send is sync; async for API consistency
     pub async fn signal(&self, event: &str) {
         let _ = self.tx.send(event.to_string());
     }

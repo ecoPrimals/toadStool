@@ -114,7 +114,10 @@ pub struct AvailableDevice {
 impl AvailableDevice {
     /// VRAM remaining for new allocations.
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)] // AvailableDevice fields may not be const in all contexts
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // AvailableDevice fields may not be const in all contexts
     pub fn free_vram_bytes(&self) -> u64 {
         self.total_vram_bytes
             .saturating_sub(self.allocated_vram_bytes)
@@ -216,14 +219,12 @@ impl ResourceOrchestrator {
 
     /// Number of managed devices.
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)] // Uses RwLock
     pub fn device_count(&self) -> usize {
         self.devices.read().expect("lock poisoned").len()
     }
 
     // --- allocation strategies ---
 
-    #[allow(clippy::significant_drop_tightening)] // device ref from devices lock
     fn allocate_local_direct(
         &self,
         request: &ResourceRequest,
@@ -252,7 +253,10 @@ impl ResourceOrchestrator {
         })
     }
 
-    #[allow(clippy::significant_drop_tightening)] // device ref from devices, need for allocation
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // device ref from devices, need for allocation
     fn allocate_local_multi(
         &self,
         request: &ResourceRequest,
@@ -304,7 +308,10 @@ impl ResourceOrchestrator {
         self.allocate_local_multi(request)
     }
 
-    #[allow(clippy::significant_drop_tightening)] // need both quotas and usage for check
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // need both quotas and usage for check
     fn check_quota(&self, request: &ResourceRequest) -> Result<(), OrchestrationError> {
         let quotas = self.quotas.read().expect("lock poisoned");
         let Some(quota) = quotas.get(&request.tenant_id) else {

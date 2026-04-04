@@ -4,7 +4,6 @@
 //! Standard capability name constants for ecosystem-wide discovery.
 
 /// Standard capability names - expand as needed
-#[allow(clippy::module_inception)]
 pub mod capabilities {
     /// AI processing and machine learning
     pub const AI_PROCESSING: &str = "ai_processing";

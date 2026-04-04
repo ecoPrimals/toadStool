@@ -29,7 +29,6 @@ fn test_service_resource_requirements_default() {
     assert!(reqs.gpu_count.is_none());
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_service_resource_requirements_with_values() {
     let reqs = ServiceResourceRequirements {
@@ -45,7 +44,6 @@ fn test_service_resource_requirements_with_values() {
     assert_eq!(reqs.gpu_count, Some(2));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_service_resource_requirements_clone() {
     let reqs1 = ServiceResourceRequirements {
@@ -73,7 +71,6 @@ fn test_service_resource_requirements_debug() {
     assert!(debug_str.contains("ServiceResourceRequirements"));
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_service_resource_requirements_serialization() {
     let reqs = ServiceResourceRequirements {
@@ -94,7 +91,10 @@ fn test_service_resource_requirements_serialization() {
 // TeamResourceQuotas Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_team_resource_quotas_creation() {
     let quotas = TeamResourceQuotas {
@@ -110,7 +110,10 @@ fn test_team_resource_quotas_creation() {
     assert_eq!(quotas.max_concurrent_services, 50);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_team_resource_quotas_clone() {
     let quotas1 = TeamResourceQuotas {
@@ -129,7 +132,10 @@ fn test_team_resource_quotas_clone() {
     );
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_team_resource_quotas_serialization() {
     let quotas = TeamResourceQuotas {
@@ -689,7 +695,10 @@ fn test_deployment_status_stopped() {
 // ResourceUsage Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_resource_usage_creation() {
     let usage = ResourceUsage {
@@ -710,7 +719,10 @@ fn test_resource_usage_creation() {
     assert_eq!(usage.network_usage.bytes_received, 1_000_000);
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_resource_usage_clone() {
     let usage1 = ResourceUsage {
@@ -734,7 +746,10 @@ fn test_resource_usage_clone() {
     );
 }
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_resource_usage_serialization() {
     let usage = ResourceUsage {
@@ -761,7 +776,10 @@ fn test_resource_usage_serialization() {
 // ByobDeploymentRequest Tests
 // ============================================================================
 
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 #[test]
 fn test_byob_deployment_request_creation() {
     let request = ByobDeploymentRequest {
@@ -796,7 +814,6 @@ fn test_byob_deployment_request_creation() {
     assert_eq!(request.resource_quotas.max_cpu_cores, 10.0);
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_byob_deployment_request_serialization() {
     let request = ByobDeploymentRequest {

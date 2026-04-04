@@ -46,7 +46,10 @@ fn main() -> Result<()> {
             "   ⏱️  Parse time:   {:.3}ms",
             elapsed.as_secs_f64() * 1000.0
         );
-        #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )] // KB display; precision loss acceptable
         let program_size_kb = model.program_size() as f64 / 1024.0;
         println!(
             "   📊 Size:         {} bytes ({program_size_kb:.2} KB)",
@@ -71,7 +74,10 @@ fn main() -> Result<()> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("📊 Benchmark Summary:");
     println!("   Total time:  {:.3}ms", total_time.as_secs_f64() * 1000.0);
-    #[allow(clippy::cast_precision_loss)] // size/speed display; precision loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // size/speed display; precision loss acceptable
     let total_size_f64 = total_size as f64;
     let total_size_kb = total_size_f64 / 1024.0;
     let avg_speed = (total_size_f64 / 1024.0 / 1024.0) / total_time.as_secs_f64();

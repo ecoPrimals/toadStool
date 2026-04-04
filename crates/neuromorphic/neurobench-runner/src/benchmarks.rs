@@ -164,7 +164,10 @@ impl BenchmarkResult {
 
         // Accuracy (f64 division; precision loss acceptable for benchmark display)
         if self.num_samples > 0 {
-            #[allow(clippy::cast_precision_loss)]
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )]
             let acc = self.num_correct as f64 / self.num_samples as f64;
             self.accuracy = acc;
         }

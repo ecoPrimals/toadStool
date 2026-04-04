@@ -60,7 +60,10 @@ impl IBMMainframeAdapter {
     }
 
     /// Submit JCL job
-    #[allow(clippy::cast_possible_truncation)] // label uses low bits of UUID only
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "truncation acceptable for this conversion"
+    )] // label uses low bits of UUID only
     async fn submit_jcl_job(&self, jcl: &str) -> ToadStoolResult<Uuid> {
         let job_id = Uuid::new_v4();
         let job_name = format!("JOB{:08X}", job_id.as_u128() as u32);

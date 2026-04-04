@@ -49,7 +49,10 @@ impl ToadStoolTarpcServer {
             .unwrap_or(4)
             * 4; // ~4 workloads per core
 
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let base_utilization = if max_capacity > 0 {
             (active_count as f32) / (max_capacity as f32)
         } else {
@@ -72,7 +75,10 @@ impl ToadStoolTarpcServer {
                 && let Some(first) = loadavg.split_whitespace().next()
                 && let Ok(load) = first.parse::<f32>()
             {
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "precision loss acceptable for this conversion"
+                )]
                 let cpu_count = std::thread::available_parallelism()
                     .map(|n| n.get() as f32)
                     .unwrap_or(4.0);
@@ -206,7 +212,10 @@ impl ToadStoolTarpcServer {
         since = "2.2.0",
         note = "Use serve_unix() for production. TCP hardcoding violates deep debt principles."
     )]
-    #[allow(clippy::unused_async)] // Deprecated; returns Err immediately; kept async for API compatibility
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // Deprecated; returns Err immediately; kept async for API compatibility
     pub async fn serve_tcp_debug(self, addr: SocketAddr) -> ServerResult<()> {
         warn!("⚠️  TCP mode is DEBUG ONLY - violates deep debt principles");
         warn!("⚠️  Use Unix sockets for production (serve_unix)");
@@ -358,7 +367,10 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
             .filter(|w| matches!(w.status, WorkloadStatus::Queued))
             .count();
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let error_count = self.error_count.load(Ordering::Relaxed) as usize; // display/metrics only
 
         Ok(HealthStatus {
@@ -437,7 +449,6 @@ impl StandaloneExecutor {
     ///
     /// Rough estimate: modern CPU core ~0.1 TFLOPS
     fn estimate_cpu_tflops(cores: u32) -> Option<f64> {
-        #[allow(clippy::cast_precision_loss)]
         Some((cores as f64) * 0.1)
     }
 
@@ -454,7 +465,11 @@ impl StandaloneExecutor {
         if mem.total == 0 {
             return 0.0;
         }
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            reason = "precision loss and truncation acceptable for this conversion"
+        )]
         let pct = ((mem.used as f64 / mem.total as f64) * 100.0) as f32;
         pct
     }
@@ -499,7 +514,10 @@ impl WorkloadExecutor for StandaloneExecutor {
         // Process the workload data
         // Real backends would parse submission.data and execute on GPU/CPU/NPU
         // For now, we perform a CPU-bound operation proportional to input size
-        #[allow(clippy::cast_possible_truncation)] // i bounded by output len (≤1024)
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )] // i bounded by output len (≤1024)
         let result_data = {
             let input_len = submission.data.len();
             // Simple processing: XOR-based transform (demonstrates actual work)
@@ -520,7 +538,11 @@ impl WorkloadExecutor for StandaloneExecutor {
         let total_cores = std::thread::available_parallelism()
             .map(std::num::NonZero::get)
             .unwrap_or(4);
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            reason = "precision loss and truncation acceptable for this conversion"
+        )]
         let cores_used =
             u32::try_from(((avg_cpu_util / 100.0) * total_cores as f32).ceil() as i64).unwrap_or(1);
 
@@ -543,12 +565,10 @@ impl WorkloadExecutor for StandaloneExecutor {
         })
     }
 
-    #[allow(clippy::unused_async)] // WorkloadExecutor trait; sync capabilities clone
     async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
         Ok(self.capabilities.clone())
     }
 
-    #[allow(clippy::unused_async)] // WorkloadExecutor trait; no-op cancel in standalone mode
     async fn cancel(&self, workload_id: &str) -> Result<(), String> {
         warn!("Cancel requested for workload: {}", workload_id);
         Ok(())

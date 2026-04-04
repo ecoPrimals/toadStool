@@ -7,7 +7,11 @@
 //! (`Clone`, `Debug`, construction). `types.rs` does not implement `Display`,
 //! `From`/`Into`, or ordering traits on these types.
 
-#![allow(clippy::float_cmp, clippy::unwrap_used)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
+#![allow(clippy::unwrap_used)]
 
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};

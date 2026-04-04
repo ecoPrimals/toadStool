@@ -690,7 +690,6 @@ async fn test_standalone_executor_estimate_cpu_tflops_via_capabilities() {
     let caps = exec.query_capabilities().await.expect("capabilities");
     assert!(!caps.compute_units.is_empty());
     let unit = &caps.compute_units[0];
-    #[allow(clippy::cast_precision_loss)]
     let expected_tflops = (unit.cores as f64) * 0.1;
     assert_eq!(unit.tflops, Some(expected_tflops));
 }

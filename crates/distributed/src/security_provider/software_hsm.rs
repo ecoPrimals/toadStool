@@ -126,8 +126,9 @@ impl SecurityProvider for SoftwareHsmProvider {
         let raw_key = store.get_or_create_symmetric(&key_id).to_vec();
         drop(store);
 
-        let cipher = Aes256Gcm::new_from_slice(&raw_key)
-            .map_err(|_| ToadStoolError::security("AES-256-GCM key must be 32 bytes".to_string()))?;
+        let cipher = Aes256Gcm::new_from_slice(&raw_key).map_err(|_| {
+            ToadStoolError::security("AES-256-GCM key must be 32 bytes".to_string())
+        })?;
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
 
         // AES-GCM output includes the 16-byte auth tag appended to ciphertext.
@@ -178,8 +179,9 @@ impl SecurityProvider for SoftwareHsmProvider {
             .to_vec();
         drop(store);
 
-        let cipher = Aes256Gcm::new_from_slice(&raw_key)
-            .map_err(|_| ToadStoolError::security("AES-256-GCM key must be 32 bytes".to_string()))?;
+        let cipher = Aes256Gcm::new_from_slice(&raw_key).map_err(|_| {
+            ToadStoolError::security("AES-256-GCM key must be 32 bytes".to_string())
+        })?;
 
         let plaintext = cipher
             .decrypt(nonce, ct_and_tag)

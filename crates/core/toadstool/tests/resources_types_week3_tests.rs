@@ -2,7 +2,10 @@
 // Copyright (C) 2025 ecoPrimals
 
 //! Comprehensive tests for resources.rs types.
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 
 use std::time::{Duration, SystemTime};
 use toadstool::resources::*;

@@ -7,7 +7,10 @@ use toadstool::error::ToadStoolResult;
 use tracing::{debug, info};
 
 /// Security extension trait
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) trait SecurityExt {
     /// Apply cross-primal security configuration
     async fn apply_cross_primal_security_config(&self) -> ToadStoolResult<()>;

@@ -16,7 +16,10 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 /// Display and logging operation implementations
 impl BiomeExecutor {
-    #[allow(clippy::unused_async)] // CLI display; async for API consistency
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // CLI display; async for API consistency
     pub(super) async fn print_biomes_table(
         &self,
         biomes: &[&RunningBiome],

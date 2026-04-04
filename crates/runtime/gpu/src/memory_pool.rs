@@ -198,7 +198,10 @@ impl MemoryPool {
     }
 
     /// Get hit rate as percentage
-    #[allow(clippy::cast_precision_loss)] // display percentage from counts
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // display percentage from counts
     pub async fn hit_rate(&self) -> f64 {
         let stats = self.stats.read().await;
         let total = stats.cache_hits + stats.cache_misses;
@@ -231,7 +234,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     async fn test_hit_rate() {
         let pool = MemoryPool::new();
         assert_eq!(pool.hit_rate().await, 0.0);

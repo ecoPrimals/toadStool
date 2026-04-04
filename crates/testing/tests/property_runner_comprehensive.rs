@@ -3,7 +3,11 @@
 //!
 //! Expanding coverage for properties/runner.rs (current: 7.37%)
 //! Target: 80%+ coverage
-#![allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#![expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
+#![allow(clippy::cast_possible_wrap)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

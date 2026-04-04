@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Universal Unified Memory Demo
 
-#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#![expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
+#![allow(clippy::cast_sign_loss)]
 //!
 //! Demonstrates vendor-agnostic zero-copy GPU compute using ToadStool's
 //! unified memory system.

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
 //! Comprehensive tests for workload types
 
 use std::collections::HashMap;

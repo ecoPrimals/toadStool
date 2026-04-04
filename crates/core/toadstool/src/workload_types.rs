@@ -91,10 +91,10 @@ impl AiMlWorkload {
         };
 
         // Batch size increases memory linearly
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(clippy::cast_precision_loss, reason = "precision loss acceptable for this conversion")]
         let batch_multiplier = (self.batch_size.max(1) as f64 / 32.0).max(1.0);
 
-        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_precision_loss, clippy::cast_possible_truncation, reason = "precision loss and truncation acceptable for this conversion")]
         (base_memory as f64 * multiplier as f64 * batch_multiplier) as u64
     }
 }

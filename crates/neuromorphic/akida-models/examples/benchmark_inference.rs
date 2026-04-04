@@ -120,7 +120,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📊 BENCHMARK RESULTS\n");
 
     println!("Model:");
-    #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // KB display; precision loss acceptable
     let program_size_kb = model.program_size() as f64 / 1024.0;
     println!(
         "   Size:    {} bytes ({program_size_kb:.2} KB)",
@@ -184,7 +187,10 @@ fn calculate_std_dev(values: &[std::time::Duration], mean: std::time::Duration) 
     }
 
     let mean_secs = mean.as_secs_f64();
-    #[allow(clippy::cast_precision_loss)] // variance calc; usize to f64 for division
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // variance calc; usize to f64 for division
     let variance: f64 = values
         .iter()
         .map(|v| {

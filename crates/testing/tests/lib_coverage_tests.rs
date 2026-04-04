@@ -155,7 +155,10 @@ fn test_test_constants_memory_limit() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 fn test_test_constants_cpu_cores() {
     use toadstool_testing::TestConstants;
 

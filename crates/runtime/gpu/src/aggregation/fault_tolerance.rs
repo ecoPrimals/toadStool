@@ -126,7 +126,10 @@ impl PartialResultSet {
     }
 
     /// Determine best recovery strategy
-    #[allow(clippy::cast_precision_loss)] // ratio for coarse thresholds only
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // ratio for coarse thresholds only
     pub fn recovery_strategy(&self) -> RecoveryStrategy {
         let success_rate = self.successful_count() as f32 / self.expected_count as f32;
 

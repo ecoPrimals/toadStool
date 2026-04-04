@@ -5,7 +5,10 @@
 //! memory pool, tracker, unified memory, distributed types, engine, and frameworks
 //! without requiring real GPU hardware.
 
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

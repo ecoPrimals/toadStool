@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Extended Coverage Tests for Intelligent Auto-Configuration
 //!
 //! Comprehensive tests targeting 27% → 70% coverage increase

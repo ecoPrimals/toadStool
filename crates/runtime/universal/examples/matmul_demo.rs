@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Matrix Multiplication (`MatMul`) Operation Demo
 
-#![allow(clippy::cast_precision_loss, clippy::many_single_char_names)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
+#![allow(clippy::many_single_char_names)]
 //!
 //! Demonstrates:
 //! - `MatMul`: C = A * B (fundamental deep learning operation)

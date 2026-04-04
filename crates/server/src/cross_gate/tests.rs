@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use super::{
-    GateGpuInfo, JobRouter, RemoteDispatcher, RemoteDispatchError, RoutingDecision, RoutingReason,
+    GateGpuInfo, JobRouter, RemoteDispatchError, RemoteDispatcher, RoutingDecision, RoutingReason,
 };
 
 fn tower_gpu() -> GateGpuInfo {
@@ -311,8 +311,7 @@ fn test_gate_gpu_info_endpoint_serializes() {
 #[tokio::test]
 async fn test_remote_dispatcher_forward_unix_invalid_path_returns_transport_error() {
     // /tmp exists but is a directory, not a socket — UnixStream::connect fails
-    let result =
-        RemoteDispatcher::forward("/tmp", "compute.submit", serde_json::json!({})).await;
+    let result = RemoteDispatcher::forward("/tmp", "compute.submit", serde_json::json!({})).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
@@ -324,12 +323,8 @@ async fn test_remote_dispatcher_forward_unix_invalid_path_returns_transport_erro
 #[tokio::test]
 async fn test_remote_dispatcher_forward_nonexistent_tcp_returns_transport_error() {
     // Use localhost with port 1 — nothing listens, connection refused quickly
-    let result = RemoteDispatcher::forward(
-        "127.0.0.1:1",
-        "compute.submit",
-        serde_json::json!({}),
-    )
-    .await;
+    let result =
+        RemoteDispatcher::forward("127.0.0.1:1", "compute.submit", serde_json::json!({})).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(

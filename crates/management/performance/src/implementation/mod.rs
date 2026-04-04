@@ -65,7 +65,10 @@ impl IntelligentPerformanceOptimizer {
 }
 
 impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
-    #[allow(clippy::significant_drop_tightening)] // guard must outlive select_runtime_by_strategy call
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // guard must outlive select_runtime_by_strategy call
     async fn select_runtime(
         &self,
         request: &ExecutionRequest,

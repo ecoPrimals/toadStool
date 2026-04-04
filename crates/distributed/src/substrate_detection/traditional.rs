@@ -6,7 +6,10 @@ use super::types::PlatformType;
 use toadstool::ToadStoolResult;
 
 /// Detect traditional operating system platforms.
-#[allow(clippy::unused_async)] // Sync probe; async for API consistency with SubstrateDetector
+#[expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)] // Sync probe; async for API consistency with SubstrateDetector
 pub async fn detect() -> ToadStoolResult<Vec<PlatformType>> {
     let mut platforms = Vec::new();
     let os = std::env::consts::OS;

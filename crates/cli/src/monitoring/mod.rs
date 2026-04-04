@@ -222,7 +222,10 @@ impl MonitoringSystem {
         Ok(())
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn spawn_collection_task(
         &self,
         session_id: Uuid,

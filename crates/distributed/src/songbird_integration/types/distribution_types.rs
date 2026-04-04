@@ -143,7 +143,10 @@ impl LoadEstimator {
         let cpu_cores = std::thread::available_parallelism()
             .map(|n| n.get() as f64)
             .unwrap_or(4.0);
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let total_memory = toadstool_sysmon::memory_info()
             .map(|m| m.total as f64)
             .unwrap_or(1.0);

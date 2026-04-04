@@ -86,7 +86,10 @@ impl ConstraintEvaluation {
 
         let total_score: f64 = soft_results.iter().map(|s| s.score()).sum();
         let len = soft_results.len();
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let result = total_score / len as f64;
         result
     }

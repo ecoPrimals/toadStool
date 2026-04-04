@@ -471,7 +471,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_create_test_resource_requirements() {
         let requirements = create_test_resource_requirements();
         assert_eq!(requirements.cpu.min_cores, 1.0);

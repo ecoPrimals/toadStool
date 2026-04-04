@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Comprehensive tests for `biomeos_integration/agents` module
 //!
 //! This test suite covers:
@@ -444,7 +447,10 @@ fn test_agent_deployment_config_clone() {
     };
     let config2 = config1.clone();
 
-    assert_eq!(config1.ai_processing_endpoint, config2.ai_processing_endpoint);
+    assert_eq!(
+        config1.ai_processing_endpoint,
+        config2.ai_processing_endpoint
+    );
     assert_eq!(config1.mcp_enabled, config2.mcp_enabled);
 }
 

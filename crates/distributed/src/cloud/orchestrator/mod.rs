@@ -225,7 +225,10 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Deploy with cloud bursting capability
-    #[allow(clippy::significant_drop_tightening)] // Must hold lock - primary ref is from providers
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // Must hold lock - primary ref is from providers
     async fn deploy_with_cloud_burst(
         &self,
         job: &UniversalJob,
@@ -282,7 +285,10 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Get availability across all clouds
-    #[allow(clippy::significant_drop_tightening)] // Must hold lock during iteration - provider refs are from lock
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // Must hold lock during iteration - provider refs are from lock
     async fn get_multi_cloud_availability(&self) -> ToadStoolResult<MultiCloudAvailability> {
         let mut availability = MultiCloudAvailability::new();
         let providers = self.providers.read().await;

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Discover all compute units example
 
-#![allow(clippy::cast_precision_loss)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 //!
 //! This demonstrates the core principle: CPU, GPU, neuromorphic - all
 //! are just different orders of the same parallel compute architecture.

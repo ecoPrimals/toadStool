@@ -9,7 +9,10 @@
 //! Migrated to `hw-safe::DeviceMmap` + `hw-safe::vfio_setup` — zero local
 //! `unsafe` blocks. All mmap/ioctl unsafety is contained in `hw-safe`.
 
-#![allow(clippy::cast_possible_truncation)]
+#![expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 
 use crate::error::{AkidaError, Result};
 use std::os::fd::AsFd;
@@ -216,7 +219,10 @@ impl MappedRegion {
 }
 
 #[cfg(test)]
-#[allow(clippy::assertions_on_constants)]
+#[expect(
+    clippy::assertions_on_constants,
+    reason = "compile-time assertion by design"
+)]
 mod tests {
     use super::*;
 

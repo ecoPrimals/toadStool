@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::unused_async)]
+#![expect(
+    clippy::unused_async,
+    reason = "async signature required by trait/interface"
+)]
 //! State management tests
 //!
 //! Tier 1 tests: Coverage-measured state management tests

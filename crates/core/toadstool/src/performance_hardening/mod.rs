@@ -92,7 +92,10 @@ impl PerformanceHardeningManager {
     }
 
     /// Start monitoring task
-    #[allow(clippy::unused_async)] // Spawns background task; async for API consistency
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )] // Spawns background task; async for API consistency
     async fn start_monitoring_task(&self) {
         let resource_monitor = Arc::clone(&self.resource_monitor);
         let base_interval = self.config.monitoring_config.base_sampling_interval;

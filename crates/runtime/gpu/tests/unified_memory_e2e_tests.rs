@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#![expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
+#![allow(clippy::cast_sign_loss)]
 //! End-to-End tests for Universal Unified Memory
 //!
 //! These tests verify the complete unified memory system from initialization

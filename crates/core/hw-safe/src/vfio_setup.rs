@@ -187,7 +187,10 @@ pub fn set_iommu(container: BorrowedFd<'_>, iommu_type: u32) -> std::io::Result<
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 pub fn group_get_status(group: BorrowedFd<'_>) -> std::io::Result<VfioGroupStatus> {
     let mut status = VfioGroupStatus {
         argsz: std::mem::size_of::<VfioGroupStatus>() as u32,
@@ -206,10 +209,7 @@ pub fn group_get_status(group: BorrowedFd<'_>) -> std::io::Result<VfioGroupStatu
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
-pub fn group_set_container(
-    group: BorrowedFd<'_>,
-    container: impl AsFd,
-) -> std::io::Result<()> {
+pub fn group_set_container(group: BorrowedFd<'_>, container: impl AsFd) -> std::io::Result<()> {
     let container_fd = container.as_fd().as_raw_fd();
     let cmd = VfioReturnIoctl::<OP_GROUP_SET_CONTAINER> {
         arg: std::ptr::from_ref(&container_fd) as usize,
@@ -245,7 +245,10 @@ pub fn group_get_device_fd(
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 pub fn device_get_info(device: BorrowedFd<'_>) -> std::io::Result<VfioDeviceInfo> {
     let mut info = VfioDeviceInfo {
         argsz: std::mem::size_of::<VfioDeviceInfo>() as u32,
@@ -264,7 +267,10 @@ pub fn device_get_info(device: BorrowedFd<'_>) -> std::io::Result<VfioDeviceInfo
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
-#[allow(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "truncation acceptable for this conversion"
+)]
 pub fn device_get_region_info(
     device: BorrowedFd<'_>,
     index: u32,

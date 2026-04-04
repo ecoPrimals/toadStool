@@ -36,7 +36,10 @@ mod tests {
     #[test]
     fn songbird_registration_display() {
         let err = DistributedError::SongbirdRegistration("connection refused".to_string());
-        assert!(err.to_string().contains("Coordination service registration failed"));
+        assert!(
+            err.to_string()
+                .contains("Coordination service registration failed")
+        );
         assert!(err.to_string().contains("connection refused"));
     }
 

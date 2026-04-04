@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 //! Comprehensive tests for AI/MCP Interface
 //!
 //! Tests all major functions and paths in `ai_mcp_interface.rs` to achieve 70%+ coverage

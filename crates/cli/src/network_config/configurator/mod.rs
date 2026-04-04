@@ -28,17 +28,35 @@ mod service_mesh;
 mod traffic;
 
 // Re-export traits for internal use
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) use core::ConfiguratorCore;
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) use discovery::DiscoveryExt;
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) use reliability::ReliabilityExt;
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) use security::SecurityExt;
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) use service_mesh::ServiceMeshExt;
-#[allow(clippy::redundant_pub_crate)]
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "explicit visibility for clarity"
+)]
 pub(crate) use traffic::TrafficExt;
 
 /// Orchestration network configurator (legacy name: SongbirdNetworkConfigurator).

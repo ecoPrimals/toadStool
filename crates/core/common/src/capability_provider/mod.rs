@@ -268,7 +268,10 @@ mod tests {
         assert!(matches!(result.unwrap_err(), CapabilityError::RpcFailed(_)));
     }
 
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn spawn_mock_discovery_server(
         result: serde_json::Value,
     ) -> (PathBuf, tokio::task::JoinHandle<()>) {

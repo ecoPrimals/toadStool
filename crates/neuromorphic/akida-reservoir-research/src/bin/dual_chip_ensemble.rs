@@ -95,7 +95,10 @@ async fn main() -> Result<()> {
             println!("   ✅ Ensemble inference complete!");
             println!("\n   Results:");
             println!("      State size: {} dimensions", ensemble_state.len());
-            #[allow(clippy::cast_precision_loss)] // u128 µs fits comfortably in f64
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )] // u128 µs fits comfortably in f64
             let micros = elapsed.as_micros() as f64;
             println!("      Latency: {elapsed:?} ({micros:.2} µs)");
 
@@ -116,7 +119,10 @@ async fn main() -> Result<()> {
             println!("      Concatenation:     ~1-10µs");
             println!("      ────────────────────────────");
             println!("      Total expected:    ~100-150µs");
-            #[allow(clippy::cast_precision_loss)] // u128 µs fits comfortably in f64
+            #[expect(
+                clippy::cast_precision_loss,
+                reason = "precision loss acceptable for this conversion"
+            )] // u128 µs fits comfortably in f64
             let micros = elapsed.as_micros() as f64;
             println!("      Actual measured:   {micros:.2}µs");
 

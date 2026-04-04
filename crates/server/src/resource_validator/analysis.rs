@@ -94,7 +94,10 @@ pub(crate) fn generate_warnings(
     let mut warnings = Vec::new();
 
     // Warn if CPU usage is > 70%
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     let cpu_usage = estimate.cpu_cores as f32 / capabilities.available_cpu_cores as f32;
     if cpu_usage > 0.7 && cpu_usage <= 1.0 {
         warnings.push(format!(
@@ -104,7 +107,10 @@ pub(crate) fn generate_warnings(
     }
 
     // Warn if memory usage is > 70%
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     let memory_usage = estimate.memory_bytes as f32 / capabilities.available_memory_bytes as f32;
     if memory_usage > 0.7 && memory_usage <= 1.0 {
         warnings.push(format!(
@@ -115,7 +121,10 @@ pub(crate) fn generate_warnings(
 
     // Warn if GPU memory usage is > 70%
     if capabilities.total_gpu_memory_bytes > 0 {
-        #[allow(clippy::cast_precision_loss)]
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "precision loss acceptable for this conversion"
+        )]
         let gpu_usage =
             estimate.gpu_memory_bytes as f32 / capabilities.available_gpu_memory_bytes as f32;
         if gpu_usage > 0.7 && gpu_usage <= 1.0 {
@@ -127,7 +136,10 @@ pub(crate) fn generate_warnings(
     }
 
     // Warn if storage usage is > 80%
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )]
     let storage_usage = estimate.storage_bytes as f32 / capabilities.available_storage_bytes as f32;
     if storage_usage > 0.8 && storage_usage <= 1.0 {
         warnings.push(format!(

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Filter and Scan Operations Demo
 
-#![allow(clippy::cast_precision_loss)]
+#![expect(
+    clippy::cast_precision_loss,
+    reason = "precision loss acceptable for this conversion"
+)]
 //!
 //! Demonstrates new operations added to the Universal Runtime:
 //! - Filter: Select elements matching a predicate

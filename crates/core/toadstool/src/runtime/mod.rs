@@ -74,7 +74,10 @@ impl RuntimeOrchestrator {
     /// # Errors
     ///
     /// Returns error if validation fails, no engine is available for the selected runtime, or execution fails.
-    #[allow(clippy::significant_drop_tightening)]
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )]
     pub async fn execute(&self, request: ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
         let execution_id = request.execution_id;
         info!("Starting execution: {}", execution_id);

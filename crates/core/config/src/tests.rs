@@ -5,7 +5,6 @@ use super::*;
 
 // ===== Network constants =====
 #[test]
-#[allow(clippy::assertions_on_constants)]
 fn test_network_constants() {
     assert_eq!(network::DEFAULT_REQUEST_TIMEOUT_SECS, 30);
     assert_eq!(network::DEFAULT_CONNECTION_TIMEOUT_SECS, 10);
@@ -29,7 +28,6 @@ fn test_get_bind_host_default() {
 
 // ===== App constants =====
 #[test]
-#[allow(clippy::assertions_on_constants)]
 fn test_app_constants() {
     assert_eq!(app::DEFAULT_APP_NAME, "toadstool");
     assert_eq!(app::DEFAULT_ENVIRONMENT, "development");
@@ -43,7 +41,6 @@ fn test_app_constants() {
 
 // ===== Testing constants =====
 #[test]
-#[allow(clippy::assertions_on_constants)]
 fn test_testing_constants() {
     assert_eq!(testing::DEFAULT_TEST_TIMEOUT_SECS, 30);
     assert_eq!(testing::DEFAULT_TEST_PORT, 9999);
@@ -52,7 +49,10 @@ fn test_testing_constants() {
 
 // ===== Development constants =====
 #[test]
-#[allow(clippy::assertions_on_constants)]
+#[expect(
+    clippy::assertions_on_constants,
+    reason = "compile-time assertion by design"
+)]
 fn test_development_constants() {
     assert_eq!(development::DEFAULT_DEV_ENVIRONMENT, "development");
     assert_eq!(development::DEFAULT_DEV_LOG_LEVEL, "debug");
@@ -62,7 +62,10 @@ fn test_development_constants() {
 
 // ===== Production constants =====
 #[test]
-#[allow(clippy::assertions_on_constants)]
+#[expect(
+    clippy::assertions_on_constants,
+    reason = "compile-time assertion by design"
+)]
 fn test_production_constants() {
     assert_eq!(production::DEFAULT_PROD_ENVIRONMENT, "production");
     assert_eq!(production::DEFAULT_PROD_LOG_LEVEL, "info");

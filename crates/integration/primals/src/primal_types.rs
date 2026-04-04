@@ -59,7 +59,10 @@ pub enum PrimalType {
 impl PrimalType {
     /// Convert `PrimalType` to its capability string representation
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)] // Custom(s) => s.as_str() is not const
+    #[expect(
+        clippy::missing_const_for_fn,
+        reason = "not const due to future evolution"
+    )] // Custom(s) => s.as_str() is not const
     pub fn as_str(&self) -> &str {
         match self {
             Self::Crypto => "crypto",

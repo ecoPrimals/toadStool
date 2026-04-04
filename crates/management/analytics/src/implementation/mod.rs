@@ -130,7 +130,10 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         Ok(())
     }
 
-    #[allow(clippy::significant_drop_tightening)] // matching holds refs from buf
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // matching holds refs from buf
     async fn analyze_trends(
         &self,
         metric_name: &str,
@@ -190,7 +193,10 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         })
     }
 
-    #[allow(clippy::significant_drop_tightening)] // matching holds refs from buf
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // matching holds refs from buf
     async fn predict_values(
         &self,
         metric_name: &str,
@@ -212,7 +218,10 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         Ok(statistics::generate_predictions(&values, hours_ahead))
     }
 
-    #[allow(clippy::significant_drop_tightening)] // recent_points holds refs from buf
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // recent_points holds refs from buf
     async fn evaluate_alerts(&self) -> ToadStoolResult<Vec<Alert>> {
         debug!("Evaluating alert conditions");
 
@@ -243,7 +252,10 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
         Ok(dashboard_id)
     }
 
-    #[allow(clippy::significant_drop_tightening)] // dashboard and buffer refs needed for build
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "drop order is intentional"
+    )] // dashboard and buffer refs needed for build
     async fn get_dashboard_data(&self, dashboard_id: Uuid) -> ToadStoolResult<serde_json::Value> {
         debug!("Getting dashboard data for: {}", dashboard_id);
 

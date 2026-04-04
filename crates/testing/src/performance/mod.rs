@@ -137,7 +137,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_resource_usage_metrics_default() {
         let metrics = ResourceUsageMetrics::default();
         assert_eq!(metrics.peak_memory_mb, 0);
@@ -159,7 +162,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // test values are exact literals
+    #[expect(
+        clippy::float_cmp,
+        reason = "exact comparison intended in this context"
+    )] // test values are exact literals
     fn test_resource_monitor_sample() {
         let mut monitor = ResourceMonitor::new();
         monitor.sample_resources();

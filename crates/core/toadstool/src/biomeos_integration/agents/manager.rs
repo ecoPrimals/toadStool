@@ -88,7 +88,10 @@ impl AgentDeploymentManager {
 
         // Priority 3: Check if endpoint is already configured
         if !config.ai_processing_endpoint.is_empty() {
-            tracing::debug!("Using configured endpoint: {}", config.ai_processing_endpoint);
+            tracing::debug!(
+                "Using configured endpoint: {}",
+                config.ai_processing_endpoint
+            );
             #[allow(deprecated)]
             return Ok(Self::with_squirrel(config));
         }

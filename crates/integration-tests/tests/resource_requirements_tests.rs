@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(clippy::float_cmp, clippy::items_after_statements)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
+#![allow(clippy::items_after_statements)]
 //! Unit tests for `ResourceRequirements` validation and management
 //!
 //! Tests use the real nested API: `ResourceRequirements` wraps `CpuRequirements`,

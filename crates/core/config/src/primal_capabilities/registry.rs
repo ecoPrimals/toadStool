@@ -106,7 +106,9 @@ impl PrimalCapabilitiesRegistry {
 /// This is the ONLY place where hardcoding is acceptable:
 /// **"Know thyself"** - a primal should know its own capabilities
 #[must_use]
-pub fn get_self_capabilities(registry: &PrimalCapabilitiesRegistry) -> Option<&super::parsing::PrimalDefinition> {
+pub fn get_self_capabilities(
+    registry: &PrimalCapabilitiesRegistry,
+) -> Option<&super::parsing::PrimalDefinition> {
     let self_name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     registry.get_primal(self_name)
 }

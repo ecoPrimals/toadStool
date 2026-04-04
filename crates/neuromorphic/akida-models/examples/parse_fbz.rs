@@ -31,7 +31,10 @@ fn main() -> Result<()> {
     println!("📊 Model Information:");
     println!("   Version:      {}", model.version());
     println!("   Layers:       {}", model.layer_count());
-    #[allow(clippy::cast_precision_loss)] // KB display; precision loss acceptable
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "precision loss acceptable for this conversion"
+    )] // KB display; precision loss acceptable
     let program_size_kb = model.program_size() as f32 / 1024.0;
     println!(
         "   Program size: {} bytes ({program_size_kb:.2} KB)\n",

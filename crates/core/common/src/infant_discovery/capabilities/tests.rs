@@ -46,7 +46,8 @@ fn test_discovered_service_serialization() {
     };
 
     let json = serde_json::to_string(&service).expect("Failed to serialize");
-    let deserialized: DiscoveredService = serde_json::from_str(&json).expect("Failed to deserialize");
+    let deserialized: DiscoveredService =
+        serde_json::from_str(&json).expect("Failed to deserialize");
 
     assert_eq!(deserialized.capability, service.capability);
     assert_eq!(deserialized.endpoint, service.endpoint);
@@ -88,7 +89,8 @@ fn test_discovery_source_serialization() {
 
     for source in sources {
         let json = serde_json::to_string(&source).expect("Failed to serialize");
-        let _deserialized: DiscoverySource = serde_json::from_str(&json).expect("Failed to deserialize");
+        let _deserialized: DiscoverySource =
+            serde_json::from_str(&json).expect("Failed to deserialize");
     }
 }
 
@@ -179,7 +181,8 @@ fn test_detected_substrate_serialization() {
     };
 
     let json = serde_json::to_string(&substrate).expect("Failed to serialize");
-    let deserialized: DetectedSubstrate = serde_json::from_str(&json).expect("Failed to deserialize");
+    let deserialized: DetectedSubstrate =
+        serde_json::from_str(&json).expect("Failed to deserialize");
 
     assert_eq!(deserialized.substrate_type, SubstrateType::Cloud);
     assert_eq!(deserialized.capabilities.len(), 2);

@@ -66,7 +66,11 @@ impl CpuComputeResource {
     }
 
     /// Detect CPU capabilities
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)] // heuristic perf model
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        reason = "precision loss and truncation acceptable for heuristic perf model"
+    )] // heuristic perf model
     fn detect_cpu_capabilities(num_cores: usize) -> ComputeCapabilities {
         ComputeCapabilities {
             parallelism: ParallelismCapabilities {
@@ -384,7 +388,10 @@ impl CpuComputeContext {
     }
 
     /// Execute parallel compute workload using Rayon
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn execute_parallel_compute(
         &self,
         workload: &UniversalWorkload,
@@ -409,7 +416,10 @@ impl CpuComputeContext {
     }
 
     /// Execute reduction operation
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn execute_reduction(
         &self,
         workload: &UniversalWorkload,
@@ -431,7 +441,10 @@ impl CpuComputeContext {
     }
 
     /// Execute source code
-    #[allow(clippy::unused_async)]
+    #[expect(
+        clippy::unused_async,
+        reason = "async signature required by trait/interface"
+    )]
     async fn execute_source(
         &self,
         language: &KernelLanguage,

@@ -2,7 +2,10 @@
 // Copyright (C) 2024-2025 ToadStool Project
 // SPDX-License-Identifier: AGPL-3.0-only
 
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 
 use super::*;
 use std::collections::HashMap;

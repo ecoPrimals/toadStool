@@ -39,7 +39,10 @@ impl DmaBuffer {
 
         let vaddr = mem.as_ptr().as_ptr() as u64;
 
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "truncation acceptable for this conversion"
+        )]
         let dma_map_arg = VfioDmaMap {
             argsz: std::mem::size_of::<VfioDmaMap>() as u32,
             flags: flags::READ | flags::WRITE,

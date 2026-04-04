@@ -45,6 +45,4 @@ pub use discovered::{
 pub use discovery_traits::{CapabilityDiscovery, DiscoveryError};
 pub use endpoint::{EndpointResolver, EndpointSource};
 pub use standard_capabilities::capabilities;
-pub use substrate::{
-    DetectedSubstrate, SubstrateCapability, SubstrateDetector, SubstrateType,
-};
+pub use substrate::{DetectedSubstrate, SubstrateCapability, SubstrateDetector, SubstrateType};

@@ -89,8 +89,7 @@ fn test_self_knowledge_returns_none_for_unknown_primal() {
 fn test_find_by_capabilities_all() {
     let registry = create_test_registry();
     // Beardog has both capabilities
-    let crypto_key =
-        registry.find_by_capabilities(&["cryptographic-operations", "key-management"]);
+    let crypto_key = registry.find_by_capabilities(&["cryptographic-operations", "key-management"]);
     assert_eq!(crypto_key, vec!["beardog"]);
     // No primal has both universal-compute and key-management
     let none_match = registry.find_by_capabilities(&["universal-compute", "key-management"]);
@@ -165,8 +164,7 @@ fallback_url = "http://fallback:8080"
 
 #[test]
 fn test_load_from_file_not_found() {
-    let result =
-        PrimalCapabilitiesRegistry::load_from_file("/nonexistent/path/capabilities.toml");
+    let result = PrimalCapabilitiesRegistry::load_from_file("/nonexistent/path/capabilities.toml");
     assert!(result.is_err());
     assert!(matches!(
         result.unwrap_err(),

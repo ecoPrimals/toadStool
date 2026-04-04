@@ -7,7 +7,10 @@
 //! Run: cargo test -p toadstool-auto-config --test `auto_config_coverage_s155_tests`
 //! For capability trait mocks: add --features test-mocks (4 extra tests)
 
-#![allow(clippy::float_cmp)]
+#![expect(
+    clippy::float_cmp,
+    reason = "exact comparison intended in this context"
+)]
 
 use std::collections::HashMap;
 use std::time::SystemTime;
