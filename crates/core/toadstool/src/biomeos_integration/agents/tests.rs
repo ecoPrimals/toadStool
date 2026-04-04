@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 fn test_config() -> AgentDeploymentConfig {
     AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -39,7 +39,7 @@ fn sample_agent_info() -> AgentInfo {
 #[test]
 fn test_agent_deployment_config_construction() {
     let config = test_config();
-    assert_eq!(config.squirrel_endpoint, "http://localhost:8080");
+    assert_eq!(config.ai_processing_endpoint, "http://localhost:8080");
     assert_eq!(config.model_registry, "local");
     assert_eq!(config.agent_runtime, "container");
     assert!(config.mcp_enabled);
@@ -51,7 +51,7 @@ fn test_agent_deployment_config_serialization_roundtrip() {
     let config = test_config();
     let json = serde_json::to_string(&config).expect("serialize");
     let restored: AgentDeploymentConfig = serde_json::from_str(&json).expect("deserialize");
-    assert_eq!(config.squirrel_endpoint, restored.squirrel_endpoint);
+    assert_eq!(config.ai_processing_endpoint, restored.ai_processing_endpoint);
 }
 
 #[test]

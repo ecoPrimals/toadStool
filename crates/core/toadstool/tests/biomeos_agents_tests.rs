@@ -402,14 +402,14 @@ fn test_model_performance_metrics_serialization() {
 #[test]
 fn test_agent_deployment_config_creation() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
         resource_limits: serde_json::Map::new(),
     };
 
-    assert_eq!(config.squirrel_endpoint, "http://localhost:8080");
+    assert_eq!(config.ai_processing_endpoint, "http://localhost:8080");
     assert_eq!(config.model_registry, "local");
     assert_eq!(config.agent_runtime, "container");
     assert!(config.mcp_enabled);
@@ -422,7 +422,7 @@ fn test_agent_deployment_config_with_resource_limits() {
     resource_limits.insert("max_memory_gb".to_string(), serde_json::json!(8.0));
 
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://squirrel:9090".to_string(),
+        ai_processing_endpoint: "http://squirrel:9090".to_string(),
         model_registry: "huggingface".to_string(),
         agent_runtime: "process".to_string(),
         mcp_enabled: false,
@@ -436,7 +436,7 @@ fn test_agent_deployment_config_with_resource_limits() {
 #[test]
 fn test_agent_deployment_config_clone() {
     let config1 = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "lambda".to_string(),
         mcp_enabled: true,
@@ -444,14 +444,14 @@ fn test_agent_deployment_config_clone() {
     };
     let config2 = config1.clone();
 
-    assert_eq!(config1.squirrel_endpoint, config2.squirrel_endpoint);
+    assert_eq!(config1.ai_processing_endpoint, config2.ai_processing_endpoint);
     assert_eq!(config1.mcp_enabled, config2.mcp_enabled);
 }
 
 #[test]
 fn test_agent_deployment_config_serialization() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "custom".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -469,7 +469,7 @@ fn test_agent_deployment_config_serialization() {
 #[test]
 fn test_agent_deployment_manager_creation() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -485,7 +485,7 @@ fn test_agent_deployment_manager_creation() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_agent_deployment_manager_initialize_squirrel() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -508,7 +508,7 @@ async fn test_agent_deployment_manager_initialize_squirrel() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_agent_deployment_manager_health_check() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:8080".to_string(),
+        ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,

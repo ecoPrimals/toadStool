@@ -81,14 +81,14 @@ impl AgentDeploymentManager {
         {
             tracing::info!("Discovered ML service via environment: {}", endpoint);
             let mut config = config;
-            config.squirrel_endpoint = endpoint;
+            config.ai_processing_endpoint = endpoint;
             #[allow(deprecated)]
             return Ok(Self::with_squirrel(config));
         }
 
         // Priority 3: Check if endpoint is already configured
-        if !config.squirrel_endpoint.is_empty() {
-            tracing::debug!("Using configured endpoint: {}", config.squirrel_endpoint);
+        if !config.ai_processing_endpoint.is_empty() {
+            tracing::debug!("Using configured endpoint: {}", config.ai_processing_endpoint);
             #[allow(deprecated)]
             return Ok(Self::with_squirrel(config));
         }
@@ -132,7 +132,7 @@ impl AgentDeploymentManager {
     #[allow(deprecated)]
     pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
         let backend = super::super::agent_backend::SquirrelBackend::new(
-            config.squirrel_endpoint.clone(),
+            config.ai_processing_endpoint.clone(),
             config.model_registry.clone(),
             config.agent_runtime.clone(),
             config.mcp_enabled,

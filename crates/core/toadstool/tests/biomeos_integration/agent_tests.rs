@@ -10,14 +10,14 @@ use toadstool::biomeos_integration::*;
 #[test]
 fn test_agent_deployment_config_creation() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "huggingface".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
         resource_limits: serde_json::Map::new(),
     };
     
-    assert_eq!(config.squirrel_endpoint, "http://localhost:7070");
+    assert_eq!(config.ai_processing_endpoint, "http://localhost:7070");
     assert_eq!(config.model_registry, "huggingface");
     assert_eq!(config.agent_runtime, "container");
     assert!(config.mcp_enabled);
@@ -26,7 +26,7 @@ fn test_agent_deployment_config_creation() {
 #[test]
 fn test_agent_deployment_config_clone() {
     let config1 = AgentDeploymentConfig {
-        squirrel_endpoint: "http://squirrel:7070".to_string(),
+        ai_processing_endpoint: "http://squirrel:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "process".to_string(),
         mcp_enabled: false,
@@ -35,7 +35,7 @@ fn test_agent_deployment_config_clone() {
     
     let config2 = config1.clone();
     
-    assert_eq!(config1.squirrel_endpoint, config2.squirrel_endpoint);
+    assert_eq!(config1.ai_processing_endpoint, config2.ai_processing_endpoint);
     assert_eq!(config1.model_registry, config2.model_registry);
 }
 
@@ -298,7 +298,7 @@ fn test_model_performance_metrics_slow() {
 #[test]
 fn test_agent_deployment_manager_creation() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "huggingface".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -312,7 +312,7 @@ fn test_agent_deployment_manager_creation() {
 #[test]
 fn test_agent_deployment_manager_with_local_registry() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "process".to_string(),
         mcp_enabled: false,
@@ -330,7 +330,7 @@ fn test_agent_deployment_manager_with_local_registry() {
 #[test]
 fn test_model_registry_huggingface() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "huggingface".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -343,7 +343,7 @@ fn test_model_registry_huggingface() {
 #[test]
 fn test_model_registry_local() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -356,7 +356,7 @@ fn test_model_registry_local() {
 #[test]
 fn test_model_registry_custom() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "custom".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -373,7 +373,7 @@ fn test_model_registry_custom() {
 #[test]
 fn test_agent_runtime_container() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -386,7 +386,7 @@ fn test_agent_runtime_container() {
 #[test]
 fn test_agent_runtime_process() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "process".to_string(),
         mcp_enabled: true,
@@ -399,7 +399,7 @@ fn test_agent_runtime_process() {
 #[test]
 fn test_agent_runtime_lambda() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "lambda".to_string(),
         mcp_enabled: true,
@@ -416,7 +416,7 @@ fn test_agent_runtime_lambda() {
 #[test]
 fn test_mcp_enabled() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -429,7 +429,7 @@ fn test_mcp_enabled() {
 #[test]
 fn test_mcp_disabled() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7070".to_string(),
+        ai_processing_endpoint: "http://localhost:7070".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "process".to_string(),
         mcp_enabled: false,

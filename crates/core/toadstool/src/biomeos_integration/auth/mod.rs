@@ -27,9 +27,9 @@ pub use tokens::{
 /// Configuration for authentication manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthManagerConfig {
-    /// BearDog crypto service endpoint (legacy; prefer capability discovery).
-    #[serde(default)]
-    pub beardog_endpoint: String,
+    /// Crypto/security service endpoint (legacy; prefer capability discovery).
+    #[serde(default, alias = "beardog_endpoint")]
+    pub security_endpoint: String,
     /// Interval between token refresh attempts.
     pub token_refresh_interval: Duration,
     /// Whether to validate token signatures.
@@ -53,7 +53,7 @@ pub struct AuthManagerConfig {
 impl Default for AuthManagerConfig {
     fn default() -> Self {
         Self {
-            beardog_endpoint: String::new(),
+            security_endpoint: String::new(),
             token_refresh_interval: TOKEN_REFRESH_INTERVAL,
             signature_validation: true,
             timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
@@ -137,19 +137,19 @@ impl AuthenticationManager {
         {
             tracing::info!("Discovered crypto service via environment: {}", endpoint);
             let mut config = config;
-            config.beardog_endpoint = endpoint;
+            config.security_endpoint = endpoint;
             #[allow(deprecated)]
             return Ok(Self::with_beardog(config));
         }
 
-        if !config.beardog_endpoint.is_empty() {
+        if !config.security_endpoint.is_empty() {
             #[allow(deprecated)]
             return Ok(Self::with_beardog(config));
         }
 
         Err(crate::ToadStoolError::configuration(
             "No crypto provider discovered. Set TOADSTOOL_SECURITY_ENDPOINT or SECURITY_ENDPOINT, \
-             configure beardog_endpoint in the auth manager config, or ensure a crypto/security \
+             configure security_endpoint in the auth manager config, or ensure a crypto/security \
              service is running.",
         ))
     }
@@ -172,7 +172,7 @@ impl AuthenticationManager {
     #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover()")]
     #[allow(deprecated)]
     pub fn with_beardog(config: AuthManagerConfig) -> Self {
-        let backend = super::auth_backend::BearDogBackend::new(config.beardog_endpoint.clone());
+        let backend = super::auth_backend::BearDogBackend::new(config.security_endpoint.clone());
         Self {
             config,
             current_token: None,

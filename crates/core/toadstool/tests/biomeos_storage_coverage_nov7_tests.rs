@@ -87,7 +87,7 @@ fn test_storage_provisioning_config_serialization() {
     assert!(serialized.is_ok());
 
     let json = serialized.unwrap();
-    assert!(json.contains("nestgate_endpoint"));
+    assert!(json.contains("storage_endpoint"));
     assert!(json.contains("storage_tier"));
     assert!(json.contains("backup_enabled"));
 }
@@ -95,7 +95,7 @@ fn test_storage_provisioning_config_serialization() {
 #[test]
 fn test_storage_provisioning_config_deserialization() {
     let json = r#"{
-        "nestgate_endpoint": "http://localhost:9000",
+        "storage_endpoint": "http://localhost:9000",
         "storage_tier": "premium",
         "backup_enabled": true,
         "replication_enabled": true,
@@ -419,7 +419,7 @@ fn test_storage_config_default_uses_runtime_discovery() {
     // Default config uses empty endpoint — storage is discovered at runtime.
     let config = StorageProvisioningConfig::default();
     #[allow(deprecated)]
-    let ep = &config.nestgate_endpoint;
+    let ep = &config.storage_endpoint;
     assert!(
         ep.is_empty(),
         "default must use empty endpoint for runtime discovery"

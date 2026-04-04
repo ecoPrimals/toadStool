@@ -142,10 +142,8 @@ impl CaptureDevice {
     ///
     /// Returns an error if the `VIDIOC_S_FMT` ioctl fails.
     pub fn set_format(&mut self, width: u32, height: u32, fourcc: u32) -> Result<CaptureFormat> {
-        let mut fmt = v4l2_format {
-            type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
-            ..v4l2_format::default()
-        };
+        let mut fmt = v4l2_format::default();
+        fmt.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         fmt.fmt.width = width;
         fmt.fmt.height = height;
         fmt.fmt.pixelformat = fourcc;
@@ -170,12 +168,10 @@ impl CaptureDevice {
     ///
     /// Returns an error if `VIDIOC_REQBUFS` or buffer mapping fails.
     pub fn request_buffers(&mut self, count: u32) -> Result<u32> {
-        let mut req = v4l2_requestbuffers {
-            count,
-            type_: V4L2_BUF_TYPE_VIDEO_CAPTURE,
-            memory: V4L2_MEMORY_MMAP,
-            ..v4l2_requestbuffers::default()
-        };
+        let mut req = v4l2_requestbuffers::default();
+        req.count = count;
+        req.type_ = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        req.memory = V4L2_MEMORY_MMAP;
 
         ioctl::reqbufs(&self.fd, &mut req)
             .map_err(|e| ioctl_err("VIDIOC_REQBUFS", &e))?;

@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Evolution Note (Feb 2026)
 ///
-/// The `squirrel_endpoint` field is deprecated. Use capability-based discovery:
+/// The `ai_processing_endpoint` field is deprecated. Use capability-based discovery:
 ///
 /// ```rust,ignore
 /// // OLD: Hardcoded endpoint
 /// let config = AgentDeploymentConfig {
-///     squirrel_endpoint: "http://localhost:8080".into(),
+///     ai_processing_endpoint: "http://localhost:8080".into(),
 ///     ..Default::default()
 /// };
 ///
@@ -21,12 +21,12 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentDeploymentConfig {
-    /// Squirrel endpoint URL
+    /// AI processing service endpoint URL
     ///
     /// **DEPRECATED**: Use `AgentDeploymentManager::discover()` for runtime discovery.
-    /// When empty, the manager discovers Squirrel via capability lookup.
-    #[serde(default)]
-    pub squirrel_endpoint: String,
+    /// When empty, the manager discovers AI processing via capability lookup.
+    #[serde(default, alias = "squirrel_endpoint")]
+    pub ai_processing_endpoint: String,
     /// Model registry type (local, huggingface, custom)
     pub model_registry: String,
     /// Agent runtime (container, process, lambda)
@@ -40,7 +40,7 @@ pub struct AgentDeploymentConfig {
 impl Default for AgentDeploymentConfig {
     fn default() -> Self {
         Self {
-            squirrel_endpoint: String::new(), // Empty = use runtime discovery
+            ai_processing_endpoint: String::new(),
             model_registry: "local".to_string(),
             agent_runtime: "container".to_string(),
             mcp_enabled: false,

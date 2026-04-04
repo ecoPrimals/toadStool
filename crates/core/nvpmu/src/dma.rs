@@ -295,11 +295,11 @@ mod tests {
 
     #[test]
     fn huge_page_alignment_math() {
-        let hp2m = HugePageSize::Huge2M.page_size();
-        let hp1g = HugePageSize::Huge1G.page_size();
-        assert_eq!(1usize.div_ceil(hp2m) * hp2m, hp2m);
-        assert_eq!((hp2m + 1).div_ceil(hp2m) * hp2m, 2 * hp2m);
-        assert_eq!(1usize.div_ceil(hp1g) * hp1g, hp1g);
+        let two_mb = HugePageSize::Huge2M.page_size();
+        let one_gb = HugePageSize::Huge1G.page_size();
+        assert_eq!(1usize.div_ceil(two_mb) * two_mb, two_mb);
+        assert_eq!((two_mb + 1).div_ceil(two_mb) * two_mb, 2 * two_mb);
+        assert_eq!(1usize.div_ceil(one_gb) * one_gb, one_gb);
     }
 
     #[test]

@@ -6,7 +6,7 @@
 #[test]
 fn test_storage_provisioning_manager_creation() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -20,7 +20,7 @@ fn test_storage_provisioning_manager_creation() {
 #[test]
 fn test_storage_provisioning_manager_with_minimal_config() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "cold".to_string(),
         backup_enabled: false,
         replication_enabled: false,
@@ -38,7 +38,7 @@ fn test_storage_provisioning_manager_with_minimal_config() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_volume_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -69,7 +69,7 @@ async fn test_provision_volume_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_provision_persistent_volume_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -99,7 +99,7 @@ async fn test_provision_persistent_volume_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_mount_volume_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -130,7 +130,7 @@ async fn test_mount_volume_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_unmount_volume_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -159,7 +159,7 @@ async fn test_unmount_volume_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_delete_volume_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -188,7 +188,7 @@ async fn test_delete_volume_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_get_volume_status_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -218,7 +218,7 @@ async fn test_get_volume_status_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_list_volumes_mock() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -237,7 +237,7 @@ async fn test_list_volumes_mock() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_volume_lifecycle_provision_mount_unmount_delete() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -283,7 +283,7 @@ async fn test_volume_lifecycle_provision_mount_unmount_delete() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_multiple_volumes_provisioning() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "warm".to_string(),
         backup_enabled: false,
         replication_enabled: true,
@@ -311,7 +311,7 @@ async fn test_multiple_volumes_provisioning() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_replication_enabled_provisioning() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,

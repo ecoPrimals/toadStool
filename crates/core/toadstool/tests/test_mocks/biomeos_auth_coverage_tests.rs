@@ -22,7 +22,7 @@ use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_R
 
 fn base_config() -> AuthManagerConfig {
     AuthManagerConfig {
-        beardog_endpoint: "http://localhost:9090".to_string(),
+        security_endpoint: "http://localhost:9090".to_string(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
         signature_validation: true,
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
@@ -53,7 +53,7 @@ fn auth_manager_with_inmemory() {
 #[allow(deprecated)]
 fn with_beardog_creates_manager() {
     let mut config = base_config();
-    config.beardog_endpoint = "http://localhost:9876".to_string();
+    config.security_endpoint = "http://localhost:9876".to_string();
     let _m = AuthenticationManager::with_beardog(config);
 }
 

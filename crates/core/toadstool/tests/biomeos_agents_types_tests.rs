@@ -14,14 +14,14 @@ use toadstool::biomeos_integration::{
 #[test]
 fn test_agent_deployment_config_creation() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7000".to_string(),
+        ai_processing_endpoint: "http://localhost:7000".to_string(),
         model_registry: "huggingface".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
         resource_limits: serde_json::Map::new(),
     };
 
-    assert_eq!(config.squirrel_endpoint, "http://localhost:7000");
+    assert_eq!(config.ai_processing_endpoint, "http://localhost:7000");
     assert_eq!(config.model_registry, "huggingface");
     assert!(config.mcp_enabled);
 }
@@ -29,7 +29,7 @@ fn test_agent_deployment_config_creation() {
 #[test]
 fn test_agent_deployment_config_with_local_registry() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7000".to_string(),
+        ai_processing_endpoint: "http://localhost:7000".to_string(),
         model_registry: "local".to_string(),
         agent_runtime: "process".to_string(),
         mcp_enabled: false,
@@ -42,7 +42,7 @@ fn test_agent_deployment_config_with_local_registry() {
 #[test]
 fn test_agent_deployment_config_with_lambda_runtime() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7000".to_string(),
+        ai_processing_endpoint: "http://localhost:7000".to_string(),
         model_registry: "custom".to_string(),
         agent_runtime: "lambda".to_string(),
         mcp_enabled: true,
@@ -55,7 +55,7 @@ fn test_agent_deployment_config_with_lambda_runtime() {
 #[test]
 fn test_agent_deployment_config_serialization() {
     let config = AgentDeploymentConfig {
-        squirrel_endpoint: "http://localhost:7000".to_string(),
+        ai_processing_endpoint: "http://localhost:7000".to_string(),
         model_registry: "huggingface".to_string(),
         agent_runtime: "container".to_string(),
         mcp_enabled: true,
@@ -64,7 +64,7 @@ fn test_agent_deployment_config_serialization() {
 
     let json = serde_json::to_string(&config).unwrap();
     assert!(!json.is_empty());
-    assert!(json.contains("squirrel_endpoint"));
+    assert!(json.contains("ai_processing_endpoint"));
 }
 
 // ============================================================================

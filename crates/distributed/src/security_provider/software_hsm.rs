@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
-use aes_gcm::{Aes256Gcm, Key, Nonce};
+use aes_gcm::{Aes256Gcm, Nonce};
 use async_trait::async_trait;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::RngCore;
@@ -126,8 +126,8 @@ impl SecurityProvider for SoftwareHsmProvider {
         let raw_key = store.get_or_create_symmetric(&key_id).to_vec();
         drop(store);
 
-        let key = Key::<Aes256Gcm>::from_slice(&raw_key);
-        let cipher = Aes256Gcm::new(key);
+        let cipher = Aes256Gcm::new_from_slice(&raw_key)
+            .map_err(|_| ToadStoolError::security("AES-256-GCM key must be 32 bytes".to_string()))?;
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
 
         // AES-GCM output includes the 16-byte auth tag appended to ciphertext.
@@ -178,8 +178,8 @@ impl SecurityProvider for SoftwareHsmProvider {
             .to_vec();
         drop(store);
 
-        let key = Key::<Aes256Gcm>::from_slice(&raw_key);
-        let cipher = Aes256Gcm::new(key);
+        let cipher = Aes256Gcm::new_from_slice(&raw_key)
+            .map_err(|_| ToadStoolError::security("AES-256-GCM key must be 32 bytes".to_string()))?;
 
         let plaintext = cipher
             .decrypt(nonce, ct_and_tag)

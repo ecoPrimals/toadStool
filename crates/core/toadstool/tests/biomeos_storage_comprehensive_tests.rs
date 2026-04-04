@@ -124,7 +124,7 @@ fn test_storage_config_default_uses_discovery() {
     // Default config uses empty endpoint for runtime capability-based discovery
     let config = StorageProvisioningConfig::default();
     #[allow(deprecated)]
-    let ep = &config.nestgate_endpoint;
+    let ep = &config.storage_endpoint;
     assert!(
         ep.is_empty(),
         "default must use empty endpoint for runtime discovery"

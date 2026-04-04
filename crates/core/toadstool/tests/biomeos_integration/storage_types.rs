@@ -10,14 +10,14 @@ use toadstool::biomeos_integration::*;
 #[test]
 fn test_storage_provisioning_config_creation() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
     };
 
-    assert_eq!(config.nestgate_endpoint, "http://localhost:9090");
+    assert_eq!(config.storage_endpoint, "http://localhost:9090");
     assert_eq!(config.storage_tier, "hot");
     assert!(config.backup_enabled);
     assert!(config.replication_enabled);
@@ -27,7 +27,7 @@ fn test_storage_provisioning_config_creation() {
 #[test]
 fn test_storage_provisioning_config_clone() {
     let config1 = StorageProvisioningConfig {
-        nestgate_endpoint: "http://nestgate:9090".to_string(),
+        storage_endpoint: "http://nestgate:9090".to_string(),
         storage_tier: "warm".to_string(),
         backup_enabled: false,
         replication_enabled: true,
@@ -36,7 +36,7 @@ fn test_storage_provisioning_config_clone() {
 
     let config2 = config1.clone();
 
-    assert_eq!(config1.nestgate_endpoint, config2.nestgate_endpoint);
+    assert_eq!(config1.storage_endpoint, config2.storage_endpoint);
     assert_eq!(config1.storage_tier, config2.storage_tier);
     assert_eq!(config1.replication_factor, config2.replication_factor);
 }
@@ -44,7 +44,7 @@ fn test_storage_provisioning_config_clone() {
 #[test]
 fn test_storage_provisioning_config_serialization() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "cold".to_string(),
         backup_enabled: true,
         replication_enabled: false,
@@ -53,7 +53,7 @@ fn test_storage_provisioning_config_serialization() {
 
     let json = serde_json::to_string(&config).unwrap();
     assert!(!json.is_empty());
-    assert!(json.contains("nestgate_endpoint"));
+    assert!(json.contains("storage_endpoint"));
 }
 
 // ============================================================================
@@ -129,7 +129,7 @@ fn test_volume_status_serialization() {
 #[test]
 fn test_storage_tier_hot() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -142,7 +142,7 @@ fn test_storage_tier_hot() {
 #[test]
 fn test_storage_tier_warm() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "warm".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -155,7 +155,7 @@ fn test_storage_tier_warm() {
 #[test]
 fn test_storage_tier_cold() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "cold".to_string(),
         backup_enabled: true,
         replication_enabled: false,
@@ -172,7 +172,7 @@ fn test_storage_tier_cold() {
 #[test]
 fn test_replication_factor_one() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: false,
         replication_enabled: false,
@@ -185,7 +185,7 @@ fn test_replication_factor_one() {
 #[test]
 fn test_replication_factor_three() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -198,7 +198,7 @@ fn test_replication_factor_three() {
 #[test]
 fn test_replication_factor_five() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -215,7 +215,7 @@ fn test_replication_factor_five() {
 #[test]
 fn test_backup_enabled() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -228,7 +228,7 @@ fn test_backup_enabled() {
 #[test]
 fn test_backup_disabled() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: false,
         replication_enabled: false,
@@ -243,22 +243,22 @@ fn test_backup_disabled() {
 // ============================================================================
 
 #[test]
-fn test_nestgate_endpoint_localhost() {
+fn test_storage_endpoint_localhost() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
         replication_factor: 3,
     };
 
-    assert_eq!(config.nestgate_endpoint, "http://localhost:9090");
+    assert_eq!(config.storage_endpoint, "http://localhost:9090");
 }
 
 #[test]
-fn test_nestgate_endpoint_custom() {
+fn test_storage_endpoint_custom() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "https://nestgate.biomeos.local:9443".to_string(),
+        storage_endpoint: "https://nestgate.biomeos.local:9443".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -266,7 +266,7 @@ fn test_nestgate_endpoint_custom() {
     };
 
     assert_eq!(
-        config.nestgate_endpoint,
+        config.storage_endpoint,
         "https://nestgate.biomeos.local:9443"
     );
 }
@@ -278,7 +278,7 @@ fn test_nestgate_endpoint_custom() {
 #[test]
 fn test_storage_provisioning_manager_creation() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "hot".to_string(),
         backup_enabled: true,
         replication_enabled: true,
@@ -292,7 +292,7 @@ fn test_storage_provisioning_manager_creation() {
 #[test]
 fn test_storage_provisioning_manager_with_minimal_config() {
     let config = StorageProvisioningConfig {
-        nestgate_endpoint: "http://localhost:9090".to_string(),
+        storage_endpoint: "http://localhost:9090".to_string(),
         storage_tier: "cold".to_string(),
         backup_enabled: false,
         replication_enabled: false,

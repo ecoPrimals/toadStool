@@ -26,7 +26,7 @@ pub struct StorageProvisioningManager {
 /// Configuration for storage provisioning manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageProvisioningConfig {
-    /// NestGate endpoint URL.
+    /// Storage service endpoint URL.
     ///
     /// **Deprecated** — leave empty (`String::new()`) to use capability-based socket
     /// discovery via `discover_storage_socket()`. Explicit endpoints are only supported
@@ -35,7 +35,8 @@ pub struct StorageProvisioningConfig {
         since = "0.3.0",
         note = "Leave empty and use with_storage_service() for runtime discovery"
     )]
-    pub nestgate_endpoint: String,
+    #[serde(alias = "nestgate_endpoint")]
+    pub storage_endpoint: String,
     /// Storage tier preference
     pub storage_tier: String,
     /// Enable backup
@@ -50,7 +51,7 @@ pub struct StorageProvisioningConfig {
 impl Default for StorageProvisioningConfig {
     fn default() -> Self {
         Self {
-            nestgate_endpoint: String::new(), // empty = use runtime discovery
+            storage_endpoint: String::new(),
             storage_tier: "hot".to_string(),
             backup_enabled: false,
             replication_enabled: false,
@@ -97,7 +98,7 @@ impl StorageProvisioningManager {
     #[allow(deprecated)]
     pub fn with_nestgate(config: StorageProvisioningConfig) -> Self {
         let backend = super::storage_backend::NestGateBackend::new(
-            config.nestgate_endpoint.clone(),
+            config.storage_endpoint.clone(),
             config.storage_tier.clone(),
             config.replication_enabled,
             config.replication_factor,

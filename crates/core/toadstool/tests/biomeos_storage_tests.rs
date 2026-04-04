@@ -45,7 +45,7 @@ fn test_storage_provisioning_config_uses_runtime_discovery() {
     // capability at runtime rather than relying on a hardcoded address.
     let config = StorageProvisioningConfig::default();
     #[allow(deprecated)]
-    let ep = &config.nestgate_endpoint;
+    let ep = &config.storage_endpoint;
     assert!(
         ep.is_empty(),
         "default config must use empty endpoint for runtime discovery"

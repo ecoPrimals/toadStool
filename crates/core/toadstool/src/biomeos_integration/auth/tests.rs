@@ -15,7 +15,7 @@ use crate::biomeos_integration::types::ToadStoolConfig;
 
 fn test_config() -> AuthManagerConfig {
     AuthManagerConfig {
-        beardog_endpoint: "http://localhost:9090".to_string(),
+        security_endpoint: "http://localhost:9090".to_string(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
         signature_validation: true,
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
@@ -30,7 +30,7 @@ fn test_config() -> AuthManagerConfig {
 
 fn test_config_with_signing_key() -> AuthManagerConfig {
     AuthManagerConfig {
-        beardog_endpoint: "http://localhost:9090".to_string(),
+        security_endpoint: "http://localhost:9090".to_string(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
         signature_validation: true,
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,
@@ -66,7 +66,7 @@ fn sample_token() -> AuthenticationToken {
 #[test]
 fn test_auth_manager_config_construction() {
     let config = test_config();
-    assert_eq!(config.beardog_endpoint, "http://localhost:9090");
+    assert_eq!(config.security_endpoint, "http://localhost:9090");
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn test_primal_type_config_toadstool_variant() {
 
 fn config_signature_validation_disabled() -> AuthManagerConfig {
     AuthManagerConfig {
-        beardog_endpoint: "http://localhost:9090".to_string(),
+        security_endpoint: "http://localhost:9090".to_string(),
         token_refresh_interval: TOKEN_REFRESH_INTERVAL,
         signature_validation: false,
         timestamp_window: TIMESTAMP_VALIDATION_WINDOW,

@@ -15,7 +15,7 @@ use toadstool::biomeos_integration::{
 #[test]
 fn test_auth_manager_config_creation() {
     let config = AuthManagerConfig {
-        beardog_endpoint: "http://localhost:6000".to_string(),
+        security_endpoint: "http://localhost:6000".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
@@ -24,14 +24,14 @@ fn test_auth_manager_config_creation() {
         ..Default::default()
     };
 
-    assert_eq!(config.beardog_endpoint, "http://localhost:6000");
+    assert_eq!(config.security_endpoint, "http://localhost:6000");
     assert!(config.signature_validation);
 }
 
 #[test]
 fn test_auth_manager_config_short_refresh() {
     let config = AuthManagerConfig {
-        beardog_endpoint: "http://localhost:6000".to_string(),
+        security_endpoint: "http://localhost:6000".to_string(),
         token_refresh_interval: Duration::from_secs(60),
         signature_validation: true,
         timestamp_window: Duration::from_secs(30),
@@ -46,7 +46,7 @@ fn test_auth_manager_config_short_refresh() {
 #[test]
 fn test_auth_manager_config_no_replay_protection() {
     let config = AuthManagerConfig {
-        beardog_endpoint: "http://localhost:6000".to_string(),
+        security_endpoint: "http://localhost:6000".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
@@ -61,7 +61,7 @@ fn test_auth_manager_config_no_replay_protection() {
 #[test]
 fn test_auth_manager_config_no_signature_validation() {
     let config = AuthManagerConfig {
-        beardog_endpoint: "http://localhost:6000".to_string(),
+        security_endpoint: "http://localhost:6000".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: false,
         timestamp_window: Duration::from_secs(60),
@@ -76,7 +76,7 @@ fn test_auth_manager_config_no_signature_validation() {
 #[test]
 fn test_auth_manager_config_serialization() {
     let config = AuthManagerConfig {
-        beardog_endpoint: "http://localhost:6000".to_string(),
+        security_endpoint: "http://localhost:6000".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
