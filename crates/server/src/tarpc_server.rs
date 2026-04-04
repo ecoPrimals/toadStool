@@ -5,6 +5,7 @@
 //! Follows Songbird's architecture pattern.
 
 use futures::StreamExt;
+use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -142,18 +143,20 @@ impl ToadStoolTarpcServer {
 
         // Ensure parent directory exists (biomeOS requirement for custom socket paths)
         if let Some(parent) = socket_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                ServerError::Initialization(format!(
-                    "Failed to create socket directory {parent:?}: {e}"
-                ))
-            })?;
-            info!("Ensured socket directory exists: {:?}", parent);
+            if let Err(e) = tokio::fs::create_dir_all(parent).await {
+                warn!(
+                    "Failed to create socket directory {parent:?}: {e}; continuing without creating parent"
+                );
+            } else {
+                info!("Ensured socket directory exists: {:?}", parent);
+            }
         }
 
-        // Clean up old socket if exists
-        if socket_path.exists() {
-            info!("Removing old socket file: {:?}", socket_path);
-            std::fs::remove_file(socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
+        // Clean up old socket if present
+        match tokio::fs::remove_file(socket_path).await {
+            Ok(()) => info!("Removed old socket file: {:?}", socket_path),
+            Err(e) if e.kind() == ErrorKind::NotFound => {}
+            Err(e) => return Err(ServerError::Network(e.to_string())),
         }
 
         info!("tarpc server binding to Unix socket: {:?}", socket_path);
@@ -164,11 +167,13 @@ impl ToadStoolTarpcServer {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(socket_path)
+            let mut perms = tokio::fs::metadata(socket_path)
+                .await
                 .map_err(|e| ServerError::Internal(e.to_string()))?
                 .permissions();
             perms.set_mode(0o600); // Owner read+write only
-            std::fs::set_permissions(socket_path, perms)
+            tokio::fs::set_permissions(socket_path, perms)
+                .await
                 .map_err(|e| ServerError::Internal(e.to_string()))?;
             info!("Set socket permissions to 0600 (user-only)");
         }

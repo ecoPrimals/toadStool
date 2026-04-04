@@ -176,7 +176,7 @@ impl PrimalAdapter for SongbirdAdapter {
             .call("coordination.heartbeat", params)
             .await
             .unwrap_or_else(|e| {
-                tracing::warn!("Heartbeat to Songbird failed: {e}");
+                tracing::warn!("Heartbeat to coordination service failed: {e}");
                 serde_json::json!({})
             });
 
@@ -203,7 +203,7 @@ impl PrimalAdapter for SongbirdAdapter {
             .call("coordination.capability_update", params)
             .await
             .unwrap_or_else(|e| {
-                tracing::warn!("Capability update to Songbird failed: {e}");
+                tracing::warn!("Capability update to coordination service failed: {e}");
                 serde_json::json!({})
             });
 
@@ -227,7 +227,7 @@ impl PrimalAdapter for SongbirdAdapter {
                 serde_json::json!({})
             });
 
-        tracing::info!("Successfully deregistered from Songbird via unix socket");
+        tracing::info!("Successfully deregistered from coordination service via unix socket");
 
         Ok(())
     }

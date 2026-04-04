@@ -19,7 +19,7 @@ impl ConfiguratorCore for SongbirdNetworkConfigurator {
     }
 
     async fn apply_configuration(&self) -> ToadStoolResult<()> {
-        info!("🔧 Applying Songbird network configuration");
+        info!("🔧 Applying coordination service network configuration");
 
         // Apply service mesh configuration
         if self.config.service_mesh.enabled {
@@ -61,12 +61,12 @@ impl ConfiguratorCore for SongbirdNetworkConfigurator {
             self.apply_health_monitoring_config().await?;
         }
 
-        info!("✅ Songbird network configuration applied successfully");
+        info!("✅ coordination service network configuration applied successfully");
         Ok(())
     }
 
     fn validate_configuration(&self) -> ToadStoolResult<()> {
-        info!("🔍 Validating Songbird network configuration");
+        info!("🔍 Validating coordination service network configuration");
 
         // Validate service mesh configuration
         self.validate_service_mesh_config()?;
@@ -92,7 +92,7 @@ impl ConfiguratorCore for SongbirdNetworkConfigurator {
         // Validate health monitoring configuration
         self.validate_health_monitoring_config()?;
 
-        info!("✅ Songbird network configuration validation completed");
+        info!("✅ coordination service network configuration validation completed");
         Ok(())
     }
 }

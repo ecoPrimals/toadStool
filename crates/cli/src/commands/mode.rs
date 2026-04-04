@@ -71,7 +71,7 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
 
             if let BindingState::KernelDriver(ref driver) = result.previous {
                 let path = gpu_mode_state_path(&bdf);
-                if let Err(e) = std::fs::write(&path, driver) {
+                if let Err(e) = tokio::fs::write(&path, driver.as_bytes()).await {
                     tracing::warn!(?path, %e, "Could not persist original driver for gaming restore");
                 }
             }
@@ -90,7 +90,9 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
                 return Ok(());
             }
 
-            let original_driver = std::fs::read_to_string(gpu_mode_state_path(&bdf))
+            let state_path = gpu_mode_state_path(&bdf);
+            let original_driver = tokio::fs::read_to_string(&state_path)
+                .await
                 .ok()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty());
@@ -108,7 +110,7 @@ pub async fn execute_mode_command(_ctx: &crate::CliContext, cmd: ModeCommand) ->
             println!("  Gaming mode active.");
 
             let path = gpu_mode_state_path(&bdf);
-            let _ = std::fs::remove_file(&path);
+            let _ = tokio::fs::remove_file(&path).await;
         }
         ModeCommand::Status { bdf } => {
             let bdf = resolve_bdf(bdf)?;

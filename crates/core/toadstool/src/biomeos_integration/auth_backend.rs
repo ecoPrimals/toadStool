@@ -178,7 +178,9 @@ impl AuthBackend for BearDogBackend {
         self.rpc_client
             .call_typed::<String>("crypto.sign", params)
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("BearDog sign failed: {e}")))
+            .map_err(|e| {
+                ToadStoolError::runtime(format!("security/crypto service sign failed: {e}"))
+            })
     }
 
     async fn public_key(&self) -> Option<String> {
@@ -199,9 +201,13 @@ impl AuthBackend for BearDogBackend {
             .rpc_client
             .call("crypto.health", serde_json::json!({}))
             .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to connect to BearDog: {e}")))?;
+            .map_err(|e| {
+                ToadStoolError::runtime(format!(
+                    "Failed to connect to security/crypto service: {e}"
+                ))
+            })?;
 
-        tracing::info!("Successfully connected to BearDog via unix socket");
+        tracing::info!("Successfully connected to security/crypto service via unix socket");
         Ok(())
     }
 
@@ -214,7 +220,9 @@ impl AuthBackend for BearDogBackend {
             .call_typed("crypto.request_token", params)
             .await
             .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to request token from BearDog: {e}"))
+                ToadStoolError::runtime(format!(
+                    "Failed to request token from security/crypto service: {e}"
+                ))
             })?;
 
         // Validate token

@@ -291,7 +291,7 @@ impl IntelligentAnalyticsEngine {
     )]
     async fn export_to_webhook(&self, webhook: &WebhookConfig) -> ToadStoolResult<()> {
         tracing::info!(
-            "Webhook export to {} -- use Songbird for external HTTP",
+            "Webhook export to {} -- use coordination service for external HTTP",
             webhook.url
         );
         Ok(())

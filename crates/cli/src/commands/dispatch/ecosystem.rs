@@ -66,7 +66,7 @@ pub async fn execute(action: &EcosystemCommands) -> Result<()> {
             mount,
             dataset,
         } => {
-            info!("🏠 Connecting to NestGate storage");
+            info!("🏠 Connecting to storage service");
             let mount_info = integrator
                 .connect_nestgate_storage(endpoint.clone(), mount.clone(), dataset.clone())
                 .await?;

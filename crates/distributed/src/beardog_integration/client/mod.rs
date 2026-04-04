@@ -441,9 +441,11 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
                 ))
             }
             super::types::KeyOperationResult::Error { message } => Err(ToadStoolError::runtime(
-                format!("BearDog key generation failed: {message}"),
+                format!("security/crypto service key generation failed: {message}"),
             )),
-            _ => Err(ToadStoolError::runtime("Unexpected response from BearDog")),
+            _ => Err(ToadStoolError::runtime(
+                "Unexpected response from security/crypto service",
+            )),
         }
     }
 
@@ -469,9 +471,11 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
                 toadstool::encryption::SecurityLevel::Standard,
             )),
             super::types::KeyOperationResult::Error { message } => Err(ToadStoolError::not_found(
-                format!("BearDog key not found: {message}"),
+                format!("security/crypto service key not found: {message}"),
             )),
-            _ => Err(ToadStoolError::runtime("Unexpected response from BearDog")),
+            _ => Err(ToadStoolError::runtime(
+                "Unexpected response from security/crypto service",
+            )),
         }
     }
 
@@ -489,7 +493,7 @@ impl toadstool::encryption::CryptoProvider for BearDogClient {
         let healthy_count = endpoints.iter().filter(|e| e.healthy).count();
         if healthy_count == 0 {
             return Ok(toadstool::encryption::provider::ProviderHealth::unhealthy(
-                "All BearDog endpoints unhealthy",
+                "All security/crypto service endpoints unhealthy",
             ));
         }
 

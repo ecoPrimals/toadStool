@@ -126,7 +126,9 @@ impl HttpTransport {
         let response = client
             .call("comms.http_forward", params)
             .await
-            .map_err(|e| ProtocolError::Transport(format!("Songbird comms.http_forward: {e}")))?;
+            .map_err(|e| {
+                ProtocolError::Transport(format!("coordination service comms.http_forward: {e}"))
+            })?;
 
         serde_json::from_value(response)
             .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))

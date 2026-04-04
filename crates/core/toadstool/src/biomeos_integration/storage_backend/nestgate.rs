@@ -89,10 +89,10 @@ impl StorageBackend for NestGateBackend {
                 .call("storage.health", serde_json::json!({}))
                 .await
                 .map_err(|e| {
-                    ToadStoolError::runtime(format!("Failed to connect to NestGate: {e}"))
+                    ToadStoolError::runtime(format!("Failed to connect to storage service: {e}"))
                 })?;
 
-            tracing::info!("Successfully connected to NestGate via unix socket");
+            tracing::info!("Successfully connected to storage service via unix socket");
             Ok(())
         })
     }

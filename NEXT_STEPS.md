@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 4, 2026 -- S182 primalSpring Audit Response
+**Updated**: April 4, 2026 -- S183 Deep Debt Evolution Phase 2
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,853 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%) | **355 #[allow] / 530 #[expect]** (40%/60%)
-**Latest**: S182 — primalSpring audit response: `cargo fmt --all` (1,898 lines), migrated ~390 `#[allow(clippy::*)]` → `#[expect(clippy::*, reason)]` (ratio flipped to 60% expect), wired `--port` in legacy binary alias, removed ~40 stale lint suppressions. All quality gates green.
+**Latest**: S183 — Deep debt phase 2: async I/O fix in tarpc_server + cli/mode, 5 more large file refactors (byob/validation, scheduler/execution, cli/lib, jsonrpc/connection, resources/types), ~20 more primal-name strings evolved to capability-first. All quality gates green.
 
 ---
 

@@ -5,7 +5,33 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 4, 2026 (Sessions 43-182)
+## [Unreleased] - April 4, 2026 (Sessions 43-183)
+
+### Session S183 (Apr 4, 2026) — Deep Debt Evolution: Async I/O, Refactoring, String Evolution Phase 2
+
+#### Async I/O Fix (2 files)
+- `server/tarpc_server.rs` `serve_unix`: `std::fs::{create_dir_all,remove_file,metadata,set_permissions}` → `tokio::fs`
+- `cli/commands/mode.rs` `execute_mode_command`: `std::fs::{write,read_to_string,remove_file}` → `tokio::fs`
+
+#### Large File Smart Refactoring (5 files)
+- `byob/validation.rs` (674L) → `validation/{mod,types,quota,services,tests}.rs`
+- `universal/scheduler/execution.rs` (637L) → `execution/{mod,discover,native,wasm,primal,biome_os,tests}.rs`
+- `cli/src/lib.rs` (635L) → `lib.rs` (77L) + `error.rs` (94L) + `biome_model.rs` (356L) + `cli_root.rs` (131L)
+- `server/pure_jsonrpc/connection.rs` (633L) → `connection/{mod,unix,tcp,tests}.rs`
+- `resources/types.rs` (622L) → `types/{mod,requirements,metrics,limits,system,tests}.rs`
+
+#### Production String Evolution Phase 2 (~20 strings, 8 files)
+- `primal_capabilities/adapters.rs`: "Songbird" → "coordination service" in 4 tracing macros
+- `protocols/transport.rs`: "Songbird" → "coordination service" in error
+- `configurator/core/apply_validate.rs`: "Songbird" → "coordination service" in 4 info! messages
+- `analytics/implementation/mod.rs`: "Songbird" → "coordination service" in 2 info! messages
+- `beardog_integration/client/mod.rs`: "BearDog" → "security/crypto service" in 4 format! messages
+- `biomeos_integration/auth_backend.rs`: "BearDog" → "security/crypto service" in 4 format!/info! messages
+- `biomeos_integration/storage_backend/nestgate.rs`: "NestGate" → "storage service" in 2 messages
+- `cli/commands/dispatch/ecosystem.rs`: "NestGate" → "storage service" in info!
+
+#### Quality
+- 21,853 tests (0 failures), fmt clean, Clippy clean
 
 ### Session S182 (Apr 4, 2026) — primalSpring Audit Response: fmt, lint migration, UniBin --port
 

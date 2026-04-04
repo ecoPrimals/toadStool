@@ -17,8 +17,6 @@
 
 mod execution;
 #[cfg(test)]
-mod execution_unit_tests;
-#[cfg(test)]
 mod tests;
 
 use std::collections::HashMap;
