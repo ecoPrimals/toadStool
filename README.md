@@ -42,7 +42,7 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,617 tests, 0 failures** (S173), 220 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,624 tests, 0 failures** (S177), 220 ignored (hardware-gated) |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **~59 actual** (48 in `hw-safe`/`v4l2::ioctl` containment zones, 11 in consumer/driver code); SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
@@ -244,7 +244,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,617** (S173), 0 failures |
+| Workspace tests | **21,624** (S177), 0 failures |
 | Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **~59 actual** (48 in containment zones, 11 in consumer code); SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -265,7 +265,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,617 tests (S173); ~80-85% lib-only line (185K lines instrumented); S173: +79 tests across 5 modules; remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,624 tests (S177); ~80-85% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 

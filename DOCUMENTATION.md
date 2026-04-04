@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 3, 2026 — S175
+**Last Updated**: April 4, 2026 — S177
 
 ---
 
@@ -30,17 +30,16 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S172 — April 2, 2026)
+## Current State (S177 — April 4, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **21,500+ tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
-- **~65 JSON-RPC methods**. IPC compliant (`health.liveness/readiness/check`, `capabilities.list`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
+- **21,624 tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
+- **~67 JSON-RPC methods**. IPC compliant (`health.liveness/readiness/check`, `capabilities.list`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
 - **glowPlug/ember subsystem** — toadStool-native hardware lifecycle (absorbed from coralReef). `toadstool-glowplug`, `toadstool-ember`, `toadstool-hw-safe` crates.
-- **~22 irreducible unsafe ops** — all in `hw-safe` + drivers, with `// SAFETY:` comments. 23 crates forbid, 20 deny `unsafe_code`.
-- **memmap2 migration** — replaced hand-rolled mmap/munmap in hw-safe with memmap2, eliminating 4 unsafe blocks.
+- **~59 unsafe blocks** — 48 in containment zones (`hw-safe`, `v4l2::ioctl`), 11 in consumer/driver code. 23 crates forbid, 20 deny `unsafe_code`.
 - **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to BearDog. HTTP delegated to Songbird.
-- **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle.
+- **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle. S176-177: deprecated primal-named APIs removed, env_config evolved to capability names.
 - **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **AGPL-3.0-only** — All Cargo.toml + all .rs files aligned. `deny.toml` enforced.
 
