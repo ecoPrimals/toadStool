@@ -21,7 +21,7 @@ toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
 toadstool-config = { path = "../core/config" }
 toadstool-management-monitoring = { path = "../management/monitoring" }
-# toadstool-management-analytics = { path = "../management/analytics" }  # Disabled: has sqlx/ring dependency
+# toadstool-management-analytics = { path = "../management/analytics" }  # Disabled: optional analytics integration
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

@@ -118,7 +118,7 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 ### Key Numbers (S163)
 
 - **58 workspace crates**, 1,933+ `.rs` files, ~570K lines
-- **21,600+ tests** (all features, 0 failures)
+- **21,853 tests** (all features, S180, 0 failures)
 - **96+ JSON-RPC methods** (`domain.operation` semantic naming)
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
 - **VFIO interface** — BAR0, DMA, power management (nvpmu)

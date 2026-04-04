@@ -738,7 +738,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (187K lines, llvm-cov). **21,500+ tests passing**. Target 90%. **S172**: +55 tests (hw_learn handlers 0%→80%+, transport handler 2%→comprehensive). **S161**: +10 large file refactors, stubs evolved, unsafe reduced. Remaining gaps: hardware-dependent paths. Push ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (185K lines, llvm-cov). **21,853 tests passing** (S180). Target 90%. Remaining gaps: hardware-dependent paths (V4L2/VFIO), specialty runtimes. Push ongoing. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |

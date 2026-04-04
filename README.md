@@ -142,7 +142,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
 
-### JSON-RPC Methods (~65 dynamically built; S169)
+### JSON-RPC Methods (~67 dynamically built; S180)
 
 Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ Squirrel), **`shader.compile.*`** (→ coralReef), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ biomeOS and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in coralReef).
 
