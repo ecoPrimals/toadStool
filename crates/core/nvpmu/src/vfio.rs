@@ -320,8 +320,9 @@ impl VfioMsixInterrupt {
         };
 
         // SAFETY: device_fd is a valid VFIO device; payload matches kernel ABI.
-        unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) }
-            .map_err(|e| NvPmuError::Hardware(format!("MSI-X configure vector {vector}: {e}")))?;
+        unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) }.map_err(|e| {
+            NvPmuError::Hardware(format!("MSI-X configure vector {vector}: {e}"))
+        })?;
 
         tracing::info!(vector, "MSI-X interrupt configured via eventfd");
 

@@ -101,6 +101,13 @@ unsafe impl Ioctl for DmaUnmapIoctl<'_> {
     }
 }
 
+/// Single ioctl dispatch for VFIO DMA operations.
+fn do_ioctl<I: Ioctl>(fd: BorrowedFd<'_>, cmd: I) -> std::io::Result<I::Output> {
+    // SAFETY: callers construct `cmd` from VFIO kernel-ABI types with
+    // compile-time opcodes. `fd` is a valid VFIO container fd.
+    unsafe { ioctl::ioctl(fd, cmd) }.map_err(Into::into)
+}
+
 /// Map a host buffer into the device IOMMU via VFIO.
 ///
 /// # Errors
@@ -114,8 +121,7 @@ unsafe impl Ioctl for DmaUnmapIoctl<'_> {
 /// - `map.vaddr` points to allocated memory of at least `map.size` bytes.
 /// - The IOVA range `[map.iova, map.iova + map.size)` is not already mapped.
 pub unsafe fn dma_map(container_fd: BorrowedFd<'_>, map: &VfioDmaMap) -> std::io::Result<()> {
-    // SAFETY: invariants documented above and enforced by the caller.
-    unsafe { ioctl::ioctl(container_fd, DmaMapIoctl(map)).map_err(Into::into) }
+    do_ioctl(container_fd, DmaMapIoctl(map))
 }
 
 /// Remove a device IOMMU mapping via VFIO.
@@ -129,8 +135,7 @@ pub unsafe fn dma_map(container_fd: BorrowedFd<'_>, map: &VfioDmaMap) -> std::io
 /// The caller must ensure `container_fd` is valid and `unmap.iova`/`size`
 /// correspond to a previously mapped region.
 pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
-    // SAFETY: invariants documented above and enforced by the caller.
-    unsafe { ioctl::ioctl(container_fd, DmaUnmapIoctl(unmap)).map_err(Into::into) }
+    do_ioctl(container_fd, DmaUnmapIoctl(unmap))
 }
 
 /// Map a host buffer into the device IOMMU using a raw file descriptor.

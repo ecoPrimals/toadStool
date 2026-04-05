@@ -144,15 +144,24 @@ fn io_err(e: rustix::io::Errno) -> std::io::Error {
     e.into()
 }
 
+/// Single ioctl dispatch point for all VFIO operations.
+///
+/// Centralizes the `unsafe { ioctl::ioctl }` call so that every public VFIO
+/// wrapper is safe code. Audit this one site for ioctl safety.
+fn do_ioctl<I: Ioctl>(fd: BorrowedFd<'_>, cmd: I) -> std::io::Result<I::Output> {
+    // SAFETY: all callers in this module construct `cmd` from VFIO kernel-ABI
+    // types with compile-time opcodes. `fd` comes from the caller's valid
+    // open VFIO container/group/device file descriptor.
+    unsafe { ioctl::ioctl(fd, cmd) }.map_err(io_err)
+}
+
 /// `VFIO_GET_API_VERSION` — returns the VFIO API version (should be 0).
 ///
 /// # Errors
 ///
 /// Returns I/O error if the ioctl fails.
 pub fn get_api_version(container: BorrowedFd<'_>) -> std::io::Result<i32> {
-    let cmd = VfioReturnIoctl::<OP_GET_API_VERSION> { arg: 0 };
-    // SAFETY: container fd from valid open; no-arg ioctl.
-    unsafe { ioctl::ioctl(container, cmd) }.map_err(io_err)
+    do_ioctl(container, VfioReturnIoctl::<OP_GET_API_VERSION> { arg: 0 })
 }
 
 /// `VFIO_CHECK_EXTENSION` — check if an IOMMU extension is supported.
@@ -161,11 +170,12 @@ pub fn get_api_version(container: BorrowedFd<'_>) -> std::io::Result<i32> {
 ///
 /// Returns I/O error if the ioctl fails.
 pub fn check_extension(container: BorrowedFd<'_>, extension: u32) -> std::io::Result<i32> {
-    let cmd = VfioReturnIoctl::<OP_CHECK_EXTENSION> {
-        arg: extension as usize,
-    };
-    // SAFETY: container fd valid; arg is extension id.
-    unsafe { ioctl::ioctl(container, cmd) }.map_err(io_err)
+    do_ioctl(
+        container,
+        VfioReturnIoctl::<OP_CHECK_EXTENSION> {
+            arg: extension as usize,
+        },
+    )
 }
 
 /// `VFIO_SET_IOMMU` — attach an IOMMU type to the container.
@@ -174,11 +184,12 @@ pub fn check_extension(container: BorrowedFd<'_>, extension: u32) -> std::io::Re
 ///
 /// Returns I/O error if the ioctl fails.
 pub fn set_iommu(container: BorrowedFd<'_>, iommu_type: u32) -> std::io::Result<()> {
-    let cmd = VfioReturnIoctl::<OP_SET_IOMMU> {
-        arg: iommu_type as usize,
-    };
-    // SAFETY: container fd valid; arg is IOMMU type constant.
-    unsafe { ioctl::ioctl(container, cmd) }.map_err(io_err)?;
+    do_ioctl(
+        container,
+        VfioReturnIoctl::<OP_SET_IOMMU> {
+            arg: iommu_type as usize,
+        },
+    )?;
     Ok(())
 }
 
@@ -196,11 +207,12 @@ pub fn group_get_status(group: BorrowedFd<'_>) -> std::io::Result<VfioGroupStatu
         argsz: std::mem::size_of::<VfioGroupStatus>() as u32,
         flags: 0,
     };
-    let cmd = VfioPtrIoctl::<OP_GROUP_GET_STATUS, _> {
-        ptr: std::ptr::from_mut(&mut status),
-    };
-    // SAFETY: group fd from valid open; struct has correct argsz.
-    unsafe { ioctl::ioctl(group, cmd) }.map_err(io_err)?;
+    do_ioctl(
+        group,
+        VfioPtrIoctl::<OP_GROUP_GET_STATUS, _> {
+            ptr: std::ptr::from_mut(&mut status),
+        },
+    )?;
     Ok(status)
 }
 
@@ -211,11 +223,12 @@ pub fn group_get_status(group: BorrowedFd<'_>) -> std::io::Result<VfioGroupStatu
 /// Returns I/O error if the ioctl fails.
 pub fn group_set_container(group: BorrowedFd<'_>, container: impl AsFd) -> std::io::Result<()> {
     let container_fd = container.as_fd().as_raw_fd();
-    let cmd = VfioReturnIoctl::<OP_GROUP_SET_CONTAINER> {
-        arg: std::ptr::from_ref(&container_fd) as usize,
-    };
-    // SAFETY: group fd valid; arg points to valid container fd.
-    unsafe { ioctl::ioctl(group, cmd) }.map_err(io_err)?;
+    do_ioctl(
+        group,
+        VfioReturnIoctl::<OP_GROUP_SET_CONTAINER> {
+            arg: std::ptr::from_ref(&container_fd) as usize,
+        },
+    )?;
     Ok(())
 }
 
@@ -231,11 +244,12 @@ pub fn group_get_device_fd(
     group: BorrowedFd<'_>,
     bdf: &std::ffi::CStr,
 ) -> std::io::Result<OwnedFd> {
-    let cmd = VfioReturnIoctl::<OP_GROUP_GET_DEVICE_FD> {
-        arg: bdf.as_ptr() as usize,
-    };
-    // SAFETY: group fd valid; bdf is a null-terminated C string.
-    let raw = unsafe { ioctl::ioctl(group, cmd) }.map_err(io_err)?;
+    let raw = do_ioctl(
+        group,
+        VfioReturnIoctl::<OP_GROUP_GET_DEVICE_FD> {
+            arg: bdf.as_ptr() as usize,
+        },
+    )?;
     // SAFETY: kernel returns a valid fd on success.
     Ok(unsafe { OwnedFd::from_raw_fd(raw) })
 }
@@ -254,11 +268,12 @@ pub fn device_get_info(device: BorrowedFd<'_>) -> std::io::Result<VfioDeviceInfo
         argsz: std::mem::size_of::<VfioDeviceInfo>() as u32,
         ..Default::default()
     };
-    let cmd = VfioPtrIoctl::<OP_DEVICE_GET_INFO, _> {
-        ptr: std::ptr::from_mut(&mut info),
-    };
-    // SAFETY: device fd valid; struct has correct argsz.
-    unsafe { ioctl::ioctl(device, cmd) }.map_err(io_err)?;
+    do_ioctl(
+        device,
+        VfioPtrIoctl::<OP_DEVICE_GET_INFO, _> {
+            ptr: std::ptr::from_mut(&mut info),
+        },
+    )?;
     Ok(info)
 }
 
@@ -280,11 +295,12 @@ pub fn device_get_region_info(
         index,
         ..Default::default()
     };
-    let cmd = VfioPtrIoctl::<OP_DEVICE_GET_REGION_INFO, _> {
-        ptr: std::ptr::from_mut(&mut info),
-    };
-    // SAFETY: device fd valid; struct has correct argsz and index.
-    unsafe { ioctl::ioctl(device, cmd) }.map_err(io_err)?;
+    do_ioctl(
+        device,
+        VfioPtrIoctl::<OP_DEVICE_GET_REGION_INFO, _> {
+            ptr: std::ptr::from_mut(&mut info),
+        },
+    )?;
     Ok(info)
 }
 

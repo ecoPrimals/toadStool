@@ -104,6 +104,16 @@ const fn ioctl_nr_to_opcode(nr: u64) -> Opcode {
 ///
 /// Uses `rustix::ioctl` with a `DrmIoctl` wrapper for runtime opcodes from
 /// init recipes. Eliminates the last `extern "C"` FFI in hw-learn.
+/// Single ioctl dispatch for DRM operations.
+fn do_ioctl<I: rustix::ioctl::Ioctl>(
+    fd: &OwnedFd,
+    cmd: I,
+) -> Result<I::Output, i32> {
+    // SAFETY: fd is a valid DRM device from open_drm_device; cmd is
+    // constructed from a DRM ioctl number with correct buffer layout.
+    unsafe { rustix::ioctl::ioctl(fd.as_fd(), cmd) }.map_err(rustix::io::Errno::raw_os_error)
+}
+
 fn attempt_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(), i32> {
     let mut buf = if args.is_empty() {
         vec![0u8; 256]
@@ -116,7 +126,5 @@ fn attempt_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(), i32> {
         arg: buf.as_mut_ptr(),
     };
 
-    // SAFETY: fd is a valid DRM device from open_drm_device.
-    // buf outlives the syscall. ioctl_nr encodes command per DRM convention.
-    unsafe { rustix::ioctl::ioctl(fd.as_fd(), ioctl) }.map_err(rustix::io::Errno::raw_os_error)
+    do_ioctl(fd, ioctl)
 }

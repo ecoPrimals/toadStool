@@ -70,31 +70,65 @@ impl VolatileMmio<'_> {
         self.size
     }
 
+    /// Bounds-checked volatile read of a `T`-sized register.
+    ///
+    /// Single unsafe primitive for all register-width reads. The public
+    /// `read_u32`/`read_u64` methods delegate here.
+    #[allow(
+        clippy::cast_ptr_alignment,
+        reason = "MMIO registers are naturally aligned to their width"
+    )]
+    fn read_reg<T: Copy>(&self, offset: usize) -> Result<T, MmioError> {
+        let width = std::mem::size_of::<T>();
+        if offset + width > self.size {
+            return Err(MmioError::OutOfBounds {
+                offset,
+                width,
+                region_size: self.size,
+            });
+        }
+        // SAFETY: bounds checked above; ptr valid for size bytes (constructor
+        // invariant); T is naturally aligned for MMIO; volatile prevents
+        // compiler reordering/elision.
+        Ok(unsafe {
+            let p = self.ptr.as_ptr().add(offset).cast::<T>();
+            std::ptr::read_volatile(p)
+        })
+    }
+
+    /// Bounds-checked volatile write of a `T`-sized register.
+    ///
+    /// Single unsafe primitive for all register-width writes. The public
+    /// `write_u32`/`write_u64` methods delegate here.
+    #[allow(
+        clippy::cast_ptr_alignment,
+        reason = "MMIO registers are naturally aligned to their width"
+    )]
+    fn write_reg<T: Copy>(&self, offset: usize, value: T) -> Result<(), MmioError> {
+        let width = std::mem::size_of::<T>();
+        if offset + width > self.size {
+            return Err(MmioError::OutOfBounds {
+                offset,
+                width,
+                region_size: self.size,
+            });
+        }
+        // SAFETY: bounds checked above; ptr valid and mapped (constructor
+        // invariant); T is naturally aligned for MMIO.
+        unsafe {
+            let p = self.ptr.as_ptr().add(offset).cast::<T>();
+            std::ptr::write_volatile(p, value);
+        }
+        Ok(())
+    }
+
     /// Read a 32-bit register at the given byte offset.
     ///
     /// # Errors
     ///
     /// Returns [`MmioError::OutOfBounds`] if `offset + 4 > size`.
     pub fn read_u32(&self, offset: usize) -> Result<u32, MmioError> {
-        if offset + 4 > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width: 4,
-                region_size: self.size,
-            });
-        }
-        // SAFETY: bounds checked above. ptr is valid for size bytes
-        // (caller invariant from constructor). Volatile read is correct
-        // for MMIO registers — prevents compiler reordering/elision.
-        #[allow(
-            clippy::cast_ptr_alignment,
-            reason = "MMIO registers are naturally u32-aligned"
-        )]
-        let val = unsafe {
-            let p = self.ptr.as_ptr().add(offset).cast::<u32>();
-            std::ptr::read_volatile(p)
-        };
-        Ok(val)
+        self.read_reg::<u32>(offset)
     }
 
     /// Write a 32-bit register at the given byte offset.
@@ -103,24 +137,7 @@ impl VolatileMmio<'_> {
     ///
     /// Returns [`MmioError::OutOfBounds`] if `offset + 4 > size`.
     pub fn write_u32(&self, offset: usize, value: u32) -> Result<(), MmioError> {
-        if offset + 4 > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width: 4,
-                region_size: self.size,
-            });
-        }
-        // SAFETY: bounds checked above. ptr is valid and mapped (caller
-        // invariant). Volatile write is correct for MMIO.
-        #[allow(
-            clippy::cast_ptr_alignment,
-            reason = "MMIO registers are naturally u32-aligned"
-        )]
-        unsafe {
-            let p = self.ptr.as_ptr().add(offset).cast::<u32>();
-            std::ptr::write_volatile(p, value);
-        }
-        Ok(())
+        self.write_reg::<u32>(offset, value)
     }
 
     /// Read a 64-bit register at the given byte offset.
@@ -129,23 +146,7 @@ impl VolatileMmio<'_> {
     ///
     /// Returns [`MmioError::OutOfBounds`] if `offset + 8 > size`.
     pub fn read_u64(&self, offset: usize) -> Result<u64, MmioError> {
-        if offset + 8 > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width: 8,
-                region_size: self.size,
-            });
-        }
-        // SAFETY: bounds checked above. ptr valid for size bytes (constructor invariant).
-        #[allow(
-            clippy::cast_ptr_alignment,
-            reason = "MMIO registers are naturally u64-aligned at 8-byte offsets"
-        )]
-        let val = unsafe {
-            let p = self.ptr.as_ptr().add(offset).cast::<u64>();
-            std::ptr::read_volatile(p)
-        };
-        Ok(val)
+        self.read_reg::<u64>(offset)
     }
 
     /// Write a 64-bit register at the given byte offset.
@@ -154,23 +155,7 @@ impl VolatileMmio<'_> {
     ///
     /// Returns [`MmioError::OutOfBounds`] if `offset + 8 > size`.
     pub fn write_u64(&self, offset: usize, value: u64) -> Result<(), MmioError> {
-        if offset + 8 > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width: 8,
-                region_size: self.size,
-            });
-        }
-        // SAFETY: bounds checked above. ptr valid and mapped (constructor invariant).
-        #[allow(
-            clippy::cast_ptr_alignment,
-            reason = "MMIO registers are naturally u64-aligned at 8-byte offsets"
-        )]
-        unsafe {
-            let p = self.ptr.as_ptr().add(offset).cast::<u64>();
-            std::ptr::write_volatile(p, value);
-        }
-        Ok(())
+        self.write_reg::<u64>(offset, value)
     }
 
     /// Read a byte range from the MMIO region into a buffer.
