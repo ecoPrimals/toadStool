@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Modern Rust Patterns Showcase
 
 #![allow(
@@ -54,7 +54,6 @@ pub fn modern_error_handling_example() -> Result<String, Box<dyn std::error::Err
 /// ```
 ///
 /// ✅ NEW WAY: Use Cow for flexible borrowing
-#[allow(dead_code)]
 #[must_use]
 pub fn zero_copy_string_example(input: &str) -> Cow<'_, str> {
     // Return borrowed if no modification needed
@@ -178,7 +177,6 @@ pub async fn discover_service(capability: &str) -> Result<Vec<String>, Box<dyn s
 /// - `DashMap` for concurrent access
 /// - mpsc channels with actor pattern
 /// - `Arc<T>` for immutable shared data
-#[allow(dead_code)]
 pub struct ModernDataStore {
     // ✅ Immutable shared config
     config: Arc<ServiceConfig>,
@@ -222,7 +220,6 @@ impl ModernDataStore {
 /// ```
 ///
 /// ✅ NEW: Single lookup with entry API
-#[allow(dead_code)]
 #[must_use]
 pub fn entry_api_example(key: String) -> String {
     let mut cache: HashMap<String, String> = HashMap::new();
@@ -243,7 +240,6 @@ pub fn entry_api_example(key: String) -> String {
 /// ```
 ///
 /// ✅ NEW: Use combinators and ? operator
-#[allow(dead_code)]
 pub fn modern_option_handling(input: Option<String>) -> Result<String, Box<dyn std::error::Error>> {
     // ✅ Use ok_or for conversion to Result
     let value = input.ok_or("Value not provided")?;

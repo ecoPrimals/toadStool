@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // auth_backend_evolved.rs - Capability-based authentication backend
 //
 // DEEP DEBT EVOLUTION: This backend discovers security providers by capability
 // at runtime, not by hardcoded primal names. It doesn't know or care if the
-// provider is "beardog" - it just asks for "Who can manage tokens?"
+// provider identity - it just asks for "Who can manage tokens?"
 //
-// Migration from: auth_backend.rs (hardcoded "beardog")
+// Migration from: auth_backend.rs (legacy hardcoded issuer)
 // Evolution: Capability-based discovery, proper error handling
 
 use serde::{Deserialize, Serialize};

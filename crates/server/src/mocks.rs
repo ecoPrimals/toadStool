@@ -1,30 +1,31 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Mock implementations for testing
 //!
 //! ⚠️ **TEST-ONLY MODULE**
 //! These mocks are for testing infrastructure only and should never be used in production.
 //!
-//! This module is gated with `#[cfg(test)]` in `lib.rs` — it is never compiled into production builds.
+//! This module is gated with `#[cfg(any(test, feature = "test-mocks"))]` in `lib.rs` — it is not
+//! compiled into default production builds.
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 use std::future::Future;
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 use std::pin::Pin;
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 use toadstool::{ResourceMonitor, RuntimeMetrics, SystemResources, ToadStoolResult};
 
 /// Mock resource monitor for testing
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 pub struct MockResourceMonitor;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for MockResourceMonitor {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockResourceMonitor {
     /// Create a new mock resource monitor
     pub fn new() -> Self {
@@ -32,7 +33,7 @@ impl MockResourceMonitor {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 impl ResourceMonitor for MockResourceMonitor {
     fn start_monitoring(&self, _workload_id: &str) -> ToadStoolResult<()> {
         Ok(())
@@ -69,7 +70,7 @@ impl ResourceMonitor for MockResourceMonitor {
 }
 
 /// Mock system resources for testing (with usage metrics)
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 pub struct MockSystemResourcesWithUsage {
     /// CPU usage percentage.
     pub cpu_usage_percent: f64,
@@ -91,7 +92,7 @@ pub struct MockSystemResourcesWithUsage {
     pub uptime_seconds: u64,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for MockSystemResourcesWithUsage {
     fn default() -> Self {
         Self {

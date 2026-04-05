@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 //! Akida neural network model parser
 //!
@@ -31,7 +32,6 @@
 //! # }
 //! ```
 
-#![warn(missing_docs)]
 #![allow(clippy::must_use_candidate)]
 
 mod error;

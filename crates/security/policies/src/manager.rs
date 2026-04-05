@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Policy manager implementation
 //!
 //! This module provides the policy management trait and file-based implementation,
@@ -199,7 +199,7 @@ impl FilePolicyManager {
     }
 
     /// Merge evaluation results from parent policies
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn merge_evaluation_results(
         &self,
         target: &mut PolicyEvaluationResult,
@@ -223,7 +223,7 @@ impl FilePolicyManager {
     }
 
     /// Generate composed policy ID
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn generate_composed_policy_id(&self, policy_ids: &[String]) -> String {
         let mut hasher = Sha256::new();
         for id in policy_ids {

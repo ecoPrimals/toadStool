@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capacity and can_handle tests
 
 use super::common::{make_availability, make_orchestrator_config, make_requirements};

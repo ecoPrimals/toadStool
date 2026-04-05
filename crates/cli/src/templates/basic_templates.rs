@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic and development template implementations
 //!
 //! This module contains the foundational biome templates:
@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
 
-#[allow(deprecated)] // Protocol compatibility: default PKI image
+#[expect(deprecated)] // Protocol compatibility: default PKI image
 use toadstool_common::constants::ecosystem::well_known::BEARDOG;
 
 use crate::{

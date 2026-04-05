@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Execution backend tests — Native, WASM, Primal, BiomeOS paths via `schedule_job`.
 
 mod biome_os;

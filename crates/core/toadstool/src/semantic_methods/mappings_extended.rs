@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Extended semantic mappings: runtime, science, ecology, discovery, deploy, shader,
 //! silicon performance, provenance, inference, and GPU query surfaces.
 

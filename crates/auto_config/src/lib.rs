@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
@@ -21,7 +21,7 @@
 //! - **🎯 Zero-Touch**: Works perfectly out-of-the-box with zero configuration
 //! - **🧠 Intelligent**: Automatically detects optimal settings for any environment
 //! - **👵 Grandma-Friendly**: So simple that anyone can use it
-//! - **🤖 AI-Native**: Perfect integration with Squirrel MCP AI interface
+//! - **🤖 AI-Native**: Perfect integration with intelligence service AI interface
 //! - **🔄 Self-Healing**: Adapts to changing conditions automatically
 //!
 //! ## Usage

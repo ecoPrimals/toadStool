@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cross-spring provenance tracking for the ecoPrimals ecosystem.
 //!
 //! Tracks how patterns, precision techniques, and shader primitives flow
-//! between springs via barraCuda and toadStool. This module is an
+//! between springs via the network service and toadStool. This module is an
 //! introspection API — it documents the evolution story of cross-spring
 //! contributions so any primal can query which springs benefit from which.
 
@@ -92,7 +92,7 @@ pub enum Spring {
     HotSpring,
     /// wetSpring: bioinformatics, wet-lab pipelines.
     WetSpring,
-    /// neuralSpring: ML, coralForge, metalForge.
+    /// neuralSpring: ML, visualization/shader stack, metalForge.
     NeuralSpring,
     /// airSpring: hydrology, `IoT`, ET₀.
     AirSpring,
@@ -173,13 +173,13 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             from: Spring::HotSpring,
             to: &[Spring::NeuralSpring],
             domain: SpringDomain::Precision,
-            pattern: "FMA control + Kahan summation → coralForge attention".into(),
+            pattern: "FMA control + Kahan summation → visualization/shader attention".into(),
             description: "hotSpring's lattice QCD precision patterns (FMA control, \
                 Kahan summation for catastrophic cancellation) were adopted by \
-                neuralSpring's coralForge streaming attention primitives \
+                neuralSpring's visualization/shader streaming attention primitives \
                 (gelu_f64, layer_norm_f64, softmax_f64, sdpa_scores_f64)."
                 .into(),
-            session: "coralReef Phase 10 cross-spring rewire".into(),
+            session: "visualization/shader service Phase 10 cross-spring rewire".into(),
         },
         // hotSpring MD -> wetSpring
         CrossSpringFlow {
@@ -224,7 +224,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 validation, absorbed by wetSpring for cross-entropy metrics \
                 and referenced by groundSpring for Anderson model fitness scoring."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         CrossSpringFlow {
             from: Spring::NeuralSpring,
@@ -235,7 +235,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 hotSpring for lattice QCD observable validation and wetSpring \
                 for goodness-of-fit in metagenomic analysis."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         CrossSpringFlow {
             from: Spring::NeuralSpring,
@@ -246,7 +246,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 for Anderson model parameter correlation and hotSpring for \
                 observable cross-correlation analysis."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         CrossSpringFlow {
             from: Spring::NeuralSpring,
@@ -256,7 +256,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
             description: "GPU linear regression from neuralSpring, adopted by airSpring \
                 for trend analysis in ET₀ and crop coefficient calibration."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         // wetSpring bio -> neuralSpring
         CrossSpringFlow {
@@ -268,7 +268,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 simulation from wetSpring bioinformatics, consumed by neuralSpring \
                 for neuroevolution fitness evaluation and stochastic search."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         CrossSpringFlow {
             from: Spring::WetSpring,
@@ -302,7 +302,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 IoT/streaming, consumed by wetSpring for temporal bio-signal \
                 smoothing and trend detection."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         // groundSpring condensed matter -> neuralSpring + hotSpring
         CrossSpringFlow {
@@ -315,7 +315,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 sweep validation in metalForge experiments and hotSpring for \
                 transport property verification."
                 .into(),
-            session: "S83, barraCuda provenance registry".into(),
+            session: "S83, network service provenance registry".into(),
         },
         CrossSpringFlow {
             from: Spring::GroundSpring,
@@ -326,7 +326,7 @@ pub fn cross_spring_flows() -> Vec<CrossSpringFlow> {
                 ALL springs for goodness-of-fit validation in their respective \
                 scientific domains."
                 .into(),
-            session: "barraCuda provenance registry".into(),
+            session: "network service provenance registry".into(),
         },
         // groundSpring precision discovery -> ALL springs via toadStool
         CrossSpringFlow {

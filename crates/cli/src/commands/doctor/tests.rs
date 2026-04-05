@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::checks::{check_config_health, check_ecosystem_health, check_hardware_health};
 use super::run_doctor;
 use super::{ConfigReport, DoctorReport, EcosystemReport, HardwareReport, PrimalStatus, Summary};

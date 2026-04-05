@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed GPU Federation Demo
 //!
 //! Shows how ToadStool can pool GPUs across multiple towers on a LAN
@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n💡 Next Steps:");
     println!("   1. Set up second tower with ToadStool + GPU");
     println!("   2. Ensure both towers on same LAN");
-    println!("   3. Enable Songbird discovery on both");
+    println!("   3. Enable coordination discovery on both");
     println!("   4. Run actual distributed workload");
     println!("   5. Verify result aggregation");
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for display IPC client
 //!
 //! Tests message framing, serialization, endpoint handling WITHOUT real TCP/Unix connections.
@@ -201,12 +201,12 @@ async fn test_discover_fails_without_socket_or_tcp_file() {
     }
 }
 
-#[test]
-fn test_discover_tcp_file_connect_fails() {
+#[tokio::test]
+async fn test_discover_tcp_file_connect_fails() {
     let dir = tempfile::tempdir().expect("temp dir");
     let port_file = dir.path().join("toadstool-ipc-port");
     std::fs::write(&port_file, "tcp:127.0.0.1:0").expect("write port file");
-    temp_env::with_vars(
+    temp_env::async_with_vars(
         [
             (
                 "XDG_RUNTIME_DIR",
@@ -214,18 +214,15 @@ fn test_discover_tcp_file_connect_fails() {
             ),
             ("HOME", None::<&str>),
         ],
-        || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            let result = rt.block_on(toadstool_display::ipc::DisplayClient::discover());
+        async {
+            let result = toadstool_display::ipc::DisplayClient::discover().await;
             assert!(
                 result.is_err(),
                 "discover with TCP file but no server should fail"
             );
         },
-    );
+    )
+    .await;
 }
 
 #[test]

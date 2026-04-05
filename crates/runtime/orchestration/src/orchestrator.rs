@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload Orchestrator - Main coordination logic
 //!
 //! **Deep Debt**: Runtime discovery, intelligent selection, automatic fallback
@@ -233,7 +233,7 @@ pub struct WorkloadRequest {
 
 impl WorkloadRequest {
     /// Creates a new workload request builder.
-    #[allow(clippy::new_ret_no_self)] // Builder pattern - returns builder, not Self
+    #[expect(clippy::new_ret_no_self)] // Builder pattern - returns builder, not Self
     pub fn new() -> WorkloadRequestBuilder {
         WorkloadRequestBuilder::default()
     }

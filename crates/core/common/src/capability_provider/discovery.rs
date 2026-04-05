@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability discovery via coordination service.
 //!
 //! Queries the discovery service to find providers for a given capability.
@@ -15,7 +15,7 @@ use super::serialize;
 pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
     let discovery_socket = std::env::var("BIOMEOS_COORDINATION_SOCKET")
         .or_else(|_| std::env::var("COORDINATION_SOCKET"))
-        .or_else(|_| std::env::var("SONGBIRD_SOCKET"))
+        .or_else(|_| std::env::var("SONGBIRD_SOCKET")) // legacy
         .unwrap_or_else(|_| {
             let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
                 .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Model-to-device loading integration
 //!
 //! Bridges the model parser with the device driver for loading models to hardware.
@@ -84,7 +84,8 @@ impl Model {
     fn to_program(&self) -> Result<akida_driver::ModelProgram> {
         // For now, use the raw program data
         // Later we'll construct this from layers + weights
-        let data = self.data().to_vec();
+        // One copy into an owned buffer for `ModelProgram` (`data()` is only `&[u8]`).
+        let data = Vec::from(self.data());
 
         if data.is_empty() {
             return Err(AkidaModelError::loading_failed(

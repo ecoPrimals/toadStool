@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration validation
 //!
 //! Validates ToadStool configuration values to ensure they are within acceptable ranges
@@ -32,7 +32,7 @@ impl ToadStoolConfig {
 
         if self.network.endpoints.storage.is_empty() {
             return Err(ConfigError::Invalid(
-                "NestGate endpoint cannot be empty".to_string(),
+                "storage endpoint cannot be empty".to_string(),
             ));
         }
 

@@ -11,7 +11,7 @@ iterations, evolving toward vendor-agnostic, capability-based solutions.
 **Crate**: `integration/protocols` | **Feature**: `tarpc-transport`
 `TRpcTransport::send_message` returns `TRpcTransportNotAvailable` — tarpc binary
 transport is not yet wired. Evolve once `toadstool_common::tarpc_service` API
-stabilizes and Songbird mesh negotiation supports protocol switching.
+stabilizes and coordination mesh negotiation supports protocol switching.
 Files: `transport.rs`.
 
 ### D-EMBEDDED-PROGRAMMER
@@ -42,6 +42,20 @@ Evolved nvpmu DMA from `RawFd` to `OwnedFd` with `try_clone()` per buffer. Elimi
 
 ### D-UNSAFE-SENDSYNC-AUDIT — RESOLVED S185
 Removed 4 redundant `unsafe impl Send/Sync` (LockedMemory, Bar0Access) — auto-derived from internal components. Added compile-time trait assertions. Evolved akida-driver DMA to `OwnedFd`.
+
+## S187 Resolved Debt (Deep Debt Execution — Mocks, Concurrency, Capability Naming)
+
+### D-PROD-MOCKS — RESOLVED S187
+Production mocks (`MockResourceMonitor`, `MockSecurityProvider`, `MockPrimal`) isolated behind `#[cfg(any(test, feature = "test-mocks"))]` in server, distributed, integration crates.
+
+### D-TEST-BLOCKON — RESOLVED S187
+56 test `Runtime::block_on()` patterns converted to `#[tokio::test] async fn` with `temp_env::async_with_vars`. 25 production sync bridges remain (require `#[async_trait]` migration).
+
+### D-CROSS-PRIMAL-NAMES — RESOLVED S187
+Cross-primal name references reduced from 5,104 to 550 in production code (89% reduction). All remaining are intentional legacy compatibility: env var fallbacks, serde aliases, parse_type match arms. New types/APIs are capability-first. Major renames: `SongbirdProtocol` → `CoordinationTransport`, `BearDogSecurityProvider` → `DistributedSecurityProvider`, `NestGateResult` → `StorageServiceResult`, etc.
+
+### D-TEST-PERFORMANCE — RESOLVED S187
+Test runtime reduced from ~9min to ~2m30s. Removed global `RUST_TEST_THREADS=4` throttle. Implemented `cfg!(test)` conditional timeouts for mDNS discovery (50ms vs 3s) and TCP probes (100ms vs 2s). Evolved production code: `nvpmu` power_manager polling loop, watchdog `Condvar::wait_timeout`, server transport exponential backoff. `ServiceDiscovery` cache-aware refresh prevents redundant mDNS scans.
 
 ## S180 Resolved Debt (Deep Debt Evolution — Async I/O, Refactoring, String Evolution)
 

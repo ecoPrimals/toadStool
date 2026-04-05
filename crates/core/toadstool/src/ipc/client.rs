@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal IPC client with smart transport selection
 //!
 //! **Deep Debt Principles**:
@@ -135,7 +135,6 @@ impl IpcClient {
         endpoints.push(Endpoint::for_toadstool());
 
         // Tier 2: TCP fallback (universal)
-        #[allow(deprecated)]
         endpoints.push(Endpoint::Tcp {
             host: LOCALHOST_IPV4.to_string(),
             port: platform::tcp::DEFAULT_PORT,
@@ -195,7 +194,6 @@ impl IpcClient {
         }
 
         // Self-knowledge: ToadStool's own default port
-        #[allow(deprecated)]
         platform::tcp::DEFAULT_PORT
     }
 

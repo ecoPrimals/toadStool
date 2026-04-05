@@ -34,8 +34,7 @@ allow = [
     "MPL-2.0",              # colored crate
     "BSD-3-Clause-Clear",   # tfhe (FHE) crates
     "AGPL-3.0",             # ToadStool own crates (deprecated SPDX form)
-    "AGPL-3.0-only",       # ToadStool own crates — canonical
-    "AGPL-3.0-or-later",   # scyBorg trio permits or-later; kept for compat
+    "AGPL-3.0-or-later",   # ToadStool own crates — canonical; scyBorg trio compat
     "LGPL-2.0-or-later",   # wgpu indirect dep (optional)
     "LGPL-2.1-or-later",
 ]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Access check tests
 
 use crate::crypto_lock::access_control::{AccessResult, ToadStoolCryptoLock};
@@ -102,7 +102,7 @@ async fn test_get_crypto_lock_status() {
 async fn test_check_external_access_ecoprimals_trusted() {
     let lock = ToadStoolCryptoLock::new().await.unwrap();
     let target = ExternalTarget::ExternalTool {
-        tool_name: "songbird".to_string(),
+        tool_name: "coordination".to_string(),
         api_endpoints: vec![],
         feature_set: vec!["ecoprimals_trusted".to_string()],
     };

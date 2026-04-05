@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU telemetry handler — report thermal and power data for detected GPUs.
 
 use super::HwLearnHandler;

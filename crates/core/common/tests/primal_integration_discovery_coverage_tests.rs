@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `primal_integration::discovery`
 //! Target: 85%+ coverage of discovery module
 
@@ -16,7 +16,7 @@ fn test_discover_service_by_capability_via_endpoint_env() {
     with_vars(
         [(
             "TOADSTOOL_ENCRYPTION_ENDPOINT",
-            Some("http://beardog.local:6060"),
+            Some("http://security.local:6060"),
         )],
         || {
             let result = discover_service_by_capability("encryption");
@@ -24,7 +24,7 @@ fn test_discover_service_by_capability_via_endpoint_env() {
             let endpoints = result.unwrap();
             assert_eq!(endpoints.len(), 1);
             assert_eq!(endpoints[0].service_id, "encryption-env");
-            assert_eq!(endpoints[0].url, "http://beardog.local:6060");
+            assert_eq!(endpoints[0].url, "http://security.local:6060");
             assert_eq!(endpoints[0].capabilities, vec!["encryption"]);
             assert!(endpoints[0].healthy);
         },

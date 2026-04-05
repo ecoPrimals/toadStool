@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for discovery engine module
 use super::*;
 
@@ -143,100 +143,63 @@ async fn test_environment_source_parse_endpoint_errors() {
 
 #[tokio::test]
 async fn test_environment_discovery() {
-    temp_env::with_var(
-        "TOADSTOOL_SECURITY_PROVIDER",
-        Some("http://discovered:0"),
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let source = EnvironmentSource::new();
-                    let providers = source.discover().await.unwrap();
-                    assert!(
-                        !providers.is_empty(),
-                        "Should find at least one provider from env"
-                    );
-                });
-            })
-            .join()
-            .expect("test thread");
+    temp_env::async_with_vars(
+        [("TOADSTOOL_SECURITY_PROVIDER", Some("http://discovered:0"))],
+        async {
+            let source = EnvironmentSource::new();
+            let providers = source.discover().await.unwrap();
+            assert!(
+                !providers.is_empty(),
+                "Should find at least one provider from env"
+            );
         },
-    );
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn test_environment_discovery_storage_provider() {
-    temp_env::with_var(
-        "TOADSTOOL_STORAGE_PROVIDER",
-        Some("http://discovered:0"),
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let source = EnvironmentSource::new();
-                    let providers = source.discover().await.unwrap();
-                    assert!(
-                        !providers.is_empty(),
-                        "Should find storage provider from env"
-                    );
-                });
-            })
-            .join()
-            .expect("test thread");
+    temp_env::async_with_vars(
+        [("TOADSTOOL_STORAGE_PROVIDER", Some("http://discovered:0"))],
+        async {
+            let source = EnvironmentSource::new();
+            let providers = source.discover().await.unwrap();
+            assert!(
+                !providers.is_empty(),
+                "Should find storage provider from env"
+            );
         },
-    );
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn test_environment_discovery_coordination_provider() {
-    temp_env::with_var(
-        "TOADSTOOL_COORDINATION_PROVIDER",
-        Some("tcp://host:1234"),
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let source = EnvironmentSource::new();
-                    let providers = source.discover().await.unwrap();
-                    assert!(!providers.is_empty(), "Should find coordination provider");
-                });
-            })
-            .join()
-            .expect("test thread");
+    temp_env::async_with_vars(
+        [("TOADSTOOL_COORDINATION_PROVIDER", Some("tcp://host:1234"))],
+        async {
+            let source = EnvironmentSource::new();
+            let providers = source.discover().await.unwrap();
+            assert!(!providers.is_empty(), "Should find coordination provider");
         },
-    );
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn test_environment_discovery_intelligence_provider() {
-    temp_env::with_var(
-        "TOADSTOOL_INTELLIGENCE_PROVIDER",
-        Some("unix:///tmp/ai.sock"),
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let source = EnvironmentSource::new();
-                    let providers = source.discover().await.unwrap();
-                    assert!(!providers.is_empty(), "Should find intelligence provider");
-                });
-            })
-            .join()
-            .expect("test thread");
+    temp_env::async_with_vars(
+        [(
+            "TOADSTOOL_INTELLIGENCE_PROVIDER",
+            Some("unix:///tmp/ai.sock"),
+        )],
+        async {
+            let source = EnvironmentSource::new();
+            let providers = source.discover().await.unwrap();
+            assert!(!providers.is_empty(), "Should find intelligence provider");
         },
-    );
+    )
+    .await;
 }
 
 #[test]
@@ -319,22 +282,13 @@ async fn test_local_registry_with_valid_file() {
     .unwrap();
 
     let config_path = config_dir.to_str().unwrap().to_string();
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert!(!providers.is_empty(), "Should discover from registry file");
-                assert_eq!(providers[0].provider_id, "p1");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert!(!providers.is_empty(), "Should discover from registry file");
+        assert_eq!(providers[0].provider_id, "p1");
+    })
+    .await;
     std::fs::remove_dir_all(&config_dir).ok();
 }
 
@@ -347,21 +301,12 @@ async fn test_local_registry_invalid_json() {
     std::fs::write(biomeos_dir.join("registry.json"), "not valid json").unwrap();
 
     let config_path = config_dir.to_str().unwrap().to_string();
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert!(providers.is_empty(), "Invalid JSON should return empty");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert!(providers.is_empty(), "Invalid JSON should return empty");
+    })
+    .await;
     std::fs::remove_dir_all(&config_dir).ok();
 }
 
@@ -389,22 +334,13 @@ async fn test_local_registry_skips_invalid_endpoint() {
     .unwrap();
 
     let config_path = config_dir.to_str().unwrap().to_string();
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert_eq!(providers.len(), 1, "Should skip invalid endpoint entry");
-                assert_eq!(providers[0].provider_id, "valid");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert_eq!(providers.len(), 1, "Should skip invalid endpoint entry");
+        assert_eq!(providers[0].provider_id, "valid");
+    })
+    .await;
     std::fs::remove_dir_all(&config_dir).ok();
 }
 
@@ -415,21 +351,12 @@ async fn test_local_registry_no_file_returns_empty() {
     std::fs::create_dir_all(&config_dir).unwrap();
     let config_path = config_dir.to_str().unwrap().to_string();
 
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert!(providers.is_empty());
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert!(providers.is_empty());
+    })
+    .await;
     std::fs::remove_dir_all(&config_dir).ok();
 }
 
@@ -513,21 +440,15 @@ async fn test_environment_source_parse_custom_protocol_fallback() {
 
 #[tokio::test]
 async fn test_environment_source_invalid_url_skips_provider() {
-    temp_env::with_var("TOADSTOOL_SECURITY_PROVIDER", Some("tcp://noport"), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = EnvironmentSource::new();
-                let providers = source.discover().await.unwrap();
-                assert!(providers.is_empty(), "Invalid URL should skip provider");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars(
+        [("TOADSTOOL_SECURITY_PROVIDER", Some("tcp://noport"))],
+        async {
+            let source = EnvironmentSource::new();
+            let providers = source.discover().await.unwrap();
+            assert!(providers.is_empty(), "Invalid URL should skip provider");
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -557,21 +478,12 @@ async fn test_local_registry_empty_file_returns_empty() {
     std::fs::write(biomeos_dir.join("registry.json"), "[]").unwrap();
     let config_path = temp_dir.to_str().unwrap().to_string();
 
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert!(providers.is_empty());
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert!(providers.is_empty());
+    })
+    .await;
     std::fs::remove_dir_all(&temp_dir).ok();
 }
 
@@ -587,25 +499,16 @@ async fn test_local_registry_entry_without_capability_defaults_to_coordination()
     .unwrap();
     let config_path = temp_dir.to_str().unwrap().to_string();
 
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert_eq!(providers.len(), 1);
-                assert!(matches!(
-                    providers[0].capability,
-                    CapabilityType::Coordination { .. }
-                ));
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert_eq!(providers.len(), 1);
+        assert!(matches!(
+            providers[0].capability,
+            CapabilityType::Coordination { .. }
+        ));
+    })
+    .await;
     std::fs::remove_dir_all(&temp_dir).ok();
 }
 
@@ -664,22 +567,13 @@ async fn test_local_registry_entry_aliases_id_url() {
     .unwrap();
     let config_path = temp_dir.to_str().unwrap().to_string();
 
-    temp_env::with_var("XDG_CONFIG_HOME", Some(config_path.as_str()), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let source = LocalRegistrySource::new();
-                let providers = source.discover().await.unwrap();
-                assert_eq!(providers.len(), 1);
-                assert_eq!(providers[0].provider_id, "alias-id");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("XDG_CONFIG_HOME", Some(config_path.as_str()))], async {
+        let source = LocalRegistrySource::new();
+        let providers = source.discover().await.unwrap();
+        assert_eq!(providers.len(), 1);
+        assert_eq!(providers[0].provider_id, "alias-id");
+    })
+    .await;
     std::fs::remove_dir_all(&temp_dir).ok();
 }
 
@@ -702,28 +596,19 @@ async fn test_local_registry_home_fallback() {
     .unwrap();
     let home_path = fake_home.to_str().unwrap().to_string();
 
-    temp_env::with_vars(
+    temp_env::async_with_vars(
         [
             ("XDG_CONFIG_HOME", None::<&str>),
             ("HOME", Some(home_path.as_str())),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let source = LocalRegistrySource::new();
-                    let providers = source.discover().await.unwrap();
-                    assert!(!providers.is_empty());
-                    assert_eq!(providers[0].provider_id, "home-svc");
-                });
-            })
-            .join()
-            .expect("test thread");
+        async {
+            let source = LocalRegistrySource::new();
+            let providers = source.discover().await.unwrap();
+            assert!(!providers.is_empty());
+            assert_eq!(providers[0].provider_id, "home-svc");
         },
-    );
+    )
+    .await;
     std::fs::remove_dir_all(&temp_dir).ok();
 }
 

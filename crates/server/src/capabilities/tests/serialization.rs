@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Serialization roundtrip and clone tests.
 use super::*;
 
@@ -81,7 +81,7 @@ fn test_primal_capabilities_serialization_roundtrip() {
 fn test_primal_capabilities_clone() {
     let caps = PrimalCapabilities {
         primal_id: "clone-test".to_string(),
-        primal_type: primals::BEARDOG.to_string(),
+        primal_type: primals::LEGACY_SECURITY_LABEL.to_string(),
         version: "1.0.0".to_string(),
         resources: SystemResources {
             cpu_cores: 2,

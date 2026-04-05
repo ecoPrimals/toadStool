@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Platform detection helpers for capability adaptation
 //!
@@ -93,7 +93,7 @@ pub fn detect_storage_read_bandwidth() -> Option<u64> {
 /// Detect storage write bandwidth (bytes/sec) via runtime heuristics
 ///
 /// **Deep Debt**: Runtime detection, no hardcoding
-#[allow(
+#[expect(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss

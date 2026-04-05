@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! End-to-end tests for secure enclave workflows
 //!
 //! These tests demonstrate complete workflows including:
@@ -140,7 +140,7 @@ fn test_e2e_compress_encrypt_process() {
             assert_eq!(plaintext, &sensitive[..]);
 
             // Perform computation (count 'A's)
-            #[allow(clippy::naive_bytecount)] // test code, no bytecount dependency needed
+            #[expect(clippy::naive_bytecount)] // test code, no bytecount dependency needed
             let count = plaintext.iter().filter(|&&b| b == b'A').count();
             Ok(count)
         })

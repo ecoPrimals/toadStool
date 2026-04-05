@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Continuous GPU monitoring with safety thresholds.
 //!
 //! Polls hwmon sensors at a configurable interval and reports safety

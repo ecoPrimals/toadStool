@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! UniBin tests
 //!
 //! Covers configuration/parsing paths, validation, and logic that does not
@@ -274,14 +274,14 @@ fn shutdown_signal_variants_differ() {
 
 // ── run_server_main early exit on config error ────────────────────────────
 
-#[test]
-fn run_server_main_fails_when_socket_path_unavailable() {
+#[tokio::test]
+async fn run_server_main_fails_when_socket_path_unavailable() {
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let file_path = temp_dir.path().join("not_a_dir");
     std::fs::File::create(&file_path).expect("create file");
     let path_str = file_path.to_string_lossy().to_string();
 
-    temp_env::with_vars(
+    temp_env::async_with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
             ("PRIMAL_SOCKET", None::<&str>),
@@ -289,15 +289,15 @@ fn run_server_main_fails_when_socket_path_unavailable() {
             ("XDG_RUNTIME_DIR", Some(path_str.as_str())),
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
-        || {
-            let rt = tokio::runtime::Runtime::new().expect("runtime");
-            let result = rt.block_on(super::run_server_main(None, None));
+        async {
+            let result = super::run_server_main(None, None).await;
             assert!(
                 result.is_err(),
                 "run_server_main should fail when socket path unavailable"
             );
         },
-    );
+    )
+    .await;
 }
 
 // ── get_socket_path (format) ──────────────────────────────────────────────
@@ -376,46 +376,28 @@ fn get_socket_path_xdg_runtime_dir_fallback() {
 
 // ── create_executor (standalone mode, no network) ────────────────────────────
 
-#[test]
-fn create_executor_standalone_mode() {
-    temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = create_executor("test-family").await;
-                assert!(
-                    result.is_ok(),
-                    "create_executor should succeed in standalone mode"
-                );
-                let executor = result.unwrap();
-                assert!(std::sync::Arc::strong_count(&executor) >= 1);
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+#[tokio::test]
+async fn create_executor_standalone_mode() {
+    temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+        let result = create_executor("test-family").await;
+        assert!(
+            result.is_ok(),
+            "create_executor should succeed in standalone mode"
+        );
+        let executor = result.unwrap();
+        assert!(std::sync::Arc::strong_count(&executor) >= 1);
+    })
+    .await;
 }
 
-#[test]
-fn create_executor_standalone_mode_true_lowercase() {
-    temp_env::with_var("TOADSTOOL_STANDALONE", Some("true"), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = create_executor("default").await;
-                assert!(
-                    result.is_ok(),
-                    "TOADSTOOL_STANDALONE=true should use standalone"
-                );
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+#[tokio::test]
+async fn create_executor_standalone_mode_true_lowercase() {
+    temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("true"))], async {
+        let result = create_executor("default").await;
+        assert!(
+            result.is_ok(),
+            "TOADSTOOL_STANDALONE=true should use standalone"
+        );
+    })
+    .await;
 }

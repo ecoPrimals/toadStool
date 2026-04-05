@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Input event types and parsing
 //!
 //! Provides typed events for keyboard, mouse, touch input.

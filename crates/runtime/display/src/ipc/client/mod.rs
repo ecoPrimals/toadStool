@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Display IPC client — JSON-RPC over Unix or TCP with automatic discovery.
 //!
 //! **ISOMORPHIC IPC**: JSON-RPC client with automatic Unix/TCP discovery.

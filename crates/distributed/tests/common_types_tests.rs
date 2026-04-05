@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for common types (capacity, distribution, load balancing)
 
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -404,14 +404,14 @@ fn test_distribution_plan_creation() {
 #[test]
 fn test_target_type_variants() {
     let local = TargetType::LocalNode;
-    let songbird = TargetType::SongbirdNode;
+    let coordination = TargetType::CoordinationNode;
     let cloud = TargetType::CloudProvider;
     let k8s = TargetType::Kubernetes;
     let edge = TargetType::EdgeDevice;
     let self_hosted = TargetType::SelfHosted;
 
     assert_eq!(local, TargetType::LocalNode);
-    assert_eq!(songbird, TargetType::SongbirdNode);
+    assert_eq!(coordination, TargetType::CoordinationNode);
     assert_eq!(cloud, TargetType::CloudProvider);
     assert_eq!(k8s, TargetType::Kubernetes);
     assert_eq!(edge, TargetType::EdgeDevice);

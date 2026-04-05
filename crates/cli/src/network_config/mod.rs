@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! # Songbird Network Configuration Module
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! # Orchestration network configuration
 //!
-//! This module provides comprehensive network configuration for Songbird service mesh
-//! integration, including traffic management, DNS service discovery, security policies,
-//! and ingress/egress rules.
+//! Network configuration for the coordination / service-mesh stack: traffic management,
+//! DNS discovery, security policies, and ingress/egress rules.
 
 mod configurator;
 mod types;

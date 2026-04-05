@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability Registry
 //!
 //! Maintains the registry of ToadStool's compute capabilities
@@ -351,7 +351,7 @@ impl ProviderRegistry {
     }
 
     /// Prune registrations whose socket files no longer exist.
-    #[allow(clippy::needless_collect)] // Collect required: cannot mutate self.providers while iterating
+    #[expect(clippy::needless_collect)] // Collect required: cannot mutate self.providers while iterating
     pub fn prune_stale(&mut self) -> Vec<ProviderRegistration> {
         let stale_keys: Vec<String> = self
             .providers

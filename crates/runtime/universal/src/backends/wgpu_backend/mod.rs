@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! wgpu compute unit implementation (pure Rust!)
 //!
 //! This shows how wgpu GPUs are treated as ComputeUnits.
@@ -20,7 +20,7 @@ pub use types::{
 /// wgpu compute unit — hardware discovery layer for GPU adapters.
 ///
 /// toadStool discovers and exposes adapter identity and limits so that
-/// barraCuda (compute math primal) can make driver-aware decisions
+/// the network / compute math layer can make driver-aware decisions
 /// (NVK detection, f64 workarounds, workgroup tuning).
 pub struct WgpuComputeUnit {
     name: String,
@@ -34,7 +34,7 @@ pub struct WgpuComputeUnit {
 impl WgpuComputeUnit {
     /// Get the adapter identity info for driver-aware decisions.
     ///
-    /// barraCuda reads this to build its `GpuDriverProfile` (NVK detection,
+    /// Downstream compute routing reads this to build its `GpuDriverProfile` (NVK detection,
     /// f64 workarounds, workgroup tuning) without depending on wgpu.
     #[must_use]
     pub const fn adapter_info(&self) -> &GpuAdapterInfo {
@@ -54,10 +54,10 @@ impl ComputeUnit for WgpuComputeUnit {
 
     async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
         // toadStool provides hardware discovery and capability probing.
-        // GPU compute dispatch (shaders, pipelines) is barraCuda's domain.
-        // Use barraCuda's ComputeDispatch for actual GPU execution.
+        // GPU compute dispatch (shaders, pipelines) is owned by the network / shader compute layer.
+        // Use that layer's `ComputeDispatch` for actual GPU execution.
         Err(ComputeError::ExecutionFailed(
-            "GPU compute dispatch is barraCuda's domain — discover via 'compute' capability IPC"
+            "GPU compute dispatch is owned by the compute capability — discover via 'compute' capability IPC"
                 .to_string(),
         ))
     }

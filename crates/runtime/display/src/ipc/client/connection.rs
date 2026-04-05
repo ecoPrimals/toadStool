@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Connect and construct [`super::DisplayClient`] instances.
 
 use std::path::PathBuf;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
@@ -85,7 +85,7 @@ pub mod types;
 #[cfg(feature = "cpu")]
 pub use backends::CpuComputeUnit;
 #[cfg(feature = "opencl")]
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub use backends::OpenClComputeUnit;
 #[cfg(feature = "wgpu-backend")]
 pub use backends::WgpuComputeUnit;

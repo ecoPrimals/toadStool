@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::unused_async,
     reason = "async signature required by trait/interface"
 )]
@@ -28,7 +28,7 @@ use toadstool::{
 use toadstool_config::config_utils::ConfigUtils;
 use toadstool_config::ports::capability_fallback;
 use toadstool_distributed::{
-    DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
+    CoordinationConfig, DistributedConfig, DistributedCoordinator, StandaloneConfig,
 };
 
 /// Resolve orchestration endpoint from config — no hardcoded ports.
@@ -53,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Demonstrate orchestration integration (capability-based)
     println!("\n🎼 2. Orchestration Integration (Capability Discovery)");
-    demonstrate_songbird_integration().await?;
+    demonstrate_coordination().await?;
 
     // Compare architectures
     println!("\n📊 3. Architecture Comparison");
@@ -75,7 +75,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
             enable_job_queue: true,
             max_queue_size: 50,
         },
-        songbird_integration: None, // No Songbird integration
+        coordination: None, // No Songbird integration
     };
 
     // Create and start coordinator
@@ -126,7 +126,7 @@ async fn demonstrate_standalone_operation() -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Error>> {
+async fn demonstrate_coordination() -> Result<(), Box<dyn std::error::Error>> {
     println!("Creating ToadStool instance with orchestration integration...");
 
     // Endpoint from config — TOADSTOOL_COORDINATION_URL or capability_fallback
@@ -141,7 +141,7 @@ async fn demonstrate_songbird_integration() -> Result<(), Box<dyn std::error::Er
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: endpoint.clone(),
             auth_token: None,
             health_reporting_interval_secs: 30,

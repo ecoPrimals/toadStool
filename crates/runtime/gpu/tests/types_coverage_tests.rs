@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests targeting [`toadstool_runtime_gpu::types`] (`types.rs`).
 //!
 //! Covers `Default`, `Debug`, serde round-trips, helpers (`name`, `is_universal`,
@@ -7,7 +7,7 @@
 //! (`Clone`, `Debug`, construction). `types.rs` does not implement `Display`,
 //! `From`/`Into`, or ordering traits on these types.
 
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

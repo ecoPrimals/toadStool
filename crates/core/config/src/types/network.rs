@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network and communication configuration
 //!
 //! This module contains configuration types for networking including:
 //! - Network bind addresses and ports
-//! - Service endpoint URLs (Songbird, BearDog, NestGate, etc.)
+//! - Service endpoint URLs (coordination, security, storage, etc.)
 //! - Connection settings (timeouts, retries, keepalive)
 //! - TLS/SSL configuration
 
@@ -51,7 +51,7 @@ impl Default for NetworkConfig {
             fallback.parse().unwrap_or_else(|_| {
                 // Last resort: LOCALHOST_IPV4:BIND_FALLBACK_PORT is guaranteed valid by IP spec
                 // This expect is justified: it's a compile-time constant that must be valid
-                #[allow(clippy::expect_used)]
+                #[expect(clippy::expect_used)]
                 format!("{LOCALHOST_IPV4}:{BIND_FALLBACK_PORT}").parse().expect(
                     "Constants LOCALHOST_IPV4:BIND_FALLBACK_PORT must parse - language guarantee",
                 )
@@ -121,6 +121,9 @@ impl Default for EndpointConfig {
     fn default() -> Self {
         let config = crate::env_config::EnvironmentConfig::from_env();
 
+        // Coordination URL: `TOADSTOOL_COORDINATION_SERVICE_URL` first; else `http://{BIND_ADDRESS}:{COORDINATION}`
+        // with port from `ports::capability_fallback::COORDINATION` (8080). `apply_env_overrides` may still set
+        // `TOADSTOOL_COORDINATION_ENDPOINT` / `TOADSTOOL_SONGBIRD_ENDPOINT` afterward.
         let coordination =
             std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
                 let port = crate::ports::capability_fallback::COORDINATION;
@@ -140,13 +143,13 @@ impl Default for EndpointConfig {
         });
 
         Self {
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             coordination,
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             security,
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             storage,
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             ai_processing,
             // Self-knowledge endpoints (still valid)
             federation: format!(
@@ -241,7 +244,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_default_network_config() {
         // Tests backward compatibility with deprecated fields
         let config = NetworkConfig::default();
@@ -250,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_endpoint_config_defaults() {
         // Tests backward compatibility with deprecated fields
         let config = EndpointConfig::default();

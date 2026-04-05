@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! BearDog / PKI security service integration.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Security / PKI security service integration.
 //!
 //! Capability-based integration with ecosystem security services.
 //! Pure Rust: Unix sockets for inter-primal communication (no reqwest).
@@ -12,17 +12,16 @@ mod trait_;
 mod transport;
 
 pub use auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse};
-pub use client::BearDogIntegration;
-pub use config::BearDogConfig;
+pub use client::{BearDogIntegration, SecurityServiceIntegration};
+pub use config::SecurityConfig;
 pub use policy::{PolicyRule, SecurityAuditEvent, SecurityPolicy};
-pub use trait_::BearDogIntegrationTrait;
+pub use trait_::SecurityServiceIntegrationTrait;
+pub use trait_::SecurityServiceIntegrationTrait as BearDogIntegrationTrait;
 
-/// Type alias for BearDog config
-pub type SecurityServiceConfig = BearDogConfig;
-/// Type alias for BearDog integration client
-pub type SecurityServiceIntegration = BearDogIntegration;
-/// Type alias for BearDog trait object
-pub type SecurityServiceTrait = dyn BearDogIntegrationTrait;
+/// Type alias for security config.
+pub type SecurityServiceConfig = SecurityConfig;
+/// Trait object type for the security integration trait.
+pub type SecurityServiceTrait = dyn SecurityServiceIntegrationTrait;
 
 #[cfg(test)]
 mod tests {
@@ -32,7 +31,7 @@ mod tests {
 
     #[test]
     fn bear_dog_config_default_values() {
-        let config = BearDogConfig::default();
+        let config = SecurityConfig::default();
         assert_eq!(config.request_timeout_secs, 30);
         assert_eq!(config.token_refresh_interval_secs, 300);
         assert_eq!(config.zero_trust_validation_interval_secs, 60);
@@ -41,7 +40,7 @@ mod tests {
 
     #[test]
     fn bear_dog_config_default_socket_path() {
-        let config = BearDogConfig::default();
+        let config = SecurityConfig::default();
         assert!(!config.socket_path.is_empty());
         assert!(
             std::path::Path::new(&config.socket_path)
@@ -96,9 +95,9 @@ mod tests {
 
     #[tokio::test]
     async fn authenticate_standalone_stores_token() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog-test.sock".to_string(),
-            ..BearDogConfig::default()
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security-test.sock".to_string(),
+            ..SecurityConfig::default()
         };
         let integration = BearDogIntegration::new(config).unwrap();
         let result = integration
@@ -115,9 +114,9 @@ mod tests {
 
     #[tokio::test]
     async fn authorize_without_token_returns_error() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog-authz.sock".to_string(),
-            ..BearDogConfig::default()
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security-authz.sock".to_string(),
+            ..SecurityConfig::default()
         };
         let integration = BearDogIntegration::new(config).unwrap();
         integration
@@ -137,9 +136,9 @@ mod tests {
 
     #[tokio::test]
     async fn zero_trust_validation_standalone_returns_true() {
-        let config = BearDogConfig {
+        let config = SecurityConfig {
             socket_path: "/nonexistent/zt-validation.sock".to_string(),
-            ..BearDogConfig::default()
+            ..SecurityConfig::default()
         };
         let integration = BearDogIntegration::new(config).unwrap();
         let result = integration
@@ -151,6 +150,6 @@ mod tests {
 
     #[test]
     fn type_aliases_compile() {
-        let _: SecurityServiceConfig = BearDogConfig::default();
+        let _: SecurityServiceConfig = SecurityConfig::default();
     }
 }

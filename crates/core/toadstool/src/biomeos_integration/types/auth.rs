@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Authentication, authorization, and security policy types.
 
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use std::time::Duration;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeSecurity {
     /// Enable `BearDog` integration
-    pub beardog_integration: bool,
+    pub security: bool,
     /// Security policies
     pub policies: Vec<SecurityPolicy>,
     /// Network policies

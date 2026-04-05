@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery state and statistics
 //!
 //! Internal state and public statistics for the discovery engine.

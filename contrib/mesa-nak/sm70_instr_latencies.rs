@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! SM70 (Volta) instruction latency tables for Mesa NAK.
 //!
 //! **This file is the prepared upstream contribution patch for Mesa's**
@@ -166,12 +166,15 @@ SmVersion::Sm70 | SmVersion::Sm72 | SmVersion::Sm75
 //
 // 2. Run on Titan V with NVK:
 //    VK_DRIVER_FILES=".../nouveau_icd.x86_64.json" \
-//    BARRACUDA_GPU_ADAPTER=titan \
+//    NETWORK_SERVICE_GPU_ADAPTER=titan \
 //    ./build/src/nouveau/compiler/nak hw_tests 2>&1 | grep -E "SM70|PASS|FAIL"
+//
+//    Older local scripts may use a legacy env prefix for the same purpose; prefer
+//    `NETWORK_SERVICE_GPU_ADAPTER` going forward.
 //
 // 3. Benchmark Jacobi eigensolve:
 //    cd /path/to/toadstool
-//    BARRACUDA_GPU_ADAPTER=titan \
+//    NETWORK_SERVICE_GPU_ADAPTER=titan \
 //    cargo run --release --bin bench_wgsize_nvk -- --n 30 --batch 512 --sweeps 200
 //
 //    Expected: 3-4x improvement over baseline (69.8ms → 17-23ms for n=30)

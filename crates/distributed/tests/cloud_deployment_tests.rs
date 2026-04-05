@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for cloud deployment and provider types
 //!
 //! This test suite covers:
@@ -51,21 +51,21 @@ fn test_auth_method_certificate() {
 }
 
 #[test]
-fn test_auth_method_beardog() {
-    let auth = AuthMethod::BearDogAuth {
-        endpoint: "https://beardog.example.com".to_string(),
-        credentials: SecretString::from("beardog-creds"),
+fn test_auth_method_security() {
+    let auth = AuthMethod::SecurityServiceAuth {
+        endpoint: "https://security.example.com".to_string(),
+        credentials: SecretString::from("security-creds"),
     };
 
     match auth {
-        AuthMethod::BearDogAuth {
+        AuthMethod::SecurityServiceAuth {
             endpoint,
             credentials,
         } => {
-            assert_eq!(endpoint, "https://beardog.example.com");
-            assert_eq!(credentials.expose_secret(), "beardog-creds");
+            assert_eq!(endpoint, "https://security.example.com");
+            assert_eq!(credentials.expose_secret(), "security-creds");
         }
-        _ => panic!("Expected BearDogAuth variant"),
+        _ => panic!("Expected SecurityServiceAuth variant"),
     }
 }
 

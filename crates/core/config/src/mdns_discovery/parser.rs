@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! TXT record parsing for mDNS-SD–style capability strings.
 //!
 //! When full [`mdns-sd`](https://crates.io/crates/mdns-sd) integration lands, responses will

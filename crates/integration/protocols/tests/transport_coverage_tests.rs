@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Transport Coverage Tests
 //!
 //! This test suite provides thorough coverage of the transport module to improve

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core cloud abstractions
 //!
 //! This module contains the fundamental cloud provider abstractions, including
@@ -112,8 +112,9 @@ pub enum CloudProvider {
         /// Zone.
         zone: String,
     },
-    /// BearDog Cloud (self-owned cloud).
-    BearDogCloud {
+    /// Self-managed cloud with strong encryption and token auth.
+    #[serde(alias = "BearDogCloud")] // legacy alias
+    PrivateSecurityCloud {
         /// Endpoint URL.
         endpoint: String,
         /// Auth token.
@@ -211,7 +212,7 @@ pub struct UniversalCloudOrchestrator {
     pub(crate) hybrid_scheduler: HybridCloudScheduler,
     /// Cost optimizer across all clouds
     pub(crate) cost_optimizer: CloudCostOptimizer,
-    /// Compliance enforcer (bearDog integration)
+    /// Compliance enforcer (security integration)
     pub(crate) compliance_enforcer: CloudComplianceEnforcer,
     /// Multi-cloud load balancer
     pub(crate) _load_balancer: MultiCloudLoadBalancer,

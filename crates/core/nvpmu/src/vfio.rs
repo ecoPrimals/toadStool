@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::doc_markdown)] // VFIO ioctl names (VFIO_GET_API_VERSION, etc.) are kernel ABI identifiers
 //! VFIO-based BAR0 access for NVIDIA GPUs.
 //!
@@ -157,7 +157,7 @@ impl VfioBar0Access {
         &self.device
     }
 
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         reason = "BAR0 offsets and sizes are always within usize on 64-bit targets"
     )]
@@ -289,7 +289,7 @@ impl VfioMsixInterrupt {
         let fd_val = eventfd.as_raw_fd();
 
         // Build the VFIO_DEVICE_SET_IRQS payload: VfioIrqSet header + eventfd i32
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             reason = "compile-time struct sizes always fit u32"
         )]
@@ -311,7 +311,7 @@ impl VfioMsixInterrupt {
         payload.extend_from_slice(&irq_set.count.to_ne_bytes());
         payload.extend_from_slice(&fd_val.to_ne_bytes());
 
-        #[allow(
+        #[expect(
             clippy::cast_ptr_alignment,
             reason = "VFIO SET_IRQS reads argsz from the header to determine actual layout"
         )]
@@ -320,9 +320,8 @@ impl VfioMsixInterrupt {
         };
 
         // SAFETY: device_fd is a valid VFIO device; payload matches kernel ABI.
-        unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) }.map_err(|e| {
-            NvPmuError::Hardware(format!("MSI-X configure vector {vector}: {e}"))
-        })?;
+        unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) }
+            .map_err(|e| NvPmuError::Hardware(format!("MSI-X configure vector {vector}: {e}")))?;
 
         tracing::info!(vector, "MSI-X interrupt configured via eventfd");
 

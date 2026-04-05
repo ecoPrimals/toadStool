@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Songbird network configuration types
 
 use std::collections::HashMap;
@@ -15,28 +15,28 @@ use toadstool_common::config_bases::{
 
 #[test]
 fn test_songbird_network_config_creation() {
-    let config = create_test_songbird_config();
+    let config = create_test_coordination_config();
     assert!(config.service_mesh.enabled);
     assert!(config.dns_discovery.enabled);
 }
 
 #[test]
 fn test_songbird_network_config_clone() {
-    let config = create_test_songbird_config();
+    let config = create_test_coordination_config();
     let cloned = config.clone();
     assert_eq!(config.service_mesh.enabled, cloned.service_mesh.enabled);
 }
 
 #[test]
 fn test_songbird_network_config_debug() {
-    let config = create_test_songbird_config();
+    let config = create_test_coordination_config();
     let debug_str = format!("{:?}", config);
     assert!(debug_str.contains("SongbirdNetworkConfig"));
 }
 
 #[test]
 fn test_songbird_network_config_serialization() {
-    let config = create_test_songbird_config();
+    let config = create_test_coordination_config();
     let json = serde_json::to_string(&config).unwrap();
     assert!(json.contains("service_mesh"));
     assert!(json.contains("dns_discovery"));
@@ -278,8 +278,8 @@ fn test_token_validation_config() {
 }
 
 #[test]
-fn test_beardog_integration_config() {
-    let config = create_test_beardog_integration_config(true);
+fn test_security_config() {
+    let config = create_test_security_config(true);
     assert!(config.enabled);
     assert!(config.signature_verification);
     assert!(config.crypto_lock);

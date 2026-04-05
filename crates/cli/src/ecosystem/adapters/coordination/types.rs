@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Data types for coordination: registration, discovery, and distributed locks.
 //!
 //! These structs are the stable surface for CLI and integrator code that registers

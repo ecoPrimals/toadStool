@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for [`ToadStoolClient`] Unix JSON-RPC implementation (moved from `core.rs`).
 
 use crate::client::config::ClientConfig;

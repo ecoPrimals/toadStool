@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for primal socket path resolution
 //!
 //! Extracted from `primal_sockets.rs` to reduce file size.
@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use toadstool_common::primal_sockets::*;
 
 /// Mutex to serialize tests that modify environment variables.
-#[allow(dead_code)]
+#[expect(dead_code)]
 static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[test]
@@ -34,19 +34,19 @@ fn test_runtime_dir_fallback() {
 }
 
 #[test]
-fn test_beardog_socket_from_env() {
+fn test_security_socket_legacy_from_env() {
     let env = SocketPathEnv {
-        beardog_socket: Some("/custom/beardog.sock".to_string()),
+        legacy_security_socket: Some("/custom/security-via-legacy.sock".to_string()),
         ..Default::default()
     };
     assert_eq!(
         resolve_capability_socket_fallback("crypto", &env),
-        PathBuf::from("/custom/beardog.sock")
+        PathBuf::from("/custom/security-via-legacy.sock")
     );
 }
 
 #[test]
-fn test_beardog_socket_default() {
+fn test_security_socket_default_biomeos_path() {
     let env = SocketPathEnv {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         biomeos_family_id: Some("nat0".to_string()),
@@ -57,7 +57,7 @@ fn test_beardog_socket_default() {
 }
 
 #[test]
-fn test_songbird_socket_biomeos_standard() {
+fn test_coordination_socket_biomeos_standard() {
     let env = SocketPathEnv {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
@@ -92,30 +92,30 @@ fn test_biomeos_directory_path() {
 }
 
 #[test]
-fn test_all_primals_have_unique_paths() {
+fn test_all_capability_sockets_have_unique_paths() {
     let env = SocketPathEnv {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
     };
-    let beardog = resolve_capability_socket_fallback("crypto", &env);
-    let songbird = resolve_capability_socket_fallback("coordination", &env);
-    let nestgate = resolve_capability_socket_fallback("storage", &env);
-    let squirrel = resolve_routing_socket(&env);
+    let security = resolve_capability_socket_fallback("crypto", &env);
+    let coordination = resolve_capability_socket_fallback("coordination", &env);
+    let storage = resolve_capability_socket_fallback("storage", &env);
+    let routing = resolve_routing_socket(&env);
     let toadstool = resolve_toadstool_socket(&env);
 
-    assert_ne!(beardog, songbird);
-    assert_ne!(beardog, nestgate);
-    assert_ne!(beardog, squirrel);
-    assert_ne!(beardog, toadstool);
-    assert_ne!(songbird, nestgate);
-    assert_ne!(songbird, squirrel);
-    assert_ne!(songbird, toadstool);
-    assert_ne!(nestgate, squirrel);
-    assert_ne!(nestgate, toadstool);
-    assert_ne!(squirrel, toadstool);
+    assert_ne!(security, coordination);
+    assert_ne!(security, storage);
+    assert_ne!(security, routing);
+    assert_ne!(security, toadstool);
+    assert_ne!(coordination, storage);
+    assert_ne!(coordination, routing);
+    assert_ne!(coordination, toadstool);
+    assert_ne!(storage, routing);
+    assert_ne!(storage, toadstool);
+    assert_ne!(routing, toadstool);
 
     // All should be in biomeos subdirectory
-    for path in [&beardog, &songbird, &nestgate, &squirrel, &toadstool] {
+    for path in [&security, &coordination, &storage, &routing, &toadstool] {
         assert!(
             path.to_str().unwrap().contains("/biomeos/"),
             "Path should contain /biomeos/: {}",
@@ -168,19 +168,19 @@ fn test_socket_path_for_service_with_override() {
 }
 
 #[test]
-fn test_nestgate_socket_from_env() {
+fn test_storage_socket_legacy_from_env() {
     let env = SocketPathEnv {
-        nestgate_socket: Some("/custom/nestgate.sock".to_string()),
+        legacy_storage_socket: Some("/custom/storage-via-legacy.sock".to_string()),
         ..Default::default()
     };
     assert_eq!(
         resolve_capability_socket_fallback("storage", &env),
-        PathBuf::from("/custom/nestgate.sock")
+        PathBuf::from("/custom/storage-via-legacy.sock")
     );
 }
 
 #[test]
-fn test_nestgate_socket_default() {
+fn test_storage_socket_default_biomeos_path() {
     let env = SocketPathEnv {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
@@ -190,19 +190,19 @@ fn test_nestgate_socket_default() {
 }
 
 #[test]
-fn test_squirrel_socket_from_env() {
+fn test_intelligence_socket_legacy_from_env() {
     let env = SocketPathEnv {
-        squirrel_socket: Some("/custom/squirrel.sock".to_string()),
+        legacy_intelligence_socket: Some("/custom/intelligence-via-legacy.sock".to_string()),
         ..Default::default()
     };
     assert_eq!(
         resolve_routing_socket(&env),
-        PathBuf::from("/custom/squirrel.sock")
+        PathBuf::from("/custom/intelligence-via-legacy.sock")
     );
 }
 
 #[test]
-fn test_squirrel_socket_default() {
+fn test_routing_socket_default_biomeos_path() {
     let env = SocketPathEnv {
         xdg_runtime_dir: Some("/run/user/1000".to_string()),
         ..Default::default()
@@ -314,7 +314,7 @@ fn test_socket_path_env_default() {
     let env = SocketPathEnv::default();
     assert!(env.xdg_runtime_dir.is_none());
     assert!(env.user.is_none());
-    assert!(env.beardog_socket.is_none());
+    assert!(env.legacy_security_socket.is_none());
 }
 
 #[test]

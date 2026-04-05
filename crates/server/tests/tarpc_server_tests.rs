@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -384,7 +384,7 @@ async fn test_health_check_with_queued_workloads() {
 }
 
 #[tokio::test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 async fn test_serve_tcp_debug_returns_error() {
     let executor = Arc::new(StandaloneExecutor::new());
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);

@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 5, 2026 -- S186 Unsafe Evolution — ExclusivePtr + ContiguousBytes + OwnedFd
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,853 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~36 unsafe blocks** (25 in containment zones, 11 in consumer code; down from 59 via S185-186) | **355 #[allow] / 530 #[expect]** (40%/60%)
-**Latest**: S185-186 — Unsafe audit + evolution: `ExclusivePtr` (auto-derives Send+Sync), `ContiguousBytes` trait (centralizes from_raw_parts), `do_ioctl` helpers (centralized ioctl dispatch), generic `read_reg<T>`/`write_reg<T>` (volatile MMIO), nvpmu `OwnedFd` evolution. ~59→~36 unsafe blocks. Remaining ~36 are irreducible kernel/hardware trust boundaries.
+**Updated**: April 5, 2026 -- S187 Deep Debt — Mocks, Concurrency, Capability Naming
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,515 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~66 unsafe blocks** (all in hw containment) | **355 #[allow] / 530 #[expect]** (40%/60%) | **550 legacy-compat cross-primal refs** (89% reduction from 5,104) | **2m30s test runtime** (was ~9m)
+**Latest**: S187 — Deep debt execution: production mocks isolated (`test-mocks` feature), 56 test block_on→tokio::test, cross-primal names 5104→550 (89% reduction), test runtime 9m→2m30s (cfg!(test) timeouts, removed RUST_TEST_THREADS throttle, ServiceDiscovery cache-aware refresh)
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,853 tests** (S184, 0 failures). Target 90%.
+**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,515 tests** (S184, 0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -157,6 +157,9 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ---
 
 ## Completed This Session (S90-155b)
+
+### Session S187: Deep Debt Execution (Apr 5, 2026)
+- **S187 (Apr 5, 2026)**: Deep debt execution — production mocks isolated behind `#[cfg(any(test, feature = "test-mocks"))]` in server/distributed/integration. 56 test `block_on` → `#[tokio::test]`. Cross-primal name evolution: `SongbirdProtocol` → `CoordinationTransport`, `BearDogSecurityProvider` → `DistributedSecurityProvider`, `NestGateResult` → `StorageServiceResult` + dozens more. 5,104 → 550 cross-primal refs in production (89% reduction; remainder intentional legacy compat). Test runtime 9m → 2m30s via removed RUST_TEST_THREADS throttle, cfg!(test) mDNS/TCP timeouts, ServiceDiscovery cache-aware refresh, nvpmu poll-loop, watchdog Condvar, server exponential backoff. External dep audit: all *-sys deps transitive, rustix already adopted, 0 C deps in workspace.
 
 ### Session S155b: Coverage Expansion + Quality Gate Evolution (Mar 15, 2026)
 - **Tests**: 20,843 (was 20,285). Clippy pedantic clean. Dependency audit clean. Unsafe audit clean.

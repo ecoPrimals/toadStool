@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::time::Duration;
 
@@ -47,7 +47,12 @@ impl super::CloudFederationManager {
         let addr = endpoint
             .trim_start_matches("http://")
             .trim_start_matches("https://");
-        let stream = timeout(Duration::from_secs(5), TcpStream::connect(addr))
+        let probe_timeout = if cfg!(test) {
+            Duration::from_millis(100)
+        } else {
+            Duration::from_secs(5)
+        };
+        let stream = timeout(probe_timeout, TcpStream::connect(addr))
             .await
             .map_err(|_| FederationError::InvalidNode(format!("Timeout connecting to {endpoint}")))?
             .map_err(|_| FederationError::InvalidNode(format!("Cannot connect to {endpoint}")))?;

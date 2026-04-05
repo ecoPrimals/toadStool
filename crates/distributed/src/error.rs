@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error types for the distributed crate
 
 use thiserror::Error;
@@ -12,7 +12,7 @@ pub enum DistributedError {
 
     /// Coordination service registration failed with the given reason.
     #[error("Coordination service registration failed: {0}")]
-    SongbirdRegistration(String),
+    CoordinationRegistration(String),
 
     /// Workload cannot be converted to UniversalJob without scheduler.
     #[error("Workload conversion to UniversalJob requires scheduler integration")]
@@ -34,8 +34,8 @@ mod tests {
     }
 
     #[test]
-    fn songbird_registration_display() {
-        let err = DistributedError::SongbirdRegistration("connection refused".to_string());
+    fn coordination_registration_display() {
+        let err = DistributedError::CoordinationRegistration("connection refused".to_string());
         assert!(
             err.to_string()
                 .contains("Coordination service registration failed")

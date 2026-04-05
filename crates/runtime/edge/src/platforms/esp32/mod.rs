@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ESP32 Platform Support
 //!
 //! Implementation of ESP32 support for ToadStool Edge Runtime.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal Adapters
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
@@ -45,23 +45,23 @@ pub trait PrimalAdapter: Send + Sync {
     async fn deregister(&self) -> Result<(), DistributedError>;
 }
 
-/// Songbird primal adapter
+/// Coordination primal adapter
 ///
-/// Implements the Songbird Federation API for capability registration
-pub struct SongbirdAdapter {
+/// Implements the Coordination Federation API for capability registration
+pub struct CoordinationAdapter {
     endpoint: String,
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     toadstool_endpoint: String,
 }
 
-impl SongbirdAdapter {
-    /// Create a new Songbird adapter with runtime discovery
+impl CoordinationAdapter {
+    /// Create a new Coordination adapter with runtime discovery
     ///
     /// # Architecture
     ///
     /// Follows primal self-knowledge principle:
     /// - ToadStool knows its own endpoint from configuration/environment
-    /// - Songbird endpoint is discovered at runtime (via mDNS, consul, or explicit config)
+    /// - Coordination endpoint is discovered at runtime (via mDNS, consul, or explicit config)
     /// - No hardcoded fallbacks - fail fast if configuration is missing
     ///
     /// # Errors
@@ -69,7 +69,7 @@ impl SongbirdAdapter {
     /// Returns an error if:
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
-    pub fn new(songbird_endpoint: &str) -> Result<Self, DistributedError> {
+    pub fn new(coordination_endpoint: &str) -> Result<Self, DistributedError> {
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
             capabilities::COORDINATION,
         );
@@ -80,7 +80,7 @@ impl SongbirdAdapter {
             .map_err(|_| DistributedError::ToadstoolEndpointNotSet)?;
 
         Ok(Self {
-            endpoint: songbird_endpoint.to_string(),
+            endpoint: coordination_endpoint.to_string(),
             rpc_client,
             toadstool_endpoint,
         })
@@ -89,7 +89,7 @@ impl SongbirdAdapter {
     /// Create adapter with explicit endpoint (for testing/development)
     #[cfg(test)]
     pub fn new_with_endpoint(
-        songbird_endpoint: &str,
+        coordination_endpoint: &str,
         toadstool_endpoint: String,
     ) -> Result<Self, DistributedError> {
         let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
@@ -99,7 +99,7 @@ impl SongbirdAdapter {
         let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
 
         Ok(Self {
-            endpoint: songbird_endpoint.to_string(),
+            endpoint: coordination_endpoint.to_string(),
             rpc_client,
             toadstool_endpoint,
         })
@@ -108,7 +108,7 @@ impl SongbirdAdapter {
 
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
-impl PrimalAdapter for SongbirdAdapter {
+impl PrimalAdapter for CoordinationAdapter {
     fn primal_name(&self) -> &str {
         capabilities::COORDINATION
     }
@@ -121,18 +121,18 @@ impl PrimalAdapter for SongbirdAdapter {
         &self,
         capabilities: Vec<Capability>,
     ) -> Result<(), DistributedError> {
-        // Songbird Federation API via JSON-RPC over unix socket
-        let registration = SongbirdRegistrationRequest {
+        // Coordination Federation API via JSON-RPC over unix socket
+        let registration = CoordinationRegistrationRequest {
             service_id: PRIMAL_NAME.to_string(),
             service_endpoint: self.toadstool_endpoint.clone(),
             capabilities: capabilities
                 .iter()
-                .map(|c| SongbirdCapability {
+                .map(|c| CoordinationCapability {
                     capability_id: c.id.clone(),
                     capability_name: c.name.clone(),
                     description: c.description.clone(),
                     tags: c.tags.clone(),
-                    resource_requirements: SongbirdResourceRequirements {
+                    resource_requirements: CoordinationResourceRequirements {
                         min_cpu_cores: c.resource_requirements.min_cpu_cores,
                         min_memory_mb: c.resource_requirements.min_memory_mb,
                         gpu_required: c.resource_requirements.gpu_required,
@@ -151,7 +151,7 @@ impl PrimalAdapter for SongbirdAdapter {
             .rpc_client
             .call("coordination.register_capabilities", params)
             .await
-            .map_err(|e| DistributedError::SongbirdRegistration(e.to_string()))?;
+            .map_err(|e| DistributedError::CoordinationRegistration(e.to_string()))?;
 
         tracing::info!(
             "Successfully registered {} capabilities with coordination service via unix socket",
@@ -162,8 +162,8 @@ impl PrimalAdapter for SongbirdAdapter {
     }
 
     async fn send_heartbeat(&self) -> Result<(), DistributedError> {
-        // Songbird Federation API via JSON-RPC over unix socket
-        let heartbeat = SongbirdHeartbeat {
+        // Coordination Federation API via JSON-RPC over unix socket
+        let heartbeat = CoordinationHeartbeat {
             service_id: PRIMAL_NAME.to_string(),
             timestamp: std::time::SystemTime::now(),
             status: "healthy".to_string(),
@@ -188,8 +188,8 @@ impl PrimalAdapter for SongbirdAdapter {
         capability: &Capability,
         available: bool,
     ) -> Result<(), DistributedError> {
-        // Songbird Federation API via JSON-RPC over unix socket
-        let update = SongbirdCapabilityUpdate {
+        // Coordination Federation API via JSON-RPC over unix socket
+        let update = CoordinationCapabilityUpdate {
             service_id: PRIMAL_NAME.to_string(),
             capability_id: capability.id.clone(),
             available,
@@ -211,8 +211,8 @@ impl PrimalAdapter for SongbirdAdapter {
     }
 
     async fn deregister(&self) -> Result<(), DistributedError> {
-        // Songbird Federation API via JSON-RPC over unix socket
-        let request = SongbirdDeregisterRequest {
+        // Coordination Federation API via JSON-RPC over unix socket
+        let request = CoordinationDeregisterRequest {
             service_id: PRIMAL_NAME.to_string(),
         };
 
@@ -233,29 +233,29 @@ impl PrimalAdapter for SongbirdAdapter {
     }
 }
 
-// Songbird-specific types (based on Songbird's Federation API)
+// Coordination-specific types (based on Coordination's Federation API)
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SongbirdRegistrationRequest {
+struct CoordinationRegistrationRequest {
     service_id: String,
     service_endpoint: String,
-    capabilities: Vec<SongbirdCapability>,
+    capabilities: Vec<CoordinationCapability>,
     workload_endpoint: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SongbirdCapability {
+struct CoordinationCapability {
     capability_id: String,
     capability_name: String,
     description: String,
     tags: Vec<String>,
-    resource_requirements: SongbirdResourceRequirements,
+    resource_requirements: CoordinationResourceRequirements,
     available: bool,
     confidence: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SongbirdResourceRequirements {
+struct CoordinationResourceRequirements {
     min_cpu_cores: u32,
     min_memory_mb: u64,
     gpu_required: bool,
@@ -263,7 +263,7 @@ struct SongbirdResourceRequirements {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SongbirdHeartbeat {
+struct CoordinationHeartbeat {
     service_id: String,
     #[serde(with = "toadstool_common::system_time_serde")]
     timestamp: std::time::SystemTime,
@@ -271,7 +271,7 @@ struct SongbirdHeartbeat {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SongbirdCapabilityUpdate {
+struct CoordinationCapabilityUpdate {
     service_id: String,
     capability_id: String,
     available: bool,
@@ -280,34 +280,33 @@ struct SongbirdCapabilityUpdate {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SongbirdDeregisterRequest {
+struct CoordinationDeregisterRequest {
     service_id: String,
 }
 
-// Future primal adapters can be added here:
-// - SquirrelAdapter (for ML coordination)
-// - BearDogAdapter (for authentication/security)
-// - CustomAdapter (for custom primals)
+// Future adapters can be added here (capability-specific, not name-specific):
+// - Security / auth plane
+// - Custom JSON-RPC endpoints
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_songbird_adapter_new_with_endpoint() {
-        let adapter = SongbirdAdapter::new_with_endpoint(
-            "http://songbird:8080",
+    fn test_coordination_adapter_new_with_endpoint() {
+        let adapter = CoordinationAdapter::new_with_endpoint(
+            "http://coordination:8080",
             "http://toadstool:9090".to_string(),
         )
         .unwrap();
         assert_eq!(adapter.primal_name(), "coordination");
-        assert_eq!(adapter.endpoint(), "http://songbird:8080");
+        assert_eq!(adapter.endpoint(), "http://coordination:8080");
     }
 
     #[test]
-    fn test_songbird_adapter_new_requires_toadstool_endpoint() {
+    fn test_coordination_adapter_new_requires_toadstool_endpoint() {
         temp_env::with_vars([("TOADSTOOL_ENDPOINT", None::<&str>)], || {
-            let result = SongbirdAdapter::new("http://songbird:8080");
+            let result = CoordinationAdapter::new("http://coordination:8080");
             match result {
                 Err(e) => assert!(e.to_string().contains("TOADSTOOL_ENDPOINT")),
                 Ok(_) => panic!("expected error when TOADSTOOL_ENDPOINT not set"),
@@ -316,113 +315,93 @@ mod tests {
     }
 
     #[test]
-    fn test_songbird_adapter_new_with_env() {
+    fn test_coordination_adapter_new_with_env() {
         temp_env::with_var("TOADSTOOL_ENDPOINT", Some("http://self:9090"), || {
-            let result = SongbirdAdapter::new("http://songbird:8080");
+            let result = CoordinationAdapter::new("http://coordination:8080");
             assert!(result.is_ok());
             let adapter = result.unwrap();
             assert_eq!(adapter.primal_name(), "coordination");
-            assert_eq!(adapter.endpoint(), "http://songbird:8080");
+            assert_eq!(adapter.endpoint(), "http://coordination:8080");
         });
     }
 
-    fn make_test_adapter() -> SongbirdAdapter {
-        SongbirdAdapter::new_with_endpoint(
-            "http://songbird:8080",
+    fn make_test_adapter() -> CoordinationAdapter {
+        CoordinationAdapter::new_with_endpoint(
+            "http://coordination:8080",
             "http://toadstool:9090".to_string(),
         )
         .unwrap()
     }
 
-    #[test]
-    fn test_songbird_adapter_send_heartbeat() {
+    #[tokio::test]
+    async fn test_coordination_adapter_send_heartbeat() {
         let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let result = adapter.send_heartbeat().await;
-            assert!(result.is_ok());
-        });
+        let result = adapter.send_heartbeat().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_coordination_adapter_notify_capability_change() {
+        let adapter = make_test_adapter();
+        let cap = Capability::compute_heavy();
+        let result = adapter.notify_capability_change(&cap, false).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_coordination_adapter_deregister() {
+        let adapter = make_test_adapter();
+        let result = adapter.deregister().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_coordination_adapter_register_capabilities_fails_without_socket() {
+        let adapter = make_test_adapter();
+        let caps = vec![Capability::compute_heavy()];
+        let result = adapter.register_capabilities(caps).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_coordination_adapter_register_capabilities_empty() {
+        let adapter = make_test_adapter();
+        let result = adapter.register_capabilities(vec![]).await;
+        assert!(result.is_err());
     }
 
     #[test]
-    fn test_songbird_adapter_notify_capability_change() {
-        let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let cap = Capability::compute_heavy();
-            let result = adapter.notify_capability_change(&cap, false).await;
-            assert!(result.is_ok());
-        });
-    }
-
-    #[test]
-    fn test_songbird_adapter_deregister() {
-        let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let result = adapter.deregister().await;
-            assert!(result.is_ok());
-        });
-    }
-
-    #[test]
-    fn test_songbird_adapter_register_capabilities_fails_without_socket() {
-        let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let caps = vec![Capability::compute_heavy()];
-            let result = adapter.register_capabilities(caps).await;
-            assert!(result.is_err());
-        });
-    }
-
-    #[test]
-    fn test_songbird_adapter_register_capabilities_empty() {
-        let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let result = adapter.register_capabilities(vec![]).await;
-            assert!(result.is_err());
-        });
-    }
-
-    #[test]
-    fn test_songbird_adapter_primal_adapter_trait() {
-        let adapter = SongbirdAdapter::new_with_endpoint(
-            "unix:///tmp/songbird.sock",
+    fn test_coordination_adapter_primal_adapter_trait() {
+        let adapter = CoordinationAdapter::new_with_endpoint(
+            "unix:///tmp/coordination.sock",
             "http://localhost:9090".to_string(),
         )
         .unwrap();
         assert_eq!(adapter.primal_name(), "coordination");
-        assert_eq!(adapter.endpoint(), "unix:///tmp/songbird.sock");
+        assert_eq!(adapter.endpoint(), "unix:///tmp/coordination.sock");
     }
 
-    #[test]
-    fn test_songbird_adapter_notify_gpu_capability() {
+    #[tokio::test]
+    async fn test_coordination_adapter_notify_gpu_capability() {
         let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let cap = Capability::compute_gpu();
-            let result = adapter.notify_capability_change(&cap, true).await;
-            assert!(result.is_ok());
-        });
+        let cap = Capability::compute_gpu();
+        let result = adapter.notify_capability_change(&cap, true).await;
+        assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_songbird_adapter_notify_capability_with_custom_id() {
+    #[tokio::test]
+    async fn test_coordination_adapter_notify_capability_with_custom_id() {
         let adapter = make_test_adapter();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let cap = Capability::compute_ml_training();
-            let result = adapter.notify_capability_change(&cap, false).await;
-            assert!(result.is_ok());
-        });
+        let cap = Capability::compute_ml_training();
+        let result = adapter.notify_capability_change(&cap, false).await;
+        assert!(result.is_ok());
     }
 
     #[test]
-    fn test_songbird_adapter_endpoint_preserved() {
-        let ep = "https://custom-songbird.example.com:9999";
-        let adapter = SongbirdAdapter::new_with_endpoint(ep, "http://me:1".to_string()).unwrap();
+    fn test_coordination_adapter_endpoint_preserved() {
+        let ep = "https://custom-coordination.example.com:9999";
+        let adapter =
+            CoordinationAdapter::new_with_endpoint(ep, "http://me:1".to_string()).unwrap();
         assert_eq!(adapter.endpoint(), ep);
     }
 }

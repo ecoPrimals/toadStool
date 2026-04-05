@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::default_trait_access,
@@ -22,7 +22,7 @@ use toadstool_cli::executor::{RunBiomeOptions, UpBiomeOptions};
 
 // Mock types for testing (since we can't import the actual types easily)
 #[derive(Clone)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct MockBiomeExecutor {
     distributed: Arc<MockDistributedCoordinator>,
     biomes: Arc<RwLock<HashMap<String, MockBiomeInfo>>>,
@@ -32,7 +32,7 @@ struct MockBiomeExecutor {
 struct MockDistributedCoordinator {}
 
 #[derive(Clone)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct MockBiomeInfo {
     id: String,
     name: String,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for configuration validation
 //!
 //! Coverage expansion: validation.rs had ZERO test coverage (346 lines, 40+ validations)
@@ -27,8 +27,8 @@ fn test_validation_port_zero_allowed() {
 
 /// Test empty songbird endpoint validation (deprecated but still validated)
 #[test]
-#[allow(deprecated)]
-fn test_validation_empty_songbird_endpoint() {
+#[expect(deprecated)]
+fn test_validation_empty_coordination_endpoint() {
     let mut config = ToadStoolConfig::default();
     config.network.endpoints.coordination = String::new();
 

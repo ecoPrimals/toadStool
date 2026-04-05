@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! USB VID/PID detection and ESP32 device discovery.
 
 use toadstool::error::ToadStoolResult;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Metrics collection for `NeuroBench`
 //!
 //! Provides detailed metric tracking beyond the summary in `BenchmarkResult`.
@@ -84,7 +84,7 @@ impl LatencyMetrics {
             clippy::cast_possible_truncation,
             reason = "truncation acceptable for this conversion"
         )]
-        #[allow(clippy::cast_sign_loss)]
+        #[expect(clippy::cast_sign_loss)]
         let std_dev_nanos = variance.sqrt().round() as u64;
 
         // Percentiles (integer math to avoid casts)

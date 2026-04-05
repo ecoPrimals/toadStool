@@ -133,7 +133,7 @@ fn bench_json_operations(c: &mut Criterion) {
     // Setup: Create test JSON data
     let data = json!({
         "name": "test_primal",
-        "type": "songbird",
+        "type": "coordination",
         "version": "1.0.0",
         "capabilities": ["discovery", "routing", "coordination"],
         "status": "active"

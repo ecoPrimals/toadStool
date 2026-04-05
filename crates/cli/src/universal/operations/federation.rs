@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Federation Operations
 //!
 //! Extension trait for federation operations with other ToadStool instances.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Internal types for the intelligent performance optimizer.
 //! Not part of the public API.
 
@@ -14,7 +14,7 @@ use crate::types::{PerformanceMetrics, ResourcePrediction};
     dead_code,
     reason = "Populated from history for future model tuning; not yet read by optimizer"
 )]
-#[expect(clippy::struct_field_names, reason = "field names match domain")]
+#[allow(clippy::struct_field_names, reason = "field names match domain")]
 #[derive(Clone)]
 pub(super) struct BaselineMetrics {
     pub(super) avg_execution_time: Duration,

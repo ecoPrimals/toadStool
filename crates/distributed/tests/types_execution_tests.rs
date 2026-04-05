@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for distributed execution types
 
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

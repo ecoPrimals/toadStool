@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for environment variable configuration overrides
 //!
 //! Coverage expansion: `env_overrides.rs` had ZERO test coverage
@@ -393,14 +393,14 @@ fn test_env_override_api_protocols() {
         || {
             let mut config = ToadStoolConfig::default();
             config.features.enable_openapi = false;
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             {
                 config.features.enable_grpc = false;
             }
             config.features.enable_graphql = false;
             config.apply_env_overrides().unwrap();
             assert!(config.features.enable_openapi);
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             let grpc_enabled = config.features.enable_grpc;
             assert!(grpc_enabled);
             assert!(config.features.enable_graphql);

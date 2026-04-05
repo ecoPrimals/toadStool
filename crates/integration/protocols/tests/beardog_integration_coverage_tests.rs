@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Comprehensive BearDog Integration Coverage Tests
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Comprehensive Security Integration Coverage Tests
 //!
 //! This test suite provides thorough coverage of the `BearDogIntegration` implementation
 //! to address the critical gap in lib.rs coverage (currently 10.83%).
@@ -20,21 +20,21 @@ use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::*;
 
 // ============================================================================
-// BearDog Integration Constructor Tests
+// Security Integration Constructor Tests
 // ============================================================================
 
 #[test]
-fn test_beardog_integration_new_with_default_config() {
-    let config = BearDogConfig::default();
+fn test_security_new_with_default_config() {
+    let config = SecurityConfig::default();
     let integration = BearDogIntegration::new(config);
     assert!(integration.is_ok());
 }
 
 #[test]
-fn test_beardog_integration_new_with_custom_config() {
+fn test_security_new_with_custom_config() {
     // EVOLVED: Pure Rust Unix socket configuration
-    let config = BearDogConfig {
-        socket_path: "/tmp/test-beardog.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/tmp/test-security.sock".to_string(),
         request_timeout_secs: 60,
         token_refresh_interval_secs: 600,
         zero_trust_validation_interval_secs: 120,
@@ -46,10 +46,10 @@ fn test_beardog_integration_new_with_custom_config() {
 }
 
 #[test]
-fn test_beardog_integration_new_with_very_short_timeout() {
-    let config = BearDogConfig {
+fn test_security_new_with_very_short_timeout() {
+    let config = SecurityConfig {
         request_timeout_secs: 1, // 1 second timeout
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config);
@@ -57,10 +57,10 @@ fn test_beardog_integration_new_with_very_short_timeout() {
 }
 
 #[test]
-fn test_beardog_integration_new_with_monitoring_disabled() {
-    let config = BearDogConfig {
+fn test_security_new_with_monitoring_disabled() {
+    let config = SecurityConfig {
         continuous_monitoring: false,
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config);
@@ -68,20 +68,20 @@ fn test_beardog_integration_new_with_monitoring_disabled() {
 }
 
 // ============================================================================
-// BearDogConfig Tests
+// SecurityConfig Tests
 // ============================================================================
 
 #[test]
-fn test_beardog_config_default_socket() {
+fn test_security_config_default_socket() {
     // EVOLVED: Unix socket instead of HTTP endpoints
-    let config = BearDogConfig::default();
+    let config = SecurityConfig::default();
 
     assert!(config.socket_path.contains("security.sock"));
 }
 
 #[test]
-fn test_beardog_config_default_timeouts() {
-    let config = BearDogConfig::default();
+fn test_security_config_default_timeouts() {
+    let config = SecurityConfig::default();
 
     assert_eq!(config.request_timeout_secs, 30);
     assert_eq!(config.token_refresh_interval_secs, 300); // 5 minutes
@@ -89,22 +89,22 @@ fn test_beardog_config_default_timeouts() {
 }
 
 #[test]
-fn test_beardog_config_default_monitoring_enabled() {
-    let config = BearDogConfig::default();
+fn test_security_config_default_monitoring_enabled() {
+    let config = SecurityConfig::default();
     assert!(config.continuous_monitoring);
 }
 
 #[test]
-fn test_beardog_config_uses_xdg_runtime_dir() {
+fn test_security_config_uses_xdg_runtime_dir() {
     // EVOLVED: No API tokens! Unix socket auth via file permissions
-    let config = BearDogConfig::default();
+    let config = SecurityConfig::default();
     // Should use XDG_RUNTIME_DIR or fallback to /tmp
     assert!(config.socket_path.ends_with("security.sock"));
 }
 
 #[test]
-fn test_beardog_config_clone() {
-    let config1 = BearDogConfig::default();
+fn test_security_config_clone() {
+    let config1 = SecurityConfig::default();
     let config2 = config1.clone();
 
     assert_eq!(config1.socket_path, config2.socket_path);
@@ -112,10 +112,10 @@ fn test_beardog_config_clone() {
 }
 
 #[test]
-fn test_beardog_config_debug() {
-    let config = BearDogConfig::default();
+fn test_security_config_debug() {
+    let config = SecurityConfig::default();
     let debug_str = format!("{config:?}");
-    assert!(debug_str.contains("BearDogConfig"));
+    assert!(debug_str.contains("SecurityConfig"));
 }
 
 // ============================================================================
@@ -577,9 +577,9 @@ fn test_security_audit_event_debug() {
 // ============================================================================
 
 #[test]
-fn test_beardog_integration_coverage_summary() {
+fn test_security_coverage_summary() {
     println!("========================================");
-    println!("BearDog Integration Coverage Tests");
+    println!("Security Integration Coverage Tests");
     println!("========================================");
     println!("Constructor Tests:         4 tests");
     println!("Config Tests:              6 tests");

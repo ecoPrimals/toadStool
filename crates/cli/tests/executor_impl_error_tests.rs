@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -444,7 +444,7 @@ mod error_handling_tests {
     // ============================================================================
 
     #[derive(Clone, Debug)]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     struct ErrorLog {
         timestamp: u64,
         error_type: String,
@@ -568,7 +568,7 @@ mod error_handling_tests {
     // ============================================================================
 
     #[derive(Clone, Debug, PartialEq)]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     enum CircuitState {
         Closed,
         Open,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -191,7 +191,7 @@ impl Default for SystemResourceMonitor {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
+    #[expect(unused_imports)]
     use super::*;
     use crate::{MonitoringConfig, MonitoringGranularity, SystemResourceMonitor, ThresholdAction};
     use std::time::Duration;

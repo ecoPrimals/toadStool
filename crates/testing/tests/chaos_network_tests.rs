@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::missing_errors_doc,
@@ -37,7 +37,7 @@ pub enum NetworkFailure {
 
 /// Network chaos simulator
 pub struct NetworkChaos {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     failure_rate: f32,
     active_failures: Vec<NetworkFailure>,
 }

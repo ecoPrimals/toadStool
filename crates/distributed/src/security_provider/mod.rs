@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security Provider Abstraction
 //!
 //! Generic security provider interface that ANY primal or service can implement.
-//! BearDog is just ONE implementation - HSM, KMS, local keyring all possible.
+//! Security is just ONE implementation - HSM, KMS, local keyring all possible.
 //!
-//! ## Philosophy: "Security Provider, Not BearDog"
+//! ## Philosophy: "Security Provider, Not Security"
 //!
 //! Code requests "security capability" via Universal Adapter.
-//! Runtime discovers WHO provides it (beardog, HSM, KMS, etc.).
+//! Runtime discovers WHO provides it (security, HSM, KMS, etc.).
 //! This module defines WHAT a security provider can do, not WHO provides it.
 //!
 //! ## Deep Debt Principles
@@ -50,22 +50,22 @@ pub mod types;
 pub mod unix_socket_provider;
 
 // In-process fallback providers for dev/CI only.
-// Production deployments delegate all crypto to BearDog (Node Atomic pattern).
+// Production deployments delegate all crypto to Security (Node Atomic pattern).
 // Enable via `dev-crypto` feature (auto-enabled by `testing` feature).
 #[cfg(feature = "dev-crypto")]
 pub mod local_keyring;
 #[cfg(feature = "dev-crypto")]
 pub mod software_hsm;
 
-// BearDog implementation (ONE of many possible implementations)
-pub mod beardog_impl;
+// Security implementation (ONE of many possible implementations)
+pub mod security_impl;
 
 pub use factory::*;
 pub use provider::*;
 pub use types::*;
 
-pub use beardog_impl::BearDogSecurityProvider;
 #[cfg(feature = "dev-crypto")]
 pub use local_keyring::LocalKeyringProvider;
+pub use security_impl::DistributedSecurityProvider;
 #[cfg(feature = "dev-crypto")]
 pub use software_hsm::SoftwareHsmProvider;

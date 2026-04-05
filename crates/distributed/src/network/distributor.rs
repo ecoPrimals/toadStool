@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,8 +58,8 @@ impl NetworkDistributor {
 
     /// Register a discovered node so future `distribute_job` calls can reach it.
     ///
-    /// Call this from Songbird capability discovery whenever a peer primal
-    /// announces itself via mDNS-SD or the Songbird registry.
+    /// Call this from Coordination capability discovery whenever a peer primal
+    /// announces itself via mDNS-SD or the Coordination registry.
     pub async fn register_peer_node(&self, node_id: String, health: crate::network::NodeHealth) {
         self.load_balancer.register_node(node_id, health).await;
     }
@@ -136,7 +136,7 @@ impl NetworkDistributor {
         }
     }
 
-    /// Expose the load balancer so Songbird integration can register discovered nodes.
+    /// Expose the load balancer so Coordination integration can register discovered nodes.
     #[must_use]
     pub fn load_balancer(&self) -> Arc<NetworkLoadBalancer> {
         Arc::clone(&self.load_balancer)

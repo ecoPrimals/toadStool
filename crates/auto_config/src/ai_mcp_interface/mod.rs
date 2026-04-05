@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # AI/MCP Interface
 //!
 //! Universal interface for ANY AI service using Model Context Protocol (MCP).
@@ -7,7 +7,7 @@
 //! ## Supported Providers
 //!
 //! Works with any MCP-compatible AI service:
-//! - **Squirrel MCP** (ecoPrimals ecosystem) - discovered at runtime
+//! - **intelligence service** (ecoPrimals ecosystem) - discovered at runtime
 //! - **Claude MCP** (Anthropic) - if advertising `AI_PROCESSING` capability
 //! - **`OpenAI` API** - via MCP adapter
 //! - **Custom MCP servers** - any compliant implementation

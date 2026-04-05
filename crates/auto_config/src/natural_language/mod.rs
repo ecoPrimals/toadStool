@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Natural Language Configuration Interface
 //!
 //! Enables configuration of `ToadStool` through natural language descriptions.
-//! Perfect for integration with Squirrel MCP and AI systems that need to configure
+//! Perfect for integration with intelligence service and AI systems that need to configure
 //! compute environments through conversation.
 //!
 //! ## Architecture

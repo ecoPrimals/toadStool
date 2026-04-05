@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -33,7 +33,7 @@ mod ecosystem_tests {
     };
     use uuid::Uuid;
 
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     use toadstool_cli::ecosystem::EcosystemService;
 
     #[test]
@@ -165,7 +165,7 @@ mod ecosystem_tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_discovered_service_creation() {
         let mut caps = HashMap::new();
         caps.insert("version".to_string(), "1.0.0".to_string());
@@ -180,7 +180,7 @@ mod ecosystem_tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_service_endpoint_serialization() {
         let endpoint = toadstool_cli::ecosystem::ServiceEndpoint {
             service_type: EcosystemService::Crypto,
@@ -321,7 +321,7 @@ mod network_config_tests {
     fn test_orchestration_configurator_new() {
         let configurator = OrchestrationConfigurator::new();
         let summary = configurator.generate_configuration_summary();
-        assert!(summary.contains("Songbird Network Configuration"));
+        assert!(summary.contains("Orchestration network configuration"));
         assert!(summary.contains("Service Mesh") || summary.contains("service mesh"));
     }
 

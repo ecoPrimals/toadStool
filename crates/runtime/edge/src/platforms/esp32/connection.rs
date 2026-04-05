@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Serial/network/Bluetooth connection state and command helpers for ESP32.
 
 use toadstool::{

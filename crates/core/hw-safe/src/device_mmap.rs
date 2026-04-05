@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // Device mmap/munmap require unsafe — this is the containment zone
 
 //! RAII device memory mapping for file-descriptor-based hardware regions.
@@ -134,7 +134,7 @@ impl Drop for DeviceMmap {
 }
 
 // Send+Sync auto-derived via ExclusivePtr — no manual unsafe impl needed.
-#[allow(dead_code, reason = "compile-time trait bound assertion")]
+#[expect(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
     fn check() {
@@ -156,7 +156,10 @@ unsafe impl ContiguousBytes for DeviceMmap {
 impl std::fmt::Debug for DeviceMmap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DeviceMmap")
-            .field("ptr", &format_args!("{:p}", self.ptr.as_non_null().as_ptr()))
+            .field(
+                "ptr",
+                &format_args!("{:p}", self.ptr.as_non_null().as_ptr()),
+            )
             .field("size", &self.size)
             .finish()
     }

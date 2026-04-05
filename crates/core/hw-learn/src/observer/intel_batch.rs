@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse Intel GPU batch buffer command dumps.
 //!
 //! Intel GPUs (i915, xe) submit work via batch buffers containing
@@ -54,7 +54,7 @@ fn parse_batch_line(line: &str, seq: &mut u64) -> Option<TraceEvent> {
     let dwords = extract_dec(line, "DWORDS=").unwrap_or(1);
     *seq += 1;
 
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         reason = "Intel batch opcode is 32-bit per spec"
     )]

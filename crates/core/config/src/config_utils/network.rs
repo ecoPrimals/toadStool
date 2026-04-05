@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network configuration utilities
 //!
 //! Port constants, network configuration helpers, endpoints, and connection settings.
@@ -13,13 +13,14 @@ use crate::network;
 /// Get primal port by capability/env name (capability-based lookup)
 ///
 /// **Purpose**: Defaults for initial connection discovery before runtime discovery.
-/// Used when capability-based discovery (Songbird, mDNS) is not yet available.
+/// Used when capability-based discovery (coordination service, mDNS) is not yet available.
 ///
 /// **Production**: Prefer `RuntimeDiscovery::discover_capability()` instead.
 /// This is the cold-start bootstrap path only.
 ///
-/// **Env pattern**: Checks `{PRIMAL_NAME}_PORT` (e.g. `SONGBIRD_PORT`, `BEARDOG_PORT`).
-/// Primal names use UPPERCASE for env var convention.
+/// **Env pattern**: Prefer `TOADSTOOL_{CAPABILITY}_PORT` and `{CAPABILITY}_PORT` (e.g.
+/// `TOADSTOOL_COORDINATION_PORT`, `COORDINATION_PORT`), then legacy `{PRIMAL_NAME}_PORT`
+/// (`SONGBIRD_PORT`, `BEARDOG_PORT`, …) via [`crate::ports::resolve_capability_port`].
 #[must_use]
 #[deprecated(
     since = "0.92.0",
@@ -29,9 +30,12 @@ pub fn get_primal_default_port(primal_name: &str) -> u16 {
     use crate::ports::{capability_fallback, resolve_capability_port};
 
     let (capability, fallback) = match primal_name {
+        // Legacy primal names map to wateringHole capabilities; port env resolution
+        // prefers TOADSTOOL_{CAPABILITY}_PORT / {CAPABILITY}_PORT, then *_PORT legacy names.
         "SONGBIRD" => ("COORDINATION", capability_fallback::COORDINATION),
         "BEARDOG" => ("SECURITY", capability_fallback::SECURITY),
         "NESTGATE" => ("STORAGE", capability_fallback::STORAGE),
+        // Squirrel → intelligence / platform processing (see TOADSTOOL_INTELLIGENCE_* env vars)
         "SQUIRREL" => ("PLATFORM", capability_fallback::PLATFORM),
         "BIOMEOS" => ("ECOSYSTEM", capability_fallback::ECOSYSTEM),
         _ => return crate::defaults::network::API_PORT,

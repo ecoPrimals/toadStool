@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service registry - centralized service discovery and management.
 
 use serde::{Deserialize, Deserializer, Serialize};
@@ -31,10 +31,10 @@ fn build_by_type_index(
 ///
 /// let mut registry = ServiceRegistry::default();
 ///
-/// // Register songbird coordinator
-/// let songbird = ServiceEndpoint::new("songbird", ServiceType::Coordinator, "http://localhost:7777")
+/// // Register a coordination service
+/// let coordination = ServiceEndpoint::new("coordination-1", ServiceType::Coordinator, "http://localhost:7777")
 ///     .with_health_check("/health");
-/// registry.register(songbird);
+/// registry.register(coordination);
 ///
 /// // Find coordinator
 /// let coord = registry.coordinator();
@@ -132,7 +132,7 @@ impl ServiceRegistry {
             .unwrap_or_default()
     }
 
-    /// Get coordinator service (replaces hardcoded "songbird")
+    /// Get coordinator service (first registered `ServiceType::Coordinator`)
     ///
     /// Returns the first registered coordinator service.
     #[must_use]
@@ -142,7 +142,7 @@ impl ServiceRegistry {
             .copied()
     }
 
-    /// Get storage service (replaces hardcoded "squirrel")
+    /// Get storage service (first registered `ServiceType::Storage`)
     ///
     /// Returns the first registered storage service.
     #[must_use]
@@ -184,7 +184,7 @@ impl ServiceRegistry {
     pub fn from_env() -> Self {
         let mut registry = Self::default();
 
-        // Load coordinator (e.g., songbird)
+        // Load coordinator
         if let Ok(coord_str) = std::env::var("TOADSTOOL_COORDINATOR") {
             if let Some((name, endpoint)) = coord_str.split_once(':') {
                 let service =
@@ -193,7 +193,7 @@ impl ServiceRegistry {
             }
         }
 
-        // Load storage (e.g., squirrel)
+        // Load storage
         if let Ok(storage_str) = std::env::var("TOADSTOOL_STORAGE") {
             if let Some((name, endpoint)) = storage_str.split_once(':') {
                 let service =

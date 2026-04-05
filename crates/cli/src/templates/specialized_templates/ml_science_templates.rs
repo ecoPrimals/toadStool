@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! ML/Science domain templates: Science, AI Research, Quantum, Genomics, Vision
 //!
 //! Data science and research workflow templates that extend the base science template
@@ -33,7 +33,7 @@ pub fn create_science_template() -> TemplateComponents {
             version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
                 registry: registries::SOVEREIGN_SCIENCE.to_string(),
-                image: service_names::NESTGATE.to_string(),
+                image: service_names::STORAGE.to_string(),
                 tag: versions::LATEST.to_string(),
                 digest: None,
             },
@@ -168,7 +168,7 @@ pub fn create_science_template() -> TemplateComponents {
     resources.memory_limit = Some("32GB".to_string());
     resources.storage_limit = Some("500GB".to_string());
 
-    // Enable NestGate storage integration
+    // Enable storage service integration
     storage.nestgate_integration = Some("latest".to_string());
     storage.datasets = vec![
         DatasetConfig {

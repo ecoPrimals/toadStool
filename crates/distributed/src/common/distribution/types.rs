@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Distribution Types
 //!
-//! Generic distribution abstractions used across Songbird, Cloud, and other distributed systems.
+//! Generic distribution abstractions used across Coordination, Cloud, and other distributed systems.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -80,8 +80,8 @@ pub struct DistributionTarget {
 pub enum TargetType {
     /// Local node
     LocalNode,
-    /// Remote node via Songbird
-    SongbirdNode,
+    /// Remote node via Coordination
+    CoordinationNode,
     /// Cloud provider
     CloudProvider,
     /// Kubernetes cluster
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_target_type_variants() {
         assert!(TargetType::LocalNode != TargetType::CloudProvider);
-        assert_eq!(TargetType::SongbirdNode, TargetType::SongbirdNode);
+        assert_eq!(TargetType::CoordinationNode, TargetType::CoordinationNode);
     }
 
     #[test]

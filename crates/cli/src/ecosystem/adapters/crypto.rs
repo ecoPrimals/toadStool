@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Crypto adapter - capability-based cryptographic operations
 //!
-//! This adapter replaces the hardcoded BearDog integration with a generic
-//! crypto service adapter that works with ANY service providing crypto capabilities.
+//! This adapter replaces primal-specific crypto integration with a generic
+//! adapter that works with any service providing crypto capabilities.
 //!
-//! # Migration from BearDog
+//! # Migration
 //! ```rust,ignore
-//! // ❌ OLD: Hardcoded BearDog (services/beardog.rs)
-//! use crate::ecosystem::services::beardog;
-//! let verified = beardog::verify_ed25519_signature(key, msg, sig).await?;
+//! // ❌ OLD: Hardcoded service module
+//! use crate::ecosystem::services::legacy_crypto;
+//! let verified = legacy_crypto::verify_ed25519_signature(key, msg, sig).await?;
 //!
 //! // ✅ NEW: Capability-based (adapters/crypto.rs)
 //! use crate::ecosystem::adapters::CryptoAdapter;
@@ -29,7 +29,7 @@ use crate::ecosystem::capabilities::{CapabilityId, StandardCapability};
 /// Crypto adapter - provides cryptographic operations via capability discovery
 ///
 /// This adapter discovers and invokes crypto services without knowing their identity.
-/// Services could be BearDog, AWS KMS, HashiCorp Vault, hardware HSM, or custom implementations.
+/// The backing implementation may be a local PKI service, AWS KMS, Vault, HSM, etc.
 pub struct CryptoAdapter {
     /// Universal service adapter for invoking capabilities
     universal: Arc<UniversalServiceAdapter>,
@@ -255,7 +255,7 @@ impl CryptoAdapter {
 
     /// Install cryptographic permissions from a file
     ///
-    /// This method replaces the hardcoded `beardog::install_permissions()` with a
+    /// This method replaces legacy hardcoded permission installers with a
     /// capability-based approach. It reads a permissions file, validates the permissions,
     /// and optionally installs them using any crypto service that provides permission
     /// management capabilities.

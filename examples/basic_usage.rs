@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic usage example for ToadStool
 //!
 //! This example demonstrates the core functionality of ToadStool including:

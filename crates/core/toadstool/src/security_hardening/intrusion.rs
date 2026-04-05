@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Intrusion detection system
 //!
 //! Extracted from `security_hardening.rs` for modularity (Feb 14, 2026).
@@ -113,7 +113,7 @@ impl IntrusionDetectionSystem {
     }
 
     /// Check if client is banned
-    #[allow(clippy::option_if_let_else)] // need mutable borrow for remove(); map_or closure can't mutate
+    #[expect(clippy::option_if_let_else)] // need mutable borrow for remove(); map_or closure can't mutate
     pub async fn is_banned(&self, client_id: &str) -> bool {
         let mut banned = self.banned_clients.write().await;
         let now = Instant::now();

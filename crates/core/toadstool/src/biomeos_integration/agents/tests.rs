@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -403,11 +403,11 @@ async fn test_health_check_inmemory() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_initialize_squirrel_connection_inmemory() {
+async fn test_initialize_intelligence_connection_inmemory() {
     let config = test_config();
     let manager = AgentDeploymentManager::with_inmemory(config);
 
-    let result = manager.initialize_squirrel_connection().await;
+    let result = manager.initialize_intelligence_connection().await;
     assert!(result.is_ok());
 }
 

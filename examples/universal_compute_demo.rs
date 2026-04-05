@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::nursery,
     clippy::cast_precision_loss,
@@ -80,32 +80,32 @@ struct WorkloadRequest {
     name: String,
     workload_type: WorkloadType,
     requires_proprietary: bool,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     preferred_frameworks: Vec<String>,
 }
 
 #[derive(Debug)]
 enum WorkloadType {
     AiInference {
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         model: String,
         framework: String,
     },
     GeneralCompute {
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         parallel: bool,
     },
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     MediaProcessing { codec: String },
     ScientificComputing {
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         domain: String,
     },
 }
 
 #[derive(Debug)]
 struct SchedulingDecision {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     target_node: String,
     strategy: ExecutionStrategy,
     score: f64,

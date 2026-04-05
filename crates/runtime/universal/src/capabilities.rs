@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability discovery and management
 //!
 //! This module implements runtime discovery of compute capabilities,
@@ -30,7 +30,7 @@ impl CapabilityDiscovery {
         // OpenCL support is legacy - kept for compatibility but returns empty Vec
         #[cfg(feature = "opencl")]
         {
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             units.extend(Self::discover_opencl());
         }
 

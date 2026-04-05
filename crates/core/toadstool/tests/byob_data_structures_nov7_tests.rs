@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BYOB Module Data Structures Coverage Tests - November 7, 2025
 
 #![allow(clippy::all, clippy::float_cmp)]

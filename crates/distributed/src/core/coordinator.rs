@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -65,7 +65,7 @@ impl DistributedCoordinator {
         let standalone_executor = Arc::new(StandaloneExecutor::new(config.standalone.clone())?);
 
         // Create coordination client using capability-based discovery
-        let coordination_client = if config.songbird_integration.is_some() {
+        let coordination_client = if config.coordination.is_some() {
             info!("Discovering coordination services via capability-based discovery");
 
             // Use new coordination_integration module (vendor-agnostic)
@@ -261,7 +261,8 @@ impl Clone for StandaloneExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::SongbirdConfig;
+    use crate::core::config::CoordinationConfig;
+    use toadstool_config::defaults::endpoints::coordination_loopback_bootstrap_url;
 
     #[tokio::test]
     async fn test_coordinator_creation_default() {
@@ -341,10 +342,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_coordinator_with_songbird_config() {
+    async fn test_coordinator_with_coordination_config() {
         let config = DistributedConfig {
-            songbird_integration: Some(SongbirdConfig {
-                endpoint: "http://127.0.0.1:8080".to_string(),
+            coordination: Some(CoordinationConfig {
+                endpoint: coordination_loopback_bootstrap_url(),
                 auth_token: None,
                 health_reporting_interval_secs: 30,
             }),

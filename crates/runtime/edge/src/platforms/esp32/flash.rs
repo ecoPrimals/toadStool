@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Firmware flashing and optional HTTP download for ESP32.
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};

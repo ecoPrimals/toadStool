@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cloud credentials and authentication
 //!
 //! Secret fields use [`toadstool_common::SecretString`] so they are
@@ -108,8 +108,9 @@ pub enum AuthMethod {
         /// Path to private key.
         key_path: String,
     },
-    /// BearDog auth.
-    BearDogAuth {
+    /// Auth against a dedicated security service endpoint.
+    #[serde(alias = "BearDogAuth")] // legacy alias
+    SecurityServiceAuth {
         /// Auth endpoint URL.
         endpoint: String,
         /// Credentials (redacted).
@@ -234,7 +235,7 @@ mod tests {
             cert_path: "/cert".to_string(),
             key_path: "/key".to_string(),
         };
-        let _ = AuthMethod::BearDogAuth {
+        let _ = AuthMethod::SecurityServiceAuth {
             endpoint: "http://auth".to_string(),
             credentials: SecretString::from("creds"),
         };

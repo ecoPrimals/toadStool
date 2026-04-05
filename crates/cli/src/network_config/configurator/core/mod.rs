@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core configurator functionality
 //!
 //! This module provides the core construction and orchestration methods
-//! for the Songbird network configurator.
+//! for the orchestration network configurator.
 
 mod apply_validate;
 mod defaults;
@@ -24,7 +24,7 @@ pub(crate) trait ConfiguratorCore {
     fn new() -> Self;
 
     /// Get default configuration
-    fn default_config() -> SongbirdNetworkConfig;
+    fn default_config() -> OrchestrationNetworkConfig;
 
     /// Apply all configuration
     async fn apply_configuration(&self) -> ToadStoolResult<()>;
@@ -33,11 +33,11 @@ pub(crate) trait ConfiguratorCore {
     fn validate_configuration(&self) -> ToadStoolResult<()>;
 }
 
-impl super::SongbirdNetworkConfigurator {
+impl super::OrchestrationNetworkConfigurator {
     /// Generate a summary of the current configuration
     pub fn generate_configuration_summary(&self) -> String {
         format!(
-            "Songbird Network Configuration Summary:\n\
+            "Orchestration network configuration summary:\n\
              - Service Mesh: {}\n\
              - Proxy: configured\n\
              - Inter-Service: configured\n\

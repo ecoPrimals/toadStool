@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! AI/ML workload types and characteristics
 //!
 //! This module defines workload-centric AI/ML types that enable intelligent

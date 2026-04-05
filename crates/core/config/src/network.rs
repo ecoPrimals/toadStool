@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network configuration utilities
 //!
 //! **Runtime configuration**: Prefer [`crate::env_config::EnvironmentConfig::from_env()`]
@@ -10,7 +10,7 @@
 //! hardcoded host/port pairs.
 //!
 //! This module keeps shared numeric defaults used by [`crate::config_utils`] and
-//! [`default_federation_address`], plus [`get_bind_host`] for simple bind-address resolution.
+//! `default_federation_address`, plus `get_bind_host` for simple bind-address resolution.
 
 // Note: Primal-named endpoint helpers were removed in favor of capability-based discovery
 // and `ConfigUtils` for ToadStool's own bind/API settings.

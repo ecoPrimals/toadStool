@@ -1,22 +1,22 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coordination Integration Module - Vendor-Agnostic Service Coordination
 //!
 //! **Design Philosophy (Infant Discovery)**:
 //! - ✅ Zero hardcoding: Discovers coordination services by capability, not by name
 //! - ✅ Self-knowledge: ToadStool knows it needs coordination, not which provider implements it
-//! - ✅ Multi-vendor: Works with Songbird, Consul, etcd, K8s, Nomad, etc.
+//! - ✅ Multi-vendor: Works with Coordination, Consul, etcd, K8s, Nomad, etc.
 //! - ✅ Runtime discovery: Uses mDNS, service registries, or environment configuration
 //! - ✅ Graceful degradation: Falls back to local coordination if no service available
 //!
-//! ## Migration from songbird_integration
+//! ## Migration from coordination
 //!
-//! This module replaces `songbird_integration` with a capability-based approach:
+//! This module replaces `coordination` with a capability-based approach:
 //!
 //! **Before (hardcoded)**:
 //! ```ignore
-//! use crate::songbird_integration::{SongbirdConnection, SongbirdNetworkDiscovery};
-//! let connection = SongbirdConnection::new(config).await?;
-//! let discovery = SongbirdNetworkDiscovery::new().await?;
+//! use crate::coordination::{CoordinationConnection, CoordinationNetworkDiscovery};
+//! let connection = CoordinationConnection::new(config).await?;
+//! let discovery = CoordinationNetworkDiscovery::new().await?; // network service discovery
 //! ```
 //!
 //! **After (capability-based)**:
@@ -34,7 +34,7 @@
 //! ## Supported Providers
 //!
 //! Any service advertising coordination capabilities will work:
-//! - Songbird (ecoPrimals native)
+//! - Coordination (ecoPrimals native)
 //! - HashiCorp Consul
 //! - etcd
 //! - Kubernetes API server

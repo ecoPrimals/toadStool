@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Sovereign dispatch handler — accepts compiled GPU binaries from coralReef
 //! and routes them to the target GPU via VFIO or DRM.
 //!
@@ -16,7 +16,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-use crate::coral_reef_client::SharedCoralReefClient;
+use crate::visualization_client::SharedVisualizationClient;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -26,13 +26,13 @@ use types::DispatchJob;
 
 /// Handler for `compute.dispatch.*` JSON-RPC methods.
 pub struct DispatchHandler {
-    coral_client: SharedCoralReefClient,
+    coral_client: SharedVisualizationClient,
     jobs: Arc<RwLock<HashMap<String, DispatchJob>>>,
     dispatch_count: AtomicU64,
 }
 
 impl DispatchHandler {
-    pub fn new(coral_client: SharedCoralReefClient) -> Self {
+    pub fn new(coral_client: SharedVisualizationClient) -> Self {
         Self {
             coral_client,
             jobs: Arc::new(RwLock::new(HashMap::new())),

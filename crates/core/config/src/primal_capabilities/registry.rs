@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Lookup, matching, and endpoint construction for [`super::parsing::PrimalCapabilitiesRegistry`].
 
 use super::parsing::{CapabilityError, CapabilityResult, PrimalCapabilitiesRegistry};

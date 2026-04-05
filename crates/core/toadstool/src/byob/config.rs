@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BYOB executor configuration
 
 use serde::{Deserialize, Serialize};
@@ -26,12 +26,9 @@ pub struct ByobExecutorConfig {
 }
 
 impl Default for ByobExecutorConfig {
-    #[allow(deprecated)] // Using deprecated field during migration to capability-based discovery
     fn default() -> Self {
-        #[allow(deprecated)]
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
 
-        #[allow(deprecated)]
         let coordinator_port = config.network.coordination_port;
 
         Self {

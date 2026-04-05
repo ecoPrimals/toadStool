@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tower Discovery and Management
 //!
 //! Manages discovery and health monitoring of remote ToadStool towers
-//! via Songbird capability-based discovery.
+//! via coordination-service capability discovery.
 //!
 //! **Self-Knowledge Principle**: This module discovers towers at runtime,
 //! never hardcodes remote endpoints.
@@ -18,7 +18,7 @@ pub struct TowerManager {
     /// This tower's unique identifier
     tower_id: String,
 
-    /// Remote towers discovered via Songbird
+    /// Remote towers discovered via the coordination service
     remote_towers: Arc<RwLock<Vec<RemoteTowerEndpoint>>>,
 }
 
@@ -36,7 +36,7 @@ impl TowerManager {
         &self.tower_id
     }
 
-    /// Register a remote tower discovered via Songbird
+    /// Register a remote tower discovered via the coordination service
     pub async fn register_tower(&self, endpoint: RemoteTowerEndpoint) {
         let mut towers = self.remote_towers.write().await;
 
@@ -161,10 +161,10 @@ impl TowerManager {
     ///
     /// **Deep Debt**: Capability-based discovery (no hardcoded tower names)
     ///
-    /// **Future Enhancement**: Would query Songbird for real-time capability discovery:
+    /// **Future Enhancement**: Would query the coordination service for real-time capability discovery:
     /// ```ignore
-    /// let songbird = SongbirdClient::discover().await?;
-    /// let towers = songbird.find_by_capability(capability).await?;
+    /// let coordination = CoordinationClient::discover().await?;
+    /// let towers = coordination.find_by_capability(capability).await?;
     /// select_lowest_latency(towers)
     /// ```
     ///
@@ -176,7 +176,7 @@ impl TowerManager {
 
         tracing::debug!("Selecting tower for capability: {}", capability);
 
-        // Simplified capability matching (production would query Songbird)
+        // Simplified capability matching (production would query the coordination service)
         // For now, select first available tower (graceful degradation)
         towers.first().map_or_else(
             || {
@@ -230,7 +230,7 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
-    // Placeholder addresses for unit tests (production uses Songbird discovery)
+    // Placeholder addresses for unit tests (production uses coordination discovery)
     const TEST_TOWER_ADDR_1: &str = "10.0.0.1:8080";
     const TEST_TOWER_ADDR_2: &str = "10.0.0.2:8080";
 
@@ -245,7 +245,7 @@ mod tests {
     async fn test_register_tower() {
         let manager = TowerManager::new("local".to_string());
 
-        // Test fixture: placeholder address for unit test (production uses Songbird discovery)
+        // Test fixture: placeholder address for unit test (production uses coordination discovery)
         let endpoint = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
             address: TEST_TOWER_ADDR_2.to_string(),

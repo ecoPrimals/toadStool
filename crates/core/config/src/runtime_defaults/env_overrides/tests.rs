@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for environment variable overrides.
 
 use crate::ToadStoolConfig;
@@ -67,7 +67,7 @@ fn apply_env_overrides_invalid_port_returns_error() {
     });
 }
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 #[test]
 fn apply_env_overrides_legacy_endpoints() {
     temp_env::with_vars(
@@ -185,7 +185,7 @@ fn apply_env_overrides_feature_flags() {
             let mut c = ToadStoolConfig::default();
             c.apply_env_overrides().unwrap();
             assert!(c.features.enable_federation);
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             let grpc_enabled = c.features.enable_grpc;
             assert!(grpc_enabled);
         },

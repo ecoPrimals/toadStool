@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for under-covered modules in toadstool-distributed
 //!
-//! Targets: crypto_integration/client, cloud/federation, songbird_integration,
+//! Targets: crypto_integration/client, cloud/federation, coordination,
 //! security_provider (software_hsm, provider, factory), network/load_balancer,
 //! crypto_lock/validation, hosting/resources, cloud/cost/pricing
 
@@ -602,12 +602,12 @@ fn test_hosting_resource_manager_serialization() {
 }
 
 // ============================================================================
-// Songbird Integration Types (deprecated but still exported)
+// Coordination Integration Types (deprecated but still exported)
 // ============================================================================
 
 #[test]
-fn test_songbird_job_complexity_variants() {
-    use toadstool_distributed::songbird_integration::JobComplexity;
+fn test_coordination_job_complexity_variants() {
+    use toadstool_distributed::coordination::JobComplexity;
     let _ = JobComplexity::Simple;
     let _ = JobComplexity::Moderate;
     let _ = JobComplexity::Complex;
@@ -615,8 +615,8 @@ fn test_songbird_job_complexity_variants() {
 }
 
 #[test]
-fn test_songbird_distribution_strategy_variants() {
-    use toadstool_distributed::songbird_integration::JobDistributionStrategy;
+fn test_coordination_distribution_strategy_variants() {
+    use toadstool_distributed::coordination::JobDistributionStrategy;
     let _ = JobDistributionStrategy::LocalOnly;
     let _ = JobDistributionStrategy::LoadBalanced;
     let _ = JobDistributionStrategy::SplitAndDistribute;

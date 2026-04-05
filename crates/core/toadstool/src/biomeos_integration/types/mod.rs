@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # BiomeOS Integration Types
 //!
 //! This module contains configuration structures for BiomeOS integration,
@@ -74,8 +74,8 @@ pub use auth::{
 
 // From config module
 pub use config::{
-    BearDogConfig, BiomeOSConfig, NestGateConfig, PrimalsConfig, ServiceVolumeConfig,
-    SongbirdConfig, SquirrelConfig, ToadStoolConfig,
+    BiomeOSConfig, CoordinationConfig, IntelligenceConfig, PrimalsConfig, SecurityConfig,
+    ServiceVolumeConfig, StorageConfig, ToadStoolConfig,
 };
 
 // From manifest module

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BAR0 MMIO register access for NVIDIA GPUs.
 //!
 //! Maps GPU BAR0 via `/sys/bus/pci/devices/{BDF}/resource0` for direct
@@ -66,7 +66,7 @@ impl Bar0Access {
     /// # Errors
     /// Returns error if offset is out of bounds.
     pub fn read_u32(&self, offset: u64) -> Result<u32> {
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             reason = "BAR offsets never exceed usize on 64-bit Linux"
         )]
@@ -82,7 +82,7 @@ impl Bar0Access {
     /// # Errors
     /// Returns error if offset is out of bounds.
     pub fn write_u32(&mut self, offset: u64, value: u32) -> Result<()> {
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             reason = "BAR offsets never exceed usize on 64-bit Linux"
         )]
@@ -108,7 +108,7 @@ impl Bar0Access {
 
 // Send auto-derived: Bar0Access contains SafeMmapRegion (Send via memmap2's
 // MmapInner: Send + Sync) and String (Send). No raw pointers.
-#[allow(dead_code, reason = "compile-time trait bound assertion")]
+#[expect(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send<T: Send>() {}
     fn check() {

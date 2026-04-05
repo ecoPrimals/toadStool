@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
-//! Preset ordered chains of [`EndpointSource`](crate::infant_discovery::capabilities::EndpointSource) for production and development.
+//! Preset ordered chains of [`EndpointSource`] for production and development.
 
 use std::sync::Arc;
 

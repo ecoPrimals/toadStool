@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Sysfs filesystem helpers for GPU monitoring.
 //!
 //! Best-effort readers: missing or busy sysfs entries return `None`.

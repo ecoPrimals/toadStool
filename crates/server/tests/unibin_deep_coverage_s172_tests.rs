@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::case_sensitive_file_extension_comparisons,
     clippy::doc_markdown,
@@ -224,54 +224,36 @@ async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
 
 // ── create_executor: env edge cases (standalone vs distributed) ───────────────
 
-#[test]
-fn unibin_s172_create_executor_standalone_numeric_two() {
+#[tokio::test]
+async fn unibin_s172_create_executor_standalone_numeric_two() {
     // Only "1" / "true" (case-insensitive) select standalone; "2" uses distributed path.
-    temp_env::with_var("TOADSTOOL_STANDALONE", Some("2"), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = create_executor("unibin-s172-two").await;
-                match &result {
-                    Ok(_) => {}
-                    Err(e) => assert!(!e.to_string().is_empty()),
-                }
-            });
-        })
-        .join()
-        .expect("thread");
-    });
+    temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("2"))], async {
+        let result = create_executor("unibin-s172-two").await;
+        match &result {
+            Ok(_) => {}
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+    })
+    .await;
 }
 
-#[test]
-fn unibin_s172_create_executor_standalone_no_explicit_songbird_endpoint() {
-    temp_env::with_vars(
+#[tokio::test]
+async fn unibin_s172_create_executor_standalone_no_explicit_coordination_endpoint() {
+    temp_env::async_with_vars(
         [
             ("TOADSTOOL_STANDALONE", Some("0")),
             ("SONGBIRD_ENDPOINT", None::<&str>),
             ("TOADSTOOL_COORDINATION_ENDPOINT", None::<&str>),
         ],
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let result = create_executor("unibin-s172-no-endpoint").await;
-                    match &result {
-                        Ok(_) => {}
-                        Err(e) => assert!(!e.to_string().is_empty()),
-                    }
-                });
-            })
-            .join()
-            .expect("thread");
+        async {
+            let result = create_executor("unibin-s172-no-endpoint").await;
+            match &result {
+                Ok(_) => {}
+                Err(e) => assert!(!e.to_string().is_empty()),
+            }
         },
-    );
+    )
+    .await;
 }
 
 // ── capabilities: feature-gated & optional GPU path ───────────────────────────
@@ -322,14 +304,14 @@ async fn unibin_s172_query_local_capabilities_smoke() {
 
 // ── run_server_main: config error path (socket layout) ────────────────────────
 
-#[test]
-fn unibin_s172_run_server_main_fails_when_runtime_parent_is_file() {
+#[tokio::test]
+async fn unibin_s172_run_server_main_fails_when_runtime_parent_is_file() {
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let file_path = temp_dir.path().join("not_a_dir");
     std::fs::File::create(&file_path).expect("create file");
     let path_str = file_path.to_string_lossy().to_string();
 
-    temp_env::with_vars(
+    temp_env::async_with_vars(
         [
             ("TOADSTOOL_SOCKET", None::<&str>),
             ("PRIMAL_SOCKET", None::<&str>),
@@ -337,13 +319,13 @@ fn unibin_s172_run_server_main_fails_when_runtime_parent_is_file() {
             ("XDG_RUNTIME_DIR", Some(path_str.as_str())),
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
-        || {
-            let rt = tokio::runtime::Runtime::new().expect("runtime");
-            let result = rt.block_on(toadstool_server::run_server_main(None, None));
+        async {
+            let result = toadstool_server::run_server_main(None, None).await;
             assert!(
                 result.is_err(),
                 "expected error when biomeos cannot be created"
             );
         },
-    );
+    )
+    .await;
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // from_raw_parts in trait defaults — this is the single audit point
 
 //! Shared trait for types that own a contiguous byte region.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Unix Socket JSON-RPC 2.0 Client
 //!
 //! Pure Rust JSON-RPC client over unix sockets for primal-to-primal communication.
@@ -224,7 +224,7 @@ impl UnixJsonRpcClient {
 
 #[cfg(test)]
 mod tests {
-    // SPDX-License-Identifier: AGPL-3.0-only
+    // SPDX-License-Identifier: AGPL-3.0-or-later
     use super::*;
     use proptest::prelude::*;
 

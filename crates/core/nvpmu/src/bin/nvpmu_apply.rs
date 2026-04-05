@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CLI tool: apply a PMU init recipe to a GPU via BAR0 MMIO.
 //!
 //! Usage:

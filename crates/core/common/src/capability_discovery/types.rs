@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::time::Duration;
 use thiserror::Error;
@@ -33,25 +33,25 @@ impl Default for DiscoveryConfig {
 /// ## Evolution (Feb 15, 2026)
 ///
 /// Vendor-specific methods (Kubernetes, Consul) are deprecated.
-/// Service discovery is delegated to Songbird (comms primal).
-/// ToadStool only supports mDNS (via Songbird) and environment variables.
+/// Service discovery is delegated to the coordination service (comms layer).
+/// ToadStool only supports mDNS (via that layer) and environment variables.
 #[derive(Debug, Clone, Copy)]
 pub enum DiscoveryMethod {
     /// Automatically detect best method
     Auto,
 
-    /// mDNS/DNS-SD (local network via Songbird)
+    /// mDNS/DNS-SD (local network via coordination service)
     Mdns,
 
     /// Environment variables (self-knowledge)
     Environment,
 
-    /// Kubernetes service discovery (deprecated - use Songbird)
-    #[deprecated(since = "0.16.0", note = "Use mDNS via Songbird instead")]
+    /// Kubernetes service discovery (deprecated — use coordination service / mDNS)
+    #[deprecated(since = "0.16.0", note = "Use mDNS via coordination service instead")]
     Kubernetes,
 
-    /// Consul service discovery (deprecated - use Songbird)
-    #[deprecated(since = "0.16.0", note = "Use mDNS via Songbird instead")]
+    /// Consul service discovery (deprecated — use coordination service / mDNS)
+    #[deprecated(since = "0.16.0", note = "Use mDNS via coordination service instead")]
     Consul,
 }
 

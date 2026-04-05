@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! BearDog integration trait for testability and abstraction
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Security integration trait for testability and abstraction
 
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -7,11 +7,11 @@ use std::collections::HashMap;
 use toadstool::{error::ToadStoolResult, security::SecurityContext};
 
 use super::auth::{AuthResponse, AuthzResponse};
-use super::client::BearDogIntegration;
+use super::client::SecurityServiceIntegration;
 
-/// Trait for BearDog auth/authz operations (enables mocking in tests)
+/// Trait for security-service auth/authz operations (enables mocking in tests).
 #[async_trait]
-pub trait BearDogIntegrationTrait: Send + Sync {
+pub trait SecurityServiceIntegrationTrait: Send + Sync {
     /// Authenticate and obtain access token
     async fn authenticate(
         &self,
@@ -37,7 +37,7 @@ pub trait BearDogIntegrationTrait: Send + Sync {
 }
 
 #[async_trait]
-impl BearDogIntegrationTrait for BearDogIntegration {
+impl SecurityServiceIntegrationTrait for SecurityServiceIntegration {
     async fn authenticate(
         &self,
         service_id: &str,

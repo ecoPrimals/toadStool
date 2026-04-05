@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! RuntimeEngine trait implementation - bridges ExecutionRequest/Response to legacy jobs
 
 use std::borrow::Cow;
@@ -19,7 +19,7 @@ use crate::types::traits::JobStatus;
 
 impl SpecialtyRuntimeEngine {
     /// Convert `ExecutionRequest` to `LegacyJob`
-    #[allow(
+    #[expect(
         clippy::unnecessary_wraps,
         clippy::unused_self,
         clippy::needless_pass_by_value

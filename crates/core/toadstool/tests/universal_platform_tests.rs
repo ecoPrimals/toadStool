@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `UniversalComputePlatform`
 //!
 //! This test suite covers the critical async structures that were previously untested:
@@ -310,7 +310,7 @@ fn test_job_type_biomeos() {
 fn test_job_type_clone() {
     let original = UniversalJobType::Primal {
         primal_type: "storage".to_string(),
-        endpoint: "http://nestgate.local".to_string(),
+        endpoint: "http://storage.local".to_string(),
         payload: serde_json::json!({"op": "backup"}),
     };
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Production hardening — circuit breakers, memory pressure, resource leak detection.
 
 mod circuit_breaker;

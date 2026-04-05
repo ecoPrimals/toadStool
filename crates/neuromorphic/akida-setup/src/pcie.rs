@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `PCIe` device management
 
 use crate::error::{Result, SetupError};
@@ -9,15 +9,9 @@ use std::process::Command;
 #[derive(Debug, Clone)]
 pub struct AkidaDevice {
     pub pcie_address: String,
-    #[allow(
-        dead_code,
-        reason = "PCI vendor/device IDs populated from lspci; read by callers and tests"
-    )]
+    #[allow(dead_code)]
     pub vendor_id: String,
-    #[allow(
-        dead_code,
-        reason = "PCI vendor/device IDs populated from lspci; read by callers and tests"
-    )]
+    #[allow(dead_code)]
     pub device_id: String,
 }
 

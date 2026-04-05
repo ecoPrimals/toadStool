@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Start operations: biome, primal, and service startup
 
 #![allow(deprecated)]
@@ -62,13 +62,13 @@ impl BiomeExecutor {
                 "🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")"
             );
 
-            if let Some(beardog_config) = manifest.primals.get(well_known::BEARDOG) {
+            if let Some(security_config) = manifest.primals.get(well_known::BEARDOG) {
                 let primal_name = "security-provider";
                 info!("🐻 Starting security primal (discovered by capability)");
                 let process = self
                     .start_primal(
                         primal_name,
-                        beardog_config,
+                        security_config,
                         &environment,
                         &log_dir,
                         security_level,

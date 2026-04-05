@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime Service Discovery - Zero Hardcoding
 //!
 //! This module provides runtime discovery of services based on capabilities,

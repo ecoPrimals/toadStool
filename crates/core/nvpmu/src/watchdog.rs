@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Thermal watchdog: continuous monitoring with emergency shutdown.
 //!
 //! Phase 4 of the nvPmu plan. Polls hwmon sensors at a configurable
@@ -12,10 +12,14 @@ use crate::monitor::{MonitorConfig, SafetyStatus, evaluate_safety};
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
 
 /// Watchdog handle. Drop to stop the monitoring thread.
 pub struct Watchdog {
     running: Arc<AtomicBool>,
+    /// Wakes the monitoring thread immediately on `stop()` instead of waiting a full poll period.
+    wake: Arc<(Mutex<()>, Condvar)>,
     handle: Option<std::thread::JoinHandle<()>>,
 }
 
@@ -36,7 +40,10 @@ impl Watchdog {
 
         let running = Arc::new(AtomicBool::new(true));
         let running_clone = running.clone();
+        let wake = Arc::new((Mutex::new(()), Condvar::new()));
+        let wake_clone = wake.clone();
         let path = device_path.to_path_buf();
+        let poll_interval = Duration::from_millis(config.poll_interval_ms);
 
         let handle = std::thread::Builder::new()
             .name("nvpmu-watchdog".into())
@@ -66,7 +73,12 @@ impl Watchdog {
                         }
                     }
 
-                    std::thread::sleep(std::time::Duration::from_millis(config.poll_interval_ms));
+                    if !running_clone.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let (lock, cvar) = &*wake_clone;
+                    let guard = lock.lock().unwrap();
+                    let _ = cvar.wait_timeout(guard, poll_interval).unwrap();
                 }
 
                 tracing::info!("nvpmu watchdog stopped");
@@ -75,6 +87,7 @@ impl Watchdog {
 
         Ok(Self {
             running,
+            wake,
             handle: Some(handle),
         })
     }
@@ -82,6 +95,9 @@ impl Watchdog {
     /// Signal the watchdog to stop. Does not block.
     pub fn stop(&self) {
         self.running.store(false, Ordering::Relaxed);
+        let (lock, cvar) = &*self.wake;
+        let _guard = lock.lock().unwrap();
+        cvar.notify_all();
     }
 
     /// Whether the watchdog is still running.
@@ -93,7 +109,7 @@ impl Watchdog {
 
 impl Drop for Watchdog {
     fn drop(&mut self) {
-        self.running.store(false, Ordering::Relaxed);
+        self.stop();
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }

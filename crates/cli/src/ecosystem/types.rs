@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ecosystem Integration - Type Definitions
 //!
 //! # Zero-Copy Optimization (Phase 2.3)
@@ -27,7 +27,7 @@ pub struct EcosystemIntegrator {
 
 /// Discovered ecosystem service endpoint
 #[derive(Debug, Clone)]
-#[allow(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compatibility
+#[expect(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compatibility
 pub struct ServiceEndpoint {
     /// Service capability type (discovery, crypto, storage)
     pub service_type: EcosystemService,
@@ -65,7 +65,7 @@ impl<'de> Deserialize<'de> for ServiceEndpoint {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
-        #[allow(deprecated)] // EcosystemService is deprecated but still used for backward compat
+        #[expect(deprecated)] // EcosystemService is deprecated but still used for backward compat
         struct ServiceEndpointHelper {
             service_type: EcosystemService,
             address: SocketAddr,
@@ -95,20 +95,20 @@ impl<'de> Deserialize<'de> for ServiceEndpoint {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum EcosystemService {
-    /// Discovery/coordination capability (legacy: Songbird)
-    #[serde(alias = "Songbird")]
+    /// Discovery / coordination capability
+    #[serde(alias = "Songbird")] // legacy deserialize
     Discovery,
-    /// Crypto/security capability (legacy: BearDog)
-    #[serde(alias = "BearDog")]
+    /// Crypto / security capability
+    #[serde(alias = "BearDog")] // legacy deserialize
     Crypto,
-    /// Storage capability (legacy: NestGate)
-    #[serde(alias = "NestGate")]
+    /// Storage capability
+    #[serde(alias = "NestGate")] // legacy deserialize
     Storage,
     /// Unknown capability (discovered at runtime)
     Unknown(String),
 }
 
-#[allow(deprecated)] // Implementation of deprecated EcosystemService
+#[expect(deprecated)] // Implementation of deprecated EcosystemService
 impl EcosystemService {
     /// Capability string for this service type
     pub(super) fn name(&self) -> &str {
@@ -175,9 +175,9 @@ pub struct DiscoveryResult {
     pub verified_count: usize,
 }
 
-/// BearDog crypto permission grant
+/// Crypto / security permission grant (capability-based)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogPermission {
+pub struct SecurityPermission {
     /// Unique permission ID
     pub permission_id: Uuid,
     /// Identity the permission is granted to
@@ -191,14 +191,17 @@ pub struct BearDogPermission {
     pub signature: String,
 }
 
-/// NestGate storage mount configuration
+/// Compatibility alias for [`SecurityPermission`] (prefer the canonical name in new code).
+pub type BearDogPermission = SecurityPermission;
+
+/// Distributed storage mount configuration (capability-based)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NestGateMount {
-    /// Dataset name in NestGate
+pub struct StorageMount {
+    /// Dataset name in the storage service
     pub dataset_name: String,
     /// Local mount path
     pub mount_point: PathBuf,
-    /// NestGate endpoint URL
+    /// storage endpoint URL
     pub endpoint: String,
     /// ZFS dataset name (if applicable)
     pub zfs_dataset: Option<String>,
@@ -208,9 +211,12 @@ pub struct NestGateMount {
     pub encryption_key: Option<String>,
 }
 
+/// Compatibility alias for [`StorageMount`] (prefer the canonical name in new code).
+pub type NestGateMount = StorageMount;
+
 /// Service discovered during a scan
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(deprecated)] // Using ServiceType during migration period
+#[expect(deprecated)] // Using ServiceType during migration period
 pub struct DiscoveredService {
     /// Capability type (discovery, crypto, storage, compute)
     pub service_type: ServiceType,
@@ -244,7 +250,7 @@ pub enum ServiceType {
     Generic,
 }
 
-#[allow(deprecated)] // ServiceType impl; deprecated during migration to capability-based discovery
+#[expect(deprecated)] // ServiceType impl; deprecated during migration to capability-based discovery
 impl ServiceType {
     /// Map to capability name
     pub const fn to_capability(&self) -> &'static str {
@@ -269,7 +275,7 @@ impl ServiceType {
     }
 
     /// Create from service name (backward compatibility when parsing discovered services).
-    /// Resolves legacy primal names via [`toadstool_common::interned_strings::CapabilityDomain::from_label`].
+    /// Resolves legacy orchestrator labels via [`toadstool_common::interned_strings::CapabilityDomain::from_label`].
     pub fn from_name(name: &str) -> Self {
         use toadstool_common::interned_strings::CapabilityDomain;
         match CapabilityDomain::from_label(name) {
@@ -333,20 +339,23 @@ impl Default for CryptoVerificationContext {
 
         let mut trusted_keys = HashMap::new();
 
-        // Capability-based env vars first, legacy primal names for backward compat
+        // Capability-based env vars first, legacy env names for backward compat
         if let Ok(key) = std::env::var("CRYPTO_PROVIDER_PUBLIC_KEY") {
             trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
         } else if let Ok(key) = std::env::var("BEARDOG_PUBLIC_KEY") {
+            // legacy
             trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
         }
         if let Ok(key) = std::env::var("STORAGE_PROVIDER_PUBLIC_KEY") {
             trusted_keys.insert(capabilities::STORAGE.to_string(), key);
         } else if let Ok(key) = std::env::var("NESTGATE_PUBLIC_KEY") {
+            // legacy
             trusted_keys.insert(capabilities::STORAGE.to_string(), key);
         }
         if let Ok(key) = std::env::var("DISCOVERY_PROVIDER_PUBLIC_KEY") {
             trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
         } else if let Ok(key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
+            // legacy
             trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
         }
 
@@ -376,7 +385,7 @@ impl CryptoVerificationContext {
 
     /// Verify an Ed25519 signature over a message.
     ///
-    /// Delegates to the crypto primal (BearDog) via `crypto.verify` JSON-RPC
+    /// Delegates to the crypto / security provider via `crypto.verify` JSON-RPC
     /// over the discovered Unix socket. Returns `Ok(false)` when no crypto
     /// provider is available.
     pub fn verify_ed25519_signature(
@@ -390,7 +399,7 @@ impl CryptoVerificationContext {
 
         if !socket_path.exists() {
             tracing::debug!(
-                "No crypto primal socket at {}, signature verification unavailable",
+                "No crypto capability socket at {}, signature verification unavailable",
                 socket_path.display()
             );
             return Ok(false);
@@ -507,12 +516,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_verify_ed25519_returns_false_without_crypto_primal() {
+    fn test_verify_ed25519_returns_false_without_crypto_provider() {
         let context = CryptoVerificationContext::new();
         let result = context.verify_ed25519_signature(b"hello", &[0u8; 64], &[0u8; 32]);
         assert!(
             !result.unwrap(),
-            "must return false when no crypto primal is reachable"
+            "must return false when no crypto provider is reachable"
         );
     }
 
@@ -523,11 +532,11 @@ mod tests {
         let short_sig = context.verify_ed25519_signature(b"msg", &[0u8; 32], &[0u8; 32]);
         assert!(
             short_key.is_ok(),
-            "length validation is BearDog's responsibility"
+            "length validation is the security provider's responsibility"
         );
         assert!(
             short_sig.is_ok(),
-            "length validation is BearDog's responsibility"
+            "length validation is the security provider's responsibility"
         );
     }
 
@@ -576,7 +585,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_service_endpoint_deserialize_roundtrip() {
         let endpoint = ServiceEndpoint {
             service_type: EcosystemService::Discovery,
@@ -593,8 +602,8 @@ mod tests {
 }
 
 // Private helper types (used internally by EcosystemIntegrator)
-// SongbirdRegistration, SongbirdHeartbeat, SongbirdResponse: REMOVED
-// These types were part of the deprecated hardcoded Songbird integration.
+// CoordinationRegistration, coordination heartbeat payloads, CoordinationResponse: REMOVED
+// These types were part of the deprecated hardcoded coordination-service integration.
 // New code uses capability-based adapters in ecosystem::adapters instead.
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

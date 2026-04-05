@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Error Path Tests for Distributed Module
 //!
 //! **Purpose**: Test all error conditions and recovery paths
@@ -191,23 +191,23 @@ async fn test_submit_with_very_long_timeout() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_songbird_connection_timeout() {
+async fn test_coordination_connection_timeout() {
     // Test connection timeout handling
-    // Note: This test validates timeout behavior when Songbird is unavailable
+    // Note: This test validates timeout behavior when Coordination is unavailable
     let config = create_test_config();
 
-    // Should create successfully even without Songbird
+    // Should create successfully even without Coordination
     let result = timeout(Duration::from_secs(5), DistributedCoordinator::new(config)).await;
 
     // Should succeed in standalone mode
     assert!(
         result.is_ok(),
-        "Should handle Songbird unavailability gracefully"
+        "Should handle Coordination unavailability gracefully"
     );
 }
 
 #[tokio::test]
-async fn test_songbird_invalid_endpoint() {
+async fn test_coordination_invalid_endpoint() {
     // Test handling of invalid endpoint configuration
     let config = create_test_config();
 

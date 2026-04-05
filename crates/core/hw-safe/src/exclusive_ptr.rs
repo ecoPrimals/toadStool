@@ -1,10 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // Send/Sync impls for exclusively-owned pointer
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(unsafe_code)] // manual Send/Sync — see SAFETY on impls below
 
 //! Thread-safe exclusively-owned memory pointer.
 //!
-//! [`ExclusivePtr`] wraps `NonNull<u8>` with `Send + Sync` so that types
-//! storing it auto-derive thread safety — no per-type `unsafe impl` needed.
+//! [`ExclusivePtr`] wraps `NonNull<u8>` with explicit `Send + Sync` so owning
+//! types auto-derive thread safety. `std::ptr::NonNull<u8>` does **not**
+//! implement `Send`/`Sync` (it is a raw owning pointer with no aliasing
+//! guarantees to the type system), so we assert the intended invariant here.
 
 use std::ptr::NonNull;
 
@@ -12,7 +14,7 @@ use std::ptr::NonNull;
 ///
 /// Types that store `ExclusivePtr` instead of raw `NonNull<u8>` auto-derive
 /// `Send + Sync` (assuming all other fields are also `Send + Sync`),
-/// eliminating the need for per-type `unsafe impl Send/Sync`.
+/// eliminating the need for per-type `unsafe impl Send/Sync` on those types.
 ///
 /// # Invariant
 ///
@@ -23,12 +25,15 @@ use std::ptr::NonNull;
 #[repr(transparent)]
 pub(crate) struct ExclusivePtr(NonNull<u8>);
 
-// SAFETY: Exclusive ownership means no aliasing; moving between threads is safe
-// because the memory is process-wide (heap/mmap), not thread-local.
+// SAFETY: The owning type guarantees exclusive ownership of memory that is valid
+// for use from any thread (heap via global alloc, or mmap). The pointer does
+// not refer to thread-local storage. This matches the intended semantics of
+// `Send` for owned byte buffers despite `NonNull<u8>` not being `Send`.
 unsafe impl Send for ExclusivePtr {}
 
-// SAFETY: &self gives read-only access; &mut self requires exclusivity.
-// The borrow checker on the owning type enforces this.
+// SAFETY: Shared immutable access (`&ExclusivePtr`) is safe across threads when
+// the underlying allocation is process-wide and the owning type serializes
+// mutation via `&mut` (same reasoning as `Send`).
 unsafe impl Sync for ExclusivePtr {}
 
 impl ExclusivePtr {

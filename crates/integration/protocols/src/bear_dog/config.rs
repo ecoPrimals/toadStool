@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security capability provider configuration (crypto / PKI).
 //!
 //! Socket discovery follows `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2:
@@ -17,7 +17,7 @@ const CAPABILITY_SOCKET_FILENAME: &str = "security.sock";
 
 /// Security capability provider configuration (crypto / PKI).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogConfig {
+pub struct SecurityConfig {
     /// Unix socket path for JSON-RPC (resolved via capability discovery)
     pub socket_path: String,
     /// Request timeout in seconds
@@ -30,7 +30,7 @@ pub struct BearDogConfig {
     pub continuous_monitoring: bool,
 }
 
-impl Default for BearDogConfig {
+impl Default for SecurityConfig {
     fn default() -> Self {
         let socket_path = std::env::var("BIOMEOS_CRYPTO_SOCKET")
             .or_else(|_| std::env::var("BEARDOG_SOCKET"))

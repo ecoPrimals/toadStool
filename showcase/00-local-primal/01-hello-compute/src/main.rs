@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![allow(deprecated)] // primals module is deprecated; we demonstrate it for showcase
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Legacy IPC route labels (string values) are shown for compatibility demos.
 
 use colored::Colorize;
 use toadstool_common::constants::PRIMAL_NAME;
@@ -45,13 +45,13 @@ fn main() {
     }
     println!();
 
-    // Interned primal names (legacy, for demonstration)
-    println!("{}", "► Interned Primal Names".cyan());
+    // Legacy IPC route labels (same strings as historic env/socket basenames)
+    println!("{}", "► Legacy IPC route labels".cyan());
     let primals_list = [
-        primals::BEARDOG,
-        primals::SONGBIRD,
-        primals::NESTGATE,
-        primals::SQUIRREL,
+        primals::LEGACY_SECURITY_LABEL,
+        primals::LEGACY_COORDINATION_LABEL,
+        primals::LEGACY_STORAGE_LABEL,
+        primals::LEGACY_INTELLIGENCE_LABEL,
         primals::TOADSTOOL,
     ];
     for p in primals_list {

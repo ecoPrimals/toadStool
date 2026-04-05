@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::no_effect_underscore_binding)]
 //! Comprehensive tests for substrate detection system
 //! Target: `distributed/src/substrate_detection.rs` (439 lines, 4.10% → 60%+)

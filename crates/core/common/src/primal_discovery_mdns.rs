@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration adapter between `primal_discovery` and mDNS
 //!
 //! This module provides mDNS-SD (multicast DNS service discovery) for finding
@@ -26,8 +26,13 @@ use std::time::{Duration, Instant};
 /// mDNS service type for Toadstool ecosystem
 pub const TOADSTOOL_SERVICE_TYPE: &str = "_toadstool._tcp.local.";
 
-/// Default discovery timeout
-const DEFAULT_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(3);
+/// Default discovery timeout.
+/// Test builds use a short window — no real mDNS services exist in CI.
+const DEFAULT_DISCOVERY_TIMEOUT: Duration = if cfg!(test) {
+    Duration::from_millis(50)
+} else {
+    Duration::from_secs(3)
+};
 
 /// Adapter to integrate mDNS with primal discovery
 ///
@@ -412,7 +417,8 @@ mod tests {
 
     #[test]
     fn test_default_discovery_timeout() {
-        assert_eq!(DEFAULT_DISCOVERY_TIMEOUT, Duration::from_secs(3));
+        // Under cfg(test) the timeout is 50ms; in production it would be 3s.
+        assert_eq!(DEFAULT_DISCOVERY_TIMEOUT, Duration::from_millis(50));
     }
 
     #[test]

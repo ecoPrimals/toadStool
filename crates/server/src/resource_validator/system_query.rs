@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime queries for CPU, memory, storage, network, and GPU capabilities.
 
 use tracing::debug;

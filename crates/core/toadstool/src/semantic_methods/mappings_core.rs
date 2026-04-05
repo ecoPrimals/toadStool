@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core platform semantic mappings: compute, resource, storage, network, security.
 
 /// Register compute, resource, storage, network, and security domain mappings.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery, fallback, and mDNS tests
 
 use super::super::*;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 #[tokio::test]
-#[allow(clippy::await_holding_lock)]
+#[expect(clippy::await_holding_lock)]
 async fn test_discovery_with_fallback() {
     let _lock = ENV_MUTEX.lock().expect("env mutex poisoned");
     let mut config = DiscoveryConfig::default();

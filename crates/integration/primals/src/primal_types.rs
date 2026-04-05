@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal configuration and resource types for the integration trait.
 //!
 //! ## WateringHole Sovereignty: Capability-Based Types
@@ -78,7 +78,7 @@ impl PrimalType {
     /// Parse a string into a `PrimalType` by **capability category**.
     ///
     /// Canonical names: "crypto", "storage", "discovery", "orchestration", "compute", "self".
-    /// Legacy primal names ("beardog", "nestgate", etc.) are accepted for manifest
+    /// Legacy primal names ("security", "storage", etc.) are accepted for manifest
     /// backward compatibility but should be migrated to capability strings.
     ///
     /// # Errors
@@ -91,14 +91,14 @@ impl PrimalType {
             "storage" => Ok(Self::Storage),
             "discovery" | "coordination" => Ok(Self::Discovery),
             "orchestration" | "network" => Ok(Self::Orchestration),
-            "compute" | "ai" | "ml" => Ok(Self::Compute),
+            "compute" | "ai" | "ml" | "intelligence" => Ok(Self::Compute),
             "self" | "self_identity" | "toadstool" => Ok(Self::SelfIdentity),
             // Legacy primal-name aliases (backward compat for existing manifests)
-            "beardog" => Ok(Self::Crypto),
-            "nestgate" => Ok(Self::Storage),
-            "songbird" => Ok(Self::Discovery),
-            "biomeos" => Ok(Self::Orchestration),
+            "songbird" | "song-bird" => Ok(Self::Discovery),
+            "beardog" | "bear-dog" => Ok(Self::Crypto),
+            "nestgate" | "nest-gate" => Ok(Self::Storage),
             "squirrel" => Ok(Self::Compute),
+            "biomeos" => Ok(Self::Orchestration),
             other => Ok(Self::Custom(other.to_string())),
         }
     }
@@ -198,7 +198,7 @@ mod tests {
             PrimalType::Crypto
         );
         assert_eq!(
-            PrimalType::parse_type("nestgate").unwrap(),
+            PrimalType::parse_type("storage").unwrap(),
             PrimalType::Storage
         );
         assert_eq!(

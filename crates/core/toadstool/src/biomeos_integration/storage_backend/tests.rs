@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::super::types::{PersistentVolume, VolumeConfig};
 use super::*;
 
@@ -33,9 +33,9 @@ fn test_volume_status_equality() {
 }
 
 #[test]
-#[allow(deprecated)]
-fn test_nestgate_backend_constructor() {
-    let backend = NestGateBackend::new("", "fast-tier", true, 3);
+#[expect(deprecated)]
+fn test_storage_backend_impl_constructor() {
+    let backend = SocketStorageBackend::new("", "fast-tier", true, 3);
     assert_eq!(backend._storage_tier, "fast-tier");
     assert!(backend.replication_enabled);
     assert_eq!(backend.replication_factor, 3);

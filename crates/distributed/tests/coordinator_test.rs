@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `DistributedCoordinator`
 //!
 //! Tests for core coordinator functionality
 
-use toadstool_distributed::core::config::{DistributedConfig, SongbirdConfig, StandaloneConfig};
+use toadstool_distributed::core::config::{
+    CoordinationConfig, DistributedConfig, StandaloneConfig,
+};
 use toadstool_distributed::core::coordinator::DistributedCoordinator;
 use toadstool_distributed::types::UniversalJobQueue;
 
@@ -41,10 +43,10 @@ async fn test_coordinator_with_custom_config() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_coordinator_with_songbird_config() {
-    // Test coordinator with Songbird integration config
+async fn test_coordinator_with_coordination_config() {
+    // Test coordinator with Coordination integration config
     let config = DistributedConfig {
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("test-token".to_string()),
             health_reporting_interval_secs: 30,
@@ -54,11 +56,11 @@ async fn test_coordinator_with_songbird_config() {
 
     let coordinator = DistributedCoordinator::new(config).await;
 
-    // This might fail if Songbird is not running, which is expected in tests
+    // This might fail if Coordination is not running, which is expected in tests
     // The important part is that the configuration is accepted
     match coordinator {
-        Ok(_) => println!("Coordinator created with Songbird integration"),
-        Err(e) => println!("Songbird not available (expected in tests): {e}"),
+        Ok(_) => println!("Coordinator created with Coordination integration"),
+        Err(e) => println!("Coordination not available (expected in tests): {e}"),
     }
 }
 
@@ -117,8 +119,8 @@ fn test_distributed_config_defaults() {
         "Standalone config should be initialized"
     );
     assert!(
-        config.songbird_integration.is_none(),
-        "Songbird integration should be disabled by default"
+        config.coordination.is_none(),
+        "Coordination integration should be disabled by default"
     );
 }
 
@@ -158,27 +160,27 @@ fn test_distributed_config_serialization() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let json = serde_json::to_string(&config).unwrap();
     let deserialized: DistributedConfig = serde_json::from_str(&json).unwrap();
 
-    assert!(deserialized.songbird_integration.is_none());
+    assert!(deserialized.coordination.is_none());
     assert_eq!(deserialized.instance_id, "test-instance");
 }
 
 #[test]
-fn test_songbird_config_serialization() {
-    // Test Songbird config serialization
-    let config = SongbirdConfig {
+fn test_coordination_config_serialization() {
+    // Test Coordination config serialization
+    let config = CoordinationConfig {
         endpoint: "http://example.com:9000".to_string(),
         auth_token: Some("secret-token".to_string()),
         health_reporting_interval_secs: 45,
     };
 
     let json = serde_json::to_string(&config).unwrap();
-    let deserialized: SongbirdConfig = serde_json::from_str(&json).unwrap();
+    let deserialized: CoordinationConfig = serde_json::from_str(&json).unwrap();
 
     assert_eq!(config.endpoint, deserialized.endpoint);
     assert_eq!(config.auth_token, deserialized.auth_token);
@@ -291,9 +293,9 @@ fn test_config_queue_disabled() {
 }
 
 #[test]
-fn test_songbird_config_without_auth() {
-    // Test Songbird config without authentication
-    let config = SongbirdConfig {
+fn test_coordination_config_without_auth() {
+    // Test Coordination config without authentication
+    let config = CoordinationConfig {
         endpoint: "http://localhost:8080".to_string(),
         auth_token: None, // No auth
         health_reporting_interval_secs: 30,
@@ -303,9 +305,9 @@ fn test_songbird_config_without_auth() {
 }
 
 #[test]
-fn test_songbird_config_with_custom_interval() {
-    // Test Songbird config with custom health reporting interval
-    let config = SongbirdConfig {
+fn test_coordination_config_with_custom_interval() {
+    // Test Coordination config with custom health reporting interval
+    let config = CoordinationConfig {
         endpoint: "http://coordinator.local:9000".to_string(),
         auth_token: Some("token".to_string()),
         health_reporting_interval_secs: 60,
@@ -359,7 +361,7 @@ async fn test_coordinator_with_various_configs() {
                 enable_job_queue: false,
                 max_queue_size: 0,
             },
-            songbird_integration: None,
+            coordination: None,
         },
         DistributedConfig {
             instance_id: "test-instance-2".to_string(),
@@ -369,7 +371,7 @@ async fn test_coordinator_with_various_configs() {
                 enable_job_queue: true,
                 max_queue_size: 5000,
             },
-            songbird_integration: None,
+            coordination: None,
         },
     ];
 
@@ -402,7 +404,7 @@ async fn test_coordinator_with_custom_standalone_config() {
             enable_job_queue: true,
             max_queue_size: 1500,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;

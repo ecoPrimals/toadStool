@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Base configuration types used across the codebase
 //!
 //! This module provides common patterns for configuration structs,

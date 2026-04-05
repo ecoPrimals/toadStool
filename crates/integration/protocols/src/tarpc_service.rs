@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ToadStool Compute RPC Service (tarpc)
 //!
 //! High-performance, type-safe binary RPC protocol for primal-to-primal communication.
-//! Following Songbird's proven pattern for ecosystem integration.
+//! Following Coordination's proven pattern for ecosystem integration.
 //!
-//! ## Design Principles (from Songbird)
+//! ## Design Principles (from Coordination)
 //!
 //! - **Pure Rust**: No C++ dependencies (no gRPC/protobuf)
 //! - **Type-Safe**: Full Rust type checking at compile time
@@ -23,13 +23,13 @@
 //! │  Universal RPC           Binary RPC      │
 //! │  ↓                       ↓               │
 //! │  All Primals             Performance     │
-//! │  • BearDog               Critical Paths  │
-//! │  • Songbird                              │
-//! │  • NestGate                              │
+//! │  • Security               Critical Paths  │
+//! │  • Coordination                              │
+//! │  • Storage                              │
 //! │  • External Clients                      │
 //! │    (Python, JS, etc.)                    │
 //! │                                          │
-//! │  HTTP (DEPRECATED - via Songbird)       │
+//! │  HTTP (DEPRECATED - via Coordination)       │
 //! └─────────────────────────────────────────┘
 //! ```
 
@@ -302,7 +302,7 @@ pub mod semantic_methods {
 
 /// tarpc service definition for ToadStool compute operations
 ///
-/// This trait defines the RPC interface following Songbird's pattern:
+/// This trait defines the RPC interface following Coordination's pattern:
 /// - Binary protocol for performance
 /// - Type-safe at compile time
 /// - Async throughout

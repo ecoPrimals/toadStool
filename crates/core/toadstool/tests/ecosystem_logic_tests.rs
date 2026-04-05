@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive logic tests for ecosystem.rs
 //!
 //! This test file focuses on the actual business logic and behavior
@@ -215,11 +215,11 @@ mod ecosystem_logic_tests {
 
     #[test]
     fn test_endpoint_url_construction() {
-        let host = "songbird.local";
+        let host = "coordination.local";
         let port = 8080;
         let endpoint = format!("http://{host}:{port}");
 
-        assert_eq!(endpoint, "http://songbird.local:8080");
+        assert_eq!(endpoint, "http://coordination.local:8080");
         assert!(endpoint.starts_with("http://"));
     }
 

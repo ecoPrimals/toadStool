@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Hardware transport layer for JSON-RPC handler.
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use toadstool_core::HardwareTransport;
 use tokio::sync::Mutex;
@@ -220,6 +221,10 @@ impl TransportHandler {
 
         let router = Arc::clone(&self.transport_router);
         tokio::spawn(async move {
+            // Backoff after `route_once` errors: 1ms → 2 → … capped at 100ms; reset on success.
+            const MAX_BACKOFF_MS: u64 = 100;
+            let mut backoff_ms: u64 = 1;
+
             loop {
                 if cancel.is_cancelled() {
                     break;
@@ -233,9 +238,11 @@ impl TransportHandler {
                 match result {
                     Ok(n) => {
                         bytes_counter.fetch_add(n as u64, std::sync::atomic::Ordering::Relaxed);
+                        backoff_ms = 1;
                     }
                     Err(_) => {
-                        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                        tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                        backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
                     }
                 }
 

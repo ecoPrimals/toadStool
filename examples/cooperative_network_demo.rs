@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cooperative Network Revolution Demo
 
 #![allow(
@@ -12,15 +12,14 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 struct Node {
+    #[allow(dead_code)]
     name: String,
     contributed: u64,
     received: u64,
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 struct CooperativeNetwork {
     nodes: HashMap<String, Node>,
     total_contributions: u64,

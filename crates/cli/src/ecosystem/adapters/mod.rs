@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal service adapters - capability-based service interaction
 //!
 //! This module provides adapters that interact with services based on their

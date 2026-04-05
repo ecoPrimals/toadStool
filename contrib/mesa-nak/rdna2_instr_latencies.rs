@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! RDNA2 instruction latency tables for Mesa ACO / RADV backend.
 //!
 //! **This file is the prepared upstream contribution patch for AMD RADV/ACO.**
@@ -83,7 +83,7 @@ case GFX10_3: {
 // Key difference from SM70:
 //   VFMA64 = 4cy (RDNA2) vs DFMA = 8cy (SM70)
 //   → ILP fill width of 4 ops instead of 8
-//   → BarraCuda's LatencyModel::f64_ilp_fill_width() = 4 on RDNA2
+//   → network service `LatencyModel::f64_ilp_fill_width()` = 4 on RDNA2
 //
 // Hardware target: RX 6950 XT (GFX10.3, RDNA2).
 // Also applies to: RX 6000 series, RX 6x50 XT refresh.

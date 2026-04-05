@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Biome manifest schema and runtime status types shared by the CLI.
 
 use serde::{Deserialize, Serialize};
@@ -258,7 +258,7 @@ pub struct PortMapping {
     pub protocol: String,
 }
 
-/// Dataset configuration for NestGate storage
+/// Dataset configuration for storage service
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatasetConfig {
     /// Dataset name

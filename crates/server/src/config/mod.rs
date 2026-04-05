@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Server configuration types and defaults
 
 use std::collections::HashMap;
@@ -215,17 +215,16 @@ impl Default for HealthCheckConfig {
 /// Primal capability system configuration.
 ///
 /// Fields use capability-domain names per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
-/// Legacy primal-name env vars (`SONGBIRD_ENDPOINT`, `SQUIRREL_ENDPOINT`) are accepted
-/// as fallbacks for backward compatibility.
+/// Legacy env var names for coordination/intelligence endpoints are accepted as fallbacks.
 #[derive(Debug, Clone)]
 pub struct PrimalCapabilitiesConfig {
     /// Enable capability provider
     pub enabled: bool,
 
-    /// Coordination capability endpoint (formerly songbird)
+    /// Coordination capability endpoint
     pub coordination_endpoint: Option<String>,
 
-    /// AI processing capability endpoint (formerly squirrel)
+    /// AI / intelligence processing capability endpoint
     pub ai_processing_endpoint: Option<String>,
 
     /// Heartbeat interval in seconds

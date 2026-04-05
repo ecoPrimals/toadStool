@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Chaos Engineering Tests for Distributed Systems
 //! Modern concurrent chaos testing - no sleeps, event-based, fault injection
 //! Updated November 21, 2025 - Using current `DistributedCoordinator` API

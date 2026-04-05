@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse Linux kernel mmiotrace logs into `TraceEvent`s.
 //!
 //! mmiotrace format (from `/sys/kernel/tracing/trace`):
@@ -41,7 +41,7 @@ pub fn parse_mmiotrace(config: &ObserveConfig) -> Result<ObserveResult, ObserveE
     }
 
     let base_ts = first_ts.unwrap_or(0.0);
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "trace duration in seconds * 1e6 fits in u64"
@@ -75,7 +75,7 @@ fn parse_mmio_line(line: &str, first_ts: &mut Option<f64>) -> Option<TraceEvent>
     let value = u64::from_str_radix(parts[5].trim_start_matches("0x"), 16).ok()?;
 
     let base = *first_ts.get_or_insert(timestamp);
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "relative timestamp in seconds * 1e6 fits in u64"

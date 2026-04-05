@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core encryption types
 //!
 //! **Design Philosophy**:
@@ -71,7 +71,7 @@ pub struct EncryptionMetadata {
 }
 
 // Unix epoch seconds fit in i64 for realistic dates
-#[allow(clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_wrap)]
 fn unix_timestamp_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

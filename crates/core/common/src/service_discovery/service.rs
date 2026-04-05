@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service discovery implementation
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
 use async_trait::async_trait;
 use tokio::sync::RwLock;
@@ -28,6 +28,10 @@ pub struct ServiceDiscovery {
     pub(crate) config: DiscoveryConfig,
     pub(crate) method: DiscoveryMethod,
     cache: Arc<RwLock<HashMap<String, DiscoveredService>>>,
+    /// Tracks when the cache was last fully refreshed so that
+    /// `find_services_by_capability` avoids redundant mDNS rounds
+    /// when a recent refresh already returned zero results.
+    last_refreshed: Arc<RwLock<Option<Instant>>>,
     fallbacks: LocalhostFallbacks,
 }
 
@@ -44,6 +48,7 @@ impl ServiceDiscovery {
             config,
             method,
             cache: Arc::new(RwLock::new(HashMap::new())),
+            last_refreshed: Arc::new(RwLock::new(None)),
             fallbacks,
         };
         if let Err(e) = discovery.refresh().await {
@@ -66,6 +71,7 @@ impl ServiceDiscovery {
             config,
             method,
             cache: Arc::new(RwLock::new(HashMap::new())),
+            last_refreshed: Arc::new(RwLock::new(None)),
             fallbacks,
         };
         discovery.refresh().await?;
@@ -81,6 +87,7 @@ impl ServiceDiscovery {
             config,
             method,
             cache: Arc::new(RwLock::new(HashMap::new())),
+            last_refreshed: Arc::new(RwLock::new(None)),
             fallbacks,
         }
     }
@@ -342,6 +349,24 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
             );
             return Ok(cached);
         }
+
+        // Avoid redundant mDNS/network scans: if a full discovery pass ran
+        // within the cache TTL and found nothing, return empty rather than
+        // re-scanning for every capability lookup.
+        {
+            let lr = self.last_refreshed.read().await;
+            if let Some(t) = *lr {
+                if t.elapsed() < self.config.cache_ttl {
+                    debug!(
+                        "Cache recently refreshed ({}ms ago); skipping re-discovery for {:?}",
+                        t.elapsed().as_millis(),
+                        capability
+                    );
+                    return Ok(vec![]);
+                }
+            }
+        }
+
         let services = self.discover_via_method().await?;
         {
             let mut cache = self.cache.write().await;
@@ -351,6 +376,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
                     .or_insert_with(|| service.clone());
             }
         }
+        *self.last_refreshed.write().await = Some(Instant::now());
         Ok(services
             .into_iter()
             .filter(|s| s.has_capability(capability))
@@ -381,6 +407,7 @@ impl ServiceDiscoveryTrait for ServiceDiscovery {
             }
             cache.len()
         };
+        *self.last_refreshed.write().await = Some(Instant::now());
         info!("Discovery cache refreshed: {count} services");
         Ok(())
     }

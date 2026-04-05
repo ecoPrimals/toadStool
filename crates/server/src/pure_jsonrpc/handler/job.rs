@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Job queue and gate routing for JSON-RPC handler.
 
 use std::borrow::Cow;

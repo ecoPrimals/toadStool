@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-Based Template Constants
 //!
 //! Modern, Deep Debt-compliant constants that use capabilities instead of primal names.
@@ -26,22 +26,22 @@ use serde::{Deserialize, Serialize};
 pub enum CapabilityDependency {
     /// Security capabilities (encryption, signing, key management)
     ///
-    /// Could be satisfied by: beardog, HSM, cloud KMS, local keyring, etc.
+    /// Could be satisfied by: any security/PKI provider, HSM, cloud KMS, local keyring, etc.
     Security,
 
     /// Storage capabilities (persistence, compression, versioning)
     ///
-    /// Could be satisfied by: nestgate, S3, Azure Blob, local filesystem, etc.
+    /// Could be satisfied by: any storage provider, S3, Azure Blob, local filesystem, etc.
     Storage,
 
     /// Coordination capabilities (service mesh, discovery, orchestration)
     ///
-    /// Could be satisfied by: songbird, kubernetes, consul, etcd, etc.
+    /// Could be satisfied by: any coordination layer, Kubernetes, Consul, etcd, etc.
     Coordination,
 
     /// AI/ML capabilities (inference, training, natural language)
     ///
-    /// Could be satisfied by: squirrel, OpenAI, local models, Hugging Face, etc.
+    /// Could be satisfied by: any intelligence/ML provider, OpenAI, local models, Hugging Face, etc.
     Intelligence,
 
     /// Compute capabilities (CPU, GPU, specialized hardware)

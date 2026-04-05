@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::create_test_service_with_capabilities;
 use toadstool_common::primal_identity::{Capability, ComputeCapability};

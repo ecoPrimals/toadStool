@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
-//! Comprehensive tests for Squirrel MCP Interface
+//! Comprehensive tests for intelligence service Interface
 //!
 //! Tests cover `squirrel_mcp.rs` functionality (13.18% → 30%+ target)
 //! Focus: AI session management, preferences, request handling

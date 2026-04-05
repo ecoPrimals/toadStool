@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Environment snapshot for socket path resolution
 
 /// Environment snapshot for socket path resolution.
@@ -21,14 +21,14 @@ pub struct SocketPathEnv {
     pub biomeos_storage_socket: Option<String>,
     /// `BIOMEOS_ROUTING_SOCKET` explicit path for routing / MCP-style workloads
     pub biomeos_routing_socket: Option<String>,
-    /// `BEARDOG_SOCKET` legacy override (same effective target as crypto capability)
-    pub beardog_socket: Option<String>,
-    /// `SONGBIRD_SOCKET` legacy override (same effective target as coordination capability)
-    pub songbird_socket: Option<String>,
-    /// `NESTGATE_SOCKET` legacy override (same effective target as storage capability)
-    pub nestgate_socket: Option<String>,
-    /// `SQUIRREL_SOCKET` legacy override (same effective target as routing capability)
-    pub squirrel_socket: Option<String>,
+    /// Security capability socket: `TOADSTOOL_SECURITY_SOCKET`, then legacy `BEARDOG_SOCKET`
+    pub legacy_security_socket: Option<String>,
+    /// Coordination capability socket: `TOADSTOOL_COORDINATION_SOCKET`, then legacy `SONGBIRD_SOCKET`
+    pub legacy_coordination_socket: Option<String>,
+    /// Storage capability socket: `TOADSTOOL_STORAGE_SOCKET`, then legacy `NESTGATE_SOCKET`
+    pub legacy_storage_socket: Option<String>,
+    /// Routing / intelligence capability socket: `TOADSTOOL_INTELLIGENCE_SOCKET`, then legacy `SQUIRREL_SOCKET`
+    pub legacy_intelligence_socket: Option<String>,
     /// `TOADSTOOL_SOCKET` override for ToadStool main socket
     pub toadstool_socket: Option<String>,
     /// `BIOMEOS_SOCKET_PATH` override for Nucleus socket
@@ -51,10 +51,19 @@ impl SocketPathEnv {
             biomeos_coordination_socket: std::env::var("BIOMEOS_COORDINATION_SOCKET").ok(),
             biomeos_storage_socket: std::env::var("BIOMEOS_STORAGE_SOCKET").ok(),
             biomeos_routing_socket: std::env::var("BIOMEOS_ROUTING_SOCKET").ok(),
-            beardog_socket: std::env::var("BEARDOG_SOCKET").ok(),
-            songbird_socket: std::env::var("SONGBIRD_SOCKET").ok(),
-            nestgate_socket: std::env::var("NESTGATE_SOCKET").ok(),
-            squirrel_socket: std::env::var("SQUIRREL_SOCKET").ok(),
+            // legacy env fallbacks (product-era names) after capability-prefixed vars
+            legacy_security_socket: std::env::var("TOADSTOOL_SECURITY_SOCKET")
+                .or_else(|_| std::env::var("BEARDOG_SOCKET")) // legacy
+                .ok(),
+            legacy_coordination_socket: std::env::var("TOADSTOOL_COORDINATION_SOCKET")
+                .or_else(|_| std::env::var("SONGBIRD_SOCKET")) // legacy
+                .ok(),
+            legacy_storage_socket: std::env::var("TOADSTOOL_STORAGE_SOCKET")
+                .or_else(|_| std::env::var("NESTGATE_SOCKET")) // legacy
+                .ok(),
+            legacy_intelligence_socket: std::env::var("TOADSTOOL_INTELLIGENCE_SOCKET")
+                .or_else(|_| std::env::var("SQUIRREL_SOCKET")) // legacy
+                .ok(),
             toadstool_socket: std::env::var("TOADSTOOL_SOCKET").ok(),
             biomeos_socket_path: std::env::var("BIOMEOS_SOCKET_PATH").ok(),
             nucleus_socket: std::env::var("NUCLEUS_SOCKET").ok(),

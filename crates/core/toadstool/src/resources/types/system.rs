@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Host/system snapshots, process monitoring, and load/network aggregates.
 
 use serde::{Deserialize, Serialize};

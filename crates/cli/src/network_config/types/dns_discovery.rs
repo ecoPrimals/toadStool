@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! DNS service discovery configuration types.
 //!
 //! Domain fields use **capability names** (coordination, security, storage, ai\_processing)
-//! per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2. Serde aliases accept legacy primal
-//! names (songbird, beardog, nestgate, squirrel) in existing config files.
+//! per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2. Serde `alias` attributes accept
+//! older on-disk field names for compatibility.
 
 use std::time::Duration;
 

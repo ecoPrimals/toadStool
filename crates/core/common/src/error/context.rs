@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error context helpers and builders
 //!
 //! This module provides convenience methods for creating errors with

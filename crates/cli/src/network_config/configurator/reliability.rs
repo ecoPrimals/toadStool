@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Circuit breakers and health monitoring extension
 //!
 //! Provides circuit breaker and health monitoring configuration.
@@ -25,7 +25,7 @@ pub(crate) trait ReliabilityExt {
     fn validate_health_monitoring_config(&self) -> ToadStoolResult<()>;
 }
 
-impl ReliabilityExt for super::SongbirdNetworkConfigurator {
+impl ReliabilityExt for super::OrchestrationNetworkConfigurator {
     async fn apply_circuit_breaker_config(&self) -> ToadStoolResult<()> {
         info!("⚡ Applying circuit breaker configuration");
 

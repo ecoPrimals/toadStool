@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async CPU read and write paths for [`super::UnifiedBuffer`].
 
 use super::UnifiedBuffer;

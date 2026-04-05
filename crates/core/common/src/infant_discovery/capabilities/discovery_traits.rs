@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 use super::discovered::{DiscoveredService, DiscoveryPreferences};
@@ -15,7 +15,7 @@ pub trait CapabilityDiscovery: Send + Sync {
     /// let auth = discovery.discover("authentication").await?;
     ///
     /// // ❌ BAD - primal name hardcoding
-    /// // let songbird = SongbirdClient::new();  // DON'T DO THIS
+    /// // let songbird = CoordinationClient::new();  // DON'T DO THIS
     /// ```
     fn discover(
         &self,

@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for under-covered modules in toadstool-distributed (phase 2)
 //!
-//! Targets: coordination_integration/client/rpc, songbird_integration (distribution,
+//! Targets: coordination_integration/client/rpc, coordination (distribution,
 //! connection, discovery, broadcasting, load_balancing), universal/scheduler,
 //! universal/detection, network/distributor, cloud/orchestrator, cloud/compliance/validation,
 //! cloud/cost/optimizer, primal_capabilities/workload
@@ -20,18 +20,18 @@ use toadstool_distributed::cloud::{
     LoadBalancingAlgorithm, NetworkingFeature, Region, SecurityFeature, StorageType,
     UniversalCloudOrchestrator,
 };
+use toadstool_distributed::coordination::{
+    BroadcastConfig, ConnectionHealth, CoordinationBroadcaster, CoordinationConnection,
+    CoordinationConnectionConfig, CoordinationLoadBalancer, CoordinationTransport,
+    DistributionConfig, GrpcProtocolConfig, HttpProtocolConfig, JobAnalysis, JobComplexity,
+    JobDistributionStrategy, LoadBalancerConfig as CoordinationLoadBalancerConfig,
+    MassiveJobDistributor, MessageQueueProtocolConfig, ProtocolConfig,
+};
 use toadstool_distributed::network::{NetworkDistributor, NetworkDistributorConfig, NodeHealth};
 use toadstool_distributed::primal_capabilities::workload::{
     WorkloadResourceRequirements, WorkloadStatus, WorkloadType,
 };
 use toadstool_distributed::primal_capabilities::{WorkloadExecutor, WorkloadRequest};
-use toadstool_distributed::songbird_integration::{
-    BroadcastConfig, ConnectionHealth, DistributionConfig, GrpcProtocolConfig, HttpProtocolConfig,
-    JobAnalysis, JobComplexity, JobDistributionStrategy,
-    LoadBalancerConfig as SongbirdLoadBalancerConfig, MassiveJobDistributor,
-    MessageQueueProtocolConfig, ProtocolConfig, SongbirdBroadcaster, SongbirdConnection,
-    SongbirdConnectionConfig, SongbirdLoadBalancer, SongbirdProtocol,
-};
 use toadstool_distributed::types::{
     CpuRequirements, MemoryRequirements, NetworkRequirements, ResourceRequirements,
     StorageRequirements,
@@ -88,7 +88,7 @@ fn test_coordination_types_load_balancing_strategy_variants() {
 }
 
 // ============================================================================
-// Songbird Distribution
+// Coordination Distribution
 // ============================================================================
 
 #[tokio::test]
@@ -122,9 +122,7 @@ async fn test_massive_job_distributor_simple_complexity() {
 
 #[tokio::test]
 async fn test_massive_job_distributor_splitting_strategy_from_string() {
-    use toadstool_distributed::songbird_integration::{
-        JobSplittingStrategy, SplittingStrategyType,
-    };
+    use toadstool_distributed::coordination::{JobSplittingStrategy, SplittingStrategyType};
 
     let s = JobSplittingStrategy::from_string("map_reduce");
     assert!(matches!(s.strategy_type, SplittingStrategyType::MapReduce));
@@ -132,10 +130,10 @@ async fn test_massive_job_distributor_splitting_strategy_from_string() {
 }
 
 // ============================================================================
-// Songbird Connection
+// Coordination Connection
 // ============================================================================
 
-fn make_protocol_config(protocol: SongbirdProtocol) -> ProtocolConfig {
+fn make_protocol_config(protocol: CoordinationTransport) -> ProtocolConfig {
     ProtocolConfig {
         protocol,
         http: HttpProtocolConfig {
@@ -158,9 +156,9 @@ fn make_protocol_config(protocol: SongbirdProtocol) -> ProtocolConfig {
 
 fn make_connection_config(
     endpoints: Vec<String>,
-    protocol: SongbirdProtocol,
-) -> SongbirdConnectionConfig {
-    SongbirdConnectionConfig {
+    protocol: CoordinationTransport,
+) -> CoordinationConnectionConfig {
+    CoordinationConnectionConfig {
         endpoints,
         protocol_config: make_protocol_config(protocol),
         auth_config: toadstool_common::auth::ServiceAuthConfig::default(),
@@ -169,9 +167,9 @@ fn make_connection_config(
 }
 
 #[tokio::test]
-async fn test_songbird_connection_empty_endpoints_fails() {
-    let config = make_connection_config(vec![], SongbirdProtocol::GRPC);
-    let result: Result<_, _> = SongbirdConnection::new(config).await;
+async fn test_coordination_connection_empty_endpoints_fails() {
+    let config = make_connection_config(vec![], CoordinationTransport::GRPC);
+    let result: Result<_, _> = CoordinationConnection::new(config).await;
     assert!(result.is_err());
     assert!(
         result
@@ -182,56 +180,56 @@ async fn test_songbird_connection_empty_endpoints_fails() {
 }
 
 #[tokio::test]
-async fn test_songbird_connection_grpc_http_succeeds() {
+async fn test_coordination_connection_grpc_http_succeeds() {
     let config = make_connection_config(
         vec!["http://localhost:9999".to_string()],
-        SongbirdProtocol::GRPC,
+        CoordinationTransport::GRPC,
     );
-    let conn = SongbirdConnection::new(config).await.unwrap();
+    let conn = CoordinationConnection::new(config).await.unwrap();
     assert_eq!(conn.active_endpoint, "http://localhost:9999");
 }
 
 // ============================================================================
-// Songbird Broadcasting
+// Coordination Broadcasting
 // ============================================================================
 
 #[tokio::test]
-async fn test_songbird_broadcaster_new() {
+async fn test_coordination_broadcaster_new() {
     let config = BroadcastConfig {
         channels: vec!["test-channel".to_string()],
         message_retention: Duration::from_secs(60),
     };
     let conn = Arc::new(
-        SongbirdConnection::new(make_connection_config(
+        CoordinationConnection::new(make_connection_config(
             vec!["http://localhost:1".to_string()],
-            SongbirdProtocol::GRPC,
+            CoordinationTransport::GRPC,
         ))
         .await
         .unwrap(),
     );
-    let broadcaster = SongbirdBroadcaster::new(config, conn).await.unwrap();
+    let broadcaster = CoordinationBroadcaster::new(config, conn).await.unwrap();
     let _ = broadcaster;
 }
 
 // ============================================================================
-// Songbird Load Balancing
+// Coordination Load Balancing
 // ============================================================================
 
 #[tokio::test]
-async fn test_songbird_load_balancer_new_and_request_advice() {
-    let config = SongbirdLoadBalancerConfig {
+async fn test_coordination_load_balancer_new_and_request_advice() {
+    let config = CoordinationLoadBalancerConfig {
         strategy: "least-loaded".to_string(),
         feedback_interval: Duration::from_secs(5),
     };
     let conn = Arc::new(
-        SongbirdConnection::new(make_connection_config(
+        CoordinationConnection::new(make_connection_config(
             vec!["http://localhost:1".to_string()],
-            SongbirdProtocol::GRPC,
+            CoordinationTransport::GRPC,
         ))
         .await
         .unwrap(),
     );
-    let lb = SongbirdLoadBalancer::new(config, conn).await.unwrap();
+    let lb = CoordinationLoadBalancer::new(config, conn).await.unwrap();
     let advice = lb
         .request_advice(&ResourceRequirements::default())
         .await
@@ -608,7 +606,7 @@ fn test_workload_executor_creation() {
 fn test_workload_request_serialization() {
     let request = WorkloadRequest {
         request_id: "req-1".to_string(),
-        from_primal: "songbird".to_string(),
+        from_primal: "coordination".to_string(),
         required_capability: "compute".to_string(),
         workload_type: WorkloadType::Native {
             executable: "python".to_string(),
@@ -645,7 +643,7 @@ async fn test_workload_executor_execute() {
     let executor = WorkloadExecutor::new();
     let request = WorkloadRequest {
         request_id: "exec-1".to_string(),
-        from_primal: "songbird".to_string(),
+        from_primal: "coordination".to_string(),
         required_capability: "compute".to_string(),
         workload_type: WorkloadType::Native {
             executable: "echo".to_string(),
@@ -678,11 +676,11 @@ async fn test_workload_executor_execute() {
 // ============================================================================
 
 #[tokio::test]
-async fn test_songbird_connection_invalid_endpoint_degraded() {
+async fn test_coordination_connection_invalid_endpoint_degraded() {
     let config = make_connection_config(
         vec!["invalid".to_string(), "also-invalid".to_string()],
-        SongbirdProtocol::GRPC,
+        CoordinationTransport::GRPC,
     );
-    let conn = SongbirdConnection::new(config).await.unwrap();
+    let conn = CoordinationConnection::new(config).await.unwrap();
     assert_eq!(conn.health_status, ConnectionHealth::Degraded);
 }

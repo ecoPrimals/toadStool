@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use toadstool_common::constants::ecosystem::well_known;
@@ -90,7 +90,7 @@ async fn check_gpu_available() -> bool {
     }
 }
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
     let mut issues = vec![];
 

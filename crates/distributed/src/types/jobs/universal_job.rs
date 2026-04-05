@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal job envelope and job-type classification for distributed scheduling.
 
 use std::str::FromStr;

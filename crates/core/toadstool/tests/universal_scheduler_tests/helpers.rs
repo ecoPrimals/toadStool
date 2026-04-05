@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Shared mock providers and factory functions for universal scheduler tests.
 
 use std::collections::HashMap;

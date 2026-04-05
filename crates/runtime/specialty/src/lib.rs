@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![expect(
+#![allow(
     clippy::unused_async,
     reason = "async signature required by trait/interface"
 )] // Async stubs for future I/O implementation

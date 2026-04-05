@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Core EcosystemIntegrator implementation - refactored by protocol
 //
 // ⚠️ LEGACY INTEGRATION LAYER
 //
-// This implementation uses the deprecated service modules (beardog, songbird, nestgate)
-// which hardcode service names and ports, violating infant discovery principles.
+// This implementation historically coupled to fixed product names (crypto, coordination,
+// storage stacks) and ports, violating infant discovery principles.
 //
 // **Migration Status**: The new capability-based Adapter API (`adapters/`) is available
 // and should be used for new code. This legacy layer is maintained for CLI compatibility
@@ -26,7 +26,7 @@ use tokio::time::timeout;
 use tracing::{info, warn};
 
 // Legacy integration layer; uses deprecated EcosystemService for ServiceConnection migration
-#[allow(deprecated)]
+#[expect(deprecated)]
 impl EcosystemIntegrator {
     /// Create a new ecosystem integrator (legacy discovery layer)
     #[must_use]
@@ -64,9 +64,9 @@ impl EcosystemIntegrator {
             // Zero-copy optimization: Use static strings
             use crate::ecosystem::constants::capability_categories;
             vec![
-                capability_categories::NETWORK.to_string(),      // Network primals (Songbird)
-                capability_categories::CRYPTO.to_string(),       // Crypto primals (BearDog)
-                capability_categories::STORAGE.to_string(),      // Storage primals (Nestgate)
+                capability_categories::NETWORK.to_string(),      // coordination / discovery
+                capability_categories::CRYPTO.to_string(),         // crypto / security
+                capability_categories::STORAGE.to_string(),       // storage
                 capability_categories::ORCHESTRATION.to_string(), // Orchestration capabilities
             ]
         } else {
@@ -196,7 +196,7 @@ impl EcosystemIntegrator {
     ) -> Result<()> {
         info!("🎯 Registering with orchestrator via capability discovery");
 
-        // ✅ MODERNIZED: Uses capability-based CoordinationAdapter instead of hardcoded Songbird
+        // ✅ MODERNIZED: Uses capability-based CoordinationAdapter
         use crate::ecosystem::adapters::{AdapterFactory, coordination::ServiceInfo};
 
         // Create adapter factory
@@ -236,7 +236,7 @@ impl EcosystemIntegrator {
 
                 // Store connection (capability-based, not hardcoded)
                 // ServiceConnection requires deprecated EcosystemService enum during migration
-                #[allow(deprecated)]
+                #[expect(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
                         service_type: EcosystemService::Discovery,
@@ -262,7 +262,7 @@ impl EcosystemIntegrator {
 
     /// Install cryptographic permissions via capability discovery
     ///
-    /// This method replaces the hardcoded BearDog integration with capability-based
+    /// This method replaces fixed crypto product coupling with capability-based
     /// discovery. It works with ANY crypto service that provides permission management.
     ///
     /// # Example
@@ -276,7 +276,7 @@ impl EcosystemIntegrator {
     /// ```
     ///
     /// # Benefits
-    /// - Works with BearDog, AWS KMS, Vault, HSM, or any crypto service
+    /// - Works with any crypto / security provider (KMS, Vault, HSM, etc.)
     /// - No hardcoded service names or ports
     /// - Automatic failover to backup services
     /// - Future-proof: works with services that don't exist yet
@@ -297,11 +297,11 @@ impl EcosystemIntegrator {
             .await
     }
 
-    // ✅ REMOVED: install_beardog_permissions() - deprecated since 0.1.0
+    // ✅ REMOVED: legacy install_*_permissions() — deprecated since 0.1.0
     // Use install_crypto_permissions() instead for capability-based discovery
 
     /// Connect to distributed storage via capability discovery
-    pub async fn connect_nestgate_storage(
+    pub async fn connect_distributed_storage(
         &mut self,
         endpoint: String,
         mount_point: PathBuf,
@@ -309,7 +309,7 @@ impl EcosystemIntegrator {
     ) -> Result<NestGateMount> {
         info!("🏠 Connecting to distributed storage via capability discovery");
 
-        // ✅ MODERNIZED: Uses capability-based StorageAdapter instead of hardcoded NestGate
+        // ✅ MODERNIZED: Uses capability-based StorageAdapter
         use crate::ecosystem::adapters::{AdapterFactory, storage::{StorageRequirements, AccessMode}};
 
         // Create adapter factory
@@ -339,7 +339,7 @@ impl EcosystemIntegrator {
 
                 // Store connection (capability-based, not hardcoded)
                 // ServiceConnection requires deprecated EcosystemService enum during migration
-                #[allow(deprecated)]
+                #[expect(deprecated)]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
                         service_type: EcosystemService::Storage,
@@ -355,7 +355,7 @@ impl EcosystemIntegrator {
 
                 self.connections.insert("storage".to_string(), connection);
 
-                // Convert MountInfo to NestGateMount for backward compatibility
+                // Convert MountInfo to storage mount struct for backward compatibility
                 Ok(NestGateMount {
                     dataset_name: mount_info.dataset_name,
                     mount_point: mount_info.mount_point,

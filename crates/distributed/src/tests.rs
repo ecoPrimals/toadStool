@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Test module for ToadStool distributed computing integration
 
 use std::time::SystemTime;
@@ -25,8 +25,8 @@ mod tests {
                 enable_job_queue: true,
                 max_queue_size: 100,
             },
-            songbird_integration: Some(SongbirdConfig {
-                endpoint: "https://songbird.example.com".to_string(),
+            coordination: Some(CoordinationConfig {
+                endpoint: "https://coordination.example.com".to_string(),
                 auth_token: Some("test-token".to_string()),
                 health_reporting_interval_secs: 30,
             }),
@@ -75,7 +75,7 @@ mod tests {
         assert_eq!(config.standalone.default_timeout_secs, 300);
         assert!(config.standalone.enable_job_queue);
         assert_eq!(config.standalone.max_queue_size, 100);
-        assert!(config.songbird_integration.is_none());
+        assert!(config.coordination.is_none());
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod tests {
         let err = DistributedError::ToadstoolEndpointNotSet;
         assert!(err.to_string().contains("TOADSTOOL_ENDPOINT"));
 
-        let err = DistributedError::SongbirdRegistration("test failure".to_string());
+        let err = DistributedError::CoordinationRegistration("test failure".to_string());
         assert!(err.to_string().contains("Coordination service registration"));
         assert!(err.to_string().contains("test failure"));
 
@@ -224,15 +224,15 @@ mod tests {
     }
 
     #[test]
-    fn test_songbird_config_serialization() {
-        let config = SongbirdConfig {
-            endpoint: "https://songbird.local:8080".to_string(),
+    fn test_coordination_config_serialization() {
+        let config = CoordinationConfig {
+            endpoint: "https://coordination.local:8080".to_string(),
             auth_token: Some("secret".to_string()),
             health_reporting_interval_secs: 60,
         };
         let json = serde_json::to_string(&config).unwrap();
-        assert!(json.contains("songbird.local"));
-        let parsed: SongbirdConfig = serde_json::from_str(&json).unwrap();
+        assert!(json.contains("coordination.local"));
+        let parsed: CoordinationConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.endpoint, config.endpoint);
     }
 

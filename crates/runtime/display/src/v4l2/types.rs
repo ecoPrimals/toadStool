@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(missing_docs, dead_code)] // Kernel ABI — field names are self-documenting; padding is structural
 //! V4L2 kernel ABI structs (`#[repr(C)]`, zero-init safe).
 

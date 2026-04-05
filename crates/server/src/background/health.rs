@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Health monitoring background task
 //!
 //! Runs periodic health checks (resources, runtime engines, execution count)

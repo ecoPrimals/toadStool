@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Test isolation helpers
 //!
 //! Provides isolated environments for concurrent test execution without
@@ -190,7 +190,7 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[allow(clippy::unwrap_used)]
+    #[expect(clippy::unwrap_used)]
     pub fn get(&self) -> &T {
         self.resource.as_ref().unwrap()
     }
@@ -200,7 +200,7 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[allow(clippy::unwrap_used)]
+    #[expect(clippy::unwrap_used)]
     pub fn get_mut(&mut self) -> &mut T {
         self.resource.as_mut().unwrap()
     }
@@ -210,7 +210,7 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until this method is called.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[allow(clippy::unwrap_used)]
+    #[expect(clippy::unwrap_used)]
     pub fn into_inner(mut self) -> T {
         self.resource.take().unwrap()
     }

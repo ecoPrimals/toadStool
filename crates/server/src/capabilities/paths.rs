@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery path helpers for capability announcement and peer discovery
 
 use std::path::PathBuf;

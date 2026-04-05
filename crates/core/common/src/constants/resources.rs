@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource limit constants
 //!
 //! Default resource limits for workloads, biomes, and system operations.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for policy condition evaluator
 //! Addresses low-coverage file: security/policies/src/evaluator.rs (155 lines, 2.58% coverage)
 
@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 // Mock types for testing
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct MockPolicyCondition {
     condition_type: String,
 }

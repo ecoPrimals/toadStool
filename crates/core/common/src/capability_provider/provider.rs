@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability provider abstraction.
 //!
 //! Provider of a specific capability. Abstracts away which primal provides the capability.
-//! Client code doesn't know or care if it's beardog, songbird, etc.
+//! Client code doesn't depend on which concrete service implements the capability.
 
 use crate::primal_identity::Capability;
 use crate::unix_jsonrpc_client::UnixJsonRpcClient;
@@ -17,7 +17,7 @@ use super::error::{CapabilityError, Result};
 /// Provider of a specific capability
 ///
 /// This abstracts away which primal provides the capability.
-/// Client code doesn't know or care if it's beardog, songbird, etc.
+/// Client code does not depend on a fixed peer product name.
 #[derive(Debug, Clone)]
 pub struct CapabilityProvider {
     /// Service name (for logging/debugging only, not used for logic!)
@@ -50,12 +50,12 @@ impl CapabilityProvider {
 
     /// Discover a provider for a specific capability
     ///
-    /// This queries the discovery service (typically Songbird) to find
-    /// which primal currently provides this capability.
+    /// This queries the coordination / discovery service to find
+    /// which peer currently provides this capability.
     ///
     /// # Deep Debt Principle
     ///
-    /// We don't hardcode "beardog" for crypto or "nestgate" for storage.
+    /// We don't hardcode legacy route labels for crypto or storage.
     /// We ask: "Who can do X?" and use whoever answers.
     ///
     /// # Errors
@@ -81,7 +81,7 @@ impl CapabilityProvider {
         let client = {
             let mut client_lock = self.client.write().await;
 
-            #[allow(clippy::option_if_let_else)]
+            #[expect(clippy::option_if_let_else)]
             // map_or_else would cause borrow conflict with mutation
             if let Some(c) = client_lock.as_ref() {
                 c.clone()

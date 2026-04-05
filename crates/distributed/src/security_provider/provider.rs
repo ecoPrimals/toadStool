@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! SecurityProvider trait - the core abstraction
 //!
 //! This trait defines what ANY security provider must be able to do.
-//! BearDog, HSM, KMS, local keyring - all implement this same trait.
+//! Security, HSM, KMS, local keyring - all implement this same trait.
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -23,11 +23,11 @@ use super::types::{DecryptionMetadata, SecurityProof};
 ///
 /// ## Implementations
 ///
-/// - `BearDogSecurityProvider`: BearDog primal implementation
+/// - `DistributedSecurityProvider`: Default bundled [`SecurityProvider`] implementation
 /// - `LocalKeyringProvider`: Local OS keyring (future)
 /// - `HSMProvider`: Hardware Security Module (future)
 /// - `CloudKMSProvider`: Cloud Key Management Service (future)
-/// - `MockSecurityProvider`: Testing implementation
+/// - `MockSecurityProvider`: Test-only (`cfg(test)` or `feature = "test-mocks"`)
 ///
 /// ## Deep Debt Compliance
 ///
@@ -272,12 +272,12 @@ pub enum ProviderHealth {
 }
 
 /// Mock security provider for testing
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 pub struct MockSecurityProvider {
     capabilities: Vec<SecurityCapability>,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 impl Default for MockSecurityProvider {
     fn default() -> Self {
         Self {
@@ -289,7 +289,7 @@ impl Default for MockSecurityProvider {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 impl MockSecurityProvider {
     /// Create a new mock security provider with default settings.
     pub fn new() -> Self {
@@ -297,7 +297,7 @@ impl MockSecurityProvider {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl SecurityProvider for MockSecurityProvider {

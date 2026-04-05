@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Process monitoring via `/proc/[pid]/stat` and `/proc/[pid]/status`.
 
 use crate::error::{Result, SysmonError};
@@ -126,7 +126,7 @@ fn parse_proc_stat(content: &str, rss_bytes: u64, boot_time: u64) -> Option<Proc
     let starttime: u64 = fields[19].parse().unwrap_or(0);
 
     let total_cpu_ticks = utime + stime;
-    #[allow(
+    #[expect(
         clippy::cast_precision_loss,
         reason = "tick counts fit f64 without meaningful precision loss"
     )]
@@ -140,7 +140,7 @@ fn parse_proc_stat(content: &str, rss_bytes: u64, boot_time: u64) -> Option<Proc
         .as_secs();
     let alive_secs = now.saturating_sub(start_epoch);
 
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_precision_loss,
         reason = "CPU percentage 0-100 fits f32; seconds fit f64"

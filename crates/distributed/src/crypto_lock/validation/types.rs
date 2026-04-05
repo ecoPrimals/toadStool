@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Domain types for cryptographic validation (proofs, algorithms, outcomes).
 
 use std::collections::HashMap;
@@ -30,8 +30,9 @@ pub enum CryptoAlgorithm {
     EcdsaP256,
     /// RSA-4096.
     Rsa4096,
-    /// BearDog-specific custom algorithm.
-    BearDogCustom,
+    /// Custom algorithm from the security capability implementation.
+    #[serde(alias = "BearDogCustom")] // legacy alias
+    SecurityLayerCustom,
 }
 
 /// Proof metadata

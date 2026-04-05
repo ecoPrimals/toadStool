@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Default Configuration Constants
 //!
 //! **Centralized** default values for all ToadStool configuration.
@@ -143,6 +143,21 @@ mod tests {
         let api = endpoints::api();
         assert!(api.starts_with("http://"));
         assert!(api.contains(":0")); // API_PORT = 0 (OS-assigned)
+
+        assert_eq!(
+            endpoints::coordination_localhost_bootstrap_url(),
+            format!(
+                "http://localhost:{}",
+                crate::ports::capability_fallback::COORDINATION
+            )
+        );
+        assert_eq!(
+            endpoints::coordination_loopback_bootstrap_url(),
+            format!(
+                "http://127.0.0.1:{}",
+                crate::ports::capability_fallback::COORDINATION
+            )
+        );
 
         // Note: songbird() and beardog() endpoint helpers have been removed
         // Use BiomeOSClient::get_*_provider().await?.endpoint for discovery

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -42,13 +42,11 @@ async fn test_scan_system_handles_partial_failure_gracefully() {
     }
 }
 
-#[test]
-fn test_discover_services_timeout_handling() {
-    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+#[tokio::test]
+async fn test_discover_services_timeout_handling() {
+    temp_env::async_with_vars([("TOADSTOOL_SKIP_DISCOVERY", Some("1"))], async {
         let mut config = IntelligentAutoConfig::new();
-        let result = rt
-            .block_on(async { timeout(Duration::from_secs(10), config.discover_services()).await });
+        let result = timeout(Duration::from_secs(10), config.discover_services()).await;
 
         assert!(
             result.is_ok(),
@@ -63,7 +61,8 @@ fn test_discover_services_timeout_handling() {
                 println!("Service discovery failed gracefully: {e:?}");
             }
         }
-    });
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -287,20 +286,17 @@ async fn test_repeated_configuration_generation() {
 // PERFORMANCE INVARIANTS - Test performance characteristics
 // ============================================================================
 
-#[test]
-fn test_config_generation_completes_in_reasonable_time() {
-    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+#[tokio::test]
+async fn test_config_generation_completes_in_reasonable_time() {
+    temp_env::async_with_vars([("TOADSTOOL_SKIP_DISCOVERY", Some("1"))], async {
         let mut config = IntelligentAutoConfig::new();
 
         let start = std::time::Instant::now();
-        let result = rt.block_on(async {
-            timeout(
-                Duration::from_secs(30),
-                config.generate_intelligent_config(),
-            )
-            .await
-        });
+        let result = timeout(
+            Duration::from_secs(30),
+            config.generate_intelligent_config(),
+        )
+        .await;
         let elapsed = start.elapsed();
 
         assert!(
@@ -308,7 +304,8 @@ fn test_config_generation_completes_in_reasonable_time() {
             "Config generation should complete within 30 seconds"
         );
         println!("Config generation took: {elapsed:?}");
-    });
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -443,25 +440,23 @@ fn test_usage_hints_intensive_classification_consistency() {
 // REGRESSION TESTS - Prevent known issues from recurring
 // ============================================================================
 
-#[test]
-fn test_config_generation_doesnt_hang_on_network_unavailable() {
-    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+#[tokio::test]
+async fn test_config_generation_doesnt_hang_on_network_unavailable() {
+    temp_env::async_with_vars([("TOADSTOOL_SKIP_DISCOVERY", Some("1"))], async {
         let mut config = IntelligentAutoConfig::new();
 
-        let result = rt.block_on(async {
-            timeout(
-                Duration::from_secs(15),
-                config.generate_intelligent_config(),
-            )
-            .await
-        });
+        let result = timeout(
+            Duration::from_secs(15),
+            config.generate_intelligent_config(),
+        )
+        .await;
 
         assert!(
             result.is_ok(),
             "Config generation should complete even without network"
         );
-    });
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -518,42 +513,36 @@ async fn test_documentation_example_component_access() {
 // STRESS TESTS - Test system under load
 // ============================================================================
 
-#[test]
-fn test_stress_many_concurrent_configs() {
-    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(8)
-            .enable_all()
-            .build()
-            .unwrap();
-        rt.block_on(async {
-            let mut handles = vec![];
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn test_stress_many_concurrent_configs() {
+    temp_env::async_with_vars([("TOADSTOOL_SKIP_DISCOVERY", Some("1"))], async {
+        let mut handles = vec![];
 
-            for i in 0..20 {
-                let handle = tokio::spawn(async move {
-                    let mut config = IntelligentAutoConfig::new();
-                    let result = timeout(
-                        Duration::from_secs(15),
-                        config.generate_intelligent_config(),
-                    )
-                    .await;
-                    (i, result)
-                });
-                handles.push(handle);
-            }
+        for i in 0..20 {
+            let handle = tokio::spawn(async move {
+                let mut config = IntelligentAutoConfig::new();
+                let result = timeout(
+                    Duration::from_secs(15),
+                    config.generate_intelligent_config(),
+                )
+                .await;
+                (i, result)
+            });
+            handles.push(handle);
+        }
 
-            let mut completed = 0;
-            let mut timed_out = 0;
-            for handle in handles {
-                if let Ok((_id, result)) = handle.await {
-                    match result {
-                        Ok(Ok(_) | Err(_)) => completed += 1,
-                        Err(_) => timed_out += 1,
-                    }
+        let mut completed = 0;
+        let mut timed_out = 0;
+        for handle in handles {
+            if let Ok((_id, result)) = handle.await {
+                match result {
+                    Ok(Ok(_) | Err(_)) => completed += 1,
+                    Err(_) => timed_out += 1,
                 }
             }
+        }
 
-            println!("Stress test: {completed}/20 configs completed, {timed_out} timed out");
-        });
-    });
+        println!("Stress test: {completed}/20 configs completed, {timed_out} timed out");
+    })
+    .await;
 }

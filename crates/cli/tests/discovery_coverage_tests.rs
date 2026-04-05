@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::pedantic,
     clippy::redundant_closure,
@@ -62,10 +62,10 @@ fn discover_from_environment_empty_value() {
 fn discover_from_environment_uppercase_env_var() {
     temp_env::with_var(
         "TOADSTOOL_STORAGE_SERVICE_URL",
-        Some("http://nestgate.local:8082"),
+        Some("http://storage.local:8082"),
         || {
             let result = discover_from_environment("storage");
-            assert_eq!(result, Some("http://nestgate.local:8082".to_string()));
+            assert_eq!(result, Some("http://storage.local:8082".to_string()));
         },
     );
 }
@@ -172,70 +172,47 @@ fn discover_from_config_invalid_toml_returns_none() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(deprecated)]
 async fn discover_service_by_capability_from_env() {
-    let result = tokio::task::spawn_blocking(|| {
-        temp_env::with_var(
+    temp_env::async_with_vars(
+        [(
             "TOADSTOOL_CRYPTO_SERVICE_URL",
             Some("http://127.0.0.1:9876"),
-            || {
-                let rt = tokio::runtime::Runtime::new().expect("runtime");
-                rt.block_on(async {
-                    let r: Result<Vec<ServiceEndpoint>, _> =
-                        discover_service_by_capability("crypto").await;
-                    assert!(r.is_ok());
-                    let services = r.expect("ok");
-                    assert!(!services.is_empty());
-                    assert!(matches!(services[0].trust_level, TrustLevel::Configured));
-                });
-            },
-        );
-    })
-    .await
-    .expect("spawn");
-    let _ = result;
+        )],
+        async {
+            let r: Result<Vec<ServiceEndpoint>, _> = discover_service_by_capability("crypto").await;
+            assert!(r.is_ok());
+            let services = r.expect("ok");
+            assert!(!services.is_empty());
+            assert!(matches!(services[0].trust_level, TrustLevel::Configured));
+        },
+    )
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(deprecated)]
 async fn discover_service_by_capability_no_source_returns_empty() {
-    let result = tokio::task::spawn_blocking(|| {
-        temp_env::with_var_unset("TOADSTOOL_NOSVC_SERVICE_URL", || {
-            let rt = tokio::runtime::Runtime::new().expect("runtime");
-            rt.block_on(async {
-                let r: Result<Vec<ServiceEndpoint>, _> =
-                    discover_service_by_capability("nosvc").await;
-                assert!(r.is_ok());
-                let services = r.expect("ok");
-                assert!(services.is_empty());
-            });
-        });
+    temp_env::async_with_vars([("TOADSTOOL_NOSVC_SERVICE_URL", None::<&str>)], async {
+        let r: Result<Vec<ServiceEndpoint>, _> = discover_service_by_capability("nosvc").await;
+        assert!(r.is_ok());
+        let services = r.expect("ok");
+        assert!(services.is_empty());
     })
-    .await
-    .expect("spawn");
-    let _ = result;
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(deprecated)]
 async fn discover_service_by_capability_invalid_env_url_skips_to_config() {
-    let result = tokio::task::spawn_blocking(|| {
-        temp_env::with_var(
-            "TOADSTOOL_BADURL_SERVICE_URL",
-            Some("not-a-valid-addr"),
-            || {
-                let rt = tokio::runtime::Runtime::new().expect("runtime");
-                rt.block_on(async {
-                    let r: Result<Vec<ServiceEndpoint>, _> =
-                        discover_service_by_capability("badurl").await;
-                    assert!(r.is_ok());
-                    let services = r.expect("ok");
-                    assert!(services.is_empty());
-                });
-            },
-        );
-    })
-    .await
-    .expect("spawn");
-    let _ = result;
+    temp_env::async_with_vars(
+        [("TOADSTOOL_BADURL_SERVICE_URL", Some("not-a-valid-addr"))],
+        async {
+            let r: Result<Vec<ServiceEndpoint>, _> = discover_service_by_capability("badurl").await;
+            assert!(r.is_ok());
+            let services = r.expect("ok");
+            assert!(services.is_empty());
+        },
+    )
+    .await;
 }
 
 // ─── verify_service ─────────────────────────────────────────────────────────

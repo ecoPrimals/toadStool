@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime defaults expansion tests - Week 20
 //!
 //! Target: Increase `runtime_defaults.rs` coverage from 0% → 50%+

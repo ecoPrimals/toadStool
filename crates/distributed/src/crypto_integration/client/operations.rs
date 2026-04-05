@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC over Unix socket operations against a discovered crypto service.
 
 use std::time::Duration;
@@ -47,7 +47,7 @@ impl CryptoServiceClient {
             std::path::PathBuf::from(path)
         } else {
             // Fallback: Use generic socket path for discovered service name
-            // This allows ANY crypto service to work (BearDog, HSM, cloud KMS)
+            // This allows ANY crypto service to work (Security, HSM, cloud KMS)
             toadstool_common::primal_sockets::resolve_socket_path_for_service(
                 &service.name,
                 &toadstool_common::primal_sockets::SocketPathEnv::from_env(),

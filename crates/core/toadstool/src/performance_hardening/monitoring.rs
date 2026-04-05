@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource monitoring and metrics collection
 //!
 //! This module provides optimized resource monitoring with adaptive sampling
@@ -93,7 +93,7 @@ impl OptimizedResourceMonitor {
             // High load - sample more frequently
             let base_ms = self.config.base_sampling_interval.as_millis();
             let mult = self.config.high_load_multiplier;
-            #[allow(
+            #[expect(
                 clippy::cast_precision_loss,
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss
@@ -104,7 +104,7 @@ impl OptimizedResourceMonitor {
             // Low load - sample less frequently
             let base_ms = self.config.base_sampling_interval.as_millis();
             let mult = self.config.low_load_multiplier;
-            #[allow(
+            #[expect(
                 clippy::cast_precision_loss,
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss
@@ -144,12 +144,12 @@ mod tests {
             },
             memory: MemoryMetrics {
                 usage_percent: memory_percent,
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss
                 )] // synthetic test metrics; non-negative
                 used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss
                 )]

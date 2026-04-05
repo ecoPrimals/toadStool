@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Root CLI struct, execution context, and manifest loading helpers.
 
 use clap::Parser;
@@ -108,7 +108,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
 
     // Check for required primals
     if !manifest.primals.contains_key(well_known::BEARDOG) && manifest.security.beardog_required {
-        warnings.push("BearDog is required but not configured".to_string());
+        warnings.push("A security service is required but not configured".to_string());
     }
 
     // Validate service dependencies

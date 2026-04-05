@@ -18,8 +18,8 @@ members = [
     "crates/cli",
     "crates/client",  # EVOLVED: reqwest removed, Unix JSON-RPC only ✅
     "crates/server",
-    "crates/integration/beardog",     # NEW: bearDog entropy integration (Jan 15, 2026)
-    "crates/integration/nestgate",
+    "crates/integration/security",     # NEW: bearDog entropy integration (Jan 15, 2026)
+    "crates/integration/storage",
     "crates/integration/primals",
     "crates/integration/protocols", 
     "crates/management/monitoring",
@@ -67,7 +67,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
 authors = ["ToadStool Development Team"]
-license = "AGPL-3.0-only"
+license = "AGPL-3.0-or-later"
 repository = "https://github.com/ecoPrimals/toadstool"
 homepage = "https://github.com/ecoPrimals/toadstool"
 documentation = "https://docs.rs/toadstool"

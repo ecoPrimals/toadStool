@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for `discover_self_ip_address` (`execution::discover`).
 
 use super::discover_self_ip_address;

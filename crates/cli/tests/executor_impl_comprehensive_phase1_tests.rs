@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -787,7 +787,7 @@ impl MockBiomeExecutor {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct TestManifest {
     name: String,
     version: String,

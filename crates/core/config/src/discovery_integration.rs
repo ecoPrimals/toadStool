@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery Integration for Configuration Layer
 //!
 //! This module provides integration between the legacy configuration system
@@ -225,7 +225,7 @@ pub async fn discover_with_load_balancing(
 /// runtime using capability-based socket discovery.
 ///
 /// For multi-machine deployments, use a network-aware discovery client
-/// (e.g., mDNS, Birdsong UDP, or Songbird coordination).
+/// (e.g., mDNS, Birdsong UDP, or coordination service).
 ///
 /// # Returns
 ///

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trace diffing — isolate compute-specific events.
 //!
 //! Compares a baseline trace (no compute) against a compute trace

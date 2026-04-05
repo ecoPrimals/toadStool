@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Comprehensive tests for BearDog Integration Types
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Comprehensive tests for Security Integration Types
 //!
-//! This test suite provides extensive coverage of BearDog security integration types
+//! This test suite provides extensive coverage of Security security integration types
 //! including authentication, authorization, and policy structures.
 
 use std::collections::HashMap;
@@ -9,20 +9,20 @@ use std::collections::HashMap;
 use toadstool_integration_protocols::*;
 
 // ============================================================================
-// BearDogConfig Tests
+// SecurityConfig Tests
 // ============================================================================
 
 #[test]
-fn test_beardog_config_default() {
+fn test_security_config_default() {
     // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
-    let config = BearDogConfig::default();
+    let config = SecurityConfig::default();
 
     assert!(config.socket_path.contains("security.sock"));
 }
 
 #[test]
-fn test_beardog_config_default_timeouts() {
-    let config = BearDogConfig::default();
+fn test_security_config_default_timeouts() {
+    let config = SecurityConfig::default();
 
     assert_eq!(config.request_timeout_secs, 30);
     assert_eq!(config.token_refresh_interval_secs, 300);
@@ -30,15 +30,15 @@ fn test_beardog_config_default_timeouts() {
 }
 
 #[test]
-fn test_beardog_config_default_monitoring() {
-    let config = BearDogConfig::default();
+fn test_security_config_default_monitoring() {
+    let config = SecurityConfig::default();
     assert!(config.continuous_monitoring);
 }
 
 #[test]
-fn test_beardog_config_unix_socket_based() {
+fn test_security_config_unix_socket_based() {
     // EVOLVED: No API tokens! Unix socket auth via file permissions
-    let config = BearDogConfig::default();
+    let config = SecurityConfig::default();
     assert!(
         std::path::Path::new(&config.socket_path)
             .extension()
@@ -47,8 +47,8 @@ fn test_beardog_config_unix_socket_based() {
 }
 
 #[test]
-fn test_beardog_config_clone() {
-    let config1 = BearDogConfig::default();
+fn test_security_config_clone() {
+    let config1 = SecurityConfig::default();
     let config2 = config1.clone();
 
     assert_eq!(config1.socket_path, config2.socket_path);
@@ -337,11 +337,11 @@ fn test_security_audit_event_clone() {
 // ============================================================================
 
 #[test]
-fn test_beardog_types_coverage_summary() {
+fn test_security_types_coverage_summary() {
     println!("============================================");
-    println!("BearDog Types Tests Summary:");
+    println!("Security Types Tests Summary:");
     println!("============================================");
-    println!("BearDogConfig:           5 tests");
+    println!("SecurityConfig:           5 tests");
     println!("AuthRequest:             2 tests");
     println!("AuthResponse:            2 tests");
     println!("AuthzRequest:            2 tests");
@@ -350,6 +350,6 @@ fn test_beardog_types_coverage_summary() {
     println!("PolicyRule:              2 tests");
     println!("SecurityAuditEvent:      3 tests");
     println!("============================================");
-    println!("Total BearDog Tests:    20 tests");
+    println!("Total Security Tests:    20 tests");
     println!("============================================");
 }

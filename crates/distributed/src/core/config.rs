@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use serde::{Deserialize, Serialize};
 use toadstool::{IsolationLevel, RuntimeType};
 
@@ -9,8 +9,8 @@ pub struct DistributedConfig {
     pub instance_id: String,
     /// Standalone execution configuration
     pub standalone: StandaloneConfig,
-    /// Songbird integration (optional for standalone operation)
-    pub songbird_integration: Option<SongbirdConfig>,
+    /// Coordination integration (optional for standalone operation)
+    pub coordination: Option<CoordinationConfig>,
 }
 
 /// Standalone execution configuration
@@ -26,10 +26,10 @@ pub struct StandaloneConfig {
     pub max_queue_size: usize,
 }
 
-/// Songbird integration configuration
+/// Coordination integration configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdConfig {
-    /// Songbird endpoint
+pub struct CoordinationConfig {
+    /// Coordination endpoint
     pub endpoint: String,
     /// Authentication token
     pub auth_token: Option<String>,
@@ -37,7 +37,7 @@ pub struct SongbirdConfig {
     pub health_reporting_interval_secs: u64,
 }
 
-/// `ToadStool` capabilities reported to Songbird
+/// `ToadStool` capabilities reported to Coordination
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToadStoolCapabilities {
     /// Available execution environments
@@ -89,7 +89,7 @@ impl Default for DistributedConfig {
                 enable_job_queue: true,
                 max_queue_size: 1000,
             },
-            songbird_integration: None,
+            coordination: None,
         }
     }
 }
@@ -145,7 +145,7 @@ mod tests {
         assert_eq!(config.standalone.default_timeout_secs, 3600);
         assert!(config.standalone.enable_job_queue);
         assert_eq!(config.standalone.max_queue_size, 1000);
-        assert!(config.songbird_integration.is_none());
+        assert!(config.coordination.is_none());
     }
 
     #[test]
@@ -163,15 +163,15 @@ mod tests {
     }
 
     #[test]
-    fn songbird_config_fields() {
-        let songbird = SongbirdConfig {
+    fn coordination_config_fields() {
+        let coordination = CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("secret".to_string()),
             health_reporting_interval_secs: 30,
         };
-        assert_eq!(songbird.endpoint, "http://localhost:8080");
-        assert_eq!(songbird.auth_token.as_deref(), Some("secret"));
-        assert_eq!(songbird.health_reporting_interval_secs, 30);
+        assert_eq!(coordination.endpoint, "http://localhost:8080");
+        assert_eq!(coordination.auth_token.as_deref(), Some("secret"));
+        assert_eq!(coordination.health_reporting_interval_secs, 30);
     }
 
     #[test]

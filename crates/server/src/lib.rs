@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![cfg_attr(test, allow(deprecated))]
@@ -51,7 +51,7 @@
 //! - **Load Balancing**: Intelligent workload distribution across available resources
 //! - **Resource Management**: CPU, memory, storage, and GPU resource tracking
 //! - **Authentication & Authorization**: Configurable security policies
-//! - **Ecosystem Integration**: Integration with Songbird, `BearDog`, `NestGate`
+//! - **Ecosystem Integration**: Coordination, security, storage, and other capability providers
 //! - **UniBin Support**: Main server function for UniBin integration
 //!
 //! ## Quick Start
@@ -107,7 +107,6 @@ pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerSta
     note = "Use pure_jsonrpc::JsonRpcHandler — no TCP hardcoding"
 )]
 // Re-export deprecated tarpc types for backward compatibility
-#[allow(deprecated)]
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 // EVOLVED: TestExecutor isolated to testing (deep debt principle)
@@ -119,7 +118,7 @@ pub use tarpc_server::TestExecutor;
 // ⚠️ IMPORTANT: Protocol Priority (wateringHole Standard)
 // 1. PRIMARY: JSON-RPC 2.0 over Unix sockets (universal, language-agnostic)
 // 2. OPTIONAL: tarpc over Unix sockets (binary RPC for performance-critical paths)
-// 3. DEPRECATED: HTTP/TCP (use Songbird for HTTP/TLS)
+// 3. DEPRECATED: HTTP/TCP (use coordination service / edge for HTTP/TLS)
 //
 // Per PRIMAL_IPC_PROTOCOL.md and UNIVERSAL_IPC_STANDARD_V3.md:
 // JSON-RPC 2.0 is the REQUIRED protocol for inter-primal communication.
@@ -128,8 +127,8 @@ pub use tarpc_server::TestExecutor;
 // See pure_jsonrpc::connection::serve_unix() and tarpc_server::serve_unix()
 // for correct implementations.
 
-// EVOLVED: Test exports properly isolated
-#[cfg(test)]
+// EVOLVED: Test exports properly isolated (optional `test-mocks` for integration tests / tools)
+#[cfg(any(test, feature = "test-mocks"))]
 pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
 
 // RESOLVED (S155b): SIGSEGV on process exit (Vulkan+Nvidia+Linux)
@@ -155,24 +154,24 @@ pub mod graph_node;
 pub mod graph_types; // Main graph types (ExecutionGraph, builders)
 
 // manual_jsonrpc: REMOVED S94 — fully replaced by pure_jsonrpc
-// handlers: REMOVED — HTTP REST handlers are songBird's domain; use pure_jsonrpc
+// handlers: REMOVED — HTTP REST is out of scope here; use pure_jsonrpc
 
 // ✅ EVOLVED: Mocks isolated to testing (deep debt principle)
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 pub mod mocks;
 
-pub(crate) mod coral_reef_client; // Internal: used by dispatch for coralReef coordination
-pub mod glowplug_client; // toadStool-native device management service
+pub mod glowplug_client;
+pub(crate) mod visualization_client; // Shader / GPU-dispatch helper client (capability-discovered)
 
 // ✅ CANONICAL: JSON-RPC 2.0 (SemanticMethodRegistry, proper error types)
-// lifecycle: REMOVED — HTTP lifecycle is songBird's domain; use pure_jsonrpc
+// lifecycle: REMOVED — HTTP lifecycle belongs to edge/orchestration; use pure_jsonrpc
 pub mod pure_jsonrpc;
 pub mod resource_estimator;
 pub mod resource_optimizer;
 pub mod resource_validator;
-// routes: REMOVED — HTTP routes are songBird's domain; use pure_jsonrpc
+// routes: REMOVED — HTTP routes belong to edge/orchestration; use pure_jsonrpc
 pub mod rpc_types; // Pure RPC types (no HTTP deps)
-// server: REMOVED — axum HTTP server is songBird's domain; use pure_jsonrpc
+// server: REMOVED — axum HTTP server is not the JSON-RPC surface here; use pure_jsonrpc
 pub mod state;
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)

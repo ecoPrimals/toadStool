@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core handlers for JSON-RPC: health, version, capabilities, GPU info.
 //!
 //! Provides health checks, version information, capability discovery,
@@ -15,7 +15,7 @@ use crate::rpc_types::HealthStatus;
 type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
 
 /// Returns health status with uptime and error count.
-#[allow(
+#[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
@@ -25,7 +25,7 @@ pub(crate) async fn health(
     error_count: &AtomicU64,
 ) -> JsonRpcResult {
     let uptime = start_time.elapsed();
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         reason = "error count u64→usize is lossless on 64-bit"
     )]
@@ -44,7 +44,7 @@ pub(crate) async fn health(
 }
 
 /// Returns version and protocol information.
-#[allow(
+#[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
@@ -61,7 +61,7 @@ pub(crate) async fn version_info(version: &str) -> JsonRpcResult {
 }
 
 /// Returns discovered capabilities including semantic methods.
-#[allow(
+#[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
@@ -146,7 +146,7 @@ pub(crate) async fn discover_capabilities(
 ///
 /// Every primal MUST implement `identity.get` so orchestrators and peers
 /// can discover name, version, capabilities, and protocol.
-#[allow(
+#[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
@@ -186,7 +186,7 @@ pub(crate) async fn identity_get(
 ///
 /// Also includes `firmware_inventory` for NVIDIA chips so callers can
 /// assess `compute_viable()` and `compute_blockers()` without local probing.
-#[allow(
+#[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
@@ -201,7 +201,7 @@ pub(crate) async fn gpu_info() -> JsonRpcResult {
 }
 
 /// Returns GPU memory information per device.
-#[allow(
+#[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]

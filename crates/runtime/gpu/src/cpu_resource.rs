@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CPU as First-Class Compute Resource
 //!
 //! Treats CPU cores as a legitimate compute resource, not just a "fallback"
@@ -242,7 +242,7 @@ impl UniversalComputeResource for CpuComputeResource {
         *self.utilization.read().await
     }
 
-    #[allow(
+    #[expect(
         clippy::cast_precision_loss,
         clippy::cast_sign_loss,
         clippy::cast_possible_truncation
@@ -489,7 +489,7 @@ impl Default for CpuComputeResource {
             // If we cannot create even a single-threaded thread pool, the system is fundamentally
             // broken and cannot execute compute tasks. Panicking here is appropriate as it's
             // a catastrophic system failure, not a recoverable error.
-            #[allow(clippy::expect_used)]
+            #[expect(clippy::expect_used)]
             let thread_pool = rayon::ThreadPoolBuilder::new()
                 .num_threads(1)
                 .thread_name(|_| "toadstool-cpu-fallback".to_string())

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Client configuration types
 //!
 //! This module defines configuration structures for the ToadStool client,
@@ -65,6 +65,7 @@ pub struct ClientConfig {
 impl Default for ClientConfig {
     fn default() -> Self {
         Self {
+            // `TOADSTOOL_SERVER_URL` overrides; default base is loopback + `defaults::network::API_PORT` (0 = OS-assigned).
             base_url: std::env::var("TOADSTOOL_SERVER_URL").unwrap_or_else(|_| {
                 format!(
                     "http://{}:{}",

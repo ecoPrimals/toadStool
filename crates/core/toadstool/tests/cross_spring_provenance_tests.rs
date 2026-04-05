@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for cross-spring provenance tracking.
 
 use toadstool::cross_spring_provenance::{

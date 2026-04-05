@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
         network_isolation: create_test_network_isolation_config(),
         audit_logging: create_test_audit_logging_config(),
     }
@@ -9,7 +9,7 @@ fn create_test_authentication_config() -> AuthenticationConfig {
         method: "beardog".to_string(),
         token_validation: create_test_token_validation_config(),
         certificate_validation: create_test_certificate_validation_config(),
-        beardog_integration: create_test_beardog_integration_config(true),
+        security: create_test_security_config(true),
     }
 }
 
@@ -32,7 +32,7 @@ fn create_test_certificate_validation_config() -> CertificateValidationConfig {
     }
 }
 
-fn create_test_beardog_integration_config(enabled: bool) -> BearDogIntegrationConfig {
+fn create_test_security_config(enabled: bool) -> BearDogIntegrationConfig {
     BearDogIntegrationConfig {
         enabled,
         endpoint: "http://beardog:9000".to_string(),

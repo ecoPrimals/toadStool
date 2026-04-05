@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network configuration overrides.
 //!
 //! # Network Environment Variables (primary; current values are fallback defaults)
@@ -11,10 +11,10 @@
 //! | `TOADSTOOL_SECURITY_ENDPOINT` | (none) | Security / PKI endpoint |
 //! | `TOADSTOOL_STORAGE_ENDPOINT` | (none) | Storage endpoint |
 //! | `TOADSTOOL_AI_ENDPOINT` | (none) | AI processing endpoint |
-//! | `TOADSTOOL_SONGBIRD_ENDPOINT` | (deprecated) | Legacy alias for coordination |
-//! | `TOADSTOOL_BEARDOG_ENDPOINT` | (deprecated) | Legacy alias for security |
-//! | `TOADSTOOL_NESTGATE_ENDPOINT` | (deprecated) | Legacy alias for storage |
-//! | `TOADSTOOL_SQUIRREL_ENDPOINT` | (deprecated) | Legacy alias for AI |
+//! | `TOADSTOOL_SONGBIRD_ENDPOINT` | (deprecated) | Legacy alias for coordination endpoint |
+//! | `TOADSTOOL_BEARDOG_ENDPOINT` | (deprecated) | Legacy alias for security endpoint |
+//! | `TOADSTOOL_NESTGATE_ENDPOINT` | (deprecated) | Legacy alias for storage endpoint |
+//! | `TOADSTOOL_SQUIRREL_ENDPOINT` | (deprecated) | Legacy alias for AI endpoint |
 
 use super::super::{ConfigError, ConfigResult};
 use super::parse;
@@ -36,7 +36,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     }
 
     // Legacy endpoint overrides (deprecated - use capability-based discovery)
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     {
         if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
             .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))

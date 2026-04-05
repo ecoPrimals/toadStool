@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Analytics Module Test Expansion - October 31, 2025
 
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

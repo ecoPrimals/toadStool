@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida model representation
 
 use crate::error::{AkidaModelError, Result};
@@ -142,6 +142,7 @@ impl Model {
             version: header.version,
             layers,
             weights,
+            // Own a copy: `data` may be a transient slice; Model must hold bytes for its lifetime.
             data: data.to_vec(),
         })
     }

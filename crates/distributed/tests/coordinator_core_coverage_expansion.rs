@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed Coordinator Core Coverage Expansion
 //!
 //! **Goal**: Increase distributed module coverage from 12% → 50%+
@@ -9,7 +9,7 @@
 //! 3. Execution submission and routing
 //! 4. Standalone executor logic
 //! 5. Error handling and edge cases
-//! 6. Songbird integration paths (with and without)
+//! 6. Coordination integration paths (with and without)
 //!
 //! ## Testing Strategy
 //! - Unit tests for each public API method
@@ -24,7 +24,7 @@ use uuid::Uuid;
 
 use toadstool::{ExecutionRequest, RuntimeType};
 use toadstool_distributed::core::{
-    DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
+    CoordinationConfig, DistributedConfig, DistributedCoordinator, StandaloneConfig,
 };
 
 // ============================================================================
@@ -41,14 +41,14 @@ fn create_test_config() -> DistributedConfig {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None, // Start with standalone mode
+        coordination: None, // Start with standalone mode
     }
 }
 
-/// Create config with Songbird integration (for testing integration paths)
-fn create_test_config_with_songbird() -> DistributedConfig {
+/// Create config with Coordination integration (for testing integration paths)
+fn create_test_config_with_coordination() -> DistributedConfig {
     let mut config = create_test_config();
-    config.songbird_integration = Some(SongbirdConfig {
+    config.coordination = Some(CoordinationConfig {
         endpoint: "http://localhost:8080".to_string(), // Will fail to connect, but tests API
         auth_token: Some("test-token".to_string()),
         health_reporting_interval_secs: 60,
@@ -101,10 +101,10 @@ async fn test_coordinator_creation_detects_capabilities() {
 }
 
 #[tokio::test]
-async fn test_coordinator_creation_with_songbird_config() {
-    let config = create_test_config_with_songbird();
+async fn test_coordinator_creation_with_coordination_config() {
+    let config = create_test_config_with_coordination();
 
-    // This will attempt to connect to Songbird (will fail in test environment)
+    // This will attempt to connect to Coordination (will fail in test environment)
     // but tests that the API path exists
     let result = timeout(Duration::from_secs(5), DistributedCoordinator::new(config)).await;
 
@@ -112,7 +112,7 @@ async fn test_coordinator_creation_with_songbird_config() {
     // Both are valid for testing the code path exists
     assert!(
         result.is_ok() || result.is_err(),
-        "Coordinator should handle Songbird config (success or timeout)"
+        "Coordinator should handle Coordination config (success or timeout)"
     );
 }
 

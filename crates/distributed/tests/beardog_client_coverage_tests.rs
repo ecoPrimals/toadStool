@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 #![allow(deprecated)]
 #![allow(
@@ -11,13 +11,13 @@
     clippy::items_after_statements,
     clippy::unused_async
 )]
-//! Comprehensive coverage tests for BearDog client
+//! Comprehensive coverage tests for Security client
 //! Target: exercise all branches including error paths.
 
 use std::time::Duration;
-use toadstool_distributed::beardog_integration::types::{EncryptionRequest, KeyManagementRequest};
-use toadstool_distributed::beardog_integration::{
-    BearDogClient, BearDogConfig,
+use toadstool_distributed::security::types::{EncryptionRequest, KeyManagementRequest};
+use toadstool_distributed::security::{
+    SecurityClient, SecurityConfig,
     types::{EncryptionOperation, KeyOperation, SecurityLevel},
 };
 use toadstool_distributed::security_provider::types::{
@@ -35,7 +35,7 @@ fn parse_capabilities_standard() {
         "security_level": "standard",
         "hardware_backed": false
     });
-    let cap = BearDogClient::parse_capabilities_from_json(&json);
+    let cap = SecurityClient::parse_capabilities_from_json(&json);
     assert!(matches!(
         cap.security_level,
         toadstool::encryption::SecurityLevel::Standard
@@ -45,7 +45,7 @@ fn parse_capabilities_standard() {
 #[test]
 fn parse_capabilities_enhanced() {
     let json = serde_json::json!({"security_level": "enhanced"});
-    let cap = BearDogClient::parse_capabilities_from_json(&json);
+    let cap = SecurityClient::parse_capabilities_from_json(&json);
     assert!(matches!(
         cap.security_level,
         toadstool::encryption::SecurityLevel::Enhanced
@@ -58,7 +58,7 @@ fn parse_capabilities_hardware_secured() {
         "security_level": "hardware_secured",
         "hardware_backed": true
     });
-    let cap = BearDogClient::parse_capabilities_from_json(&json);
+    let cap = SecurityClient::parse_capabilities_from_json(&json);
     assert!(matches!(
         cap.security_level,
         toadstool::encryption::SecurityLevel::HardwareSecured
@@ -69,36 +69,36 @@ fn parse_capabilities_hardware_secured() {
 #[test]
 fn parse_capabilities_empty_defaults() {
     let json = serde_json::json!({});
-    let cap = BearDogClient::parse_capabilities_from_json(&json);
+    let cap = SecurityClient::parse_capabilities_from_json(&json);
     assert!(!cap.algorithms.is_empty());
     assert!(!cap.hardware_backed);
 }
 
-// ─── BearDogClient::new (deprecated, sync) ─────────────────────────────────
+// ─── SecurityClient::new (deprecated, sync) ─────────────────────────────────
 
 #[test]
-#[allow(deprecated)]
-fn beardog_client_new_creates() {
-    let config = BearDogConfig::default();
-    let result = BearDogClient::new(config);
+#[expect(deprecated)]
+fn security_client_new_creates() {
+    let config = SecurityConfig::default();
+    let result = SecurityClient::new(config);
     assert!(result.is_ok());
 }
 
 // ─── CryptoProvider trait (via toadstool::encryption::CryptoProvider) ───────
 
 #[test]
-#[allow(deprecated)]
-fn provider_id_returns_beardog() {
+#[expect(deprecated)]
+fn provider_id_returns_security() {
     use toadstool::encryption::CryptoProvider;
-    let client = BearDogClient::new(BearDogConfig::default()).unwrap();
+    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
     assert_eq!(client.provider_id(), "crypto");
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn capabilities_returns_default() {
     use toadstool::encryption::CryptoProvider;
-    let client = BearDogClient::new(BearDogConfig::default()).unwrap();
+    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
     let caps = client.capabilities();
     assert!(!caps.algorithms.is_empty());
 }
@@ -107,16 +107,16 @@ fn capabilities_returns_default() {
 
 #[tokio::test]
 async fn query_capabilities_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let result: Result<_, _> = client.query_capabilities_async().await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn encrypt_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let req = EncryptionRequest {
         request_id: Uuid::new_v4(),
         operation: EncryptionOperation::Encrypt,
@@ -131,8 +131,8 @@ async fn encrypt_service_unavailable() {
 
 #[tokio::test]
 async fn decrypt_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let req = EncryptionRequest {
         request_id: Uuid::new_v4(),
         operation: EncryptionOperation::Decrypt,
@@ -147,24 +147,24 @@ async fn decrypt_service_unavailable() {
 
 #[tokio::test]
 async fn sign_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let result: Result<_, _> = client.sign(b"data").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn verify_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let result: Result<_, _> = client.verify(b"data", b"sig", "key-1").await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn key_management_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let req = KeyManagementRequest {
         request_id: Uuid::new_v4(),
         operation: KeyOperation::Generate,
@@ -177,8 +177,8 @@ async fn key_management_service_unavailable() {
 
 #[tokio::test]
 async fn create_permission_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let req = PermissionRequest {
         requester_id: "test".to_string(),
         target: ExternalTarget::ExternalTool {
@@ -201,8 +201,8 @@ async fn create_permission_service_unavailable() {
 
 #[tokio::test]
 async fn validate_permission_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let perm = SecurityPermission {
         permission_id: Uuid::new_v4(),
         holder_id: "u1".to_string(),
@@ -237,8 +237,8 @@ async fn validate_permission_service_unavailable() {
 
 #[tokio::test]
 async fn revoke_permission_service_unavailable() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let result: Result<_, _> = client
         .revoke_permission(&Uuid::new_v4(), "test reason")
         .await;
@@ -247,8 +247,8 @@ async fn revoke_permission_service_unavailable() {
 
 #[tokio::test]
 async fn health_check_returns_empty_or_unhealthy() {
-    let config = BearDogConfig::default();
-    let client = BearDogClient::new(config).unwrap();
+    let config = SecurityConfig::default();
+    let client = SecurityClient::new(config).unwrap();
     let result = client.health_check().await;
     assert!(result.is_ok());
     let endpoints = result.unwrap();
@@ -257,7 +257,7 @@ async fn health_check_returns_empty_or_unhealthy() {
 
 #[tokio::test]
 async fn discover_returns_empty_without_service() {
-    let client = BearDogClient::new(BearDogConfig::default()).unwrap();
+    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
     let result = client.discover().await;
     assert!(result.is_ok());
 }

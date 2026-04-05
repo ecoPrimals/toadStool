@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network-related constants
 //!
 //! ToadStool uses JSON-RPC over Unix domain sockets per wateringHole standards.
@@ -57,7 +57,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_toadstool_ports() {
         assert_eq!(METRICS_PORT, 0);
         assert_eq!(BYOB_DEFAULT_PORT, 0);

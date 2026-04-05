@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 #![cfg(test)]
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

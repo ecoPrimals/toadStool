@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CLI command definitions
 //!
 //! Subcommand enums and option structs for the ToadStool CLI.
@@ -293,7 +293,7 @@ pub enum Commands {
         #[arg(long)]
         hardware: bool,
 
-        /// Check ecosystem connectivity (Songbird, BearDog, NestGate)
+        /// Check ecosystem connectivity (coordination, security, storage capability providers)
         #[arg(long)]
         ecosystem: bool,
 
@@ -310,7 +310,7 @@ pub enum Commands {
         fix: bool,
     },
 
-    /// BYOB server - HTTP API for team biome deployments from Songbird
+    /// BYOB server — HTTP API for team biome deployments (coordination integration)
     ///
     /// **UniBin Standard Compliant**: Compute execution service for BYOB (Bring Your Own Biome)
     /// deployments. Provides HTTP endpoints for deploy, list, stop, and resource usage.
@@ -375,9 +375,9 @@ pub enum EcosystemCommands {
         timeout: u64,
     },
 
-    /// Register with Songbird discovery service
+    /// Register with coordination discovery service
     Register {
-        /// Songbird endpoint
+        /// Coordination service endpoint
         endpoint: String,
 
         /// Authentication token
@@ -385,7 +385,7 @@ pub enum EcosystemCommands {
         token: Option<String>,
     },
 
-    /// Install `BearDog` crypto permissions
+    /// Install crypto permissions via the security capability provider
     Auth {
         /// Permission file path
         permission_file: PathBuf,
@@ -395,9 +395,9 @@ pub enum EcosystemCommands {
         validate_only: bool,
     },
 
-    /// Connect to `NestGate` storage
+    /// Connect to storage capability provider
     Storage {
-        /// `NestGate` endpoint
+        /// Storage service endpoint
         endpoint: String,
 
         /// Mount point

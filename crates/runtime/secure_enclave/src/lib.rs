@@ -1,4 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![warn(missing_docs)]
+
 //! # Secure Enclave Runtime for ToadStool
 //!
 //! This crate provides **zero-knowledge compute** capabilities for ToadStool,
@@ -7,12 +9,12 @@
 //!
 //! ## Architecture (Node Atomic)
 //!
-//! Follows the Node Atomic pattern: BearDog (crypto) + Songbird (discovery) + ToadStool (compute).
-//! All encryption/decryption is delegated to BearDog via JSON-RPC (`crypto.encrypt` / `crypto.decrypt`).
+//! Follows the Node Atomic pattern: security service (crypto) + coordination service (discovery) + ToadStool (compute).
+//! All encryption/decryption is delegated to the security service via JSON-RPC (`crypto.encrypt` / `crypto.decrypt`).
 //! This crate owns **memory isolation only** — never bundles its own crypto primitives.
 //!
 //! ```text
-//! Compressed Data (NestGate) → Encrypted (BearDog) → Isolated Compute → Re-encrypted Result (BearDog)
+//! Compressed Data (storage service) → Encrypted (security service) → Isolated Compute → Re-encrypted Result (security service)
 //! ```
 //!
 //! ## Core Guarantees
@@ -54,12 +56,11 @@
 //! ## Performance
 //!
 //! - **Overhead**: < 10% vs plaintext compute
-//! - **Energy**: 70-80% savings from pre-compression (NestGate)
+//! - **Energy**: 70-80% savings from pre-compression (storage service)
 //! - **Latency**: Decompression ~5ms/MB, encryption ~2ms/MB
 
 #![deny(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![warn(missing_docs)]
 #![allow(clippy::multiple_crate_versions)]
 
 // Public modules

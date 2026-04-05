@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Analytics utility functions
 
 /// Helper function to calculate median
@@ -19,7 +19,7 @@ pub fn calculate_median(data: &[f64]) -> f64 {
 }
 
 /// Helper function to calculate percentile
-#[allow(
+#[expect(
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation

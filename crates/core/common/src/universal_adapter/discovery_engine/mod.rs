@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery Engine - Multi-Source Capability Provider Discovery
 //!
 //! Discovers capability providers from multiple sources:
@@ -17,7 +17,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
-#[allow(deprecated)] // Protocol compatibility: platform path convention
+#[expect(deprecated)] // Protocol compatibility: platform path convention
 use crate::constants::ecosystem::well_known::BIOMEOS;
 use crate::{ToadStoolError, ToadStoolResult};
 
@@ -470,7 +470,7 @@ impl LocalRegistrySource {
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for LocalRegistrySource {
-    #[allow(deprecated)] // BIOMEOS used for platform path convention
+    #[expect(deprecated)] // BIOMEOS used for platform path convention
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let config_dir = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
             let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());

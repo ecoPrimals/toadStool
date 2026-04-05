@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for configuration, [`ServiceLocation`](crate::crypto_integration::ServiceLocation), and request/response types used by the crypto client.
 
 use crate::crypto_integration::types::{

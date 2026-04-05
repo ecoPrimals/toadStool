@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! System and ecosystem discovery functionality
 
 use crate::{CliContextExt, Result};
@@ -356,7 +356,7 @@ impl ZeroConfigDeployment {
 
     /// Discover service by capability (modern approach)
     ///
-    /// This replaces hardcoded discover_songbird, discover_beardog, etc.
+    /// This replaces hardcoded discover_coordination, discover_security, etc.
     /// Services are discovered by what they can do, not by hardcoded names/ports.
     async fn discover_by_capability(
         &self,

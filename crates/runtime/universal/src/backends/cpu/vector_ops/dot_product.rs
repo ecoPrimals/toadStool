@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Dot-product reduction over vector pairs (f32/f64).
 
 use crate::types::*;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Capability-based discovery system - zero hardcoded primal names

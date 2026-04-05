@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration coverage for [`toadstool_distributed::cloud::compliance::validation`]: compliance
 //! reports, certification and sovereignty rules, security tiers, resource isolation, and
 //! constraint derivation for jobs.

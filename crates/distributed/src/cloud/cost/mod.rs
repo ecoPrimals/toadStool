@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cost optimization across clouds
 //!
 //! This module provides real cost estimation based on resource requirements (CPU, GPU, memory,
@@ -19,6 +19,6 @@ pub use pricing::{CloudCostModel, PricingTier};
 pub use types::{CostError, CostEstimate, CostLineItem};
 
 // Constants (re-exported for public API compatibility)
-#[allow(unused_imports)]
+#[expect(unused_imports)]
 /// Conversion and pricing constants for cost estimation.
 pub use types::{BYTES_PER_GB, DAYS_PER_MONTH, HOURS_PER_DAY, SPOT_DISCOUNT_FACTOR};

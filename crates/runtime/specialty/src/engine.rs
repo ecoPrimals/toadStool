@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Specialty runtime engine - orchestrates legacy adapters and job execution
 
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ pub struct SpecialtyRuntimeEngine {
     pub(crate) metrics: Arc<Mutex<SpecialtyRuntimeMetrics>>,
 }
 
-#[allow(clippy::missing_fields_in_debug)]
+#[expect(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for SpecialtyRuntimeEngine {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SpecialtyRuntimeEngine")

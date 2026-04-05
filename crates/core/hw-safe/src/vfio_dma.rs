@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // VFIO ioctls are inherently unsafe — this is the containment zone
 
 //! Shared VFIO DMA mapping operations.

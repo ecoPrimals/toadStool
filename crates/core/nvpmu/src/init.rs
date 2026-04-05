@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! PMU init sequence applicator.
 //!
 //! Replays hw-learn recipes via BAR0 MMIO to initialize the compute
@@ -229,10 +229,7 @@ fn tally_results(chip: String, result: &hw_learn::applicator::ApplyResult) -> In
 /// # Errors
 ///
 /// Returns error if JSON parsing fails or BAR0 read/write fails.
-#[allow(
-    unsafe_code,
-    reason = "register writes via RegisterAccess require unsafe mmap operations"
-)]
+#[allow(unsafe_code)]
 pub fn apply_recipe(
     recipe_json: &str,
     register_access: &mut dyn RegisterAccess,
@@ -271,10 +268,7 @@ pub fn apply_recipe(
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-#[allow(
-    unsafe_code,
-    reason = "delegates to apply_recipe which writes BAR0 registers"
-)]
+#[allow(unsafe_code)]
 pub fn apply_recipe_safe(
     recipe_json: &str,
     register_access: &mut dyn RegisterAccess,
@@ -309,10 +303,7 @@ pub fn apply_recipe_safe(
 ///
 /// Returns error if thermal safety is violated. On partial init failure,
 /// returns `NvPmuError::PartialInit` with rollback status.
-#[allow(
-    unsafe_code,
-    reason = "register writes via RegisterAccess require unsafe mmap operations"
-)]
+#[allow(unsafe_code)]
 pub fn apply_with_recovery(
     recipe: &InitRecipe,
     register_access: &mut dyn RegisterAccess,
@@ -371,10 +362,7 @@ pub fn apply_with_recovery(
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-#[allow(
-    unsafe_code,
-    reason = "register writes via RegisterAccess require unsafe mmap operations"
-)]
+#[allow(unsafe_code)]
 pub fn apply_init_recipe(
     recipe: &InitRecipe,
     register_access: &mut dyn RegisterAccess,

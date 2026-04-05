@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive coverage tests for under-covered `auto_config` modules
 //!
 //! Tests MCP interface, intelligent pipeline, capability traits, natural language,
@@ -7,7 +7,7 @@
 //! Run: cargo test -p toadstool-auto-config --test `auto_config_coverage_s155_tests`
 //! For capability trait mocks: add --features test-mocks (4 extra tests)
 
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

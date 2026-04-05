@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // DRM kernel ioctls require unsafe FFI via rustix
 //! Apply recipe steps via nouveau DRM ioctls.
 //!
@@ -105,10 +105,7 @@ const fn ioctl_nr_to_opcode(nr: u64) -> Opcode {
 /// Uses `rustix::ioctl` with a `DrmIoctl` wrapper for runtime opcodes from
 /// init recipes. Eliminates the last `extern "C"` FFI in hw-learn.
 /// Single ioctl dispatch for DRM operations.
-fn do_ioctl<I: rustix::ioctl::Ioctl>(
-    fd: &OwnedFd,
-    cmd: I,
-) -> Result<I::Output, i32> {
+fn do_ioctl<I: rustix::ioctl::Ioctl>(fd: &OwnedFd, cmd: I) -> Result<I::Output, i32> {
     // SAFETY: fd is a valid DRM device from open_drm_device; cmd is
     // constructed from a DRM ioctl number with correct buffer layout.
     unsafe { rustix::ioctl::ioctl(fd.as_fd(), cmd) }.map_err(rustix::io::Errno::raw_os_error)
@@ -118,6 +115,7 @@ fn attempt_ioctl(fd: &OwnedFd, ioctl_nr: u64, args: &[u8]) -> Result<(), i32> {
     let mut buf = if args.is_empty() {
         vec![0u8; 256]
     } else {
+        // Copy required: DRM ioctl mutates the argument buffer; caller only provides `&[u8]`.
         args.to_vec()
     };
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Environment variable configuration overrides
 //!
 //! Handles applying environment variable overrides to ToadStool configuration
@@ -61,7 +61,8 @@ impl ToadStoolConfig {
             self.network.endpoints.storage = storage;
         }
 
-        if let Ok(ai) = std::env::var("TOADSTOOL_AI_ENDPOINT")
+        if let Ok(ai) = std::env::var("TOADSTOOL_INTELLIGENCE_ENDPOINT")
+            .or_else(|_| std::env::var("TOADSTOOL_AI_ENDPOINT"))
             .or_else(|_| std::env::var("TOADSTOOL_SQUIRREL_ENDPOINT"))
         {
             self.network.endpoints.ai_processing = ai;
@@ -174,7 +175,7 @@ impl ToadStoolConfig {
         }
 
         if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_GRPC") {
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             {
                 self.features.enable_grpc = enabled.to_lowercase() == "true";
             }

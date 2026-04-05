@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // Aligned alloc/dealloc requires unsafe — this is the containment zone
 
 //! Aligned heap allocation with RAII cleanup.
@@ -162,7 +162,7 @@ impl Drop for AlignedAlloc {
 // SAFETY: AlignedAlloc owns the allocation exclusively via alloc_zeroed.
 // ptr (ExclusivePtr) is Send+Sync; Layout is Send+Sync.
 // Auto-derived Send+Sync via ExclusivePtr — no manual impl needed.
-#[allow(dead_code, reason = "compile-time trait bound assertion")]
+#[expect(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
     fn check() {

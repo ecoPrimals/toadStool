@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Fractal Composition Integration
 //!
@@ -188,22 +188,22 @@ impl FractalRuntime {
     /// Get barraCuda integration info
     ///
     /// Returns information about how barraCuda should access GPU in this layer
-    pub fn barracuda_integration(&self) -> BarracudaIntegration {
+    pub fn gpu_compute_integration(&self) -> GpuComputeIntegration {
         use crate::layer_adaptation::GpuAccess;
 
         match self.capabilities.compute.gpu_access {
-            GpuAccess::Direct => BarracudaIntegration::Direct {
+            GpuAccess::Direct => GpuComputeIntegration::Direct {
                 note: "Direct GPU access - use native WGPU backend".to_string(),
             },
-            GpuAccess::ViaHost => BarracudaIntegration::ViaHost {
+            GpuAccess::ViaHost => GpuComputeIntegration::ViaHost {
                 note: "GPU via host OS - use host-provided GPU drivers".to_string(),
                 host_os: self.capabilities.metadata.host_os.clone(),
             },
-            GpuAccess::ViaCloud => BarracudaIntegration::ViaCloud {
+            GpuAccess::ViaCloud => GpuComputeIntegration::ViaCloud {
                 note: "GPU via cloud APIs - use cloud GPU endpoints".to_string(),
                 provider: self.capabilities.metadata.cloud_provider.clone(),
             },
-            GpuAccess::None => BarracudaIntegration::None {
+            GpuAccess::None => GpuComputeIntegration::None {
                 note: "No GPU access - CPU fallback only".to_string(),
             },
         }
@@ -214,7 +214,7 @@ impl FractalRuntime {
 ///
 /// Describes how barraCuda should access GPU in the current deployment layer.
 #[derive(Debug, Clone)]
-pub enum BarracudaIntegration {
+pub enum GpuComputeIntegration {
     /// Direct GPU access (bare metal, GPU passthrough)
     Direct {
         /// Human-readable note about access mode.
@@ -244,7 +244,7 @@ pub enum BarracudaIntegration {
     },
 }
 
-impl BarracudaIntegration {
+impl GpuComputeIntegration {
     /// Get human-readable note
     pub fn note(&self) -> &str {
         match self {
@@ -333,12 +333,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_barracuda_integration_info() {
+    async fn test_gpu_compute_integration_info() {
         let runtime = FractalRuntime::init().await;
         assert!(runtime.is_ok());
 
         if let Ok(runtime) = runtime {
-            let integration = runtime.barracuda_integration();
+            let integration = runtime.gpu_compute_integration();
             // Should have some integration type
             assert!(!integration.note().is_empty());
         }
@@ -360,8 +360,8 @@ mod tests {
     }
 
     #[test]
-    fn test_barracuda_integration_direct() {
-        let integration = BarracudaIntegration::Direct {
+    fn test_gpu_compute_integration_direct() {
+        let integration = GpuComputeIntegration::Direct {
             note: "Direct GPU".to_string(),
         };
         assert!(integration.has_gpu());
@@ -369,8 +369,8 @@ mod tests {
     }
 
     #[test]
-    fn test_barracuda_integration_via_host() {
-        let integration = BarracudaIntegration::ViaHost {
+    fn test_gpu_compute_integration_via_host() {
+        let integration = GpuComputeIntegration::ViaHost {
             note: "Via host".to_string(),
             host_os: Some("Linux".to_string()),
         };
@@ -379,8 +379,8 @@ mod tests {
     }
 
     #[test]
-    fn test_barracuda_integration_via_cloud() {
-        let integration = BarracudaIntegration::ViaCloud {
+    fn test_gpu_compute_integration_via_cloud() {
+        let integration = GpuComputeIntegration::ViaCloud {
             note: "Via cloud".to_string(),
             provider: Some("AWS".to_string()),
         };
@@ -389,8 +389,8 @@ mod tests {
     }
 
     #[test]
-    fn test_barracuda_integration_none() {
-        let integration = BarracudaIntegration::None {
+    fn test_gpu_compute_integration_none() {
+        let integration = GpuComputeIntegration::None {
             note: "No GPU".to_string(),
         };
         assert!(!integration.has_gpu());
@@ -398,8 +398,8 @@ mod tests {
     }
 
     #[test]
-    fn test_barracuda_integration_debug_clone() {
-        let integration = BarracudaIntegration::Direct {
+    fn test_gpu_compute_integration_debug_clone() {
+        let integration = GpuComputeIntegration::Direct {
             note: "test".to_string(),
         };
         let cloned = integration.clone();

@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for under-covered GPU runtime modules (S155)
 //!
 //! Tests type construction, config builders, scheduler, coordinator, strategy,
 //! memory pool, tracker, unified memory, distributed types, engine, and frameworks
 //! without requiring real GPU hardware.
 
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

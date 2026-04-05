@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -37,8 +37,8 @@ pub struct UniversalSchedulerConfig {
     pub scheduling_algorithms: Vec<SchedulingAlgorithm>,
     /// Network effect configuration
     pub network_effects: NetworkEffectsConfig,
-    /// Songbird integration settings
-    pub songbird_integration: SongbirdIntegrationConfig,
+    /// Coordination integration settings
+    pub coordination: CoordinationSchedulerConfig,
     /// Recursive hosting settings
     pub recursive_hosting: RecursiveHostingConfig,
     /// OS-layer settings
@@ -58,12 +58,12 @@ pub struct NetworkEffectsConfig {
     pub fault_tolerance: FaultToleranceConfig,
 }
 
-/// Songbird integration configuration
+/// High-level coordination settings for the universal scheduler (endpoint, auth).
 #[derive(Debug, Clone)]
-pub struct SongbirdIntegrationConfig {
-    /// Enable Songbird integration
+pub struct CoordinationSchedulerConfig {
+    /// Enable Coordination integration
     pub enabled: bool,
-    /// Songbird endpoint
+    /// Coordination endpoint
     pub endpoint: String,
     /// Authentication token
     pub auth_token: Option<String>,
@@ -246,7 +246,7 @@ impl Default for UniversalSchedulerConfig {
                 SchedulingAlgorithm::ResourceAware,
             ],
             network_effects: NetworkEffectsConfig::default(),
-            songbird_integration: SongbirdIntegrationConfig::default(),
+            coordination: CoordinationSchedulerConfig::default(),
             recursive_hosting: RecursiveHostingConfig::default(),
             os_layer: OSLayerConfig::default(),
         }
@@ -264,10 +264,10 @@ impl Default for NetworkEffectsConfig {
     }
 }
 
-impl Default for SongbirdIntegrationConfig {
+impl Default for CoordinationSchedulerConfig {
     fn default() -> Self {
         let port: u16 = std::env::var("TOADSTOOL_COORDINATION_PORT")
-            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_PORT"))
+            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_PORT")) // legacy env alias
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(toadstool_config::ports::capability_fallback::COORDINATION);

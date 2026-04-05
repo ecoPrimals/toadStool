@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::unreadable_literal)]
 //! Configuration tests for distributed module
 //!
@@ -7,7 +7,7 @@
 
 use toadstool::execution::RuntimeType;
 use toadstool_distributed::core::{
-    DistributedConfig, ExecutionEnvironment, PlatformCapabilities, SongbirdConfig,
+    CoordinationConfig, DistributedConfig, ExecutionEnvironment, PlatformCapabilities,
     StandaloneConfig, ToadStoolCapabilities,
 };
 
@@ -82,19 +82,19 @@ fn test_standalone_config_high_values() {
 }
 
 // ============================================================================
-// SongbirdConfig Tests
+// CoordinationConfig Tests
 // ============================================================================
 
 #[test]
-fn test_songbird_config_serialization() {
-    let config = SongbirdConfig {
-        endpoint: "https://songbird.example.com".to_string(),
+fn test_coordination_config_serialization() {
+    let config = CoordinationConfig {
+        endpoint: "https://coordination.example.com".to_string(),
         auth_token: Some("secret-token".to_string()),
         health_reporting_interval_secs: 60,
     };
 
     let json = serde_json::to_string(&config).unwrap();
-    let deserialized: SongbirdConfig = serde_json::from_str(&json).unwrap();
+    let deserialized: CoordinationConfig = serde_json::from_str(&json).unwrap();
 
     assert_eq!(config.endpoint, deserialized.endpoint);
     assert_eq!(config.auth_token, deserialized.auth_token);
@@ -105,8 +105,8 @@ fn test_songbird_config_serialization() {
 }
 
 #[test]
-fn test_songbird_config_without_auth() {
-    let config = SongbirdConfig {
+fn test_coordination_config_without_auth() {
+    let config = CoordinationConfig {
         endpoint: "http://localhost:8080".to_string(),
         auth_token: None,
         health_reporting_interval_secs: 30,
@@ -115,21 +115,21 @@ fn test_songbird_config_without_auth() {
     assert!(config.auth_token.is_none());
 
     let json = serde_json::to_string(&config).unwrap();
-    let deserialized: SongbirdConfig = serde_json::from_str(&json).unwrap();
+    let deserialized: CoordinationConfig = serde_json::from_str(&json).unwrap();
     assert!(deserialized.auth_token.is_none());
 }
 
 #[test]
-fn test_songbird_config_various_endpoints() {
+fn test_coordination_config_various_endpoints() {
     let endpoints = vec![
         "http://localhost:8080",
-        "https://songbird.prod.example.com",
+        "https://coordination.prod.example.com",
         "http://192.168.1.100:9000",
-        "https://songbird:8443",
+        "https://coordination:8443",
     ];
 
     for endpoint in endpoints {
-        let config = SongbirdConfig {
+        let config = CoordinationConfig {
             endpoint: endpoint.to_string(),
             auth_token: None,
             health_reporting_interval_secs: 30,
@@ -141,11 +141,11 @@ fn test_songbird_config_various_endpoints() {
 }
 
 #[test]
-fn test_songbird_config_intervals() {
+fn test_coordination_config_intervals() {
     let intervals = vec![1, 10, 30, 60, 300, 3600];
 
     for interval in intervals {
-        let config = SongbirdConfig {
+        let config = CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: None,
             health_reporting_interval_secs: interval,
@@ -168,7 +168,7 @@ fn test_distributed_config_default() {
     assert_eq!(config.standalone.default_timeout_secs, 3600);
     assert!(config.standalone.enable_job_queue);
     assert_eq!(config.standalone.max_queue_size, 1000);
-    assert!(config.songbird_integration.is_none());
+    assert!(config.coordination.is_none());
 }
 
 #[test]
@@ -181,7 +181,7 @@ fn test_distributed_config_serialization() {
             enable_job_queue: true,
             max_queue_size: 200,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let json = serde_json::to_string(&config).unwrap();
@@ -195,31 +195,31 @@ fn test_distributed_config_serialization() {
 }
 
 #[test]
-fn test_distributed_config_with_songbird() {
+fn test_distributed_config_with_coordination() {
     let config = DistributedConfig {
-        instance_id: "node-with-songbird".to_string(),
+        instance_id: "node-with-coordination".to_string(),
         standalone: StandaloneConfig {
             max_concurrent_executions: 10,
             default_timeout_secs: 300,
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
-            endpoint: "http://songbird:8080".to_string(),
+        coordination: Some(CoordinationConfig {
+            endpoint: "http://coordination:8080".to_string(),
             auth_token: Some("token-123".to_string()),
             health_reporting_interval_secs: 30,
         }),
     };
 
-    assert!(config.songbird_integration.is_some());
+    assert!(config.coordination.is_some());
 
     let json = serde_json::to_string(&config).unwrap();
     let deserialized: DistributedConfig = serde_json::from_str(&json).unwrap();
 
-    assert!(deserialized.songbird_integration.is_some());
-    let songbird = deserialized.songbird_integration.unwrap();
-    assert_eq!(songbird.endpoint, "http://songbird:8080");
-    assert_eq!(songbird.auth_token, Some("token-123".to_string()));
+    assert!(deserialized.coordination.is_some());
+    let coordination = deserialized.coordination.unwrap();
+    assert_eq!(coordination.endpoint, "http://coordination:8080");
+    assert_eq!(coordination.auth_token, Some("token-123".to_string()));
 }
 
 #[test]
@@ -480,8 +480,8 @@ fn test_full_config_roundtrip_json() {
             enable_job_queue: true,
             max_queue_size: 500,
         },
-        songbird_integration: Some(SongbirdConfig {
-            endpoint: "https://songbird.internal:8443".to_string(),
+        coordination: Some(CoordinationConfig {
+            endpoint: "https://coordination.internal:8443".to_string(),
             auth_token: Some("bearer-token-xyz".to_string()),
             health_reporting_interval_secs: 45,
         }),
@@ -497,9 +497,9 @@ fn test_full_config_roundtrip_json() {
         deserialized.standalone.max_concurrent_executions
     );
 
-    let orig_songbird = config.songbird_integration.unwrap();
-    let deser_songbird = deserialized.songbird_integration.unwrap();
-    assert_eq!(orig_songbird.endpoint, deser_songbird.endpoint);
+    let orig_coordination = config.coordination.unwrap();
+    let deser_coordination = deserialized.coordination.unwrap();
+    assert_eq!(orig_coordination.endpoint, deser_coordination.endpoint);
 }
 
 #[test]
@@ -512,7 +512,7 @@ fn test_full_config_clone() {
             enable_job_queue: false,
             max_queue_size: 250,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let cloned = config.clone();
@@ -536,7 +536,7 @@ fn test_config_edge_cases() {
             enable_job_queue: false,
             max_queue_size: 1,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     assert_eq!(config.instance_id.len(), 256);

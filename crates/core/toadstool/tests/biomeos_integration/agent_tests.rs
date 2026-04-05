@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeOS agent deployment integration types
 
 use toadstool::biomeos_integration::*;

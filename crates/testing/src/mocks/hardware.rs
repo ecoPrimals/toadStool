@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Mock hardware backends for headless CI parity.
 //!
 //! Provides synthetic GPU adapter info and NPU responses that match the API

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based service discovery and invocation
 //!
 //! Deep Debt Solution: Primals discover each other by capability at runtime,
@@ -319,14 +319,15 @@ mod tests {
     async fn test_discover_success() {
         let result = serde_json::json!({
             "services": [{
-                "name": "beardog",
-                "endpoint": "/tmp/beardog.sock",
+                "name": "security-provider",
+                "endpoint": "/tmp/security-provider.sock",
                 "capabilities": ["crypto", "encryption"]
             }]
         });
         let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
         let provider = tokio::task::spawn_blocking(move || {
+            // legacy env name (coordination discovery socket; tests use it for mock listener path)
             temp_env::with_var("SONGBIRD_SOCKET", Some(path_str.as_str()), || {
                 run_async(|| {
                     CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
@@ -338,7 +339,7 @@ mod tests {
         .expect("discover should succeed");
         std::fs::remove_file(&socket_path).ok();
 
-        assert_eq!(provider.service_name(), "beardog");
+        assert_eq!(provider.service_name(), "security-provider");
         assert!(provider.has_capability(&Capability::Crypto(CryptoCapability::Encryption)));
     }
 
@@ -409,7 +410,7 @@ mod tests {
     #[tokio::test]
     async fn test_discover_invalid_response_no_endpoint() {
         let result = serde_json::json!({
-            "services": [{ "name": "beardog", "capabilities": [] }]
+            "services": [{ "name": "security-provider", "capabilities": [] }]
         });
         let (socket_path, _server) = spawn_mock_discovery_server(result).await;
         let path_str = socket_path.to_str().unwrap().to_string();
@@ -433,8 +434,8 @@ mod tests {
     async fn test_discover_all_success() {
         let result = serde_json::json!({
             "services": [
-                { "name": "beardog1", "endpoint": "/tmp/b1.sock", "capabilities": ["crypto"] },
-                { "name": "beardog2", "endpoint": "/tmp/b2.sock", "capabilities": ["crypto"] }
+                { "name": "crypto-provider-a", "endpoint": "/tmp/b1.sock", "capabilities": ["crypto"] },
+                { "name": "crypto-provider-b", "endpoint": "/tmp/b2.sock", "capabilities": ["crypto"] }
             ]
         });
         let (socket_path, _server) = spawn_mock_discovery_server(result).await;
@@ -450,16 +451,16 @@ mod tests {
         std::fs::remove_file(&socket_path).ok();
 
         assert_eq!(providers.len(), 2);
-        assert_eq!(providers[0].service_name(), "beardog1");
-        assert_eq!(providers[1].service_name(), "beardog2");
+        assert_eq!(providers[0].service_name(), "crypto-provider-a");
+        assert_eq!(providers[1].service_name(), "crypto-provider-b");
     }
 
     #[tokio::test]
     async fn test_discover_capabilities_from_service() {
         let result = serde_json::json!({
             "services": [{
-                "name": "beardog",
-                "endpoint": "/tmp/beardog.sock",
+                "name": "security-provider",
+                "endpoint": "/tmp/security-provider.sock",
                 "capabilities": ["crypto", "authentication", "custom_cap"]
             }]
         });

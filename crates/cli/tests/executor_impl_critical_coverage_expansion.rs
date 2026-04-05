@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -257,7 +257,7 @@ mod executor_impl_coverage_tests {
     async fn test_biome_info_storage() {
         // Test biome info storage structure
         #[derive(Clone)]
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         struct MockBiomeInfo {
             id: String,
             name: String,

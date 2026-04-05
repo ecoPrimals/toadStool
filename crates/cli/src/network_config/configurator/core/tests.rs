@@ -1,18 +1,18 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
-use super::defaults::{songbird_default_network_config, system_dns_resolvers};
-use crate::network_config::SongbirdNetworkConfigurator;
+use super::defaults::{orchestration_default_network_config, system_dns_resolvers};
+use crate::network_config::OrchestrationNetworkConfigurator;
 
 #[test]
 fn default_config_enables_service_mesh_by_default() {
-    let cfg = songbird_default_network_config();
+    let cfg = orchestration_default_network_config();
     assert!(cfg.service_mesh.enabled);
     assert_eq!(cfg.service_mesh.mesh_type, "native");
 }
 
 #[test]
 fn default_config_dns_discovery_lists_search_domains() {
-    let cfg = songbird_default_network_config();
+    let cfg = orchestration_default_network_config();
     assert!(cfg.dns_discovery.enabled);
     assert!(
         cfg.dns_discovery
@@ -24,7 +24,7 @@ fn default_config_dns_discovery_lists_search_domains() {
 
 #[test]
 fn default_config_health_endpoints_cover_core_capabilities() {
-    let cfg = songbird_default_network_config();
+    let cfg = orchestration_default_network_config();
     let names: Vec<&str> = cfg
         .health_monitoring
         .endpoints
@@ -56,12 +56,12 @@ fn system_dns_resolvers_empty_env_falls_through() {
 
 #[test]
 fn new_configurator_uses_default_config_shape() {
-    let c = SongbirdNetworkConfigurator::new();
+    let c = OrchestrationNetworkConfigurator::new();
     assert!(c.config.service_mesh.enabled);
     assert!(c.config.dns_discovery.enabled);
     assert_eq!(
         c.config.health_monitoring.endpoints.len(),
-        songbird_default_network_config()
+        orchestration_default_network_config()
             .health_monitoring
             .endpoints
             .len()
@@ -70,20 +70,20 @@ fn new_configurator_uses_default_config_shape() {
 
 #[test]
 fn configuration_summary_reflects_mesh_toggle() {
-    let mut on = SongbirdNetworkConfigurator::new();
+    let mut on = OrchestrationNetworkConfigurator::new();
     on.config.service_mesh.enabled = true;
     assert!(on.generate_configuration_summary().contains("enabled"));
 
-    let mut off = SongbirdNetworkConfigurator::new();
+    let mut off = OrchestrationNetworkConfigurator::new();
     off.config.service_mesh.enabled = false;
     let s = off.generate_configuration_summary();
     assert!(s.contains("disabled"));
-    assert!(s.contains("Songbird Network Configuration Summary"));
+    assert!(s.contains("Orchestration network configuration summary"));
 }
 
 #[test]
 fn default_network_policies_have_expected_ingress_name() {
-    let cfg = songbird_default_network_config();
+    let cfg = orchestration_default_network_config();
     assert!(cfg.network_policies.enabled);
     assert!(
         cfg.network_policies
@@ -95,7 +95,7 @@ fn default_network_policies_have_expected_ingress_name() {
 
 #[test]
 fn default_traffic_management_canary_percentage_is_nonzero() {
-    let cfg = songbird_default_network_config();
+    let cfg = orchestration_default_network_config();
     assert!(cfg.traffic_management.enabled);
     assert!(cfg.traffic_management.canary.percentage > 0);
 }

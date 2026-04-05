@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Policy condition evaluation
 //!
 //! This module handles the evaluation of policy conditions, including composite conditions,
@@ -37,11 +37,11 @@ impl ConditionEvaluator {
     }
 
     /// Validate condition structure
-    #[allow(
+    #[expect(
         clippy::self_only_used_in_recursion,
         reason = "recursive validation uses &self for future regex cache access"
     )]
-    #[allow(
+    #[expect(
         clippy::match_same_arms,
         reason = "each PolicyCondition variant has distinct validation even if Ok(()) arms look identical"
     )]
@@ -125,7 +125,7 @@ impl ConditionEvaluator {
             } => {
                 let current_cpu = toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50))
                     .unwrap_or(0.0);
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     reason = "used memory in MB fits u32 (max 4 TB)"
                 )]

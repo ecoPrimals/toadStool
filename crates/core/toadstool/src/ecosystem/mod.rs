@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Coordination - Capability-Based Discovery
 //!
 //! This module handles integration with services in the ecosystem using
@@ -449,7 +449,7 @@ mod tests {
         assert!(coordinator.is_ok());
     }
 
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     #[tokio::test]
     async fn test_deprecated_primal_available() {
         let coordinator = EcosystemCoordinator::new().await.unwrap();

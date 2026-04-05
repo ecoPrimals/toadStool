@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service discovery functionality for ecosystem integration
 //!
 //! This module handles discovering services on the network using:
@@ -30,7 +30,7 @@ use super::types::*;
 /// # Example
 /// ```bash
 /// export TOADSTOOL_CRYPTO_SERVICE_URL="http://10.0.0.5:9876"
-/// export TOADSTOOL_STORAGE_SERVICE_URL="http://nestgate.local:8082"
+/// export TOADSTOOL_STORAGE_SERVICE_URL="http://storage.local:8082"
 /// ```
 pub fn discover_from_environment(capability_category: &str) -> Option<String> {
     let env_var = format!(
@@ -56,16 +56,16 @@ pub fn discover_from_environment(capability_category: &str) -> Option<String> {
 /// Looks for configuration using Pure Rust etcetera in:
 /// 1. `~/.toadstool/services.toml`
 /// 2. `./.toadstool/config.toml`
-/// 3. `/etc/toadstool/services.toml`
+/// 3. System path from [`crate::ecosystem::constants::paths::system_services_config_path`] (default `/etc/toadstool/services.toml`, override `TOADSTOOL_SYSTEM_SERVICES_CONFIG`)
 ///
 /// # Example config format (TOML)
 /// ```toml
 /// [services.crypto]
-/// url = "http://beardog.local:9876"
+/// url = "http://security.local:9876"
 /// priority = 90
 ///
 /// [services.storage]
-/// url = "http://nestgate.local:8082"
+/// url = "http://storage.local:8082"
 /// priority = 80
 /// ```
 pub fn discover_from_config(capability_category: &str) -> Option<String> {
@@ -76,18 +76,14 @@ pub fn discover_from_config(capability_category: &str) -> Option<String> {
         |_| {
             vec![
                 Some(std::path::PathBuf::from(".toadstool/config.toml")),
-                Some(std::path::PathBuf::from(
-                    crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
-                )),
+                Some(crate::ecosystem::constants::paths::system_services_config_path()),
             ]
         },
         |strategy| {
             vec![
                 Some(strategy.home_dir().join(".toadstool/services.toml")),
                 Some(std::path::PathBuf::from(".toadstool/config.toml")),
-                Some(std::path::PathBuf::from(
-                    crate::ecosystem::constants::paths::SYSTEM_SERVICES_CONFIG,
-                )),
+                Some(crate::ecosystem::constants::paths::system_services_config_path()),
             ]
         },
     );
@@ -137,7 +133,7 @@ pub fn discover_from_config(capability_category: &str) -> Option<String> {
 ///
 /// **Status**: Currently unused but part of capability-based architecture.
 /// Will be used when full capability routing is implemented.
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub async fn discover_service_by_capability(
     capability_category: &str,
 ) -> Result<Vec<ServiceEndpoint>> {
@@ -230,7 +226,7 @@ fn parse_service_url(url: &str) -> Result<SocketAddr> {
 ///
 /// Delegates to the production mDNS implementation in toadstool-core (uses mdns-sd).
 /// Discovery runs for 2 seconds, matching Bonjour browse behavior.
-#[allow(deprecated)]
+#[expect(deprecated)]
 async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpoint>> {
     let mdns = match toadstool::discovery::MdnsDiscoveryService::new() {
         Ok(m) => m,
@@ -366,7 +362,7 @@ mod tests {
     fn test_discover_from_environment_uppercase() {
         temp_env::with_var(
             "TOADSTOOL_STORAGE_SERVICE_URL",
-            Some("http://nestgate.local:8082"),
+            Some("http://storage.local:8082"),
             || {
                 let result = discover_from_environment("storage");
                 assert!(result.is_some());
@@ -443,7 +439,7 @@ url = "http://127.0.0.1:8082"
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     async fn test_verify_service_unreachable_returns_false() {
         use crate::ecosystem::types::*;
         use std::sync::Arc;

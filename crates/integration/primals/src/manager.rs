@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal Integration Manager and bootstrap logic.
 
 use std::collections::{HashMap, HashSet};
@@ -133,7 +133,7 @@ impl PrimalIntegrationManager {
             }
         }
 
-        // Phase 4: Register with Songbird
+        // Phase 4: Register with Coordination
         // Registration with orchestrator moved to separate phase
         // Each primal will handle its own registration via capability discovery
         for primal_name in &startup_order {
@@ -178,7 +178,7 @@ impl PrimalIntegrationManager {
     }
 
     /// Visit a Primal during topological sort
-    #[allow(clippy::self_only_used_in_recursion)]
+    #[expect(clippy::self_only_used_in_recursion)]
     fn visit_primal(
         &self,
         primal_name: &str,

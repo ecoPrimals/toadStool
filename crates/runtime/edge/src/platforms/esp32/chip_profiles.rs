@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Per-variant resource maps and capability lists for ESP32 chips.
 
 use super::super::{

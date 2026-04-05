@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trait implementations for embedded emulators
 //!
 //! ## Planned / Future Implementation
@@ -41,7 +41,7 @@ fn emulator_placeholder_err(feature_id: &'static str, operation: &'static str) -
     .into()
 }
 
-/// Generates [`EmbeddedEmulator`] impls that return structured placeholder errors (no panics).
+/// Generates `EmbeddedEmulator` impls that return structured placeholder errors (no panics).
 ///
 /// See DEBT.md `D-EMBEDDED-EMULATOR` and module-level docs for evolution plan.
 macro_rules! impl_emulator_stub {

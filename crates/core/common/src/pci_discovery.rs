@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unified PCI device discovery via sysfs.
 //!
 //! Shared scanner for all toadStool crates that need PCI device discovery

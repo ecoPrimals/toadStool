@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // memmap2 map_raw requires unsafe — this is the containment zone
 
 //! RAII memory-mapped file region.
@@ -111,7 +111,7 @@ impl SafeMmapRegion {
                 path: path_str.clone(),
                 source,
             })?;
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             reason = "file sizes for device resources fit in usize on 64-bit"
         )]

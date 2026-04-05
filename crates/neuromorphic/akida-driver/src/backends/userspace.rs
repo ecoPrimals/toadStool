@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Userspace NPU backend
 //!
 //! Deep Debt Compliance:
@@ -177,11 +177,10 @@ impl NpuBackend for UserspaceBackend {
             n_output_floats
         };
 
-        let mut output_bytes = vec![0u8; n_output_floats * std::mem::size_of::<f32>()];
-        self.bar2.read_bytes(0, &mut output_bytes)?;
+        let mut output = vec![0.0f32; n_output_floats];
+        self.bar2
+            .read_bytes(0, bytemuck::cast_slice_mut::<f32, u8>(&mut output))?;
 
-        // Allocation required: API returns owned Vec<f32>; bytes are u8, alignment/count differ
-        let output: Vec<f32> = bytemuck::cast_slice::<u8, f32>(&output_bytes).to_vec();
         Ok(output)
     }
 

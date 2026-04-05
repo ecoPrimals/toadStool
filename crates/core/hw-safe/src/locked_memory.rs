@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // mlock/munlock require unsafe — this is the containment zone
 
 //! Locked (pinned) memory for DMA and security-sensitive buffers.
@@ -105,7 +105,7 @@ impl Drop for LockedMemory {
 
 // Send + Sync auto-derived: LockedMemory contains only AlignedAlloc (which is
 // Send + Sync) — no additional raw pointers or non-threadsafe fields.
-#[allow(dead_code, reason = "compile-time trait bound assertion")]
+#[expect(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
     fn check() {

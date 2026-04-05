@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::missing_errors_doc)]
 //! Test utilities for wasmi runtime testing
 //!

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used, clippy::unused_async)] // expect() is idiomatic in tests
 //! Evolution Polish E2E Tests
 //!
@@ -93,7 +93,7 @@ async fn test_e2e_executor_full_lifecycle_standalone() {
         assert!(
             !msg.contains("BiomeOSClient")
                 && !msg.contains("biomeos_client")
-                && !msg.contains("SongbirdClient"),
+                && !msg.contains("CoordinationClient"),
             "Error should not reference hardcoded clients: {msg}"
         );
     }
@@ -281,9 +281,9 @@ async fn test_e2e_error_propagation_clean() {
         let msg = error.unwrap_err().to_string();
         assert!(
             !msg.contains("BiomeOSClient")
-                && !msg.contains("SongbirdClient")
+                && !msg.contains("CoordinationClient")
                 && !msg.contains("biomeos_client")
-                && !msg.contains("songbird_client"),
+                && !msg.contains("coordination_client"),
             "Error message should not reference hardcoded clients: {msg}"
         );
     }

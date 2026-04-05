@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Transport Router — any hardware input to any hardware output.
 //!
 //! Discovers all available [`HardwareTransport`] endpoints and routes data

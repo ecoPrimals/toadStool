@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Authentication management for cross-Primal token propagation
 
 mod permissions;
@@ -28,7 +28,7 @@ pub use tokens::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthManagerConfig {
     /// Crypto/security service endpoint (legacy; prefer capability discovery).
-    #[serde(default, alias = "beardog_endpoint")]
+    #[serde(default, alias = "security_endpoint")]
     pub security_endpoint: String,
     /// Interval between token refresh attempts.
     pub token_refresh_interval: Duration,
@@ -138,13 +138,13 @@ impl AuthenticationManager {
             tracing::info!("Discovered crypto service via environment: {}", endpoint);
             let mut config = config;
             config.security_endpoint = endpoint;
-            #[allow(deprecated)]
-            return Ok(Self::with_beardog(config));
+            #[expect(deprecated)]
+            return Ok(Self::with_security(config));
         }
 
         if !config.security_endpoint.is_empty() {
-            #[allow(deprecated)]
-            return Ok(Self::with_beardog(config));
+            #[expect(deprecated)]
+            return Ok(Self::with_security(config));
         }
 
         Err(crate::ToadStoolError::configuration(
@@ -170,8 +170,8 @@ impl AuthenticationManager {
     /// Creates auth manager with BearDog backend (deprecated).
     #[must_use]
     #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover()")]
-    #[allow(deprecated)]
-    pub fn with_beardog(config: AuthManagerConfig) -> Self {
+    #[expect(deprecated)]
+    pub fn with_security(config: AuthManagerConfig) -> Self {
         let backend = super::auth_backend::BearDogBackend::new(config.security_endpoint.clone());
         Self {
             config,
@@ -199,7 +199,7 @@ impl AuthenticationManager {
     /// # Errors
     ///
     /// Returns an error if the backend connection cannot be established.
-    pub async fn initialize_beardog_connection(&self) -> ToadStoolResult<()> {
+    pub async fn initialize_security_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
     }
 

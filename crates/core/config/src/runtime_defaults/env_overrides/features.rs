@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Feature flags and metrics/cache toggle overrides.
 
 use super::super::ConfigResult;
 use super::parse;
 use crate::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
 
-#[allow(clippy::unnecessary_wraps)] // Result type required for ? in apply_env_overrides chain
+#[expect(clippy::unnecessary_wraps)] // Result type required for ? in apply_env_overrides chain
 pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_METRICS") {
         config.metrics = if parse::parse_bool(&enabled) {
@@ -64,7 +64,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     }
 
     if let Ok(enabled) = std::env::var("TOADSTOOL_ENABLE_GRPC") {
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         {
             config.features.enable_grpc = parse::parse_bool(&enabled);
         }

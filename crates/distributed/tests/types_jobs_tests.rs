@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for distributed job types
 
 use std::collections::HashMap;
@@ -36,8 +36,8 @@ fn test_job_type_remote_toadstool() {
 #[test]
 fn test_job_type_ecosystem_tool() {
     let job_type = UniversalJobType::EcosystemTool {
-        tool_name: "nestgate".to_string(),
-        endpoint: "http://nestgate:8082".to_string(),
+        tool_name: "storage".to_string(),
+        endpoint: "http://storage:8082".to_string(),
     };
 
     match job_type {
@@ -45,7 +45,7 @@ fn test_job_type_ecosystem_tool() {
             tool_name,
             endpoint,
         } => {
-            assert_eq!(tool_name, "nestgate");
+            assert_eq!(tool_name, "storage");
             assert!(endpoint.contains("8082"));
         }
         _ => panic!("Expected EcosystemTool variant"),
@@ -274,8 +274,8 @@ fn test_execution_target_toadstool() {
 #[test]
 fn test_execution_target_ecosystem_service() {
     let target = ExecutionTarget::EcosystemService {
-        service_name: "nestgate".to_string(),
-        endpoint: "http://nestgate:8082".to_string(),
+        service_name: "storage".to_string(),
+        endpoint: "http://storage:8082".to_string(),
     };
 
     match target {
@@ -283,8 +283,8 @@ fn test_execution_target_ecosystem_service() {
             service_name,
             endpoint,
         } => {
-            assert_eq!(service_name, "nestgate");
-            assert!(endpoint.contains("nestgate"));
+            assert_eq!(service_name, "storage");
+            assert!(endpoint.contains("storage"));
         }
         _ => panic!("Expected EcosystemService variant"),
     }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Week 3 Integration Scenario Tests - Simplified
 //! Cross-module integration testing focusing on coordinator and config integration
@@ -135,9 +135,9 @@ async fn test_distributed_config_serialization() {
 }
 
 #[tokio::test]
-async fn test_config_with_custom_songbird_endpoint() {
+async fn test_config_with_custom_coordination_endpoint() {
     let config = DistributedConfig {
-        songbird_integration: Some(toadstool_distributed::SongbirdConfig {
+        coordination: Some(toadstool_distributed::CoordinationConfig {
             endpoint: "http://custom-songbird:8080".to_string(),
             auth_token: None,
             health_reporting_interval_secs: 30,

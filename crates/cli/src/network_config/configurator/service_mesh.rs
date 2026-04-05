@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service mesh configuration extension
 //!
 //! Provides service mesh-specific configuration and validation.
@@ -19,7 +19,7 @@ pub(crate) trait ServiceMeshExt {
     fn validate_service_mesh_config(&self) -> ToadStoolResult<()>;
 }
 
-impl ServiceMeshExt for super::SongbirdNetworkConfigurator {
+impl ServiceMeshExt for super::OrchestrationNetworkConfigurator {
     async fn apply_service_mesh_config(&self) -> ToadStoolResult<()> {
         info!("🕸️ Applying service mesh configuration");
 

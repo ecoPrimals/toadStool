@@ -1,5 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
 //! Akida Reservoir Computing Research Library
 //!
@@ -21,9 +22,8 @@
 //!         80 NPUs per chip     Linear regression
 //! ```
 
-#![warn(missing_docs)]
 #![allow(clippy::must_use_candidate)]
-#![expect(
+#![allow(
     dead_code,
     reason = "research crate: components wired incrementally as experiments mature"
 )]

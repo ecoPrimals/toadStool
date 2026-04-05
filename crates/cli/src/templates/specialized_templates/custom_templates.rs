@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Custom template: User-specified configurations
 //!
 //! Allows users to define custom biome configurations via CustomTemplateSpec.
@@ -37,7 +37,7 @@ pub fn create_custom_template(spec: &CustomTemplateSpec) -> TemplateComponents {
                     },
                     enabled: true,
                     config: HashMap::new(),
-                    dependencies: vec![service_names::BEARDOG.to_string()],
+                    dependencies: vec![service_names::CRYPTO.to_string()],
                     health_check: Some(HealthCheck {
                         command: vec![primal_name.clone(), commands::HEALTH.to_string()],
                         interval: 30,

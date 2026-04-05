@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WASM Loading and Execution Operations
 //!
 //! This module contains WASM-specific operations:
@@ -54,7 +54,7 @@ impl BiomeExecutor {
     }
 
     #[cfg(test)]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(super) async fn execute_wasm_module(
         &self,
         module_data: &[u8],

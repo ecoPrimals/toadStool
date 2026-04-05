@@ -1,7 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for [`crate::ecosystem::EcosystemDiscoverer`] discovery paths and patterns.
-
-use temp_env::with_var;
 
 use crate::ecosystem::{EcosystemDiscoverer, ServicePattern, ServiceType};
 
@@ -12,16 +10,19 @@ async fn test_discover_local_services_smoke() {
     assert!(result.is_ok(), "{result:?}");
 }
 
-#[test]
-fn test_discover_local_services_invalid_env_endpoint_skips_insert() {
-    let rt = tokio::runtime::Runtime::new().expect("runtime");
-    with_var("DISCOVERY_ENDPOINT", Some("not-a-valid-url!!!"), || {
-        let discoverer = EcosystemDiscoverer::new();
-        let result = rt.block_on(discoverer.discover_local_services());
-        assert!(result.is_ok());
-        let map = result.expect("ok");
-        assert!(!map.contains_key("discovery"));
-    });
+#[tokio::test]
+async fn test_discover_local_services_invalid_env_endpoint_skips_insert() {
+    temp_env::async_with_vars(
+        [("DISCOVERY_ENDPOINT", Some("not-a-valid-url!!!"))],
+        async {
+            let discoverer = EcosystemDiscoverer::new();
+            let result = discoverer.discover_local_services().await;
+            assert!(result.is_ok());
+            let map = result.expect("ok");
+            assert!(!map.contains_key("discovery"));
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -42,14 +43,17 @@ async fn test_discover_local_services_unknown_capability_uses_empty_legacy_list(
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_discover_local_services_respects_toadstool_discovery_bind_addr() {
-    let rt = tokio::runtime::Runtime::new().expect("runtime");
-    with_var("TOADSTOOL_DISCOVERY_BIND_ADDR", Some("192.0.2.1"), || {
-        let discoverer = EcosystemDiscoverer::new();
-        let result = rt.block_on(discoverer.discover_local_services());
-        assert!(result.is_ok());
-    });
+#[tokio::test]
+async fn test_discover_local_services_respects_toadstool_discovery_bind_addr() {
+    temp_env::async_with_vars(
+        [("TOADSTOOL_DISCOVERY_BIND_ADDR", Some("192.0.2.1"))],
+        async {
+            let discoverer = EcosystemDiscoverer::new();
+            let result = discoverer.discover_local_services().await;
+            assert!(result.is_ok());
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

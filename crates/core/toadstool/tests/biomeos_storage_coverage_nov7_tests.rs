@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BiomeOS Storage Module Coverage Tests - November 7, 2025
 //!
 //! Target: Push `biomeos_integration/storage.rs` coverage toward 60%+
@@ -418,7 +418,7 @@ fn test_volume_info_clone() {
 fn test_storage_config_default_uses_runtime_discovery() {
     // Default config uses empty endpoint — storage is discovered at runtime.
     let config = StorageProvisioningConfig::default();
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     let ep = &config.storage_endpoint;
     assert!(
         ep.is_empty(),

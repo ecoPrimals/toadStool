@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Centralized Port Configuration
 //!
 //! **Phase 1 of Capability-Based Discovery Evolution**
@@ -7,7 +7,7 @@
 //! runtime discovery. Future evolution:
 //! - Phase 1: Centralize (this file) ✅
 //! - Phase 2: Environment variable overrides
-//! - Phase 3: Runtime discovery via Songbird
+//! - Phase 3: Runtime discovery via coordination service
 //! - Phase 4: Full mDNS + capability-based discovery
 
 /// Default ports for ToadStool services
@@ -47,16 +47,16 @@ pub mod toadstool {
 /// Capabilities map to port ranges rather than primal-specific assignments.
 /// Each capability resolves via: env var → config file → this fallback.
 pub mod capability_fallback {
-    /// Coordination capability (orchestration, scheduling) — e.g. Songbird
+    /// Coordination capability (orchestration, scheduling)
     pub const COORDINATION: u16 = 8080;
 
-    /// Security capability (auth, policy, zero-trust) — e.g. BearDog
+    /// Security capability (auth, policy, zero-trust)
     pub const SECURITY: u16 = 8081;
 
-    /// Storage capability (artifacts, pipelines) — e.g. NestGate
+    /// Storage capability (artifacts, pipelines)
     pub const STORAGE: u16 = 8082;
 
-    /// Platform capability (MCP, model hosting) — e.g. Squirrel
+    /// Platform / intelligence capability (MCP, model hosting)
     pub const PLATFORM: u16 = 8083;
 
     /// Ecosystem integration capability (biome management)
@@ -65,7 +65,7 @@ pub mod capability_fallback {
     /// Ecosystem primary port (UI/API gateway)
     pub const ECOSYSTEM_PRIMARY: u16 = 8005;
 
-    /// Shader compiler capability (WGSL/SPIR-V → native binary) — e.g. coralReef
+    /// Shader compiler capability (WGSL/SPIR-V → native binary)
     pub const SHADER_COMPILER: u16 = 8090;
 
     /// Display IPC capability (local display server communication)
@@ -210,21 +210,53 @@ pub fn get_capability_port(capability: &str, fallback_port: u16) -> u16 {
     fallback_port
 }
 
-/// Resolve a capability port using only capability-scoped environment variables.
+/// Resolve a capability port using capability-scoped environment variables.
 ///
-/// Same as [`get_capability_port`] for `TOADSTOOL_{CAPABILITY}_PORT`, but also
-/// honors `{CAPABILITY}_PORT` before the numeric fallback.
+/// Lookup order (wateringHole / backward-compatible):
+/// 1. `TOADSTOOL_{CAPABILITY}_PORT`
+/// 2. `{CAPABILITY}_PORT`
+/// 3. Legacy primal `{PRIMAL}_PORT` where applicable (`SONGBIRD_PORT` → coordination, …)
+/// 4. For platform / intelligence: `TOADSTOOL_INTELLIGENCE_PORT`, `INTELLIGENCE_PORT`, then
+///    `SQUIRREL_PORT`
+/// 5. Numeric [`capability_fallback`] default
 #[must_use]
 pub fn resolve_capability_port(capability: &str, fallback_port: u16) -> u16 {
-    if let Ok(v) = std::env::var(format!("TOADSTOOL_{capability}_PORT")) {
-        if let Ok(p) = v.parse::<u16>() {
-            return p;
-        }
+    fn parse_port(key: &str) -> Option<u16> {
+        std::env::var(key).ok()?.parse().ok()
     }
-    if let Ok(v) = std::env::var(format!("{capability}_PORT")) {
-        if let Ok(p) = v.parse::<u16>() {
-            return p;
+
+    let ordered_keys: &[&str] = match capability {
+        "COORDINATION" => &[
+            "TOADSTOOL_COORDINATION_PORT",
+            "COORDINATION_PORT",
+            "SONGBIRD_PORT",
+        ],
+        "SECURITY" => &["TOADSTOOL_SECURITY_PORT", "SECURITY_PORT", "BEARDOG_PORT"],
+        "STORAGE" => &["TOADSTOOL_STORAGE_PORT", "STORAGE_PORT", "NESTGATE_PORT"],
+        "PLATFORM" => &[
+            "TOADSTOOL_INTELLIGENCE_PORT",
+            "TOADSTOOL_PLATFORM_PORT",
+            "INTELLIGENCE_PORT",
+            "PLATFORM_PORT",
+            "SQUIRREL_PORT",
+        ],
+        _ => &[],
+    };
+
+    if !ordered_keys.is_empty() {
+        for key in ordered_keys {
+            if let Some(p) = parse_port(key) {
+                return p;
+            }
         }
+        return fallback_port;
+    }
+
+    if let Some(p) = parse_port(&format!("TOADSTOOL_{capability}_PORT")) {
+        return p;
+    }
+    if let Some(p) = parse_port(&format!("{capability}_PORT")) {
+        return p;
     }
     fallback_port
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability keys and well-known hostnames for ecosystem discovery.
 
 /// Capability identifiers for discovery (`WateringHole` sovereignty)

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distill raw trace observations into minimal, portable init recipes.
 //!
 //! The distiller takes `ObserveResult` from the observer and produces

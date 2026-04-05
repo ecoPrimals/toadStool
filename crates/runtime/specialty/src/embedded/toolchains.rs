@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Embedded cross-compilation toolchain trait implementations.
 //!
 //! Each struct satisfies the [`EmbeddedToolchain`] trait for a specific legacy

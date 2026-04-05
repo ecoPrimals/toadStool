@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for job types and queues
 //!
 //! Tests for job management types and lifecycle
@@ -374,7 +374,7 @@ fn test_execution_target_toadstool() {
 fn test_execution_target_ecosystem_service() {
     // Test ecosystem service execution target
     let target = ExecutionTarget::EcosystemService {
-        service_name: "beardog".to_string(),
+        service_name: "security".to_string(),
         endpoint: "http://localhost:9090".to_string(),
     };
 
@@ -383,7 +383,7 @@ fn test_execution_target_ecosystem_service() {
             service_name,
             endpoint,
         } => {
-            assert_eq!(service_name, "beardog");
+            assert_eq!(service_name, "security");
             assert_eq!(endpoint, "http://localhost:9090");
         }
         _ => panic!("Expected EcosystemService execution target"),

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service type identification - capability-based replacement for hardcoded enums
 //!
 //! This module replaces the deprecated `EcosystemService` enum with a capability-based
@@ -17,12 +17,12 @@ use crate::ecosystem::capabilities::CapabilityId;
 ///
 /// # Migration from `EcosystemService`
 /// ```rust,ignore
-/// // ❌ OLD: Hardcoded enum
-/// let service_type = EcosystemService::BearDog;
+/// // ❌ OLD: Hardcoded enum (legacy orchestrator labels)
+/// let service_type = EcosystemService::Crypto;
 /// match service_type {
-///     EcosystemService::BearDog => handle_crypto(),
-///     EcosystemService::Songbird => handle_coordination(),
-///     EcosystemService::NestGate => handle_storage(),
+///     EcosystemService::Crypto => handle_crypto(),
+///     EcosystemService::Discovery => handle_coordination(),
+///     EcosystemService::Storage => handle_storage(),
 ///     _ => {}
 /// }
 ///
@@ -192,10 +192,10 @@ mod tests {
 
     #[test]
     fn test_service_type_with_legacy_name() {
-        let service_type = ServiceType::default().with_legacy_name("beardog");
+        let service_type = ServiceType::default().with_legacy_name("legacy-security-label");
 
-        assert_eq!(service_type.legacy_name(), Some("beardog"));
-        assert_eq!(service_type.display_name(), "beardog");
+        assert_eq!(service_type.legacy_name(), Some("legacy-security-label"));
+        assert_eq!(service_type.display_name(), "legacy-security-label");
     }
 
     #[test]

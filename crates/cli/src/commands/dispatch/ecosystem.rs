@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ecosystem integration command handlers
 //!
 //! Discover, Register, Auth, Storage - ecoPrimals ecosystem integration.
@@ -14,7 +14,6 @@ use crate::{Result, ecosystem::EcosystemIntegrator};
 use super::super::definitions::EcosystemCommands;
 
 /// Execute ecosystem integration commands
-#[allow(deprecated)] // EcosystemCommands uses deprecated types during migration
 pub async fn execute(action: &EcosystemCommands) -> Result<()> {
     let mut integrator = EcosystemIntegrator::new();
 
@@ -68,10 +67,10 @@ pub async fn execute(action: &EcosystemCommands) -> Result<()> {
         } => {
             info!("🏠 Connecting to storage service");
             let mount_info = integrator
-                .connect_nestgate_storage(endpoint.clone(), mount.clone(), dataset.clone())
+                .connect_distributed_storage(endpoint.clone(), mount.clone(), dataset.clone())
                 .await?;
 
-            println!("{} NestGate storage connected:", "✅".green());
+            println!("{} storage service connected:", "✅".green());
             println!("  Dataset: {}", mount_info.dataset_name);
             println!("  Mount Point: {}", mount_info.mount_point.display());
             println!("  Access Mode: {}", mount_info.access_mode);

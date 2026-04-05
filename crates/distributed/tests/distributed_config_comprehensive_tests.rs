@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Distributed Configuration types
 //!
 //! Week 17 Sprint 6: Distributed coordination and configuration tests
@@ -6,7 +6,7 @@
 
 use toadstool::{IsolationLevel, RuntimeType};
 use toadstool_distributed::{
-    DistributedConfig, ExecutionEnvironment, PlatformCapabilities, SongbirdConfig,
+    CoordinationConfig, DistributedConfig, ExecutionEnvironment, PlatformCapabilities,
     StandaloneConfig, ToadStoolCapabilities,
 };
 
@@ -22,13 +22,13 @@ fn test_distributed_config_default() {
     assert!(!config.instance_id.is_empty());
     assert_eq!(config.standalone.max_concurrent_executions, 10);
     assert_eq!(config.standalone.default_timeout_secs, 3600);
-    assert!(config.songbird_integration.is_none());
+    assert!(config.coordination.is_none());
 }
 
 #[test]
-fn test_distributed_config_with_songbird() {
-    let songbird_config = SongbirdConfig {
-        endpoint: "http://songbird:8080".to_string(),
+fn test_distributed_config_with_coordination() {
+    let coordination_config = CoordinationConfig {
+        endpoint: "http://coordination:8080".to_string(),
         auth_token: Some("token-123".to_string()),
         health_reporting_interval_secs: 60,
     };
@@ -41,11 +41,11 @@ fn test_distributed_config_with_songbird() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: Some(songbird_config),
+        coordination: Some(coordination_config),
     };
 
     assert_eq!(config.instance_id, "toadstool-prod");
-    assert!(config.songbird_integration.is_some());
+    assert!(config.coordination.is_some());
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn test_distributed_config_custom_instance() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     assert_eq!(config.instance_id, "custom-instance-42");
@@ -166,25 +166,25 @@ fn test_standalone_config_queue_disabled() {
 }
 
 // ============================================================================
-// SongbirdConfig Tests (4 tests)
+// CoordinationConfig Tests (4 tests)
 // ============================================================================
 
 #[test]
-fn test_songbird_config_with_auth() {
-    let config = SongbirdConfig {
-        endpoint: "http://songbird.local:8080".to_string(),
+fn test_coordination_config_with_auth() {
+    let config = CoordinationConfig {
+        endpoint: "http://coordination.local:8080".to_string(),
         auth_token: Some("bearer-token-abc".to_string()),
         health_reporting_interval_secs: 30,
     };
 
-    assert_eq!(config.endpoint, "http://songbird.local:8080");
+    assert_eq!(config.endpoint, "http://coordination.local:8080");
     assert_eq!(config.auth_token, Some("bearer-token-abc".to_string()));
     assert_eq!(config.health_reporting_interval_secs, 30);
 }
 
 #[test]
-fn test_songbird_config_without_auth() {
-    let config = SongbirdConfig {
+fn test_coordination_config_without_auth() {
+    let config = CoordinationConfig {
         endpoint: "http://localhost:8080".to_string(),
         auth_token: None,
         health_reporting_interval_secs: 60,
@@ -194,12 +194,12 @@ fn test_songbird_config_without_auth() {
 }
 
 #[test]
-fn test_songbird_config_different_intervals() {
+fn test_coordination_config_different_intervals() {
     let intervals = [10, 30, 60, 120, 300];
 
     for interval in intervals {
-        let config = SongbirdConfig {
-            endpoint: "http://songbird:8080".to_string(),
+        let config = CoordinationConfig {
+            endpoint: "http://coordination:8080".to_string(),
             auth_token: None,
             health_reporting_interval_secs: interval,
         };
@@ -208,8 +208,8 @@ fn test_songbird_config_different_intervals() {
 }
 
 #[test]
-fn test_songbird_config_clone_debug() {
-    let config1 = SongbirdConfig {
+fn test_coordination_config_clone_debug() {
+    let config1 = CoordinationConfig {
         endpoint: "http://test:8080".to_string(),
         auth_token: Some("token".to_string()),
         health_reporting_interval_secs: 60,
@@ -219,7 +219,7 @@ fn test_songbird_config_clone_debug() {
     assert_eq!(config1.endpoint, config2.endpoint);
 
     let debug_str = format!("{config1:?}");
-    assert!(debug_str.contains("SongbirdConfig"));
+    assert!(debug_str.contains("CoordinationConfig"));
 }
 
 // ============================================================================
@@ -430,7 +430,7 @@ fn test_distributed_config_coverage_summary() {
     println!("=== Distributed Configuration Test Coverage ===");
     println!("DistributedConfig Tests:          5 tests");
     println!("StandaloneConfig Tests:           5 tests");
-    println!("SongbirdConfig Tests:             4 tests");
+    println!("CoordinationConfig Tests:             4 tests");
     println!("ExecutionEnvironment Tests:       4 tests");
     println!("ToadStoolCapabilities Tests:      3 tests");
     println!("PlatformCapabilities Tests:       4 tests");

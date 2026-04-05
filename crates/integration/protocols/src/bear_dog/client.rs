@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! BearDog integration client for auth, authz, and zero-trust validation
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Security integration client for auth, authz, and zero-trust validation
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -13,13 +13,13 @@ use toadstool::{
 };
 
 use super::auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse};
-use super::config::BearDogConfig;
+use super::config::SecurityConfig;
 use super::policy::{SecurityAuditEvent, SecurityPolicy};
 use super::transport;
 
-/// BearDog PKI security service integration via Unix socket JSON-RPC
-pub struct BearDogIntegration {
-    config: BearDogConfig,
+/// PKI security service integration via Unix socket JSON-RPC.
+pub struct SecurityServiceIntegration {
+    config: SecurityConfig,
     access_token: Arc<Mutex<Option<String>>>,
     token_expires_at: Arc<Mutex<Option<Instant>>>,
     active_policies: Arc<RwLock<Vec<SecurityPolicy>>>,
@@ -28,8 +28,8 @@ pub struct BearDogIntegration {
 }
 
 impl BearDogIntegration {
-    /// Create a new BearDog integration with the given config
-    pub fn new(config: BearDogConfig) -> Result<Self, ToadStoolError> {
+    /// Create a new Security integration with the given config
+    pub fn new(config: SecurityConfig) -> Result<Self, ToadStoolError> {
         Ok(Self {
             config,
             access_token: Arc::new(Mutex::new(None)),
@@ -40,7 +40,7 @@ impl BearDogIntegration {
         })
     }
 
-    /// Authenticate with BearDog and obtain access token
+    /// Authenticate with Security and obtain access token
     pub async fn authenticate(
         &self,
         service_id: &str,
@@ -374,3 +374,6 @@ impl BearDogIntegration {
         Ok(())
     }
 }
+
+/// Legacy alias for [`SecurityServiceIntegration`].
+pub type BearDogIntegration = SecurityServiceIntegration;

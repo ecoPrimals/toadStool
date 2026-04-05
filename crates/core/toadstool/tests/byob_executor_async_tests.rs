@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Async integration tests for `ByobExecutor` trait methods
 //!
 //! Coverage Target: Further increase byob.rs from 36% → 55%+
@@ -39,7 +39,7 @@ impl AsyncMockRuntimeEngine {
         }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn with_delay(delay_ms: u64) -> Self {
         Self {
             delay_ms,
@@ -47,7 +47,7 @@ impl AsyncMockRuntimeEngine {
         }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn with_failure() -> Self {
         Self {
             delay_ms: 10,

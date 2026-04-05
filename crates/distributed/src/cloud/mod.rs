@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Universal Cloud Integration
 //!
 //! ToadStool's cloud integration layer - use any cloud, anywhere, while maintaining
 //! self-owned computing principles. We can use anybody's cloud, and they can use
-//! ours (with bearDog permissions).
+//! ours (with security permissions).
 
 // Module declarations
 mod compliance;

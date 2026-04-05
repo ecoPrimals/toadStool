@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BiomeOS Storage Integration Functional Tests - Week 19 Sprint 12
 //!
 //! Focus: Storage provisioning, CRUD operations, error handling
@@ -32,7 +32,7 @@ fn test_manager_with_inmemory_initialization() {
 }
 
 #[test]
-fn test_manager_with_nestgate_initialization() {
+fn test_manager_with_storage_ext_initialization() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
     assert!(manager.config().backup_enabled);
@@ -633,7 +633,7 @@ async fn test_initialize_connection_inmemory() {
     let config = test_config();
     let manager = StorageProvisioningManager::with_inmemory(config);
 
-    let result = manager.initialize_nestgate_connection().await;
+    let result = manager.initialize_storage_service_connection().await;
     assert!(result.is_ok());
 }
 
@@ -644,7 +644,7 @@ async fn test_initialize_connection_nestgate() {
 
     // NestGate backend will fail to connect (no real server)
     // but we're testing that the code path executes
-    let _result = manager.initialize_nestgate_connection().await;
+    let _result = manager.initialize_storage_service_connection().await;
     // Don't assert - connection will fail without real NestGate
 }
 

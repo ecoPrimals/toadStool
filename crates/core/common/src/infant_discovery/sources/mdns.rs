@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Local service discovery via biomeOS socket directory scanning.
@@ -73,14 +73,15 @@ mod tests {
     }
 
     #[test]
-    #[allow(path_statements)]
+    #[expect(path_statements)]
     fn test_mdns_source_default() {
         MDNSSource;
     }
 
     #[tokio::test]
-    async fn test_mdns_source_songbird() {
+    async fn test_mdns_source_legacy_coordination_label() {
         let source = MDNSSource::new();
+        // legacy socket basename substring
         let result = source.resolve("songbird").await.unwrap();
         if let Some(endpoint) = result {
             assert!(endpoint.starts_with("unix://"));
@@ -88,7 +89,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mdns_source_nestgate() {
+    async fn test_mdns_source_legacy_storage_label() {
         let source = MDNSSource::new();
         let result = source.resolve("nestgate").await.unwrap();
         if let Some(endpoint) = result {
@@ -97,7 +98,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mdns_source_beardog() {
+    async fn test_mdns_source_legacy_security_substring() {
         let source = MDNSSource::new();
         let result = source.resolve("beardog_orchestration").await.unwrap();
         if let Some(endpoint) = result {

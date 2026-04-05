@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::DispatchHandler;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 fn test_handler() -> DispatchHandler {
-    DispatchHandler::new(crate::coral_reef_client::create_coral_reef_client())
+    DispatchHandler::new(crate::visualization_client::create_visualization_client())
 }
 
 fn submit_params(bdf: &str, dispatch_mode: &str) -> serde_json::Value {
@@ -107,7 +107,7 @@ async fn dispatch_submit_binary_not_array_returns_invalid_params() {
 
 #[tokio::test]
 async fn dispatch_submit_vfio_mode_without_coral_returns_failed_payload() {
-    let coral = crate::coral_reef_client::create_coral_reef_client();
+    let coral = crate::visualization_client::create_visualization_client();
     if coral.is_available().await {
         return;
     }
@@ -128,7 +128,7 @@ async fn dispatch_submit_vfio_mode_without_coral_returns_failed_payload() {
 
 #[tokio::test]
 async fn dispatch_submit_drm_mode_without_coral_returns_failed_payload() {
-    let coral = crate::coral_reef_client::create_coral_reef_client();
+    let coral = crate::visualization_client::create_visualization_client();
     if coral.is_available().await {
         return;
     }
@@ -518,7 +518,7 @@ async fn shader_dispatch_readback_false_honored() {
 
 #[tokio::test]
 async fn shader_dispatch_vfio_without_coral_returns_failed() {
-    let coral = crate::coral_reef_client::create_coral_reef_client();
+    let coral = crate::visualization_client::create_visualization_client();
     if coral.is_available().await {
         return;
     }
@@ -537,7 +537,7 @@ async fn shader_dispatch_vfio_without_coral_returns_failed() {
     assert!(
         result["error"]
             .as_str()
-            .is_some_and(|s| s.contains("coralReef"))
+            .is_some_and(|s| s.contains("visualization") || s.contains("shader"))
     );
 }
 

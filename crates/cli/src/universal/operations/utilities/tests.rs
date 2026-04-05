@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::UtilityOps;
 use toadstool_distributed::substrate_detection::PlatformType;

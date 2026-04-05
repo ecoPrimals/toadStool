@@ -68,9 +68,9 @@ what the interaction would look like and which capabilities were discovered.
 
 | # | Demo | Description | Duration | Difficulty |
 |---|------|-------------|----------|------------|
-| 01 | songbird-registration | Register capabilities for cross-tower discovery | 60s | Advanced |
-| 02 | beardog-secured-compute | Signed workload submission | 60s | Advanced |
-| 03 | nestgate-artifact-storage | Store/retrieve compute artifacts | 60s | Advanced |
+| 01 | coordination-registration | Register capabilities for cross-tower discovery | 60s | Advanced |
+| 02 | security-secured-compute | Signed workload submission | 60s | Advanced |
+| 03 | storage-artifact-pipeline | Store/retrieve compute artifacts | 60s | Advanced |
 
 ---
 

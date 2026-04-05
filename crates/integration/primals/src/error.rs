@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal integration error types
 //!
-//! This module defines errors for integrating with ecosystem primals (Songbird, BearDog, etc.).
+//! This module defines errors for integrating with ecosystem primals (Coordination, Security, etc.).
 //! PrimalError integrates with the unified ToadStoolError system for consistent error handling.
 //!
 //! **EVOLVED**: Pure Rust! Network errors use strings instead of reqwest::Error

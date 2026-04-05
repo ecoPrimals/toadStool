@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Ecosystem Coverage Tests - Zero to Hero
 //!
 //! Target: crates/core/toadstool/src/ecosystem.rs (643 lines)
@@ -255,7 +255,7 @@ fn test_primal_instance_endpoint_validation() {
 
     let valid_endpoints = vec![
         "http://localhost:8080",
-        "https://songbird.example.com",
+        "https://coordination.example.com",
         "http://192.168.1.100:8080",
     ];
 

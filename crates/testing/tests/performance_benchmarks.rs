@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Performance benchmarks for ToadStool Universal Compute Platform
 //!
 //! These benchmarks measure system performance, throughput, latency, and resource utilization
 //! to ensure the platform meets performance requirements and identify bottlenecks.
-#![expect(
+#![allow(
     clippy::cast_precision_loss,
     reason = "precision loss acceptable for this conversion"
 )]

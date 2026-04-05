@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Infrastructure domain templates: Distributed, Sovereign
 //!
 //! Cluster orchestration and security-focused templates for multi-node
@@ -19,7 +19,8 @@ use crate::{HealthCheck, PrimalConfig, ServiceConfig, ServiceResources, Workload
 pub fn create_distributed_template() -> TemplateComponents {
     let name = template_names::DISTRIBUTED.to_string();
     let description =
-        "Multi-node distributed computing cluster with Songbird orchestration".to_string();
+        "Multi-node distributed computing cluster with coordination-service orchestration"
+            .to_string();
 
     let (_, _, mut primals, mut services, mut resources, security, mut networking, mut storage) =
         super::super::basic_templates::create_basic_template();
@@ -31,7 +32,7 @@ pub fn create_distributed_template() -> TemplateComponents {
             version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
                 registry: registries::SOVEREIGN_SCIENCE.to_string(),
-                image: service_names::SONGBIRD.to_string(),
+                image: service_names::COORDINATION.to_string(),
                 tag: versions::LATEST.to_string(),
                 digest: None,
             },
@@ -66,7 +67,7 @@ pub fn create_distributed_template() -> TemplateComponents {
             version: versions::LATEST.to_string(),
             source: WorkloadSource::Container {
                 registry: registries::SOVEREIGN_SCIENCE.to_string(),
-                image: service_names::NESTGATE.to_string(),
+                image: service_names::STORAGE.to_string(),
                 tag: versions::LATEST.to_string(),
                 digest: None,
             },

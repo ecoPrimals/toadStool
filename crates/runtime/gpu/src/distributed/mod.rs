@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed GPU Scheduling - Multi-Tower Compute Coordination
 //!
 //! This module provides capability-based GPU resource discovery and scheduling
-//! across multiple ToadStool towers using Songbird for coordination.
+//! across multiple ToadStool towers using the coordination service for discovery and routing.
 //!
 //! ## Architecture
 //!
 //! The distributed scheduler is composed of three logical components:
 //!
-//! - **`TowerManager`**: Discovery and health monitoring of remote towers via Songbird
+//! - **`TowerManager`**: Discovery and health monitoring of remote towers via the coordination service
 //! - **`JobTracker`**: Lifecycle and state management of distributed jobs
 //! - **Scheduler**: Coordination and execution strategies
 //!
@@ -38,7 +38,7 @@ use uuid::Uuid;
 /// Distributed GPU scheduler for multi-tower execution
 ///
 /// Coordinates GPU workloads across multiple ToadStool towers discovered
-/// via Songbird capability-based discovery.
+/// via coordination-service capability discovery.
 ///
 /// # Example
 ///
@@ -52,7 +52,7 @@ use uuid::Uuid;
 /// let local = Arc::new(UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch));
 /// let scheduler = DistributedGpuScheduler::new(local);
 ///
-/// // Discover and register remote towers via Songbird
+/// // Discover and register remote towers via the coordination service
 /// // ...
 ///
 /// // Execute workload across distributed towers
@@ -83,9 +83,9 @@ impl DistributedGpuScheduler {
         }
     }
 
-    /// Register a remote tower discovered via Songbird
+    /// Register a remote tower discovered via the coordination service
     ///
-    /// Towers are discovered at runtime through capability queries to Songbird.
+    /// Towers are discovered at runtime through capability queries.
     /// No endpoints are hardcoded.
     pub async fn register_remote_tower(&self, endpoint: RemoteTowerEndpoint) {
         self.tower_manager.register_tower(endpoint).await;
@@ -371,8 +371,8 @@ impl DistributedGpuScheduler {
     /// **NO reqwest/hyper** — these have C dependencies (ring, openssl).
     /// Use biomeOS tower atomic components:
     ///
-    /// 1. **Songbird**: Provides TLS/networking (pure Rust rustls)
-    /// 2. **Beardog**: Provides cryptographic operations (pure Rust)
+    /// 1. **Coordination service**: TLS/networking (pure Rust rustls)
+    /// 2. **Security service**: Cryptographic operations (pure Rust)
     /// 3. JSON-RPC 2.0 over Unix sockets for local, TCP for remote
     ///
     /// ## Example Implementation
@@ -382,8 +382,8 @@ impl DistributedGpuScheduler {
     ///     tower_socket: &str,
     ///     workload: UniversalWorkload,
     /// ) -> Result<WorkloadResult> {
-    ///     // Use Songbird for remote tower connection
-    ///     let client = songbird::TowerClient::connect(tower_socket).await?;
+    ///     // Use coordination-service client for remote tower connection
+    ///     let client = coordination::TowerClient::connect(tower_socket).await?;
     ///     
     ///     // JSON-RPC call to tower's execute method
     ///     client.call("tower.execute", workload).await
@@ -392,7 +392,7 @@ impl DistributedGpuScheduler {
     ///
     /// ## Deep Debt Principles
     ///
-    /// - No hardcoded addresses (address from Songbird discovery)
+    /// - No hardcoded addresses (address from coordination discovery)
     /// - No hardcoded ports (tower reports its own endpoint)
     /// - Timeout and retry configurable (not hardcoded)
     /// - **Pure Rust**: No C dependencies (no reqwest, hyper, ring)
@@ -436,7 +436,7 @@ mod tests {
         ));
         let scheduler = DistributedGpuScheduler::new(local);
 
-        // Test fixture: placeholder address for unit test (production uses Songbird discovery)
+        // Test fixture: placeholder address for unit test (production uses coordination discovery)
         let endpoint = RemoteTowerEndpoint {
             tower_id: "remote-1".to_string(),
             address: "10.0.0.2:8080".to_string(),

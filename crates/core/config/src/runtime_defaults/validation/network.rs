@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use crate::ToadStoolConfig;
 use crate::runtime_defaults::{ConfigError, ConfigResult};
 
 pub(super) fn validate(config: &ToadStoolConfig) -> ConfigResult<()> {
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     {
         if config.network.endpoints.coordination.is_empty() {
             return Err(ConfigError::Invalid(

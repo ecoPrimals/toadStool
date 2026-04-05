@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Deployment Coordinator
 //!
 //! Coordinates code deployment to edge devices with support for OTA updates, rollbacks, and deployment strategies.

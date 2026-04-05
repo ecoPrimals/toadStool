@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
 
@@ -142,7 +142,7 @@ fn test_get_all_endpoints() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn test_get_migration_fallback() {
     let toml_content = r#"
 [primals.toadstool]

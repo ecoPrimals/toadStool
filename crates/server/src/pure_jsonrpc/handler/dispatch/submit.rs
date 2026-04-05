@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::DispatchHandler;
 use super::routing::{detect_dispatch_mode, resolve_dispatch_bdf};

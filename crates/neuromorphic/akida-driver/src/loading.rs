@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Model loading operations
 //!
 //! Provides capability-based model loading to Akida hardware.

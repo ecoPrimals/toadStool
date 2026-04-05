@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! V4L2 display tests — pure logic, buffer management, frame protocol, error paths.
 //!
 //! Tests non-ioctl logic: frame protocol, format calculations, buffer management,

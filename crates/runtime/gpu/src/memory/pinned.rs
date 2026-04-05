@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pinned Host Memory for Fast GPU Transfers
 //!
 //! Delegates aligned allocation to [`toadstool_hw_safe::AlignedAlloc`],

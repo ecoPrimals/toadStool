@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🎯 Zero-Copy Constants - Template Strings
 //!
 //! Central location for template string constants to avoid repeated allocations.
@@ -34,11 +34,8 @@ pub mod template_names {
 
 /// Service names used in templates
 ///
-/// ⚠️ **DEPRECATION NOTICE**: Primal-specific names (nestgate, beardog, songbird) are deprecated.
-/// Use capability-based discovery instead:
-/// - Instead of "nestgate" → use capability "storage"
-/// - Instead of "beardog" → use capability "security"
-/// - Instead of "songbird" → use capability "coordination"
+/// Prefer capability ids (`storage`, `crypto`, `coordination`) from
+/// [`service_names`] instead of legacy orchestrator labels in new manifests.
 ///
 /// Generic service names (jupyter, postgres, redis) remain valid as these are
 /// third-party services, not ecoPrimals.
@@ -52,26 +49,23 @@ pub mod service_names {
     /// Redis cache (third-party, not a primal)
     pub const REDIS: &str = "redis";
 
-    /// ⚠️ DEPRECATED: Use capability "storage" instead
-    #[deprecated(
-        since = "0.4.0",
-        note = "Use capability-based discovery: discover_capability(\"storage\") instead of hardcoding \"nestgate\""
-    )]
-    pub const NESTGATE: &str = toadstool_common::interned_strings::capabilities::STORAGE;
+    /// Storage capability id (container image tag / placeholder — discover by capability at runtime)
+    pub const STORAGE: &str = toadstool_common::interned_strings::capabilities::STORAGE;
 
-    /// ⚠️ DEPRECATED: Use capability "security" instead
-    #[deprecated(
-        since = "0.4.0",
-        note = "Use capability-based discovery: discover_capability(\"security\") instead of hardcoding \"beardog\""
-    )]
-    pub const BEARDOG: &str = toadstool_common::interned_strings::capabilities::CRYPTO;
+    /// Crypto / security (PKI) capability id
+    pub const CRYPTO: &str = toadstool_common::interned_strings::capabilities::CRYPTO;
 
-    /// ⚠️ DEPRECATED: Use capability "coordination" instead
-    #[deprecated(
-        since = "0.4.0",
-        note = "Use capability-based discovery: discover_capability(\"coordination\") instead of hardcoding \"songbird\""
-    )]
-    pub const SONGBIRD: &str = toadstool_common::interned_strings::capabilities::COORDINATION;
+    /// Coordination capability id
+    pub const COORDINATION: &str = toadstool_common::interned_strings::capabilities::COORDINATION;
+
+    /// Legacy alias — same value as [`STORAGE`].
+    pub const NESTGATE: &str = STORAGE;
+
+    /// Legacy alias — same value as [`CRYPTO`].
+    pub const BEARDOG: &str = CRYPTO;
+
+    /// Legacy alias — same value as [`COORDINATION`].
+    pub const SONGBIRD: &str = COORDINATION;
 }
 
 /// Docker registries

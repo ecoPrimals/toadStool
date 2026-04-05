@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Compute unit backend implementations
 
 #[cfg(feature = "cpu")]
@@ -20,7 +20,7 @@ pub mod spirv_codegen_safety;
 pub use cpu::CpuComputeUnit;
 
 #[cfg(feature = "opencl")]
-#[allow(deprecated)]
+#[expect(deprecated)]
 pub use opencl::OpenClComputeUnit;
 
 #[cfg(feature = "wgpu-backend")]

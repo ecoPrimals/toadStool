@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
@@ -67,7 +67,7 @@ async fn register_with_orchestrator_invalid_endpoint() {
 async fn connect_nestgate_storage_invalid_endpoint() {
     let mut i = EcosystemIntegrator::new();
     let result = i
-        .connect_nestgate_storage(
+        .connect_distributed_storage(
             "invalid".to_string(),
             PathBuf::from("/tmp/test-mount"),
             None,
@@ -180,7 +180,7 @@ async fn discover_services_single_capability() {
 // ─── Capability mapping coverage (legacy names, pass-through) ───────────────
 
 #[tokio::test(flavor = "current_thread")]
-async fn discover_services_with_nestgate_legacy_name() {
+async fn discover_services_with_storage_ext_legacy_name() {
     let mut i = EcosystemIntegrator::new();
     let result = i.discover_services(vec!["nestgate".to_string()], 1).await;
     assert!(result.is_ok());

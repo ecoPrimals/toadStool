@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -450,7 +450,7 @@ fn test_federation_config_creation() {
             "http://discovery1.example.com".to_string(),
             "http://discovery2.example.com".to_string(),
         ],
-        trust_anchors: vec!["beardog-anchor-1".to_string()],
+        trust_anchors: vec!["security-anchor-1".to_string()],
     };
 
     assert_eq!(config.federation_id, "fed-001");

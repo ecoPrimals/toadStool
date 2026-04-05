@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal service adapter - protocol-agnostic service invocation
 //!
 //! The universal adapter discovers services by capability and invokes them
@@ -134,7 +134,7 @@ impl UniversalServiceAdapter {
 
         match protocol.as_str() {
             "jsonrpc" | "unix" => self.invoke_jsonrpc(provider, request).await,
-            #[allow(deprecated)]
+            #[expect(deprecated)]
             "http" | "https" => self.invoke_http(provider, request).await,
             "grpc" => {
                 tracing::error!(

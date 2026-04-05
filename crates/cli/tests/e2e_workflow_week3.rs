@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::expect_used)] // expect() is idiomatic in tests
 //! Week 3 E2E Workflow Tests
 //! End-to-end workflow testing simulating real-world usage patterns
@@ -667,7 +667,7 @@ async fn test_e2e_standalone_mode_integration() {
     // Test standalone mode (no Songbird)
 
     let config = DistributedConfig {
-        songbird_integration: None,
+        coordination: None,
         ..Default::default()
     };
 
@@ -686,11 +686,11 @@ async fn test_e2e_standalone_mode_integration() {
 }
 
 #[tokio::test]
-async fn test_e2e_songbird_config_present() {
+async fn test_e2e_coordination_config_present() {
     // Test with Songbird configuration present (but not necessarily connected)
 
     let config = DistributedConfig {
-        songbird_integration: Some(toadstool_distributed::SongbirdConfig {
+        coordination: Some(toadstool_distributed::CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("test-token".to_string()),
             health_reporting_interval_secs: 60,
@@ -715,7 +715,7 @@ async fn test_e2e_mixed_integration_modes() {
 
     // Coordinator 1: Standalone
     let config1 = DistributedConfig {
-        songbird_integration: None,
+        coordination: None,
         ..Default::default()
     };
     let coord1 = DistributedCoordinator::new(config1)
@@ -725,7 +725,7 @@ async fn test_e2e_mixed_integration_modes() {
 
     // Coordinator 2: With Songbird
     let config2 = DistributedConfig {
-        songbird_integration: Some(toadstool_distributed::SongbirdConfig {
+        coordination: Some(toadstool_distributed::CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: None,
             health_reporting_interval_secs: 30,

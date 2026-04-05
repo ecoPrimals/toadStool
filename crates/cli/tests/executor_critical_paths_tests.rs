@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -514,7 +514,7 @@ mod workload_execution_tests {
     #[test]
     fn test_workload_error_propagation() {
         #[derive(Debug)]
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         enum WorkloadError {
             ExecutionFailed(String),
             TimeoutExceeded,

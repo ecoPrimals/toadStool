@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Per-domain validation helpers for [`super::WorkloadSpec`].
 
 use super::types::{ExecutableSource, GpuProgramSource, PythonSource, WasmModuleSource};

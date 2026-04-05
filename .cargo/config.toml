@@ -43,14 +43,6 @@ rustflags = [
 [target.riscv64gc-unknown-linux-gnu]
 linker = "riscv64-linux-gnu-gcc"
 
-# GPU tests share a single device — high parallelism causes device-lost.
-# The dispatch semaphore handles serialization, but wgpu's internal state
-# can still corrupt under extreme thread counts. 4 threads is the sweet
-# spot: fast enough for CI, safe enough for GPU-backed tests.
-# Override: RUST_TEST_THREADS=N cargo test
-[env]
-RUST_TEST_THREADS = { value = "4", force = false }
-
 # Profiles are defined in Cargo.toml (single source of truth):
 #   [profile.release]      — genomeBin size-optimized (opt-level = "z", strip, panic=abort)
 #   [profile.release-fast] — speed-optimized (opt-level = 3, inherits release)

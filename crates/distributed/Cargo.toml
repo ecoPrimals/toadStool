@@ -14,6 +14,8 @@ default = []
 channels = []
 testing = ["dev-crypto"]  # Exposes new_for_testing + dev-crypto fallback for integration tests
 dev-crypto = ["dep:aes-gcm", "dep:ed25519-dalek"]  # In-process SoftwareHsmProvider for dev/CI (production uses BearDog)
+# `SecurityProviderFactory::create_mock` + `MockSecurityProvider` — not default
+test-mocks = []
 
 [dependencies]
 # Core ToadStool dependencies

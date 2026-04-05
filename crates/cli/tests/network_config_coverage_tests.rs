@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for CLI `network_config` module
 //! Exercises `OrchestrationConfigurator`, validation, and configuration summary.
 
@@ -20,7 +20,7 @@ fn test_configurator_default() {
 fn test_generate_configuration_summary_enabled() {
     let config = OrchestrationConfigurator::new();
     let summary = config.generate_configuration_summary();
-    assert!(summary.contains("Songbird Network Configuration"));
+    assert!(summary.contains("Orchestration network configuration"));
     assert!(summary.contains("Service Mesh"));
     assert!(summary.contains("Proxy"));
     assert!(summary.contains("Traffic Management"));

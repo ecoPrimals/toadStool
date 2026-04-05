@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -104,19 +104,19 @@ fn test_cloud_provider_digitalocean() {
 }
 
 #[test]
-fn test_cloud_provider_beardog_cloud() {
-    let provider = CloudProvider::BearDogCloud {
-        endpoint: "https://beardog.local".to_string(),
+fn test_cloud_provider_security_cloud() {
+    let provider = CloudProvider::PrivateSecurityCloud {
+        endpoint: "https://security.local".to_string(),
         token: "bearer-token".to_string(),
         encryption_level: EncryptionLevel::Maximum,
     };
 
     match provider {
-        CloudProvider::BearDogCloud { endpoint, .. } => {
-            assert_eq!(endpoint, "https://beardog.local");
+        CloudProvider::PrivateSecurityCloud { endpoint, .. } => {
+            assert_eq!(endpoint, "https://security.local");
             // Note: encryption_level doesn't implement PartialEq, so we just verify endpoint
         }
-        _ => panic!("Expected BearDogCloud provider"),
+        _ => panic!("Expected PrivateSecurityCloud provider"),
     }
 }
 
@@ -268,9 +268,9 @@ fn test_multiple_cloud_providers() {
             token: "do-token".to_string(),
             region: "sfo3".to_string(),
         },
-        CloudProvider::BearDogCloud {
-            endpoint: "https://cloud.beardog.local".to_string(),
-            token: "beardog-token".to_string(),
+        CloudProvider::PrivateSecurityCloud {
+            endpoint: "https://cloud.security.local".to_string(),
+            token: "security-token".to_string(),
             encryption_level: EncryptionLevel::High,
         },
     ];
@@ -409,8 +409,8 @@ fn test_cloud_provider_debug_representation() {
             },
             cost_budget: Some(500.0),
         },
-        CloudProvider::BearDogCloud {
-            endpoint: "https://beardog.local".to_string(),
+        CloudProvider::PrivateSecurityCloud {
+            endpoint: "https://security.local".to_string(),
             token: "token".to_string(),
             encryption_level: EncryptionLevel::Maximum,
         },
@@ -438,21 +438,21 @@ fn test_encryption_level_ordering() {
 }
 
 #[test]
-fn test_auth_method_beardog_auth() {
-    let auth = AuthMethod::BearDogAuth {
-        endpoint: "https://beardog.auth.local".to_string(),
-        credentials: SecretString::from("beardog-creds"),
+fn test_auth_method_security_auth() {
+    let auth = AuthMethod::SecurityServiceAuth {
+        endpoint: "https://security.auth.local".to_string(),
+        credentials: SecretString::from("security-creds"),
     };
 
     match auth {
-        AuthMethod::BearDogAuth {
+        AuthMethod::SecurityServiceAuth {
             endpoint,
             credentials,
         } => {
-            assert_eq!(endpoint, "https://beardog.auth.local");
-            assert_eq!(credentials.expose_secret(), "beardog-creds");
+            assert_eq!(endpoint, "https://security.auth.local");
+            assert_eq!(credentials.expose_secret(), "security-creds");
         }
-        _ => panic!("Expected BearDogAuth auth method"),
+        _ => panic!("Expected SecurityServiceAuth auth method"),
     }
 }
 
@@ -514,7 +514,7 @@ fn test_multiple_auth_methods() {
             cert_path: "/path/cert".to_string(),
             key_path: "/path/key".to_string(),
         },
-        AuthMethod::BearDogAuth {
+        AuthMethod::SecurityServiceAuth {
             endpoint: "https://auth.local".to_string(),
             credentials: SecretString::from("creds"),
         },
@@ -590,20 +590,20 @@ fn test_self_hosted_with_multiple_endpoints() {
 }
 
 #[test]
-fn test_beardog_cloud_with_different_encryption_levels() {
+fn test_security_cloud_with_different_encryption_levels() {
     let providers = vec![
-        CloudProvider::BearDogCloud {
-            endpoint: "https://beardog1.local".to_string(),
+        CloudProvider::PrivateSecurityCloud {
+            endpoint: "https://security1.local".to_string(),
             token: "token1".to_string(),
             encryption_level: EncryptionLevel::Standard,
         },
-        CloudProvider::BearDogCloud {
-            endpoint: "https://beardog2.local".to_string(),
+        CloudProvider::PrivateSecurityCloud {
+            endpoint: "https://security2.local".to_string(),
             token: "token2".to_string(),
             encryption_level: EncryptionLevel::High,
         },
-        CloudProvider::BearDogCloud {
-            endpoint: "https://beardog3.local".to_string(),
+        CloudProvider::PrivateSecurityCloud {
+            endpoint: "https://security3.local".to_string(),
             token: "token3".to_string(),
             encryption_level: EncryptionLevel::Maximum,
         },

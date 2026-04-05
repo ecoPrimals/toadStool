@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // VFIO DMA map/unmap ioctls require unsafe
 //! DMA buffer management for VFIO NPU backend
 //!

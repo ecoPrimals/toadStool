@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Types and enums for resource estimation
 //!
 //! Re-exported from parent module for backward compatibility.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Self IP / bind host discovery for primal execution context.
 
 use toadstool_config::defaults::network::BIND_ADDRESS_DEFAULT;

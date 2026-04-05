@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Engine construction, framework discovery, and device enumeration.
 
 use std::collections::HashMap;

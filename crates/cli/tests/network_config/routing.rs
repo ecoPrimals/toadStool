@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
         };
         assert_eq!(selector.selector_type, selector_type);
     }
@@ -177,7 +177,7 @@ fn test_metrics_config() {
 // Helper Functions
 // ============================================================================
 
-fn create_test_songbird_config() -> SongbirdNetworkConfig {
+fn create_test_coordination_config() -> SongbirdNetworkConfig {
     SongbirdNetworkConfig {
         service_mesh: create_test_service_mesh_config(true),
         dns_discovery: create_test_dns_discovery_config(),

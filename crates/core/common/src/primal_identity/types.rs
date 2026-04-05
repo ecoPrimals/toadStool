@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal identity type definitions
 //!
 //! Capability enums and `ServiceEndpoint` - the core types for capability-based discovery.
@@ -334,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_service_endpoint_websocket_deprecated() {
         let endpoint = ServiceEndpoint::websocket("ws.example.com", 8081);
         assert_eq!(endpoint.protocol, "ws");

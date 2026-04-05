@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Orchestration Network Configurator
 //!
 //! Manages network configuration for the orchestration capability:
@@ -59,13 +59,12 @@ pub(crate) use service_mesh::ServiceMeshExt;
 )]
 pub(crate) use traffic::TrafficExt;
 
-/// Orchestration network configurator (legacy name: SongbirdNetworkConfigurator).
+/// Orchestration network configurator for the coordination / service-mesh stack.
 ///
-/// Manages all aspects of network configuration including service mesh,
-/// DNS discovery, security policies, traffic management, and health monitoring.
-/// Agnostic to which primal provides orchestration — discovered at runtime.
+/// Manages service mesh, DNS discovery, security policies, traffic management,
+/// and health monitoring. Which process provides orchestration is discovered at runtime.
 ///
-/// Prefer [`OrchestrationConfigurator`] alias for new code.
+/// Shorter alias: [`OrchestrationConfigurator`].
 ///
 /// # Example
 ///
@@ -76,17 +75,20 @@ pub(crate) use traffic::TrafficExt;
 /// configurator.apply_configuration().await?;
 /// configurator.validate_configuration()?;
 /// ```
-pub struct SongbirdNetworkConfigurator {
+pub struct OrchestrationNetworkConfigurator {
     /// Network configuration
-    pub config: SongbirdNetworkConfig,
+    pub config: OrchestrationNetworkConfig,
 }
 
-/// Capability-based alias — prefer for new code.
-pub type OrchestrationConfigurator = SongbirdNetworkConfigurator;
+/// Short alias for [`OrchestrationNetworkConfigurator`].
+pub type OrchestrationConfigurator = OrchestrationNetworkConfigurator;
+
+/// Legacy alias — prefer [`OrchestrationNetworkConfigurator`].
+pub type SongbirdNetworkConfigurator = OrchestrationNetworkConfigurator;
 
 // Public API re-exports
-impl SongbirdNetworkConfigurator {
-    /// Create a new Songbird network configurator with default configuration
+impl OrchestrationNetworkConfigurator {
+    /// Create a new orchestration network configurator with default configuration
     pub fn new() -> Self {
         ConfiguratorCore::new()
     }
@@ -102,7 +104,7 @@ impl SongbirdNetworkConfigurator {
     }
 }
 
-impl Default for SongbirdNetworkConfigurator {
+impl Default for OrchestrationNetworkConfigurator {
     fn default() -> Self {
         Self::new()
     }

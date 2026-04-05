@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Implementation for IntegrationTestManager
 // This file was extracted from integration.rs for better code organization
 

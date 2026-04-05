@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service Discovery Fallback Defaults
 //!
 //! This module provides fallback configuration for service discovery.

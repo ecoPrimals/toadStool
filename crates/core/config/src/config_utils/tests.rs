@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn test_config_utils() {
     temp_env::with_vars(
         [
@@ -260,7 +260,7 @@ fn test_get_toadstool_endpoint() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn test_get_squirrel_primal_default_port() {
     temp_env::with_vars(
         [

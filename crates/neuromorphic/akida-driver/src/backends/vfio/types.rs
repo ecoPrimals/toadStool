@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! VFIO ABI types and constants — re-exported from `hw-safe::vfio_setup`.
 //!
 //! Kernel ABI structs and setup ioctl wrappers live in `hw-safe`. This
@@ -37,7 +37,7 @@ pub struct PollConfig<'a> {
 #[allow(unused_imports)]
 pub use toadstool_hw_safe::vfio_setup::{VfioDeviceInfo, VfioGroupStatus, VfioRegionInfo};
 
-#[allow(unused_imports)] // Public re-export of VFIO DMA ABI types for `types` module users.
+#[allow(unused_imports)]
 pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
 #[cfg(test)]

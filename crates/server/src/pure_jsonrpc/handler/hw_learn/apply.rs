@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Apply handler — apply recipes (dry-run or live BAR0).
 
 use super::HwLearnHandler;

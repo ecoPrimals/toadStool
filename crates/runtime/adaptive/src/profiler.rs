@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime profiler for GPU operation benchmarking
 //!
 //! Measures operation performance to learn optimal workgroup sizes.
@@ -140,7 +140,7 @@ impl RuntimeProfiler {
     /// once `RuntimeProfiler` holds an executor reference. Current implementation returns
     /// conservative model-based estimates without sleeping. The `Result` return and `&self`
     /// receiver preserve the API surface for the real-gpu-executor evolution.
-    #[allow(clippy::unnecessary_wraps)]
+    #[expect(clippy::unnecessary_wraps)]
     fn benchmark_workgroup(
         &self,
         op_type: OpType,
@@ -191,7 +191,7 @@ impl RuntimeProfiler {
             clippy::cast_possible_truncation,
             reason = "truncation acceptable for this conversion"
         )]
-        #[allow(clippy::cast_sign_loss)]
+        #[expect(clippy::cast_sign_loss)]
         // Result is always positive and within u64 range (simulation timing)
         {
             (f64::from(base_time) * size_factor * workgroup_penalty) as u64

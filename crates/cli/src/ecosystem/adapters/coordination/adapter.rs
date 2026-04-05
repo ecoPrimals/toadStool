@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`CoordinationAdapter`] implementation — capability-based coordination calls.
 
 use crate::{CliContextExt, Result};

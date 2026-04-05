@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // CUDA kernel launch requires unsafe cudarc API
 //! PTX loading and kernel execution
 

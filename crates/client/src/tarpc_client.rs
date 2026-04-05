@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ToadStool tarpc Client Implementation
 //!
 //! Type-safe client for communicating with ToadStool compute services.
@@ -316,7 +316,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     async fn test_client_tcp_connection_no_server() {
         let addr: SocketAddr = "127.0.0.1:1".parse().expect("valid addr");
         let result = ToadStoolTarpcClient::connect(addr).await;

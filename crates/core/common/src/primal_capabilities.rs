@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
-//! Capability-to-primal reference mapping.
+//! Capability-to-typical-provider mapping (human-readable reference only).
 //!
-//! This module provides a reference mapping of which primal typically provides
-//! each capability in the ecoPrimals ecosystem. Use `infant_discovery::capabilities`
+//! This module maps each capability id to a short **capability-based** description of
+//! which *kind* of service usually satisfies it. Use `infant_discovery::capabilities`
 //! for capability constants and discovery.
 
 use crate::infant_discovery::capabilities::capabilities::{
@@ -13,10 +13,11 @@ use crate::infant_discovery::capabilities::capabilities::{
     SERVICE_MESH, STORAGE, TRACING,
 };
 
-/// Standard capability-to-primal mapping (for documentation/reference only).
+/// Typical provider category for a capability (for documentation/reference only).
 ///
-/// Shows which primal typically provides each capability in the ecoPrimals ecosystem.
-/// **NOTE**: This is for reference only! Discovery should be capability-based, not name-based.
+/// Returns a short capability-based label (for example `"security service"`,
+/// `"coordination service"`). **NOTE**: This is for reference only; discovery must be
+/// capability-based at runtime, not name-based.
 ///
 /// Production code should discover providers at runtime via `infant_discovery` instead
 /// of relying on this static mapping.
@@ -25,29 +26,29 @@ use crate::infant_discovery::capabilities::capabilities::{
     since = "0.92.0",
     note = "Use capability-based discovery via infant_discovery instead of static primal-name mappings"
 )]
-#[allow(clippy::match_same_arms)] // Intentionally separate for documentation and extensibility
+#[expect(clippy::match_same_arms)] // Intentionally separate for documentation and extensibility
 pub fn capability_typical_provider(capability: &str) -> Option<&'static str> {
     match capability {
-        // Crypto & Security (BearDog)
-        PKI => Some("BearDog"),
-        SECRETS => Some("BearDog"),
-        AUTHENTICATION => Some("BearDog"),
-        AUTHORIZATION => Some("BearDog"),
+        // Crypto & security capability
+        PKI => Some("security service"),
+        SECRETS => Some("security service"),
+        AUTHENTICATION => Some("security service"),
+        AUTHORIZATION => Some("security service"),
 
-        // Orchestration (Songbird)
-        ORCHESTRATION => Some("Songbird"),
-        SERVICE_MESH => Some("Songbird"),
-        LOAD_BALANCING => Some("Songbird"),
+        // Coordination / orchestration capability
+        ORCHESTRATION => Some("coordination service"),
+        SERVICE_MESH => Some("coordination service"),
+        LOAD_BALANCING => Some("coordination service"),
 
-        // Storage (NestGate)
-        STORAGE => Some("NestGate"),
-        KEY_VALUE_STORE => Some("NestGate"),
-        CACHE => Some("NestGate"),
-        SEARCH => Some("NestGate"),
+        // Storage capability
+        STORAGE => Some("storage service"),
+        KEY_VALUE_STORE => Some("storage service"),
+        CACHE => Some("storage service"),
+        SEARCH => Some("storage service"),
 
-        // AI (Squirrel)
-        AI_PROCESSING => Some("Squirrel"),
-        NLP => Some("Squirrel"),
+        // Intelligence / routing workload capability
+        AI_PROCESSING => Some("intelligence service"),
+        NLP => Some("intelligence service"),
 
         // Observability (BiomeOS)
         MONITORING => Some("BiomeOS"),
@@ -67,12 +68,21 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_capability_provider_mapping() {
-        assert_eq!(capability_typical_provider(PKI), Some("BearDog"));
-        assert_eq!(capability_typical_provider(ORCHESTRATION), Some("Songbird"));
-        assert_eq!(capability_typical_provider(STORAGE), Some("NestGate"));
-        assert_eq!(capability_typical_provider(AI_PROCESSING), Some("Squirrel"));
+        assert_eq!(capability_typical_provider(PKI), Some("security service"));
+        assert_eq!(
+            capability_typical_provider(ORCHESTRATION),
+            Some("coordination service")
+        );
+        assert_eq!(
+            capability_typical_provider(STORAGE),
+            Some("storage service")
+        );
+        assert_eq!(
+            capability_typical_provider(AI_PROCESSING),
+            Some("intelligence service")
+        );
         assert_eq!(capability_typical_provider(MONITORING), Some("BiomeOS"));
         assert_eq!(capability_typical_provider("unknown_capability"), None);
     }

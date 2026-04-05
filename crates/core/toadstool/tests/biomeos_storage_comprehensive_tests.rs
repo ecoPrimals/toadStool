@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeOS Storage Integration
 //!
 //! Week 17 Sprint 2: Storage Provisioning Manager tests
@@ -123,7 +123,7 @@ fn test_storage_config_debug_format() {
 fn test_storage_config_default_uses_discovery() {
     // Default config uses empty endpoint for runtime capability-based discovery
     let config = StorageProvisioningConfig::default();
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     let ep = &config.storage_endpoint;
     assert!(
         ep.is_empty(),
@@ -150,7 +150,7 @@ fn test_manager_with_inmemory_backend() {
 }
 
 #[test]
-fn test_manager_with_nestgate_backend() {
+fn test_manager_with_storage_backend_impl() {
     let config = StorageProvisioningConfig {
         storage_tier: "premium".to_string(),
         backup_enabled: true,
@@ -296,7 +296,7 @@ fn test_manager_shared_backend() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_initialize_nestgate_connection() {
+async fn test_initialize_storage_service_connection() {
     let config = StorageProvisioningConfig {
         storage_tier: "standard".to_string(),
         backup_enabled: true,
@@ -306,7 +306,7 @@ async fn test_initialize_nestgate_connection() {
     };
 
     let manager = StorageProvisioningManager::with_inmemory(config);
-    let result = manager.initialize_nestgate_connection().await;
+    let result = manager.initialize_storage_service_connection().await;
     assert!(result.is_ok());
 }
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! BiomeOS manifest execution (`execute_biome_os`).
 
 use std::collections::HashMap;

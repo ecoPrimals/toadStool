@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Framework Implementations
 
 use super::traits::ParallelComputeFramework;
@@ -288,14 +288,14 @@ impl ParallelComputeFramework for WebGpuFramework {
 
         let start_time = std::time::Instant::now();
 
-        // WebGPU kernel execution goes through barracuda's ComputeDispatch.
+        // WebGPU kernel execution goes through the network / shader compute `ComputeDispatch`.
         // This trait-based path exists for the generic runtime orchestrator;
-        // direct barracuda usage (Tensor ops, ComputeDispatch) is preferred.
+        // direct use of the compute stack (Tensor ops, ComputeDispatch) is preferred.
         let execution_time = start_time.elapsed();
 
         Err(ToadStoolError::runtime(format!(
-            "WebGPU kernel execution via generic framework trait is not yet wired to barracuda ComputeDispatch. \
-             Use barracuda Tensor operations directly. Kernel: {}, session: {}, inputs: {}, elapsed: {:?}",
+            "WebGPU kernel execution via generic framework trait is not yet wired to the network-service ComputeDispatch. \
+             Use Tensor operations on the compute stack directly. Kernel: {}, session: {}, inputs: {}, elapsed: {:?}",
             kernel.id,
             session_id,
             inputs.len(),

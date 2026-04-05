@@ -1,0 +1,40 @@
+[package]
+name = "toadstool-integration-security"
+version = "0.1.0"
+edition.workspace = true
+readme = "README.md"
+keywords = ["entropy", "rng", "beardog", "capability-discovery", "deep-debt"]
+categories = ["cryptography", "algorithms"]
+authors = ["ToadStool Team"]
+license.workspace = true
+description = "bearDog entropy integration for high-quality random number generation"
+repository.workspace = true
+
+[dependencies]
+# Core dependencies
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+
+# ToadStool core
+toadstool-common = { path = "../../core/common" }
+
+# HTTP client for bearDog discovery/communication
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+temp-env = { version = "0.3", features = ["async_closure"] }
+
+[lints]
+workspace = true
+
+[features]
+default = []
+
+# Testing features
+testing = []
+mock-beardog = []  # Mock bearDog for testing without real service

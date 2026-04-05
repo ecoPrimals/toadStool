@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
-//! [`CapabilityDiscovery`] implementation for [`DiscoveryEngine`](super::DiscoveryEngine).
+//! [`CapabilityDiscovery`] implementation for [`DiscoveryEngine`].
 
 use super::super::capabilities::{
     CapabilityDiscovery, DiscoveredService, DiscoveryError, DiscoveryPreferences, DiscoverySource,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU sensor reading via Linux hwmon sysfs.
 //!
 //! Each hwmon device under `/sys/class/hwmon/hwmonN/` or a GPU's
@@ -65,7 +65,7 @@ impl HwmonSensors {
 
     /// Temperature in degrees Celsius, if available.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::cast_precision_loss,
         reason = "millidegrees i64 fits f64 for temperature display"
     )]
@@ -75,7 +75,7 @@ impl HwmonSensors {
 
     /// Power draw in watts, if available.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::cast_precision_loss,
         reason = "microwatts u64 fits f64 for power display"
     )]

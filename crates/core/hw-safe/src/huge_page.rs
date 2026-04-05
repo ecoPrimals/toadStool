@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // mmap/munmap/mlock/munlock for huge pages — containment zone
 
 //! Locked huge-page memory for high-performance DMA.
@@ -154,7 +154,7 @@ impl Drop for HugePageMemory {
 }
 
 // Send+Sync auto-derived via ExclusivePtr — no manual unsafe impl needed.
-#[allow(dead_code, reason = "compile-time trait bound assertion")]
+#[expect(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
     fn check() {

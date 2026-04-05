@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discover all compute units example
 
-#![expect(
+#![allow(
     clippy::cast_precision_loss,
     reason = "precision loss acceptable for this conversion"
 )]

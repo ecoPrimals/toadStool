@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse AMD PM4 command stream dumps.
 //!
 //! AMD GPUs use PM4 (Packet Manager 4) format for command submission.
@@ -58,7 +58,7 @@ fn parse_pm4_line(line: &str, seq: &mut u64) -> Option<TraceEvent> {
         let opcode = extract_hex_field(line, "OP=")?;
         let count = extract_dec_field(line, "COUNT=").unwrap_or(0);
         *seq += 1;
-        #[allow(
+        #[expect(
             clippy::cast_possible_truncation,
             reason = "PM4 opcode is 16-bit per AMD spec"
         )]

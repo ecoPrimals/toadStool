@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
 use uuid::Uuid;
 
@@ -74,7 +74,7 @@ fn test_trust_level_variants() {
 }
 
 #[test]
-#[allow(deprecated)] // Testing deprecated ServiceType during migration
+#[expect(deprecated)] // Testing deprecated ServiceType during migration
 fn test_service_type_variants() {
     assert!(matches!(ServiceType::Discovery, ServiceType::Discovery));
     assert!(matches!(ServiceType::Crypto, ServiceType::Crypto));
@@ -107,7 +107,7 @@ fn test_service_type_variants() {
 }
 
 #[test]
-#[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+#[expect(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 fn test_service_endpoint_creation() {
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::Discovery,
@@ -124,7 +124,7 @@ fn test_service_endpoint_creation() {
 }
 
 #[test]
-#[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+#[expect(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 fn test_service_endpoint_serialization() {
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::Crypto,
@@ -192,7 +192,7 @@ fn test_nestgate_mount_creation() {
     assert!(mount.zfs_dataset.is_some());
 }
 
-#[allow(deprecated)] // Using ServiceType during migration
+#[expect(deprecated)] // Using ServiceType during migration
 #[test]
 fn test_discovered_service_creation() {
     let mut capabilities = HashMap::new();
@@ -360,7 +360,7 @@ fn test_create_permission_message() {
 }
 
 #[test]
-#[allow(deprecated)] // Testing backward compatibility with deprecated EcosystemService
+#[expect(deprecated)] // Testing backward compatibility with deprecated EcosystemService
 fn test_discovery_result_with_services() {
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::Discovery,
@@ -435,7 +435,7 @@ async fn test_show_ecosystem_status_with_endpoints() {
 async fn test_connect_nestgate_storage_invalid_endpoint() {
     let mut integrator = EcosystemIntegrator::new();
     let result = integrator
-        .connect_nestgate_storage(
+        .connect_distributed_storage(
             "not-a-valid-address".to_string(),
             std::path::PathBuf::from("/tmp/test-mount"),
             None,
@@ -502,7 +502,7 @@ async fn test_show_ecosystem_status_default_format() {
 async fn test_connect_nestgate_storage_no_service() {
     let mut integrator = EcosystemIntegrator::new();
     let result = integrator
-        .connect_nestgate_storage(
+        .connect_distributed_storage(
             "127.0.0.1:1".to_string(),
             PathBuf::from("/tmp/test-mount"),
             None,
@@ -618,7 +618,7 @@ fn test_discovery_result_none_verified() {
 // ─── Integrator print_ecosystem_table with mock data ─────────────────────
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[allow(deprecated)]
+#[expect(deprecated)]
 async fn test_print_ecosystem_table_with_endpoints() {
     let mut integrator = EcosystemIntegrator::new();
     integrator.endpoints.insert(
@@ -636,7 +636,7 @@ async fn test_print_ecosystem_table_with_endpoints() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[allow(deprecated)]
+#[expect(deprecated)]
 async fn test_print_ecosystem_table_with_connections() {
     let mut integrator = EcosystemIntegrator::new();
     integrator.connections.insert(
@@ -659,7 +659,7 @@ async fn test_print_ecosystem_table_with_connections() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[allow(deprecated)]
+#[expect(deprecated)]
 async fn test_show_ecosystem_status_json_with_endpoints() {
     let mut integrator = EcosystemIntegrator::new();
     integrator.endpoints.insert(

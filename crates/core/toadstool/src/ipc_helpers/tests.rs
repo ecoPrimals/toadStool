@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! IPC helpers tests
 //!
 //! Uses `temp_env` for safe, isolated environment variable testing. No unsafe
@@ -13,43 +13,25 @@ fn test_constants() {
     assert_eq!(IPC_TIMEOUT.as_secs(), 5);
 }
 
-#[test]
-fn test_register_with_coordination_graceful_failure() {
-    temp_env::with_var_unset("BIOMEOS_COORDINATION_SOCKET", || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = register_with_coordination().await;
-                assert!(result.is_err());
-                let err = result.unwrap_err();
-                let err_msg = format!("{err}");
-                assert!(err_msg.contains("coordination") || err_msg.contains("connection"));
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+#[tokio::test]
+async fn test_register_with_coordination_graceful_failure() {
+    temp_env::async_with_vars([("BIOMEOS_COORDINATION_SOCKET", None::<&str>)], async {
+        let result = register_with_coordination().await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let err_msg = format!("{err}");
+        assert!(err_msg.contains("coordination") || err_msg.contains("connection"));
+    })
+    .await;
 }
 
-#[test]
-fn test_find_by_capability_graceful_failure() {
-    temp_env::with_var_unset("BIOMEOS_COORDINATION_SOCKET", || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let result = find_by_capability("crypto").await;
-                assert!(result.is_err());
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+#[tokio::test]
+async fn test_find_by_capability_graceful_failure() {
+    temp_env::async_with_vars([("BIOMEOS_COORDINATION_SOCKET", None::<&str>)], async {
+        let result = find_by_capability("crypto").await;
+        assert!(result.is_err());
+    })
+    .await;
 }
 
 #[test]
@@ -316,8 +298,8 @@ fn test_get_default_coordination_socket_with_xdg_runtime_dir() {
 // functions at it via BIOMEOS_COORDINATION_SOCKET (via temp_env), and exercise the
 // JSON-RPC send/receive paths that are otherwise unreachable in CI.
 //
-// The mock and connection must run on the SAME tokio runtime to avoid
-// deadlocks (temp_env blocks the calling thread).
+// The mock and connection run on the same Tokio runtime as the test (via
+// `#[tokio::test]` + `async_with_vars`).
 
 /// Spawn a mock Songbird socket that accepts one connection and replies with
 /// the given JSON response (NDJSON framing), then returns.
@@ -343,70 +325,56 @@ async fn spawn_mock_songbird(
     })
 }
 
-#[test]
-fn test_register_with_coordination_success_via_mock() {
+#[tokio::test]
+async fn test_register_with_coordination_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("coordination.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
 
-    let inner_path = path_str.clone();
-    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
-        let p = inner_path.clone();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let handle = spawn_mock_songbird(&p, reply).await;
-                let result = register_with_coordination().await;
-                handle.abort();
-                assert!(result.is_ok(), "registration should succeed: {result:?}");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars(
+        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
+        async {
+            let p = path_str.clone();
+            let handle = spawn_mock_songbird(&p, reply).await;
+            let result = register_with_coordination().await;
+            handle.abort();
+            assert!(result.is_ok(), "registration should succeed: {result:?}");
+        },
+    )
+    .await;
 }
 
-#[test]
-fn test_register_with_coordination_error_reply_via_mock() {
+#[tokio::test]
+async fn test_register_with_coordination_error_reply_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("coordination_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "error": {"code": -32000, "message": "already registered"}, "id": 1});
 
-    let inner_path = path_str.clone();
-    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
-        let p = inner_path.clone();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let handle = spawn_mock_songbird(&p, reply).await;
-                let result = register_with_coordination().await;
-                handle.abort();
-                assert!(result.is_err());
-                assert!(
-                    result
-                        .unwrap_err()
-                        .to_string()
-                        .contains("registration failed")
-                );
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars(
+        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
+        async {
+            let p = path_str.clone();
+            let handle = spawn_mock_songbird(&p, reply).await;
+            let result = register_with_coordination().await;
+            handle.abort();
+            assert!(result.is_err());
+            assert!(
+                result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("registration failed")
+            );
+        },
+    )
+    .await;
 }
 
-#[test]
-fn test_find_by_capability_success_via_mock() {
+#[tokio::test]
+async fn test_find_by_capability_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("cap.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
@@ -422,31 +390,24 @@ fn test_find_by_capability_success_via_mock() {
         "id": 1
     });
 
-    let inner_path = path_str.clone();
-    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
-        let p = inner_path.clone();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let handle = spawn_mock_songbird(&p, reply).await;
-                let result = find_by_capability("compute").await;
-                handle.abort();
-                assert!(result.is_ok());
-                let primals = result.unwrap();
-                assert_eq!(primals.len(), 2);
-                assert!(primals.contains(&"barracuda".to_string()));
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars(
+        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
+        async {
+            let p = path_str.clone();
+            let handle = spawn_mock_songbird(&p, reply).await;
+            let result = find_by_capability("compute").await;
+            handle.abort();
+            assert!(result.is_ok());
+            let primals = result.unwrap();
+            assert_eq!(primals.len(), 2);
+            assert!(primals.contains(&"barracuda".to_string()));
+        },
+    )
+    .await;
 }
 
-#[test]
-fn test_find_by_capability_error_reply() {
+#[tokio::test]
+async fn test_find_by_capability_error_reply() {
     let dir = tempfile::TempDir::new().unwrap();
     let socket_path = dir.path().join("cap_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
@@ -454,22 +415,15 @@ fn test_find_by_capability_error_reply() {
     let reply =
         json!({"jsonrpc": "2.0", "error": {"code": -1, "message": "no capabilities"}, "id": 1});
 
-    let inner_path = path_str.clone();
-    temp_env::with_var("BIOMEOS_COORDINATION_SOCKET", Some(&path_str), || {
-        let p = inner_path.clone();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let handle = spawn_mock_songbird(&p, reply).await;
-                let result = find_by_capability("gpu").await;
-                handle.abort();
-                assert!(result.is_err());
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars(
+        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
+        async {
+            let p = path_str.clone();
+            let handle = spawn_mock_songbird(&p, reply).await;
+            let result = find_by_capability("gpu").await;
+            handle.abort();
+            assert!(result.is_err());
+        },
+    )
+    .await;
 }

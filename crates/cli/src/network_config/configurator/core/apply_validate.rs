@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `apply_configuration` / `validate_configuration` orchestration for the network configurator.
 
 use super::super::*;
@@ -7,15 +7,15 @@ use super::ConfiguratorCore;
 use super::defaults;
 use tracing::info;
 
-impl ConfiguratorCore for SongbirdNetworkConfigurator {
+impl ConfiguratorCore for OrchestrationNetworkConfigurator {
     fn new() -> Self {
         Self {
             config: Self::default_config(),
         }
     }
 
-    fn default_config() -> SongbirdNetworkConfig {
-        defaults::songbird_default_network_config()
+    fn default_config() -> OrchestrationNetworkConfig {
+        defaults::orchestration_default_network_config()
     }
 
     async fn apply_configuration(&self) -> ToadStoolResult<()> {

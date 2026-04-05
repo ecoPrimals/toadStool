@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for property test runner
 //!
 //! Expanding coverage for properties/runner.rs (current: 7.37%)
 //! Target: 80%+ coverage
-#![expect(
+#![allow(
     clippy::cast_possible_truncation,
     reason = "truncation acceptable for this conversion"
 )]

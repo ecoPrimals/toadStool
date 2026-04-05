@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Interned Strings - Zero-Allocation Constants
 //!
 //! This module provides static string constants for common values throughout the codebase.
@@ -11,8 +11,8 @@
 //!   `discover_capability(capabilities::STORAGE)`.
 //!
 //! - **`primals::*`** — Use for IPC ADDRESSING only (socket paths, endpoint IDs).
-//!   These are canonical names for routing messages, NOT for capability matching.
-//!   Never use `if name == primals::BEARDOG` to select a service; use capability checks.
+//!   These are stable routing labels for legacy paths, NOT for capability matching.
+//!   Never branch on a hardcoded legacy route label to select a service; use capability checks.
 //!
 //! # Performance Impact
 //!
@@ -40,9 +40,8 @@
 //! let http = protocols::HTTP;
 //! let grpc = protocols::GRPC;
 //!
-//! // Legacy primal names (deprecated, use capabilities instead!)
-//! #[allow(deprecated)]
-//! let beardog = primals::BEARDOG;
+//! // Legacy routing labels (deprecated for discovery; use capabilities instead)
+//! let _legacy_crypto_route = primals::LEGACY_SECURITY_LABEL;
 //! ```
 
 /// Capability type constants (Deep Debt compliant)
@@ -63,7 +62,7 @@ pub mod capabilities {
     /// Coordination capabilities (service mesh, discovery, orchestration)
     pub const COORDINATION: &str = "coordination";
 
-    /// Workload routing / MCP-style agent IPC (replaces legacy “squirrel” name in discovery)
+    /// Workload routing / MCP-style agent IPC
     pub const ROUTING: &str = "routing";
 
     /// AI/ML capabilities (inference, training, natural language)
@@ -104,7 +103,7 @@ pub mod capabilities {
     /// Version control capability
     pub const VERSIONING: &str = "versioning";
 
-    /// GPU dispatch capability (coralReef/barraCuda compute triangle)
+    /// GPU dispatch capability (native shader / compute pipeline)
     pub const GPU_DISPATCH: &str = "gpu.dispatch";
 
     /// Science GPU dispatch (JSON-RPC method family)
@@ -131,7 +130,7 @@ pub mod capabilities {
     /// Science domain capability
     pub const SCIENCE: &str = "science";
 
-    /// Activation function capabilities (barraCuda)
+    /// Activation function capabilities (science GPU stack)
     pub const ACTIVATIONS: &str = "science.activations";
 
     /// RNG capabilities
@@ -207,34 +206,50 @@ pub mod protocols {
 /// # Migration Guide
 ///
 /// ```ignore
-/// // ❌ OLD (hardcoded WHO):
-/// use toadstool_common::interned_strings::primals;
-/// let service = discover_service(primals::BEARDOG).await?;
+/// // ❌ OLD: treat a fixed orchestrator label as the service identity
+/// let service = discover_fixed_label("…").await?;
 ///
 /// // ✅ NEW (capability-based WHAT):
 /// use toadstool_common::interned_strings::capabilities;
-/// let service = discover_capability(capabilities::SECURITY).await?;
+/// let service = discover_capability(capabilities::CRYPTO).await?;
 /// ```
-#[deprecated(
-    since = "0.4.0",
-    note = "Use capability-based discovery (capabilities::*) instead of hardcoded primal names"
-)]
+/// Legacy primal name constants for backward-compatible IPC routing.
+///
+/// New code should use `capabilities::*` and `CapabilityDomain` instead.
+/// These constants are retained for env-var fallbacks, serde aliases,
+/// and existing deployment interop.
 pub mod primals {
-    /// Beardog security service identifier
-    /// **DEPRECATED**: Use `capabilities::SECURITY` instead
-    pub const BEARDOG: &str = "beardog";
+    /// Legacy IPC route string for security services (matches `BEARDOG_SOCKET` era paths).
+    pub const LEGACY_SECURITY_LABEL: &str = "beardog";
 
-    /// Songbird coordination service identifier
-    /// **DEPRECATED**: Use `capabilities::COORDINATION` instead
-    pub const SONGBIRD: &str = "songbird";
+    /// Legacy IPC route string for coordination services.
+    pub const LEGACY_COORDINATION_LABEL: &str = "songbird";
 
-    /// Nestgate storage service identifier
-    /// **DEPRECATED**: Use `capabilities::STORAGE` instead
-    pub const NESTGATE: &str = "nestgate";
+    /// Legacy IPC route string for storage services.
+    pub const LEGACY_STORAGE_LABEL: &str = "nestgate";
 
-    /// Squirrel AI service identifier (legacy addressing only)
-    /// **DEPRECATED**: Use `capabilities::ROUTING` or `capabilities::INTELLIGENCE` for discovery
-    pub const SQUIRREL: &str = "squirrel";
+    /// Legacy IPC route string for intelligence / routing services.
+    pub const LEGACY_INTELLIGENCE_LABEL: &str = "squirrel";
+
+    /// Legacy IPC route label for crypto/security services
+    /// **DEPRECATED**: Use [`LEGACY_SECURITY_LABEL`] or `capabilities::CRYPTO` for discovery
+    #[deprecated(note = "use LEGACY_SECURITY_LABEL or capabilities::CRYPTO / SECURITY")]
+    pub const BEARDOG: &str = LEGACY_SECURITY_LABEL;
+
+    /// Legacy IPC route label for coordination / mesh
+    /// **DEPRECATED**: Use [`LEGACY_COORDINATION_LABEL`] or `capabilities::COORDINATION`
+    #[deprecated(note = "use LEGACY_COORDINATION_LABEL or capabilities::COORDINATION")]
+    pub const SONGBIRD: &str = LEGACY_COORDINATION_LABEL;
+
+    /// Legacy IPC route label for storage / artifacts
+    /// **DEPRECATED**: Use [`LEGACY_STORAGE_LABEL`] or `capabilities::STORAGE`
+    #[deprecated(note = "use LEGACY_STORAGE_LABEL or capabilities::STORAGE")]
+    pub const NESTGATE: &str = LEGACY_STORAGE_LABEL;
+
+    /// Legacy IPC route label for routing / agent IPC
+    /// **DEPRECATED**: Use [`LEGACY_INTELLIGENCE_LABEL`] or `capabilities::ROUTING` / `INTELLIGENCE`
+    #[deprecated(note = "use LEGACY_INTELLIGENCE_LABEL or capabilities::ROUTING / INTELLIGENCE")]
+    pub const SQUIRREL: &str = LEGACY_INTELLIGENCE_LABEL;
 
     /// ToadStool compute service identifier
     pub const TOADSTOOL: &str = "toadstool";
@@ -283,6 +298,7 @@ impl CapabilityDomain {
     #[must_use]
     pub fn from_label(s: &str) -> Option<Self> {
         match s.to_ascii_lowercase().as_str() {
+            // legacy aliases — accepted for older manifests and labels
             "crypto" | "security" | "beardog" | "bear-dog" | "pki" => Some(Self::Security),
             "coordination" | "orchestration" | "songbird" | "song-bird" => Some(Self::Coordination),
             "storage" | "nestgate" | "nest-gate" => Some(Self::Storage),
@@ -420,7 +436,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_protocols() {
         assert_eq!(protocols::HTTP, "http");
         assert_eq!(protocols::GRPC, "grpc");
@@ -431,10 +447,11 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_deprecated_primals() {
-        assert_eq!(primals::BEARDOG, "beardog");
-        assert_eq!(primals::SONGBIRD, "songbird");
+    fn test_legacy_route_labels() {
+        assert_eq!(primals::LEGACY_SECURITY_LABEL, "beardog");
+        assert_eq!(primals::LEGACY_COORDINATION_LABEL, "songbird");
+        assert_eq!(primals::LEGACY_STORAGE_LABEL, "nestgate");
+        assert_eq!(primals::LEGACY_INTELLIGENCE_LABEL, "squirrel");
     }
 
     #[test]

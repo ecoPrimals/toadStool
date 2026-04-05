@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Local keyring security provider.
 //!
 //! Wraps `SoftwareHsmProvider` for all cryptographic operations, adding
@@ -6,7 +6,7 @@
 //! is available (D-Bus on Linux, Keychain on macOS) the keyring is the source
 //! of truth for key IDs; otherwise the provider operates in-memory.
 //!
-//! Suitable for single-node deployments or developer machines where BearDog
+//! Suitable for single-node deployments or developer machines where Security
 //! is not running.
 
 use std::sync::Arc;

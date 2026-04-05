@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based agent deployment backend.
 //!
 //! Discovers AI/agent providers by capability, not by name. Uses runtime discovery

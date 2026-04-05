@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit tests for policy condition evaluator
 //! Target: crates/security/policies/src/evaluator.rs (2.58% coverage)
 
@@ -46,7 +46,7 @@ fn create_test_context_native() -> PolicyEvaluationContext {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn create_test_context_with_capabilities() -> PolicyEvaluationContext {
     let mut context = create_test_context_native();
     let mut caps = HashSet::new();

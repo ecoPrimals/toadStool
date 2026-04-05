@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Crypto service client - Capability-based discovery
 //!
 //! **Design Philosophy (Infant Discovery)**:
@@ -6,7 +6,7 @@
 //! - Resilient: Retry logic, circuit breaker patterns
 //! - Observable: Metrics and health checks
 //! - Zero hardcoding: Endpoints discovered at runtime by capability
-//! - Multi-vendor: Works with ANY crypto service (BearDog, Vault, KMS, etc.)
+//! - Multi-vendor: Works with ANY crypto service (Security, Vault, KMS, etc.)
 //!
 //! Submodules: [`CryptoServiceDiscovery`] for capability-based service lookup;
 //! [`CryptoServiceClient`] for RPC calls;

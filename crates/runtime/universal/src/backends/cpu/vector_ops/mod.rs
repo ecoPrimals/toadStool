@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Vector operations for the CPU backend: dot product, elementwise binary, gather, scatter.
 
 mod dot_product;

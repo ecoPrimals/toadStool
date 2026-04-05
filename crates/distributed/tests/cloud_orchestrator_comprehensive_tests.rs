@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::no_effect_underscore_binding,
     clippy::unused_async,
@@ -748,7 +748,7 @@ struct ProviderMetadata {
     name: String,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct TestJob {
     job_id: Uuid,
     name: String,
@@ -765,7 +765,7 @@ impl TestJob {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct ResourceRequirements {
     cpu_cores: usize,
     memory_gb: usize,
@@ -773,13 +773,13 @@ struct ResourceRequirements {
     gpu_count: usize,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct ResourceSize {
     cpu: usize,
     memory: usize,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct CostEntry {
     job_id: Uuid,
     amount: f64,

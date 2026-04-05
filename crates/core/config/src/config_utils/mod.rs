@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration Utilities
 //!
 //! This module provides utility functions to replace hardcoded values with
@@ -28,7 +28,7 @@ impl ConfigUtils {
         since = "0.92.0",
         note = "Use capability-based discovery via infant_discovery instead of primal-name port lookup"
     )]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     pub fn get_primal_default_port(primal_name: &str) -> u16 {
         network::get_primal_default_port(primal_name)
     }
@@ -317,7 +317,6 @@ impl ConfigUtils {
 
     /// Get distributed storage URL from environment or default
     #[must_use]
-    #[allow(deprecated)]
     pub fn get_distributed_storage_url() -> String {
         defaults::get_distributed_storage_url()
     }

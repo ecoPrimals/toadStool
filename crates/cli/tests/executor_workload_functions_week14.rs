@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -55,7 +55,7 @@ memory_mb = 512
     #[derive(Debug, serde::Deserialize)]
     struct WorkloadFile {
         metadata: WorkloadMetadata,
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         execution: toml::Value,
         resources: Option<toml::Value>,
     }
@@ -64,7 +64,7 @@ memory_mb = 512
     struct WorkloadMetadata {
         name: String,
         description: Option<String>,
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         version: Option<String>,
     }
 

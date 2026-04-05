@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Additional comprehensive test coverage for workload types
 //!
 //! This test suite targets workload types defined in crates/core/toadstool/src/workload.rs

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical Path Tests for Intelligent Auto-Configuration
 //!
 //! **Goal**: Increase `intelligent.rs` coverage from 10.8% to 70%

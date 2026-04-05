@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![warn(missing_docs)]
 
 //! # `ToadStool` Distributed Computing Integration
 //!
 //! Simplified distributed computing integration focused on:
-//! - Songbird ecosystem integration for network effects
+//! - Coordination ecosystem integration for network effects
 //! - Standalone execution capabilities
 //! - Local resource management
 //! - Service registration and health reporting
@@ -67,7 +67,7 @@ pub mod types;
 /// Universal adapter and substrate detection.
 pub mod universal;
 
-// Common distributed abstractions (shared across Songbird, Cloud, etc.)
+// Common distributed abstractions (shared across Coordination, Cloud, etc.)
 pub mod common;
 
 // Cloud integration - universal cloud orchestration
@@ -76,12 +76,12 @@ pub mod cloud;
 // Coordination integration - vendor-agnostic service coordination (NEW)
 pub mod coordination_integration;
 
-// Songbird integration - universal signal coordination (DEPRECATED: use coordination_integration)
+// Coordination integration - universal signal coordination (DEPRECATED: use coordination_integration)
 #[deprecated(
     since = "2.0.0",
     note = "Use coordination_integration for vendor-agnostic coordination services"
 )]
-pub mod songbird_integration;
+pub mod coordination;
 
 // Crypto lock system - primal-agnostic cryptographic access control
 pub mod crypto_lock;
@@ -92,17 +92,17 @@ pub mod security_provider;
 // Crypto integration - vendor-agnostic cryptographic services (NEW)
 pub mod crypto_integration;
 
-// BearDog integration - capability-based encryption services (DEPRECATED: use crypto_integration)
+// Security integration - capability-based encryption services (DEPRECATED: use crypto_integration)
 #[deprecated(
     since = "2.0.0",
     note = "Use crypto_integration for vendor-agnostic crypto services"
 )]
-pub mod beardog_integration;
+pub mod security;
 
 // Substrate detection for universal compute platforms
 pub mod substrate_detection;
 
-// Primal capability system - agnostic integration with any primal (Songbird, Squirrel, BearDog, etc.)
+// Primal capability system - agnostic integration with any primal (Coordination, Intelligence, Security, etc.)
 pub mod primal_capabilities;
 
 // Re-export main types and functionality
@@ -113,8 +113,8 @@ pub use compatibility::{
     WindowsCompatibilityLayer,
 };
 pub use core::{
-    DistributedConfig, DistributedCoordinator, ExecutionEnvironment, PlatformCapabilities,
-    SongbirdConfig, StandaloneConfig, StandaloneExecutor, ToadStoolCapabilities,
+    CoordinationConfig, DistributedConfig, DistributedCoordinator, ExecutionEnvironment,
+    PlatformCapabilities, StandaloneConfig, StandaloneExecutor, ToadStoolCapabilities,
 };
 pub use ecosystem::{
     AuthToken, AuthenticationManager, Credentials, RegisteredService, ServiceRegistry,
@@ -171,16 +171,17 @@ pub use crypto_lock::{
     ToadStoolCryptoLock,
 };
 pub use primal_capabilities::{
-    Capability, CapabilityProvider, CapabilityRegistry, PrimalAdapter, SongbirdAdapter,
+    Capability, CapabilityProvider, CapabilityRegistry, CoordinationAdapter, PrimalAdapter,
     WorkloadExecutor, WorkloadRequest, WorkloadResponse,
 };
 pub use security_provider::ExternalTarget;
 
-// Re-export deprecated Songbird types for backward compatibility
-#[allow(deprecated)]
-pub use songbird_integration::{
-    JobCoordinator, NetworkRequirements as SongbirdNetworkRequirements, SongbirdIntegrationConfig,
-    SongbirdJobRequest, SongbirdJobResponse, SongbirdNetworkDiscovery,
+// Re-export deprecated Coordination types for backward compatibility
+#[expect(deprecated)]
+pub use coordination::{
+    CoordinationIntegrationConfig, CoordinationJobRequest, CoordinationJobResponse,
+    CoordinationNetworkDiscovery, JobCoordinator,
+    NetworkRequirements as CoordinationNetworkRequirements,
 };
 pub use substrate_detection::{PlatformType, SubstrateCapabilities, SubstrateDetector};
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `biomeos_integration/auth` module
 //!
 //! This test suite covers:
@@ -184,7 +184,7 @@ fn test_token_propagation_status_serialization() {
 #[test]
 fn test_auth_manager_config_creation() {
     let config = AuthManagerConfig {
-        security_endpoint: "https://beardog.example.com".to_string(),
+        security_endpoint: "https://security.example.com".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
@@ -193,7 +193,7 @@ fn test_auth_manager_config_creation() {
         ..Default::default()
     };
 
-    assert_eq!(config.security_endpoint, "https://beardog.example.com");
+    assert_eq!(config.security_endpoint, "https://security.example.com");
     assert_eq!(config.token_refresh_interval, Duration::from_secs(300));
     assert!(config.signature_validation);
     assert_eq!(config.timestamp_window, Duration::from_secs(60));
@@ -219,7 +219,7 @@ fn test_auth_manager_config_no_validation() {
 #[test]
 fn test_auth_manager_config_clone() {
     let config1 = AuthManagerConfig {
-        security_endpoint: "https://beardog.example.com".to_string(),
+        security_endpoint: "https://security.example.com".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
@@ -239,7 +239,7 @@ fn test_auth_manager_config_clone() {
 #[test]
 fn test_auth_manager_config_serialization() {
     let config = AuthManagerConfig {
-        security_endpoint: "https://beardog.example.com".to_string(),
+        security_endpoint: "https://security.example.com".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),
@@ -629,7 +629,7 @@ fn test_propagation_result_serialization() {
 #[test]
 fn test_authentication_manager_creation() {
     let config = AuthManagerConfig {
-        security_endpoint: "https://beardog.example.com".to_string(),
+        security_endpoint: "https://security.example.com".to_string(),
         token_refresh_interval: Duration::from_secs(300),
         signature_validation: true,
         timestamp_window: Duration::from_secs(60),

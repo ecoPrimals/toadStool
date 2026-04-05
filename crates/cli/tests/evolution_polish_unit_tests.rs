@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -267,7 +267,7 @@ async fn test_errors_dont_mention_hardcoded_clients() {
     // Error should not mention hardcoded clients
     assert!(
         !err_msg.contains("BiomeOSClient")
-            && !err_msg.contains("SongbirdClient")
+            && !err_msg.contains("CoordinationClient")
             && !err_msg.contains("biomeos_client"),
         "Error message should not reference hardcoded clients: {err_msg}"
     );
@@ -290,7 +290,7 @@ fn test_infant_discovery_principle_enforced() {
 
     // These types should NOT exist (hardcoded primal-specific)
     // use toadstool::biomeos_integration::BiomeOSClient; // Should NOT compile
-    // use toadstool::songbird_integration::SongbirdClient; // Should NOT compile
+    // use toadstool::coordination::CoordinationClient; // Should NOT compile
 
     // Architecture principle enforced ✅
 }

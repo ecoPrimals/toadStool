@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cryptographic validation and verification for crypto lock system
 //!
 //! **Deep Debt Evolution**: Now capability-based via Universal Adapter!
@@ -49,7 +49,7 @@ pub struct SecurityPermissionValidator {
 impl SecurityPermissionValidator {
     /// Create validator with runtime-discovered security provider
     ///
-    /// **Deep Debt**: Discovers provider via Universal Adapter (no hardcoded BearDog!)
+    /// **Deep Debt**: Discovers provider via Universal Adapter (no hardcoded Security!)
     pub async fn new() -> ToadStoolResult<Self> {
         // Try to discover security provider via Universal Adapter
         let security_provider = Self::discover_security_provider().await;
@@ -100,7 +100,7 @@ impl SecurityPermissionValidator {
 
     /// Validate permission using discovered security provider
     ///
-    /// **Deep Debt**: Uses SecurityProvider trait (not hardcoded BearDog!)
+    /// **Deep Debt**: Uses SecurityProvider trait (not hardcoded Security!)
     pub async fn validate_permission(
         &self,
         permission: &SecurityProviderPermission,

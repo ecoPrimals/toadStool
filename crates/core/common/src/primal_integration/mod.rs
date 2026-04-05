@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Inter-Primal Integration Discovery
 //!
 //! Runtime discovery of ecoPrimal services by capability rather than by primal name.
@@ -8,7 +8,7 @@
 //! **Primals only have self-knowledge and discover other primals at runtime.**
 //! ToadStool does not hardcode which primal provides which capability. Discovery is
 //! by capability (e.g., `security`, `storage`, `orchestration`), not by primal name
-//! (e.g., beardog, nestgate, songbird). Any service may advertise a capability.
+//! (e.g., legacy product-era route strings). Any service may advertise a capability.
 //!
 //! ## Deep Debt Principles
 //!
@@ -20,43 +20,32 @@
 //!
 //! ## Integration Patterns
 //!
-//! ### bearDog Integration (Encryption)
+//! ### Security service (encryption)
 //!
 //! ```ignore
 //! use toadstool_common::primal_integration::*;
 //!
-//! // Discover bearDog at runtime
-//! let beardog = discover_encryption_service().await?;
-//!
-//! // Use encryption capability
-//! let encrypted = beardog.encrypt(data).await?;
+//! let security = discover_encryption_service().await?;
+//! let encrypted = security.encrypt(data).await?;
 //! ```
 //!
-//! ### nestGate Integration (Compression/Persistence)
+//! ### Storage service (compression / persistence)
 //!
 //! ```ignore
 //! use toadstool_common::primal_integration::*;
 //!
-//! // Discover nestGate at runtime
-//! let nestgate = discover_storage_service().await?;
-//!
-//! // Use compression capability
-//! let compressed = nestgate.compress(data).await?;
-//!
-//! // Use persistence capability
-//! nestgate.store(key, value).await?;
+//! let storage = discover_storage_service().await?;
+//! let compressed = storage.compress(data).await?;
+//! storage.store(key, value).await?;
 //! ```
 //!
-//! ### songBird Integration (Coordination)
+//! ### Coordination service (mesh / discovery)
 //!
 //! ```ignore
 //! use toadstool_common::primal_integration::*;
 //!
-//! // Discover songBird at runtime
-//! let songbird = discover_coordination_service().await?;
-//!
-//! // Register capabilities
-//! songbird.register_capabilities(capabilities).await?;
+//! let coordination = discover_coordination_service().await?;
+//! coordination.register_capabilities(capabilities).await?;
 //! ```
 //!
 //! ## Discovery Methods
@@ -108,7 +97,7 @@ use serde::{Deserialize, Serialize};
 /// Service endpoint discovered at runtime
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalEndpoint {
-    /// Service identifier (e.g., "beardog-1", "nestgate-primary")
+    /// Service identifier (e.g., `"crypto-env"`, `"storage-default"`)
     pub service_id: String,
 
     /// Base URL; discovered via capability resolution at runtime.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::manifest::ServiceSource;
 use super::resources::PrimalResources;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeNetworking {
     /// Enable Songbird integration
-    pub songbird_integration: bool,
+    pub coordination: bool,
     /// Network mode
     pub mode: String,
     /// DNS settings

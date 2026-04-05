@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
@@ -16,10 +16,10 @@
 //! ## Supported Primals
 //!
 //! - **`ToadStool`**: Universal Compute Platform
-//! - **Songbird**: Network Coordination and Service Mesh
-//! - **`BearDog`**: Security and Authentication
-//! - **`NestGate`**: Storage and Data Management
-//! - **Squirrel**: AI Agents and Model Control Protocol
+//! - **Coordination**: Network Coordination and Service Mesh
+//! - **`Security`**: Security and Authentication
+//! - **`Storage`**: Storage and Data Management
+//! - **Intelligence**: AI Agents and Model Control Protocol
 //! - **biomeOS**: Universal Operating System
 
 use async_trait::async_trait;
@@ -41,6 +41,9 @@ pub use manager::{
 pub use messaging::{PrimalMessage, PrimalMessageType, PrimalMetrics};
 pub use primal_types::{GpuAllocation, PrimalConfig, PrimalResources, PrimalType};
 pub use service::{ServiceEndpoint, ServiceRegistration, StartupResult, StartupStatus};
+
+#[cfg(any(test, feature = "test-mocks"))]
+pub mod mock_primal;
 
 /// Universal trait for Primal integration
 ///
@@ -90,94 +93,8 @@ pub trait PrimalIntegration: Send + Sync {
 mod tests {
     use std::collections::HashMap;
 
-    use async_trait::async_trait;
-    use uuid::Uuid;
-
+    use super::mock_primal::MockPrimal;
     use super::*;
-    use toadstool::ToadStoolError;
-
-    struct MockPrimal {
-        name: String,
-        should_fail: bool,
-    }
-
-    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-    #[async_trait]
-    impl PrimalIntegration for MockPrimal {
-        async fn initialize_from_manifest(&self, _config: &PrimalConfig) -> ToadStoolResult<()> {
-            if self.should_fail {
-                Err(ToadStoolError::runtime("Mock failure".to_string()))
-            } else {
-                Ok(())
-            }
-        }
-
-        async fn register_with_orchestrator(
-            &self,
-            _discovery: &dyn toadstool_common::infant_discovery::CapabilityDiscovery,
-        ) -> ToadStoolResult<ServiceRegistration> {
-            // Mock implementation - uses capability discovery to find orchestrator
-            Ok(ServiceRegistration {
-                service_id: Uuid::new_v4(),
-                service_name: self.name.clone(),
-                endpoints: vec![],
-                metadata: HashMap::new(),
-                health_endpoint: None,
-            })
-        }
-
-        async fn validate_dependencies(&self, _manifest: &BiomeManifest) -> ToadStoolResult<()> {
-            Ok(())
-        }
-
-        async fn start_services(&self) -> ToadStoolResult<StartupResult> {
-            Ok(StartupResult {
-                duration: std::time::Duration::from_millis(100),
-                services_started: vec![self.name.clone()],
-                logs: vec![],
-                status: StartupStatus::Success,
-            })
-        }
-
-        async fn shutdown(&self) -> ToadStoolResult<()> {
-            Ok(())
-        }
-
-        async fn get_health_status(&self) -> ToadStoolResult<HealthStatus> {
-            Ok(HealthStatus {
-                healthy: true,
-                checks: vec![],
-                last_check: std::time::SystemTime::now(),
-            })
-        }
-
-        async fn get_capabilities(&self) -> ToadStoolResult<Vec<String>> {
-            Ok(vec!["test".to_string()])
-        }
-
-        async fn update_configuration(&self, _config: &PrimalConfig) -> ToadStoolResult<()> {
-            Ok(())
-        }
-
-        async fn get_metrics(&self) -> ToadStoolResult<PrimalMetrics> {
-            Ok(PrimalMetrics {
-                cpu_usage: 0.0,
-                memory_usage: 0.0,
-                storage_usage: 0.0,
-                network_bytes_sent: 0,
-                network_bytes_received: 0,
-                custom_metrics: HashMap::new(),
-                timestamp: std::time::SystemTime::now(),
-            })
-        }
-
-        async fn handle_primal_message(
-            &self,
-            message: &PrimalMessage,
-        ) -> ToadStoolResult<PrimalMessage> {
-            Ok(message.clone())
-        }
-    }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_primal_integration_manager() {

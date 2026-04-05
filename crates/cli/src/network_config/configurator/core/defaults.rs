@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Default [`SongbirdNetworkConfig`] construction and DNS resolver helpers.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Default [`OrchestrationNetworkConfig`] construction and DNS resolver helpers.
 
 use super::super::*;
 use std::collections::HashMap;
@@ -64,8 +64,8 @@ pub(super) fn system_dns_resolvers() -> Vec<String> {
 }
 
 /// Full default network configuration for the orchestration network stack.
-pub(super) fn songbird_default_network_config() -> SongbirdNetworkConfig {
-    SongbirdNetworkConfig {
+pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConfig {
+    OrchestrationNetworkConfig {
         service_mesh: ServiceMeshConfig {
             enabled: true,
             mesh_type: "native".to_string(),
@@ -189,7 +189,7 @@ pub(super) fn songbird_default_network_config() -> SongbirdNetworkConfig {
                     validate_usage: true,
                     trusted_cas: vec![],
                 },
-                beardog_integration: BearDogIntegrationConfig {
+                security: SecurityServiceIntegrationConfig {
                     enabled: true,
                     endpoint: std::env::var("SECURITY_ENDPOINT")
                         .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))

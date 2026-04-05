@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Comprehensive tests for Songbird integration types
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Comprehensive tests for Coordination integration types
 //!
 //! This test suite covers:
 //! - `JobComplexity` enum
@@ -11,14 +11,14 @@
 //! - `CoordinationStrategy` enum
 //! - `ConnectionHealth` enum
 //! - `NodeType` enum
-//! - `SongbirdProtocol` enum
+//! - `CoordinationTransport` enum
 //! - `AuthType` enum
 //! - `SplittingStrategyType` enum
 //! - `DistributionAlgorithm` enum
 
 #![allow(deprecated)]
 
-use toadstool_distributed::songbird_integration::*;
+use toadstool_distributed::coordination::*;
 
 // ============================================================================
 // JobComplexity Tests
@@ -155,12 +155,12 @@ fn test_distribution_strategy_hybrid() {
 }
 
 #[test]
-fn test_distribution_strategy_songbird_ecosystem() {
-    let strategy = JobDistributionStrategy::SongbirdEcosystem;
+fn test_distribution_strategy_coordination_ecosystem() {
+    let strategy = JobDistributionStrategy::CoordinationEcosystem;
 
     assert!(matches!(
         strategy,
-        JobDistributionStrategy::SongbirdEcosystem
+        JobDistributionStrategy::CoordinationEcosystem
     ));
 }
 
@@ -326,24 +326,24 @@ fn test_node_type_toadstool() {
 }
 
 #[test]
-fn test_node_type_nestgate() {
-    let node = NodeType::NestGate;
+fn test_node_type_storage() {
+    let node = NodeType::Storage;
 
-    assert!(matches!(node, NodeType::NestGate));
+    assert!(matches!(node, NodeType::Storage));
 }
 
 #[test]
-fn test_node_type_beardog() {
-    let node = NodeType::BearDog;
+fn test_node_type_security() {
+    let node = NodeType::Security;
 
-    assert!(matches!(node, NodeType::BearDog));
+    assert!(matches!(node, NodeType::Security));
 }
 
 #[test]
-fn test_node_type_songbird() {
-    let node = NodeType::Songbird;
+fn test_node_type_coordination() {
+    let node = NodeType::Coordination;
 
-    assert!(matches!(node, NodeType::Songbird));
+    assert!(matches!(node, NodeType::Coordination));
 }
 
 #[test]
@@ -359,30 +359,30 @@ fn test_node_type_custom() {
 }
 
 // ============================================================================
-// SongbirdProtocol Tests
+// CoordinationProtocol Tests
 // ============================================================================
 
 #[test]
-fn test_songbird_protocol_http() {
-    let protocol = SongbirdProtocol::HTTP;
+fn test_coordination_protocol_http() {
+    let protocol = CoordinationTransport::HTTP;
 
-    assert!(matches!(protocol, SongbirdProtocol::HTTP));
+    assert!(matches!(protocol, CoordinationTransport::HTTP));
 }
 
 #[test]
-fn test_songbird_protocol_grpc() {
-    let protocol = SongbirdProtocol::GRPC;
+fn test_coordination_protocol_grpc() {
+    let protocol = CoordinationTransport::GRPC;
 
-    assert!(matches!(protocol, SongbirdProtocol::GRPC));
+    assert!(matches!(protocol, CoordinationTransport::GRPC));
 }
 
-// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
+// WebSocket removed — use JSON-RPC 2.0 (biomeOS/coordination)
 
 #[test]
-fn test_songbird_protocol_message_queue() {
-    let protocol = SongbirdProtocol::MessageQueue;
+fn test_coordination_protocol_message_queue() {
+    let protocol = CoordinationTransport::MessageQueue;
 
-    assert!(matches!(protocol, SongbirdProtocol::MessageQueue));
+    assert!(matches!(protocol, CoordinationTransport::MessageQueue));
 }
 
 // ============================================================================
@@ -519,8 +519,8 @@ fn test_distribution_algorithm_consistent_hashing() {
 // ============================================================================
 
 #[test]
-fn test_songbird_integration_coverage_summary() {
-    println!("=== Songbird Integration Test Coverage ===");
+fn test_coordination_coverage_summary() {
+    println!("=== Coordination Integration Test Coverage ===");
     println!("JobComplexity Tests:           4 tests");
     println!("ComplexityLevel Tests:         4 tests");
     println!("IntensityLevel Tests:          4 tests");
@@ -530,7 +530,7 @@ fn test_songbird_integration_coverage_summary() {
     println!("CoordinationStrategy Tests:    4 tests");
     println!("ConnectionHealth Tests:        4 tests");
     println!("NodeType Tests:                5 tests");
-    println!("SongbirdProtocol Tests:        4 tests");
+    println!("CoordinationProtocol Tests:        4 tests");
     println!("AuthType Tests:                5 tests");
     println!("SplittingStrategyType Tests:   5 tests");
     println!("DistributionAlgorithm Tests:   6 tests");

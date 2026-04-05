@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security Provider Factory
 //!
 //! Creates security provider instances from Universal Adapter capability handles.
@@ -6,7 +6,7 @@
 //!
 //! ## Supported Transports
 //!
-//! - **InProcess**: Direct provider instantiation (BearDog, etc.) - ✅ Working
+//! - **InProcess**: Direct provider instantiation (Security, etc.) - ✅ Working
 //! - **UnixSocket**: IPC via Unix domain sockets - ✅ Implemented
 //! - **TCP**: TCP socket connection - ✅ Implemented (JSON-RPC over TCP, cross-machine)
 //! - **HTTP**: REST/JSON-RPC over HTTP - Not supported (not ecoBin-compliant; use Unix/TCP)
@@ -151,17 +151,17 @@ impl SecurityProviderFactory {
     async fn create_in_process_provider() -> ToadStoolResult<Arc<dyn SecurityProvider>> {
         // For in-process, we can try to instantiate providers directly
 
-        // Try BearDog implementation first
-        use crate::security_provider::beardog_impl::BearDogSecurityProvider;
-        match BearDogSecurityProvider::new().await {
+        // Try Security implementation first
+        use crate::security_provider::security_impl::DistributedSecurityProvider;
+        match DistributedSecurityProvider::new().await {
             Ok(provider) => return Ok(Arc::new(provider) as Arc<dyn SecurityProvider>),
             Err(_) => {
-                // BearDog not available, try other providers
+                // Security not available, try other providers
             }
         }
 
         // LocalKeyringProvider and SoftwareHsmProvider are dev/CI-only fallbacks.
-        // Production deployments MUST use BearDog (Node Atomic pattern).
+        // Production deployments MUST use Security (Node Atomic pattern).
         #[cfg(feature = "dev-crypto")]
         {
             use crate::security_provider::local_keyring::{KeyringBackend, LocalKeyringProvider};
@@ -179,8 +179,8 @@ impl SecurityProviderFactory {
 
         #[cfg(not(feature = "dev-crypto"))]
         Err(ToadStoolError::not_found(
-            "No security provider available. BearDog not found and local fallback \
-             providers are disabled in production builds. Ensure BearDog is running \
+            "No security provider available. Security not found and local fallback \
+             providers are disabled in production builds. Ensure Security is running \
              or enable the `dev-crypto` feature for development."
                 .to_string(),
         ))
@@ -201,8 +201,8 @@ impl SecurityProviderFactory {
         )))
     }
 
-    /// Create a mock provider for testing
-    #[cfg(test)]
+    /// Create a mock provider for testing (not available in default production builds)
+    #[cfg(any(test, feature = "test-mocks"))]
     pub fn create_mock() -> Arc<dyn SecurityProvider> {
         Arc::new(super::provider::MockSecurityProvider::new())
     }
@@ -393,7 +393,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_in_process_provider_without_beardog() {
+    async fn test_in_process_provider_without_security() {
         let handle = CapabilityHandle::new(
             CapabilityInfo {
                 provider_id: "test".to_string(),
@@ -412,7 +412,7 @@ mod tests {
         );
 
         let result = SecurityProviderFactory::create_from_handle(&handle).await;
-        // BearDogSecurityProvider::new() succeeds even without BearDog (degraded mode).
+        // In-process security provider creation succeeds even without a remote security backend (degraded mode).
         // With dev-crypto, SoftwareHsmProvider/LocalKeyringProvider also act as fallback.
         assert!(result.is_ok());
         let provider = result.expect("in-process provider creation should succeed");

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
 use crate::crypto_lock::permissions::{
@@ -204,7 +204,7 @@ fn test_crypto_algorithm_serde() {
         CryptoAlgorithm::Ed25519,
         CryptoAlgorithm::EcdsaP256,
         CryptoAlgorithm::Rsa4096,
-        CryptoAlgorithm::BearDogCustom,
+        CryptoAlgorithm::SecurityLayerCustom,
     ] {
         let json = serde_json::to_value(&alg).unwrap();
         let _: CryptoAlgorithm = serde_json::from_value(json).unwrap();

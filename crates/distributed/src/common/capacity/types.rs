@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Capacity Management Types
 //!
-//! Generic capacity tracking abstractions used across Songbird, Cloud, and other distributed systems.
+//! Generic capacity tracking abstractions used across Coordination, Cloud, and other distributed systems.
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

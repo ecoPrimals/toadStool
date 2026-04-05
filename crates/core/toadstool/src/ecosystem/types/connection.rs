@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service status, communication channels, and multi-protocol clients.
 
 #[cfg(feature = "networking")]

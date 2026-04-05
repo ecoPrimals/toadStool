@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coordination service client - RPC operations over unix socket
 //!
 //! **Design**: Works with ANY coordination provider via unix sockets (pure Rust!).
@@ -38,7 +38,7 @@ impl CoordinationClient {
             })
         })?;
 
-        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "songbird")
+        // CAPABILITY-BASED: Discover ANY coordination service (not hardcoded "coordination")
         let socket_path = toadstool_common::primal_sockets::discover_coordination_socket()
             .await
             .unwrap_or_else(|_| {

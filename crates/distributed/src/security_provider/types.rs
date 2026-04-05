@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common types for security providers
 
 use serde::{Deserialize, Serialize};
@@ -274,7 +274,7 @@ pub struct ProviderMetadata {
     /// Provider ID (NOT primal name! UUID or similar)
     pub provider_id: String,
 
-    /// Provider type (beardog, hsm, kms, local-keyring, etc.)
+    /// Provider type (security, hsm, kms, local-keyring, etc.)
     pub provider_type: String,
 
     /// Provider version

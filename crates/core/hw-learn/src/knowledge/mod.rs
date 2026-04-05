@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cross-vendor knowledge store for GPU init recipes.
 //!
 //! Stores validated recipes indexed by architecture, making them
@@ -200,7 +200,7 @@ const fn vendor_dirname(vendor: Vendor) -> &'static str {
     }
 }
 
-#[allow(
+#[expect(
     clippy::cast_possible_truncation,
     reason = "hash truncated to 32 bits for short recipe ID"
 )]

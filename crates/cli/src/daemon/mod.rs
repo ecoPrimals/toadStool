@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! ToadStool Daemon Mode
 //!
 //! **Like the fungus: Same organism, different forms**

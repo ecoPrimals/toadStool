@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Agent backend traits and implementations for BiomeOS/Squirrel integration
 //!
 //! This module defines the trait interface for agent deployment backends and
 //! provides production and test implementations using proper dependency injection.
 
 mod inmemory;
-mod squirrel;
+mod intelligence;
 mod types;
 
 #[cfg(test)]
@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use super::types::{AgentConfig, ModelConfig};
 use crate::ToadStoolResult;
 pub use inmemory::InMemoryAgentBackend;
-pub use squirrel::SquirrelBackend;
+pub use intelligence::IntelligenceBackend;
 pub use types::{
     AgentInfo, AgentResourceUsage, AgentStatus, ModelInfo, ModelPerformanceMetrics,
     ModelResourceRequirements, ModelStatus,

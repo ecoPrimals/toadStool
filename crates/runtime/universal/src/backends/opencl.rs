@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! OpenCL compute unit implementation (capability-based fallback)
 //!
 //! This module is compiled only when the `opencl` feature is enabled.
@@ -59,7 +59,7 @@ pub struct OpenClComputeUnit {
     _device: ocl::Device,
 }
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 impl OpenClComputeUnit {
     /// Create from an OpenCL device (DEPRECATED)
     ///
@@ -89,7 +89,7 @@ impl OpenClComputeUnit {
     }
 }
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 #[async_trait::async_trait]
 impl ComputeUnit for OpenClComputeUnit {
     fn capabilities(&self) -> &Capabilities {

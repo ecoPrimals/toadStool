@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage adapter - capability-based storage operations
 //!
-//! This adapter replaces the hardcoded NestGate integration with a generic
-//! storage adapter that works with ANY service providing storage capabilities.
+//! This adapter replaces primal-specific storage integration with a generic
+//! adapter that works with any service providing storage capabilities.
 //!
-//! # Migration from NestGate
+//! # Migration
 //! ```rust,ignore
-//! // ❌ OLD: Hardcoded NestGate (services/nestgate.rs)
-//! use crate::ecosystem::services::nestgate;
-//! let mount = nestgate::connect_storage(&addr, &mount_point, dataset).await?;
+//! // ❌ OLD: Hardcoded service module
+//! use crate::ecosystem::services::legacy_storage;
+//! let mount = legacy_storage::connect_storage(&addr, &mount_point, dataset).await?;
 //!
 //! // ✅ NEW: Capability-based (adapters/storage.rs)
 //! use crate::ecosystem::adapters::StorageAdapter;
@@ -28,7 +28,7 @@ use crate::ecosystem::capabilities::StandardCapability;
 /// Storage adapter - provides storage operations via capability discovery
 ///
 /// This adapter discovers and invokes storage services without knowing their identity.
-/// Services could be NestGate, Ceph, GlusterFS, S3, or custom implementations.
+/// The backing implementation may be Ceph, GlusterFS, S3, or a custom provider.
 pub struct StorageAdapter {
     /// Universal service adapter for invoking capabilities
     universal: Arc<UniversalServiceAdapter>,

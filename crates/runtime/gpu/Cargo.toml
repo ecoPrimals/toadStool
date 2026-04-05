@@ -67,7 +67,8 @@ spirv = { version = "0.3", optional = true }
 cudarc = { version = "0.19", optional = true, features = ["cuda-version-from-build-system"] }
 
 # JIT compilation and optimization - Only for jit feature
-cranelift-jit = { version = "0.100", optional = true }
+# Aligned to cranelift 0.105 (same as wgpu transitive dep) to avoid dual-version compile overhead
+cranelift-jit = { version = "0.105", optional = true }
 wasmtime = { version = "18", optional = true }
 
 [features]

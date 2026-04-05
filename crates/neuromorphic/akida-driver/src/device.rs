@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Akida device handle and operations
 //!
 //! # Evolution (Feb 12, 2026)
@@ -108,7 +108,7 @@ impl DeviceHandle {
         }
 
         // SAFETY: OFlags::NONBLOCK.bits() is always a valid i32 value (flag bits are small positive values)
-        #[allow(clippy::cast_possible_wrap)]
+        #[expect(clippy::cast_possible_wrap)]
         let nonblock_flag = OFlags::NONBLOCK.bits() as i32;
 
         let file = OpenOptions::new()

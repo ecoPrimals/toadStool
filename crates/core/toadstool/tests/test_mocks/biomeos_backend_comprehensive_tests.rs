@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for BiomeOS Backend Implementations.
 //!
 //! Covers legacy sync constructors for unit testing without real services.
@@ -43,7 +43,7 @@ fn test_beardog_backend_creation_various_endpoints() {
     let endpoints = vec![
         "http://localhost:8081",
         "http://beardog:8081",
-        "https://beardog.example.com",
+        "https://security.example.com",
         "http://192.168.1.100:8081",
     ];
 
@@ -245,40 +245,40 @@ async fn test_inmemory_auth_backend_refresh_token_fields() {
 }
 
 // ============================================================================
-// NestGateBackend Tests - Storage Backend (12 tests)
+// StorageBackend Tests - Storage Backend (12 tests)
 // ============================================================================
 
 #[test]
-fn test_nestgate_backend_creation() {
-    let _backend = NestGateBackend::new("http://nestgate:8082", "standard", true, 3);
+fn test_storage_backend_impl_creation() {
+    let _backend = SocketStorageBackend::new("http://nestgate:8082", "standard", true, 3);
     // Backend should be constructed successfully
 }
 
 #[test]
-fn test_nestgate_backend_creation_with_string() {
+fn test_storage_backend_impl_creation_with_string() {
     let endpoint = String::from("http://nestgate:8082");
     let storage_tier = String::from("premium");
-    let _backend = NestGateBackend::new(endpoint, storage_tier, false, 1);
+    let _backend = SocketStorageBackend::new(endpoint, storage_tier, false, 1);
     // Backend should accept String as parameters
 }
 
 #[test]
-fn test_nestgate_backend_creation_with_str() {
-    let _backend = NestGateBackend::new("http://nestgate:8082", "hot", true, 2);
+fn test_storage_backend_impl_creation_with_str() {
+    let _backend = SocketStorageBackend::new("http://nestgate:8082", "hot", true, 2);
     // Backend should accept &str as parameters
 }
 
 #[test]
-fn test_nestgate_backend_creation_various_configs() {
+fn test_storage_backend_impl_creation_various_configs() {
     let configs = vec![
         ("http://localhost:8082", "standard", false, 1),
         ("http://nestgate:8082", "premium", true, 3),
-        ("https://nestgate.example.com", "hot", true, 5),
+        ("https://storage.example.com", "hot", true, 5),
         ("http://192.168.1.100:8082", "cold", false, 1),
     ];
 
     for (endpoint, tier, replication, factor) in configs {
-        let _backend = NestGateBackend::new(endpoint, tier, replication, factor);
+        let _backend = SocketStorageBackend::new(endpoint, tier, replication, factor);
         // Each config should create a valid backend
     }
 }
@@ -340,26 +340,26 @@ fn test_volume_status_equality() {
 }
 
 // ============================================================================
-// SquirrelBackend Tests - Agent Backend (15 tests)
+// IntelligenceBackend Tests - Agent Backend (15 tests)
 // ============================================================================
 
 #[test]
-fn test_squirrel_backend_creation() {
-    let _backend = SquirrelBackend::new("http://squirrel:7070", "local", "container", true);
+fn test_intelligence_backend_creation() {
+    let _backend = IntelligenceBackend::new("http://squirrel:7070", "local", "container", true);
     // Backend should be constructed successfully
 }
 
 #[test]
-fn test_squirrel_backend_creation_with_strings() {
+fn test_intelligence_backend_creation_with_strings() {
     let endpoint = String::from("http://squirrel:7070");
     let registry = String::from("huggingface");
     let runtime = String::from("process");
-    let _backend = SquirrelBackend::new(endpoint, registry, runtime, false);
+    let _backend = IntelligenceBackend::new(endpoint, registry, runtime, false);
     // Backend should accept String types
 }
 
 #[test]
-fn test_squirrel_backend_creation_various_configs() {
+fn test_intelligence_backend_creation_various_configs() {
     let configs = vec![
         ("http://localhost:7070", "local", "container", true),
         ("http://squirrel:7070", "huggingface", "process", false),
@@ -367,7 +367,7 @@ fn test_squirrel_backend_creation_various_configs() {
     ];
 
     for (endpoint, registry, runtime, mcp) in configs {
-        let _backend = SquirrelBackend::new(endpoint, registry, runtime, mcp);
+        let _backend = IntelligenceBackend::new(endpoint, registry, runtime, mcp);
         // Each config should create a valid backend
     }
 }

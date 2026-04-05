@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Input device management
 //!
 //! Safe wrappers around evdev input device operations (100% Pure Rust!).
@@ -79,7 +79,7 @@ pub enum DeviceCapability {
 /// println!("Opened: {}", device.name());
 /// # Ok::<(), toadstool_display::DisplayError>(())
 /// ```
-#[allow(clippy::struct_field_names)] // device_type and evdev_device are standard evdev terminology
+#[expect(clippy::struct_field_names)] // device_type and evdev_device are standard evdev terminology
 pub struct Device {
     path: PathBuf,
     name: String,

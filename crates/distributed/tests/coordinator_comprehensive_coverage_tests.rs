@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for distributed coordinator
 //!
 //! This test suite expands coverage from 30% to 60%+ by testing:
@@ -15,7 +15,7 @@ use toadstool::{
     ExecutionInput, ExecutionRequest, SecurityContext, UniversalResourceRequirements, WorkloadSpec,
 };
 use toadstool_distributed::core::{
-    DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
+    CoordinationConfig, DistributedConfig, DistributedCoordinator, StandaloneConfig,
 };
 use uuid::Uuid;
 
@@ -34,7 +34,7 @@ async fn test_coordinator_initialization_default() {
 #[tokio::test]
 async fn test_coordinator_standalone_mode() {
     let config = DistributedConfig {
-        songbird_integration: None, // Force standalone
+        coordination: None, // Force standalone
         ..Default::default()
     };
 
@@ -83,7 +83,7 @@ async fn test_concurrent_coordinator_creation() {
 #[tokio::test]
 async fn test_coordination_service_unavailable() {
     let config = DistributedConfig {
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://nonexistent.local:9999".to_string(),
             auth_token: None,
             health_reporting_interval_secs: 60,
@@ -218,7 +218,7 @@ async fn test_configuration_combinations() {
                 enable_job_queue: false,
                 max_queue_size: 10,
             },
-            songbird_integration: None,
+            coordination: None,
         },
         // Maximal config
         DistributedConfig {
@@ -229,7 +229,7 @@ async fn test_configuration_combinations() {
                 enable_job_queue: true,
                 max_queue_size: 10000,
             },
-            songbird_integration: Some(SongbirdConfig {
+            coordination: Some(CoordinationConfig {
                 endpoint: "http://localhost:8080".to_string(),
                 auth_token: Some("test-token".to_string()),
                 health_reporting_interval_secs: 30,
@@ -254,7 +254,7 @@ async fn test_at_capacity_rejection() {
             enable_job_queue: false,
             max_queue_size: 10,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -324,7 +324,7 @@ async fn test_job_queue_enabled() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -347,7 +347,7 @@ async fn test_job_queue_disabled() {
             enable_job_queue: false,
             max_queue_size: 0,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -407,9 +407,9 @@ async fn test_execution_with_environment() {
     assert!(result.is_ok(), "Execution with env vars should succeed");
 }
 
-/// Test songbird configuration with auth token
+/// Test coordination configuration with auth token
 #[tokio::test]
-async fn test_songbird_with_auth() {
+async fn test_coordination_with_auth() {
     let config = DistributedConfig {
         instance_id: Uuid::new_v4().to_string(),
         standalone: StandaloneConfig {
@@ -418,7 +418,7 @@ async fn test_songbird_with_auth() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("secret-token".to_string()),
             health_reporting_interval_secs: 30,
@@ -430,9 +430,9 @@ async fn test_songbird_with_auth() {
     assert!(result.is_ok());
 }
 
-/// Test songbird configuration without auth token
+/// Test coordination configuration without auth token
 #[tokio::test]
-async fn test_songbird_without_auth() {
+async fn test_coordination_without_auth() {
     let config = DistributedConfig {
         instance_id: Uuid::new_v4().to_string(),
         standalone: StandaloneConfig {
@@ -441,7 +441,7 @@ async fn test_songbird_without_auth() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: None,
             health_reporting_interval_secs: 60,
@@ -539,7 +539,7 @@ fn test_default_implementations() {
     assert!(!config.instance_id.is_empty());
     assert_eq!(config.standalone.max_concurrent_executions, 10);
     assert_eq!(config.standalone.default_timeout_secs, 3600);
-    assert!(config.songbird_integration.is_none());
+    assert!(config.coordination.is_none());
 
     let request = ExecutionRequest::default();
     assert_eq!(request.timeout, Some(Duration::from_secs(300)));

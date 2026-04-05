@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration coverage for [`toadstool_config::config_utils::ConfigUtils`]: path helpers,
 //! network getters, environment flags, default-backed accessors, env edge cases, serde
 //! stability for env config structs, and [`EnvConfigLoader`]’s [`Default`] implementation.
@@ -31,7 +31,7 @@ fn env_config_loader_default_matches_new() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn get_primal_default_port_unknown_returns_api_port() {
     assert_eq!(
         ConfigUtils::get_primal_default_port("XYZZY"),
@@ -40,7 +40,7 @@ fn get_primal_default_port_unknown_returns_api_port() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn primal_ports_resolve_when_legacy_env_unset() {
     temp_env::with_vars_unset(
         [

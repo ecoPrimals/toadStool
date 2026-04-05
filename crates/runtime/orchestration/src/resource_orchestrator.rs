@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Multi-tenant resource orchestrator.
 //!
 //! Maps `{tenant, priority, resource_request}` → `{device, time_slot}`.

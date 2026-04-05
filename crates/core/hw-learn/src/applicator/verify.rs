@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Post-apply verification — confirm init recipe succeeded.
 //!
 //! `verify_register` uses the `RegisterAccess` trait so callers can

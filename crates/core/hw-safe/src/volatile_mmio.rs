@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(unsafe_code)] // Volatile reads/writes require unsafe — this is the containment zone
 
 //! Bounds-checked volatile MMIO register access.
@@ -74,10 +74,6 @@ impl VolatileMmio<'_> {
     ///
     /// Single unsafe primitive for all register-width reads. The public
     /// `read_u32`/`read_u64` methods delegate here.
-    #[allow(
-        clippy::cast_ptr_alignment,
-        reason = "MMIO registers are naturally aligned to their width"
-    )]
     fn read_reg<T: Copy>(&self, offset: usize) -> Result<T, MmioError> {
         let width = std::mem::size_of::<T>();
         if offset + width > self.size {
@@ -100,10 +96,6 @@ impl VolatileMmio<'_> {
     ///
     /// Single unsafe primitive for all register-width writes. The public
     /// `write_u32`/`write_u64` methods delegate here.
-    #[allow(
-        clippy::cast_ptr_alignment,
-        reason = "MMIO registers are naturally aligned to their width"
-    )]
     fn write_reg<T: Copy>(&self, offset: usize, value: T) -> Result<(), MmioError> {
         let width = std::mem::size_of::<T>();
         if offset + width > self.size {

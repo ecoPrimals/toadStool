@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Transport implementations for protocol communication
 
 use std::collections::HashMap;
@@ -24,10 +24,10 @@ pub struct Connection {
 }
 
 /// Transport implementations enum.
-/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
+/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/coordination)
 #[derive(Debug, Clone)]
 pub enum Transport {
-    /// HTTP transport (deprecated; delegated to Songbird)
+    /// HTTP transport (deprecated; delegated to Coordination)
     Http(HttpTransport),
     /// tRPC over Unix sockets
     TRpc(TRpcTransport),
@@ -63,10 +63,10 @@ impl Transport {
     }
 }
 
-/// HTTP transport — delegates to the Songbird coordination primal.
+/// HTTP transport — delegates to the coordination service primal.
 ///
 /// ToadStool does not perform outbound HTTP itself. When a message needs
-/// HTTP transport, we forward it to Songbird's `comms.http_forward` method
+/// HTTP transport, we forward it to Coordination's `comms.http_forward` method
 /// over the coordination Unix socket. This keeps all network I/O behind
 /// the network primal's sovereignty boundary.
 #[derive(Debug, Clone)]
@@ -84,9 +84,9 @@ impl HttpTransport {
         Self {}
     }
 
-    /// Forward message to Songbird for HTTP delivery.
+    /// Forward message to Coordination for HTTP delivery.
     ///
-    /// Returns `HttpTransportNotAvailable` when Songbird's coordination
+    /// Returns `HttpTransportNotAvailable` when Coordination's coordination
     /// socket cannot be discovered at runtime.
     pub async fn send_message(
         &self,

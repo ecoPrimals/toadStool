@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Background service coverage tests
 
 #![allow(
@@ -216,7 +216,7 @@ fn test_task_error_handling() {
 #[test]
 fn test_background_service_configuration() {
     // Test service configuration
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     struct ServiceConfig {
         resource_monitoring_enabled: bool,
         health_monitoring_enabled: bool,
@@ -264,7 +264,7 @@ fn test_duration_conversions() {
 #[test]
 fn test_monitoring_state_tracking() {
     // Test monitoring state
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     struct MonitoringState {
         last_check: Option<std::time::Instant>,
         check_count: u64,
@@ -285,7 +285,7 @@ fn test_monitoring_state_tracking() {
 #[test]
 fn test_resource_availability_checks() {
     // Test resource availability
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     struct ResourceAvailability {
         cpu_available: f64,
         memory_available: u64,

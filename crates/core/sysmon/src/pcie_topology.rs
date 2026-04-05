@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `PCIe` switch topology discovery via sysfs.
 //!
 //! Walks the PCI bus hierarchy to discover shared switches, parent bridges,

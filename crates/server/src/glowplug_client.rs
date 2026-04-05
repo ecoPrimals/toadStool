@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! glowPlug / ember device management service.
 //!
 //! toadStool-native device lifecycle management. This replaces the

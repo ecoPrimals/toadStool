@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::expect_used,
     clippy::float_cmp,
+    clippy::future_not_send,
     clippy::unreadable_literal,
     clippy::no_effect_underscore_binding
 )]
@@ -16,7 +17,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 use toadstool_server::capabilities::*;
 
-fn with_temp_discovery<F, Fut, R>(f: F) -> R
+async fn with_temp_discovery<F, Fut, R>(f: F) -> R
 where
     F: FnOnce(PathBuf) -> Fut,
     Fut: std::future::Future<Output = R>,
@@ -26,10 +27,11 @@ where
     let discovery_base = base.join("ecoPrimals").join("discovery");
     std::fs::create_dir_all(&discovery_base).expect("create discovery dir");
     let base_str = base.to_string_lossy().to_string();
-    temp_env::with_var("XDG_RUNTIME_DIR", Some(base_str.as_str()), || {
-        let rt = tokio::runtime::Runtime::new().expect("runtime");
-        rt.block_on(f(discovery_base))
+    temp_env::async_with_vars([("XDG_RUNTIME_DIR", Some(base_str.as_str()))], async move {
+        let _keep = temp;
+        f(discovery_base).await
     })
+    .await
 }
 
 fn sample_resources() -> SystemResources {
@@ -370,8 +372,8 @@ async fn find_all_peers_in_errors_when_directory_unreadable() {
     assert!(err.contains("Failed to read discovery directory"));
 }
 
-#[test]
-fn announce_writes_canonical_and_compat_json_files() {
+#[tokio::test]
+async fn announce_writes_canonical_and_compat_json_files() {
     with_temp_discovery(|discovery_base| async move {
         let caps = sample_peer("announce-dual", vec!["compute".to_string()]);
         caps.announce().await.expect("announce");
@@ -385,11 +387,12 @@ fn announce_writes_canonical_and_compat_json_files() {
             .await
             .expect("read");
         assert_eq!(a, b);
-    });
+    })
+    .await;
 }
 
-#[test]
-fn cleanup_removes_both_announcement_files() {
+#[tokio::test]
+async fn cleanup_removes_both_announcement_files() {
     with_temp_discovery(|discovery_base| async move {
         let caps = sample_peer("clean-me", vec!["compute".to_string()]);
         caps.announce().await.expect("announce");
@@ -398,19 +401,21 @@ fn cleanup_removes_both_announcement_files() {
         caps.cleanup().await.expect("cleanup");
         assert!(!discovery_base.join("clean-me.json").exists());
         assert!(!eco_root.join("clean-me.json").exists());
-    });
+    })
+    .await;
 }
 
-#[test]
-fn cleanup_succeeds_when_announcement_files_absent() {
+#[tokio::test]
+async fn cleanup_succeeds_when_announcement_files_absent() {
     with_temp_discovery(|_| async move {
         let caps = sample_peer("never-announced", vec!["compute".to_string()]);
         caps.cleanup().await.expect("cleanup");
-    });
+    })
+    .await;
 }
 
-#[test]
-fn find_peer_with_uses_global_discovery_directory_under_xdg() {
+#[tokio::test]
+async fn find_peer_with_uses_global_discovery_directory_under_xdg() {
     with_temp_discovery(|discovery_base| async move {
         let peer = sample_peer("global-find", vec!["science.gpu.dispatch".to_string()]);
         tokio::fs::write(
@@ -423,11 +428,12 @@ fn find_peer_with_uses_global_discovery_directory_under_xdg() {
             .await
             .expect("peer");
         assert_eq!(found.primal_id, "global-find");
-    });
+    })
+    .await;
 }
 
-#[test]
-fn find_all_peers_global_collects_from_xdg_discovery() {
+#[tokio::test]
+async fn find_all_peers_global_collects_from_xdg_discovery() {
     with_temp_discovery(|discovery_base| async move {
         let p = sample_peer("all-global", vec!["compute".to_string()]);
         tokio::fs::write(
@@ -438,22 +444,24 @@ fn find_all_peers_global_collects_from_xdg_discovery() {
         .expect("write");
         let peers = PrimalCapabilities::find_all_peers().await.expect("peers");
         assert!(peers.iter().any(|x| x.primal_id == "all-global"));
-    });
+    })
+    .await;
 }
 
-#[test]
-fn find_peer_with_errors_when_xdg_discovery_missing() {
+#[tokio::test]
+async fn find_peer_with_errors_when_xdg_discovery_missing() {
     let temp = TempDir::new().expect("temp");
     let base_str = temp.path().to_string_lossy().to_string();
-    temp_env::with_var("XDG_RUNTIME_DIR", Some(base_str.as_str()), || {
-        let rt = tokio::runtime::Runtime::new().expect("runtime");
-        let err = rt
-            .block_on(PrimalCapabilities::find_peer_with("compute"))
+    temp_env::async_with_vars([("XDG_RUNTIME_DIR", Some(base_str.as_str()))], async {
+        let _keep = temp;
+        let err = PrimalCapabilities::find_peer_with("compute")
+            .await
             .unwrap_err();
         assert!(
             err.contains("Failed to read discovery directory")
                 || err.contains("No such file")
                 || err.contains("not found")
         );
-    });
+    })
+    .await;
 }

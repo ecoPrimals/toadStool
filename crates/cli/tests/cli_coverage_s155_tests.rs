@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -353,7 +353,7 @@ fn test_validate_manifest_missing_beardog_warning() {
         },
     };
     let warnings = toadstool_cli::validate_manifest(&manifest).expect("validate");
-    assert!(warnings.iter().any(|w| w.contains("BearDog")));
+    assert!(warnings.iter().any(|w| w.contains("security service")));
     assert!(warnings.iter().any(|w| w.contains("CPU limit")));
 }
 

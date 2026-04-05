@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 /// Network distributor for workload routing.
 pub mod distributor;
 /// Load balancer and circuit breaker for fault tolerance.

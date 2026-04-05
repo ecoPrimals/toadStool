@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure socket path resolution (no env access - inject `SocketPathEnv`)
 
 use std::path::PathBuf;
@@ -51,8 +51,8 @@ pub fn resolve_family_id(env: &SocketPathEnv) -> String {
 
 /// Pure logic: resolve socket path for a capability id (`crypto`, `coordination`, …).
 ///
-/// Precedence: `BIOMEOS_{CAP}_SOCKET` → legacy `BEARDOG_SOCKET` / `SONGBIRD_SOCKET` / … →
-/// `{capability}.sock` under the biomeOS runtime directory (never primal-name filenames).
+/// Precedence: `BIOMEOS_{CAP}_SOCKET` → legacy env fallbacks (`BEARDOG_SOCKET`, `SONGBIRD_SOCKET`, …) →
+/// `{capability}.sock` under the biomeOS runtime directory (never product-code filenames).
 #[must_use]
 pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv) -> PathBuf {
     let cap = capability.to_lowercase();
@@ -68,11 +68,12 @@ pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv)
         return PathBuf::from(p);
     }
 
+    // Legacy env field names map crypto→security, coordination, storage, intelligence sockets.
     if let Some(p) = match cap {
-        "crypto" | "security" => env.beardog_socket.as_ref(),
-        "coordination" => env.songbird_socket.as_ref(),
-        "storage" => env.nestgate_socket.as_ref(),
-        "routing" | "intelligence" | "ai" => env.squirrel_socket.as_ref(),
+        "crypto" | "security" => env.legacy_security_socket.as_ref(), // legacy: BEARDOG_SOCKET
+        "coordination" => env.legacy_coordination_socket.as_ref(),    // legacy: SONGBIRD_SOCKET
+        "storage" => env.legacy_storage_socket.as_ref(),              // legacy: NESTGATE_SOCKET
+        "routing" | "intelligence" | "ai" => env.legacy_intelligence_socket.as_ref(), // legacy: SQUIRREL_SOCKET
         _ => None,
     } {
         return PathBuf::from(p);
@@ -202,48 +203,49 @@ mod tests {
     fn test_resolve_socket_path_override_takes_precedence() {
         let env = test_env();
         let override_path = PathBuf::from("/override/custom.sock");
+        // legacy orchestrator label still resolves via CapabilityDomain
         let result = resolve_socket_path_for_service("beardog", &env, Some(override_path.clone()));
         assert_eq!(result, override_path);
     }
 
     #[test]
-    fn test_resolve_beardog_socket_with_env_override() {
+    fn test_resolve_crypto_socket_with_legacy_env_override() {
         let env = SocketPathEnv {
-            beardog_socket: Some("/custom/beardog.sock".to_string()),
+            legacy_security_socket: Some("/custom/crypto-via-legacy.sock".to_string()),
             ..test_env()
         };
         let path = resolve_capability_socket_fallback("crypto", &env);
-        assert_eq!(path, PathBuf::from("/custom/beardog.sock"));
+        assert_eq!(path, PathBuf::from("/custom/crypto-via-legacy.sock"));
     }
 
     #[test]
-    fn test_resolve_songbird_socket_with_env_override() {
+    fn test_resolve_coordination_socket_with_legacy_env_override() {
         let env = SocketPathEnv {
-            songbird_socket: Some("/custom/songbird.sock".to_string()),
+            legacy_coordination_socket: Some("/custom/coordination-via-legacy.sock".to_string()),
             ..test_env()
         };
         let path = resolve_capability_socket_fallback("coordination", &env);
-        assert_eq!(path, PathBuf::from("/custom/songbird.sock"));
+        assert_eq!(path, PathBuf::from("/custom/coordination-via-legacy.sock"));
     }
 
     #[test]
-    fn test_resolve_nestgate_socket_with_env_override() {
+    fn test_resolve_storage_socket_with_legacy_env_override() {
         let env = SocketPathEnv {
-            nestgate_socket: Some("/custom/nestgate.sock".to_string()),
+            legacy_storage_socket: Some("/custom/storage-via-legacy.sock".to_string()),
             ..test_env()
         };
         let path = resolve_capability_socket_fallback("storage", &env);
-        assert_eq!(path, PathBuf::from("/custom/nestgate.sock"));
+        assert_eq!(path, PathBuf::from("/custom/storage-via-legacy.sock"));
     }
 
     #[test]
-    fn test_resolve_routing_socket_with_env_override() {
+    fn test_resolve_routing_socket_with_legacy_env_override() {
         let env = SocketPathEnv {
-            squirrel_socket: Some("/custom/squirrel.sock".to_string()),
+            legacy_intelligence_socket: Some("/custom/intelligence-via-legacy.sock".to_string()),
             ..test_env()
         };
         let path = resolve_routing_socket(&env);
-        assert_eq!(path, PathBuf::from("/custom/squirrel.sock"));
+        assert_eq!(path, PathBuf::from("/custom/intelligence-via-legacy.sock"));
     }
 
     #[test]
@@ -319,7 +321,7 @@ mod tests {
     fn test_biomeos_crypto_socket_precedence_over_legacy() {
         let env = SocketPathEnv {
             biomeos_crypto_socket: Some("/via/biomeos/crypto.sock".to_string()),
-            beardog_socket: Some("/legacy/beardog.sock".to_string()),
+            legacy_security_socket: Some("/legacy/crypto-fallback.sock".to_string()),
             ..test_env()
         };
         let path = resolve_capability_socket_fallback("crypto", &env);

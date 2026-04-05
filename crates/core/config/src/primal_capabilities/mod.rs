@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Primal Capabilities Loader
 //!
 //! **Universal, Agnostic, Sovereignty-First**
@@ -38,8 +38,8 @@
 //!
 //! ## Submodules
 //!
-//! - [`parsing`] — TOML file loading, serde types, and default search paths.
-//! - [`registry`] — Capability/role lookup, endpoint URLs, and self-knowledge helper.
+//! - `parsing` — TOML file loading, serde types, and default search paths.
+//! - `registry` — Capability/role lookup, endpoint URLs, and self-knowledge helper.
 
 mod parsing;
 mod registry;

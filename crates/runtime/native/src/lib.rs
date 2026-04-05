@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Native process runtime for executing native binaries as child processes
 
 #![forbid(unsafe_code)]

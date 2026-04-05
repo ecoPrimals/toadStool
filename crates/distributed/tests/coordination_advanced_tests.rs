@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Advanced Coordination Tests for Distributed Module
 //!
 //! These tests expand coverage for coordination edge cases and error paths
@@ -22,7 +22,7 @@ async fn test_coordinator_with_zero_concurrency() {
             enable_job_queue: true,
             max_queue_size: 10,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     // Should handle zero concurrency gracefully
@@ -40,7 +40,7 @@ async fn test_coordinator_with_very_high_concurrency() {
             enable_job_queue: true,
             max_queue_size: 100_000,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let result = DistributedCoordinator::new(config).await;
@@ -57,7 +57,7 @@ async fn test_coordinator_with_disabled_queue() {
             enable_job_queue: false, // Queue disabled
             max_queue_size: 0,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let result = DistributedCoordinator::new(config).await;
@@ -174,7 +174,7 @@ fn test_distributed_config_with_unique_instance_ids() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let config2 = DistributedConfig {
@@ -185,7 +185,7 @@ fn test_distributed_config_with_unique_instance_ids() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     assert_ne!(config1.instance_id, config2.instance_id);
@@ -205,7 +205,7 @@ async fn test_short_timeout_config() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -222,7 +222,7 @@ async fn test_long_timeout_config() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -244,7 +244,7 @@ async fn test_multiple_coordinators_different_ids() {
                 enable_job_queue: true,
                 max_queue_size: 50,
             },
-            songbird_integration: None,
+            coordination: None,
         };
         DistributedCoordinator::new(config).await
     });
@@ -302,7 +302,7 @@ fn test_instance_id_formats() {
                 enable_job_queue: true,
                 max_queue_size: 100,
             },
-            songbird_integration: None,
+            coordination: None,
         };
         assert_eq!(config.instance_id, id);
     }
@@ -318,7 +318,7 @@ fn test_empty_instance_id() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
     assert!(config.instance_id.is_empty());
 }
@@ -337,7 +337,7 @@ fn test_config_clone() {
             enable_job_queue: true,
             max_queue_size: 200,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let cloned = config.clone();

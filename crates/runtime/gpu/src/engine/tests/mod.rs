@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unit and integration tests for [`super::UniversalGpuEngine`](crate::engine::UniversalGpuEngine).
 
 #![allow(clippy::wildcard_imports)]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Expanded Chaos Engineering Tests
 //!
 //! **Purpose**: Comprehensive chaos testing for production resilience validation

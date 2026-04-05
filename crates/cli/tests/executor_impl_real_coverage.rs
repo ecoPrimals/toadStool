@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -380,10 +380,10 @@ fn test_manifest_clone_logic() {
     // Test the manifest cloning for resource overrides
     #[derive(Clone)]
     struct TestManifest {
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         name: String,
         cpu: Option<f64>,
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         memory: Option<String>,
     }
 
@@ -546,13 +546,13 @@ fn test_primal_config_optional() {
     // Test Optional primal config handling
     let primals: HashMap<String, String> = HashMap::new();
 
-    let beardog_config = primals.get("beardog");
-    assert!(beardog_config.is_none());
+    let security_config = primals.get("beardog");
+    assert!(security_config.is_none());
 
     let mut primals_with_config = HashMap::new();
     primals_with_config.insert("beardog".to_string(), "config".to_string());
 
-    let beardog_config = primals_with_config.get("beardog");
-    assert!(beardog_config.is_some());
-    assert_eq!(beardog_config.unwrap(), "config");
+    let security_config = primals_with_config.get("beardog");
+    assert!(security_config.is_some());
+    assert_eq!(security_config.unwrap(), "config");
 }

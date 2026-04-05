@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration tests for `ByobExecutor` trait implementation
 
 #![allow(clippy::all)]
@@ -37,7 +37,7 @@ impl MockRuntimeEngine {
         Self { should_fail: false }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn with_failure() -> Self {
         Self { should_fail: true }
     }

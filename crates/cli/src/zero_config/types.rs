@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Type definitions for zero-configuration deployment
 
 use serde::{Deserialize, Serialize};
@@ -144,7 +144,7 @@ pub struct GpuInfo {
 /// Detected ecosystem capability providers.
 ///
 /// Fields use capability-domain names per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
-/// Serde aliases accept legacy primal names in existing config files.
+/// Serde aliases preserve older config field names where needed.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EcosystemServices {
     /// Coordination / orchestration capability provider

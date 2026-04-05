@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for hw-learn crate (S155 expansion):
 //! - distiller/classify.rs (GpuGen, classify_events, classify_register)
 //! - knowledge/ (KnowledgeStore, amd_baseline, arch_map)

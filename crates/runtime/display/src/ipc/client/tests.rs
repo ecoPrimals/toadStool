@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for the display IPC client.
 
 use super::{DisplayClient, IpcEndpoint, default_display_ipc_tcp_addr};

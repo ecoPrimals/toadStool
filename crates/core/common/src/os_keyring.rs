@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! OS-native keyring integration for credential resolution.
 //!
 //! Provides platform-specific secret storage access:

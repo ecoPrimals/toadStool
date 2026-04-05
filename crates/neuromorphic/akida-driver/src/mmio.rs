@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory-Mapped I/O for Akida NPU
 //!
 //! Provides safe abstractions for accessing Akida hardware registers.
@@ -9,7 +9,7 @@
 //! Migrated to `hw-safe::DeviceMmap` + `hw-safe::vfio_setup` — zero local
 //! `unsafe` blocks. All mmap/ioctl unsafety is contained in `hw-safe`.
 
-#![expect(
+#![allow(
     clippy::cast_possible_truncation,
     reason = "truncation acceptable for this conversion"
 )]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -14,7 +14,7 @@
 //! Covers `BiomeExecutor` functionality (20-30 tests).
 
 // Mock types to test compilation and structure
-#[allow(dead_code)]
+#[expect(dead_code)]
 mod mock_types {
     use uuid::Uuid;
 

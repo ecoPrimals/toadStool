@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-based service discovery.
 //!
 //! Discovers ecoPrimal services via env vars, mDNS, Kubernetes, Docker Compose, and registries.
@@ -150,55 +150,47 @@ pub fn discover_service_by_capability(capability: &str) -> DiscoveryResult {
 }
 
 // ---------------------------------------------------------------------------
-// Primal-specific discovery (thin wrappers)
+// Capability-keyed discovery (convenience wrappers)
 // ---------------------------------------------------------------------------
 
-/// Discover bearDog encryption service at runtime
+/// Discover a security / encryption-capable service at runtime
 ///
-/// Tries multiple discovery methods in order:
-/// 1. `BEARDOG_ENDPOINT` environment variable
-/// 2. mDNS (_encryption._tcp.local.)
-/// 3. Kubernetes DNS (beardog.default.svc.cluster.local)
-/// 4. Docker Compose (beardog:6060)
-/// 5. Runtime registry (consul, etcd)
+/// Tries multiple discovery methods in order (see [`discover_service_by_capability`]),
+/// including legacy env names such as `BEARDOG_ENDPOINT` where still supported by deployment.
 ///
 /// # Errors
 ///
-/// Returns error if no bearDog service can be discovered
+/// Returns error if no matching service can be discovered
 pub fn discover_encryption_service() -> DiscoveryResult {
     discover_service_by_capability("encryption")
 }
 
-/// Discover nestGate storage service at runtime
+/// Discover a storage-capable service at runtime
 ///
-/// Tries multiple discovery methods in order:
-/// 1. `NESTGATE_ENDPOINT` environment variable
-/// 2. mDNS (_storage._tcp.local.)
-/// 3. Kubernetes DNS (nestgate.default.svc.cluster.local)
-/// 4. Docker Compose (nestgate:8080)
-/// 5. Runtime registry (consul, etcd)
+/// Same discovery pipeline as [`discover_service_by_capability`], including legacy env
+/// fallbacks (e.g. `NESTGATE_ENDPOINT`) where configured.
 ///
 /// # Errors
 ///
-/// Returns error if no nestGate service can be discovered
+/// Returns error if no matching service can be discovered
 pub fn discover_storage_service() -> DiscoveryResult {
     discover_service_by_capability("storage")
 }
 
-/// Discover songBird coordination service at runtime
+/// Discover a coordination / mesh service at runtime
 ///
 /// # Errors
 ///
-/// Returns error if no songBird service can be discovered
+/// Returns error if no matching service can be discovered
 pub fn discover_coordination_service() -> DiscoveryResult {
     discover_service_by_capability("coordination")
 }
 
-/// Discover squirrel MCP platform at runtime
+/// Discover an MCP / agent routing service at runtime
 ///
 /// # Errors
 ///
-/// Returns error if no squirrel service can be discovered
+/// Returns error if no matching service can be discovered
 pub fn discover_mcp_service() -> DiscoveryResult {
     discover_service_by_capability("mcp")
 }

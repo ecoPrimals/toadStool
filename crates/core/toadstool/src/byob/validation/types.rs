@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Aggregated resource totals used when validating BYOB deployments against team quotas.
 //!
 //! Totals are derived by summing per-service [`crate::byob::byob_types::ServiceResourceRequirements`]

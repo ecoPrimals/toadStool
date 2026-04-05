@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Zero-Configuration Deployment System
 //!
 //! This module provides rapid system discovery and deployment capabilities for ToadStool,

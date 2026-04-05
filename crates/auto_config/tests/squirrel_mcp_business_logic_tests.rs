@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
-//! Business Logic Tests for Squirrel MCP Interface
+//! Business Logic Tests for intelligence service Interface
 //!
 //! Target: Test business logic, helper methods, and edge cases WITHOUT I/O
 //! Goal: Increase `squirrel_mcp.rs` coverage from 45% → 70%

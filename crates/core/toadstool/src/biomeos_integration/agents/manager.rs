@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`AgentDeploymentManager`] and discovery helpers using the pluggable agent backend trait.
 
 use std::sync::Arc;
@@ -8,14 +8,14 @@ use super::super::types::{AgentConfig, ModelConfig};
 use super::config::AgentDeploymentConfig;
 use crate::ToadStoolResult;
 
-/// Agent deployment manager for Squirrel integration
+/// Agent deployment manager for the intelligence / ML agent service.
 ///
 /// Uses dependency injection via the `AgentBackend` trait for flexibility.
-/// No conditional compilation or feature flags - the backend determines behavior.
+/// No conditional compilation or feature flags — the backend determines behavior.
 pub struct AgentDeploymentManager {
     /// Configuration
     _config: AgentDeploymentConfig,
-    /// Pluggable agent backend (Squirrel, in-memory, etc.)
+    /// Pluggable agent backend (intelligence service, in-memory, etc.)
     backend: Arc<dyn AgentBackend>,
 }
 
@@ -32,7 +32,7 @@ impl AgentDeploymentManager {
     /// Discover and create agent manager via capability-based discovery
     ///
     /// This is the preferred method for creating an `AgentDeploymentManager`.
-    /// It discovers Squirrel (or another AI provider) at runtime.
+    /// It discovers an intelligence / ML service (or another AI provider) at runtime.
     ///
     /// # Discovery Order
     ///
@@ -82,8 +82,7 @@ impl AgentDeploymentManager {
             tracing::info!("Discovered ML service via environment: {}", endpoint);
             let mut config = config;
             config.ai_processing_endpoint = endpoint;
-            #[allow(deprecated)]
-            return Ok(Self::with_squirrel(config));
+            return Ok(Self::with_intelligence_service(config));
         }
 
         // Priority 3: Check if endpoint is already configured
@@ -92,16 +91,14 @@ impl AgentDeploymentManager {
                 "Using configured endpoint: {}",
                 config.ai_processing_endpoint
             );
-            #[allow(deprecated)]
-            return Ok(Self::with_squirrel(config));
+            return Ok(Self::with_intelligence_service(config));
         }
 
-        // Priority 4: Fall back to in-memory backend for development
-        tracing::warn!(
-            "No AI provider discovered, using in-memory backend. \
-             Set TOADSTOOL_AI_ENDPOINT or AI_PROCESSING_ENDPOINT."
-        );
-        Ok(Self::with_inmemory(config))
+        Err(crate::ToadStoolError::configuration(
+            "No AI provider discovered. Set TOADSTOOL_AI_ENDPOINT, AI_PROCESSING_ENDPOINT, or \
+             SQUIRREL_ENDPOINT; configure ai_processing_endpoint in the agent deployment config; \
+             or ensure an AI/orchestration service is reachable via capability discovery.",
+        ))
     }
 
     /// Create a new manager with capability-based ML service discovery (RECOMMENDED)
@@ -112,7 +109,7 @@ impl AgentDeploymentManager {
     ///
     /// Returns an error if ML service discovery fails or the backend cannot be initialized.
     pub async fn with_ml_service(config: AgentDeploymentConfig) -> crate::ToadStoolResult<Self> {
-        let backend = super::super::agent_backend::SquirrelBackend::new_async(
+        let backend = super::super::agent_backend::IntelligenceBackend::new_async(
             config.model_registry.clone(),
             config.agent_runtime.clone(),
             config.mcp_enabled,
@@ -124,17 +121,13 @@ impl AgentDeploymentManager {
         })
     }
 
-    /// Create a new manager with Squirrel production backend
+    /// Create a new manager using a direct intelligence-service endpoint (legacy path).
     ///
-    /// **DEPRECATED**: Use `with_ml_service()` or `discover()` for capability-based discovery.
+    /// Prefer `with_ml_service()` or `discover()` for capability-based discovery.
     #[must_use]
-    #[deprecated(
-        since = "0.3.0",
-        note = "Use with_ml_service() or discover() for capability-based discovery"
-    )]
-    #[allow(deprecated)]
-    pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
-        let backend = super::super::agent_backend::SquirrelBackend::new(
+    #[expect(deprecated)]
+    pub fn with_intelligence_service(config: AgentDeploymentConfig) -> Self {
+        let backend = super::super::agent_backend::IntelligenceBackend::new(
             config.ai_processing_endpoint.clone(),
             config.model_registry.clone(),
             config.agent_runtime.clone(),
@@ -144,6 +137,18 @@ impl AgentDeploymentManager {
             _config: config,
             backend: Arc::new(backend),
         }
+    }
+
+    /// Create a new manager with a legacy direct endpoint (deprecated name).
+    ///
+    /// **DEPRECATED**: Use `with_intelligence_service()`, `with_ml_service()`, or `discover()`.
+    #[must_use]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use with_intelligence_service(), with_ml_service(), or discover()"
+    )]
+    pub fn with_squirrel(config: AgentDeploymentConfig) -> Self {
+        Self::with_intelligence_service(config)
     }
 
     /// Create a new manager with in-memory test backend
@@ -156,13 +161,19 @@ impl AgentDeploymentManager {
         }
     }
 
-    /// Initialize connection to Squirrel (or test backend)
+    /// Initialize connection to the intelligence / ML backend (or test backend).
     ///
     /// # Errors
     ///
     /// Returns an error if the backend connection cannot be established.
-    pub async fn initialize_squirrel_connection(&self) -> ToadStoolResult<()> {
+    pub async fn initialize_intelligence_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
+    }
+
+    /// Legacy name for [`Self::initialize_intelligence_connection`].
+    #[deprecated(since = "0.3.0", note = "Use initialize_intelligence_connection()")]
+    pub async fn initialize_squirrel_connection(&self) -> ToadStoolResult<()> {
+        self.initialize_intelligence_connection().await
     }
 
     /// Deploy an AI agent from configuration

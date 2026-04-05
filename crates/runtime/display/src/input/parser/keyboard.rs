@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Keyboard key events and modifier tracking for [`super::EventParser`].
 
 use crate::input::events::{InputEvent, KeyCode};

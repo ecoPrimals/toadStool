@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Parse nouveau GSP RPC debug messages from dmesg.
 //!
 //! When nouveau loads GSP firmware, it logs RPC exchanges:
@@ -78,7 +78,7 @@ fn extract_field_u32(line: &str, prefix: &str) -> Option<u32> {
     )
 }
 
-#[allow(
+#[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     reason = "dmesg timestamps are small positive floats; microseconds fit in u64"

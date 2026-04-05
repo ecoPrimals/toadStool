@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`ComputeUnit`] trait — unified interface for parallel compute resources.
 
 use super::capabilities::Capabilities;

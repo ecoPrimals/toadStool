@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
@@ -17,7 +17,7 @@
 //! Capability-based integration with ecosystem security services.
 //! ToadStool discovers PKI/auth capabilities at runtime — no baked-in primal names.
 //!
-//! Pure Rust: Unix sockets for inter-primal communication (no reqwest!)
+//! Pure Rust: Unix sockets for inter-service communication (no reqwest!)
 
 // Sub-modules
 pub mod bear_dog;
@@ -27,7 +27,7 @@ pub mod tarpc_service;
 pub mod transport;
 pub mod types;
 
-// Re-export BearDog / PKI security types for backward compatibility
+// Re-export Security / PKI security types for backward compatibility
 pub use bear_dog::*;
 
 #[cfg(test)]
@@ -38,9 +38,9 @@ mod tests {
     use toadstool::security::SecurityContext;
 
     #[test]
-    fn test_beardog_config_default() {
-        let config = BearDogConfig::default();
-        assert!(config.socket_path.contains("beardog") || config.socket_path.contains("sock"));
+    fn test_security_config_default() {
+        let config = SecurityConfig::default();
+        assert!(config.socket_path.contains("security") || config.socket_path.contains("sock"));
         assert_eq!(config.request_timeout_secs, 30);
         assert_eq!(config.token_refresh_interval_secs, 300);
         assert_eq!(config.zero_trust_validation_interval_secs, 60);
@@ -71,9 +71,9 @@ mod tests {
     }
 
     #[test]
-    fn test_beardog_integration_new() {
-        let config = BearDogConfig::default();
-        let result = BearDogIntegration::new(config);
+    fn test_security_new() {
+        let config = SecurityConfig::default();
+        let result = SecurityServiceIntegration::new(config);
         assert!(result.is_ok());
     }
 
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_security_service_config_alias() {
-        let _config: SecurityServiceConfig = BearDogConfig::default();
+        let _config: SecurityServiceConfig = SecurityConfig::default();
     }
 
     #[test]
@@ -186,10 +186,10 @@ mod tests {
     }
 
     #[test]
-    fn test_beardog_config_env_socket_path() {
-        temp_env::with_var("BEARDOG_SOCKET", Some("/custom/beardog.sock"), || {
-            let config = BearDogConfig::default();
-            assert_eq!(config.socket_path, "/custom/beardog.sock");
+    fn test_security_config_env_socket_path() {
+        temp_env::with_var("BEARDOG_SOCKET", Some("/custom/security.sock"), || {
+            let config = SecurityConfig::default();
+            assert_eq!(config.socket_path, "/custom/security.sock");
         });
     }
 
@@ -208,12 +208,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_beardog_authenticate_standalone_when_unavailable() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog.sock".to_string(),
-            ..BearDogConfig::default()
+    async fn test_security_authenticate_standalone_when_unavailable() {
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security.sock".to_string(),
+            ..SecurityConfig::default()
         };
-        let integration = BearDogIntegration::new(config).expect("new");
+        let integration = SecurityServiceIntegration::new(config).expect("new");
         let result = integration
             .authenticate(
                 "test-svc",
@@ -228,12 +228,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_beardog_authorize_fails_without_token() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog.sock".to_string(),
-            ..BearDogConfig::default()
+    async fn test_security_authorize_fails_without_token() {
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security.sock".to_string(),
+            ..SecurityConfig::default()
         };
-        let integration = BearDogIntegration::new(config).expect("new");
+        let integration = SecurityServiceIntegration::new(config).expect("new");
         let result = integration
             .authorize("/api/resource", "read", HashMap::new())
             .await;
@@ -242,12 +242,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_beardog_zero_trust_validation_standalone_when_unavailable() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog.sock".to_string(),
-            ..BearDogConfig::default()
+    async fn test_security_zero_trust_validation_standalone_when_unavailable() {
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security.sock".to_string(),
+            ..SecurityConfig::default()
         };
-        let integration = BearDogIntegration::new(config).expect("new");
+        let integration = SecurityServiceIntegration::new(config).expect("new");
         let result = integration
             .zero_trust_validation(&SecurityContext::default())
             .await;
@@ -256,8 +256,8 @@ mod tests {
     }
 
     #[test]
-    fn test_beardog_config_custom_values() {
-        let config = BearDogConfig {
+    fn test_security_config_custom_values() {
+        let config = SecurityConfig {
             socket_path: "/custom/sock".to_string(),
             request_timeout_secs: 60,
             token_refresh_interval_secs: 600,
@@ -296,25 +296,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_beardog_start_background_tasks() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog.sock".to_string(),
+    async fn test_security_start_background_tasks() {
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security.sock".to_string(),
             continuous_monitoring: false,
-            ..BearDogConfig::default()
+            ..SecurityConfig::default()
         };
-        let integration = Arc::new(BearDogIntegration::new(config).expect("new"));
+        let integration = Arc::new(SecurityServiceIntegration::new(config).expect("new"));
         let result = integration.clone().start_background_tasks().await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn test_beardog_trait_authenticate() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog.sock".to_string(),
-            ..BearDogConfig::default()
+    async fn test_security_trait_authenticate() {
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security.sock".to_string(),
+            ..SecurityConfig::default()
         };
-        let integration: Box<dyn BearDogIntegrationTrait> =
-            Box::new(BearDogIntegration::new(config).expect("new"));
+        let integration: Box<dyn SecurityServiceIntegrationTrait> =
+            Box::new(SecurityServiceIntegration::new(config).expect("new"));
         let result = integration
             .authenticate(
                 "svc",
@@ -328,13 +328,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_beardog_trait_zero_trust_validation() {
-        let config = BearDogConfig {
-            socket_path: "/nonexistent/beardog.sock".to_string(),
-            ..BearDogConfig::default()
+    async fn test_security_trait_zero_trust_validation() {
+        let config = SecurityConfig {
+            socket_path: "/nonexistent/security.sock".to_string(),
+            ..SecurityConfig::default()
         };
-        let integration: Box<dyn BearDogIntegrationTrait> =
-            Box::new(BearDogIntegration::new(config).expect("new"));
+        let integration: Box<dyn SecurityServiceIntegrationTrait> =
+            Box::new(SecurityServiceIntegration::new(config).expect("new"));
         let result = integration
             .zero_trust_validation(&SecurityContext::default())
             .await;

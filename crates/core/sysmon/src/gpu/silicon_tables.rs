@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! PCI device ID to silicon capability lookup tables.
 //!
 //! Maps known NVIDIA, AMD, and Intel GPU device IDs to their hardware

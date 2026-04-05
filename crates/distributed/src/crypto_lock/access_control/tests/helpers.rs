@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Test helpers for access control tests
 
 use std::time::{Duration, SystemTime};
@@ -23,7 +23,7 @@ pub fn pure_rust_target() -> ExternalTarget {
 
 pub fn trusted_target() -> ExternalTarget {
     ExternalTarget::ExternalTool {
-        tool_name: "nestgate".to_string(),
+        tool_name: "storage".to_string(),
         api_endpoints: vec![],
         feature_set: vec!["trusted".to_string()],
     }

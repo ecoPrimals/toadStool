@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! DNS and service discovery extension
 //!
 //! Provides DNS discovery configuration and validation.
@@ -19,7 +19,7 @@ pub(crate) trait DiscoveryExt {
     fn validate_dns_discovery_config(&self) -> ToadStoolResult<()>;
 }
 
-impl DiscoveryExt for super::SongbirdNetworkConfigurator {
+impl DiscoveryExt for super::OrchestrationNetworkConfigurator {
     async fn apply_dns_discovery_config(&self) -> ToadStoolResult<()> {
         info!("🔍 Applying DNS discovery configuration");
 

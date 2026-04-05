@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal service configurations
 //!
 //! Configuration structures for all Primal services in the ecoPrimals ecosystem.
@@ -9,19 +9,23 @@ use std::time::Duration;
 
 use super::resources::{BiomeHealthCheckConfig, PrimalResources};
 
-/// Configuration for all Primals in the ecosystem
+/// Configuration for ecosystem services (capability-oriented; serde keys use capability names).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrimalsConfig {
     /// `ToadStool` (Universal Compute) configuration
     pub toadstool: Option<ToadStoolConfig>,
-    /// Songbird (Network Coordination) configuration
-    pub songbird: Option<SongbirdConfig>,
-    /// `BearDog` (Security) configuration
-    pub beardog: Option<BearDogConfig>,
-    /// `NestGate` (Storage) configuration
-    pub nestgate: Option<NestGateConfig>,
-    /// Squirrel (AI) configuration
-    pub squirrel: Option<SquirrelConfig>,
+    /// Coordination / network orchestration configuration
+    #[serde(alias = "songbird")] // legacy config key
+    pub coordination: Option<CoordinationConfig>,
+    /// Security / crypto configuration
+    #[serde(alias = "beardog")] // legacy config key
+    pub security: Option<SecurityConfig>,
+    /// Storage configuration
+    #[serde(alias = "nestgate")] // legacy config key
+    pub storage: Option<StorageConfig>,
+    /// Intelligence / routing configuration
+    #[serde(alias = "squirrel")] // legacy config key
+    pub intelligence: Option<IntelligenceConfig>,
     /// biomeOS (Universal OS) configuration
     pub biomeos: Option<BiomeOSConfig>,
 }
@@ -45,10 +49,10 @@ pub struct ToadStoolConfig {
     pub config: HashMap<String, serde_json::Value>,
 }
 
-/// Songbird Network Coordination configuration
+/// Network coordination configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdConfig {
-    /// Enable Songbird
+pub struct CoordinationConfig {
+    /// Enable coordination service
     pub enabled: bool,
     /// Enable service mesh functionality
     pub service_mesh: bool,
@@ -62,10 +66,10 @@ pub struct SongbirdConfig {
     pub config: HashMap<String, serde_json::Value>,
 }
 
-/// `BearDog` Security configuration
+/// Security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogConfig {
-    /// Enable `BearDog`
+pub struct SecurityConfig {
+    /// Enable security service
     pub enabled: bool,
     /// Security level (low, medium, high, maximum)
     pub security_level: String,
@@ -103,10 +107,10 @@ pub struct TokenValidationConfig {
     pub replay_protection: bool,
 }
 
-/// `NestGate` Storage configuration
+/// Storage service configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NestGateConfig {
-    /// Enable `NestGate`
+pub struct StorageConfig {
+    /// Enable storage service
     pub enabled: bool,
     /// Storage tier (cold, warm, hot)
     pub storage_tier: String,
@@ -157,10 +161,10 @@ pub struct ReplicationConfig {
     pub strategy: String,
 }
 
-/// Squirrel AI configuration
+/// Intelligence / AI workload configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SquirrelConfig {
-    /// Enable Squirrel
+pub struct IntelligenceConfig {
+    /// Enable intelligence service
     pub enabled: bool,
     /// AI agents to deploy
     pub ai_agents: Vec<super::agent::AgentConfig>,

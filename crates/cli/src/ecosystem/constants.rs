@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! 🎯 Zero-Copy Constants - Ecosystem Service Names & Capabilities
 //!
 //! Central location for static string constants to avoid repeated allocations.
@@ -16,19 +16,28 @@ pub mod service_names {
     use toadstool_common::constants::PRIMAL_NAME;
     use toadstool_common::interned_strings::capabilities;
 
-    /// Coordination/discovery capability (Songbird)
-    pub const SONGBIRD: &str = capabilities::COORDINATION;
-    /// Crypto/security capability (BearDog)
-    pub const BEARDOG: &str = capabilities::CRYPTO;
-    /// Storage capability (NestGate)
-    pub const NESTGATE: &str = capabilities::STORAGE;
-    /// Intelligence/AI capability (Squirrel)
-    pub const SQUIRREL: &str = capabilities::INTELLIGENCE;
-    /// Compute capability (ToadStool)
+    /// Coordination / discovery capability id
+    pub const COORDINATION: &str = capabilities::COORDINATION;
+    /// Crypto / PKI (security) capability id
+    pub const CRYPTO: &str = capabilities::CRYPTO;
+    /// Storage capability id
+    pub const STORAGE: &str = capabilities::STORAGE;
+    /// Intelligence / AI capability id
+    pub const INTELLIGENCE: &str = capabilities::INTELLIGENCE;
+    /// Compute capability (this primal)
     pub const TOADSTOOL: &str = PRIMAL_NAME;
 
+    /// Legacy alias — same value as [`COORDINATION`].
+    pub const SONGBIRD: &str = COORDINATION;
+    /// Legacy alias — same value as [`CRYPTO`].
+    pub const BEARDOG: &str = CRYPTO;
+    /// Legacy alias — same value as [`STORAGE`].
+    pub const NESTGATE: &str = STORAGE;
+    /// Legacy alias — same value as [`INTELLIGENCE`].
+    pub const SQUIRREL: &str = INTELLIGENCE;
+
     /// All known capability identifiers as slice
-    pub const ALL: &[&str] = &[SONGBIRD, BEARDOG, NESTGATE, SQUIRREL, TOADSTOOL];
+    pub const ALL: &[&str] = &[COORDINATION, CRYPTO, STORAGE, INTELLIGENCE, TOADSTOOL];
 }
 
 /// Capability categories - Use these for capability matching
@@ -54,8 +63,17 @@ pub mod capability_categories {
 
 /// System-level config paths (last-resort fallback after XDG/home paths)
 pub mod paths {
-    /// System-wide services config (fallback when user config not found)
+    /// System-wide services config (fallback when user config not found).
+    /// Override with env `TOADSTOOL_SYSTEM_SERVICES_CONFIG` via [`system_services_config_path`].
     pub const SYSTEM_SERVICES_CONFIG: &str = "/etc/toadstool/services.toml";
+
+    /// Resolved path to the system services TOML: `TOADSTOOL_SYSTEM_SERVICES_CONFIG` or [`SYSTEM_SERVICES_CONFIG`].
+    #[must_use]
+    pub fn system_services_config_path() -> std::path::PathBuf {
+        std::env::var_os("TOADSTOOL_SYSTEM_SERVICES_CONFIG")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(SYSTEM_SERVICES_CONFIG))
+    }
 }
 
 /// Common string constants
@@ -82,10 +100,10 @@ mod tests {
 
     #[test]
     fn test_service_names_defined() {
-        assert_eq!(service_names::SONGBIRD, "coordination");
-        assert_eq!(service_names::BEARDOG, "crypto");
-        assert_eq!(service_names::NESTGATE, "storage");
-        assert_eq!(service_names::SQUIRREL, "intelligence");
+        assert_eq!(service_names::COORDINATION, "coordination");
+        assert_eq!(service_names::CRYPTO, "crypto");
+        assert_eq!(service_names::STORAGE, "storage");
+        assert_eq!(service_names::INTELLIGENCE, "intelligence");
         assert_eq!(service_names::TOADSTOOL, "toadstool");
     }
 
@@ -107,5 +125,23 @@ mod tests {
     fn test_common_constants() {
         assert_eq!(common::UNKNOWN_VERSION, "unknown");
         assert_eq!(common::LATEST, "latest");
+    }
+
+    #[test]
+    fn test_system_services_config_path_env_override() {
+        temp_env::with_var(
+            "TOADSTOOL_SYSTEM_SERVICES_CONFIG",
+            Some("/tmp/custom-services.toml"),
+            || {
+                assert_eq!(
+                    paths::system_services_config_path(),
+                    std::path::PathBuf::from("/tmp/custom-services.toml")
+                );
+            },
+        );
+        assert_eq!(
+            paths::system_services_config_path(),
+            std::path::PathBuf::from(paths::SYSTEM_SERVICES_CONFIG)
+        );
     }
 }

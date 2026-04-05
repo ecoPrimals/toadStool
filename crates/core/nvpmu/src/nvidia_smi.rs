@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Sensor reading via `nvidia-smi` for proprietary NVIDIA drivers.
 //!
 //! The proprietary NVIDIA driver does not expose hwmon sensors via sysfs.
@@ -101,7 +101,7 @@ impl NvidiaSmiSensors {
     pub fn to_hwmon_sensors(&self) -> HwmonSensors {
         HwmonSensors {
             hwmon_path: PathBuf::from("/dev/null"),
-            #[allow(
+            #[expect(
                 clippy::cast_possible_truncation,
                 reason = "millidegrees from f64 celsius fits i64"
             )]
@@ -110,7 +110,7 @@ impl NvidiaSmiSensors {
             clock_mhz: self.clock_mhz,
             mem_clock_mhz: self.mem_clock_mhz,
             power_uw: self.power_w.map(|w| {
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
                     reason = "microwatts from watts fits u64; power is always positive"
@@ -120,7 +120,7 @@ impl NvidiaSmiSensors {
                 }
             }),
             power_limit_uw: self.power_limit_w.map(|w| {
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
                     reason = "microwatts from watts fits u64; power is always positive"

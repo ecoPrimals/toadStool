@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal Identity System - Self-Knowledge Only
 //!
 //! This module implements the principle that each primal only knows about itself.

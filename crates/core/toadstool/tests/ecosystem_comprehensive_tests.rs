@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for ecosystem coordination module
 //! Addresses zero-coverage file: core/toadstool/src/ecosystem.rs (643 lines)
 
-#![expect(
+#![allow(
     clippy::unused_async,
     reason = "async signature required by trait/interface"
 )]

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Storage provisioning and management via NestGate
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Storage provisioning and management via the storage service
 //!
 //! This module provides a high-level storage provisioning manager that uses
 //! pluggable storage backends via dependency injection. No feature flags!
@@ -12,14 +12,14 @@ use super::storage_backend::{StorageBackend, VolumeStatus};
 use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use crate::ToadStoolResult;
 
-/// Storage provisioning manager for NestGate integration
+/// Storage provisioning manager for the storage service.
 ///
 /// Uses dependency injection via the `StorageBackend` trait for flexibility.
-/// No conditional compilation or feature flags - the backend determines behavior.
+/// No conditional compilation or feature flags — the backend determines behavior.
 pub struct StorageProvisioningManager {
     /// Configuration
     config: StorageProvisioningConfig,
-    /// Pluggable storage backend (NestGate, in-memory, etc.)
+    /// Pluggable storage backend (remote storage service, in-memory, etc.)
     backend: Arc<dyn StorageBackend>,
 }
 
@@ -30,12 +30,12 @@ pub struct StorageProvisioningConfig {
     ///
     /// **Deprecated** — leave empty (`String::new()`) to use capability-based socket
     /// discovery via `discover_storage_socket()`. Explicit endpoints are only supported
-    /// by the legacy `with_nestgate()` constructor which is also deprecated.
+    /// by the legacy `with_storage_ext()` constructor which is also deprecated.
     #[deprecated(
         since = "0.3.0",
         note = "Leave empty and use with_storage_service() for runtime discovery"
     )]
-    #[serde(alias = "nestgate_endpoint")]
+    #[serde(alias = "storage_endpoint")]
     pub storage_endpoint: String,
     /// Storage tier preference
     pub storage_tier: String,
@@ -47,7 +47,7 @@ pub struct StorageProvisioningConfig {
     pub replication_factor: u32,
 }
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 impl Default for StorageProvisioningConfig {
     fn default() -> Self {
         Self {
@@ -75,7 +75,7 @@ impl StorageProvisioningManager {
     ///
     /// Returns an error if storage service discovery fails or the backend cannot be initialized.
     pub async fn with_storage_service(config: StorageProvisioningConfig) -> ToadStoolResult<Self> {
-        let backend = super::storage_backend::NestGateBackend::new_async(
+        let backend = super::storage_backend::SocketStorageBackend::new_async(
             config.storage_tier.clone(),
             config.replication_enabled,
             config.replication_factor,
@@ -87,7 +87,7 @@ impl StorageProvisioningManager {
         })
     }
 
-    /// Create a new manager with NestGate production backend
+    /// Create a new manager with a legacy direct storage endpoint
     ///
     /// **DEPRECATED**: Use `with_storage_service()` for capability-based discovery.
     #[must_use]
@@ -95,9 +95,9 @@ impl StorageProvisioningManager {
         since = "0.3.0",
         note = "Use with_storage_service() for capability-based discovery"
     )]
-    #[allow(deprecated)]
-    pub fn with_nestgate(config: StorageProvisioningConfig) -> Self {
-        let backend = super::storage_backend::NestGateBackend::new(
+    #[expect(deprecated)]
+    pub fn with_storage_ext(config: StorageProvisioningConfig) -> Self {
+        let backend = super::storage_backend::SocketStorageBackend::new(
             config.storage_endpoint.clone(),
             config.storage_tier.clone(),
             config.replication_enabled,
@@ -119,16 +119,22 @@ impl StorageProvisioningManager {
         }
     }
 
-    /// Initialize connection to storage backend
+    /// Initialize connection to the storage backend.
     ///
-    /// For NestGate backend, this tests connectivity.
+    /// For socket-backed storage services, this tests connectivity.
     /// For in-memory backend, this is a no-op.
     ///
     /// # Errors
     ///
     /// Returns an error if the backend connection cannot be established.
-    pub async fn initialize_nestgate_connection(&self) -> ToadStoolResult<()> {
+    pub async fn initialize_storage_service_connection(&self) -> ToadStoolResult<()> {
         self.backend.initialize().await
+    }
+
+    /// Legacy name for [`Self::initialize_storage_service_connection`].
+    #[deprecated(since = "0.3.0", note = "Use initialize_storage_service_connection()")]
+    pub async fn initialize_nestgate_connection(&self) -> ToadStoolResult<()> {
+        self.initialize_storage_service_connection().await
     }
 
     /// Provision a volume from manifest configuration

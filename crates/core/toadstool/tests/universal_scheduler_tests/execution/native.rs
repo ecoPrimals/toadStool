@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Native execution and primal-backed native response handling.
 
 use std::collections::HashMap;
@@ -201,11 +201,11 @@ async fn test_execute_native_process_failure_exit_code() {
     ));
 }
 
-#[test]
-fn test_discover_self_ip_via_env_toadstool_bind_address() {
-    temp_env::with_var("TOADSTOOL_BIND_ADDRESS", Some("192.168.1.1:8080"), || {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let result = runtime.block_on(async {
+#[tokio::test]
+async fn test_discover_self_ip_via_env_toadstool_bind_address() {
+    temp_env::async_with_vars(
+        [("TOADSTOOL_BIND_ADDRESS", Some("192.168.1.1:8080"))],
+        async {
             let registry = Arc::new(UniversalPrimalRegistry::new());
             let provider = Arc::new(SuccessWithOutputMockProvider {
                 instance_id: "p1".to_string(),
@@ -226,8 +226,9 @@ fn test_discover_self_ip_via_env_toadstool_bind_address() {
                 created_at: std::time::SystemTime::now(),
                 context: create_test_context(),
             };
-            scheduler.schedule_job(job).await
-        });
-        assert!(result.is_ok());
-    });
+            let result = scheduler.schedule_job(job).await;
+            assert!(result.is_ok());
+        },
+    )
+    .await;
 }

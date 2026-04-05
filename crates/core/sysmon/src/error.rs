@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error types for toadstool-sysmon.
 
 /// All sysmon operations are `/proc` I/O; errors are always I/O errors

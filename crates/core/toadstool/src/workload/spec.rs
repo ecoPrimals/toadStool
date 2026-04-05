@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`WorkloadSpec`] — workload description and validation
 
 use std::collections::HashMap;

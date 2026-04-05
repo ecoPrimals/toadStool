@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![warn(missing_docs)]
 
 //! # toadstool-hw-safe — Safe Wrappers for Hardware Primitives

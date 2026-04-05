@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for coordination RPC client: creation, request serialization, error paths
 
 #![allow(clippy::pedantic)]

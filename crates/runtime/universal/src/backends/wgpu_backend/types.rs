@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! wgpu adapter types — GpuAdapterInfo, HardwareFingerprint, capability enums.
 
 /// GPU device type classification.
@@ -18,7 +18,7 @@ pub enum GpuDeviceType {
 
 /// Vendor-agnostic GPU adapter identity exposed by toadStool.
 ///
-/// barraCuda uses this to build its `GpuDriverProfile` without
+/// The network / shader compute layer uses this to build its `GpuDriverProfile` without
 /// depending on wgpu directly — toadStool abstracts the hardware.
 #[derive(Debug, Clone)]
 pub struct GpuAdapterInfo {
@@ -62,7 +62,7 @@ pub struct GpuAdapterInfo {
     ///
     /// `true` for NVK + full/throttled FP64 devices and Ada Lovelace +
     /// proprietary driver where shared-memory f64 reductions silently fail.
-    /// Springs and barraCuda use this to guard or skip fused reduction tests.
+    /// Springs and the network / shader stack use this to guard or skip fused reduction tests.
     pub f64_zeros_risk: bool,
     /// Minimum subgroup size (warp size). 0 if unknown.
     pub min_subgroup_size: u32,
@@ -82,7 +82,7 @@ pub struct GpuAdapterInfo {
 
 /// Precision routing advice for f64 workloads.
 ///
-/// Callers (barraCuda, springs) use this to select the correct compute
+/// Callers (network/shader services, springs) use this to select the correct compute
 /// path without needing to understand driver-level quirks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrecisionRoutingAdvice {
@@ -129,7 +129,7 @@ pub enum SubstrateCapabilityKind {
     Fhe,
     /// Subgroup / warp-level operations.
     SubgroupOps,
-    /// Sovereign compile pipeline (coralReef SPIR-V → native without vendor toolchains).
+    /// Sovereign compile pipeline (visualization/shader service: SPIR-V → native without vendor toolchains).
     SovereignCompile,
     /// Tensor core matrix multiply-accumulate (MMA).
     /// CG solver, pairwise distances, convolution, FFT butterfly.
@@ -163,13 +163,13 @@ pub struct HardwareFingerprint {
     pub estimated_tflops_f32: f64,
     /// Estimated double-precision TFLOPS (0.0 if no f64 support).
     pub estimated_tflops_f64: f64,
-    /// Whether the sovereign pipeline (coralReef + coralDriver) can
+    /// Whether the sovereign visualization/shader pipeline can
     /// drive this GPU without vendor toolchains.
     pub sovereign_capable: bool,
-    /// Whether a coralDriver binary submission path exists for this GPU.
-    /// `true` when coralReef can compile SPIR-V to native binaries
-    /// and coralDriver can submit them. Currently `false` for all GPUs
-    /// until coralDriver reaches production readiness.
+    /// Whether a native binary submission path exists for this GPU.
+    /// `true` when the visualization/shader compiler can emit SPIR-V to native binaries
+    /// and the driver can submit them. Currently `false` for all GPUs
+    /// until that path reaches production readiness.
     pub sovereign_binary_capable: bool,
     /// Substrate capabilities discovered at runtime.
     pub capabilities: Vec<SubstrateCapabilityKind>,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::doc_markdown)]
 //! Coverage expansion S162 — resource_validator identify_gaps + generate_warnings
 //!

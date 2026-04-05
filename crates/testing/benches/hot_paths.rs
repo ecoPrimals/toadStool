@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Hot Path Benchmarks for ToadStool
 //!
 //! Benchmarks for the most frequently executed code paths to identify
@@ -153,7 +153,7 @@ fn bench_json_operations(c: &mut Criterion) {
     // Pattern 2: serde_json::to_string()
     group.bench_function("serde_to_string", |b| {
         b.iter(|| {
-            #[allow(clippy::unwrap_used)] // Benchmark: panic on failure is acceptable
+            #[expect(clippy::unwrap_used)] // Benchmark: panic on failure is acceptable
             let s = serde_json::to_string(black_box(&data)).unwrap();
             black_box(s);
         });
@@ -163,7 +163,7 @@ fn bench_json_operations(c: &mut Criterion) {
     group.bench_function("parse_json", |b| {
         let json_str = data.to_string();
         b.iter(|| {
-            #[allow(clippy::unwrap_used)] // Benchmark: panic on failure is acceptable
+            #[expect(clippy::unwrap_used)] // Benchmark: panic on failure is acceptable
             let parsed: Value = serde_json::from_str(black_box(&json_str)).unwrap();
             black_box(parsed);
         });

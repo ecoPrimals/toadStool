@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Distributed System Job Types - Week 4 Test Coverage Expansion
 //!
 //! Comprehensive tests for distributed job types including job specifications,
@@ -88,8 +88,8 @@ fn test_universal_job_type_remote_toadstool() {
 #[test]
 fn test_universal_job_type_ecosystem_tool() {
     let tool = UniversalJobType::EcosystemTool {
-        tool_name: "squirrel".to_string(),
-        endpoint: "http://squirrel:8083".to_string(),
+        tool_name: "intelligence".to_string(),
+        endpoint: "http://intelligence:8083".to_string(),
     };
 
     match tool {
@@ -97,8 +97,8 @@ fn test_universal_job_type_ecosystem_tool() {
             tool_name,
             endpoint,
         } => {
-            assert_eq!(tool_name, "squirrel");
-            assert_eq!(endpoint, "http://squirrel:8083");
+            assert_eq!(tool_name, "intelligence");
+            assert_eq!(endpoint, "http://intelligence:8083");
         }
         _ => panic!("Expected EcosystemTool type"),
     }
@@ -132,8 +132,8 @@ fn test_execution_target_toadstool() {
 #[test]
 fn test_execution_target_ecosystem_service() {
     let target = ExecutionTarget::EcosystemService {
-        service_name: "songbird".to_string(),
-        endpoint: "http://songbird:8080".to_string(),
+        service_name: "coordination".to_string(),
+        endpoint: "http://coordination:8080".to_string(),
     };
 
     match target {
@@ -141,8 +141,8 @@ fn test_execution_target_ecosystem_service() {
             service_name,
             endpoint,
         } => {
-            assert_eq!(service_name, "songbird");
-            assert_eq!(endpoint, "http://songbird:8080");
+            assert_eq!(service_name, "coordination");
+            assert_eq!(endpoint, "http://coordination:8080");
         }
         _ => panic!("Expected EcosystemService target"),
     }

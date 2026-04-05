@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Async BearDog Integration Tests
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Async Security Integration Tests
 //!
 //! Tests the async methods of `BearDogIntegration` including authentication,
 //! authorization, and zero-trust validation. These tests focus on initialization,
-//! error paths, and internal logic without requiring a live BearDog server.
+//! error paths, and internal logic without requiring a live Security server.
 
 use std::collections::HashMap;
 use toadstool::security::SecurityContext;
@@ -14,8 +14,8 @@ use toadstool_integration_protocols::*;
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_integration_initialization() {
-    let config = BearDogConfig::default();
+async fn test_security_initialization() {
+    let config = SecurityConfig::default();
     let integration = BearDogIntegration::new(config);
 
     // Should successfully create integration client
@@ -23,12 +23,12 @@ async fn test_beardog_integration_initialization() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_integration_with_custom_timeouts() {
-    let config = BearDogConfig {
+async fn test_security_with_custom_timeouts() {
+    let config = SecurityConfig {
         request_timeout_secs: 5,
         token_refresh_interval_secs: 60,
         zero_trust_validation_interval_secs: 30,
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config);
@@ -36,12 +36,12 @@ async fn test_beardog_integration_with_custom_timeouts() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_integration_authenticate_no_server() {
+async fn test_security_authenticate_no_server() {
     // EVOLVED: Unix socket path (non-existent socket)
-    let config = BearDogConfig {
-        socket_path: "/tmp/non-existent-beardog.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/tmp/non-existent-security.sock".to_string(),
         request_timeout_secs: 1, // Short timeout
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config).unwrap();
@@ -56,7 +56,7 @@ async fn test_beardog_integration_authenticate_no_server() {
         )
         .await;
 
-    // DEEP DEBT EVOLUTION: Graceful degradation when BearDog unavailable
+    // DEEP DEBT EVOLUTION: Graceful degradation when Security unavailable
     // ToadStool works standalone - returns stub auth response instead of failing
     assert!(result.is_ok());
     let auth_response = result.unwrap();
@@ -65,12 +65,12 @@ async fn test_beardog_integration_authenticate_no_server() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_integration_authorize_no_token() {
+async fn test_security_authorize_no_token() {
     // EVOLVED: Unix socket (non-existent)
-    let config = BearDogConfig {
-        socket_path: "/tmp/non-existent-beardog.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/tmp/non-existent-security.sock".to_string(),
         request_timeout_secs: 1,
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config).unwrap();
@@ -85,12 +85,12 @@ async fn test_beardog_integration_authorize_no_token() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_integration_zero_trust_validation_no_server() {
+async fn test_security_zero_trust_validation_no_server() {
     // EVOLVED: Unix socket (non-existent)
-    let config = BearDogConfig {
-        socket_path: "/tmp/non-existent-beardog.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/tmp/non-existent-security.sock".to_string(),
         request_timeout_secs: 1,
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config).unwrap();
@@ -99,13 +99,13 @@ async fn test_beardog_integration_zero_trust_validation_no_server() {
     let security_context = SecurityContext::default();
     let result = integration.zero_trust_validation(&security_context).await;
 
-    // DEEP DEBT EVOLUTION: Graceful degradation when BearDog unavailable
+    // DEEP DEBT EVOLUTION: Graceful degradation when Security unavailable
     // ToadStool works standalone - returns permissive validation instead of failing
     assert!(result.is_ok());
     let is_valid = result.unwrap();
     assert!(
         is_valid,
-        "Should return true (permissive) when BearDog unavailable"
+        "Should return true (permissive) when Security unavailable"
     );
 }
 
@@ -114,11 +114,11 @@ async fn test_beardog_integration_zero_trust_validation_no_server() {
 // ============================================================================
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_config_with_custom_socket() {
+async fn test_security_config_with_custom_socket() {
     // EVOLVED: No API tokens! Unix socket auth via file permissions
-    let config = BearDogConfig {
-        socket_path: "/var/run/custom-beardog.sock".to_string(),
-        ..BearDogConfig::default()
+    let config = SecurityConfig {
+        socket_path: "/var/run/custom-security.sock".to_string(),
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config);
@@ -126,10 +126,10 @@ async fn test_beardog_config_with_custom_socket() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_config_monitoring_disabled() {
-    let config = BearDogConfig {
+async fn test_security_config_monitoring_disabled() {
+    let config = SecurityConfig {
         continuous_monitoring: false,
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config);
@@ -137,10 +137,10 @@ async fn test_beardog_config_monitoring_disabled() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_beardog_config_very_long_timeout() {
-    let config = BearDogConfig {
+async fn test_security_config_very_long_timeout() {
+    let config = SecurityConfig {
         request_timeout_secs: 300, // 5 minutes
-        ..BearDogConfig::default()
+        ..SecurityConfig::default()
     };
 
     let integration = BearDogIntegration::new(config);
@@ -354,7 +354,7 @@ async fn test_auth_response_with_many_policies() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_async_integration_coverage_summary() {
     println!("========================================");
-    println!("Async BearDog Integration Tests");
+    println!("Async Security Integration Tests");
     println!("========================================");
     println!("Initialization Tests:         3 tests");
     println!("Auth Method Tests:            1 test");

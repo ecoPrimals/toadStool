@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Inference engine for running models
 //!
 //! Provides a high-level API for model loading and device selection.

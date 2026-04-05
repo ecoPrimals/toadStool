@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Traffic management and load balancing extension
 //!
 //! Provides traffic management, load balancing, and routing configuration.
@@ -25,7 +25,7 @@ pub(crate) trait TrafficExt {
     fn validate_load_balancing_config(&self) -> ToadStoolResult<()>;
 }
 
-impl TrafficExt for super::SongbirdNetworkConfigurator {
+impl TrafficExt for super::OrchestrationNetworkConfigurator {
     async fn apply_traffic_management_config(&self) -> ToadStoolResult<()> {
         info!("🚦 Applying traffic management configuration");
 

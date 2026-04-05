@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `PlatformOptimizer` and optimization logic
 //!
 //! Tests platform-specific optimizations and configuration generation

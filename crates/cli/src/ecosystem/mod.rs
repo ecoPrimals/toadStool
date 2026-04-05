@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ecosystem Integration - Sovereign Science Network
 //!
 //! Integration with the ecoPrimals ecosystem for distributed sovereign computing:
-//! - Songbird: Service discovery and coordination
-//! - `BearDog`: Cryptographic security and permissions
-//! - `NestGate`: Distributed storage and data management
+//! - Coordination: Service discovery and orchestration
+//! - Security: Cryptographic permissions and PKI
+//! - Storage: Distributed storage and data management
 //!
 //! ## Module Structure (Refactored by Protocol)
 //!
@@ -29,11 +29,11 @@ mod connection;
 pub mod discovery;
 
 // Public re-exports
-#[allow(deprecated)] // Re-exporting deprecated EcosystemService for backward compatibility
+#[expect(deprecated)] // Re-exporting deprecated EcosystemService for backward compatibility
 pub use types::{
     BearDogPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
-    EcosystemIntegrator, EcosystemService, NestGateMount, ServiceEndpoint, ServiceSignature,
-    ServiceType, SignedServiceResponse, TrustLevel,
+    EcosystemIntegrator, EcosystemService, NestGateMount, SecurityPermission, ServiceEndpoint,
+    ServiceSignature, ServiceType, SignedServiceResponse, StorageMount, TrustLevel,
 };
 
 // Internal types

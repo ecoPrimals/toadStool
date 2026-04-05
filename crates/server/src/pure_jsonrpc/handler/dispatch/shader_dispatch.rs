@@ -1,10 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! `shader.dispatch` — accepts a compiled shader binary (from coralReef's
-//! `shader.compile.wgsl` response or raw bytes) and dispatches it to the
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! `shader.dispatch` — accepts a compiled shader binary (from the visualization/shader
+//! service's `shader.compile.wgsl` response or raw bytes) and dispatches it to the
 //! target GPU via VFIO or DRM, returning readback results.
 //!
-//! This closes the ludoSpring V35 / coralReef Iter 70 E2E gap:
-//! `coralReef (compile) → toadStool (dispatch) → consumer (validate)`
+//! Pipeline: **shader compile (visualization service) → ToadStool dispatch → consumer validate**
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
@@ -88,13 +87,14 @@ impl DispatchHandler {
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);
 
-        let needs_coral = matches!(dispatch_mode.as_str(), "vfio" | "drm");
+        let needs_shader_service = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
-        if needs_coral && !self.coral_client.is_available().await {
+        if needs_shader_service && !self.coral_client.is_available().await {
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
-                    "coralReef not available — sovereign shader dispatch requires coralReef".into(),
+                    "visualization/shader service not available — vfio/drm dispatch requires it"
+                        .into(),
                 );
             }
             return Ok(serde_json::json!({
@@ -104,8 +104,8 @@ impl DispatchHandler {
                 "bdf": bdf,
                 "dispatch_mode": dispatch_mode,
                 "binary_size": binary_bytes.len(),
-                "error": "coralReef not available — sovereign dispatch requires coralReef driver",
-                "note": "Start coralReef or set CORALREEF_URL to enable sovereign GPU dispatch",
+                "error": "visualization/shader service not available — sovereign GPU dispatch requires a running shader provider",
+                "note": "Start the shader/visualization capability provider or set CORALREEF_URL / legacy CORALREEF_SOCKET for compatibility",
             }));
         }
 

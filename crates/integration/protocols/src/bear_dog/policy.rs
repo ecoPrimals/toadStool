@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! BearDog security policy and audit types
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Security security policy and audit types
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use toadstool::security::SecurityContext;
 
-/// Security policy from BearDog
+/// Security policy from Security
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityPolicy {
     /// Policy identifier

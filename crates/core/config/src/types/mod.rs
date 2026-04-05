@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration types module
 //!
 //! This module contains all configuration type definitions organized by domain:
@@ -150,7 +150,7 @@ impl ToadStoolConfig {
             config.network.bind_address = bind_address.parse()?;
         }
 
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
             .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
         {
@@ -180,7 +180,7 @@ impl ToadStoolConfig {
         }
 
         // Validate legacy network configuration (deprecated - use capability-based discovery)
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         if self.network.endpoints.coordination.is_empty() {
             return Err(crate::ConfigError::Invalid(
                 "Coordination service endpoint cannot be empty (use capability-based discovery instead)"

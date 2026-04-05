@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Basic Operations - Embarrassingly Parallel Pattern
 //!
 //! Operations in this module share a computational pattern:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for display runtime modules:
 //! - capabilities.rs (display detection, format enumeration, resolution reporting, error paths)
 //! - input/device.rs
@@ -139,32 +139,29 @@ fn capabilities_detection_structures() {
     assert!(!caps.displays[1].connected);
 }
 
-#[test]
-fn capabilities_announce_and_cleanup() {
+#[tokio::test]
+async fn capabilities_announce_and_cleanup() {
     let tmp = tempfile::tempdir().unwrap();
     let runtime_dir = tmp.path().to_path_buf();
     let discovery_dir = runtime_dir.join("ecoPrimals/discovery");
 
-    temp_env::with_var(
-        "XDG_RUNTIME_DIR",
-        Some(runtime_dir.to_str().unwrap()),
-        || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                let mut caps = make_caps();
-                caps.primal_id = "test-announce-cleanup-coverage".to_string();
-                caps.announce().await.unwrap();
-                let filepath = discovery_dir.join(format!("{}.json", caps.primal_id));
-                assert!(filepath.exists(), "announce should create capability file");
-                caps.cleanup().await.unwrap();
-                assert!(!filepath.exists(), "cleanup should remove capability file");
-            });
+    temp_env::async_with_vars(
+        [("XDG_RUNTIME_DIR", Some(runtime_dir.to_str().unwrap()))],
+        async {
+            let mut caps = make_caps();
+            caps.primal_id = "test-announce-cleanup-coverage".to_string();
+            caps.announce().await.unwrap();
+            let filepath = discovery_dir.join(format!("{}.json", caps.primal_id));
+            assert!(filepath.exists(), "announce should create capability file");
+            caps.cleanup().await.unwrap();
+            assert!(!filepath.exists(), "cleanup should remove capability file");
         },
-    );
+    )
+    .await;
 }
 
-#[test]
-fn capabilities_find_all_with_valid_and_invalid_files() {
+#[tokio::test]
+async fn capabilities_find_all_with_valid_and_invalid_files() {
     let tmp = tempfile::tempdir().unwrap();
     let runtime_dir = tmp.path().to_path_buf();
     let discovery_dir = runtime_dir.join("ecoPrimals/discovery");
@@ -178,33 +175,34 @@ fn capabilities_find_all_with_valid_and_invalid_files() {
     let valid_file = discovery_dir.join(format!("{}.json", caps.primal_id));
     std::fs::write(&valid_file, serde_json::to_string_pretty(&caps).unwrap()).unwrap();
 
-    temp_env::with_var(
-        "XDG_RUNTIME_DIR",
-        Some(runtime_dir.to_str().unwrap()),
-        || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let found = rt.block_on(DisplayCapabilities::find_all()).unwrap();
+    temp_env::async_with_vars(
+        [("XDG_RUNTIME_DIR", Some(runtime_dir.to_str().unwrap()))],
+        async {
+            let found = DisplayCapabilities::find_all().await.unwrap();
             assert!(
                 found.iter().any(|c| c.primal_id == caps.primal_id),
                 "find_all should parse valid files and skip invalid"
             );
         },
-    );
+    )
+    .await;
 }
 
-#[test]
-fn capabilities_find_all_nonexistent_dir_returns_empty() {
-    temp_env::with_var(
-        "XDG_RUNTIME_DIR",
-        Some("/nonexistent-path-12345-display-coverage"),
-        || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(DisplayCapabilities::find_all());
+#[tokio::test]
+async fn capabilities_find_all_nonexistent_dir_returns_empty() {
+    temp_env::async_with_vars(
+        [(
+            "XDG_RUNTIME_DIR",
+            Some("/nonexistent-path-12345-display-coverage"),
+        )],
+        async {
+            let result = DisplayCapabilities::find_all().await;
             assert!(result.is_ok());
             let caps = result.unwrap();
             assert!(caps.is_empty());
         },
-    );
+    )
+    .await;
 }
 
 // -----------------------------------------------------------------------------
@@ -270,8 +268,8 @@ fn capabilities_resolution_reporting_720p() {
     assert!(!info.connected);
 }
 
-#[test]
-fn capabilities_find_all_skips_non_json_files() {
+#[tokio::test]
+async fn capabilities_find_all_skips_non_json_files() {
     let tmp = tempfile::tempdir().unwrap();
     let runtime_dir = tmp.path().to_path_buf();
     let discovery_dir = runtime_dir.join("ecoPrimals/discovery");
@@ -280,35 +278,33 @@ fn capabilities_find_all_skips_non_json_files() {
     let non_json = discovery_dir.join("readme.txt");
     std::fs::write(&non_json, "This is not JSON").unwrap();
 
-    temp_env::with_var(
-        "XDG_RUNTIME_DIR",
-        Some(runtime_dir.to_str().unwrap()),
-        || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let found = rt.block_on(DisplayCapabilities::find_all()).unwrap();
+    temp_env::async_with_vars(
+        [("XDG_RUNTIME_DIR", Some(runtime_dir.to_str().unwrap()))],
+        async {
+            let found = DisplayCapabilities::find_all().await.unwrap();
             assert!(
                 found.is_empty(),
                 "find_all should skip .txt files, found {}",
                 found.len()
             );
         },
-    );
+    )
+    .await;
 }
 
-#[test]
-fn capabilities_cleanup_nonexistent_file_ok() {
+#[tokio::test]
+async fn capabilities_cleanup_nonexistent_file_ok() {
     let mut caps = make_caps();
     caps.primal_id = "nonexistent-cleanup-test-xyz".to_string();
     let tmp = tempfile::tempdir().unwrap();
-    temp_env::with_var(
-        "XDG_RUNTIME_DIR",
-        Some(tmp.path().to_str().unwrap()),
-        || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(caps.cleanup());
+    temp_env::async_with_vars(
+        [("XDG_RUNTIME_DIR", Some(tmp.path().to_str().unwrap()))],
+        async {
+            let result = caps.cleanup().await;
             assert!(result.is_ok(), "cleanup of nonexistent file should succeed");
         },
-    );
+    )
+    .await;
 }
 
 #[test]

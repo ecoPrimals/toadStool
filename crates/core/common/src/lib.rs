@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -129,7 +129,7 @@ impl Timestamp {
 /// ```
 #[must_use]
 pub fn format_bytes(bytes: u64) -> String {
-    #[allow(
+    #[expect(
         clippy::cast_precision_loss,
         reason = "byte counts up to petabytes fit f64 for human-readable display"
     )]

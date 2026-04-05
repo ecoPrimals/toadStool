@@ -1,22 +1,22 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
-//! Service mesh endpoint source (delegates network discovery to Songbird).
+//! Service mesh endpoint source (delegates network discovery to the coordination service).
 
 use std::future::Future;
 use std::pin::Pin;
 
 use crate::infant_discovery::capabilities::{DiscoveryError, EndpointSource};
 
-/// Service mesh source - discovers services via Songbird (comms primal)
+/// Service mesh source - discovers services via the coordination service
 ///
 /// ## Evolution (Feb 15, 2026)
 ///
-/// Service mesh discovery is now delegated to Songbird (comms primal).
+/// Service mesh discovery is now delegated to the coordination service.
 /// Vendor-specific options (Consul, etcd, Kubernetes) removed - they are
-/// Songbird's concern, not ToadStool's.
+/// the coordination layer's concern, not ToadStool's.
 ///
-/// ToadStool only reports mDNS capability requirements to Songbird.
+/// ToadStool only reports mDNS capability requirements upstream.
 pub struct ServiceMeshSource {
     mesh_type: ServiceMeshType,
 }
@@ -26,26 +26,35 @@ pub struct ServiceMeshSource {
 /// ## Evolution (Feb 15, 2026)
 ///
 /// Vendor-specific types (Consul, etcd, Kubernetes) deprecated.
-/// Service discovery is Songbird's responsibility.
+/// Service discovery is the coordination service's responsibility.
 #[derive(Debug, Clone, Copy)]
 pub enum ServiceMeshType {
-    /// Auto-detect (delegates to Songbird)
+    /// Auto-detect (delegates to coordination service)
     Auto,
-    /// Consul service mesh (deprecated - use Songbird)
-    #[deprecated(since = "0.16.0", note = "Use Songbird for service mesh discovery")]
+    /// Consul service mesh (deprecated - use coordination service)
+    #[deprecated(
+        since = "0.16.0",
+        note = "Use coordination service for service mesh discovery"
+    )]
     Consul,
-    /// etcd key-value store (deprecated - use Songbird)
-    #[deprecated(since = "0.16.0", note = "Use Songbird for service mesh discovery")]
+    /// etcd key-value store (deprecated - use coordination service)
+    #[deprecated(
+        since = "0.16.0",
+        note = "Use coordination service for service mesh discovery"
+    )]
     Etcd,
-    /// Kubernetes service discovery (deprecated - use Songbird)
-    #[deprecated(since = "0.16.0", note = "Use Songbird for service mesh discovery")]
+    /// Kubernetes service discovery (deprecated - use coordination service)
+    #[deprecated(
+        since = "0.16.0",
+        note = "Use coordination service for service mesh discovery"
+    )]
     Kubernetes,
 }
 
 impl ServiceMeshSource {
     /// Create new service mesh source with auto-detection
     ///
-    /// Discovery is delegated to Songbird (comms primal).
+    /// Discovery is delegated to the coordination service.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -55,7 +64,7 @@ impl ServiceMeshSource {
 
     /// Create with specific mesh type
     ///
-    /// Note: Vendor-specific types are deprecated. Use Auto to delegate to Songbird.
+    /// Note: Vendor-specific types are deprecated. Use Auto to delegate to the coordination service.
     #[must_use]
     pub const fn with_type(mesh_type: ServiceMeshType) -> Self {
         Self { mesh_type }
@@ -69,7 +78,7 @@ impl Default for ServiceMeshSource {
 }
 
 impl EndpointSource for ServiceMeshSource {
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn resolve(
         &self,
         service: &str,
@@ -119,28 +128,28 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_service_mesh_source_with_consul_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Consul);
         assert!(matches!(source.mesh_type, ServiceMeshType::Consul));
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_service_mesh_source_with_etcd_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
         assert!(matches!(source.mesh_type, ServiceMeshType::Etcd));
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_service_mesh_source_with_kubernetes_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
         assert!(matches!(source.mesh_type, ServiceMeshType::Kubernetes));
     }
 
     #[tokio::test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     async fn test_service_mesh_deprecated_returns_none() {
         let consul = ServiceMeshSource::with_type(ServiceMeshType::Consul);
         let etcd = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
@@ -152,7 +161,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_service_mesh_auto_delegates_to_songbird() {
+    async fn test_service_mesh_auto_delegates_to_coordination() {
         let source = ServiceMeshSource::new();
         let result = source.resolve("auto-service").await.unwrap();
 

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Primal-Agnostic Capability System
 //!
 //! This module provides a universal capability registration and discovery system
-//! that works with ANY primal in the ecoPrimals ecosystem, not just the coordination primal (Songbird).
+//! that works with ANY primal in the ecoPrimals ecosystem, not just the coordination primal (Coordination).
 //!
 //! ## Architecture
 //!
@@ -19,9 +19,9 @@
 //! │  └── compute_embedded (future)                 │
 //! ├──────────────────────────────────────────────────┤
 //! │  Primal Adapters (pluggable)                   │
-//! │  ├── SongbirdAdapter (coordination)            │
-//! │  ├── SquirrelAdapter (future, AI/routing)      │
-//! │  ├── BearDogAdapter (future, security)         │
+//! │  ├── CoordinationAdapter (mesh registration)   │
+//! │  ├── (future: routing / agent IPC adapter)      │
+//! │  ├── SecurityAdapter (future, security)         │
 //! │  └── CustomAdapter (future)                    │
 //! └──────────────────────────────────────────────────┘
 //! ```
@@ -58,7 +58,7 @@ pub mod adapters;
 pub mod registry;
 pub mod workload;
 
-pub use adapters::{PrimalAdapter, SongbirdAdapter};
+pub use adapters::{CoordinationAdapter, PrimalAdapter};
 pub use registry::{Capability, CapabilityRegistry, ProviderRegistration, ProviderRegistry};
 pub use workload::{WorkloadExecutor, WorkloadRequest, WorkloadResponse};
 
@@ -183,7 +183,7 @@ impl CapabilityProvider {
         &self,
         endpoint: &str,
     ) -> Result<Box<dyn PrimalAdapter>, DistributedError> {
-        Ok(Box::new(SongbirdAdapter::new(endpoint)?))
+        Ok(Box::new(CoordinationAdapter::new(endpoint)?))
     }
 }
 

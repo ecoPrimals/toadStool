@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `PCIe` peer-to-peer transport — GPU-to-GPU data movement.
 //!
 //! Implements [`HardwareTransport`] for `PCIe` paths between GPU render nodes.

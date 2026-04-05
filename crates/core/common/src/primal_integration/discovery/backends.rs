@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery backends: mDNS, Kubernetes, Docker Compose, registry, filesystem.
 
 use std::io::{Read, Write};
@@ -28,7 +28,11 @@ pub fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
     let service_type = "_toadstool._tcp.local.";
     let receiver = mdns.browse(service_type).ok()?;
 
-    let timeout = Duration::from_secs(2);
+    let timeout = if cfg!(test) {
+        Duration::from_millis(50)
+    } else {
+        Duration::from_secs(2)
+    };
     let deadline = std::time::Instant::now() + timeout;
     let mut discovered = Vec::new();
 
@@ -211,7 +215,12 @@ pub fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>
 
     let addrs: Vec<_> = (host, port).to_socket_addrs().ok()?.collect();
     let addr = addrs.first()?;
-    let mut stream = TcpStream::connect_timeout(addr, Duration::from_secs(3)).ok()?;
+    let connect_timeout = if cfg!(test) {
+        Duration::from_millis(100)
+    } else {
+        Duration::from_secs(3)
+    };
+    let mut stream = TcpStream::connect_timeout(addr, connect_timeout).ok()?;
 
     let request = format!("GET /{path} HTTP/1.1\r\nHost: {host_port}\r\nConnection: close\r\n\r\n");
     stream.write_all(request.as_bytes()).ok()?;

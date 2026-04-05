@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Coverage expansion tests for `infant_discovery` module (S155)
@@ -12,8 +12,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
-
-use temp_env::with_vars;
 
 use toadstool_common::infant_discovery::capabilities::capabilities;
 use toadstool_common::infant_discovery::detectors::{
@@ -494,19 +492,17 @@ fn test_environment_source_new() {
     assert_eq!(source.source_name(), "environment");
 }
 
-#[test]
-fn test_environment_source_resolve_with_env() {
-    with_vars(
+#[tokio::test]
+async fn test_environment_source_resolve_with_env() {
+    temp_env::async_with_vars(
         [("TOADSTOOL_ENV_TEST_ENDPOINT", Some("http://env-test:9999"))],
-        || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                let source = EnvironmentSource::default();
-                let result = source.resolve("env_test").await.unwrap();
-                assert_eq!(result, Some("http://env-test:9999".to_string()));
-            });
+        async {
+            let source = EnvironmentSource::default();
+            let result = source.resolve("env_test").await.unwrap();
+            assert_eq!(result, Some("http://env-test:9999".to_string()));
         },
-    );
+    )
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

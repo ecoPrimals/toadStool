@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! WebAssembly module execution (`execute_wasm`).
 
 use std::collections::HashMap;

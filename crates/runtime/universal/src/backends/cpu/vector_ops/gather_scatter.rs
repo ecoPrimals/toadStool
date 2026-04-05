@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Indirect memory access: gather (read by index) and scatter (write by index).
 
 use crate::types::*;

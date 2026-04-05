@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -33,7 +33,7 @@ impl NetworkLoadBalancer {
         }
     }
 
-    /// Register or update a node's health metrics. Called by Songbird capability discovery.
+    /// Register or update a node's health metrics. Called by Coordination capability discovery.
     pub async fn register_node(&self, node_id: String, health: NodeHealth) {
         self.node_health.write().await.insert(node_id, health);
     }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Performance Hardening Module
 //!
 //! This module provides performance optimization features for `ToadStool`:
@@ -207,12 +207,12 @@ mod tests {
             },
             memory: MemoryMetrics {
                 usage_percent: memory_percent,
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss
                 )] // synthetic test metrics; non-negative
                 used_bytes: (memory_percent / 100.0 * 8_000_000_000.0) as u64,
-                #[allow(
+                #[expect(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss
                 )]

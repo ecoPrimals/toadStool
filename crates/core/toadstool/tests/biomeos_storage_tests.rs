@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for biomeOS storage integration.
 //!
 //! All configs use capability-based discovery: no hardcoded primal endpoints.
@@ -44,7 +44,7 @@ fn test_storage_provisioning_config_uses_runtime_discovery() {
     // Default config must use empty endpoint so the runtime discovers storage
     // capability at runtime rather than relying on a hardcoded address.
     let config = StorageProvisioningConfig::default();
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     let ep = &config.storage_endpoint;
     assert!(
         ep.is_empty(),

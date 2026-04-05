@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for display capabilities module
 //! Target: crates/runtime/display/src/capabilities.rs
 //! No real DRM/input device probing - tests structs, serialization, `find_all`.

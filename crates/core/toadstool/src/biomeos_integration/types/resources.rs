@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource allocation, GPU, and health check configuration types.
 
 use serde::{Deserialize, Serialize};

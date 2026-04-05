@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use serde_json::{Value, json};
 
@@ -204,7 +204,7 @@ async fn handle_list_workloads(state: &ServerState) -> Result<Value, JsonRpcErro
 
 #[cfg(feature = "nautilus")]
 async fn route_nautilus(method: &str, params: &Value) -> Result<Value, JsonRpcError> {
-    super::nautilus_handlers::proxy_to_barracuda(method, params)
+    super::nautilus_handlers::proxy_nautilus_rpc(method, params)
         .await
         .map_err(|e| JsonRpcError {
             code: e.code,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Embedded Systems Adapters
 //!
 //! Support for legacy embedded systems including:
@@ -14,15 +14,16 @@
 // Module declarations
 pub mod adapters;
 pub mod dos;
-/// Placeholder trait impls for emulators — compiled only when real hardware
-/// support (`embedded-hw`) is absent. When `embedded-hw` lands, these stubs
-/// will be superseded by real implementations.
-#[cfg(all(feature = "embedded-placeholder-impls", not(feature = "embedded-hw")))]
+/// Placeholder trait impls for emulators. When real hardware backends land
+/// behind `embedded-hw`, add a parallel `#[cfg(feature = "embedded-hw")]`
+/// module with genuine implementations and restrict this one to
+/// `not(feature = "embedded-hw")`.
+#[cfg(feature = "embedded-placeholder-impls")]
 pub mod emulator_impls;
 pub mod emulators;
 pub mod managers;
-/// Placeholder trait impls for programmers — same gating as emulator_impls.
-#[cfg(all(feature = "embedded-placeholder-impls", not(feature = "embedded-hw")))]
+/// Placeholder trait impls for programmers — same gating as `emulator_impls`.
+#[cfg(feature = "embedded-placeholder-impls")]
 pub mod programmer_impls;
 pub mod programmers;
 pub mod toolchains;

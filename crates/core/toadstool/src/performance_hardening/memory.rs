@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory pool management
 //!
 //! This module provides memory pool management for object reuse and
@@ -95,7 +95,7 @@ impl<T> MemoryPool<T> {
     }
 
     /// Get pool statistics
-    #[allow(clippy::future_not_send)] // MemoryPool<T> not Sync when T: !Send; design constraint
+    #[expect(clippy::future_not_send)] // MemoryPool<T> not Sync when T: !Send; design constraint
     pub async fn get_stats(&self) -> PoolStats {
         self.stats.read().await.clone()
     }

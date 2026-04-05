@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Workload health monitoring and interrupt patterns.
 //!
 //! This module implements substrate-agnostic workload health monitoring, absorbed from

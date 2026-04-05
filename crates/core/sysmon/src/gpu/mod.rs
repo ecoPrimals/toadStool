@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU monitoring via `/sys/class/drm/` and vendor-specific sysfs.
 //!
 //! Discovers GPU devices from DRM subsystem and reads hardware telemetry:

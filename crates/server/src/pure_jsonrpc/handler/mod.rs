@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! JSON-RPC request handler and method router
 //!
 //! Routes JSON-RPC 2.0 requests to the appropriate executor or job queue.
@@ -73,7 +73,9 @@ impl JsonRpcHandler {
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             semantic_registry: SemanticMethodRegistry::new(),
-            dispatch: DispatchHandler::new(crate::coral_reef_client::create_coral_reef_client()),
+            dispatch: DispatchHandler::new(
+                crate::visualization_client::create_visualization_client(),
+            ),
             hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(local_gate_id),
             workload: WorkloadHandler::new(executor),

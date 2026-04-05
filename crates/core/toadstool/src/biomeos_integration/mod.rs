@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # biomeOS Integration for Universal Orchestration
 //!
 //! This module provides comprehensive biomeOS integration capabilities for orchestrating
-//! all 5 Primals (`ToadStool`, Songbird, `BearDog`, `NestGate`, Squirrel) from a single
+//! the core services (orchestration, coordination, security, storage, intelligence) from a single
 //! `biome.yaml` manifest file.
 //!
 //! ## Phase 4 Features
@@ -17,13 +17,13 @@
 //!
 //! - `types` - Core configuration and state types
 //! - `auth` - Cross-Primal authentication manager (uses `auth_backend`)
-//! - `auth_backend` - Trait-based auth backends (legacy: BearDog, in-memory)
+//! - `auth_backend` - Trait-based auth backends (legacy direct endpoints, in-memory)
 //! - `auth_backend_evolved` - Capability-based auth backend (RECOMMENDED)
 //! - `storage` - Storage provisioning manager (uses `storage_backend`)
-//! - `storage_backend` - Trait-based storage backends (legacy: NestGate, in-memory)
+//! - `storage_backend` - Trait-based storage backends (legacy direct storage, in-memory)
 //! - `storage_backend_evolved` - Capability-based storage backend (RECOMMENDED)
 //! - `agents` - AI agent deployment manager (uses `agent_backend`)
-//! - `agent_backend` - Trait-based agent backends (legacy: Squirrel, in-memory)
+//! - `agent_backend` - Trait-based agent backends (legacy intelligence endpoint, in-memory)
 //! - `agent_backend_evolved` - Capability-based agent backend (RECOMMENDED)
 //!
 //! ## Deep Debt Evolution
@@ -59,14 +59,14 @@ pub mod storage_backend_evolved;
 pub mod types;
 
 // Re-export legacy backends for backward compatibility
-pub use agent_backend::{AgentBackend, InMemoryAgentBackend, SquirrelBackend};
+pub use agent_backend::{AgentBackend, InMemoryAgentBackend, IntelligenceBackend};
 pub use agents::*;
 pub use auth::*;
 #[cfg(any(test, feature = "test-mocks"))]
 pub use auth_backend::InMemoryAuthBackend;
 pub use auth_backend::{AuthBackend, BearDogBackend};
 pub use storage::*;
-pub use storage_backend::{InMemoryBackend, NestGateBackend, StorageBackend, VolumeStatus};
+pub use storage_backend::{InMemoryBackend, SocketStorageBackend, StorageBackend, VolumeStatus};
 pub use types::*;
 
 // Re-export evolved backends (RECOMMENDED for new code)

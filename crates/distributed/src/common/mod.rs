@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Common Distributed Computing Abstractions
 //!
 //! Generic, reusable abstractions for distributed systems including:
@@ -8,7 +8,7 @@
 //! - Scheduling coordination
 //! - Authentication patterns
 //!
-//! These abstractions are used across Songbird integration, Cloud orchestration,
+//! These abstractions are used across Coordination integration, Cloud orchestration,
 //! and other distributed computing components.
 
 pub mod capacity;

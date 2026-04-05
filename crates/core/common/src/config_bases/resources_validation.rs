@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -72,7 +72,7 @@ mod humantime_serde_optional {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::Duration;
 
-    #[allow(clippy::ref_option)] // Required by serde derive macro
+    #[expect(clippy::ref_option)] // Required by serde derive macro
     pub fn serialize<S>(value: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

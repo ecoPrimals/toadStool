@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Error types for the capability-based agent backend.
 
 use toadstool_common::capability_provider::CapabilityError;

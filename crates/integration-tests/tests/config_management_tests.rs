@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration management tests
 //!
 //! Tests use the real `ToadStoolConfig` and `NetworkConfig` APIs.
@@ -78,7 +78,7 @@ fn test_config_cloning() {
 fn test_network_config_endpoints_non_empty() {
     let network = NetworkConfig::default();
     // Deprecated endpoints are still populated by default for backward compatibility
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     let coordination_non_empty = !network.endpoints.coordination.is_empty();
     assert!(
         coordination_non_empty,

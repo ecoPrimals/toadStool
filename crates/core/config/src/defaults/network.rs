@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ⚠️ PARTIALLY DEPRECATED: Network-related default values
 //!
-//! **Primal ports (`SONGBIRD_PORT`, `BEARDOG_PORT`, etc.) are deprecated.**
+//! **Legacy primal-name ports (`SONGBIRD_PORT`, `BEARDOG_PORT`, etc.) are deprecated.**
 //! Use `RuntimeDiscovery` with capability-based discovery instead.
 //!
 //! **Self-configuration (`API_PORT`, `METRICS_PORT`) remains valid** - these are ToadStool's own ports.
@@ -16,10 +16,10 @@
 //! let my_api_port = network::API_PORT;
 //! let my_metrics_port = network::METRICS_PORT;
 //!
-//! // ❌ BAD: Don't hardcode other primals
+//! // ❌ BAD: Don't hardcode other services' ports
 //! // let coordination_port = network::COORDINATION_PORT;
 //!
-//! // ✅ GOOD: Discover other primals at runtime
+//! // ✅ GOOD: Discover peer capabilities at runtime
 //! let discovery = RuntimeDiscovery::new(client);
 //! let coordinators = discovery
 //!     .discover_capability(&Capability::Coordination)
@@ -45,16 +45,16 @@ pub const LOCALHOST: &str = "127.0.0.1";
 // as sentinel values; actual endpoints come from RuntimeDiscovery.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Coordination primals (e.g., Songbird). Port discovered via capability resolution at runtime.
+/// Coordination capability. Port discovered via capability resolution at runtime.
 pub const COORDINATION_FALLBACK_PORT: u16 = 0;
 
-/// Security primals (e.g., BearDog). Port discovered via capability resolution at runtime.
+/// Security capability. Port discovered via capability resolution at runtime.
 pub const SECURITY_FALLBACK_PORT: u16 = 0;
 
-/// Storage primals (e.g., NestGate). Port discovered via capability resolution at runtime.
+/// Storage capability. Port discovered via capability resolution at runtime.
 pub const STORAGE_FALLBACK_PORT: u16 = 0;
 
-/// AI primals (e.g., Squirrel). Port discovered via capability resolution at runtime.
+/// AI / intelligence capability. Port discovered via capability resolution at runtime.
 pub const AI_FALLBACK_PORT: u16 = 0;
 
 /// Port for JSON-RPC event streaming (replaces deprecated `WebSocket`)

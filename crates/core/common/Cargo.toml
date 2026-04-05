@@ -42,7 +42,7 @@ tokio-test = { workspace = true }
 tokio = { workspace = true }
 proptest = { workspace = true }
 tempfile = "3"
-temp-env = "0.3"
+temp-env = { version = "0.3", features = ["async_closure"] }
 
 [features]
 default = ["mdns"]

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Federation types
 //!
 //! **Zero-Copy Optimization** (Phase 2): Uses `Arc<str>` for shared string ownership.

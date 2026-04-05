@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! # Orchestration Network Configuration — Type Definitions
 //!
@@ -26,11 +26,9 @@ pub use traffic::*;
 
 use serde::{Deserialize, Serialize};
 
-/// Orchestration network configuration (legacy name: SongbirdNetworkConfig).
-///
-/// Prefer [`OrchestrationNetworkConfig`] alias for new code.
+/// Orchestration network configuration for the coordination / service-mesh stack.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SongbirdNetworkConfig {
+pub struct OrchestrationNetworkConfig {
     /// Service mesh configuration
     pub service_mesh: ServiceMeshConfig,
     /// DNS service discovery configuration
@@ -49,5 +47,5 @@ pub struct SongbirdNetworkConfig {
     pub health_monitoring: HealthMonitoringConfig,
 }
 
-/// Capability-based alias — prefer for new code.
-pub type OrchestrationNetworkConfig = SongbirdNetworkConfig;
+/// Legacy alias — prefer [`OrchestrationNetworkConfig`].
+pub type SongbirdNetworkConfig = OrchestrationNetworkConfig;

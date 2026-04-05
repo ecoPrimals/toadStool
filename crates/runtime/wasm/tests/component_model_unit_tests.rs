@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::unused_async,
     reason = "async signature required by trait/interface"
 )]
@@ -205,7 +205,7 @@ struct WasmComponentRuntime {
     memory: Arc<tokio::sync::RwLock<Vec<u8>>>,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct WasmConfig {
     memory_bytes: usize,
     table_elements: usize,

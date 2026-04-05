@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Cloud orchestrator tests — split by concern for WateringHole line limits
 
 mod common;

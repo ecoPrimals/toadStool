@@ -79,6 +79,8 @@ futures = { workspace = true }
 default = ["api", "gpu-discovery"]
 api = []
 gpu-discovery = ["wgpu"]
+# Exposes `mocks` module (MockResourceMonitor, etc.) for integration tests / tools — not default
+test-mocks = []
 
 # UNIBIN EVOLUTION (Feb 2, 2026):
 # Removed [[bin]] section to make this a library-only crate.
@@ -101,7 +103,7 @@ gpu-discovery = ["wgpu"]
 hw-learn = { path = "../core/hw-learn" }
 tokio-test = "0.4"
 tempfile = "3.8"
-temp-env = "0.3"
+temp-env = { version = "0.3", features = ["async_closure"] }
 toadstool-testing = { path = "../testing" }
 proptest = { workspace = true }
 

@@ -1,15 +1,15 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive Distributed Module Tests - Expansion for 70%+ Coverage
 //!
 //! **Purpose**: Expand Distributed module test coverage from 45% to 70%+
-//! **Focus**: Coordinator, Songbird integration, job management, error handling
+//! **Focus**: Coordinator, Coordination integration, job management, error handling
 //!
 //! Created: December 20, 2025
 
 use uuid::Uuid;
 
 use toadstool_distributed::core::{
-    DistributedConfig, DistributedCoordinator, SongbirdConfig, StandaloneConfig,
+    CoordinationConfig, DistributedConfig, DistributedCoordinator, StandaloneConfig,
 };
 
 // ============================================================================
@@ -26,7 +26,7 @@ async fn test_distributed_coordinator_standalone_creation() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -37,7 +37,7 @@ async fn test_distributed_coordinator_standalone_creation() {
 }
 
 #[tokio::test]
-async fn test_distributed_coordinator_with_songbird() {
+async fn test_distributed_coordinator_with_coordination() {
     let config = DistributedConfig {
         instance_id: format!("test-{}", Uuid::new_v4()),
         standalone: StandaloneConfig {
@@ -46,18 +46,18 @@ async fn test_distributed_coordinator_with_songbird() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("test-token".to_string()),
             health_reporting_interval_secs: 60,
         }),
     };
 
-    // Coordinator should initialize even if Songbird unavailable
+    // Coordinator should initialize even if Coordination unavailable
     let coordinator = DistributedCoordinator::new(config).await;
     assert!(
         coordinator.is_ok(),
-        "Should gracefully handle Songbird unavailable"
+        "Should gracefully handle Coordination unavailable"
     );
 }
 
@@ -71,7 +71,7 @@ async fn test_config_validation_max_concurrent() {
             enable_job_queue: true,
             max_queue_size: 1000,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -88,7 +88,7 @@ async fn test_config_with_zero_concurrent() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -110,7 +110,7 @@ async fn test_capability_detection() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -133,7 +133,7 @@ async fn test_submit_simple_job() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -152,7 +152,7 @@ async fn test_concurrent_job_limit() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -170,7 +170,7 @@ async fn test_job_queue_overflow() {
             enable_job_queue: true,
             max_queue_size: 3, // Small queue for testing
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -179,11 +179,11 @@ async fn test_job_queue_overflow() {
 }
 
 // ============================================================================
-// Songbird Integration Tests
+// Coordination Integration Tests
 // ============================================================================
 
 #[tokio::test]
-async fn test_songbird_health_reporting() {
+async fn test_coordination_health_reporting() {
     let config = DistributedConfig {
         instance_id: format!("test-{}", Uuid::new_v4()),
         standalone: StandaloneConfig {
@@ -192,7 +192,7 @@ async fn test_songbird_health_reporting() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("test-token".to_string()),
             health_reporting_interval_secs: 10, // Short interval for testing
@@ -204,7 +204,7 @@ async fn test_songbird_health_reporting() {
 }
 
 #[tokio::test]
-async fn test_songbird_connection_retry() {
+async fn test_coordination_connection_retry() {
     let config = DistributedConfig {
         instance_id: format!("test-{}", Uuid::new_v4()),
         standalone: StandaloneConfig {
@@ -213,7 +213,7 @@ async fn test_songbird_connection_retry() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://nonexistent-host-12345:8080".to_string(),
             auth_token: None,
             health_reporting_interval_secs: 60,
@@ -224,12 +224,12 @@ async fn test_songbird_connection_retry() {
     let coordinator = DistributedCoordinator::new(config).await;
     assert!(
         coordinator.is_ok(),
-        "Should handle Songbird connection failure"
+        "Should handle Coordination connection failure"
     );
 }
 
 #[tokio::test]
-async fn test_songbird_fallback_to_standalone() {
+async fn test_coordination_fallback_to_standalone() {
     let config = DistributedConfig {
         instance_id: format!("test-{}", Uuid::new_v4()),
         standalone: StandaloneConfig {
@@ -238,7 +238,7 @@ async fn test_songbird_fallback_to_standalone() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://localhost:8080".to_string(),
             auth_token: Some("test-token".to_string()),
             health_reporting_interval_secs: 60,
@@ -246,7 +246,7 @@ async fn test_songbird_fallback_to_standalone() {
     };
 
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
-    // Should fall back to standalone execution when Songbird unavailable
+    // Should fall back to standalone execution when Coordination unavailable
     drop(coordinator);
 }
 
@@ -264,7 +264,7 @@ async fn test_invalid_instance_id() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let result = DistributedCoordinator::new(config).await;
@@ -282,7 +282,7 @@ async fn test_invalid_timeout_config() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let result = DistributedCoordinator::new(config).await;
@@ -300,7 +300,7 @@ async fn test_invalid_queue_size() {
             enable_job_queue: true,
             max_queue_size: 0, // Invalid zero queue size
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let result = DistributedCoordinator::new(config).await;
@@ -322,7 +322,7 @@ async fn test_job_execution_timeout() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -339,7 +339,7 @@ async fn test_coordinator_shutdown() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -362,7 +362,7 @@ async fn test_resource_limit_enforcement() {
             enable_job_queue: true,
             max_queue_size: 10,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -387,7 +387,7 @@ async fn test_concurrent_coordinator_creation() {
                     enable_job_queue: true,
                     max_queue_size: 100,
                 },
-                songbird_integration: None,
+                coordination: None,
             };
 
             DistributedCoordinator::new(config).await
@@ -415,7 +415,7 @@ async fn test_standalone_load_balancing() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -436,7 +436,7 @@ async fn test_health_status_reporting() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let _coordinator = DistributedCoordinator::new(config).await.unwrap();
@@ -457,7 +457,7 @@ async fn test_very_large_queue_size() {
             enable_job_queue: true,
             max_queue_size: 1_000_000, // Very large queue
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -474,7 +474,7 @@ async fn test_very_long_timeout() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: None,
+        coordination: None,
     };
 
     let coordinator = DistributedCoordinator::new(config).await;
@@ -482,7 +482,7 @@ async fn test_very_long_timeout() {
 }
 
 #[tokio::test]
-async fn test_songbird_with_special_characters() {
+async fn test_coordination_with_special_characters() {
     let config = DistributedConfig {
         instance_id: format!("test-{}", Uuid::new_v4()),
         standalone: StandaloneConfig {
@@ -491,7 +491,7 @@ async fn test_songbird_with_special_characters() {
             enable_job_queue: true,
             max_queue_size: 100,
         },
-        songbird_integration: Some(SongbirdConfig {
+        coordination: Some(CoordinationConfig {
             endpoint: "http://test-service:8080/api/v1".to_string(),
             auth_token: Some("token-with-special-chars-!@#$".to_string()),
             health_reporting_interval_secs: 60,
@@ -517,7 +517,7 @@ fn test_distributed_coverage_summary() {
     println!("Configuration Tests:      4 tests");
     println!("Capability Detection:     1 test");
     println!("Job Submission:           3 tests");
-    println!("Songbird Integration:     3 tests");
+    println!("Coordination Integration:     3 tests");
     println!("Error Handling:           3 tests");
     println!("Timeout & Cancellation:   2 tests");
     println!("Resource Management:      1 test");

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Storage backend traits and implementations for BiomeOS integration
 //!
 //! This module defines the trait interface for storage backends and provides
@@ -8,7 +8,7 @@
 //!
 //! | Backend | Module | Purpose |
 //! |---------|--------|---------|
-//! | [`NestGateBackend`] | `nestgate` | Production — communicates via Unix socket JSON-RPC |
+//! | [`SocketStorageBackend`] | `storage` | Production — communicates via Unix socket JSON-RPC |
 //! | [`InMemoryBackend`] | `inmemory` | Testing & lightweight — pure in-process `HashMap` |
 //!
 //! ## Design Pattern: Dependency Injection
@@ -16,7 +16,7 @@
 //! ```ignore
 //! // Production
 //! let backend: Arc<dyn StorageBackend> = Arc::new(
-//!     NestGateBackend::new_async("fast", true, 3).await?
+//!     SocketStorageBackend::new_async("fast", true, 3).await?
 //! );
 //!
 //! // Testing
@@ -33,10 +33,10 @@ use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use crate::ToadStoolResult;
 
 mod inmemory;
-mod nestgate;
+mod storage;
 
 pub use inmemory::InMemoryBackend;
-pub use nestgate::NestGateBackend;
+pub use storage::SocketStorageBackend;
 
 #[cfg(test)]
 mod tests;

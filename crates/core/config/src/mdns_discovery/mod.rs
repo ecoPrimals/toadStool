@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! mDNS Discovery Client Implementation
 //!
 //! Implements multicast DNS (mDNS) service discovery for zero-config

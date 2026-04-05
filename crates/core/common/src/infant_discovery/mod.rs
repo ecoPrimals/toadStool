@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
 
 //! Infant Discovery System
@@ -12,21 +12,21 @@
 //! This eliminates all hardcoded service names, URLs, and ports while maintaining
 //! perfect interoperability.
 //!
-//! # Evolution (Feb 15, 2026) - Songbird Delegation
+//! # Evolution (Feb 15, 2026) — coordination service delegation
 //!
 //! ToadStool focuses on **hardware capabilities** (GPU, NPU, CPU).
-//! Network service discovery is **delegated to Songbird** (comms primal).
+//! Network service discovery is **delegated to the coordination service** (comms layer).
 //!
 //! **Removed**: Vendor-specific detectors (K8s, Docker, Consul, AWS/GCP/Azure)
-//! **Kept**: `BareMetalDetector` (hardware capabilities), mDNS (exposed to Songbird)
+//! **Kept**: `BareMetalDetector` (hardware capabilities), mDNS (exposed to coordination layer)
 //!
 //! ## Separation of Concerns
 //!
 //! - **ToadStool**: Hardware discovery, compute routing, unified math language
-//! - **Songbird**: Network discovery, service mesh, primal coordination
+//! - **Coordination service**: Network discovery, service mesh, peer coordination
 //!
 //! This means ToadStool no longer attempts to detect Kubernetes, Docker,
-//! or cloud providers. Those are Songbird's responsibility.
+//! or cloud providers. Those are the coordination service's responsibility.
 
 pub mod builder;
 pub mod capabilities;

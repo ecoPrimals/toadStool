@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Helper functions for hw-learn handlers: thermal checks, BDF resolution, store paths.
 
 use crate::pure_jsonrpc::types::JsonRpcError;

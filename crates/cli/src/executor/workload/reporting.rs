@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Execution result reporting and output formatting.
 //!
 //! Formats execution results for human-readable (text) or machine-readable (JSON) output.

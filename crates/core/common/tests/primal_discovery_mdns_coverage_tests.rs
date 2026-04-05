@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `primal_discovery_mdns`
 //! Target: 85%+ coverage of mDNS discovery adapter
 

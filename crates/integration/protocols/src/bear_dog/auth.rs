@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! BearDog authentication and authorization request/response types
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Security authentication and authorization request/response types
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -8,7 +8,7 @@ use toadstool::security::SecurityContext;
 
 use super::policy::SecurityPolicy;
 
-/// Authentication request to BearDog PKI security service
+/// Authentication request to security PKI security service
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthRequest {
     /// Service identifier requesting auth
@@ -24,7 +24,7 @@ pub struct AuthRequest {
     pub timestamp: std::time::SystemTime,
 }
 
-/// Authentication response from BearDog PKI security service
+/// Authentication response from security PKI security service
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResponse {
     /// JWT or bearer token for subsequent requests
@@ -42,7 +42,7 @@ pub struct AuthResponse {
 }
 
 impl AuthResponse {
-    /// Create a standalone-mode response when BearDog is unavailable
+    /// Create a standalone-mode response when Security is unavailable
     pub fn standalone() -> Self {
         Self {
             access_token: "standalone".to_string(),
@@ -54,7 +54,7 @@ impl AuthResponse {
         }
     }
 
-    /// Returns true if this is a standalone-mode response (no BearDog)
+    /// Returns true if this is a standalone-mode response (no Security)
     pub fn is_standalone(&self) -> bool {
         self.access_token == "standalone"
     }

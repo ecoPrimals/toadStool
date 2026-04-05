@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Integration-style unit tests for [`toadstool_security_policies::manager::FilePolicyManager`]
 //! and the [`toadstool_security_policies::PolicyManager`] trait, covering configuration, I/O
 //! edge cases, evaluation, composition, and serde stability for persisted policy data.

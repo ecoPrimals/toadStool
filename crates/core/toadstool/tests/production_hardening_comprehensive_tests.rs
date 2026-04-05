@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for `production_hardening` module
 //!
 //! Sprint 18: `production_hardening.rs` coverage → 60%+

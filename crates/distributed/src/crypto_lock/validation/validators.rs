@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Structural validators for signatures, delegation chains, and revocation.
 
 use std::time::SystemTime;

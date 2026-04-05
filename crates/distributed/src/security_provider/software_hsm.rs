@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Software HSM security provider.
 //!
 //! A pure-Rust in-process security provider using:
@@ -7,7 +7,7 @@
 //! - **In-memory key store** protected by `RwLock`
 //!
 //! Key material is ephemeral — lost on restart. Suitable for development, CI,
-//! and environments where a hardware security provider (BearDog) is unavailable.
+//! and environments where a hardware security provider (Security) is unavailable.
 
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive test coverage for ecosystem discovery module
 //!
 //! This test suite provides property-based tests, table-driven tests, and error path
@@ -672,12 +672,11 @@ fn test_service_pattern_clone() {
 }
 
 /// Test `discover_services` with `TOADSTOOL_SKIP_DISCOVERY` env (fast mode)
-#[test]
-fn test_discover_services_skip_discovery_env() {
-    temp_env::with_var("TOADSTOOL_SKIP_DISCOVERY", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+#[tokio::test]
+async fn test_discover_services_skip_discovery_env() {
+    temp_env::async_with_vars([("TOADSTOOL_SKIP_DISCOVERY", Some("1"))], async {
         let mut discoverer = EcosystemDiscoverer::new();
-        let result = rt.block_on(discoverer.discover_services());
+        let result = discoverer.discover_services().await;
 
         assert!(result.is_ok());
         let services = result.unwrap();
@@ -687,7 +686,8 @@ fn test_discover_services_skip_discovery_env() {
                 .discovery_methods_used
                 .contains(&"fast_mode".to_string())
         );
-    });
+    })
+    .await;
 }
 
 /// Test `find_pattern_by_capability` returns correct pattern

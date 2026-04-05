@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Public types for resource validation results and system capability snapshots.
 
 use serde::{Deserialize, Serialize};

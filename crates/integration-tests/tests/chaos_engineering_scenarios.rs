@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real Chaos Engineering Test Scenarios
 //!
 //! These tests validate ToadStool's resilience under failure conditions.

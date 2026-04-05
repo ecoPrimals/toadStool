@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Integration Protocol types
 //!
 //! Week 17 Sprint 5: Integration Protocol types and structures tests
@@ -9,12 +9,12 @@ use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::*;
 
 // ============================================================================
-// BearDogConfig Tests (4 tests)
+// SecurityConfig Tests (4 tests)
 // ============================================================================
 
 #[test]
-fn test_beardog_config_default() {
-    let config = BearDogConfig::default();
+fn test_security_config_default() {
+    let config = SecurityConfig::default();
 
     // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
     assert!(config.socket_path.contains("security.sock"));
@@ -25,8 +25,8 @@ fn test_beardog_config_default() {
 }
 
 #[test]
-fn test_beardog_config_clone() {
-    let config1 = BearDogConfig::default();
+fn test_security_config_clone() {
+    let config1 = SecurityConfig::default();
     let config2 = config1.clone();
 
     // EVOLVED: Pure Rust Unix socket fields
@@ -36,23 +36,23 @@ fn test_beardog_config_clone() {
 }
 
 #[test]
-fn test_beardog_config_debug() {
-    let config = BearDogConfig::default();
+fn test_security_config_debug() {
+    let config = SecurityConfig::default();
     let debug_str = format!("{config:?}");
 
-    assert!(debug_str.contains("BearDogConfig"));
+    assert!(debug_str.contains("SecurityConfig"));
     assert!(debug_str.contains("socket_path"));
 }
 
 #[test]
-fn test_beardog_config_with_custom_socket() {
+fn test_security_config_with_custom_socket() {
     // EVOLVED: No API tokens! Unix socket authentication via file permissions
-    let config = BearDogConfig {
-        socket_path: "/custom/path/beardog.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/custom/path/security.sock".to_string(),
         ..Default::default()
     };
 
-    assert_eq!(config.socket_path, "/custom/path/beardog.sock");
+    assert_eq!(config.socket_path, "/custom/path/security.sock");
 }
 
 // ============================================================================
@@ -457,7 +457,7 @@ fn test_security_audit_event_clone_debug() {
 #[test]
 fn test_protocol_types_coverage_summary() {
     println!("=== Integration Protocol Types Test Coverage ===");
-    println!("BearDogConfig Tests:              4 tests");
+    println!("SecurityConfig Tests:              4 tests");
     println!("AuthRequest Tests:                4 tests");
     println!("AuthResponse Tests:               3 tests");
     println!("AuthzRequest Tests:               3 tests");

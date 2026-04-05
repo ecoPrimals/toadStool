@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Request/response and status types for AI agent and model operations.
 
 use serde::{Deserialize, Serialize};

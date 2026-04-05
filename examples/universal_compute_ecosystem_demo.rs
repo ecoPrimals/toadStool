@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # ToadStool Universal Compute Platform Demo
 //!
 //! This demo showcases ToadStool as a revolutionary universal compute platform:
@@ -256,7 +256,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Create a mock execution for demonstration
-#[allow(dead_code)]
+#[expect(dead_code)]
 async fn demo_execution(name: &str, duration_ms: u64) {
     let job_id = Uuid::new_v4();
     let start_time = SystemTime::now();
@@ -279,7 +279,7 @@ async fn demo_execution(name: &str, duration_ms: u64) {
 }
 
 /// Create a mock resource allocation for demonstration
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn demo_resource_allocation(job_name: &str) {
     println!("📦 Allocating resources for: {job_name}");
     println!("   CPU: 2.0 cores");

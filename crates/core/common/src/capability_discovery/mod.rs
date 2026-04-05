@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability-Based Service Discovery - Pure Infant Discovery Pattern
 //!
 //! This module implements the **pure infant discovery** pattern where ToadStool:
@@ -14,12 +14,12 @@
 //! This enables:
 //! - **Multi-vendor support**: Any service providing a capability works
 //! - **Federation**: Multiple providers for same capability
-//! - **Edge capability**: Local service discovery (mDNS via Songbird)
+//! - **Edge capability**: Local service discovery (mDNS via coordination service)
 //!
 //! ## Evolution (Feb 15, 2026)
 //!
-//! Service discovery is delegated to Songbird (comms primal). ToadStool only
-//! exposes mDNS capability requirements - Songbird handles the actual discovery.
+//! Service discovery is delegated to the coordination service (comms layer). ToadStool only
+//! exposes mDNS capability requirements; that layer handles the actual discovery.
 //! Vendor-specific discovery (K8s, Consul, cloud providers) removed.
 //!
 //! ## Usage Example
@@ -68,7 +68,7 @@ fn which_in_path(binary: &str) -> bool {
 /// Capability-based discovery client
 ///
 /// This is the **primary interface** for discovering services by capability.
-/// Service discovery is delegated to Songbird (comms primal) via mDNS.
+/// Service discovery is delegated to the coordination service (comms layer) via mDNS.
 pub struct CapabilityDiscovery {
     /// Underlying discovery implementation
     discovery: Box<dyn ServiceDiscoveryTrait>,
@@ -84,7 +84,7 @@ impl CapabilityDiscovery {
     /// Create new capability discovery client (sync bridge).
     ///
     /// Automatically detects available discovery methods:
-    /// - mDNS/DNS-SD via Songbird (if on local network)
+    /// - mDNS/DNS-SD via coordination service (if on local network)
     /// - Environment variables (always available)
     ///
     /// Prefer [`new_async`](Self::new_async) when calling from async contexts.
@@ -224,7 +224,7 @@ impl CapabilityDiscovery {
     /// Async detection of available discovery backend.
     ///
     /// **Deep Debt Compliance**: Runtime environment detection
-    /// - Checks for mDNS capability (local network via Songbird)
+    /// - Checks for mDNS capability (local network via coordination service)
     /// - Falls back to environment variables (self-knowledge)
     /// - Graceful degradation at every level
     ///

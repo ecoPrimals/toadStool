@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Network monitoring via `/proc/net/dev`.
 
 use crate::error::{Result, SysmonError};

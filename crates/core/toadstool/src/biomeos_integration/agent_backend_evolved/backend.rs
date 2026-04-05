@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`AgentBackend`] implementation using capability discovery and JSON-RPC-style calls.
 
 use serde_json::json;

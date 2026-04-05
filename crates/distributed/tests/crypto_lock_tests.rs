@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for crypto lock types
 //!
 //! This test suite covers:
@@ -171,10 +171,10 @@ fn test_crypto_algorithm_rsa() {
 }
 
 #[test]
-fn test_crypto_algorithm_beardog_custom() {
-    let algo = CryptoAlgorithm::BearDogCustom;
+fn test_crypto_algorithm_security_custom() {
+    let algo = CryptoAlgorithm::SecurityLayerCustom;
 
-    assert!(matches!(algo, CryptoAlgorithm::BearDogCustom));
+    assert!(matches!(algo, CryptoAlgorithm::SecurityLayerCustom));
 }
 
 // ============================================================================

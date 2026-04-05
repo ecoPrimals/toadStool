@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery coverage tests for primal discovery, service discovery, primal sockets,
 //! primal identity, universal adapter, and capability provider modules.
 
@@ -297,24 +297,24 @@ fn test_resolve_family_id() {
 }
 
 #[test]
-fn test_resolve_beardog_socket() {
+fn test_resolve_security_socket_legacy_override() {
     let env = SocketPathEnv {
-        beardog_socket: Some("/custom/beardog.sock".to_string()),
+        legacy_security_socket: Some("/custom/security-via-legacy.sock".to_string()),
         ..test_socket_env()
     };
     let path = resolve_capability_socket_fallback("crypto", &env);
-    assert_eq!(path, PathBuf::from("/custom/beardog.sock"));
+    assert_eq!(path, PathBuf::from("/custom/security-via-legacy.sock"));
 }
 
 #[test]
-fn test_resolve_songbird_socket() {
+fn test_resolve_coordination_socket_fallback() {
     let env = test_socket_env();
     let path = resolve_capability_socket_fallback("coordination", &env);
     assert!(path.to_string_lossy().contains("coordination"));
 }
 
 #[test]
-fn test_resolve_nestgate_socket() {
+fn test_resolve_storage_socket_fallback() {
     let env = test_socket_env();
     let path = resolve_capability_socket_fallback("storage", &env);
     assert!(path.to_string_lossy().contains("storage"));

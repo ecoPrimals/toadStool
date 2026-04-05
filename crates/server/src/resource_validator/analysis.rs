@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Compares estimated requirements to discovered capabilities (gaps and warnings).
 
 use crate::resource_estimator::ResourceEstimate;

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Authentication backend traits and implementations for BiomeOS/BearDog integration
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Authentication backend traits and implementations for BiomeOS / security-service integration
 //!
 //! This module defines the trait interface for authentication backends and provides
 //! production and test implementations using proper dependency injection.
@@ -28,14 +28,14 @@ pub use super::auth::{AuthenticationToken, TokenRefreshRequest, TokenRequest};
 /// Trait defining the interface for authentication backends
 ///
 /// This allows dependency injection of different authentication implementations
-/// (production BearDog backend, in-memory test backend when `cfg(test)` or the
+/// (production security-service backend, in-memory test backend when `cfg(test)` or the
 /// `test-mocks` crate feature is enabled).
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait AuthBackend: Send + Sync {
     /// Initialize/test connection to authentication backend
     ///
-    /// For network backends (BearDog), this tests connectivity.
+    /// For network backends (security service), this tests connectivity.
     /// For local backends (in-memory), this is typically a no-op.
     async fn initialize(&self) -> ToadStoolResult<()> {
         Ok(()) // Default implementation is no-op
@@ -52,7 +52,7 @@ pub trait AuthBackend: Send + Sync {
 
     /// Sign a payload and return a signature string.
     ///
-    /// Production backends delegate to BearDog via JSON-RPC (`crypto.sign`).
+    /// Production backends delegate to the security / crypto provider via JSON-RPC (`crypto.sign`).
     /// The in-memory backend returns mock signatures for testing.
     ///
     /// # Errors
@@ -60,7 +60,7 @@ pub trait AuthBackend: Send + Sync {
     /// Returns an error if no signing capability is available.
     async fn sign_payload(&self, _payload: &str) -> ToadStoolResult<String> {
         Err(ToadStoolError::configuration(
-            "Signing not available. Ensure a crypto provider (BearDog) is running.",
+            "Signing not available. Ensure a crypto / security provider is running.",
         ))
     }
 
@@ -85,7 +85,7 @@ pub trait AuthBackend: Send + Sync {
             ));
         }
 
-        // Check issuer (crypto provider; well-known integration constant)
+        // Check issuer (security / crypto service; well-known integration id)
         if token.issuer != well_known::BEARDOG {
             return Err(ToadStoolError::runtime(format!(
                 "Invalid token issuer: {}",
@@ -119,14 +119,17 @@ pub trait AuthBackend: Send + Sync {
     }
 }
 
-/// Production implementation using BearDog Unix Socket API (Pure Rust!)
+/// Production implementation using the security / crypto service Unix socket API (Pure Rust!)
 ///
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
-pub struct BearDogBackend {
+pub struct SecurityBackend {
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
 }
 
-impl BearDogBackend {
+/// Legacy alias for [`SecurityBackend`].
+pub type BearDogBackend = SecurityBackend;
+
+impl SecurityBackend {
     /// Create crypto auth backend with capability-based discovery (RECOMMENDED)
     ///
     /// **Deep Debt Compliant**: Discovers crypto service by capability, not name.
@@ -138,7 +141,7 @@ impl BearDogBackend {
     ///
     /// Returns an error if capability discovery fails or no crypto service can be found.
     pub async fn new_async() -> ToadStoolResult<Self> {
-        // CAPABILITY-BASED: Discover ANY crypto service (not hardcoded "beardog")
+        // CAPABILITY-BASED: Discover ANY crypto service by capability
         let socket_path = toadstool_common::primal_sockets::discover_crypto_socket()
             .await
             .map_err(|e| {
@@ -172,7 +175,7 @@ impl BearDogBackend {
 }
 
 #[async_trait]
-impl AuthBackend for BearDogBackend {
+impl AuthBackend for SecurityBackend {
     async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
         let params = serde_json::json!({ "payload": payload });
         self.rpc_client
@@ -251,7 +254,7 @@ impl AuthBackend for BearDogBackend {
 /// In-memory test backend for testing without external dependencies
 ///
 /// This is a proper test implementation, not a mock. It generates valid
-/// tokens for testing purposes without requiring a real BearDog service.
+/// tokens for testing purposes without requiring a real security service.
 #[cfg(any(test, feature = "test-mocks"))]
 pub struct InMemoryAuthBackend {
     tokens: Arc<Mutex<HashMap<String, AuthenticationToken>>>,

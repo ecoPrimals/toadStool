@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for substrate detectors
 //!
 //! ## Evolution (Feb 15, 2026)
@@ -197,7 +197,7 @@ async fn test_detector_concurrent_calls() {
 // ============================================================================
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn test_cloud_environment_alias_deprecated() {
     // CloudEnvironment is now an alias to HardwareEnvironment
     let _env: CloudEnvironment = HardwareEnvironment::default();

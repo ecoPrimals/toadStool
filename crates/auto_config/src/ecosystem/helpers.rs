@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Merge discovery sources and resolve capability endpoints from environment variables.
 
 use std::collections::HashMap;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -111,17 +111,17 @@ fn s155_get_socket_path_tmp_fallback_when_xdg_not_exists() {
 // UniBin execution tests
 // ============================================================================
 
-#[test]
-fn s155_create_executor_standalone_mode() {
-    temp_env::with_var("TOADSTOOL_STANDALONE", Some("1"), || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let result = rt.block_on(create_executor("test-family"));
+#[tokio::test]
+async fn s155_create_executor_standalone_mode() {
+    temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
+        let result = create_executor("test-family").await;
         assert!(
             result.is_ok(),
             "standalone executor creation failed: {:?}",
             result.err()
         );
-    });
+    })
+    .await;
 }
 
 #[test]

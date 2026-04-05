@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -489,7 +489,7 @@ fn test_agent_deployment_manager_creation() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_agent_deployment_manager_initialize_squirrel() {
+async fn test_agent_deployment_manager_initialize_intelligence_connection() {
     let config = AgentDeploymentConfig {
         ai_processing_endpoint: "http://localhost:8080".to_string(),
         model_registry: "local".to_string(),
@@ -500,7 +500,7 @@ async fn test_agent_deployment_manager_initialize_squirrel() {
 
     let backend = Arc::new(InMemoryAgentBackend::new());
     let manager = AgentDeploymentManager::new(config, backend);
-    let result = manager.initialize_squirrel_connection().await;
+    let result = manager.initialize_intelligence_connection().await;
 
     assert!(result.is_ok());
 }

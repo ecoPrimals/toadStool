@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Trait implementations for embedded programmers
 //!
 //! ## Planned / Future Implementation
@@ -46,7 +46,7 @@ fn programmer_placeholder_err(operation: &'static str) -> ToadStoolError {
     .into()
 }
 
-/// Generates [`ProgrammerInterface`] impls that return structured placeholder errors (no panics).
+/// Generates `ProgrammerInterface` impls that return structured placeholder errors (no panics).
 ///
 /// See DEBT.md `D-EMBEDDED-PROGRAMMER` and module-level docs for evolution plan.
 macro_rules! impl_programmer_stub {

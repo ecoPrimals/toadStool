@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Public API - thin wrappers with single env snapshot at call site
 
 use std::path::PathBuf;
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn test_get_routing_socket_path_with_xdg() {
-        temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/squirrel-runtime"), || {
+        temp_env::with_var("XDG_RUNTIME_DIR", Some("/tmp/routing-runtime"), || {
             temp_env::with_var_unset("SQUIRREL_SOCKET", || {
                 temp_env::with_var_unset("BIOMEOS_ROUTING_SOCKET", || {
                     let path = get_routing_socket_path();

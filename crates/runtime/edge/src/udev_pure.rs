@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Pure Rust udev device discovery
 //!
 //! Reads device information directly from /sys/class without requiring libudev.

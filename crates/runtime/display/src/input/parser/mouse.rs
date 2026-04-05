@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Relative-axis (pointer) and mouse-button handling for [`super::EventParser`].
 
 use crate::input::events::{InputEvent, MouseButton};

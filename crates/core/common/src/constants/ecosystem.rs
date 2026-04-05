@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Well-Known Ecosystem Identifiers
 //!
 //! These are names of ecosystem services that ToadStool integrates with.
@@ -47,15 +47,15 @@ pub mod well_known {
     pub const BIOMEOS: &str = "biomeos";
 }
 
-/// Protocol strings for `NodeType` (Songbird discovery API).
-/// Used when parsing discovery responses from coordination services.
+/// Protocol strings for `NodeType` (coordination discovery API).
+/// Legacy wire-format labels from older deployments; prefer capability discovery elsewhere.
 pub mod node_type {
     /// Hardware infrastructure primal
     pub const TOADSTOOL: &str = "ToadStool";
-    /// Storage / artifact service
+    /// Storage service (legacy wire label)
     pub const NESTGATE: &str = "NestGate";
-    /// Cryptography / security service
+    /// Security service (legacy wire label)
     pub const BEARDOG: &str = "BearDog";
-    /// Coordination / discovery service
+    /// Coordination service (legacy wire label)
     pub const SONGBIRD: &str = "Songbird";
 }

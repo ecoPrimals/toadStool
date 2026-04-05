@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Runtime configuration defaults and validation
 //!
 //! This module provides default values and validation for runtime configuration
@@ -165,7 +165,7 @@ impl ToadStoolConfig {
         info!("    Auto-Config: {}", self.features.enable_auto_config);
         info!("    Debug: {}", self.features.enable_debug);
         info!("  External Services (LEGACY - use capability-based discovery):");
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         {
             info!(
                 "    Coordination (fallback): {}",
@@ -253,18 +253,16 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)] // Testing legacy endpoint configuration
+    #[expect(deprecated)] // Testing legacy endpoint configuration
     fn test_env_overrides() {
+        let coord_url = crate::defaults::endpoints::coordination_localhost_bootstrap_url();
         temp_env::with_vars(
             [
                 ("TOADSTOOL_ENV", Some("test")),
                 ("TOADSTOOL_DEBUG", Some("true")),
                 ("TOADSTOOL_LOG_LEVEL", Some("debug")),
                 ("TOADSTOOL_WORKER_THREADS", Some("8")),
-                (
-                    "TOADSTOOL_COORDINATION_ENDPOINT",
-                    Some("http://localhost:8080"),
-                ),
+                ("TOADSTOOL_COORDINATION_ENDPOINT", Some(coord_url.as_str())),
                 ("TOADSTOOL_BIND_ADDRESS", Some("127.0.0.1:3000")),
             ],
             || {
@@ -275,9 +273,10 @@ mod tests {
                 assert!(config.features.enable_debug);
                 assert_eq!(config.logging.level, "debug");
                 assert_eq!(config.app.worker_threads, 8);
+                // `TOADSTOOL_COORDINATION_ENDPOINT` overrides default coordination URL (default bootstrap: `coordination_localhost_bootstrap_url()`).
                 assert_eq!(
                     config.network.endpoints.coordination,
-                    "http://localhost:8080"
+                    crate::defaults::endpoints::coordination_localhost_bootstrap_url()
                 );
             },
         );

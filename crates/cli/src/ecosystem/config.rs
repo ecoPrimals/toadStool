@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Ecosystem configuration management
 //!
 //! Handles loading and managing service discovery configuration from:
@@ -125,7 +125,7 @@ impl ServiceDiscoveryConfig {
     /// Tries in order using Pure Rust etcetera:
     /// 1. `~/.toadstool/services.toml`
     /// 2. `./.toadstool/config.toml`
-    /// 3. `/etc/toadstool/services.toml`
+    /// 3. [`super::constants::paths::system_services_config_path`] (env `TOADSTOOL_SYSTEM_SERVICES_CONFIG` or `/etc/toadstool/services.toml`)
     pub fn load_default() -> Self {
         use etcetera::{BaseStrategy, choose_base_strategy};
 
@@ -133,18 +133,14 @@ impl ServiceDiscoveryConfig {
             |_| {
                 vec![
                     Some(PathBuf::from(".toadstool/config.toml")),
-                    Some(PathBuf::from(
-                        super::constants::paths::SYSTEM_SERVICES_CONFIG,
-                    )),
+                    Some(super::constants::paths::system_services_config_path()),
                 ]
             },
             |strategy| {
                 vec![
                     Some(strategy.home_dir().join(".toadstool/services.toml")),
                     Some(PathBuf::from(".toadstool/config.toml")),
-                    Some(PathBuf::from(
-                        super::constants::paths::SYSTEM_SERVICES_CONFIG,
-                    )),
+                    Some(super::constants::paths::system_services_config_path()),
                 ]
             },
         );
@@ -189,7 +185,7 @@ impl ServiceDiscoveryConfig {
     /// Uses capability-based endpoint discovery: Unix socket paths from
     /// biomeOS runtime directory. Services are discovered at runtime via
     /// well-known capability constants (primal_identity, ecosystem).
-    #[allow(deprecated)] // Intentional: IPC addressing requires well-known names
+    #[expect(deprecated)] // Intentional: IPC addressing requires well-known names
     pub fn create_example() -> Self {
         use toadstool_common::constants::ecosystem::well_known;
         use toadstool_common::primal_sockets::get_biomeos_dir;
@@ -197,12 +193,12 @@ impl ServiceDiscoveryConfig {
         let mut services = HashMap::new();
         let biomeos_dir = get_biomeos_dir();
 
-        // Capability-based: PKI (beardog) Unix socket
-        let beardog_socket = biomeos_dir.join(format!("{}.sock", well_known::BEARDOG));
+        // Security service: Unix socket basename uses legacy well-known label for IPC compat
+        let security_service_socket = biomeos_dir.join(format!("{}.sock", well_known::BEARDOG));
         services.insert(
             "crypto".to_string(),
             ServiceConfig {
-                url: format!("unix://{}", beardog_socket.display()),
+                url: format!("unix://{}", security_service_socket.display()),
                 priority: 90,
                 enabled: false, // Disabled by default - enable via discovery
                 health_check_interval: 30,
@@ -218,12 +214,12 @@ impl ServiceDiscoveryConfig {
             },
         );
 
-        // Capability-based: Storage (nestgate) Unix socket
-        let nestgate_socket = biomeos_dir.join(format!("{}.sock", well_known::NESTGATE));
+        // Storage service: legacy basename for IPC compat
+        let storage_service_socket = biomeos_dir.join(format!("{}.sock", well_known::NESTGATE));
         services.insert(
             "storage".to_string(),
             ServiceConfig {
-                url: format!("unix://{}", nestgate_socket.display()),
+                url: format!("unix://{}", storage_service_socket.display()),
                 priority: 80,
                 enabled: false,
                 health_check_interval: 60,
@@ -239,12 +235,13 @@ impl ServiceDiscoveryConfig {
             },
         );
 
-        // Capability-based: Coordination (songbird) Unix socket
-        let songbird_socket = biomeos_dir.join(format!("{}.sock", well_known::SONGBIRD));
+        // Coordination service: legacy basename for IPC compat
+        let coordination_service_socket =
+            biomeos_dir.join(format!("{}.sock", well_known::SONGBIRD));
         services.insert(
             "coordination".to_string(),
             ServiceConfig {
-                url: format!("unix://{}", songbird_socket.display()),
+                url: format!("unix://{}", coordination_service_socket.display()),
                 priority: 85,
                 enabled: true,
                 health_check_interval: 15,

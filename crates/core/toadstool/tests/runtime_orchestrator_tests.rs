@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Runtime Orchestrator and Selection Strategy
 //!
 //! Week 16 Sprint: `RuntimeOrchestrator` and `RuntimeSelectionStrategy` tests

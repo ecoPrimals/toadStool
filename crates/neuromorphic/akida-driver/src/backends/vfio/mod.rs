@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! VFIO NPU backend — Pure Rust with DMA support
 //!
 //! Uses Linux VFIO (Virtual Function I/O) for:
@@ -407,6 +407,8 @@ impl NpuBackend for VfioBackend {
             .as_ref()
             .ok_or_else(|| AkidaError::hardware_error("Output DMA buffer missing"))?
             .as_slice()[..output_floats * std::mem::size_of::<f32>()];
+        // Copy required: `output_buffer` is reused on the next infer(); we must not return
+        // a borrow into DMA memory.
         Ok(bytemuck::cast_slice::<u8, f32>(output_bytes).to_vec())
     }
 

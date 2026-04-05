@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Cross-primal security configuration types.
 
@@ -31,8 +31,8 @@ pub struct AuthenticationConfig {
     pub token_validation: TokenValidationConfig,
     /// Certificate validation
     pub certificate_validation: CertificateValidationConfig,
-    /// PKI security service integration (legacy field name: beardog_integration)
-    pub beardog_integration: BearDogIntegrationConfig,
+    /// PKI / security capability provider integration
+    pub security: SecurityServiceIntegrationConfig,
 }
 
 /// Token validation configuration
@@ -63,11 +63,9 @@ pub struct CertificateValidationConfig {
     pub trusted_cas: Vec<String>,
 }
 
-/// PKI security service integration configuration (legacy name: BearDogIntegrationConfig).
-///
-/// Prefer [`PkiSecurityConfig`] alias for new code.
+/// PKI / security capability provider integration (crypto signing, certificates).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BearDogIntegrationConfig {
+pub struct SecurityServiceIntegrationConfig {
     /// Enable PKI security integration
     pub enabled: bool,
     /// PKI security service endpoint (discovered at runtime)
@@ -80,8 +78,11 @@ pub struct BearDogIntegrationConfig {
     pub crypto_lock: bool,
 }
 
-/// Capability-based alias — prefer for new code.
-pub type PkiSecurityConfig = BearDogIntegrationConfig;
+/// Short alias for [`SecurityServiceIntegrationConfig`].
+pub type PkiSecurityConfig = SecurityServiceIntegrationConfig;
+
+/// Legacy alias — prefer [`SecurityServiceIntegrationConfig`].
+pub type BearDogIntegrationConfig = SecurityServiceIntegrationConfig;
 
 /// Authorization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

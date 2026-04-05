@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`toadstool::execution::RuntimeEngine`] integration and request/response mapping.
 
 use std::collections::HashMap;

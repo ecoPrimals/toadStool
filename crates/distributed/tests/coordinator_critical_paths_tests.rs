@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Critical Path Tests for Distributed Coordinator
 
 #![allow(
@@ -283,7 +283,7 @@ mod health_monitoring_tests {
     #[test]
     fn test_health_status_types() {
         #[derive(Debug, PartialEq)]
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         enum HealthStatus {
             Healthy,
             Degraded,
@@ -746,7 +746,7 @@ mod error_handling_tests {
     #[test]
     fn test_coordinator_error_types() {
         #[derive(Debug)]
-        #[allow(dead_code)]
+        #[expect(dead_code)]
         enum CoordinatorError {
             NodeNotFound(Uuid),
             JobNotFound(Uuid),

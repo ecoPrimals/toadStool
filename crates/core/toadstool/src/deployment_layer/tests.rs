@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::detector::LayerDetector;
 use super::*;
@@ -203,73 +203,48 @@ async fn test_detect_reset_then_redetect() {
 
 #[tokio::test]
 async fn test_detect_aws_via_env() {
-    temp_env::with_var("AWS_EXECUTION_ENV", Some("AWS_ECS_EC2"), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let mut detector = LayerDetector::new();
-                let layer = detector.detect().await.expect("detect should succeed");
+    temp_env::async_with_vars([("AWS_EXECUTION_ENV", Some("AWS_ECS_EC2"))], async {
+        let mut detector = LayerDetector::new();
+        let layer = detector.detect().await.expect("detect should succeed");
 
-                // On a machine that doesn't have /.dockerenv etc., AWS should win.
-                if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
-                    assert!(matches!(provider, CloudProvider::AWS));
-                }
-                // (On a machine that IS in a container, the container layer wins first —
-                // that's correct behaviour; just ensure no panic occurred.)
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+        // On a machine that doesn't have /.dockerenv etc., AWS should win.
+        if let DeploymentLayer::CloudLayer { provider, .. } = &layer {
+            assert!(matches!(provider, CloudProvider::AWS));
+        }
+        // (On a machine that IS in a container, the container layer wins first —
+        // that's correct behaviour; just ensure no panic occurred.)
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn test_detect_gcp_via_env() {
-    temp_env::with_var("GCP_PROJECT", Some("my-test-project"), || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let mut detector = LayerDetector::new();
-                let _ = detector
-                    .detect()
-                    .await
-                    .expect("detect with GCP env should succeed");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("GCP_PROJECT", Some("my-test-project"))], async {
+        let mut detector = LayerDetector::new();
+        let _ = detector
+            .detect()
+            .await
+            .expect("detect with GCP env should succeed");
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn test_detect_azure_via_env() {
-    temp_env::with_var(
-        "AZURE_SUBSCRIPTION_ID",
-        Some("aaaaaaaa-0000-0000-0000-aaaaaaaaaaaa"),
-        || {
-            std::thread::spawn(|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("runtime");
-                rt.block_on(async {
-                    let mut detector = LayerDetector::new();
-                    let _ = detector
-                        .detect()
-                        .await
-                        .expect("detect with Azure env should succeed");
-                });
-            })
-            .join()
-            .expect("test thread");
+    temp_env::async_with_vars(
+        [(
+            "AZURE_SUBSCRIPTION_ID",
+            Some("aaaaaaaa-0000-0000-0000-aaaaaaaaaaaa"),
+        )],
+        async {
+            let mut detector = LayerDetector::new();
+            let _ = detector
+                .detect()
+                .await
+                .expect("detect with Azure env should succeed");
         },
-    );
+    )
+    .await;
 }
 
 // ── DeploymentLayer helper methods ────────────────────────────────────────────

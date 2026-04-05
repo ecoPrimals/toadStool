@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -261,7 +261,7 @@ async fn test_string_split_patterns() -> Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[allow(clippy::unnecessary_literal_unwrap)] // intentional Some/None + unwrap_or_else coverage
+#[expect(clippy::unnecessary_literal_unwrap)] // intentional Some/None + unwrap_or_else coverage
 async fn test_option_handling_patterns() -> Result<()> {
     // Test Option handling patterns used in executor
 

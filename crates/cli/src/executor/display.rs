@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Display and UI utilities for biome management
 //!
 //! This module provides pretty-printing and log display functionality.

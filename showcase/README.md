@@ -72,9 +72,9 @@ Demonstrates toadStool interacting with the broader ecoPrimals ecosystem.
 
 | Demo | Time | What It Shows |
 |------|------|---------------|
-| 01-songbird-registration | 60s | Register compute capabilities for cross-tower discovery |
-| 02-beardog-secured-compute | 60s | Signed workload submission via beardog tokens |
-| 03-nestgate-artifact-storage | 60s | Store/retrieve compute artifacts via nestgate |
+| 01-coordination-registration | 60s | Register compute capabilities for cross-tower discovery |
+| 02-security-secured-compute | 60s | Signed workload submission via security service tokens |
+| 03-storage-artifact-pipeline | 60s | Store/retrieve compute artifacts via storage service |
 
 ---
 

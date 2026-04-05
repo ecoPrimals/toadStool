@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Primal Integration Types
 //!
 //! This test suite provides extensive coverage of Primal integration types,
@@ -53,19 +53,19 @@ fn test_primal_type_parse_legacy_names() {
         PrimalType::SelfIdentity
     );
     assert_eq!(
-        PrimalType::parse_type("songbird").unwrap(),
+        PrimalType::parse_type("coordination").unwrap(),
         PrimalType::Discovery
     );
     assert_eq!(
-        PrimalType::parse_type("beardog").unwrap(),
+        PrimalType::parse_type("security").unwrap(),
         PrimalType::Crypto
     );
     assert_eq!(
-        PrimalType::parse_type("nestgate").unwrap(),
+        PrimalType::parse_type("storage").unwrap(),
         PrimalType::Storage
     );
     assert_eq!(
-        PrimalType::parse_type("squirrel").unwrap(),
+        PrimalType::parse_type("intelligence").unwrap(),
         PrimalType::Compute
     );
     assert_eq!(

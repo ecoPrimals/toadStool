@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem network discovery
 //!
 //! Network scanning, probing, and service discovery on local networks.
@@ -13,6 +13,14 @@ use tracing::debug;
 use crate::ecosystem_types::{ServiceInfo, ServicePattern, ServiceStatus};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_config::env_config::EnvironmentConfig;
+
+/// TCP connect timeout for `probe_service`. Production uses 2s; tests use a
+/// short value so discovery probes fail fast under `cargo test`.
+const TCP_PROBE_CONNECT_TIMEOUT: Duration = if cfg!(test) {
+    Duration::from_millis(100)
+} else {
+    Duration::from_secs(2)
+};
 
 /// Get local network ranges for scanning
 ///
@@ -48,7 +56,7 @@ pub async fn probe_service(
     let port = url.port().unwrap_or(80);
     let socket_addr = format!("{host}:{port}");
 
-    if timeout(Duration::from_secs(2), TcpStream::connect(&socket_addr))
+    if timeout(TCP_PROBE_CONNECT_TIMEOUT, TcpStream::connect(&socket_addr))
         .await
         .is_err()
     {

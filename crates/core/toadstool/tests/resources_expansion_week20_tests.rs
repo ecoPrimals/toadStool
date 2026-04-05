@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resources module expansion tests - Week 20
 //!
 //! Target: Increase resources.rs coverage from 44.12% → 60%+
 //! Focus: Edge cases, error handling, serialization
-#![expect(
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]

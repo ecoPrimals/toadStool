@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Registry and extended service discovery tests
 
 use std::collections::HashMap;
@@ -113,34 +113,25 @@ async fn test_discover_specific_method_multi_as_element_returns_empty() {
 
 #[tokio::test]
 async fn test_discover_from_fallbacks_no_fallback_when_disabled() {
-    temp_env::with_vars([("TOADSTOOL_ENV", Some("production"))], || {
-        std::thread::spawn(|| {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let config = DiscoveryConfig::production();
-                let disc = ServiceDiscovery::with_config(
-                    DiscoveryMethod::Multi(vec![
-                        DiscoveryMethod::ConfigFile {
-                            path: "/nonexistent/x.json".to_string(),
-                        },
-                        DiscoveryMethod::Registry {
-                            endpoint: String::new(),
-                        },
-                    ]),
-                    config,
-                )
-                .await
-                .unwrap();
-                let all = disc.discover_all().await.unwrap();
-                assert!(all.is_empty(), "Production should not use fallbacks");
-            });
-        })
-        .join()
-        .expect("test thread");
-    });
+    temp_env::async_with_vars([("TOADSTOOL_ENV", Some("production"))], async {
+        let config = DiscoveryConfig::production();
+        let disc = ServiceDiscovery::with_config(
+            DiscoveryMethod::Multi(vec![
+                DiscoveryMethod::ConfigFile {
+                    path: "/nonexistent/x.json".to_string(),
+                },
+                DiscoveryMethod::Registry {
+                    endpoint: String::new(),
+                },
+            ]),
+            config,
+        )
+        .await
+        .unwrap();
+        let all = disc.discover_all().await.unwrap();
+        assert!(all.is_empty(), "Production should not use fallbacks");
+    })
+    .await;
 }
 
 #[tokio::test]

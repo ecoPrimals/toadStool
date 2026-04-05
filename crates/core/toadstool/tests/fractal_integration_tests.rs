@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Fractal Composition Integration Tests
 //!
@@ -12,7 +12,7 @@
 
 use toadstool::deployment_layer::{DeploymentLayer, LayerDetector};
 use toadstool::fractal_integration::{
-    BarracudaIntegration, FractalRuntime, FractalServiceAdvertiser,
+    FractalRuntime, FractalServiceAdvertiser, GpuComputeIntegration,
 };
 use toadstool::layer_adaptation::{GpuAccess, LayerCapabilityAdapter, NetworkAccess, StorageType};
 
@@ -125,28 +125,31 @@ async fn test_service_advertisement() {
 
 /// Test: barraCuda integration info is consistent with capabilities
 #[tokio::test]
-async fn test_barracuda_integration_consistency() {
+async fn test_gpu_compute_integration_consistency() {
     let runtime = FractalRuntime::init().await.unwrap();
 
     let caps = runtime.capabilities();
-    let integration = runtime.barracuda_integration();
+    let integration = runtime.gpu_compute_integration();
 
     // Integration should match capability GPU access
     match caps.compute.gpu_access {
         GpuAccess::Direct => {
-            assert!(matches!(integration, BarracudaIntegration::Direct { .. }));
+            assert!(matches!(integration, GpuComputeIntegration::Direct { .. }));
             assert!(integration.has_gpu());
         }
         GpuAccess::ViaHost => {
-            assert!(matches!(integration, BarracudaIntegration::ViaHost { .. }));
+            assert!(matches!(integration, GpuComputeIntegration::ViaHost { .. }));
             assert!(integration.has_gpu());
         }
         GpuAccess::ViaCloud => {
-            assert!(matches!(integration, BarracudaIntegration::ViaCloud { .. }));
+            assert!(matches!(
+                integration,
+                GpuComputeIntegration::ViaCloud { .. }
+            ));
             assert!(integration.has_gpu());
         }
         GpuAccess::None => {
-            assert!(matches!(integration, BarracudaIntegration::None { .. }));
+            assert!(matches!(integration, GpuComputeIntegration::None { .. }));
             assert!(!integration.has_gpu());
         }
     }
@@ -370,7 +373,7 @@ async fn test_deep_debt_no_hardcoding() {
 
     let _layer = runtime.deployment_layer();
     let _caps = runtime.capabilities();
-    let _integration = runtime.barracuda_integration();
+    let _integration = runtime.gpu_compute_integration();
 
     // If we got here, runtime is working without hardcoded assumptions
 }

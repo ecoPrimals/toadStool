@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
 use std::time::Duration;
@@ -43,7 +43,7 @@ fn test_discovery_method_variants() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated)]
 fn test_discovery_method_deprecated_variants() {
     // Test deprecated variants still exist for backward compatibility
     let k8s = DiscoveryMethod::Kubernetes;
@@ -116,9 +116,6 @@ fn test_discovery_config_clone() {
     );
 }
 
-// Note: CapabilityDiscovery::new() and find_by_capability use block_on internally,
-// which panics when called from within a tokio runtime (e.g. #[tokio::test]).
-// Integration tests that need the full discovery stack should run outside tokio.
 #[test]
 fn test_capability_discovery_new_from_sync() {
     let result = std::thread::spawn(CapabilityDiscovery::new)
@@ -138,24 +135,21 @@ fn test_capability_discovery_with_config() {
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_find_by_capability_no_services_in_separate_thread() {
+#[tokio::test]
+async fn test_find_by_capability_no_services_in_separate_thread() {
     use crate::primal_identity::{Capability, CryptoCapability};
 
-    let result = std::thread::spawn(|| {
-        let config = DiscoveryConfig {
-            timeout: Duration::from_millis(100),
-            enable_localhost_fallback: false,
-            methods: vec![DiscoveryMethod::Environment],
-        };
-        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
-        let runtime = tokio::runtime::Runtime::new().expect("runtime");
-        runtime.block_on(
-            discovery.find_by_capability(Capability::Crypto(CryptoCapability::Encryption)),
-        )
-    })
-    .join()
-    .expect("thread ok");
+    let config = DiscoveryConfig {
+        timeout: Duration::from_millis(100),
+        enable_localhost_fallback: false,
+        methods: vec![DiscoveryMethod::Environment],
+    };
+    let discovery = CapabilityDiscovery::with_config_async(&config)
+        .await
+        .expect("discovery");
+    let result = discovery
+        .find_by_capability(Capability::Crypto(CryptoCapability::Encryption))
+        .await;
 
     // In test env with no services, we expect NoServicesFound, Timeout, DiscoveryFailed, or InvalidConfig
     match &result {
@@ -173,24 +167,21 @@ fn test_find_by_capability_no_services_in_separate_thread() {
     }
 }
 
-#[test]
-fn test_find_by_capability_with_localhost_fallback() {
+#[tokio::test]
+async fn test_find_by_capability_with_localhost_fallback() {
     use crate::primal_identity::{Capability, CryptoCapability};
 
-    let result = std::thread::spawn(|| {
-        let config = DiscoveryConfig {
-            timeout: Duration::from_millis(100),
-            enable_localhost_fallback: true,
-            methods: vec![DiscoveryMethod::Environment],
-        };
-        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
-        let runtime = tokio::runtime::Runtime::new().expect("runtime");
-        runtime.block_on(
-            discovery.find_by_capability(Capability::Crypto(CryptoCapability::Encryption)),
-        )
-    })
-    .join()
-    .expect("thread ok");
+    let config = DiscoveryConfig {
+        timeout: Duration::from_millis(100),
+        enable_localhost_fallback: true,
+        methods: vec![DiscoveryMethod::Environment],
+    };
+    let discovery = CapabilityDiscovery::with_config_async(&config)
+        .await
+        .expect("discovery");
+    let result = discovery
+        .find_by_capability(Capability::Crypto(CryptoCapability::Encryption))
+        .await;
 
     // With fallback enabled, empty discovery returns Ok(vec![]) from try_localhost_fallback
     match &result {
@@ -242,22 +233,21 @@ fn test_discovery_method_derive_clone() {
 // Additional tests for capability discovery logic and error paths
 // ═══════════════════════════════════════════════════════════════════
 
-#[test]
-fn test_find_best_empty_services_returns_error() {
+#[tokio::test]
+async fn test_find_best_empty_services_returns_error() {
     use crate::primal_identity::{Capability, CryptoCapability};
 
-    let result = std::thread::spawn(|| {
-        let config = DiscoveryConfig {
-            timeout: Duration::from_millis(50),
-            enable_localhost_fallback: false,
-            methods: vec![DiscoveryMethod::Environment],
-        };
-        let discovery = CapabilityDiscovery::with_config(&config).expect("discovery");
-        let runtime = tokio::runtime::Runtime::new().expect("runtime");
-        runtime.block_on(discovery.find_best(Capability::Crypto(CryptoCapability::Encryption)))
-    })
-    .join()
-    .expect("thread ok");
+    let config = DiscoveryConfig {
+        timeout: Duration::from_millis(50),
+        enable_localhost_fallback: false,
+        methods: vec![DiscoveryMethod::Environment],
+    };
+    let discovery = CapabilityDiscovery::with_config_async(&config)
+        .await
+        .expect("discovery");
+    let result = discovery
+        .find_best(Capability::Crypto(CryptoCapability::Encryption))
+        .await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();

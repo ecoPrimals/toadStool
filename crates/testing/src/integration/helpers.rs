@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Integration test helper functions
 // Extracted from integration_impl.rs for better code organization
 

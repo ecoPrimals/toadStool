@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Environment Variable Configuration System
 //!
 //! Provides comprehensive environment variable support to eliminate all hardcoded
@@ -91,7 +91,7 @@ impl EnvironmentConfig {
             config.network.bind_address = addr;
         }
 
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         {
             config.network.endpoints.coordination = self.network.coordination_endpoint();
             config.network.endpoints.security = self.network.security_endpoint();

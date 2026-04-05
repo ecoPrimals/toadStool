@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security and network policies extension
 //!
 //! Provides cross-primal security and network policy configuration.
@@ -25,7 +25,7 @@ pub(crate) trait SecurityExt {
     fn validate_network_policies_config(&self) -> ToadStoolResult<()>;
 }
 
-impl SecurityExt for super::SongbirdNetworkConfigurator {
+impl SecurityExt for super::OrchestrationNetworkConfigurator {
     async fn apply_cross_primal_security_config(&self) -> ToadStoolResult<()> {
         info!("🔐 Applying cross-primal security configuration");
 

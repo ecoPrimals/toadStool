@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Embedded jobs, languages, source/output files, and related enums.
 //!
 //! [`EmbeddedJob`] and [`EmbeddedJobType`] model work performed on a target;

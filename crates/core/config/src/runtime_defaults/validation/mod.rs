@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Configuration validation
 //!
 //! Validates ToadStool configuration values to ensure they are within acceptable ranges
@@ -64,8 +64,8 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_empty_songbird_endpoint() {
+    #[expect(deprecated)]
+    fn test_empty_coordination_endpoint() {
         let mut config = valid_config();
         config.network.endpoints.coordination = String::new();
         let err = config.validate_runtime_config().unwrap_err();
@@ -73,8 +73,8 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_empty_beardog_endpoint() {
+    #[expect(deprecated)]
+    fn test_empty_security_endpoint() {
         let mut config = valid_config();
         config.network.endpoints.security = String::new();
         let err = config.validate_runtime_config().unwrap_err();
@@ -82,8 +82,8 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_empty_nestgate_endpoint() {
+    #[expect(deprecated)]
+    fn test_empty_storage_endpoint() {
         let mut config = valid_config();
         config.network.endpoints.storage = String::new();
         let err = config.validate_runtime_config().unwrap_err();
@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     fn test_empty_squirrel_endpoint() {
         let mut config = valid_config();
         config.network.endpoints.ai_processing = String::new();

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Input device abstraction layer
 //!
 //! Provides safe wrappers around evdev for keyboard, mouse, touch input.

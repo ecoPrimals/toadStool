@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![deny(unsafe_code)] // overridden per-module for bar0
 #![warn(missing_docs)]
 
@@ -27,21 +27,15 @@
 //! # Phase 4: Sovereign power management (glow plug, five-state model)
 
 // bar0 and init modules require unsafe for mmap/MMIO — isolated from the rest
-#[allow(unsafe_code, reason = "BAR0 MMIO requires mmap + volatile read/write")]
+#[allow(unsafe_code)]
 pub mod bar0;
-#[allow(
-    unsafe_code,
-    reason = "DMA buffer allocation requires mmap, mlock, and VFIO DMA ioctls"
-)]
+#[allow(unsafe_code)]
 pub mod dma;
 pub mod error;
 pub mod fb;
 pub mod firmware;
 pub mod hwmon;
-#[allow(
-    unsafe_code,
-    reason = "init sequence writes to BAR0 registers via RegisterAccess"
-)]
+#[allow(unsafe_code)]
 pub mod init;
 pub mod monitor;
 pub mod nvidia_smi;
@@ -51,10 +45,7 @@ pub mod power;
 pub mod power_manager;
 pub mod power_policy;
 pub mod registers;
-#[allow(
-    unsafe_code,
-    reason = "VFIO BAR0 access requires mmap + volatile read/write + VFIO ioctls"
-)]
+#[allow(unsafe_code)]
 pub mod vfio;
 pub mod vfio_bind;
 pub mod watchdog;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -44,7 +44,7 @@ fn test_configurator_default_trait() {
 fn test_configurator_generates_summary() {
     let configurator = SongbirdNetworkConfigurator::new();
     let summary = configurator.generate_configuration_summary();
-    assert!(summary.contains("Songbird Network Configuration"));
+    assert!(summary.contains("Orchestration network configuration"));
     assert!(summary.contains("Service Mesh"));
     assert!(summary.contains("enabled"));
 }
@@ -176,7 +176,7 @@ fn test_authentication_config_exists() {
     let auth = &configurator.config.cross_primal_security.authentication;
     // Verify authentication config exists and is accessible
     // The mere fact that this compiles proves the field structure is valid
-    let _integration = &auth.beardog_integration;
+    let _integration = &auth.security;
     // Test passes if we reach here without panic
 }
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Quantum computing platforms
 //!
 //! Support for quantum computing architectures including gate-based,

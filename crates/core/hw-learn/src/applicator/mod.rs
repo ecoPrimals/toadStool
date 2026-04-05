@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Apply learned init recipes to target GPUs.
 //!
 //! The applicator replays recipe steps on a target GPU and verifies
@@ -182,7 +182,7 @@ impl<'a> RecipeApplicator<'a> {
         }
     }
 
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         reason = "u64→u32 for 32-bit register values; init recipes use 32-bit writes"
     )]

@@ -1,0 +1,40 @@
+# cargo-tarpaulin — line coverage for the ToadStool workspace.
+# Complements llvm-cov (see docs/guides/TESTING.md, scripts/run-coverage.sh, .github/workflows/ci.yml).
+# Usage: cargo tarpaulin --config tarpaulin.toml
+# Optional: add --engine llvm to match llvm-cov instrumentation on Linux.
+
+[toadstool]
+manifest-path = "Cargo.toml"
+root = "."
+workspace = true
+
+# Line coverage only (aligns with D-COV / llvm-cov line reports).
+line = true
+branch = false
+
+# Per-test stall limit — large workspace; tarpaulin default is 60s.
+timeout = "600s"
+
+# Do not enable optional vendor backends (CUDA, Vulkan, OpenCL); see `exclude` below.
+all-features = false
+no-default-features = false
+
+# `crates/runtime/gpu`: optional `cuda` / cudarc — omit from coverage runs (no CUDA toolkit required).
+exclude = ["toadstool-runtime-gpu"]
+
+# Mirrors llvm-cov `--ignore-filename-regex "tests/"` and drops examples/showcase trees.
+exclude-files = [
+    "**/tests/**",
+    "**/examples/**",
+    "**/showcase/**",
+]
+
+# Default tarpaulin behavior: do not count #[test] bodies toward coverage.
+include-tests = false
+
+# Same skips as scripts/run-coverage.sh / CI coverage.
+args = ["--skip", "performance_bench", "--skip", "slow"]
+
+# HTML locally; LCOV for Codecov / GitLab / other CI uploaders.
+out = ["Html", "Lcov"]
+output-dir = "target/tarpaulin"

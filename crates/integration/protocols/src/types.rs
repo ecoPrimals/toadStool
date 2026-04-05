@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Core types and data structures for protocol integration
 
 use std::collections::HashMap;
@@ -35,8 +35,8 @@ pub enum ProtocolError {
     #[error("Transport error: {0}")]
     Transport(String),
 
-    /// HTTP transport is not available in this deployment (use JSON-RPC over Unix socket to Songbird).
-    #[error("HTTP transport not available: use JSON-RPC over Unix socket to Songbird for IPC")]
+    /// HTTP transport is not available in this deployment (use JSON-RPC over Unix socket to Coordination).
+    #[error("HTTP transport not available: use JSON-RPC over Unix socket to Coordination for IPC")]
     HttpTransportNotAvailable,
 
     /// tRPC transport is not wired; use JSON-RPC for IPC until Phase 3.
@@ -89,7 +89,7 @@ pub enum MessageFormat {
 }
 
 /// Transport types for message delivery
-/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/songbird)
+/// WebSocket removed — use JSON-RPC 2.0 (biomeOS/coordination)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TransportType {
     /// HTTP/HTTPS transport

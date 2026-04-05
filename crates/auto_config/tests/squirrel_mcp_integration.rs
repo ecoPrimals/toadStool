@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Integration tests for Squirrel MCP Interface
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Integration tests for intelligence service Interface
 //!
-//! These tests exercise the Squirrel MCP AI integration code paths.
+//! These tests exercise the intelligence service AI integration code paths.
 
 use std::collections::HashMap;
 use std::time::SystemTime;

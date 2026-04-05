@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::error::PrimalResult;
 use serde::{Deserialize, Serialize};
 
@@ -44,7 +44,7 @@ impl ServiceManager {
         service_type: String,
     ) -> PrimalResult<()> {
         // ✅ MODERN: Capability-based service discovery
-        // Instead of hardcoding Songbird port, we discover coordination services by capability
+        // Instead of hardcoding Coordination port, we discover coordination services by capability
         //
         // This follows the self-knowledge principle:
         // - ToadStool knows only itself
@@ -55,7 +55,7 @@ impl ServiceManager {
         let host = &config.network.bind_address;
         
         // Self-knowledge: Use OUR OWN port for OUR service endpoint
-        // We don't need to know about Songbird - discovery handles that
+        // We don't need to know about Coordination - discovery handles that
         let port = config.network.toadstool_port;
         
         let service_info = ServiceInfo {

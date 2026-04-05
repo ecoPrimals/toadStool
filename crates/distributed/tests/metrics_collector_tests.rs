@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-#![expect(
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"
 )]
@@ -127,12 +127,12 @@ fn test_ecosystem_metrics_default() {
 #[test]
 fn test_ecosystem_metrics_creation() {
     let mut service_calls = HashMap::new();
-    service_calls.insert("songbird".to_string(), 50);
-    service_calls.insert("beardog".to_string(), 30);
+    service_calls.insert("coordination".to_string(), 50);
+    service_calls.insert("security".to_string(), 30);
 
     let mut success_rates = HashMap::new();
-    success_rates.insert("songbird".to_string(), 0.98);
-    success_rates.insert("beardog".to_string(), 0.95);
+    success_rates.insert("coordination".to_string(), 0.98);
+    success_rates.insert("security".to_string(), 0.95);
 
     let metrics = EcosystemMetrics {
         active_ecosystem_jobs: 5,
@@ -143,8 +143,11 @@ fn test_ecosystem_metrics_creation() {
     assert_eq!(metrics.active_ecosystem_jobs, 5);
     assert_eq!(metrics.ecosystem_service_calls.len(), 2);
     assert_eq!(metrics.ecosystem_success_rates.len(), 2);
-    assert_eq!(metrics.ecosystem_service_calls.get("songbird"), Some(&50));
-    assert_eq!(metrics.ecosystem_success_rates.get("beardog"), Some(&0.95));
+    assert_eq!(
+        metrics.ecosystem_service_calls.get("coordination"),
+        Some(&50)
+    );
+    assert_eq!(metrics.ecosystem_success_rates.get("security"), Some(&0.95));
 }
 
 #[test]
@@ -153,10 +156,10 @@ fn test_ecosystem_metrics_add_service() {
 
     metrics
         .ecosystem_service_calls
-        .insert("squirrel".to_string(), 10);
+        .insert("intelligence".to_string(), 10);
     metrics
         .ecosystem_success_rates
-        .insert("squirrel".to_string(), 0.92);
+        .insert("intelligence".to_string(), 0.92);
 
     assert_eq!(metrics.ecosystem_service_calls.len(), 1);
     assert_eq!(metrics.ecosystem_success_rates.len(), 1);
@@ -165,10 +168,10 @@ fn test_ecosystem_metrics_add_service() {
 #[test]
 fn test_ecosystem_metrics_multiple_services() {
     let mut service_calls = HashMap::new();
-    service_calls.insert("songbird".to_string(), 100);
-    service_calls.insert("beardog".to_string(), 80);
-    service_calls.insert("squirrel".to_string(), 60);
-    service_calls.insert("nestgate".to_string(), 40);
+    service_calls.insert("coordination".to_string(), 100);
+    service_calls.insert("security".to_string(), 80);
+    service_calls.insert("intelligence".to_string(), 60);
+    service_calls.insert("storage".to_string(), 40);
 
     let metrics = EcosystemMetrics {
         active_ecosystem_jobs: 10,
@@ -177,8 +180,8 @@ fn test_ecosystem_metrics_multiple_services() {
     };
 
     assert_eq!(metrics.ecosystem_service_calls.len(), 4);
-    assert!(metrics.ecosystem_service_calls.contains_key("songbird"));
-    assert!(metrics.ecosystem_service_calls.contains_key("beardog"));
+    assert!(metrics.ecosystem_service_calls.contains_key("coordination"));
+    assert!(metrics.ecosystem_service_calls.contains_key("security"));
 }
 
 #[test]

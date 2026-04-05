@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for cross-substrate validation and benchmarking
 //!
 //! These tests verify the benchmark suite configuration and workload definitions.

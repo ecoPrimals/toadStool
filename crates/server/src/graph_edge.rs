@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Graph edge types for workflow dependencies
 //!
 //! This module contains types for representing edges (dependencies) between

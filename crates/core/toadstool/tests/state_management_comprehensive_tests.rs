@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive State Management Tests - Phase 2
 //!
 //! Tests for state tracking, persistence, recovery, and synchronization:
@@ -690,7 +690,7 @@ fn test_execution_state_history_tracking() {
 fn test_execution_state_audit_trail() {
     // Create audit trail with timestamps
     #[derive(Debug, Clone)]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     struct StateChange {
         from: ExecutionStatus,
         to: ExecutionStatus,

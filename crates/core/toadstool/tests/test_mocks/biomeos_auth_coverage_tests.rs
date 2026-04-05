@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::pedantic)]
 #![allow(
     clippy::cast_precision_loss,
@@ -11,7 +11,7 @@
     clippy::unused_async
 )]
 //! Comprehensive coverage tests for biomeos auth module
-//! Target: exercise discover, with_beardog, initialize, token refresh, etc.
+//! Target: exercise discover, with_security, initialize, token refresh, etc.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -47,14 +47,14 @@ fn auth_manager_with_inmemory() {
     let _m = AuthenticationManager::with_inmemory(config);
 }
 
-// ─── with_beardog (deprecated) ───────────────────────────────────────────────
+// ─── with_security (deprecated) ───────────────────────────────────────────────
 
 #[test]
-#[allow(deprecated)]
-fn with_beardog_creates_manager() {
+#[expect(deprecated)]
+fn with_security_creates_manager() {
     let mut config = base_config();
     config.security_endpoint = "http://localhost:9876".to_string();
-    let _m = AuthenticationManager::with_beardog(config);
+    let _m = AuthenticationManager::with_security(config);
 }
 
 // ─── get_current_token and sign ─────────────────────────────────────────────
@@ -133,11 +133,11 @@ async fn start_and_stop_token_refresh() {
     manager.stop_token_refresh();
 }
 
-// ─── initialize_beardog_connection ───────────────────────────────────────────
+// ─── initialize_security_connection ───────────────────────────────────────────
 
 #[tokio::test(flavor = "current_thread")]
 async fn initialize_beardog_inmemory_succeeds() {
     let manager = AuthenticationManager::with_inmemory(base_config());
-    let result = manager.initialize_beardog_connection().await;
+    let result = manager.initialize_security_connection().await;
     assert!(result.is_ok());
 }

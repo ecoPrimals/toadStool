@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Ecosystem Discovery for Auto-Configuration
 //!
 //! Discovers available ecosystem services by capability and automatically

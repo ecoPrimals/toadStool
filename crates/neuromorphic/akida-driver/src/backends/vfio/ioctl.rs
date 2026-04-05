@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! VFIO ioctl wrappers — thin delegation to `hw-safe::vfio_setup`.
 //!
 //! All VFIO setup ioctls are handled by the shared `hw-safe::vfio_setup`

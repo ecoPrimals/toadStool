@@ -1,21 +1,21 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Crypto Integration Module - Vendor-Agnostic Cryptographic Services
 //!
 //! **Design Philosophy (Infant Discovery)**:
 //! - ✅ Zero hardcoding: Discovers crypto services by capability, not by name
 //! - ✅ Self-knowledge: ToadStool knows it needs crypto, not which provider implements it
-//! - ✅ Multi-vendor: Works with BearDog, HashiCorp Vault, AWS KMS, Azure Key Vault, etc.
+//! - ✅ Multi-vendor: Works with Security, HashiCorp Vault, AWS KMS, Azure Key Vault, etc.
 //! - ✅ Runtime discovery: Uses mDNS, service registries, or environment configuration
 //! - ✅ Graceful degradation: Falls back to local crypto if no service available
 //!
-//! ## Migration from beardog_integration
+//! ## Migration from security
 //!
-//! This module replaces `beardog_integration` with a capability-based approach:
+//! This module replaces `security` with a capability-based approach:
 //!
 //! **Before (hardcoded)**:
 //! ```ignore
-//! use crate::beardog_integration::{BearDogClient, BearDogDiscovery};
-//! let discovery = BearDogDiscovery::new(config);
+//! use crate::security::{SecurityClient, SecurityDiscovery};
+//! let discovery = SecurityDiscovery::new(config);
 //! let endpoints = discovery.discover().await?;
 //! ```
 //!
@@ -33,7 +33,7 @@
 //! ## Supported Providers
 //!
 //! Any service advertising crypto capabilities will work:
-//! - BearDog (ecoPrimals native)
+//! - Security (ecoPrimals native)
 //! - HashiCorp Vault
 //! - AWS KMS / Secrets Manager
 //! - Azure Key Vault

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Resource requirement types (CPU, memory, storage, network, GPU).
 
 use serde::{Deserialize, Serialize};

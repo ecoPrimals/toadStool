@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     clippy::cast_precision_loss,
     clippy::float_cmp,
@@ -426,12 +426,12 @@ fn test_validate_manifest_beardog_required_but_not_configured() {
     assert!(
         warnings
             .iter()
-            .any(|w| w.contains("BearDog is required but not configured"))
+            .any(|w| w.contains("A security service is required but not configured"))
     );
 }
 
 #[test]
-fn test_validate_manifest_beardog_configured() {
+fn test_validate_manifest_security_configured() {
     let mut manifest = create_test_manifest();
     manifest.security.beardog_required = true;
     manifest.primals.insert(
@@ -457,7 +457,7 @@ fn test_validate_manifest_beardog_configured() {
     assert!(
         !warnings
             .iter()
-            .any(|w| w.contains("BearDog is required but not configured"))
+            .any(|w| w.contains("A security service is required but not configured"))
     );
 }
 
@@ -659,7 +659,7 @@ fn test_validate_manifest_multiple_issues() {
     assert!(
         warnings
             .iter()
-            .any(|w| w.contains("BearDog is required but not configured"))
+            .any(|w| w.contains("A security service is required but not configured"))
     );
     assert!(
         warnings

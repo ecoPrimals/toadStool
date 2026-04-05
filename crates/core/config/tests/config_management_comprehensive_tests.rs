@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for backward compatibility with deprecated endpoint configuration
 //! These tests validate that legacy hardcoded endpoints still work
 #![allow(deprecated)]
@@ -114,7 +114,7 @@ fn test_config_validation_zero_worker_threads() {
 }
 
 #[test]
-fn test_config_validation_empty_songbird_endpoint() {
+fn test_config_validation_empty_coordination_endpoint() {
     let mut config = ToadStoolConfig::default();
     config.network.endpoints.coordination = String::new();
 

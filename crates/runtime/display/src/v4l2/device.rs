@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! V4L2 capture device — pure safe Rust.
 //!
 //! Wraps `/dev/video*` devices for reading video frames from HDMI capture cards.
 //! Uses `mmap` streaming I/O for zero-copy frame delivery.
 //!
-//! All kernel FFI (ioctls) is delegated to [`super::ioctl`]; this file
-//! contains zero `unsafe` blocks.
+//! All kernel FFI (ioctls) is delegated to the sibling `ioctl` module; this
+//! file contains zero `unsafe` blocks.
 
 use crate::{DisplayError, Result};
 use rustix::fd::OwnedFd;

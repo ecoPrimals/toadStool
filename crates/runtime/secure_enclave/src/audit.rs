@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tamper-evident audit logging for secure enclave operations
 //!
 //! Provides cryptographically-secured audit trails for all security-relevant

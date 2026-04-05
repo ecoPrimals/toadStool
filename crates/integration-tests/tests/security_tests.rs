@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security and penetration tests
 //!
 //! This module provides access to security tests for the ToadStool platform.

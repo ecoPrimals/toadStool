@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! `LearningAdvisor` — identify teacher/student GPU pairs and learning opportunities.
 //!
 //! Given a fleet of GPUs (from sysmon discovery), the advisor determines which

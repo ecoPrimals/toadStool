@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Five-state sovereign GPU power management.
 //!
 //! Absorbs hotSpring's glow plug discovery into a proper state machine.
@@ -28,6 +28,7 @@ use crate::error::{NvPmuError, Result};
 use crate::power::{GpuPowerController, PciPowerState};
 use crate::registers;
 use hw_learn::applicator::RegisterAccess;
+use std::time::{Duration, Instant};
 
 /// GPU power state in the five-state sovereign model.
 ///
@@ -210,12 +211,22 @@ impl<R: RegisterAccess> PowerManager<R> {
             .write_u32(registers::PMC_ENABLE, registers::PMC_ENABLE_ALL)
             .map_err(|e| NvPmuError::Hardware(format!("PMC_ENABLE write: {e}")))?;
 
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let pmc_readback = self
-            .regs
-            .read_u32(registers::PMC_ENABLE)
-            .map_err(|e| NvPmuError::Hardware(format!("PMC_ENABLE readback: {e}")))?;
+        // Poll until PMC readback matches the warm value (faster than a fixed delay when
+        // the hardware settles early); cap total wait at 50ms with 100µs sleeps.
+        let deadline = Instant::now() + Duration::from_millis(50);
+        let pmc_readback = loop {
+            let readback = self
+                .regs
+                .read_u32(registers::PMC_ENABLE)
+                .map_err(|e| NvPmuError::Hardware(format!("PMC_ENABLE readback: {e}")))?;
+            if readback == registers::PMC_ENABLE_WARM {
+                break readback;
+            }
+            if Instant::now() >= deadline {
+                break readback;
+            }
+            std::thread::sleep(Duration::from_micros(100));
+        };
 
         if pmc_readback == registers::PMC_ENABLE_GATED
             || pmc_readback == registers::BAR0_D3HOT_SENTINEL

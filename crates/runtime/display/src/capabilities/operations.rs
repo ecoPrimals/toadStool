@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Discovery, announcement, and filesystem operations for [`DisplayCapabilities`](super::types::DisplayCapabilities).
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Discovery, announcement, and filesystem operations for [`DisplayCapabilities`].
 
 use super::paths::{get_discovery_dir, get_socket_path};
 use super::types::{CapabilityMetadata, DisplayCapabilities, DisplayInfo, InputDeviceInfo};

@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-//! Comprehensive tests for BearDog integration
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Comprehensive tests for Security integration
 //!
-//! These tests cover the BearDog security integration layer,
+//! These tests cover the Security security integration layer,
 //! including authentication, authorization, and audit functionality.
 
 use std::collections::HashMap;
@@ -14,8 +14,8 @@ use uuid::Uuid;
 // ============================================================================
 
 #[test]
-fn test_beardog_config_default() {
-    let config = BearDogConfig::default();
+fn test_security_config_default() {
+    let config = SecurityConfig::default();
 
     // EVOLVED: Pure Rust Unix socket (no HTTP endpoints!)
     assert!(config.socket_path.contains("security.sock"));
@@ -26,26 +26,26 @@ fn test_beardog_config_default() {
 }
 
 #[test]
-fn test_beardog_config_custom() {
+fn test_security_config_custom() {
     // EVOLVED: Pure Rust Unix socket with custom path
-    let config = BearDogConfig {
-        socket_path: "/custom/path/beardog.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/custom/path/security.sock".to_string(),
         request_timeout_secs: 60,
         token_refresh_interval_secs: 600,
         zero_trust_validation_interval_secs: 120,
         continuous_monitoring: false,
     };
 
-    assert_eq!(config.socket_path, "/custom/path/beardog.sock");
+    assert_eq!(config.socket_path, "/custom/path/security.sock");
     assert_eq!(config.request_timeout_secs, 60);
     assert!(!config.continuous_monitoring);
 }
 
 #[test]
-fn test_beardog_config_serialization() {
-    let config = BearDogConfig::default();
+fn test_security_config_serialization() {
+    let config = SecurityConfig::default();
     let serialized = serde_json::to_string(&config).expect("Failed to serialize");
-    let deserialized: BearDogConfig =
+    let deserialized: SecurityConfig =
         serde_json::from_str(&serialized).expect("Failed to deserialize");
 
     // EVOLVED: Unix socket serialization
@@ -324,22 +324,22 @@ fn test_audit_event_serialization() {
 }
 
 // ============================================================================
-// BearDogIntegration Client Tests
+// SecurityIntegration Client Tests
 // ============================================================================
 
 #[test]
-fn test_beardog_integration_creation() {
-    let config = BearDogConfig::default();
+fn test_security_creation() {
+    let config = SecurityConfig::default();
     let integration = BearDogIntegration::new(config);
 
     assert!(integration.is_ok());
 }
 
 #[test]
-fn test_beardog_integration_with_custom_config() {
+fn test_security_with_custom_config() {
     // EVOLVED: Pure Rust Unix socket configuration
-    let config = BearDogConfig {
-        socket_path: "/var/run/beardog-custom.sock".to_string(),
+    let config = SecurityConfig {
+        socket_path: "/var/run/security-custom.sock".to_string(),
         request_timeout_secs: 45,
         token_refresh_interval_secs: 450,
         zero_trust_validation_interval_secs: 90,

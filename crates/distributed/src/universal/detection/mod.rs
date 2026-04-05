@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Platform capability detection
 //!
 //! This module provides the detection logic for identifying available computing platforms,

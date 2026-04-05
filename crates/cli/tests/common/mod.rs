@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(dead_code)]
 //! Shared test helpers and mocks for CLI monitoring tests
 
@@ -45,7 +45,7 @@ impl MockMonitor {
         self.stop()
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn collect_metric(&self, _metric: Metric) -> anyhow::Result<()> {
         Ok(())
     }
@@ -71,7 +71,7 @@ pub struct Metric {
     pub labels: HashMap<String, String>,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct AlertConfig {
     pub cpu_threshold: f64,
     pub memory_threshold: f64,
@@ -79,7 +79,7 @@ pub struct AlertConfig {
     pub enabled: bool,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct Alert {
     pub severity: String,
     pub message: String,
@@ -88,7 +88,7 @@ pub struct Alert {
     pub threshold: f64,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct MonitorReport {
     pub duration: Duration,
     pub metric_count: usize,
@@ -97,7 +97,7 @@ pub struct MonitorReport {
     pub alerts_triggered: usize,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct MetricsSummary {
     pub min: f64,
     pub max: f64,

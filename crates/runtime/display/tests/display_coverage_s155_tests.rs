@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for display runtime modules (S155 expansion):
 //! - input/events.rs (input event handling)
 //! - drm/device.rs (DRM device management)

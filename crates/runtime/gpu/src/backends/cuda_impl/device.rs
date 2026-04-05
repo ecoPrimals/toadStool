@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! CUDA device initialization and capability discovery
 
 use std::sync::Arc;
@@ -130,7 +130,7 @@ impl CudaBackend {
         )
         .unwrap_or(256);
 
-        #[allow(clippy::cast_sign_loss)]
+        #[expect(clippy::cast_sign_loss)]
         Some(DeviceInfo {
             name,
             ordinal,

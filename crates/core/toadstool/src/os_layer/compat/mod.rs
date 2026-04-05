@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! OS compatibility layer.
 //!
 //! Platform-specific compatibility implementations for Linux, Windows, macOS,

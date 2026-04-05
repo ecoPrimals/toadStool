@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Targeted tests for ecosystem/mod.rs coverage expansion
 //! Covers: `DiscoveryMethodConfig` variants, `integrate_services`, error paths, deprecated APIs
 
@@ -145,7 +145,7 @@ async fn test_ecosystem_discover_services_no_required() {
 
 // ── get_primal_capabilities (deprecated) when found ────────────────────────────
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 #[tokio::test]
 async fn test_ecosystem_get_primal_capabilities_found() {
     let coordinator = EcosystemCoordinator::new().await.unwrap();
@@ -160,7 +160,7 @@ async fn test_ecosystem_get_primal_capabilities_found() {
     assert!(!cap_strs.is_empty());
 }
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 #[tokio::test]
 async fn test_ecosystem_get_primal_capabilities_not_found() {
     let coordinator = EcosystemCoordinator::new().await.unwrap();
@@ -172,7 +172,7 @@ async fn test_ecosystem_get_primal_capabilities_not_found() {
 
 // ── is_primal_available (deprecated) ───────────────────────────────────────────
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 #[tokio::test]
 async fn test_ecosystem_is_primal_available_when_registered() {
     let coordinator = EcosystemCoordinator::new().await.unwrap();
@@ -185,7 +185,7 @@ async fn test_ecosystem_is_primal_available_when_registered() {
 
 // ── get_primal_status (deprecated) ────────────────────────────────────────────
 
-#[allow(deprecated)]
+#[expect(deprecated)]
 #[tokio::test]
 async fn test_ecosystem_get_primal_status() {
     let coordinator = EcosystemCoordinator::new().await.unwrap();

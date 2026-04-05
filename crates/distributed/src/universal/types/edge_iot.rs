@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Edge and IoT platform support
 //!
 //! Support for edge computing and IoT devices including microcontrollers,

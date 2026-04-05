@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Permission and propagation types
 
 use std::collections::HashMap;
@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use super::tokens::{AuthenticationToken, TokenVerificationStatus};
 use crate::biomeos_integration::types::{
-    BearDogConfig, BiomeOSConfig, NestGateConfig, SongbirdConfig, SquirrelConfig, ToadStoolConfig,
+    BiomeOSConfig, CoordinationConfig, IntelligenceConfig, SecurityConfig, StorageConfig,
+    ToadStoolConfig,
 };
 
 /// Token propagation request
@@ -70,19 +71,33 @@ pub struct VerificationResult {
     pub verification_time: SystemTime,
 }
 
-/// Primal type configuration enum
+/// BiomeOS manifest sections by service capability (legacy primal names accepted via serde aliases).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PrimalTypeConfig {
     /// ToadStool orchestration primal.
     ToadStool(ToadStoolConfig),
-    /// Songbird messaging primal.
-    Songbird(SongbirdConfig),
-    /// BearDog crypto primal.
-    BearDog(BearDogConfig),
-    /// NestGate storage primal.
-    NestGate(NestGateConfig),
-    /// Squirrel AI agent primal.
-    Squirrel(SquirrelConfig),
+    /// Coordination / discovery service.
+    #[serde(rename = "Coordination", alias = "Songbird", alias = "songbird")]
+    Coordination(CoordinationConfig),
+    /// Security / crypto service.
+    #[serde(
+        rename = "SecurityService",
+        alias = "BearDog",
+        alias = "bearDog",
+        alias = "beardog"
+    )]
+    SecurityService(SecurityConfig),
+    /// Storage service.
+    #[serde(
+        rename = "StorageService",
+        alias = "NestGate",
+        alias = "nestgate",
+        alias = "nest-gate"
+    )]
+    StorageService(StorageConfig),
+    /// Intelligence / ML agent service.
+    #[serde(rename = "IntelligenceService", alias = "Squirrel", alias = "squirrel")]
+    IntelligenceService(IntelligenceConfig),
     /// Full biomeOS manifest.
     BiomeOS(BiomeOSConfig),
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Service-level validation rules for BYOB deployments.
 //!
 //! Covers minimum service count, concurrent-service limits per team, runnable service

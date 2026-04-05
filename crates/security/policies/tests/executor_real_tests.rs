@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Real policy executor implementation tests
 //!
 //! These tests provide actual coverage for the policy executor module
@@ -238,7 +238,7 @@ impl PolicyResult {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 enum Condition {
     TimeWindow { start: u8, end: u8 },
     NetworkRestriction { allowed_ips: Vec<String> },
@@ -250,7 +250,7 @@ struct Policy {
     name: String,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct ResourceLimits {
     max_memory_mb: u32,
     max_cpu_percent: u8,

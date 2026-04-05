@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capture Transport — receive data from HDMI capture cards via V4L2.
 //!
 //! Implements [`HardwareTransport`] as an **Rx-only** transport. Reads video

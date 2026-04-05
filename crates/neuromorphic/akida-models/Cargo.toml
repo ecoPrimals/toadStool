@@ -29,7 +29,9 @@ hex = "0.4"
 tempfile = "3"
 
 [features]
-default = ["dev-stubs"]
+# Stubs are opt-in: default library builds must not ship NeuroBench stub generators.
+# Use `--features dev-stubs` for `model_zoo` or tests that need `create_stub_model`.
+default = []
 dev-stubs = []
 
 [lib]

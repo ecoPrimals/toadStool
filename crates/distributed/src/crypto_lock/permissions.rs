@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! Permission types and data structures for crypto lock system
 
 use std::time::{Duration, SystemTime};
@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::validation::{SecurityProof, VerificationLevel};
 
-/// `BearDog` Crypto Permission - cryptographic proof of access rights
+/// `Security` Crypto Permission - cryptographic proof of access rights
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityProviderPermission {
     /// Permission ID

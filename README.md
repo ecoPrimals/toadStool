@@ -22,15 +22,15 @@
 ## Ecosystem Role
 
 ```
-NUCLEUS = BearDog + Songbird + ToadStool + NestGate
-Tower   = BearDog + Songbird          <- communication + crypto
+NUCLEUS = Security + Coordination + Compute + Storage
+Tower   = Security + Coordination     <- communication + crypto
 Node    = Tower  + ToadStool          <- us -- sovereign compute
-Nest    = Tower  + NestGate           <- storage
+Nest    = Tower  + Storage            <- storage
 ```
 
 **biomeOS grade**: Node Atomic READY -- ToadStool A++ socket-standardized.
 
-**Deployment**: Tower starts first (BearDog -> Songbird), then ToadStool. Socket: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`. ToadStool discovers other primals at runtime by capability, not by name.
+**Deployment**: Tower starts first (security service → coordination service), then ToadStool. Socket: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`. ToadStool discovers other primals at runtime by capability, not by name.
 
 ---
 
@@ -42,24 +42,24 @@ Nest    = Tower  + NestGate           <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,853 tests, 0 failures** (S186), 220 ignored (hardware-gated) |
+| `cargo test --workspace` | **21,515 tests, 0 failures** (S187), 220 ignored (hardware-gated); full workspace ~2m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **~36 actual** (25 in `hw-safe`/`v4l2::ioctl` containment zones, 11 in consumer/driver code; down from 59 via S185-186 safe abstractions); SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
+| `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
-| Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) **`#[cfg(test)]` only** |
+| Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
-| Hardcoded primal names | 0 -- all capability-based discovery per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2; struct fields use capability-domain names with `#[serde(alias)]` for backward compat |
+| Hardcoded primal names | **550** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
 | `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| License | AGPL-3.0-only -- root LICENSE file + SPDX headers on all files |
+| License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | File size limit | All production files **< 400 lines** (S166: seven former monoliths split into module dirs) |
-| Test concurrency | All tests concurrent (`--test-threads=8`), zero `#[serial]`, zero fixed sleeps in non-chaos tests |
+| Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
 ---
@@ -92,7 +92,7 @@ ToadStool discovers and exposes compute substrates. All math dispatch belongs to
 ### Distributed Workload Dispatch
 
 - Cross-gate GPU routing across machines
-- Distributed LLM inference (TinyLlama-1.1B: 39.85 tok/s across two gates with BearDog encrypted tensor transport)
+- Distributed LLM inference (TinyLlama-1.1B: 39.85 tok/s across two gates with security-service encrypted tensor transport)
 - Cloud cost estimation, compliance validation, federation
 
 ---
@@ -139,8 +139,8 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **biomeOS socket standard**: `/run/user/$UID/biomeos/{primal}.sock`
 - **Multi-family support**: `--family-id` flag for `toadstool-{family_id}.sock`
 - **Self-knowledge principle**: ToadStool only knows its own identity (`PRIMAL_NAME`); external primals are discovered via capability, not name
-- **NestGate integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
-- **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/songbird coordination for event streaming
+- **Storage service integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
+- **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/coordination service for event streaming
 
 ### JSON-RPC Methods (~67 dynamically built; S186)
 
@@ -198,7 +198,7 @@ toadStool/
 |   +-- server/                    JSON-RPC server, GPU job queue, cross-gate router
 |   +-- (api/ fossilized S96 — ByobApi extracted to container, remainder to ecoPrimals/fossil/)
 |   +-- cli/                       UniBin CLI (single binary, BYOB server subcommand)
-|   +-- integration/               Inter-primal protocols (beardog, nestgate, songbird)
+|   +-- integration/               Inter-primal protocols (security, storage, coordination)
 |   +-- distributed/               Multi-gate coordination, cloud cost/compliance/federation
 |   +-- runtime/
 |   |   +-- gpu/                   WGPU device management, unified memory, pinned memory
@@ -244,9 +244,9 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,853** (S186), 0 failures |
-| Full workspace test time | ~8m (8 threads, GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **~36 actual** (25 in containment zones, 11 in consumer code); SAFETY-documented; **23 crates forbid, 20 deny** `unsafe_code` |
+| Workspace tests | **21,515** (S187), 0 failures |
+| Full workspace test time | ~2m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
+| `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
@@ -350,7 +350,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 5, 2026 — S186. **21,853** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-only. Zero C FFI deps (ecoBin v3.0). **~36 unsafe blocks** (25 in hw-safe/ioctl containment zones, 11 in consumer code; down from 59 via S185-186 safe abstractions). **43 crates** with `unsafe_code` lint policy. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S185-186**: Unsafe evolution — `ExclusivePtr` newtype, `ContiguousBytes` trait, `do_ioctl` centralized dispatch, `OwnedFd` throughout DMA. Remaining ~36 blocks are irreducible kernel/hardware trust boundaries pinned for ecosystem evolution. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 5, 2026 — S187. **21,515** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S185-186**: Unsafe evolution — `ExclusivePtr` newtype, `ContiguousBytes` trait, `do_ioctl` centralized dispatch, `OwnedFd` throughout DMA. Remaining ~66 blocks are irreducible kernel/hardware trust boundaries pinned for ecosystem evolution. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 //! GGUF model file loader
 //!
 //! Loads model weights from llama.cpp GGUF format.
@@ -41,7 +41,7 @@ const GGUF_VERSION_3: u32 = 3;
 /// GGUF data types
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 pub enum GgufType {
     F32 = 0,
     F16 = 1,
