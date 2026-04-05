@@ -240,13 +240,17 @@ impl CapabilityDiscovery {
         #[cfg(target_os = "linux")]
         {
             if which_in_path("avahi-browse") {
-                tracing::info!("mDNS (Avahi) available - Songbird can use for local discovery");
+                tracing::info!(
+                    "mDNS (Avahi) available - coordination service can use for local discovery"
+                );
             }
         }
 
         #[cfg(target_os = "macos")]
         {
-            tracing::info!("mDNS (Bonjour) available on macOS - Songbird can use for discovery");
+            tracing::info!(
+                "mDNS (Bonjour) available on macOS - coordination service can use for discovery"
+            );
         }
 
         tracing::info!("Using environment-based service discovery");

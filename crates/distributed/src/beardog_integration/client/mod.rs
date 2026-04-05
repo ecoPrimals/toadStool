@@ -89,11 +89,11 @@ impl BearDogClient {
     /// # Errors
     /// Returns error if no crypto service is discovered
     pub async fn new_async(config: BearDogConfig) -> ToadStoolResult<Self> {
-        let socket_path = discover_crypto_socket()
-            .await
-            .map_err(|e| ToadStoolError::configuration(format!(
-                "No crypto service discovered: {e}. Ensure a crypto provider (e.g., BearDog) is running.",
-            )))?;
+        let socket_path = discover_crypto_socket().await.map_err(|e| {
+            ToadStoolError::configuration(format!(
+                "No crypto service discovered: {e}. Ensure a security/crypto service is running.",
+            ))
+        })?;
 
         let rpc_client = UnixJsonRpcClient::new(socket_path);
 
@@ -151,8 +151,10 @@ impl BearDogClient {
             .call_typed("crypto.capabilities", serde_json::json!({}))
             .await
             .map_err(|e| {
-                tracing::warn!("Beardog capabilities query failed: {}", e);
-                ToadStoolError::network(format!("Beardog crypto capabilities query failed: {e}"))
+                tracing::warn!("security/crypto service capabilities query failed: {}", e);
+                ToadStoolError::network(format!(
+                    "security/crypto service capabilities query failed: {e}"
+                ))
             })?;
 
         Ok(Self::parse_capabilities_from_json(&response))

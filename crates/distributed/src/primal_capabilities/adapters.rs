@@ -154,7 +154,7 @@ impl PrimalAdapter for SongbirdAdapter {
             .map_err(|e| DistributedError::SongbirdRegistration(e.to_string()))?;
 
         tracing::info!(
-            "Successfully registered {} capabilities with Songbird via unix socket",
+            "Successfully registered {} capabilities with coordination service via unix socket",
             capabilities.len()
         );
 
@@ -223,7 +223,7 @@ impl PrimalAdapter for SongbirdAdapter {
             .call("coordination.deregister", params)
             .await
             .unwrap_or_else(|e| {
-                tracing::warn!("Deregistration from Songbird failed: {e}");
+                tracing::warn!("Deregistration from coordination service failed: {e}");
                 serde_json::json!({})
             });
 

@@ -80,13 +80,16 @@ impl EndpointSource for ServiceMeshSource {
         Box::pin(async move {
             match mesh_type {
                 ServiceMeshType::Auto => {
-                    tracing::trace!(service, "Service mesh discovery delegated to Songbird");
+                    tracing::trace!(
+                        service,
+                        "Service mesh discovery delegated to coordination service"
+                    );
                     Ok(None)
                 }
                 ServiceMeshType::Consul | ServiceMeshType::Etcd | ServiceMeshType::Kubernetes => {
                     tracing::warn!(
                         service,
-                        "Vendor-specific service mesh deprecated - use Songbird"
+                        "Vendor-specific service mesh deprecated - use coordination service"
                     );
                     Ok(None)
                 }

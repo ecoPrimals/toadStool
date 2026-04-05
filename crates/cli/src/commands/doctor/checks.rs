@@ -36,18 +36,22 @@ pub(crate) async fn check_hardware_health() -> HardwareReport {
         None
     };
 
-    let npu_detected = Path::new("/dev/akida0").exists()
-        || std::fs::read_dir("/sys/bus/pci/devices")
-            .ok()
-            .map(|entries| {
-                entries.flatten().any(|e| {
-                    std::fs::read_to_string(e.path().join("vendor"))
-                        .ok()
-                        .map(|v| v.trim() == "0x1e7c")
-                        .unwrap_or(false)
-                })
-            })
-            .unwrap_or(false);
+    let npu_detected = Path::new("/dev/akida0").exists() || {
+        let pci_devices = Path::new("/sys/bus/pci/devices");
+        let mut found = false;
+        if let Ok(mut entries) = tokio::fs::read_dir(pci_devices).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let vendor_path = entry.path().join("vendor");
+                if let Ok(v) = tokio::fs::read_to_string(&vendor_path).await {
+                    if v.trim() == "0x1e7c" {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+        found
+    };
 
     let npu_info = if npu_detected {
         Some("Akida NPU detected".to_string())
@@ -104,8 +108,8 @@ pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
     let mut discovered_primal_names = HashSet::new();
 
     if biomeos_dir_exists {
-        if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
-            for entry in entries.flatten() {
+        if let Ok(mut entries) = tokio::fs::read_dir(&biomeos_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
                 let path = entry.path();
                 if path.extension().map(|e| e == "sock").unwrap_or(false)
                     || path

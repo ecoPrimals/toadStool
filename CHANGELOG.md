@@ -5,7 +5,34 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 4, 2026 (Sessions 43-183)
+## [Unreleased] - April 5, 2026 (Sessions 43-184)
+
+### Session S184 (Apr 5, 2026) — Deep Debt Phase 3: Final Async I/O, 5 Refactors, Last String Evolution
+
+#### Async I/O Fix (1 file, 2 functions)
+- `cli/commands/doctor/checks.rs`: `check_hardware_health` + `check_ecosystem_health` → `tokio::fs`
+- Zero remaining blocking std::fs in async functions across workspace crates
+
+#### Large File Smart Refactoring (5 files)
+- `cli/universal/operations/utilities.rs` (619L) → `utilities/{mod,platform_id,platform_metadata,hardware,tests}.rs`
+- `cli/executor/commands.rs` (619L) → `commands/{mod,new_run,up_background,down_list,logs,tests}.rs`
+- `core/toadstool/semantic_methods.rs` (617L) → `semantic_methods/{mod,mappings_core,mappings_extended,tests}.rs`
+- `cli/ecosystem/adapters/coordination.rs` (615L) → `coordination/{mod,types,adapter,tests}.rs`
+- `core/toadstool/ecosystem/types.rs` (607L) → `types/{mod,config,connection,messaging,tests}.rs`
+
+#### Final Production String Evolution (~8 strings, 4 files)
+- `primal_capabilities/adapters.rs`: last "Songbird" → "coordination service"
+- `capability_discovery/mod.rs`: "Songbird" → "coordination service"
+- `infant_discovery/sources/service_mesh.rs`: "Songbird" → "coordination service"
+- `beardog_integration/client/mod.rs`: "BearDog"/"Beardog" → "security/crypto service"
+
+#### dead_code Attribute Review (4 items)
+- All 4 reviewed; all confirmed still dead in lib builds (used only in tests) — allows retained
+
+#### Quality
+- 21,853 tests (0 failures), fmt clean, Clippy clean
+- Zero blocking std::fs in async (workspace crates)
+- Zero primal-name strings in production log/error macros (NestGate/Squirrel already clean)
 
 ### Session S183 (Apr 4, 2026) — Deep Debt Evolution: Async I/O, Refactoring, String Evolution Phase 2
 
