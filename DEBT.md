@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 5, 2026 — S184
+**Date**: April 5, 2026 — S186
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,23 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S185-186 Resolved Debt (Unsafe Evolution — Abstractions, OwnedFd, Centralized Dispatch)
+
+### D-UNSAFE-ABSTRACT — RESOLVED S186
+Centralized repeated unsafe ioctl dispatch into single-site `do_ioctl` helpers across VFIO setup, VFIO DMA, V4L2, DRM. Generic `read_reg<T>`/`write_reg<T>` replaced 4 volatile MMIO blocks with 2. -17 unsafe blocks.
+
+### D-UNSAFE-EXCLUSIVEPTR — RESOLVED S186b
+Created `ExclusivePtr` newtype in hw-safe — wraps `NonNull<u8>` with `Send + Sync`. AlignedAlloc, HugePageMemory, DeviceMmap now auto-derive Send+Sync. -6 unsafe impls eliminated.
+
+### D-UNSAFE-CONTIGUOUS — RESOLVED S186b
+Created `ContiguousBytes` unsafe trait with safe default `as_bytes()`/`as_bytes_mut()`. Centralizes all `from_raw_parts` calls into 2 blocks (trait defaults). -6 unsafe blocks.
+
+### D-NVPMU-OWNEDFD — RESOLVED S186b
+Evolved nvpmu DMA from `RawFd` to `OwnedFd` with `try_clone()` per buffer. Eliminated deprecated `dma_map_fd`/`dma_unmap_fd` calls. Stronger fd ownership guarantees.
+
+### D-UNSAFE-SENDSYNC-AUDIT — RESOLVED S185
+Removed 4 redundant `unsafe impl Send/Sync` (LockedMemory, Bar0Access) — auto-derived from internal components. Added compile-time trait assertions. Evolved akida-driver DMA to `OwnedFd`.
 
 ## S180 Resolved Debt (Deep Debt Evolution — Async I/O, Refactoring, String Evolution)
 

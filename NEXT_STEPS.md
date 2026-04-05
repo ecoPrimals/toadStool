@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 5, 2026 -- S184 Deep Debt Phase 3 — Final Async/String/Refactor Pass
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,853 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~59 unsafe blocks** (48 in containment zones, 11 in consumer code; consumer −80%) | **355 #[allow] / 530 #[expect]** (40%/60%)
-**Latest**: S184 — Deep debt phase 3: last async I/O fix (doctor/checks), 5 more refactors (utilities, commands, semantic_methods, coordination, ecosystem/types), final primal-name strings evolved. Zero blocking async I/O, zero primal-name log strings remaining in workspace. All quality gates green.
+**Updated**: April 5, 2026 -- S186 Unsafe Evolution — ExclusivePtr + ContiguousBytes + OwnedFd
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-only** | **All quality gates green** | 21,853 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~36 unsafe blocks** (25 in containment zones, 11 in consumer code; down from 59 via S185-186) | **355 #[allow] / 530 #[expect]** (40%/60%)
+**Latest**: S185-186 — Unsafe audit + evolution: `ExclusivePtr` (auto-derives Send+Sync), `ContiguousBytes` trait (centralizes from_raw_parts), `do_ioctl` helpers (centralized ioctl dispatch), generic `read_reg<T>`/`write_reg<T>` (volatile MMIO), nvpmu `OwnedFd` evolution. ~59→~36 unsafe blocks. Remaining ~36 are irreducible kernel/hardware trust boundaries.
 
 ---
 
