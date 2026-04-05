@@ -11,6 +11,9 @@ use std::ptr::NonNull;
 
 use rustix::mm::{MapFlags, ProtFlags, mlock, mmap_anonymous, munlock, munmap};
 
+use crate::ExclusivePtr;
+use crate::contiguous::ContiguousBytes;
+
 /// Supported huge page sizes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HugePageSize {
@@ -59,7 +62,7 @@ pub enum HugePageError {
 ///
 /// On drop: `munlock` then `munmap`. All unsafe is contained here.
 pub struct HugePageMemory {
-    ptr: NonNull<u8>,
+    ptr: ExclusivePtr,
     size: usize,
 }
 
@@ -110,7 +113,7 @@ impl HugePageMemory {
         }
 
         Ok(Self {
-            ptr,
+            ptr: ExclusivePtr::new(ptr),
             size: aligned_size,
         })
     }
@@ -124,21 +127,19 @@ impl HugePageMemory {
     /// Raw pointer for FFI (e.g. VFIO DMA map).
     #[must_use]
     pub fn as_ptr(&self) -> NonNull<u8> {
-        self.ptr
+        self.ptr.as_non_null()
     }
 
     /// Immutable byte slice.
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
-        // SAFETY: ptr valid for size bytes; &self prevents mutation.
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
+        self.as_bytes()
     }
 
     /// Mutable byte slice.
     #[must_use]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr valid for size bytes; &mut self guarantees exclusive access.
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
+        self.as_bytes_mut()
     }
 }
 
@@ -152,10 +153,7 @@ impl Drop for HugePageMemory {
     }
 }
 
-// SAFETY: HugePageMemory owns the mapping exclusively; no aliasing.
-unsafe impl Send for HugePageMemory {}
-// SAFETY: Reads via &self; writes require &mut self.
-unsafe impl Sync for HugePageMemory {}
+// Send+Sync auto-derived via ExclusivePtr — no manual unsafe impl needed.
 #[allow(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
@@ -164,11 +162,22 @@ const _: () = {
     }
 };
 
+// SAFETY: HugePageMemory owns the mmap'd region exclusively; ptr is valid
+// for `size` bytes from construction until Drop munmaps it.
+unsafe impl ContiguousBytes for HugePageMemory {
+    fn raw_ptr(&self) -> NonNull<u8> {
+        self.ptr.as_non_null()
+    }
+    fn raw_len(&self) -> usize {
+        self.size
+    }
+}
+
 impl std::fmt::Debug for HugePageMemory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HugePageMemory")
             .field("size", &self.size)
-            .field("ptr", &self.ptr)
+            .field("ptr", &self.ptr.as_non_null())
             .finish()
     }
 }

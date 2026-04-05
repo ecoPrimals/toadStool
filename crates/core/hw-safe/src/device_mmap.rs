@@ -15,6 +15,8 @@
 use std::os::fd::AsFd;
 use std::ptr::NonNull;
 
+use crate::ExclusivePtr;
+use crate::contiguous::ContiguousBytes;
 use crate::volatile_mmio::VolatileMmio;
 
 /// Error type for device mmap operations.
@@ -41,7 +43,7 @@ pub enum DeviceMmapError {
 ///
 /// Use [`as_slice`](Self::as_slice) / [`as_mut_slice`](Self::as_mut_slice).
 pub struct DeviceMmap {
-    ptr: NonNull<u8>,
+    ptr: ExclusivePtr,
     size: usize,
 }
 
@@ -75,7 +77,10 @@ impl DeviceMmap {
 
         let ptr = NonNull::new(raw.cast()).expect("mmap returned non-null on success");
         tracing::debug!(size, offset, "device mmap region created");
-        Ok(Self { ptr, size })
+        Ok(Self {
+            ptr: ExclusivePtr::new(ptr),
+            size,
+        })
     }
 
     /// Size of the mapped region in bytes.
@@ -86,8 +91,8 @@ impl DeviceMmap {
 
     /// Raw pointer to the mapped region.
     #[must_use]
-    pub const fn as_ptr(&self) -> NonNull<u8> {
-        self.ptr
+    pub fn as_ptr(&self) -> NonNull<u8> {
+        self.ptr.as_non_null()
     }
 
     /// Bounds-checked volatile MMIO view (borrows `self`).
@@ -98,7 +103,7 @@ impl DeviceMmap {
     pub fn as_volatile(&self) -> VolatileMmio<'_> {
         // SAFETY: ptr is valid for `size` bytes from the successful mmap.
         // The VolatileMmio borrows self, preventing use-after-unmap.
-        unsafe { VolatileMmio::new(self.ptr, self.size) }
+        unsafe { VolatileMmio::new(self.ptr.as_non_null(), self.size) }
     }
 
     /// View the mapped region as a byte slice.
@@ -106,9 +111,7 @@ impl DeviceMmap {
     /// For non-MMIO mappings (V4L2 video frames, data buffers).
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
-        // SAFETY: ptr valid for `size` bytes from successful mmap;
-        // &self prevents concurrent mutation.
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.size) }
+        self.as_bytes()
     }
 
     /// View the mapped region as a mutable byte slice.
@@ -116,8 +119,7 @@ impl DeviceMmap {
     /// For non-MMIO mappings (V4L2 video frames, data buffers).
     #[must_use]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr valid for `size` bytes; &mut self ensures exclusive access.
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.size) }
+        self.as_bytes_mut()
     }
 }
 
@@ -131,11 +133,7 @@ impl Drop for DeviceMmap {
     }
 }
 
-// SAFETY: DeviceMmap owns the mapping exclusively; mmap'd memory is
-// process-wide (not thread-local), so moving between threads is safe.
-unsafe impl Send for DeviceMmap {}
-// SAFETY: Reads via &self; writes via &mut self. Borrow checker enforces.
-unsafe impl Sync for DeviceMmap {}
+// Send+Sync auto-derived via ExclusivePtr — no manual unsafe impl needed.
 #[allow(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
@@ -144,10 +142,21 @@ const _: () = {
     }
 };
 
+// SAFETY: DeviceMmap owns the mmap'd region exclusively; ptr is valid for
+// `size` bytes from construction until Drop munmaps it.
+unsafe impl ContiguousBytes for DeviceMmap {
+    fn raw_ptr(&self) -> NonNull<u8> {
+        self.ptr.as_non_null()
+    }
+    fn raw_len(&self) -> usize {
+        self.size
+    }
+}
+
 impl std::fmt::Debug for DeviceMmap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DeviceMmap")
-            .field("ptr", &format_args!("{:p}", self.ptr.as_ptr()))
+            .field("ptr", &format_args!("{:p}", self.ptr.as_non_null().as_ptr()))
             .field("size", &self.size)
             .finish()
     }

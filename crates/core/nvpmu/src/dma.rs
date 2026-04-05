@@ -13,7 +13,7 @@
 //! ```rust,no_run
 //! # fn example() -> nvpmu::error::Result<()> {
 //! // After opening VfioBar0Access, create an allocator for DMA:
-//! // let mut alloc = DmaAllocator::new(container_raw_fd);
+//! // let mut alloc = DmaAllocator::new(container_owned_fd);
 //! // let buf = alloc.allocate(4096)?;
 //! // buf.as_mut_slice()[..4].copy_from_slice(&[1, 2, 3, 4]);
 //! // let device_addr = buf.iova(); // pass to GPU command buffer
@@ -22,7 +22,7 @@
 //! ```
 
 use crate::error::{NvPmuError, Result};
-use std::os::fd::RawFd;
+use std::os::fd::{AsFd, OwnedFd};
 use toadstool_hw_safe::LockedMemory;
 use toadstool_hw_safe::huge_page::{self, HugePageMemory};
 use toadstool_hw_safe::vfio_dma::{self, VfioDmaMap, VfioDmaUnmap, flags};
@@ -67,7 +67,7 @@ pub struct DmaBuffer {
     mem: DmaMemory,
     iova: u64,
     size: usize,
-    container_fd: RawFd,
+    container_fd: OwnedFd,
 }
 
 impl DmaBuffer {
@@ -118,10 +118,9 @@ impl Drop for DmaBuffer {
             size: self.size as u64,
         };
 
-        // SAFETY: container_fd still valid (DmaBuffer dropped before container);
+        // SAFETY: container_fd is a valid VFIO container (OwnedFd guarantees);
         // unmap matches prior dma_map for this IOVA range.
-        #[allow(deprecated, reason = "nvpmu stores RawFd — evolve to OwnedFd in future")]
-        let _ = unsafe { vfio_dma::dma_unmap_fd(self.container_fd, &unmap) };
+        let _ = unsafe { vfio_dma::dma_unmap(self.container_fd.as_fd(), &unmap) };
 
         // LockedMemory / HugePageMemory handle their own cleanup via Drop.
         tracing::debug!(iova = %format!("{:#x}", self.iova), "freed DMA buffer");
@@ -133,14 +132,14 @@ impl Drop for DmaBuffer {
 /// Manages the IOVA address space and provides page-aligned, IOMMU-mapped
 /// allocations for host-device data transfer.
 pub struct DmaAllocator {
-    container_fd: RawFd,
+    container_fd: OwnedFd,
     next_iova: u64,
 }
 
 impl DmaAllocator {
     /// Create a new allocator for the given VFIO container fd.
     #[must_use]
-    pub const fn new(container_fd: RawFd) -> Self {
+    pub fn new(container_fd: OwnedFd) -> Self {
         Self {
             container_fd,
             next_iova: IOVA_BASE,
@@ -157,10 +156,9 @@ impl DmaAllocator {
             size: buf.size as u64,
         };
 
-        // SAFETY: container_fd is a valid VFIO container fd held for the lifetime of
-        // DmaAllocator; vaddr from LockedMemory/HugePageMemory; IOVA range unused.
-        #[allow(deprecated, reason = "nvpmu stores RawFd — evolve to OwnedFd in future")]
-        unsafe { vfio_dma::dma_map_fd(self.container_fd, &dma_map) }
+        // SAFETY: container_fd is a valid VFIO container (OwnedFd guarantees);
+        // vaddr from LockedMemory/HugePageMemory; IOVA range unused.
+        unsafe { vfio_dma::dma_map(self.container_fd.as_fd(), &dma_map) }
             .map_err(|e| NvPmuError::Hardware(format!("VFIO DMA map failed: {e}")))
     }
 
@@ -183,10 +181,15 @@ impl DmaAllocator {
         let mem = LockedMemory::page_aligned(aligned_size)
             .map_err(|e| NvPmuError::Hardware(format!("locked DMA buffer: {e}")))?;
 
+        let buf_fd = self
+            .container_fd
+            .try_clone()
+            .map_err(|e| NvPmuError::Hardware(format!("dup container fd: {e}")))?;
+
         let buf = DmaBuffer {
             iova: self.next_iova,
             size: aligned_size,
-            container_fd: self.container_fd,
+            container_fd: buf_fd,
             mem: DmaMemory::Locked(mem),
         };
         self.iommu_map(&buf)?;
@@ -233,10 +236,15 @@ impl DmaAllocator {
             .map_err(|e| NvPmuError::Hardware(format!("huge page alloc: {e}")))?;
         let aligned_size = hp_mem.size();
 
+        let buf_fd = self
+            .container_fd
+            .try_clone()
+            .map_err(|e| NvPmuError::Hardware(format!("dup container fd: {e}")))?;
+
         let buf = DmaBuffer {
             iova: self.next_iova,
             size: aligned_size,
-            container_fd: self.container_fd,
+            container_fd: buf_fd,
             mem: DmaMemory::HugePage(hp_mem),
         };
 
@@ -272,9 +280,13 @@ pub fn supports_huge_pages() -> bool {
 mod tests {
     use super::*;
 
+    fn dummy_fd() -> OwnedFd {
+        std::fs::File::open("/dev/null").unwrap().into()
+    }
+
     #[test]
     fn zero_size_rejected() {
-        let mut alloc = DmaAllocator::new(-1);
+        let mut alloc = DmaAllocator::new(dummy_fd());
         assert!(alloc.allocate(0).is_err());
     }
 

@@ -15,6 +15,9 @@
 use std::alloc::Layout;
 use std::ptr::NonNull;
 
+use crate::ExclusivePtr;
+use crate::contiguous::ContiguousBytes;
+
 /// Error type for allocation operations.
 #[derive(Debug, thiserror::Error)]
 pub enum AllocError {
@@ -47,7 +50,7 @@ pub enum AllocError {
 /// exclusively. The borrow checker prevents data races through `&` vs
 /// `&mut` access to the slice views.
 pub struct AlignedAlloc {
-    ptr: NonNull<u8>,
+    ptr: ExclusivePtr,
     layout: Layout,
 }
 
@@ -74,7 +77,10 @@ impl AlignedAlloc {
 
         let ptr = NonNull::new(raw).ok_or(AllocError::OutOfMemory { size, align })?;
 
-        Ok(Self { ptr, layout })
+        Ok(Self {
+            ptr: ExclusivePtr::new(ptr),
+            layout,
+        })
     }
 
     /// Allocate with a specific [`Layout`].
@@ -99,24 +105,22 @@ impl AlignedAlloc {
             align: layout.align(),
         })?;
 
-        Ok(Self { ptr, layout })
+        Ok(Self {
+            ptr: ExclusivePtr::new(ptr),
+            layout,
+        })
     }
 
     /// View the allocation as a byte slice.
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
-        // SAFETY: ptr is from alloc_zeroed with layout.size() bytes.
-        // &self ensures no concurrent mutable access. Size is immutable
-        // after construction.
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.layout.size()) }
+        self.as_bytes()
     }
 
     /// View the allocation as a mutable byte slice.
     #[must_use]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        // SAFETY: ptr is from alloc_zeroed with layout.size() bytes.
-        // &mut self ensures exclusive access. Size is immutable.
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.layout.size()) }
+        self.as_bytes_mut()
     }
 
     /// Size of the allocation in bytes.
@@ -139,8 +143,8 @@ impl AlignedAlloc {
 
     /// Raw pointer to the allocation (for FFI or advanced use).
     #[must_use]
-    pub const fn as_ptr(&self) -> NonNull<u8> {
-        self.ptr
+    pub fn as_ptr(&self) -> NonNull<u8> {
+        self.ptr.as_non_null()
     }
 }
 
@@ -155,12 +159,9 @@ impl Drop for AlignedAlloc {
     }
 }
 
-// SAFETY: AlignedAlloc owns the allocation exclusively. The raw pointer
-// is never shared. Moving between threads is safe because the allocation
-// remains valid. The borrow checker enforces &/&mut exclusivity for
-// as_slice/as_mut_slice.
-unsafe impl Send for AlignedAlloc {}
-unsafe impl Sync for AlignedAlloc {}
+// SAFETY: AlignedAlloc owns the allocation exclusively via alloc_zeroed.
+// ptr (ExclusivePtr) is Send+Sync; Layout is Send+Sync.
+// Auto-derived Send+Sync via ExclusivePtr — no manual impl needed.
 #[allow(dead_code, reason = "compile-time trait bound assertion")]
 const _: () = {
     fn assert_send_sync<T: Send + Sync>() {}
@@ -169,10 +170,21 @@ const _: () = {
     }
 };
 
+// SAFETY: AlignedAlloc allocates via alloc_zeroed; ptr is valid for
+// layout.size() bytes from construction until Drop.
+unsafe impl ContiguousBytes for AlignedAlloc {
+    fn raw_ptr(&self) -> NonNull<u8> {
+        self.ptr.as_non_null()
+    }
+    fn raw_len(&self) -> usize {
+        self.layout.size()
+    }
+}
+
 impl std::fmt::Debug for AlignedAlloc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AlignedAlloc")
-            .field("ptr", &self.ptr)
+            .field("ptr", &self.ptr.as_non_null())
             .field("size", &self.layout.size())
             .field("align", &self.layout.align())
             .finish()
