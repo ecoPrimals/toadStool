@@ -103,9 +103,15 @@ impl Drop for LockedMemory {
     }
 }
 
-// SAFETY: Same justification as AlignedAlloc — exclusive ownership.
-unsafe impl Send for LockedMemory {}
-unsafe impl Sync for LockedMemory {}
+// Send + Sync auto-derived: LockedMemory contains only AlignedAlloc (which is
+// Send + Sync) — no additional raw pointers or non-threadsafe fields.
+#[allow(dead_code, reason = "compile-time trait bound assertion")]
+const _: () = {
+    fn assert_send_sync<T: Send + Sync>() {}
+    fn check() {
+        assert_send_sync::<LockedMemory>();
+    }
+};
 
 impl std::fmt::Debug for LockedMemory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

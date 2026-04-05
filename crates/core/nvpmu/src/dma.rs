@@ -120,6 +120,7 @@ impl Drop for DmaBuffer {
 
         // SAFETY: container_fd still valid (DmaBuffer dropped before container);
         // unmap matches prior dma_map for this IOVA range.
+        #[allow(deprecated, reason = "nvpmu stores RawFd — evolve to OwnedFd in future")]
         let _ = unsafe { vfio_dma::dma_unmap_fd(self.container_fd, &unmap) };
 
         // LockedMemory / HugePageMemory handle their own cleanup via Drop.
@@ -158,6 +159,7 @@ impl DmaAllocator {
 
         // SAFETY: container_fd is a valid VFIO container fd held for the lifetime of
         // DmaAllocator; vaddr from LockedMemory/HugePageMemory; IOVA range unused.
+        #[allow(deprecated, reason = "nvpmu stores RawFd — evolve to OwnedFd in future")]
         unsafe { vfio_dma::dma_map_fd(self.container_fd, &dma_map) }
             .map_err(|e| NvPmuError::Hardware(format!("VFIO DMA map failed: {e}")))
     }

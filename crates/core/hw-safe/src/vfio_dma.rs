@@ -135,8 +135,8 @@ pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> s
 
 /// Map a host buffer into the device IOMMU using a raw file descriptor.
 ///
-/// Convenience wrapper that combines [`BorrowedFd::borrow_raw`] and [`dma_map`]
-/// into a single call, eliminating the duplicate `unsafe` at each call site.
+/// Prefer [`dma_map`] with `OwnedFd`/`BorrowedFd` for stronger fd validity
+/// guarantees. This wrapper exists for callers that only have a `RawFd`.
 ///
 /// # Errors
 ///
@@ -147,6 +147,7 @@ pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> s
 /// Same invariants as [`dma_map`], plus:
 /// - `fd` must be a valid, open VFIO container file descriptor that remains
 ///   open for the duration of this call.
+#[deprecated(note = "prefer dma_map() with BorrowedFd/OwnedFd for fd safety")]
 pub unsafe fn dma_map_fd(fd: RawFd, map: &VfioDmaMap) -> std::io::Result<()> {
     // SAFETY: caller guarantees fd is valid and open.
     let borrowed = unsafe { BorrowedFd::borrow_raw(fd) };
@@ -156,8 +157,8 @@ pub unsafe fn dma_map_fd(fd: RawFd, map: &VfioDmaMap) -> std::io::Result<()> {
 
 /// Remove a device IOMMU mapping using a raw file descriptor.
 ///
-/// Convenience wrapper that combines [`BorrowedFd::borrow_raw`] and [`dma_unmap`]
-/// into a single call, eliminating the duplicate `unsafe` at each call site.
+/// Prefer [`dma_unmap`] with `OwnedFd`/`BorrowedFd` for stronger fd validity
+/// guarantees. This wrapper exists for callers that only have a `RawFd`.
 ///
 /// # Errors
 ///
@@ -168,6 +169,7 @@ pub unsafe fn dma_map_fd(fd: RawFd, map: &VfioDmaMap) -> std::io::Result<()> {
 /// Same invariants as [`dma_unmap`], plus:
 /// - `fd` must be a valid, open VFIO container file descriptor that remains
 ///   open for the duration of this call.
+#[deprecated(note = "prefer dma_unmap() with BorrowedFd/OwnedFd for fd safety")]
 pub unsafe fn dma_unmap_fd(fd: RawFd, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
     // SAFETY: caller guarantees fd is valid and open.
     let borrowed = unsafe { BorrowedFd::borrow_raw(fd) };

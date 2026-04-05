@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-#![allow(unsafe_code)] // VFIO DMA ioctls + BorrowedFd::borrow_raw(container_fd)
+#![allow(unsafe_code)] // VFIO DMA map/unmap ioctls require unsafe
 //! DMA buffer management for VFIO NPU backend
 //!
 //! Provides page-aligned, mlock'd, IOMMU-mapped memory buffers for
 //! zero-copy data transfer between host and NPU hardware.
 
 use crate::error::{AkidaError, Result};
-use std::os::fd::RawFd;
+use std::os::fd::{AsFd, OwnedFd};
 
 use toadstool_hw_safe::LockedMemory;
-use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap, dma_map_fd, dma_unmap_fd, flags};
+use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap, dma_map, dma_unmap, flags};
 
 /// DMA buffer for fast host-to-device data transfer.
 ///
@@ -20,7 +20,7 @@ pub struct DmaBuffer {
     mem: LockedMemory,
     iova: u64,
     size: usize,
-    container_fd: RawFd,
+    container_fd: OwnedFd,
 }
 
 impl DmaBuffer {
@@ -29,7 +29,7 @@ impl DmaBuffer {
     /// # Errors
     ///
     /// Returns an error if allocation, mlock, or IOMMU DMA mapping fails.
-    pub(crate) fn new(container_fd: RawFd, size: usize, iova: u64) -> Result<Self> {
+    pub(crate) fn new(container_fd: OwnedFd, size: usize, iova: u64) -> Result<Self> {
         if size == 0 {
             return Err(AkidaError::transfer_failed("DMA buffer size must be > 0"));
         }
@@ -59,9 +59,9 @@ impl DmaBuffer {
             dma_map_arg.flags
         );
 
-        // SAFETY: container_fd from VFIO container open (valid and not closed);
+        // SAFETY: container_fd is the VFIO container (OwnedFd guarantees validity);
         // map.vaddr points at mem's allocation for size bytes; IOVA range chosen by caller.
-        if let Err(e) = unsafe { dma_map_fd(container_fd, &dma_map_arg) } {
+        if let Err(e) = unsafe { dma_map(container_fd.as_fd(), &dma_map_arg) } {
             tracing::warn!("DMA map failed: {e}");
             return Err(AkidaError::transfer_failed(format!(
                 "Failed to map DMA: {e}"
@@ -115,9 +115,9 @@ impl Drop for DmaBuffer {
             size: self.size as u64,
         };
 
-        // SAFETY: DmaBuffer dropped before VfioBackend (parent), so container_fd is still
-        // valid and open; iova/size match the prior dma_map_fd call.
-        let _ = unsafe { dma_unmap_fd(self.container_fd, &dma_unmap_arg) };
+        // SAFETY: container_fd is OwnedFd (guaranteed valid until Drop completes);
+        // iova/size match the prior dma_map call for this buffer.
+        let _ = unsafe { dma_unmap(self.container_fd.as_fd(), &dma_unmap_arg) };
 
         tracing::debug!("Freed DMA buffer at iova={:#x}", self.iova);
     }
@@ -128,9 +128,15 @@ mod tests {
     use super::*;
     use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
+    fn dummy_fd() -> OwnedFd {
+        use std::fs::File;
+        let f = File::open("/dev/null").expect("/dev/null");
+        f.into()
+    }
+
     #[test]
     fn test_dma_buffer_new_size_zero() {
-        let result = DmaBuffer::new(-1, 0, 0);
+        let result = DmaBuffer::new(dummy_fd(), 0, 0);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.to_string().contains("size must be > 0"));
@@ -138,8 +144,7 @@ mod tests {
 
     #[test]
     fn test_dma_buffer_iova_size_accessors() {
-        // We can't create a real DmaBuffer without VFIO, but we can test the size zero path
-        let result = DmaBuffer::new(0, 0, 0x1000);
+        let result = DmaBuffer::new(dummy_fd(), 0, 0x1000);
         assert!(result.is_err());
     }
 

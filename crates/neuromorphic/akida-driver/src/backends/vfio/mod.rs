@@ -25,7 +25,6 @@ use crate::error::{AkidaError, Result};
 use crate::mmio::{Bar, MappedRegion, regs};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, OwnedFd};
-use std::os::unix::io::AsRawFd;
 use toadstool_hw_safe::vfio_setup;
 use types::PollConfig;
 use types::ioctls;
@@ -87,7 +86,12 @@ impl VfioBackend {
         let iova = self.next_iova;
         let aligned_size = size.div_ceil(4096) * 4096;
         self.next_iova += aligned_size as u64;
-        DmaBuffer::new(self.container.as_raw_fd(), aligned_size, iova)
+        let fd: OwnedFd = self
+            .container
+            .try_clone()
+            .map_err(|e| AkidaError::transfer_failed(format!("dup container fd: {e}")))?
+            .into();
+        DmaBuffer::new(fd, aligned_size, iova)
     }
 
     #[expect(

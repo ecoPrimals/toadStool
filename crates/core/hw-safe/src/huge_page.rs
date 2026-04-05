@@ -156,6 +156,13 @@ impl Drop for HugePageMemory {
 unsafe impl Send for HugePageMemory {}
 // SAFETY: Reads via &self; writes require &mut self.
 unsafe impl Sync for HugePageMemory {}
+#[allow(dead_code, reason = "compile-time trait bound assertion")]
+const _: () = {
+    fn assert_send_sync<T: Send + Sync>() {}
+    fn check() {
+        assert_send_sync::<HugePageMemory>();
+    }
+};
 
 impl std::fmt::Debug for HugePageMemory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

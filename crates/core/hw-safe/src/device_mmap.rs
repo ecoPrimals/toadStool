@@ -136,6 +136,13 @@ impl Drop for DeviceMmap {
 unsafe impl Send for DeviceMmap {}
 // SAFETY: Reads via &self; writes via &mut self. Borrow checker enforces.
 unsafe impl Sync for DeviceMmap {}
+#[allow(dead_code, reason = "compile-time trait bound assertion")]
+const _: () = {
+    fn assert_send_sync<T: Send + Sync>() {}
+    fn check() {
+        assert_send_sync::<DeviceMmap>();
+    }
+};
 
 impl std::fmt::Debug for DeviceMmap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

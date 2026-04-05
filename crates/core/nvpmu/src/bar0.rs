@@ -106,9 +106,15 @@ impl Bar0Access {
     }
 }
 
-// SAFETY: Bar0Access delegates all pointer operations to SafeMmapRegion
-// which is Send. Moving between threads doesn't invalidate the mapping.
-unsafe impl Send for Bar0Access {}
+// Send auto-derived: Bar0Access contains SafeMmapRegion (Send via memmap2's
+// MmapInner: Send + Sync) and String (Send). No raw pointers.
+#[allow(dead_code, reason = "compile-time trait bound assertion")]
+const _: () = {
+    fn assert_send<T: Send>() {}
+    fn check() {
+        assert_send::<Bar0Access>();
+    }
+};
 
 impl hw_learn::applicator::RegisterAccess for Bar0Access {
     fn read_u32(&self, offset: u64) -> std::result::Result<u32, String> {

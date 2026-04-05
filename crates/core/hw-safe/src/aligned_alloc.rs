@@ -161,6 +161,13 @@ impl Drop for AlignedAlloc {
 // as_slice/as_mut_slice.
 unsafe impl Send for AlignedAlloc {}
 unsafe impl Sync for AlignedAlloc {}
+#[allow(dead_code, reason = "compile-time trait bound assertion")]
+const _: () = {
+    fn assert_send_sync<T: Send + Sync>() {}
+    fn check() {
+        assert_send_sync::<AlignedAlloc>();
+    }
+};
 
 impl std::fmt::Debug for AlignedAlloc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
