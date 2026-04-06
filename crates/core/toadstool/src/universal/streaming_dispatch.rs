@@ -11,7 +11,7 @@
 //!
 //! # Origin
 //!
-//! Absorbed from `hotSpring/barracuda/src/streaming_dispatch.rs` (v0.6.24).
+//! Absorbed from hotSpring compute streaming dispatch (v0.6.24).
 //! hotSpring's version is tied to `GpuF64`; this version is substrate-agnostic
 //! so any primal or spring can use it for dispatch planning.
 

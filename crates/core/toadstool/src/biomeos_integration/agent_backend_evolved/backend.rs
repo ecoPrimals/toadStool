@@ -62,7 +62,7 @@ impl AgentBackend {
     ///
     /// # Deep Debt Evolution
     ///
-    /// Before: `call_rpc("/primal/squirrel", "squirrel.deploy_agent", ...)`
+    /// Before: `call_rpc("/primal/intelligence", "ai.deploy_agent", ...)`
     /// After: `provider.call("ai.deploy_agent", ...)`
     ///
     /// # Errors

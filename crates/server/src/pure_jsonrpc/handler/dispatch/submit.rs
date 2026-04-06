@@ -82,7 +82,7 @@ impl DispatchHandler {
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
-                    "coralReef not available — sovereign dispatch requires coralReef".into(),
+                    "visualization service not available — sovereign dispatch requires shader compiler".into(),
                 );
             }
             return Ok(serde_json::json!({
@@ -93,8 +93,8 @@ impl DispatchHandler {
                 "bdf": bdf,
                 "dispatch_mode": dispatch_mode,
                 "binary_size": binary_bytes.len(),
-                "error": "coralReef not available — sovereign dispatch requires coralReef driver",
-                "note": "Start coralReef or set CORALREEF_URL to enable sovereign GPU dispatch",
+                "error": "visualization service not available — sovereign dispatch requires shader compiler driver",
+                "note": "Start the visualization service or set CORALREEF_URL to enable sovereign GPU dispatch",
             }));
         }
 

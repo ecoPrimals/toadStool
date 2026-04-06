@@ -82,7 +82,7 @@
 //! - **Performance Classification**: Optimizes based on system capabilities
 //!
 //! ### 🌐 Ecosystem Discovery
-//! - **Service Discovery**: Automatically finds Songbird, `BearDog`, `NestGate`, Squirrel
+//! - **Service Discovery**: Automatically finds coordination, security, storage, and intelligence services
 //! - **Network Scanning**: Scans local networks for available services
 //! - **Health Monitoring**: Continuous service health assessment
 //! - **Auto-Integration**: Seamless ecosystem service integration

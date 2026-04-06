@@ -3,7 +3,7 @@
 //! Opaque per-device metadata persistence.
 //!
 //! [`MetadataStore`] holds arbitrary key/value pairs for a held device.
-//! This is the generalization of coralReef's `ring_meta` — instead of
+//! This is the generalization of the visualization service's `ring_meta` — instead of
 //! GPU-specific ring/mailbox state, any hardware class can persist
 //! whatever opaque blobs it needs across personality swaps.
 

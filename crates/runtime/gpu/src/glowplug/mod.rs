@@ -4,10 +4,11 @@
 //! GPU implementation of the glowPlug/ember hardware lifecycle traits.
 //!
 //! This is the **first concrete implementation** of toadStool's hardware-
-//! agnostic glowPlug subsystem, modeled after coralReef's `coral-glowplug`
-//! and `coral-ember` (GPU/VFIO-specific). When coralReef fully cracks the
-//! GPU (FECS, compute dispatch), toadStool absorbs their implementation
-//! here and coralReef leans on toadStool for hardware.
+//! agnostic glowPlug subsystem, modeled after the visualization service's
+//! `coral-glowplug` and `coral-ember` (GPU/VFIO-specific). When the
+//! visualization service fully cracks the GPU (FECS, compute dispatch),
+//! toadStool absorbs their implementation here and the visualization
+//! service leans on toadStool for hardware.
 //!
 //! ## What's GPU-specific
 //!

@@ -36,7 +36,7 @@ impl AgentDeploymentManager {
     ///
     /// # Discovery Order
     ///
-    /// 1. Environment variable: `SQUIRREL_ENDPOINT` or `TOADSTOOL_AI_ENDPOINT`
+    /// 1. Environment variable: `TOADSTOOL_AI_ENDPOINT` (or legacy `SQUIRREL_ENDPOINT`)
     /// 2. mDNS/local network discovery for "ai-orchestration" or "storage" capability
     /// 3. Unix socket discovery at standard paths
     ///

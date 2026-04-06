@@ -25,7 +25,7 @@ pub struct GraphNode {
     /// Unique node identifier
     pub id: String,
 
-    /// Primal name (e.g., "toadstool", "squirrel", "nestgate")
+    /// Primal name (e.g., "toadstool", "intelligence", "storage")
     /// This is self-knowledge - the node knows which primal it needs
     /// Defaults to "toadstool" if not specified
     #[serde(default = "default_primal")]

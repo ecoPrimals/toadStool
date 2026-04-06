@@ -318,7 +318,7 @@ impl Default for SelfIdentity {
 pub struct ServiceAdvertisement {
     /// Unique instance identifier.
     pub instance_id: Uuid,
-    /// Primal type (e.g. songbird, nestgate).
+    /// Primal type (e.g. coordination, storage).
     pub primal_type: String,
     /// Service version.
     pub version: String,
@@ -335,7 +335,7 @@ pub struct ServiceAdvertisement {
 pub struct DiscoveredService {
     /// Unique instance identifier.
     pub instance_id: Uuid,
-    /// Primal type (e.g. songbird, nestgate).
+    /// Primal type (e.g. coordination, storage).
     pub primal_type: String,
     /// Service version.
     pub version: String,

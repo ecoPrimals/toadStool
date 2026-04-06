@@ -16,7 +16,7 @@
 //! that **holds** exclusive resources (the holder/warmer/immortalizer).
 //!
 //! ```text
-//! ecosystem (barraCuda, coralReef, biomeOS)
+//! ecosystem (compute, visualization, and orchestration services)
 //!      |
 //!   JSON-RPC IPC
 //!      |
@@ -34,7 +34,7 @@
 //!
 //! ## Hardware Agnosticism
 //!
-//! coralReef's `coral-glowplug` and `coral-ember` are the **first evolution**
+//! The visualization service's `coral-glowplug` and `coral-ember` are the **first evolution**
 //! (GPU/VFIO-specific). toadStool's glowPlug generalizes that pattern:
 //!
 //! - **GPU**: VFIO passthrough, DRM drivers, BAR0 MMIO, FECS firmware

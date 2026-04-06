@@ -2,7 +2,7 @@
 
 //! Personality swap orchestration.
 //!
-//! The swap lifecycle generalizes coralReef's GPU personality swap into a
+//! The swap lifecycle generalizes the visualization service's GPU personality swap into a
 //! hardware-agnostic sequence:
 //!
 //! 1. **Quiesce** — drain in-flight operations, wait for quiescence

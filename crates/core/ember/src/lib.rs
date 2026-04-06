@@ -28,7 +28,7 @@
 //! pattern. ember does not know what bus it is holding; it knows only that
 //! it owns a handle, the handle has an identity, and it must keep it alive.
 //!
-//! coralReef's `coral-ember` is the first evolution (GPU/VFIO-specific).
+//! The visualization service's `coral-ember` is the first evolution (GPU/VFIO-specific).
 //! toadStool's ember generalizes that pattern across all hardware.
 
 pub mod held_resource;

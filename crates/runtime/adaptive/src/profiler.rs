@@ -160,7 +160,7 @@ impl RuntimeProfiler {
     ///
     /// Returns a conservative cost estimate based on operation type, problem
     /// size, and workgroup size. Used for workgroup tuning when a real executor
-    /// is not yet wired. Replaced by actual profiling when barraCuda provides
+    /// is not yet wired. Replaced by actual profiling when compute service provides
     /// dispatch timing via capability-based IPC.
     fn simulate_gpu_time(op_type: OpType, size: usize, workgroup_size: usize) -> u64 {
         let base_time = match op_type {

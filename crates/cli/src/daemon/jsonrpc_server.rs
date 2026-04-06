@@ -69,8 +69,8 @@ pub struct ServerState {
 
     /// Workload manager
     pub workload_manager: Arc<WorkloadManager>,
-    // Nautilus methods are proxied to barraCuda via capability-based IPC.
-    // No local state needed — barraCuda owns the brain.
+    // Nautilus methods are proxied to the compute service via capability-based IPC.
+    // No local state needed — the compute service owns the brain.
 }
 
 /// JSON-RPC 2.0 request

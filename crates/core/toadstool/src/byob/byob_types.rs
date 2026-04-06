@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-/// BYOB deployment request from Songbird
+/// BYOB deployment request from coordination service
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ByobDeploymentRequest {
     /// Unique deployment ID

@@ -3,7 +3,7 @@
 //!
 //! `NpuDispatch` is toadStool's hardware-layer abstraction for neuromorphic
 //! processors. Any NPU vendor (Akida, Loihi, `SpiNNaker`, etc.) implements this
-//! trait so that barraCuda and other primals can dispatch compute without
+//! trait so that compute services and other primals can dispatch compute without
 //! vendor-specific knowledge.
 //!
 //! ## Relationship to `akida_driver::NpuBackend`

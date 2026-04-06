@@ -323,7 +323,7 @@ impl ToadStoolClient {
     /// Subscribe to server events.
     ///
     /// `WebSocket` deprecated. Use JSON-RPC 2.0 polling: `compute.status` for execution
-    /// status, `toadstool.health` for cluster health. biomeOS/songbird coordination.
+    /// status, `toadstool.health` for cluster health via coordination service.
     #[expect(
         clippy::unused_async,
         reason = "API surface; may perform async I/O in future"

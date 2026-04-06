@@ -49,7 +49,7 @@ use uuid::Uuid;
 pub struct PrimalCapabilities {
     /// Unique primal ID (generated at startup)
     pub primal_id: String,
-    /// Primal type (e.g., "toadstool", "beardog", "songbird")
+    /// Primal type (e.g., "toadstool", "security", "coordination")
     pub primal_type: String,
     /// Version
     pub version: String,
@@ -83,7 +83,7 @@ pub struct SystemResources {
 /// GPU device information (self-knowledge)
 ///
 /// Fields `render_node`, `driver`, and `arch` are populated on Linux from
-/// DRM sysfs and enable coralReef's `GpuContext::from_descriptor(vendor, arch, driver)`.
+/// DRM sysfs and enable the visualization service's `GpuContext::from_descriptor(vendor, arch, driver)`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuDevice {
     /// Device index.

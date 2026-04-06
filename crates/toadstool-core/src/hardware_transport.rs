@@ -4,9 +4,10 @@
 //! Defines the generic [`HardwareTransport`] trait that all physical I/O paths
 //! implement: HDMI/DP output, capture-card input, serial, `PCIe`, `NVLink`, etc.
 //!
-//! ToadStool owns the physical pipe. `BarraCuda` owns the math. Songbird owns
-//! network discovery. This module enables toadStool to discover any hardware
-//! port, encode data, and route it physically to any other hardware port.
+//! ToadStool owns the physical pipe. The compute service owns the math. The
+//! coordination service owns network discovery. This module enables toadStool
+//! to discover any hardware port, encode data, and route it physically to any
+//! other hardware port.
 
 use std::fmt;
 

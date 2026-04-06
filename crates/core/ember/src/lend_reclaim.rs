@@ -7,7 +7,7 @@
 //! handle is in the consumer's possession. When the consumer is done, they
 //! **reclaim** — ember takes the handle back and restores full ownership.
 //!
-//! This models coralReef's lend/reclaim pattern for VFIO group FDs but
+//! This models the visualization service's lend/reclaim pattern for VFIO group FDs but
 //! generalizes it to any resource type.
 
 use std::time::Instant;

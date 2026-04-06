@@ -21,7 +21,7 @@ pub struct PrimalEndpoints {
     pub metrics: Option<String>,
     /// Admin endpoint
     pub admin: Option<String>,
-    /// Real-time events: use JSON-RPC 2.0 polling (biomeOS/songbird). `WebSocket` removed — deprecated (ring C-FFI).
+    /// Real-time events: use JSON-RPC 2.0 polling (coordination service). `WebSocket` removed — deprecated (ring C-FFI).
     pub events_endpoint: Option<String>,
     /// Custom endpoints
     pub custom: HashMap<String, String>,

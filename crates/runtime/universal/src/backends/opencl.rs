@@ -72,12 +72,12 @@ impl OpenClComputeUnit {
     /// 4. Maintaining two GPU backends adds complexity
     ///
     /// **If you need GPU compute**, use `wgpu` via `toadstool-runtime-gpu` or
-    /// discover barraCuda via capability-based IPC.
+    /// discover compute services via capability-based IPC.
     ///
     /// Returns clear error directing users to wgpu
     #[deprecated(
         since = "0.2.0",
-        note = "Use wgpu backend or discover barraCuda via compute capability"
+        note = "Use wgpu backend or discover compute services via compute capability"
     )]
     pub fn from_device(_device: ocl::Device) -> Result<Self, ComputeError> {
         Err(ComputeError::BackendError(

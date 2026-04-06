@@ -22,7 +22,7 @@
 //! # References
 //!
 //! - `wateringHole/handoffs/HOTSPRING_GLOWPLUG_SOVEREIGN_POWER_TRIO_HANDOFF_MAR14_2026.md`
-//! - `hotSpring/experiments/059_CORALREEF_GPU_POWER_MANAGEMENT_DESIGN.md`
+//! - `hotSpring/experiments/059_GPU_POWER_MANAGEMENT_DESIGN.md`
 
 use crate::error::{NvPmuError, Result};
 use crate::power::{GpuPowerController, PciPowerState};
@@ -175,7 +175,7 @@ impl<R: RegisterAccess> PowerManager<R> {
         // PMC is warm-ish (engines clocked). Distinguish Warm vs Sovereign
         // by checking if PFIFO has active channels. For now, treat any
         // warm PMC + working PFIFO as Warm. Sovereign detection requires
-        // checking channel context which is coralReef's domain.
+        // checking channel context which is the visualization service's domain.
         Ok(GpuPowerState::Warm)
     }
 
@@ -373,10 +373,10 @@ impl<R: RegisterAccess> PowerManager<R> {
         match target {
             GpuPowerState::Sovereign => {
                 // Sovereign requires channels loaded — warm is the best we can
-                // do from nvpmu. Channel loading is coralReef's domain.
+                // do from nvpmu. Channel loading is the visualization service's domain.
                 self.warm()?;
                 tracing::info!(
-                    "Warm reached. Sovereign requires channel loading (coralReef domain)."
+                    "Warm reached. Sovereign requires channel loading (visualization service domain)."
                 );
             }
             GpuPowerState::Warm => self.warm()?,

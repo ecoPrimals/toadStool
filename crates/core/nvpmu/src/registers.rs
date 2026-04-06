@@ -8,7 +8,7 @@
 //!
 //! # References
 //!
-//! - hotSpring `experiments/059_CORALREEF_GPU_POWER_MANAGEMENT_DESIGN.md`
+//! - hotSpring `experiments/059_GPU_POWER_MANAGEMENT_DESIGN.md`
 //! - hotSpring `experiments/060_BAR2_SELF_WARM_GLOW_PLUG.md`
 //! - nouveau `nvkm/subdev/mc/gk104.c`, `nvkm/subdev/pmu/gm200.c`
 //! - nouveau `nvkm/engine/fifo/gv100.c`

@@ -2,8 +2,8 @@
 
 //! GPU-specific device personalities.
 //!
-//! Maps coralReef's `GpuPersonality` trait and personality variants into
-//! toadStool's hardware-agnostic [`DevicePersonality`] trait.
+//! Maps the visualization service's `GpuPersonality` trait and personality
+//! variants into toadStool's hardware-agnostic [`DevicePersonality`] trait.
 
 use std::fmt;
 

@@ -18,7 +18,7 @@
 //!
 //! `PolicyEngine::tick()` is called periodically (by the watchdog or
 //! an external loop). `request_warm()` / `release_warm()` are the
-//! pre-warm hint API for barraCuda dispatch integration.
+//! pre-warm hint API for GPU compute dispatch integration.
 
 use crate::error::Result;
 use crate::power_manager::{ClockGateConfig, GpuPowerState, PowerManager};
@@ -36,7 +36,7 @@ pub enum PowerPolicy {
     /// workloads with frequent dispatches.
     AlwaysWarm,
     /// Channels pre-loaded, instant dispatch. Highest power, lowest latency.
-    /// Note: Sovereign state requires coralReef channel loading — the policy
+    /// Note: Sovereign state requires visualization service channel loading — the policy
     /// engine will maintain Warm and signal readiness for channel load.
     AlwaysSovereign,
     /// Aggressive clock gating with bus-level CG enabled.

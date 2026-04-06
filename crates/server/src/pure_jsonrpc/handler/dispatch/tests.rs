@@ -122,7 +122,7 @@ async fn dispatch_submit_vfio_mode_without_coral_returns_failed_payload() {
     assert!(
         result["error"]
             .as_str()
-            .is_some_and(|s| s.contains("coralReef"))
+            .is_some_and(|s| s.contains("visualization") || s.contains("shader"))
     );
 }
 
@@ -142,7 +142,7 @@ async fn dispatch_submit_drm_mode_without_coral_returns_failed_payload() {
     assert!(
         result["error"]
             .as_str()
-            .is_some_and(|s| s.contains("coralReef"))
+            .is_some_and(|s| s.contains("visualization") || s.contains("shader"))
     );
 }
 
@@ -308,7 +308,7 @@ async fn dispatch_forward_uses_nested_params_when_present() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// shader.dispatch tests (ludoSpring V35 / coralReef Iter 70)
+// shader.dispatch tests (ludoSpring V35 / visualization service Iter 70)
 // ═══════════════════════════════════════════════════════════
 
 #[tokio::test]

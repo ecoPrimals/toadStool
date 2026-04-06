@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Decompression support for NestGate-compressed payloads
+//! Decompression support for storage-service compressed payloads
 //!
 //! Provides efficient decompression in isolated memory for compressed data
-//! from NestGate (88% compression ratio, 70-80% energy savings).
+//! from the storage service (88% compression ratio, 70-80% energy savings).
 
 use crate::error::{Error, Result};
 use crate::isolated_memory::IsolatedMemoryRegion;
 
-/// Supported compression algorithms (from NestGate)
+/// Supported compression algorithms (from the storage service)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionAlgorithm {
     /// Zstandard (high compression ratio)

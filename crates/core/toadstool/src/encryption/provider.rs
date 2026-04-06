@@ -18,7 +18,7 @@ use super::{CryptoCapability, EncryptedPayload, EncryptionKey, EncryptionMetadat
 /// Trait for crypto service providers
 ///
 /// **Design**: Any primal implementing this can provide crypto
-/// (BearDog, external HSM, cloud KMS, etc.)
+/// (security service, external HSM, cloud KMS, etc.)
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait CryptoProvider: Send + Sync {

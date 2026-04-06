@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Pure Rust JSON-RPC 2.0 Implementation
 //!
-//! **Pattern**: BearDog's proven manual implementation  
+//! **Pattern**: Security service's proven manual implementation  
 //! **Dependencies**: ZERO extra crates — only `serde_json` (already in workspace)  
 //! **Status**: 100% Pure Rust — NO `jsonrpsee`, NO `ring`!
 //!

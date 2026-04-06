@@ -5,14 +5,14 @@
 //!
 //! ToadStool only cares about **hardware capabilities** (CPU, GPU, NPU, memory).
 //! Vendor-specific orchestration (K8s, Docker, Consul, AWS/GCP/Azure) is not
-//! ToadStool's concern - service discovery is delegated to Songbird (comms primal).
+//! ToadStool's concern - service discovery is delegated to the coordination service.
 //!
 //! ## Philosophy
 //!
 //! - **Hardware-first**: We detect compute substrates, not vendor platforms
 //! - **Vendor-agnostic**: No K8s, Docker, cloud provider detection
-//! - **Songbird delegation**: mDNS/service discovery handled by comms primal
-//! - **Self-knowledge**: ToadStool knows its own hardware, Songbird knows the network
+//! - **Coordination delegation**: mDNS/service discovery handled by coordination service
+//! - **Self-knowledge**: ToadStool knows its own hardware, coordination service knows the network
 //!
 //! ## Evolution (Feb 15, 2026)
 //!
@@ -137,9 +137,9 @@ impl SubstrateDetector for BareMetalDetector {
 /// ## Evolution (Feb 15, 2026)
 ///
 /// Only `BareMetalDetector` remains. Vendor-specific detectors removed:
-/// - No `KubernetesDetector` (Songbird handles service discovery)
+/// - No `KubernetesDetector` (coordination service handles service discovery)
 /// - No `DockerDetector` (container detection is generic now)
-/// - No `ConsulDetector` (Songbird handles service mesh)
+/// - No `ConsulDetector` (coordination service handles service mesh)
 /// - No `CloudDetector` (vendor lock-in, not our concern)
 #[must_use]
 pub fn standard_detectors() -> Vec<Box<dyn SubstrateDetector>> {

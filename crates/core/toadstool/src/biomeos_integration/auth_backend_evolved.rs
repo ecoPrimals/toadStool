@@ -100,7 +100,7 @@ impl AuthBackend {
     /// Get or discover security provider
     ///
     /// This discovers the provider by capability:
-    /// "Who can manage tokens?" not "Connect to beardog"
+    /// "Who can manage tokens?" not "Connect to a specific primal"
     async fn get_provider(&self) -> Result<CapabilityProvider> {
         let mut provider_lock = self.provider.write().await;
 
@@ -130,7 +130,7 @@ impl AuthBackend {
     ///
     /// # Deep Debt Evolution
     ///
-    /// Before: `call_rpc("/primal/beardog", "beardog.request_token", ...)`
+    /// Before: `call_rpc("/primal/security", "security.request_token", ...)`
     /// After: `provider.call("security.request_token", ...)`
     ///
     /// No hardcoded primal names!

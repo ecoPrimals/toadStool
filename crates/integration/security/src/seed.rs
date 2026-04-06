@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Ephemeral seed types from bearDog
+//! Ephemeral seed types from the security service
 
 use crate::types::{EntropyMixing, EntropySource};
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ impl SeedQuality {
     }
 }
 
-/// Ephemeral seed from bearDog
+/// Ephemeral seed from the security service
 ///
 /// High-quality, human-mixed entropy for random number generation.
 /// "Ephemeral" means it's single-use and time-limited.

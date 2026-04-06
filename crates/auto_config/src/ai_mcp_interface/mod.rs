@@ -99,7 +99,7 @@ impl AiMcpInterface {
 
     /// Process MCP requests from any AI provider
     ///
-    /// Handles requests from Squirrel, Claude, `OpenAI`, or any MCP-compatible service
+    /// Handles requests from intelligence services, Claude, `OpenAI`, or any MCP-compatible service
     pub async fn process_ai_request(
         &mut self,
         request: McpRequest,

@@ -30,8 +30,8 @@ pub enum ToadStoolError {
     #[error("JSON parsing error: {0}")]
     Json(#[from] serde_json::Error),
 
-    /// External HTTP not supported; use Songbird for external HTTP.
-    #[error("External HTTP not supported - use Songbird for external HTTP")]
+    /// External HTTP not supported; use coordination service for external HTTP.
+    #[error("External HTTP not supported - use coordination service for external HTTP")]
     ExternalHttpNotSupported,
 
     /// Other auto-configuration error.

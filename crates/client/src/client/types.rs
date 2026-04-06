@@ -222,8 +222,8 @@ pub struct ExecutionMetrics {
 /// Real-time execution events.
 ///
 /// These events are NOT delivered via `WebSocket` (deprecated, used C-FFI ring).
-/// Use JSON-RPC 2.0 polling (`compute.status` method) or biomeOS/songbird
-/// coordination for event streaming over Unix sockets.
+/// Use JSON-RPC 2.0 polling (`compute.status` method) or coordination service
+/// for event streaming over Unix sockets.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ToadStoolEvent {
     /// Execution status changed — poll via `compute.status` JSON-RPC call.

@@ -52,13 +52,13 @@ pub struct PrimalContext {
 pub enum PrimalType {
     /// Compute primal (`ToadStool`)
     Compute,
-    /// Security primal (`BearDog`)
+    /// Security primal (crypto/PKI capability)
     Security,
-    /// Storage primal (`NestGate`)
+    /// Storage primal (artifact/data capability)
     Storage,
-    /// AI primal (Squirrel)
+    /// AI primal (intelligence capability)
     AI,
-    /// Network primal (Songbird)
+    /// Network primal (coordination capability)
     Network,
     /// OS primal (`BiomeOS`)
     OS,

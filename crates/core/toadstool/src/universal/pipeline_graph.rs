@@ -269,7 +269,7 @@ impl PipelineExecution {
 
 /// Build the compute-triangle pipeline: discover -> compile -> dispatch.
 ///
-/// This is the canonical toadStool/coralReef/barraCuda pipeline.
+/// This is the canonical toadStool/visualization/compute pipeline.
 #[must_use]
 pub fn compute_triangle_pipeline() -> PipelineGraph {
     let mut g = PipelineGraph::new("compute triangle");

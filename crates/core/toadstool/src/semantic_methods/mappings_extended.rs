@@ -86,10 +86,10 @@ where
     add_mapping("deploy.graph_status", "deploy_graph_status");
 
     // ═══════════════════════════════════════════════════════════
-    // SHADER DOMAIN - Dispatch via coralReef daemon pipeline
+    // SHADER DOMAIN - Dispatch via visualization service pipeline
     //
-    // shader.compile.* removed (Mar 2026): compilation is coralReef's
-    // domain. Callers connect to coralReef via capability discovery.
+    // shader.compile.* removed (Mar 2026): compilation is the visualization
+    // service's domain. Callers connect via capability discovery.
     // ═══════════════════════════════════════════════════════════
 
     add_mapping("shader.dispatch", "shader_dispatch");

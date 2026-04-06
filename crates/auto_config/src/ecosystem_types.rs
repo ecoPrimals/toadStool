@@ -27,13 +27,13 @@ pub struct ServicePattern {
 /// Type of ecosystem service
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServiceType {
-    /// Network coordination (e.g., Songbird)
+    /// Network coordination
     NetworkCoordination,
-    /// Security and crypto (e.g., BearDog)
+    /// Security and crypto
     Security,
-    /// Storage (e.g., NestGate)
+    /// Storage
     Storage,
-    /// AI/ML compute (e.g., Squirrel)
+    /// AI/ML compute
     AI,
     /// OS orchestration (e.g., BiomeOS)
     OperatingSystem,
@@ -72,7 +72,7 @@ pub struct DiscoveredServices {
 /// Information about a discovered service
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceInfo {
-    /// Service name (e.g., "songbird", "beardog")
+    /// Service name (e.g., "coordination", "security")
     pub name: String,
     /// Full endpoint URL
     pub endpoint: String,

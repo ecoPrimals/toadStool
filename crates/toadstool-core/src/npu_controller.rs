@@ -10,7 +10,7 @@
 //! - **toadStool**: Defines the generic trait and safety clamp infrastructure.
 //! - **Springs**: Implement the trait for domain-specific tuning (e.g. HMC
 //!   step size, CG tolerance, learning rate).
-//! - **barraCuda**: Dispatches compute; unaware of the controller.
+//! - **Compute services**: Dispatch compute; unaware of the controller.
 
 use std::fmt::Debug;
 

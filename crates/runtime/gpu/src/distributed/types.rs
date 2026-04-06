@@ -6,7 +6,7 @@
 use crate::universal::{ComputeCapabilities, UniversalWorkload, WorkloadResult};
 use std::time::Instant;
 
-/// Remote tower endpoint discovered via Songbird.
+/// Remote tower endpoint discovered via the coordination service.
 #[derive(Debug, Clone)]
 pub struct RemoteTowerEndpoint {
     /// Unique tower identifier.

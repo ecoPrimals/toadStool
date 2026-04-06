@@ -9,7 +9,7 @@ impl HwLearnHandler {
     /// `compute.hardware.vfio_devices` — Discover GPUs bound to vfio-pci.
     ///
     /// Returns a list of VFIO-bound GPU descriptors suitable for
-    /// `CoralReefDevice::from_vfio_device` or `GpuContext::from_vfio`.
+    /// `VisualizationDevice::from_vfio_device` or `GpuContext::from_vfio`.
     ///
     /// Response: `{ "devices": [{ "pci_address", "vendor_id", "device_id", "iommu_group", "driver", "power_state", "supports_reset" }] }`
     ///

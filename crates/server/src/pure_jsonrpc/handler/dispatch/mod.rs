@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Sovereign dispatch handler — accepts compiled GPU binaries from coralReef
+//! Sovereign dispatch handler — accepts compiled GPU binaries from visualization service
 //! and routes them to the target GPU via VFIO or DRM.
 //!
 //! This is the missing link in the sovereign compute pipeline:
-//! barraCuda WGSL → coralReef compile → **toadStool dispatch** → GPU result
+//! WGSL → visualization service compile → **toadStool dispatch** → GPU result
 
 mod capabilities;
 mod forward;

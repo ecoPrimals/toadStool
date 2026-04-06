@@ -2,7 +2,7 @@
 //! # ToadStool tarpc Server Implementation
 //!
 //! High-performance binary RPC server for primal-to-primal communication.
-//! Follows Songbird's architecture pattern.
+//! Follows the coordination service's architecture pattern.
 
 use futures::StreamExt;
 use std::io::ErrorKind;
@@ -506,7 +506,7 @@ impl WorkloadExecutor for StandaloneExecutor {
         // To enable real backend dispatch here, define a workload protocol:
         // 1. submission.data should contain serialized operation spec
         // 2. Parse to determine: operation type, input tensors, parameters
-        // 3. Dispatch via barraCuda (discovered at runtime via compute capability IPC)
+        // 3. Dispatch via compute service (discovered at runtime via compute capability IPC)
         //
         // Current implementation: Returns processed result based on input size.
         // This allows testing the full RPC pipeline without backend setup.

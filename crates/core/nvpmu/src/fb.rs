@@ -12,7 +12,7 @@
 //!
 //! - Register map from nouveau `ramgv100.c` / `gf100_fb_oneinit()`
 //! - Read-only FB status probe (can VRAM be accessed?)
-//! - Documented gaps for coralReef's differential probe to fill
+//! - Documented gaps for the visualization service's differential probe to fill
 //!
 //! # What's NOT Here (Yet)
 //!
@@ -23,7 +23,7 @@
 //!
 //! # Path Forward
 //!
-//! 1. coralReef's `memory_probe.rs` runs differential captures of
+//! 1. The visualization service's `memory_probe.rs` runs differential captures of
 //!    nouveau's init sequence via mmiotrace
 //! 2. hotSpring feeds captured sequences to hw-learn as `InitRecipe`
 //! 3. toadStool replays verified recipes via `RecipeApplicator`
@@ -34,7 +34,7 @@
 //! - nouveau `nvkm/subdev/fb/ramgv100.c`
 //! - nouveau `nvkm/subdev/fb/gf100.c` (`gf100_fb_oneinit()`)
 //! - `wateringHole/GPU_SOVEREIGN_BRING_UP_GUIDE.md` Gap 1
-//! - `hotSpring/experiments/059_CORALREEF_GPU_POWER_MANAGEMENT_DESIGN.md`
+//! - `hotSpring/experiments/059_GPU_POWER_MANAGEMENT_DESIGN.md`
 
 use crate::error::{NvPmuError, Result};
 use crate::registers;

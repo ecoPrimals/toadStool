@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capability heartbeat background task
 //!
-//! Sends periodic heartbeats to registered primals (Songbird, Squirrel)
+//! Sends periodic heartbeats to registered primals (coordination, intelligence services)
 //! when capability provider is configured.
 
 use std::time::Duration;

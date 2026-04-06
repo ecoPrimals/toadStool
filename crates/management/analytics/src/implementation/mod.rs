@@ -287,7 +287,7 @@ impl AnalyticsEngine for IntelligentAnalyticsEngine {
 impl IntelligentAnalyticsEngine {
     #[expect(
         clippy::unused_async,
-        reason = "trait method; will await HTTP when Songbird integration added"
+        reason = "trait method; will await HTTP when coordination service integration added"
     )]
     async fn export_to_webhook(&self, webhook: &WebhookConfig) -> ToadStoolResult<()> {
         tracing::info!(

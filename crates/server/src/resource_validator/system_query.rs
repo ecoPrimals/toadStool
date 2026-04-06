@@ -82,13 +82,13 @@ pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, Va
     })
 }
 
-/// Query GPU capabilities via wgpu (vendor-agnostic, part of barraCuda)
+/// Query GPU capabilities via wgpu (vendor-agnostic)
 ///
 /// **Deep Debt Compliance**:
 /// - Runtime GPU discovery (no hardcoded assumptions)
 /// - Vendor-agnostic (works with NVIDIA, AMD, Intel, Apple)
 /// - Graceful degradation (returns empty if no GPU)
-/// - Part of barraCuda universal GPU framework
+/// - Part of universal GPU compute framework
 async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
     match discover_gpus_via_wgpu().await {
         Ok(ref gpus) if !gpus.is_empty() => {
@@ -109,7 +109,7 @@ async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
     }
 }
 
-/// Discover GPUs using wgpu (vendor-agnostic, part of barraCuda)
+/// Discover GPUs using wgpu (vendor-agnostic)
 #[cfg(feature = "gpu-discovery")]
 #[expect(
     clippy::unused_async,

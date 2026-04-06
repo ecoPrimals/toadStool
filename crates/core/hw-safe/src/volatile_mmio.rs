@@ -7,7 +7,7 @@
 //! hardware region. Construction is unsafe (caller proves pointer validity);
 //! all subsequent access is safe with runtime bounds checking.
 //!
-//! Aligned with coralReef's `coral-driver::mmio::VolatilePtr<T>` pattern:
+//! Aligned with the visualization service's `coral-driver::mmio::VolatilePtr<T>` pattern:
 //! unsafe to create, safe to use.
 
 use std::ptr::NonNull;

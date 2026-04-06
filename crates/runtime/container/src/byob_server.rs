@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Toadstool BYOB Server
 //!
-//! HTTP server for handling BYOB deployment requests from Songbird.
+//! HTTP server for handling BYOB deployment requests from the coordination service.
 //! Provides compute execution capabilities for team biome deployments.
 
 use std::net::SocketAddr;

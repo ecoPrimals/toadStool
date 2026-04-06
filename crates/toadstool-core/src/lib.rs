@@ -6,7 +6,7 @@
 //! Deep Debt: ToadStool directly interfaces with hardware in Rust
 //! - No scripts, no sudo needed on fresh systems
 //! - Self-evolves and adapts to hardware changes
-//! - `BarraCuda` runs the math on all hardware via ToadStool
+//! - Compute services run the math on all hardware via ToadStool
 
 /// Hardware discovery and management (GPU, NPU, CPU, FPGA).
 pub mod hardware;

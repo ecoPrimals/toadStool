@@ -9,7 +9,7 @@
 //!
 //! - **Isomorphic Design**: ToadStool instances are identical, coordinate as peers
 //! - **Fractal Architecture**: Each instance can coordinate or execute
-//! - **Self-Knowledge Only**: Reports own capabilities, discovers others via Songbird
+//! - **Self-Knowledge Only**: Reports own capabilities, discovers others via coordination service
 //! - **Capability-Based**: No hardcoded knowledge of other instances
 //! - **Graceful Degradation**: Falls back to standalone if no coordinator available
 

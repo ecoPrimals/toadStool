@@ -88,7 +88,7 @@ fn verify_compute_readback(step_index: usize) -> StepResult {
         step_index,
         success: false,
         detail: "compute readback verify: requires dispatch pipeline integration \
-                 via barraCuda/coralReef (tracked as Gap 3 — FECS GR context init)"
+                 via GPU compute/visualization service (tracked as Gap 3 — FECS GR context init)"
             .to_string(),
     }
 }
@@ -104,8 +104,8 @@ fn verify_memory_accessible(
         success: false,
         detail: format!(
             "memory accessible verify: {aperture} @ 0x{offset:x} sentinel 0x{sentinel:x} — \
-             requires VFIO MemoryRegion probe integration via coralReef \
-             (see coralReef::vfio::memory::PraminRegion for VRAM, DmaRegion for sysmem)"
+             requires VFIO MemoryRegion probe integration via visualization service \
+             (see vfio::memory::PraminRegion for VRAM, DmaRegion for sysmem)"
         ),
     }
 }
