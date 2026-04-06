@@ -290,7 +290,7 @@ mod tests {
         let failed = BiomeDeploymentStatus::Failed("timeout".to_string());
         match &failed {
             BiomeDeploymentStatus::Failed(msg) => assert_eq!(msg, "timeout"),
-            _ => panic!("expected Failed variant"),
+            _ => unreachable!("expected Failed variant"),
         }
     }
 
@@ -368,7 +368,7 @@ mod tests {
         let restored: BiomeDeploymentStatus = serde_json::from_value(json).expect("deserialize");
         match restored {
             BiomeDeploymentStatus::Failed(msg) => assert_eq!(msg, "error"),
-            _ => panic!("expected Failed variant"),
+            _ => unreachable!("expected Failed variant"),
         }
     }
 }

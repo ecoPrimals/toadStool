@@ -216,36 +216,26 @@ mod tests {
         assert!(client.discover_all().await.unwrap().is_empty());
     }
 
-    #[test]
-    fn with_local_compute_adds_service_when_port_env_positive() {
-        temp_env::with_var("TOADSTOOL_LOCAL_PORT", Some("18444"), || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let client = LocalhostDiscoveryClient::new().with_local_compute();
-                let all = client.discover_all().await.unwrap();
-                assert_eq!(all.len(), 1);
-                assert_eq!(all[0].id.as_deref(), Some("localhost-compute"));
-                let ep = &all[0].endpoints[0];
-                assert_eq!(ep.protocol, "http");
-                assert_eq!(ep.port, 18444);
-            });
-        });
+    #[tokio::test]
+    async fn with_local_compute_adds_service_when_port_env_positive() {
+        temp_env::async_with_vars([("TOADSTOOL_LOCAL_PORT", Some("18444"))], async {
+            let client = LocalhostDiscoveryClient::new().with_local_compute();
+            let all = client.discover_all().await.unwrap();
+            assert_eq!(all.len(), 1);
+            assert_eq!(all[0].id.as_deref(), Some("localhost-compute"));
+            let ep = &all[0].endpoints[0];
+            assert_eq!(ep.protocol, "http");
+            assert_eq!(ep.port, 18444);
+        })
+        .await;
     }
 
-    #[test]
-    fn with_local_compute_skips_service_when_port_env_missing_or_zero() {
-        temp_env::with_var("TOADSTOOL_LOCAL_PORT", Some("0"), || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("runtime");
-            rt.block_on(async {
-                let client = LocalhostDiscoveryClient::new().with_local_compute();
-                assert!(client.discover_all().await.unwrap().is_empty());
-            });
-        });
+    #[tokio::test]
+    async fn with_local_compute_skips_service_when_port_env_missing_or_zero() {
+        temp_env::async_with_vars([("TOADSTOOL_LOCAL_PORT", Some("0"))], async {
+            let client = LocalhostDiscoveryClient::new().with_local_compute();
+            assert!(client.discover_all().await.unwrap().is_empty());
+        })
+        .await;
     }
 }

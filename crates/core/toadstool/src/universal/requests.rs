@@ -199,7 +199,7 @@ mod tests {
             assert_eq!(code, "E001");
             assert_eq!(message, "Something failed");
         } else {
-            panic!("expected Error variant");
+            unreachable!("expected Error variant");
         }
     }
 

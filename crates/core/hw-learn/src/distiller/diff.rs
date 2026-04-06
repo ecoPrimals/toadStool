@@ -62,7 +62,7 @@ mod tests {
         assert_eq!(diff.len(), 1);
         match &diff[0].kind {
             TraceEventKind::RegisterWrite { offset, .. } => assert_eq!(*offset, 0x300),
-            _ => panic!("expected RegisterWrite"),
+            _ => unreachable!("expected RegisterWrite"),
         }
     }
 

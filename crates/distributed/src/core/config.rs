@@ -136,6 +136,12 @@ impl ToadStoolCapabilities {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool_common::constants::network::{DEFAULT_HOSTNAME, HTTP_PROTOCOL};
+    use toadstool_config::ports::capability_fallback::COORDINATION;
+
+    fn sample_coordination_endpoint() -> String {
+        format!("{HTTP_PROTOCOL}{DEFAULT_HOSTNAME}:{COORDINATION}")
+    }
 
     #[test]
     fn distributed_config_default_values() {
@@ -164,12 +170,13 @@ mod tests {
 
     #[test]
     fn coordination_config_fields() {
+        let endpoint = sample_coordination_endpoint();
         let coordination = CoordinationConfig {
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint: endpoint.clone(),
             auth_token: Some("secret".to_string()),
             health_reporting_interval_secs: 30,
         };
-        assert_eq!(coordination.endpoint, "http://localhost:8080");
+        assert_eq!(coordination.endpoint, endpoint);
         assert_eq!(coordination.auth_token.as_deref(), Some("secret"));
         assert_eq!(coordination.health_reporting_interval_secs, 30);
     }

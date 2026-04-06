@@ -205,7 +205,10 @@ mod tests {
             name: "crypto-1".to_string(),
             version: "1.0.0".to_string(),
             capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
-            endpoints: vec![ServiceEndpoint::http("127.0.0.1", 9000)],
+            endpoints: vec![ServiceEndpoint::http(
+                toadstool_common::constants::network::LOCALHOST_IPV4,
+                9000,
+            )],
             metadata: Default::default(),
             discovered_at: std::time::SystemTime::now(),
             last_seen: std::time::SystemTime::now(),

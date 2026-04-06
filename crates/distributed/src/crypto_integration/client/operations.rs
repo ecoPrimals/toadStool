@@ -266,7 +266,7 @@ mod tests {
             capabilities: vec![Capability::Crypto(CryptoCapability::Encryption)],
             endpoints: vec![ServiceEndpoint {
                 protocol: "http".to_string(),
-                address: "127.0.0.1".to_string(),
+                address: toadstool_common::constants::network::LOCALHOST_IPV4.to_string(),
                 port: 9000,
                 path: None,
                 metadata,

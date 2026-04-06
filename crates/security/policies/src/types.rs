@@ -450,7 +450,7 @@ mod tests {
             assert!(matches!(operator, LogicalOperator::And));
             assert_eq!(conditions.len(), 2);
         } else {
-            panic!("expected Composite");
+            unreachable!("expected Composite");
         }
     }
 
@@ -587,7 +587,7 @@ mod tests {
             assert_eq!(cpu_percent, Some(90.0));
             assert_eq!(memory_mb, Some(4096));
         } else {
-            panic!("wrong variant");
+            unreachable!("wrong variant");
         }
     }
 

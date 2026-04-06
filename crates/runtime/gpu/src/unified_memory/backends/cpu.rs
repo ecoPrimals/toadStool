@@ -169,7 +169,7 @@ mod tests {
         assert_eq!(cpu_ptr as *const u8, device_ptr);
 
         let BackendAllocation::Cpu(ref mut alloc) = allocation else {
-            panic!("expected CPU allocation");
+            unreachable!("expected CPU allocation");
         };
         alloc.as_mut_slice().fill(42);
         assert_eq!(alloc.as_mut_slice()[0], 42);

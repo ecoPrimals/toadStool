@@ -281,7 +281,7 @@ mod tests {
                 "Should start with no active sessions"
             );
         } else {
-            panic!("active_sessions key not found or wrong type");
+            unreachable!("active_sessions key not found or wrong type");
         }
     }
 

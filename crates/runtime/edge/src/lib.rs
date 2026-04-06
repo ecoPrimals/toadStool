@@ -462,7 +462,7 @@ mod tests {
             assert_eq!(rules.len(), 2);
             assert_eq!(rules.get("cpu_limit"), Some(&0.8));
         } else {
-            panic!("Expected Custom strategy");
+            unreachable!("Expected Custom strategy");
         }
     }
 

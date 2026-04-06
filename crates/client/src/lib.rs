@@ -177,8 +177,8 @@ mod tests {
                 assert_eq!(executable, "/bin/echo");
                 assert_eq!(args, vec!["Hello", "World"]);
             }
-            _ => panic!(
-                "Expected native workload type, got: {:?}",
+            _ => unreachable!(
+                "expected native workload type, got: {:?}",
                 workload.workload_type
             ),
         }

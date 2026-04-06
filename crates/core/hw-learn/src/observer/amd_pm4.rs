@@ -125,7 +125,7 @@ mod tests {
                 assert_eq!(opcode, 0x28);
                 assert_eq!(count, 2);
             }
-            _ => panic!("expected Pm4Packet"),
+            _ => unreachable!("expected Pm4Packet"),
         }
     }
 
@@ -138,7 +138,7 @@ mod tests {
             TraceEventKind::RegisterWrite { offset, .. } => {
                 assert_eq!(offset, 0x2000);
             }
-            _ => panic!("expected RegisterWrite"),
+            _ => unreachable!("expected RegisterWrite"),
         }
     }
 }

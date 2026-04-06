@@ -149,6 +149,7 @@ async fn health_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
 
     #[test]
     fn test_byob_server_config_default() {
@@ -161,7 +162,7 @@ mod tests {
     #[test]
     fn test_byob_server_config_clone() {
         let config = ByobServerConfig {
-            bind_address: Some("127.0.0.1".to_string()),
+            bind_address: Some(LOCALHOST_IPV4.to_string()),
             port: Some(9999),
             config_path: Some("/tmp/test.toml".to_string()),
         };

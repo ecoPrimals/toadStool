@@ -103,7 +103,7 @@ mod tests {
                 assert_eq!(opcode, 0x1000_0005);
                 assert_eq!(dwords, 6);
             }
-            _ => panic!("expected BatchCommand"),
+            _ => unreachable!("expected BatchCommand"),
         }
     }
 }

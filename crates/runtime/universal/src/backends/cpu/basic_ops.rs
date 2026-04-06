@@ -159,7 +159,7 @@ mod tests {
             assert_eq!(output[0], 3.0);
             assert_eq!(output[4], 11.0);
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -181,7 +181,7 @@ mod tests {
             assert!(output.contains(&0.6));
             assert!(output.contains(&0.9));
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -202,7 +202,7 @@ mod tests {
             assert_eq!(sums.len(), 1);
             assert_eq!(sums[0], 15.0);
         } else {
-            panic!("Expected F32Vec with single element");
+            unreachable!("Expected F32Vec with single element");
         }
     }
 
@@ -222,7 +222,7 @@ mod tests {
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, vec![1.0, 3.0, 6.0, 10.0, 15.0]);
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 }

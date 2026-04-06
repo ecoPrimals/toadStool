@@ -197,7 +197,7 @@ mod tests {
         let strategy = PartitionStrategy::Single;
         match strategy {
             PartitionStrategy::Single => {} // Expected
-            _ => panic!("Expected Single strategy"),
+            _ => unreachable!("expected Single strategy"),
         }
     }
 
@@ -208,7 +208,7 @@ mod tests {
             PartitionStrategy::DataParallel { chunk_size } => {
                 assert_eq!(chunk_size, 1024);
             }
-            _ => panic!("Expected DataParallel strategy"),
+            _ => unreachable!("expected DataParallel strategy"),
         }
     }
 
@@ -219,7 +219,7 @@ mod tests {
             PartitionStrategy::Redundant { replicas } => {
                 assert_eq!(replicas, 3);
             }
-            _ => panic!("Expected Redundant strategy"),
+            _ => unreachable!("expected Redundant strategy"),
         }
     }
 
@@ -238,7 +238,7 @@ mod tests {
                 assert_eq!(s[1], "compute");
                 assert_eq!(s[2], "postprocess");
             }
-            _ => panic!("Expected Pipeline strategy"),
+            _ => unreachable!("expected Pipeline strategy"),
         }
     }
 

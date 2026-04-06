@@ -230,19 +230,17 @@ impl SelfIdentity {
                             ..Default::default()
                         });
 
-                        let has_gpu = futures::executor::block_on(async {
-                            instance
-                                .enumerate_adapters(wgpu::Backends::all())
-                                .into_iter()
-                                .any(|adapter| {
-                                    let info = adapter.get_info();
-                                    matches!(
-                                        info.device_type,
-                                        wgpu::DeviceType::DiscreteGpu
-                                            | wgpu::DeviceType::IntegratedGpu
-                                    )
-                                })
-                        });
+                        // wgpu 22+ exposes synchronous `enumerate_adapters`; no async runtime bridge.
+                        let has_gpu = instance
+                            .enumerate_adapters(wgpu::Backends::all())
+                            .into_iter()
+                            .any(|adapter| {
+                                let info = adapter.get_info();
+                                matches!(
+                                    info.device_type,
+                                    wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
+                                )
+                            });
 
                         tracing::debug!(gpu_detected = has_gpu, "GPU hardware probe complete");
                         has_gpu

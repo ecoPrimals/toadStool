@@ -438,7 +438,7 @@ mod tests {
         if let DeploymentStatus::Failed { error } = failed {
             assert_eq!(error, "oops");
         } else {
-            panic!("expected Failed variant");
+            unreachable!("expected Failed variant");
         }
     }
 
@@ -535,7 +535,7 @@ mod tests {
         if let DeploymentStatus::Failed { error } = parsed {
             assert_eq!(error, "test error");
         } else {
-            panic!("expected Failed variant");
+            unreachable!("expected Failed variant");
         }
     }
 

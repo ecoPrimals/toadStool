@@ -120,11 +120,21 @@ pub struct DiscoverySummary {
 mod tests {
     use super::*;
 
+    fn sample_local_coordination_endpoint() -> String {
+        format!(
+            "{}{}:{}",
+            toadstool_common::constants::network::HTTP_PROTOCOL,
+            toadstool_common::constants::network::DEFAULT_HOSTNAME,
+            toadstool_config::ports::capability_fallback::COORDINATION,
+        )
+    }
+
     #[test]
     fn test_service_info_serialization() {
+        let endpoint = sample_local_coordination_endpoint();
         let service_info = ServiceInfo {
             name: "test_service".to_string(),
-            endpoint: "http://localhost:8080".to_string(),
+            endpoint,
             service_type: "Test".to_string(),
             version: "1.0.0".to_string(),
             capabilities: vec!["test".to_string()],
@@ -208,9 +218,10 @@ mod tests {
 
     #[test]
     fn test_service_info_deserialization() {
+        let expected_endpoint = sample_local_coordination_endpoint();
         let json = serde_json::json!({
             "name": "test",
-            "endpoint": "http://localhost:8080",
+            "endpoint": expected_endpoint,
             "service_type": "Test",
             "version": "1.0",
             "capabilities": ["test"],
@@ -220,7 +231,7 @@ mod tests {
         });
         let info: ServiceInfo = serde_json::from_value(json).unwrap();
         assert_eq!(info.name, "test");
-        assert_eq!(info.endpoint, "http://localhost:8080");
+        assert_eq!(info.endpoint, expected_endpoint);
         assert_eq!(info.response_time_ms, 10);
     }
 

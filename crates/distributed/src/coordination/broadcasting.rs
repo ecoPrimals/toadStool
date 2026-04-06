@@ -115,11 +115,18 @@ mod tests {
     use std::collections::HashMap;
     use std::time::Duration;
     use std::time::SystemTime;
+    use toadstool_common::constants::network::{DEFAULT_HOSTNAME, HTTP_PROTOCOL};
+    use toadstool_config::ports::capability_fallback::COORDINATION;
+
+    fn sample_coordination_http_endpoint() -> String {
+        format!("{HTTP_PROTOCOL}{DEFAULT_HOSTNAME}:{COORDINATION}")
+    }
 
     fn make_mock_connection() -> CoordinationConnection {
+        let ep = sample_coordination_http_endpoint();
         CoordinationConnection {
-            endpoints: vec!["http://localhost:8080".to_string()],
-            active_endpoint: "http://localhost:8080".to_string(),
+            endpoints: vec![ep.clone()],
+            active_endpoint: ep,
             auth_token: None,
             health_status: ConnectionHealth::Healthy,
             protocol_config: ProtocolConfig {

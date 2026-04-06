@@ -76,20 +76,20 @@ impl EndpointSource for EnvironmentSource {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_environment_source() {
-        temp_env::with_var(
-            "TOADSTOOL_TEST_CAPABILITY_ENDPOINT",
-            Some("http://test:9999"),
-            || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async {
-                    let source = EnvironmentSource::default();
-                    let result = source.resolve("test_capability").await.unwrap();
-                    assert_eq!(result, Some("http://test:9999".to_string()));
-                });
+    #[tokio::test]
+    async fn test_environment_source() {
+        temp_env::async_with_vars(
+            [(
+                "TOADSTOOL_TEST_CAPABILITY_ENDPOINT",
+                Some("http://test:9999"),
+            )],
+            async {
+                let source = EnvironmentSource::default();
+                let result = source.resolve("test_capability").await.unwrap();
+                assert_eq!(result, Some("http://test:9999".to_string()));
             },
-        );
+        )
+        .await;
     }
 
     #[test]
@@ -115,27 +115,26 @@ mod tests {
         assert_eq!(source.env_var_name("storage"), "TEST_STORAGE_ENDPOINT");
     }
 
-    #[test]
-    fn test_environment_source_no_env() {
-        temp_env::with_var_unset("TOADSTOOL_NONEXISTENT_ENDPOINT", || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
-                let source = EnvironmentSource::default();
-                let result = source.resolve("nonexistent").await.unwrap();
-                assert_eq!(result, None);
-            });
-        });
+    #[tokio::test]
+    async fn test_environment_source_no_env() {
+        temp_env::async_with_vars([("TOADSTOOL_NONEXISTENT_ENDPOINT", None::<&str>)], async {
+            let source = EnvironmentSource::default();
+            let result = source.resolve("nonexistent").await.unwrap();
+            assert_eq!(result, None);
+        })
+        .await;
     }
 
-    #[test]
-    fn test_environment_source_custom_prefix() {
-        temp_env::with_var("MYAPP_SERVICE_ENDPOINT", Some("http://custom:7777"), || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(async {
+    #[tokio::test]
+    async fn test_environment_source_custom_prefix() {
+        temp_env::async_with_vars(
+            [("MYAPP_SERVICE_ENDPOINT", Some("http://custom:7777"))],
+            async {
                 let source = EnvironmentSource::new("MYAPP_");
                 let result = source.resolve("service").await.unwrap();
                 assert_eq!(result, Some("http://custom:7777".to_string()));
-            });
-        });
+            },
+        )
+        .await;
     }
 }

@@ -274,7 +274,7 @@ mod tests {
             assert_eq!(base_ms, 1000);
             assert_eq!(max_ms, 30000);
         } else {
-            panic!("Expected Exponential backoff");
+            unreachable!("Expected Exponential backoff");
         }
     }
 

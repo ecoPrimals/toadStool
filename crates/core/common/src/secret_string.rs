@@ -336,20 +336,15 @@ mod tests {
         assert_ne!(a, c);
     }
 
-    #[test]
-    fn resolve_from_env() {
-        temp_env::with_var("TEST_CRED_RESOLVE_SECRET_XYZ", Some("val123"), || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("rt");
-            rt.block_on(async {
-                let s = resolve_credential("TEST_CRED_RESOLVE_SECRET_XYZ")
-                    .await
-                    .expect("resolve");
-                assert_eq!(s.expose_secret(), "val123");
-            });
-        });
+    #[tokio::test]
+    async fn resolve_from_env() {
+        temp_env::async_with_vars([("TEST_CRED_RESOLVE_SECRET_XYZ", Some("val123"))], async {
+            let s = resolve_credential("TEST_CRED_RESOLVE_SECRET_XYZ")
+                .await
+                .expect("resolve");
+            assert_eq!(s.expose_secret(), "val123");
+        })
+        .await;
     }
 
     #[test]
@@ -403,17 +398,11 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    #[test]
-    fn resolve_not_found() {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("rt");
-        rt.block_on(async {
-            let result = resolve_credential("DEFINITELY_NOT_SET_XYZ_123").await;
-            assert!(result.is_err());
-            let err = result.unwrap_err();
-            assert!(err.to_string().contains("DEFINITELY_NOT_SET_XYZ_123"));
-        });
+    #[tokio::test]
+    async fn resolve_not_found() {
+        let result = resolve_credential("DEFINITELY_NOT_SET_XYZ_123").await;
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("DEFINITELY_NOT_SET_XYZ_123"));
     }
 }

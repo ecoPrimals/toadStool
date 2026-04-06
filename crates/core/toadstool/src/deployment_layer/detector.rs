@@ -402,14 +402,11 @@ VERSION="39 (Container Image)""#;
         assert_eq!(version, Some("39 (Container Image)".to_string()));
     }
 
-    #[test]
-    fn test_detect_aws_cloud_layer_via_env() {
-        temp_env::with_var("AWS_EXECUTION_ENV", Some("AWS_Lambda_rust"), || {
-            let runtime = tokio::runtime::Runtime::new().unwrap();
-            let result = runtime.block_on(async {
-                let mut detector = LayerDetector::new();
-                detector.detect().await
-            });
+    #[tokio::test]
+    async fn test_detect_aws_cloud_layer_via_env() {
+        temp_env::async_with_vars([("AWS_EXECUTION_ENV", Some("AWS_Lambda_rust"))], async {
+            let mut detector = LayerDetector::new();
+            let result = detector.detect().await;
             assert!(result.is_ok());
             let layer = result.unwrap();
             assert!(
@@ -422,24 +419,22 @@ VERSION="39 (Container Image)""#;
                 ),
                 "expected AWS CloudLayer, got {layer:?}"
             );
-        });
+        })
+        .await;
     }
 
-    #[test]
-    fn test_detect_gcp_cloud_layer_via_env() {
-        temp_env::with_vars(
+    #[tokio::test]
+    async fn test_detect_gcp_cloud_layer_via_env() {
+        temp_env::async_with_vars(
             [
                 ("AWS_EXECUTION_ENV", None::<&str>),
                 ("AWS_LAMBDA_FUNCTION_NAME", None::<&str>),
                 ("ECS_CONTAINER_METADATA_URI", None::<&str>),
                 ("GCP_PROJECT", Some("my-project")),
             ],
-            || {
-                let runtime = tokio::runtime::Runtime::new().unwrap();
-                let result = runtime.block_on(async {
-                    let mut detector = LayerDetector::new();
-                    detector.detect().await
-                });
+            async {
+                let mut detector = LayerDetector::new();
+                let result = detector.detect().await;
                 assert!(result.is_ok());
                 let layer = result.unwrap();
                 assert!(
@@ -453,23 +448,21 @@ VERSION="39 (Container Image)""#;
                     "expected GCP CloudLayer, got {layer:?}"
                 );
             },
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn test_detect_azure_cloud_layer_via_env() {
-        temp_env::with_vars(
+    #[tokio::test]
+    async fn test_detect_azure_cloud_layer_via_env() {
+        temp_env::async_with_vars(
             [
                 ("AWS_EXECUTION_ENV", None::<&str>),
                 ("GCP_PROJECT", None::<&str>),
                 ("AZURE_SUBSCRIPTION_ID", Some("sub-123")),
             ],
-            || {
-                let runtime = tokio::runtime::Runtime::new().unwrap();
-                let result = runtime.block_on(async {
-                    let mut detector = LayerDetector::new();
-                    detector.detect().await
-                });
+            async {
+                let mut detector = LayerDetector::new();
+                let result = detector.detect().await;
                 assert!(result.is_ok());
                 let layer = result.unwrap();
                 assert!(
@@ -483,7 +476,8 @@ VERSION="39 (Container Image)""#;
                     "expected Azure CloudLayer, got {layer:?}"
                 );
             },
-        );
+        )
+        .await;
     }
 
     #[test]

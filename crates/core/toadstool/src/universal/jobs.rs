@@ -159,7 +159,7 @@ mod tests {
             assert_eq!(args, vec!["hello".to_string()]);
             assert_eq!(e.get("VAR"), Some(&"value".to_string()));
         } else {
-            panic!("expected Native variant");
+            unreachable!("expected Native variant");
         }
     }
 
@@ -177,7 +177,7 @@ mod tests {
         if let UniversalJobType::Wasm { module, .. } = parsed {
             assert_eq!(module, vec![0x00, 0x61, 0x73, 0x6d]);
         } else {
-            panic!("expected Wasm variant");
+            unreachable!("expected Wasm variant");
         }
     }
 
@@ -200,7 +200,7 @@ mod tests {
             assert_eq!(endpoint, "http://localhost:8080/run");
             assert_eq!(payload["task"], "inference");
         } else {
-            panic!("expected Primal variant");
+            unreachable!("expected Primal variant");
         }
     }
 
@@ -220,7 +220,7 @@ mod tests {
             assert_eq!(biome_manifest["version"], "1");
             assert_eq!(team_id, "team-42");
         } else {
-            panic!("expected BiomeOS variant");
+            unreachable!("expected BiomeOS variant");
         }
     }
 

@@ -461,7 +461,7 @@ mod tests {
         let resp = connect_and_send(&socket_path, &req).await;
         let parsed: Value = serde_json::from_str(resp.trim()).expect("parse response");
         if let Some(err) = parsed.get("error") {
-            panic!("submit_workload failed: {}", err);
+            unreachable!("submit_workload failed: {err}");
         }
         // JSON-RPC handler returns workload_id string directly from WorkloadManager
         let workload_id = parsed["result"]

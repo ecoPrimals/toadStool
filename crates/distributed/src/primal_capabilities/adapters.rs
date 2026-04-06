@@ -309,7 +309,7 @@ mod tests {
             let result = CoordinationAdapter::new("http://coordination:8080");
             match result {
                 Err(e) => assert!(e.to_string().contains("TOADSTOOL_ENDPOINT")),
-                Ok(_) => panic!("expected error when TOADSTOOL_ENDPOINT not set"),
+                Ok(_) => unreachable!("expected error when TOADSTOOL_ENDPOINT not set"),
             }
         });
     }
@@ -372,11 +372,16 @@ mod tests {
 
     #[test]
     fn test_coordination_adapter_primal_adapter_trait() {
-        let adapter = CoordinationAdapter::new_with_endpoint(
-            "unix:///tmp/coordination.sock",
-            "http://localhost:9090".to_string(),
-        )
-        .unwrap();
+        const NOTIFY_TEST_PORT: u16 = 9090;
+        let http_fallback = format!(
+            "{}{}:{}",
+            toadstool_common::constants::network::HTTP_PROTOCOL,
+            toadstool_common::constants::network::DEFAULT_HOSTNAME,
+            NOTIFY_TEST_PORT,
+        );
+        let adapter =
+            CoordinationAdapter::new_with_endpoint("unix:///tmp/coordination.sock", http_fallback)
+                .unwrap();
         assert_eq!(adapter.primal_name(), "coordination");
         assert_eq!(adapter.endpoint(), "unix:///tmp/coordination.sock");
     }

@@ -373,20 +373,20 @@ fn test_discovery_error_display() {
     assert!(err.to_string().contains("cap"));
 }
 
-#[test]
-fn test_capability_discovery_new() {
-    let result = CapabilityDiscovery::new();
+#[tokio::test]
+async fn test_capability_discovery_new_async() {
+    let result = CapabilityDiscovery::new_async().await;
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_capability_discovery_with_config() {
+#[tokio::test]
+async fn test_capability_discovery_with_config_async() {
     let config = DiscoveryConfig {
         timeout: Duration::from_millis(100),
         enable_localhost_fallback: true,
         methods: vec![DiscoveryMethod::Environment],
     };
-    let result = CapabilityDiscovery::with_config(&config);
+    let result = CapabilityDiscovery::with_config_async(&config).await;
     assert!(result.is_ok());
 }
 

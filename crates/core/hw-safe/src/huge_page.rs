@@ -216,7 +216,7 @@ mod tests {
             Err(HugePageError::MmapFailed(_) | HugePageError::MlockFailed(_)) => {
                 // No huge pages configured — expected in CI
             }
-            Err(e) => panic!("unexpected error: {e}"),
+            Err(e) => unreachable!("unexpected error: {e}"),
         }
     }
 }

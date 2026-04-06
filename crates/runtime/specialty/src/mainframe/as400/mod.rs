@@ -241,13 +241,14 @@ mod tests {
     use std::path::PathBuf;
     use std::time::Duration;
     use toadstool::JobPriority;
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
     use uuid::Uuid;
 
     fn minimal_mainframe_config() -> MainframeConfig {
         MainframeConfig {
             system_type: LegacySystemType::AS400,
             connection: ConnectionSettings {
-                host: "127.0.0.1".to_string(),
+                host: LOCALHOST_IPV4.to_string(),
                 port: 5250,
                 connection_type: MainframeConnectionType::IBM5250,
                 authentication: AuthenticationSettings {

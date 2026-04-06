@@ -231,7 +231,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::System(_) => {} // Expected
-            _ => panic!("Expected System error"),
+            _ => unreachable!("expected System error"),
         }
     }
 
@@ -241,7 +241,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Execution(_) => {} // Expected
-            _ => panic!("Expected Execution error"),
+            _ => unreachable!("expected Execution error"),
         }
     }
 
@@ -251,7 +251,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Resource(_) => {} // Expected
-            _ => panic!("Expected Resource error"),
+            _ => unreachable!("expected Resource error"),
         }
     }
 
@@ -261,7 +261,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Security(_) => {} // Expected
-            _ => panic!("Expected Security error"),
+            _ => unreachable!("expected Security error"),
         }
     }
 
@@ -271,7 +271,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Security(_) => {} // Expected
-            _ => panic!("Expected Security error"),
+            _ => unreachable!("expected Security error"),
         }
     }
 
@@ -281,7 +281,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Configuration(_) => {} // Expected
-            _ => panic!("Expected Configuration error"),
+            _ => unreachable!("expected Configuration error"),
         }
     }
 
@@ -291,7 +291,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Network(_) => {} // Expected
-            _ => panic!("Expected Network error"),
+            _ => unreachable!("expected Network error"),
         }
     }
 
@@ -301,7 +301,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::Execution(_) => {} // Expected
-            _ => panic!("Expected Execution error"),
+            _ => unreachable!("expected Execution error"),
         }
     }
 
@@ -311,7 +311,7 @@ mod tests {
         let toadstool_error: ToadStoolError = server_error.into();
         match toadstool_error {
             ToadStoolError::System(_) => {} // Expected
-            _ => panic!("Expected System error"),
+            _ => unreachable!("expected System error"),
         }
     }
 
@@ -328,7 +328,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Execution(_) => {} // Expected
-            _ => panic!("Expected Execution error"),
+            _ => unreachable!("expected Execution error"),
         }
     }
 
@@ -340,7 +340,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Configuration(_) => {} // Expected
-            _ => panic!("Expected Configuration error"),
+            _ => unreachable!("expected Configuration error"),
         }
     }
 
@@ -353,7 +353,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::ResourceExhaustion(_) => {} // Expected
-            _ => panic!("Expected ResourceExhaustion error"),
+            _ => unreachable!("expected ResourceExhaustion error"),
         }
     }
 
@@ -365,7 +365,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Authentication(_) => {} // Expected
-            _ => panic!("Expected Authentication error"),
+            _ => unreachable!("expected Authentication error"),
         }
     }
 
@@ -378,7 +378,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Network(_) => {} // Expected
-            _ => panic!("Expected Network error"),
+            _ => unreachable!("expected Network error"),
         }
     }
 
@@ -390,7 +390,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Internal(_) => {} // Expected
-            _ => panic!("Expected Internal error"),
+            _ => unreachable!("expected Internal error"),
         }
     }
 
@@ -400,7 +400,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Execution(_) => {}
-            _ => panic!("Expected Execution error"),
+            _ => unreachable!("expected Execution error"),
         }
     }
 
@@ -410,7 +410,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::NotFound(_) => {}
-            _ => panic!("Expected NotFound error"),
+            _ => unreachable!("expected NotFound error"),
         }
     }
 
@@ -433,7 +433,7 @@ mod tests {
         let server_error: ServerError = toadstool_error.into();
         match server_error {
             ServerError::Internal(_) => {} // Expected (Integration maps to Internal)
-            _ => panic!("Expected Internal error"),
+            _ => unreachable!("expected Internal error"),
         }
     }
 
@@ -445,7 +445,7 @@ mod tests {
     fn test_server_result_ok() {
         let result: ServerResult<i32> = Ok(42);
         let Ok(value) = result else {
-            panic!("Expected Ok");
+            unreachable!("expected Ok");
         };
         assert_eq!(value, 42);
     }

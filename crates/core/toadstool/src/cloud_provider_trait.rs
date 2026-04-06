@@ -477,7 +477,7 @@ mod tests {
                 assert_eq!(region, "us-east-1");
                 assert_eq!(instance_id, "i-abc123");
             }
-            _ => panic!("Expected Cloud variant"),
+            _ => unreachable!("Expected Cloud variant"),
         }
     }
 

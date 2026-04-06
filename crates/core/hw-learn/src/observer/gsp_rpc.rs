@@ -112,7 +112,7 @@ mod tests {
                 assert_eq!(payload_size, 64);
                 assert!(matches!(direction, RpcDirection::HostToGsp));
             }
-            _ => panic!("expected GspRpc"),
+            _ => unreachable!("expected GspRpc"),
         }
     }
 
@@ -128,7 +128,7 @@ mod tests {
                 assert_eq!(func_id, 2);
                 assert!(matches!(direction, RpcDirection::GspToHost));
             }
-            _ => panic!("expected GspRpc reply"),
+            _ => unreachable!("expected GspRpc reply"),
         }
     }
 

@@ -247,7 +247,7 @@ mod tests {
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, input); // Positive values unchanged
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -267,7 +267,7 @@ mod tests {
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, vec![0.0, 0.0, 0.0]); // Negative values zeroed
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -287,7 +287,7 @@ mod tests {
         if let WorkloadData::F32Vec(output) = result {
             assert_eq!(output, vec![0.0, 2.0, 0.0, 4.0]);
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -307,7 +307,7 @@ mod tests {
         if let WorkloadData::F32Vec(output) = result {
             assert!((output[0] - 0.5).abs() < 1e-6); // sigmoid(0) = 0.5
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -328,7 +328,7 @@ mod tests {
             let sum: f32 = output.iter().sum();
             assert!((sum - 1.0).abs() < 1e-6); // Softmax outputs sum to 1
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 
@@ -350,7 +350,7 @@ mod tests {
             assert!(output[0] < output[1]);
             assert!(output[1] < output[2]);
         } else {
-            panic!("Expected F32Vec");
+            unreachable!("Expected F32Vec");
         }
     }
 }

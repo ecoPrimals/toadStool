@@ -124,7 +124,7 @@ mod tests {
                 assert_eq!(value, 1);
                 assert_eq!(width, 4);
             }
-            _ => panic!("expected RegisterWrite"),
+            _ => unreachable!("expected RegisterWrite"),
         }
     }
 
@@ -138,7 +138,7 @@ mod tests {
                 assert_eq!(offset, 0xfee0_0004);
                 assert_eq!(value, 0x42);
             }
-            _ => panic!("expected RegisterRead"),
+            _ => unreachable!("expected RegisterRead"),
         }
     }
 

@@ -243,7 +243,7 @@ mod tests {
             assert_eq!(region, "us-east-1");
             assert!(cost_budget.is_none());
         } else {
-            panic!("expected AWS variant");
+            unreachable!("expected AWS variant");
         }
     }
 

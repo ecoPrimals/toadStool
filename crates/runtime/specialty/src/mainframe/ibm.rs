@@ -304,13 +304,14 @@ mod tests {
     use std::collections::HashMap;
     use std::time::Duration;
     use toadstool::JobPriority;
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
     use uuid::Uuid;
 
     fn minimal_mainframe_config(system: LegacySystemType) -> MainframeConfig {
         MainframeConfig {
             system_type: system,
             connection: ConnectionSettings {
-                host: "127.0.0.1".to_string(),
+                host: LOCALHOST_IPV4.to_string(),
                 port: 3270,
                 connection_type: MainframeConnectionType::IBM3270,
                 authentication: AuthenticationSettings {

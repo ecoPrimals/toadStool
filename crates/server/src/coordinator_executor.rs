@@ -328,7 +328,7 @@ mod tests {
             assert_eq!(env_vars.get("key1"), Some(&"value1".to_string()));
             assert_eq!(env_vars.get("key2"), Some(&"value2".to_string()));
         } else {
-            panic!("Expected Native workload spec");
+            unreachable!("Expected Native workload spec");
         }
     }
 

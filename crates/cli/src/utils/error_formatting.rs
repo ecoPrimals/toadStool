@@ -179,7 +179,7 @@ mod tests {
         if let Some(Cow::Borrowed(_)) = suggestion {
             // Good - zero allocation
         } else {
-            panic!("Expected Cow::Borrowed for static suggestion");
+            unreachable!("Expected Cow::Borrowed for static suggestion");
         }
     }
 

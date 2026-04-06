@@ -83,6 +83,7 @@ pub fn write_tcp_discovery_file(addr: &SocketAddr) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::{Ipv4Addr, SocketAddr};
 
     #[test]
     fn test_socket_path_discovery() {
@@ -145,7 +146,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let xdg_path = tmp.path().to_string_lossy().to_string();
         temp_env::with_var("XDG_RUNTIME_DIR", Some(xdg_path.as_str()), || {
-            let addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
+            let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, 9999));
             write_tcp_discovery_file(&addr);
             let discovery_file = tmp.path().join("toadstool-ipc-port");
             assert!(discovery_file.exists(), "discovery file should be created");
@@ -168,7 +169,7 @@ mod tests {
                 ("HOME", Some(home_path.as_str())),
             ],
             || {
-                let addr: SocketAddr = "127.0.0.1:8888".parse().unwrap();
+                let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, 8888));
                 write_tcp_discovery_file(&addr);
                 let discovery_file = home_local.join("toadstool-ipc-port");
                 assert!(discovery_file.exists());

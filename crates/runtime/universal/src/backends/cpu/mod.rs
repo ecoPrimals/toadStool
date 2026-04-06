@@ -269,7 +269,7 @@ mod tests {
         let out = cpu.execute(w).await.unwrap();
         match out.data {
             WorkloadData::F32Vec(v) => assert_eq!(v.len(), 3),
-            _ => panic!("expected F32Vec"),
+            _ => unreachable!("expected F32Vec"),
         }
     }
 
@@ -283,7 +283,7 @@ mod tests {
         let out = cpu.execute(w).await.unwrap();
         match out.data {
             WorkloadData::F32Vec(v) => assert!((v[0] - 32.0).abs() < 1e-5),
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -348,7 +348,7 @@ mod tests {
                 assert!((v[2] - 3.0).abs() < 1e-5);
                 assert!((v[3] - 4.0).abs() < 1e-5);
             }
-            other => panic!("expected F32Matrix, got {other:?}"),
+            other => unreachable!("expected F32Matrix, got {other:?}"),
         }
     }
 
@@ -379,7 +379,7 @@ mod tests {
                 assert!((v[3] - 2.0).abs() < 1e-5);
                 assert!((v[4] - 0.0).abs() < 1e-5);
             }
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -396,7 +396,7 @@ mod tests {
                 assert!(v[1] > 0.0 && v[1] < 1.0);
                 assert!(v[2] < 0.0 && v[2] > -0.2);
             }
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -413,7 +413,7 @@ mod tests {
                 assert!((v[1] - 0.761_594).abs() < 1e-3);
                 assert!((v[2] + 0.761_594).abs() < 1e-3);
             }
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -430,7 +430,7 @@ mod tests {
                 assert!(v[1] > 0.7 && v[1] < 0.8);
                 assert!(v[2] > 0.2 && v[2] < 0.3);
             }
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -447,7 +447,7 @@ mod tests {
                 assert!((sum - 1.0).abs() < 1e-5);
                 assert!(v.iter().all(|&x| x > 0.0 && x < 1.0));
             }
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -459,7 +459,7 @@ mod tests {
         let out = cpu.execute(w).await.unwrap();
         match out.data {
             WorkloadData::F32Vec(v) => assert_eq!(v.len(), 3),
-            other => panic!("expected F32Vec, got {other:?}"),
+            other => unreachable!("expected F32Vec, got {other:?}"),
         }
     }
 
@@ -513,7 +513,7 @@ mod tests {
                 assert!(!v.is_empty());
                 assert!(v.iter().all(|&x| x >= 0.0));
             }
-            other => panic!("expected F32Matrix, got {other:?}"),
+            other => unreachable!("expected F32Matrix, got {other:?}"),
         }
     }
 
@@ -541,7 +541,7 @@ mod tests {
                 assert!(!v.is_empty());
                 assert!(v.iter().all(|&x| x >= 0.0));
             }
-            other => panic!("expected F32Matrix, got {other:?}"),
+            other => unreachable!("expected F32Matrix, got {other:?}"),
         }
     }
 
@@ -559,7 +559,7 @@ mod tests {
                 assert!((v[1] - 0.0).abs() < 1e-10);
                 assert!((v[2] - 1.0).abs() < 1e-10);
             }
-            other => panic!("expected F64Vec, got {other:?}"),
+            other => unreachable!("expected F64Vec, got {other:?}"),
         }
     }
 

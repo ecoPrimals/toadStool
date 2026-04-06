@@ -351,7 +351,7 @@ mod tests {
             assert!((c[2] - 43.0).abs() < 1e-6);
             assert!((c[3] - 50.0).abs() < 1e-6);
         } else {
-            panic!("Expected F32Matrix result");
+            unreachable!("Expected F32Matrix result");
         }
     }
 
@@ -408,7 +408,7 @@ mod tests {
             assert!((out[2] - 14.0).abs() < 1e-6);
             assert!((out[3] - 16.0).abs() < 1e-6);
         } else {
-            panic!("Expected F32Matrix result");
+            unreachable!("Expected F32Matrix result");
         }
     }
 
@@ -448,7 +448,7 @@ mod tests {
             assert!((out[2] - 11.5).abs() < 1e-6);
             assert!((out[3] - 13.5).abs() < 1e-6);
         } else {
-            panic!("Expected F32Matrix result");
+            unreachable!("Expected F32Matrix result");
         }
     }
 }

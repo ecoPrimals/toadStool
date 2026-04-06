@@ -30,7 +30,7 @@
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! // Create discovery engine
-//! let discovery = CapabilityDiscovery::new()?;
+//! let discovery = CapabilityDiscovery::new_async().await?;
 //!
 //! // Find ANY service that can encrypt (agnostic of provider)
 //! let crypto_services = discovery
@@ -81,22 +81,11 @@ pub struct CapabilityDiscovery {
 }
 
 impl CapabilityDiscovery {
-    /// Create new capability discovery client (sync bridge).
+    /// Create new capability discovery client.
     ///
     /// Automatically detects available discovery methods:
     /// - mDNS/DNS-SD via coordination service (if on local network)
     /// - Environment variables (always available)
-    ///
-    /// Prefer [`new_async`](Self::new_async) when calling from async contexts.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if discovery backend cannot be initialized.
-    pub fn new() -> Result<Self, DiscoveryError> {
-        Self::with_config(&DiscoveryConfig::default())
-    }
-
-    /// Create new capability discovery client (async, no runtime bridge).
     ///
     /// # Errors
     ///
@@ -105,22 +94,7 @@ impl CapabilityDiscovery {
         Self::with_config_async(&DiscoveryConfig::default()).await
     }
 
-    /// Create with custom configuration (sync bridge).
-    ///
-    /// # Errors
-    ///
-    /// Returns `DiscoveryError` if the discovery backend cannot be initialized.
-    pub fn with_config(config: &DiscoveryConfig) -> Result<Self, DiscoveryError> {
-        let discovery = Self::detect_discovery_backend()?;
-
-        Ok(Self {
-            discovery,
-            timeout: config.timeout,
-            enable_localhost_fallback: config.enable_localhost_fallback,
-        })
-    }
-
-    /// Create with custom configuration (async, no runtime bridge).
+    /// Create with custom configuration.
     ///
     /// # Errors
     ///
@@ -150,7 +124,7 @@ impl CapabilityDiscovery {
     /// # use toadstool_common::capability_discovery::CapabilityDiscovery;
     /// # use toadstool_common::primal_identity::{Capability, CryptoCapability};
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let discovery = CapabilityDiscovery::new()?;
+    /// let discovery = CapabilityDiscovery::new_async().await?;
     ///
     /// // Find ALL crypto providers
     /// let providers = discovery
@@ -230,9 +204,7 @@ impl CapabilityDiscovery {
     ///
     /// ## Evolution (Mar 29, 2026)
     ///
-    /// Removed nested `Runtime::new()` + `block_on` anti-pattern.
-    /// Now natively async. Sync callers should use `new()` which
-    /// detects the current runtime or creates one safely.
+    /// Removed nested `Runtime::new()` + `block_on` anti-pattern; initialization is async-only.
     async fn detect_discovery_backend_async()
     -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
         use crate::service_discovery::DiscoveryMethod;
@@ -260,31 +232,6 @@ impl CapabilityDiscovery {
             .map_err(|e| DiscoveryError::DiscoveryFailed(e.to_string()))?;
 
         Ok(Box::new(discovery))
-    }
-
-    /// Sync bridge for discovery backend initialization.
-    ///
-    /// Tries to use an existing tokio runtime handle (safe from async contexts).
-    /// Falls back to creating a lightweight current-thread runtime when no
-    /// runtime is active.
-    fn detect_discovery_backend() -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            std::thread::scope(|s| {
-                s.spawn(|| handle.block_on(Self::detect_discovery_backend_async()))
-                    .join()
-                    .map_err(|_| {
-                        DiscoveryError::DiscoveryFailed("discovery thread panicked".to_string())
-                    })?
-            })
-        } else {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| {
-                    DiscoveryError::InvalidConfig(format!("Failed to create runtime: {e}"))
-                })?;
-            rt.block_on(Self::detect_discovery_backend_async())
-        }
     }
 
     /// Try localhost fallback for development

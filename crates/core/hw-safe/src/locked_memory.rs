@@ -138,7 +138,7 @@ mod tests {
             Err(LockError::Mlock(_)) => {
                 // Resource limit too low — skip gracefully
             }
-            Err(e) => panic!("unexpected error: {e}"),
+            Err(e) => unreachable!("unexpected LockError (not Mlock): {e}"),
         }
     }
 
@@ -150,7 +150,7 @@ mod tests {
                 assert_eq!(mem.as_ptr().as_ptr() as usize % 4096, 0);
             }
             Err(LockError::Mlock(_)) => {}
-            Err(e) => panic!("unexpected error: {e}"),
+            Err(e) => unreachable!("unexpected LockError (not Mlock): {e}"),
         }
     }
 
@@ -164,7 +164,7 @@ mod tests {
                 assert_eq!(mem.as_slice()[255], 0xAD);
             }
             Err(LockError::Mlock(_)) => {}
-            Err(e) => panic!("unexpected error: {e}"),
+            Err(e) => unreachable!("unexpected LockError (not Mlock): {e}"),
         }
     }
 
@@ -183,7 +183,7 @@ mod tests {
                 assert!(dbg.contains("1024"));
             }
             Err(LockError::Mlock(_)) => {}
-            Err(e) => panic!("unexpected error: {e}"),
+            Err(e) => unreachable!("unexpected LockError (not Mlock): {e}"),
         }
     }
 }

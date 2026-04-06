@@ -92,7 +92,7 @@ mod tests {
         let evt = evt.unwrap();
         match &evt.kind {
             TraceEventKind::IoctlCall { success, .. } => assert!(success),
-            _ => panic!("expected IoctlCall"),
+            _ => unreachable!("expected IoctlCall"),
         }
     }
 
@@ -106,7 +106,7 @@ mod tests {
         assert!(evt.is_some());
         match &evt.unwrap().kind {
             TraceEventKind::IoctlCall { success, .. } => assert!(!success),
-            _ => panic!("expected IoctlCall"),
+            _ => unreachable!("expected IoctlCall"),
         }
     }
 }

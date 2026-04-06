@@ -322,6 +322,7 @@ impl DisplayServer {
 mod tests {
     use super::*;
     use crate::ipc::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
+    use std::net::{Ipv4Addr, SocketAddr};
 
     #[tokio::test]
     async fn test_jsonrpc_parsing() {
@@ -344,8 +345,7 @@ mod tests {
 
     #[test]
     fn test_ipc_transport_tcp_fallback() {
-        use std::net::SocketAddr;
-        let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, 0));
         let t = IpcTransport::TcpFallback(addr);
         let s = format!("{t:?}");
         assert!(s.contains("TcpFallback") || s.contains("127"));
@@ -415,7 +415,7 @@ mod tests {
             (IpcTransport::UnixSocket, IpcTransport::UnixSocket)
         ));
 
-        let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, 0));
         let t3 = IpcTransport::TcpFallback(addr);
         let t4 = t3.clone();
         assert!(matches!(
@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_ipc_transport_tcp_fallback_addr() {
-        let addr: SocketAddr = "127.0.0.1:12345".parse().unwrap();
+        let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, 12_345));
         let t = IpcTransport::TcpFallback(addr);
         let s = format!("{t:?}");
         assert!(s.contains("12345") || s.contains("127"));

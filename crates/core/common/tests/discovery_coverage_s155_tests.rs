@@ -376,7 +376,7 @@ fn test_socket_discovery_error_variants() {
 }
 
 // Note: discover_socket_for_capability, discover_crypto_socket, discover_storage_socket,
-// discover_coordination_socket use CapabilityDiscovery::new() which creates a nested runtime
+// discover_coordination_socket uses CapabilityDiscovery::new_async() (no sync runtime bridge)
 // (block_on inside block_on). They are tested in primal_sockets/discovery.rs unit tests.
 
 // ============================================================================

@@ -116,22 +116,22 @@ fn test_discovery_config_clone() {
     );
 }
 
-#[test]
-fn test_capability_discovery_new_from_sync() {
-    let result = std::thread::spawn(CapabilityDiscovery::new)
-        .join()
-        .expect("thread should not panic");
+#[tokio::test]
+async fn test_capability_discovery_new_async_from_spawned_task() {
+    let result = tokio::spawn(async { CapabilityDiscovery::new_async().await })
+        .await
+        .expect("join");
     assert!(result.is_ok());
 }
 
-#[test]
-fn test_capability_discovery_with_config() {
+#[tokio::test]
+async fn test_capability_discovery_with_config_async() {
     let config = DiscoveryConfig {
         timeout: Duration::from_millis(50),
         enable_localhost_fallback: false,
         methods: vec![DiscoveryMethod::Environment],
     };
-    let result = CapabilityDiscovery::with_config(&config);
+    let result = CapabilityDiscovery::with_config_async(&config).await;
     assert!(result.is_ok());
 }
 
@@ -289,20 +289,20 @@ fn test_discovery_method_debug() {
     assert!(!debug_str.is_empty());
 }
 
-#[test]
-fn test_capability_discovery_new_creates_valid_instance() {
-    let discovery = CapabilityDiscovery::new().expect("discovery");
+#[tokio::test]
+async fn test_capability_discovery_new_async_creates_valid_instance() {
+    let discovery = CapabilityDiscovery::new_async().await.expect("discovery");
     assert!(std::mem::size_of_val(&discovery) > 0);
 }
 
-#[test]
-fn test_capability_discovery_with_config_succeeds() {
+#[tokio::test]
+async fn test_capability_discovery_with_config_async_succeeds() {
     let config = DiscoveryConfig {
         timeout: Duration::from_secs(30),
         enable_localhost_fallback: true,
         methods: vec![DiscoveryMethod::Auto],
     };
-    let discovery = CapabilityDiscovery::with_config(&config);
+    let discovery = CapabilityDiscovery::with_config_async(&config).await;
     assert!(discovery.is_ok());
 }
 

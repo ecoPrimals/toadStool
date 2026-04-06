@@ -431,12 +431,12 @@ mod tests {
         if let PrimalHealth::Degraded { issues } = &degraded {
             assert_eq!(issues.len(), 2);
         } else {
-            panic!("Expected Degraded variant");
+            unreachable!("Expected Degraded variant");
         }
         if let PrimalHealth::Unhealthy { reason } = &unhealthy {
             assert_eq!(reason, "connection failed");
         } else {
-            panic!("Expected Unhealthy variant");
+            unreachable!("Expected Unhealthy variant");
         }
     }
 
@@ -477,7 +477,7 @@ mod tests {
         if let PrimalCapability::GpuAcceleration { cuda_support } = cap {
             assert!(cuda_support);
         } else {
-            panic!("Expected GpuAcceleration variant");
+            unreachable!("Expected GpuAcceleration variant");
         }
     }
 
