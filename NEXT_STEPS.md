@@ -1,8 +1,8 @@
 # ToadStool/BarraCuda -- Next Steps
 
-**Updated**: April 5, 2026 -- S187 Deep Debt — Mocks, Concurrency, Capability Naming
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,515 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~66 unsafe blocks** (all in hw containment) | **355 #[allow] / 530 #[expect]** (40%/60%) | **550 legacy-compat cross-primal refs** (89% reduction from 5,104) | **2m30s test runtime** (was ~9m)
-**Latest**: S187 — Deep debt execution: production mocks isolated (`test-mocks` feature), 56 test block_on→tokio::test, cross-primal names 5104→550 (89% reduction), test runtime 9m→2m30s (cfg!(test) timeouts, removed RUST_TEST_THREADS throttle, ServiceDiscovery cache-aware refresh)
+**Updated**: April 5, 2026 -- S188 Deep Debt — Cross-Primal Doc Cleanup
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,512 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~66 unsafe blocks** (all in hw containment) | **91 #[allow] / 776 #[expect]** | **425 legacy-compat cross-primal refs** (92% reduction from 5,104) | **~3m30s test runtime**
+**Latest**: S188 — Cross-primal doc cleanup: capability-based language in 61 files, cross-primal 550→425 (remaining are all backward-compat serde aliases, env var fallbacks, interned constants)
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,515 tests** (S184, 0 failures). Target 90%.
+**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,512 tests** (S188, 0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -157,6 +157,9 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ---
 
 ## Completed This Session (S90-155b)
+
+### Session S188: Cross-Primal Doc Cleanup (Apr 5, 2026)
+- **S188 (Apr 5, 2026)**: Cross-primal doc cleanup — capability-based language in 61 files across all crates. Replaced primal names (Songbird, BearDog, NestGate, Squirrel, CoralReef, BarraCuda) with capability-based language in doc comments, error messages, test assertions. Cross-primal refs 550→425 (remaining are all backward-compat: serde aliases, env var fallbacks, interned string constants, capability mapping tables). Full audit confirmed: unsafe at FFI boundaries only (15 blocks), thread::sleep at hardware boundaries only (8 sites), production mocks fully gated, all production files <700L. All quality gates green: fmt, clippy, doc 0 warnings, 21,512 tests pass.
 
 ### Session S187: Deep Debt Execution (Apr 5, 2026)
 - **S187 (Apr 5, 2026)**: Deep debt execution — production mocks isolated behind `#[cfg(any(test, feature = "test-mocks"))]` in server/distributed/integration. 56 test `block_on` → `#[tokio::test]`. Cross-primal name evolution: `SongbirdProtocol` → `CoordinationTransport`, `BearDogSecurityProvider` → `DistributedSecurityProvider`, `NestGateResult` → `StorageServiceResult` + dozens more. 5,104 → 550 cross-primal refs in production (89% reduction; remainder intentional legacy compat). Test runtime 9m → 2m30s via removed RUST_TEST_THREADS throttle, cfg!(test) mDNS/TCP timeouts, ServiceDiscovery cache-aware refresh, nvpmu poll-loop, watchdog Condvar, server exponential backoff. External dep audit: all *-sys deps transitive, rustix already adopted, 0 C deps in workspace.

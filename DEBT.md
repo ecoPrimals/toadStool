@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 5, 2026 — S186
+**Date**: April 5, 2026 — S188
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -42,6 +42,11 @@ Evolved nvpmu DMA from `RawFd` to `OwnedFd` with `try_clone()` per buffer. Elimi
 
 ### D-UNSAFE-SENDSYNC-AUDIT — RESOLVED S185
 Removed 4 redundant `unsafe impl Send/Sync` (LockedMemory, Bar0Access) — auto-derived from internal components. Added compile-time trait assertions. Evolved akida-driver DMA to `OwnedFd`.
+
+## S188 Resolved Debt (Cross-Primal Doc Cleanup)
+
+### D-CROSS-PRIMAL-DOCS — RESOLVED S188
+Cross-primal doc comments and error strings cleaned across 61 files in all crates. Replaced primal names (Songbird, BearDog, NestGate, Squirrel, CoralReef, BarraCuda) with capability-based language (coordination service, security service, storage service, intelligence service, visualization service, GPU compute). Production cross-primal refs reduced from 550 to 425 (23% further reduction). Remaining 425 are intentional backward-compatibility: serde aliases, env var fallbacks, interned string constants, capability mapping tables, wire-protocol constants.
 
 ## S187 Resolved Debt (Deep Debt Execution — Mocks, Concurrency, Capability Naming)
 

@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` | 0 warnings |
-| `cargo test --workspace` | **21,515 tests, 0 failures** (S187), 220 ignored (hardware-gated); full workspace ~2m30s |
+| `cargo test --workspace` | **21,512 tests, 0 failures** (S188), 103 ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
@@ -52,7 +52,7 @@ Nest    = Tower  + Storage            <- storage
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); dead_code attrs converted to `#[expect]` with reasons or `#[cfg(test)]` |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
-| Hardcoded primal names | **550** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
+| Hardcoded primal names | **425** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
 | `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
@@ -144,7 +144,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 
 ### JSON-RPC Methods (~67 dynamically built; S186)
 
-Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ Squirrel), **`shader.compile.*`** (→ coralReef), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ biomeOS and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in coralReef).
+Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ intelligence service), **`shader.compile.*`** (→ visualization service), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ orchestration and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in visualization service).
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
@@ -159,7 +159,7 @@ Surface trimmed to hardware orchestration and IPC boundaries. **Removed from thi
 | `transport.*` | `discover`, `list`, `route` | Hardware transport discovery + routing |
 | `shader.dispatch` | — | Sovereign pipeline: compiled binary in (base64 / array / `compile_result`), GPU via VFIO/DRM, optional readback |
 | `provenance.query` | cross-spring flow matrix | (was `toadstool.provenance`; deprecated alias retained) |
-| *Peer primals* | — | **Compile** (`shader.compile.*`), **LLM/inference**, **science / ecology / discovery / deploy** — call Squirrel, coralReef, biomeOS, Songbird over capability sockets (not re-exported here) |
+| *Peer primals* | — | **Compile** (`shader.compile.*`), **LLM/inference**, **science / ecology / discovery / deploy** — call intelligence, visualization, orchestration, coordination services over capability sockets (not re-exported here) |
 
 ---
 
@@ -244,7 +244,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,515** (S187), 0 failures |
+| Workspace tests | **21,512** (S188), 0 failures |
 | Full workspace test time | ~2m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -265,11 +265,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,853 tests (S186); ~80-85% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,512 tests (S188); ~80-85% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S188 (Apr 5, 2026)**: Cross-primal doc cleanup — capability-based language in 61 files; cross-primal references 550→425; remaining are all backward-compatibility (serde aliases, env var fallbacks, interned constants). Full audit: unsafe at FFI boundaries only, thread::sleep at hardware boundaries only, production mocks fully gated, all files <700L.
 - **S185-186 (Apr 5, 2026)**: Unsafe evolution — full audit of all ~90 unsafe sites. Removed 4 redundant `unsafe impl Send/Sync` (LockedMemory, Bar0Access). Evolved akida-driver DMA to `OwnedFd`. Centralized ioctl dispatch into `do_ioctl` helpers (VFIO, V4L2, DRM). Generic `read_reg<T>`/`write_reg<T>` for volatile MMIO. Created `ExclusivePtr` newtype (auto-derives Send+Sync for memory types, -6 unsafe impls). Created `ContiguousBytes` trait (centralizes `from_raw_parts` into 2 blocks, -6 unsafe blocks). Evolved nvpmu DMA from `RawFd` to `OwnedFd`. **Net: ~59→~36 unsafe blocks, ~20→~15 unsafe impls.** All remaining unsafe pinned for ecosystem evolution (coralReef/barracuda replace CUDA/OpenCL). Zero behavioral changes.
 - **S175 (Apr 3, 2026)**: Unsafe code reduction Phase 1+2. V4L2 ioctls extracted to `v4l2::ioctl` containment module (device.rs now pure safe Rust). GPU backend constructors (`with_device`/`with_context`) made safe. 6 `unsafe impl Send/Sync` consolidated into single `GpuPtr` newtype. `HugePageMemory` RAII type in hw-safe absorbs raw mmap/mlock from nvpmu/dma.rs. Consumer `unsafe {}` blocks reduced 80% (56→11). Total: 59 actual unsafe blocks (48 in containment zones). 0 clippy warnings.
 - **S174 (Apr 3, 2026)**: Unsafe audit — deleted duplicate `VolatileSlice` from akida-driver (replaced with `hw-safe::VolatileMmio`). Added `dma_map_fd`/`dma_unmap_fd` safe wrappers in hw-safe. Net −10 unsafe blocks (89→79 grep, 77 actual). All quality gates green.
@@ -306,7 +307,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,853 tests (S186); ~80-85% lib-only line (185K instrumented); remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,512 tests (S188); ~80-85% lib-only line (185K instrumented); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 
@@ -350,7 +351,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 5, 2026 — S187. **21,515** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S185-186**: Unsafe evolution — `ExclusivePtr` newtype, `ContiguousBytes` trait, `do_ioctl` centralized dispatch, `OwnedFd` throughout DMA. Remaining ~66 blocks are irreducible kernel/hardware trust boundaries pinned for ecosystem evolution. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 5, 2026 — S188. **21,512** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** (`identity.get`, `health.liveness`). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Neural API naming (`capability.register`/`resolve`/`find`). Rust 1.85+ (edition 2024, MSRV). **S188**: Cross-primal doc cleanup 550→425 (backward-compat only remain). **S185-186**: Unsafe evolution — `ExclusivePtr`, `ContiguousBytes`, `do_ioctl`, `OwnedFd`. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 
