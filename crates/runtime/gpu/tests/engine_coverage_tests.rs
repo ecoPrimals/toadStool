@@ -69,6 +69,7 @@ async fn default_engine_exposes_empty_device_list() {
 }
 
 #[tokio::test]
+#[ignore = "GPU driver init — can SIGSEGV on headless CI without Vulkan/Mesa; run with --ignored on GPU-equipped machines"]
 async fn new_and_with_config_equivalence_when_both_succeed() {
     let a = UniversalGpuEngine::new().await;
     let b = UniversalGpuEngine::with_config(UniversalGpuConfig::default()).await;
@@ -498,6 +499,7 @@ fn device_requirements_serde_round_trip() {
 }
 
 #[tokio::test]
+#[ignore = "GPU driver init — can SIGSEGV on headless CI without Vulkan/Mesa; run with --ignored on GPU-equipped machines"]
 async fn initialized_engine_selects_framework_when_any_available() {
     if let Ok(engine) = UniversalGpuEngine::new().await {
         let stats = engine.get_statistics().await;
@@ -511,6 +513,7 @@ async fn initialized_engine_selects_framework_when_any_available() {
 }
 
 #[tokio::test]
+#[ignore = "GPU driver init — can SIGSEGV on headless CI without Vulkan/Mesa; run with --ignored on GPU-equipped machines"]
 async fn new_or_err_does_not_panic() {
     let r = UniversalGpuEngine::new().await;
     assert!(r.is_ok() || r.is_err());
