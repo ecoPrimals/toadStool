@@ -8,28 +8,56 @@
 >
 > - [`docs/reference/SERVER_METHODS.md`](../reference/SERVER_METHODS.md) — all JSON-RPC methods
 > - [`CONTEXT.md`](../../CONTEXT.md) — primal role and IPC details
-> - `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock` — daemon socket path
 
-## Starting the Daemon
+## Starting the Server
+
+The recommended command is `toadstool server` (UniBin standard naming).
+`toadstool daemon` is a backward-compatible alias that calls the same code path.
 
 ```bash
-toadstool daemon start
+# Recommended
+toadstool server
+
+# With options
+toadstool server --port 9090 --register --family-id lab01
+
+# Backward-compatible alias
+toadstool daemon
 ```
 
-The daemon binds a Unix socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock`.
+The server binds two Unix sockets:
+
+| Socket | Path | Protocol |
+|--------|------|----------|
+| Pure JSON-RPC | `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock` | JSON-RPC 2.0 (newline-delimited) |
+| tarpc | `$XDG_RUNTIME_DIR/biomeos/toadstool.sock` | tarpc binary codec |
+
 If `--port <PORT>` is specified, it also listens on TCP (JSON-RPC, not HTTP).
 
-## Interacting with the Daemon
+## Verifying the Server
 
 Use any JSON-RPC 2.0 client over the Unix socket:
 
 ```bash
-echo '{"jsonrpc":"2.0","method":"health.check","id":1}' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
+# Health check
+echo '{"jsonrpc":"2.0","method":"health.liveness","id":1}' | \
+  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
+
+# List capabilities (used by biomeOS Neural API for routing)
+echo '{"jsonrpc":"2.0","method":"capabilities.list","id":2}' | \
+  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
 ```
 
-## Stopping the Daemon
+## Stopping the Server
+
+Send `SIGINT` (Ctrl+C) or `SIGTERM` to the process:
 
 ```bash
-toadstool daemon stop
-# or send SIGINT/SIGTERM to the process
+kill -SIGTERM $(pgrep -f "toadstool server")
 ```
+
+## CLI Flags
+
+See [`docs/reference/SERVER_METHODS.md`](../reference/SERVER_METHODS.md#cli-flags-server-mode)
+for the full list of `--register`, `--port`, `--socket`, `--config`,
+`--max-workloads`, `--biomeos-socket`, and `--family-id` options.
