@@ -80,4 +80,4 @@ async fn test_feature_workflow() {
 ## See Also
 
 - **[NEXT_STEPS.md](../../NEXT_STEPS.md)** — Overall project status and next steps
-- **[QUICK_REFERENCE.md](../../QUICK_REFERENCE.md)** — Commands and API reference
+- **[DOCUMENTATION.md](../../DOCUMENTATION.md)** — Navigation hub and reference index

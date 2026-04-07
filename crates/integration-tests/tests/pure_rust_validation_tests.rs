@@ -375,10 +375,8 @@ fn test_dirs_sys_eliminated() {
     println!("✅ Using etcetera (Pure Rust) instead!");
 }
 
-/// Verify only acceptable -sys crates remain
-/// Ignored: cubecl transitively brings dirs-sys; acceptable list needs updating for cubecl stack.
+/// Verify only acceptable -sys crates remain (kernel interfaces only).
 #[test]
-#[ignore = "cubecl transitive -sys crates not yet in acceptable list; tracked as workspace debt"]
 fn test_only_acceptable_sys_crates() {
     let output = Command::new("cargo")
         .args(["tree", "--workspace", "--edges", "normal"])
@@ -387,15 +385,20 @@ fn test_only_acceptable_sys_crates() {
 
     let tree = String::from_utf8_lossy(&output.stdout);
 
-    // Count -sys crates
-    let sys_crates: Vec<&str> = tree.lines().filter(|line| line.contains("-sys")).collect();
+    // Match actual -sys binding crates (e.g. "linux-raw-sys v0.4.15"), not
+    // false positives like "toadstool-sysmon".
+    let sys_crates: Vec<&str> = tree
+        .lines()
+        .filter(|line| line.contains("-sys v") || line.ends_with("-sys"))
+        .collect();
 
     // Check each -sys crate
     for crate_line in &sys_crates {
-        let is_acceptable = crate_line.contains("linux-raw-sys") ||    // Syscall numbers ✅
+        let is_acceptable = crate_line.contains("linux-raw-sys") ||    // Syscall numbers (rustix) ✅
+            crate_line.contains("drm-sys") ||          // DRM/KMS kernel ioctls (display crate) ✅
             crate_line.contains("pyo3-ffi") ||         // Python FFI (optional) ✅
             crate_line.contains("seccomp-sys") ||      // Security (optional) ✅
-            crate_line.contains("renderdoc-sys"); // GPU debugging (optional) ✅
+            crate_line.contains("renderdoc-sys");      // GPU debugging (optional) ✅
 
         assert!(
             is_acceptable,

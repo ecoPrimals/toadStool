@@ -1138,7 +1138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Technical Debt Audit
 - **0 production `todo!()`/`unimplemented!()`** — none found
 - **0 production FIXME/HACK** — none found
-- **1 production TODO** — `integrator_impl.rs:73` (now documented as migration bridge)
+- **0 production TODOs** — `integrator_impl.rs` migration bridge documented; no TODO markers remain
 - **Production `unwrap()`**: All in non-hot-path code (barracuda ops, edge platforms); core IPC/JSON-RPC/discovery paths are unwrap-free
 - **`Box<dyn Error>`**: Only in standalone benchmark binaries (acceptable Rust pattern for `main()`)
 - **Stubs**: Specialty embedded toolchains (6502, Z80, etc.) return errors — intentional until hardware integration
