@@ -455,10 +455,7 @@ mod tests {
     async fn test_discovery_handles_timeout() {
         let discovery = ServiceDiscovery::new();
         let result = discovery
-            .discover_by_capability(
-                "nonexistent_z9q8x7w6v5u4",
-                "nonexistent_z9q8x7w6v5u4",
-            )
+            .discover_by_capability("nonexistent_z9q8x7w6v5u4", "nonexistent_z9q8x7w6v5u4")
             .await;
         assert!(result.is_ok());
         assert!(result.unwrap().is_none());
