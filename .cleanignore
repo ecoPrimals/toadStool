@@ -7,7 +7,6 @@ toadstool-*.toml
 toadstool-*.json
 Cargo.toml
 Cargo.lock
-biome.yaml
 
 # Documentation (root only)
 *.md

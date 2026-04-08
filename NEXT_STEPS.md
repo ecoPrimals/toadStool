@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 8, 2026 -- S191 Wire Standard L3 Cost Estimates + Deep Debt Audit
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,514 tests (0 failures) | **~67 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 #[allow]** | **0 production TODOs** | **~3m30s test runtime**
-**Latest**: S191 — Wire Standard L3 cost_estimates (energy/time/compute model, 55+ methods) + operation_dependencies DAG + user-visible primal-name cleanup (0 remaining) + stale biome.yaml removed
+**Updated**: April 8, 2026 -- S194 Deep Debt + Capability Evolution
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,526+ tests (0 failures) | **~67 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 #[allow]** | **0 production TODOs** | **~3m30s test runtime**
+**Latest**: S194 — Deep debt capability evolution (nestgate_integration→storage_integration, NestGateMount→StorageMount, doc comments). S193 — Headless GPU crash isolation + BTSP field renames. S192 — GAP-MATRIX-12 insecure guard
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,514 tests** (S191, 0 failures). Target 90%.
+**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,526+ tests** (S194, 0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -125,7 +125,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 21,514 tests (S191); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 21,526+ tests (S194); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -156,7 +156,16 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-191)
+## Completed This Session (S90-194)
+
+### Session S194: Deep Debt — Capability-Based Field/Type/Doc Evolution (Apr 8, 2026)
+- **S194 (Apr 8, 2026)**: Renamed `nestgate_integration` → `storage_integration` (with `#[serde(alias)]`), `NestGateMount` → `StorageMount` in production return types. Updated doc comments across tarpc_client, CLI banner, auth types, storage types, orchestration discovery, visualization client. Renamed primal-named test functions to capability-based. Updated test data. ~400 intentional legacy-compat refs remain. 21,526+ tests, 0 failures.
+
+### Session S193: Headless GPU Architecture + Deep Debt Cleanup (Apr 8, 2026)
+- **S193 (Apr 8, 2026)**: Headless GPU crash isolation — `discover_gpus_via_wgpu()` runs in `std::thread::spawn` with `catch_unwind` and 5s timeout. `select_backends()` restricts to Vulkan when `TOADSTOOL_HEADLESS=1`. `gpu_guards::is_headless()` for test gating. BTSP field renames: `beardog_required` → `security_required`, `nestgate_integration` → `storage_integration` in `BiomeSecurity`. Cross-primal doc cleanup continues.
+
+### Session S192: GAP-MATRIX-12 — BTSP Insecure Guard (Apr 8, 2026)
+- **S192 (Apr 8, 2026)**: `validate_insecure_guard()` at server startup refuses when both `FAMILY_ID` + `BIOMEOS_INSECURE=1` are set. `is_btsp_required()` returns true when `FAMILY_ID` is set. BTSP client awareness logging at startup. +11 tests (9 unit, 2 integration).
 
 ### Session S191: Wire Standard L3 + Deep Debt Audit (Apr 8, 2026)
 - **S191 (Apr 8, 2026)**: Wire Standard L3 `cost_estimates` (55+ methods, energy/time/compute model) and `operation_dependencies` (20+ chains) added to `capabilities.list`. Last 4 user-visible primal names removed. Stale root `biome.yaml` deleted. Fresh audit: 0 production TODOs, 0 user-facing primal names, all unsafe in containment, all mocks gated. 21,514 tests, 0 failures.

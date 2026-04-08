@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 8, 2026 — S191
+**Last Updated**: April 8, 2026 — S194
 
 ---
 
@@ -30,17 +30,19 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S188 — April 5, 2026)
+## Current State (S194 — April 8, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **21,512 tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
-- **~67 JSON-RPC methods**. IPC compliant (`health.liveness/readiness/check`, `capabilities.list`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
+- **21,526+ tests**, 0 failures, 0 clippy warnings. Full workspace concurrent test suite.
+- **~67 JSON-RPC methods**. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness`, `capabilities.list`, `identity.get`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
 - **glowPlug/ember subsystem** — toadStool-native hardware lifecycle (absorbed from coralReef). `toadstool-glowplug`, `toadstool-ember`, `toadstool-hw-safe` crates.
-- **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**. 23 crates forbid, 20 deny `unsafe_code`.
+- **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**. 41 crates forbid, 6 deny `unsafe_code`.
 - **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to security service. HTTP delegated to coordination service.
-- **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle. S176-188: deprecated primal-named APIs removed, env_config evolved to capability names, all doc comments/error strings evolved to capability-first. **425** intentional legacy-compat refs remain (serde aliases, env var fallbacks).
-- **Fully concurrent tests** — All tests run with `--test-threads=8`. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
+- **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle. S176-194: all struct fields, doc comments, error strings evolved to capability-first. **~400** intentional legacy-compat refs remain (serde aliases, env var fallbacks, parse_type).
+- **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + thread timeout.
+- **BTSP Tier 2** — `validate_insecure_guard()` at server startup (GAP-MATRIX-12). Family-scoped socket handshake awareness.
+- **Fully concurrent tests** — All tests run with unlimited parallelism. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **AGPL-3.0-or-later** — All Cargo.toml + all .rs files aligned. `deny.toml` enforced.
 
 ---

@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 8, 2026 — S191
+**Date**: April 8, 2026 — S194
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,20 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S192-194 Resolved Debt (BTSP Guard, Headless GPU, Capability Field Evolution)
+
+### D-CAPABILITY-FIELDS — RESOLVED S194
+Remaining struct fields using primal names evolved to capability-based: `nestgate_integration` → `storage_integration` (with `#[serde(alias)]`), `NestGateMount` → `StorageMount` in production return types. Doc comments cleaned across tarpc_client, CLI banner, auth types, storage types, orchestration discovery, visualization client. Primal-named test functions renamed. ~400 intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type match arms).
+
+### D-HEADLESS-GPU — RESOLVED S193
+GPU discovery crash isolation: `discover_gpus_via_wgpu()` runs in `std::thread::spawn` with `catch_unwind` and 5-second timeout. `select_backends()` restricts to `Backends::VULKAN` when `TOADSTOOL_HEADLESS=1`. `gpu_guards::is_headless()` for test gating. Prevents SIGSEGV from NVIDIA proprietary driver interaction in headless environments.
+
+### D-BTSP-FIELD-NAMES — RESOLVED S193
+BTSP field renames: `beardog_required` → `security_required`, `nestgate_integration` → `storage_integration` in `BiomeSecurity` with `#[serde(alias)]` backward compatibility.
+
+### D-GAP-MATRIX-12 — RESOLVED S192
+`validate_insecure_guard()` at server startup refuses when both `FAMILY_ID` + `BIOMEOS_INSECURE=1` are set. `is_btsp_required()` returns true when `FAMILY_ID` is set. BTSP client awareness logging at startup. +11 tests.
 
 ## S189-191 Resolved Debt (Wire Standard L3, Documentation, Debris)
 
