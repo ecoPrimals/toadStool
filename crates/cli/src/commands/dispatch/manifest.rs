@@ -68,7 +68,10 @@ pub async fn execute_validate(
             );
             println!("  Primals: {}", manifest.primals.len());
             println!("  Services: {}", manifest.services.len());
-            println!("  BearDog Required: {}", manifest.security.beardog_required);
+            println!(
+                "  Security Required: {}",
+                manifest.security.beardog_required
+            );
         }
     }
 

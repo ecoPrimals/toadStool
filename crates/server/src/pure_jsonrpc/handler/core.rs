@@ -146,10 +146,14 @@ fn all_callable_methods(semantic_registry: &SemanticMethodRegistry) -> Vec<&str>
     methods
 }
 
-/// Wire Standard L2 `capabilities.list` response.
+/// Wire Standard L3 `capabilities.list` response.
 ///
-/// Returns `{primal, version, methods, provided_capabilities}` per
+/// Returns `{primal, version, methods, provided_capabilities, cost_estimates,
+/// operation_dependencies, consumed_capabilities}` per
 /// `CAPABILITY_WIRE_STANDARD.md` v1.0.
+///
+/// Cost model: energy/time/compute, not monetary. Dollar value is an
+/// end-user concern built on top of these primitives.
 #[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
@@ -223,9 +227,259 @@ pub(crate) async fn capabilities_list(
             "coordination.register",
             "coordination.discover"
         ],
+        "cost_estimates": cost_estimates(),
+        "operation_dependencies": operation_dependencies(),
         "protocol": "jsonrpc-2.0",
         "transport": ["uds", "tcp"]
     }))
+}
+
+/// Wire Standard L3: per-method compute cost estimates.
+///
+/// Models cost as energy, time, and compute intensity — not monetary.
+/// Dollar value is an end-user concern built on these primitives.
+///
+/// Fields per method:
+/// - `cpu`: negligible | low | medium | high | variable
+/// - `gpu_eligible`: whether this method can trigger GPU work
+/// - `latency_ms`: expected p50 latency in milliseconds
+/// - `energy`: negligible | low | medium | high | variable
+/// - `memory_pressure`: none | low | medium | high | variable
+fn cost_estimates() -> serde_json::Value {
+    let mut map = serde_json::Map::with_capacity(60);
+
+    let cost = |cpu: &str, gpu: bool, latency: u32, energy: &str, mem: &str| -> serde_json::Value {
+        serde_json::json!({
+            "cpu": cpu, "gpu_eligible": gpu, "latency_ms": latency,
+            "energy": energy, "memory_pressure": mem
+        })
+    };
+
+    // Meta / discovery — pure in-memory, no I/O
+    for m in [
+        "health.liveness",
+        "health.check",
+        "health.readiness",
+        "capabilities.list",
+        "identity.get",
+        "toadstool.version",
+        "provenance.query",
+    ] {
+        map.insert(m.into(), cost("negligible", false, 0, "negligible", "none"));
+    }
+
+    // Workload lifecycle
+    map.insert(
+        "toadstool.submit_workload".into(),
+        cost("variable", true, 50, "variable", "variable"),
+    );
+    map.insert(
+        "toadstool.query_status".into(),
+        cost("negligible", false, 1, "negligible", "none"),
+    );
+    map.insert(
+        "toadstool.cancel_workload".into(),
+        cost("low", false, 5, "low", "none"),
+    );
+    map.insert(
+        "toadstool.list_workloads".into(),
+        cost("low", false, 2, "low", "low"),
+    );
+    map.insert(
+        "toadstool.query_capabilities".into(),
+        cost("low", false, 5, "low", "low"),
+    );
+
+    // Resource estimation
+    map.insert(
+        "resources.estimate".into(),
+        cost("medium", false, 10, "low", "low"),
+    );
+    map.insert(
+        "resources.validate_availability".into(),
+        cost("medium", false, 10, "low", "low"),
+    );
+    map.insert(
+        "resources.suggest_optimizations".into(),
+        cost("medium", false, 20, "low", "low"),
+    );
+
+    // GPU job queue
+    map.insert(
+        "compute.submit".into(),
+        cost("variable", true, 50, "variable", "variable"),
+    );
+    map.insert(
+        "compute.status".into(),
+        cost("negligible", false, 1, "negligible", "none"),
+    );
+    map.insert(
+        "compute.result".into(),
+        cost("low", false, 5, "low", "medium"),
+    );
+    map.insert(
+        "compute.cancel".into(),
+        cost("low", false, 2, "low", "none"),
+    );
+    map.insert("compute.list".into(), cost("low", false, 2, "low", "low"));
+
+    // Shader dispatch — high GPU, high energy
+    map.insert(
+        "shader.dispatch".into(),
+        cost("high", true, 100, "high", "high"),
+    );
+    map.insert(
+        "compute.dispatch.submit".into(),
+        cost("high", true, 100, "high", "high"),
+    );
+    map.insert(
+        "compute.dispatch.status".into(),
+        cost("negligible", false, 1, "negligible", "none"),
+    );
+    map.insert(
+        "compute.dispatch.result".into(),
+        cost("low", false, 10, "low", "medium"),
+    );
+    map.insert(
+        "compute.dispatch.forward".into(),
+        cost("medium", false, 50, "medium", "low"),
+    );
+
+    // Hardware learning — BAR0/MMIO reads
+    map.insert(
+        "compute.hardware.observe".into(),
+        cost("medium", false, 20, "medium", "low"),
+    );
+    map.insert(
+        "compute.hardware.distill".into(),
+        cost("high", false, 100, "medium", "medium"),
+    );
+    map.insert(
+        "compute.hardware.apply".into(),
+        cost("medium", false, 50, "medium", "low"),
+    );
+    map.insert(
+        "compute.hardware.share_recipe".into(),
+        cost("low", false, 10, "low", "low"),
+    );
+    map.insert(
+        "compute.hardware.auto_init".into(),
+        cost("high", false, 200, "high", "medium"),
+    );
+    map.insert(
+        "compute.hardware.auto_init_all".into(),
+        cost("high", false, 500, "high", "medium"),
+    );
+    map.insert(
+        "compute.hardware.status".into(),
+        cost("low", false, 5, "low", "none"),
+    );
+    map.insert(
+        "compute.hardware.vfio_devices".into(),
+        cost("low", false, 10, "low", "none"),
+    );
+
+    // Performance surface
+    map.insert(
+        "compute.performance_surface.report".into(),
+        cost("medium", false, 20, "low", "medium"),
+    );
+    map.insert(
+        "compute.performance_surface.query".into(),
+        cost("medium", false, 10, "low", "low"),
+    );
+    map.insert(
+        "compute.performance_surface.list".into(),
+        cost("low", false, 2, "low", "low"),
+    );
+    map.insert(
+        "compute.route.multi_unit".into(),
+        cost("medium", false, 15, "low", "low"),
+    );
+
+    // GPU telemetry — sysfs/BAR0 reads
+    map.insert(
+        "gpu.query_info".into(),
+        cost("low", false, 10, "low", "low"),
+    );
+    map.insert(
+        "gpu.query_memory".into(),
+        cost("low", false, 5, "low", "none"),
+    );
+    map.insert(
+        "gpu.query_telemetry".into(),
+        cost("low", false, 10, "low", "none"),
+    );
+
+    // Gate routing — network I/O
+    map.insert("gate.update".into(), cost("low", false, 5, "low", "none"));
+    map.insert("gate.remove".into(), cost("low", false, 2, "low", "none"));
+    map.insert("gate.list".into(), cost("low", false, 1, "low", "low"));
+    map.insert(
+        "gate.route".into(),
+        cost("medium", false, 30, "medium", "low"),
+    );
+
+    // Transport — DMA/device I/O
+    map.insert(
+        "transport.discover".into(),
+        cost("medium", false, 50, "medium", "low"),
+    );
+    map.insert(
+        "transport.list".into(),
+        cost("low", false, 2, "low", "none"),
+    );
+    map.insert(
+        "transport.route".into(),
+        cost("medium", false, 20, "medium", "low"),
+    );
+    map.insert(
+        "transport.open".into(),
+        cost("medium", false, 50, "medium", "medium"),
+    );
+    map.insert(
+        "transport.stream".into(),
+        cost("high", false, 100, "high", "high"),
+    );
+    map.insert(
+        "transport.status".into(),
+        cost("low", false, 2, "low", "none"),
+    );
+
+    // Ember — device lifecycle
+    map.insert("ember.list".into(), cost("low", false, 5, "low", "none"));
+    map.insert("ember.status".into(), cost("low", false, 5, "low", "none"));
+
+    serde_json::Value::Object(map)
+}
+
+/// Wire Standard L3: method prerequisite DAG.
+///
+/// Maps methods to their prerequisites — what must be called (or
+/// have completed) before a given method is meaningful.
+fn operation_dependencies() -> serde_json::Value {
+    serde_json::json!({
+        "compute.status":           ["compute.submit"],
+        "compute.result":           ["compute.submit"],
+        "compute.cancel":           ["compute.submit"],
+        "toadstool.query_status":   ["toadstool.submit_workload"],
+        "toadstool.cancel_workload":["toadstool.submit_workload"],
+        "compute.dispatch.status":  ["compute.dispatch.submit"],
+        "compute.dispatch.result":  ["compute.dispatch.submit"],
+        "compute.hardware.distill": ["compute.hardware.observe"],
+        "compute.hardware.apply":   ["compute.hardware.distill"],
+        "compute.hardware.share_recipe": ["compute.hardware.distill"],
+        "compute.hardware.auto_init":    ["compute.hardware.observe"],
+        "compute.hardware.auto_init_all":["compute.hardware.observe"],
+        "compute.performance_surface.query": ["compute.performance_surface.report"],
+        "compute.route.multi_unit":          ["compute.performance_surface.report"],
+        "gate.route":               ["gate.update"],
+        "gate.remove":              ["gate.update"],
+        "transport.route":          ["transport.discover"],
+        "transport.open":           ["transport.discover"],
+        "transport.stream":         ["transport.open"],
+        "transport.status":         ["transport.open"]
+    })
 }
 
 /// Returns discovered capabilities including semantic methods.
@@ -440,6 +694,34 @@ mod tests {
 
         assert!(cap["consumed_capabilities"].as_array().is_some());
         assert_eq!(cap["protocol"], "jsonrpc-2.0");
+
+        // Wire Standard L3: cost_estimates
+        let costs = cap["cost_estimates"].as_object().expect("cost_estimates");
+        assert!(
+            costs.len() >= 40,
+            "should have cost estimates for most methods"
+        );
+        let health_cost = &costs["health.liveness"];
+        assert_eq!(health_cost["cpu"], "negligible");
+        assert_eq!(health_cost["energy"], "negligible");
+        assert_eq!(health_cost["gpu_eligible"], false);
+        let dispatch_cost = &costs["shader.dispatch"];
+        assert_eq!(dispatch_cost["cpu"], "high");
+        assert_eq!(dispatch_cost["energy"], "high");
+        assert_eq!(dispatch_cost["gpu_eligible"], true);
+        let submit_cost = &costs["compute.submit"];
+        assert_eq!(submit_cost["cpu"], "variable");
+        assert_eq!(submit_cost["energy"], "variable");
+
+        // Wire Standard L3: operation_dependencies
+        let deps = cap["operation_dependencies"]
+            .as_object()
+            .expect("operation_dependencies");
+        assert!(deps.len() >= 15, "should have dependency entries");
+        let status_deps = deps["compute.status"].as_array().expect("array");
+        assert!(status_deps.iter().any(|d| d == "compute.submit"));
+        let stream_deps = deps["transport.stream"].as_array().expect("array");
+        assert!(stream_deps.iter().any(|d| d == "transport.open"));
     }
 
     #[tokio::test]

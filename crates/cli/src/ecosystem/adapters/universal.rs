@@ -7,7 +7,7 @@
 //! ## Protocol Priority (UNIVERSAL_IPC_STANDARD_V3)
 //!
 //! JSON-RPC 2.0 over Unix sockets is preferred (pure Rust, no tonic/protobuf).
-//! HTTP is deprecated for primal-to-primal; use Songbird for external HTTP.
+//! HTTP is deprecated for primal-to-primal; use coordination service for external HTTP.
 
 use crate::{CliContextExt, Result};
 use serde::{Deserialize, Serialize};
@@ -143,7 +143,7 @@ impl UniversalServiceAdapter {
                 Err(crate::CliError::Other(
                     "gRPC protocol not supported. Migrate to JSON-RPC over Unix socket: \
                      use UnixJsonRpcClient from toadstool_common::unix_jsonrpc_client. \
-                     (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through Songbird."
+                     (UNIVERSAL_IPC_STANDARD_V3). For external HTTP, route through coordination service."
                         .to_string(),
                 ))?
             }
@@ -253,7 +253,7 @@ impl UniversalServiceAdapter {
     /// Invoke via HTTP/REST — always returns an error.
     ///
     /// HTTP is not supported for primal-to-primal. External HTTP routes through
-    /// Songbird (Concentrated Gap architecture).
+    /// the coordination service (Concentrated Gap architecture).
     #[deprecated(
         since = "0.92.0",
         note = "HTTP adapter removed. Use Unix socket RPC for primal-to-primal."
@@ -267,14 +267,14 @@ impl UniversalServiceAdapter {
         _provider: &ServiceProvider,
         _request: Request,
     ) -> Result<Response> {
-        // External HTTP should go through Songbird (Concentrated Gap architecture)
+        // External HTTP should go through the coordination service (Concentrated Gap architecture)
         tracing::error!(
             "HTTP invoke deprecated - use Unix socket RPC for primal-to-primal communication"
         );
 
         Err(crate::CliError::Other(
             "HTTP adapter removed. Use Unix socket RPC instead. \
-             For external HTTP, route through Songbird (Concentrated Gap architecture)."
+             For external HTTP, route through the coordination service (Concentrated Gap architecture)."
                 .to_string(),
         ))?
     }
