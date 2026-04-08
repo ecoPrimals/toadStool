@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// Networking configuration for the biome
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeNetworking {
-    /// Enable Songbird integration
+    /// Enable coordination service integration
     pub coordination: bool,
     /// Network mode
     pub mode: String,

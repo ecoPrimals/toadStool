@@ -248,7 +248,7 @@ mod tests {
             token: "jwt-xxx".to_string(),
             token_type: "Bearer".to_string(),
             expires_in: 7200,
-            issuer: "beardog".to_string(),
+            issuer: "security-service".to_string(),
             audience: vec!["api".to_string(), "storage".to_string()],
         };
         assert_eq!(token.token_type, "Bearer");

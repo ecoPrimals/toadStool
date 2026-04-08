@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Agent backend traits and implementations for BiomeOS/Squirrel integration
+//! Agent backend traits and implementations for BiomeOS intelligence service integration
 //!
 //! This module defines the trait interface for agent deployment backends and
 //! provides production and test implementations using proper dependency injection.
@@ -25,14 +25,14 @@ pub use types::{
 /// Trait defining the interface for agent deployment backends
 ///
 /// This allows dependency injection of different agent deployment implementations
-/// (production Squirrel backend, in-memory test backend, etc.) without relying
+/// (production intelligence-service backend, in-memory test backend, etc.) without relying
 /// on feature flags or conditional compilation.
 // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 pub trait AgentBackend: Send + Sync {
     /// Initialize/test connection to agent backend
     ///
-    /// For network backends (Squirrel), this tests connectivity.
+    /// For network backends (intelligence service), this tests connectivity.
     /// For local backends (in-memory), this is typically a no-op.
     async fn initialize(&self) -> ToadStoolResult<()> {
         Ok(()) // Default implementation is no-op

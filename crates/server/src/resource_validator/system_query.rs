@@ -109,38 +109,82 @@ async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
     }
 }
 
-/// Discover GPUs using wgpu (vendor-agnostic)
+/// Select wgpu backends based on environment.
+///
+/// When `TOADSTOOL_HEADLESS=1` is set, restricts to Vulkan-only to avoid
+/// GL/GLES backends that probe for a display server. Otherwise uses all backends.
+#[cfg(feature = "gpu-discovery")]
+fn select_backends() -> wgpu::Backends {
+    match std::env::var("TOADSTOOL_HEADLESS") {
+        Ok(v) if v == "1" || v.eq_ignore_ascii_case("true") => wgpu::Backends::VULKAN,
+        _ => wgpu::Backends::all(),
+    }
+}
+
+/// Discover GPUs using wgpu in an isolated thread with panic safety.
+///
+/// Runs wgpu instance creation and adapter enumeration on a dedicated thread
+/// wrapped in `catch_unwind`. This protects the caller from panics in the
+/// Vulkan/Mesa ICD loader. A 5-second timeout prevents hangs on broken drivers.
 #[cfg(feature = "gpu-discovery")]
 #[expect(
     clippy::unused_async,
     reason = "async signature required by trait/interface"
-)] // Sync wgpu enumerate; async for API consistency with fallback
+)]
 async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::all(),
-        ..Default::default()
+    let handle = std::thread::spawn(|| {
+        std::panic::catch_unwind(|| {
+            let backends = select_backends();
+            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+                backends,
+                ..Default::default()
+            });
+
+            let adapters = instance.enumerate_adapters(backends);
+            let mut gpu_infos = Vec::new();
+
+            for adapter in adapters {
+                let info = adapter.get_info();
+
+                if matches!(
+                    info.device_type,
+                    wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
+                ) {
+                    gpu_infos.push(GpuInfo {
+                        name: info.name.clone(),
+                        _memory_mb: 0,
+                        _vendor: vendor_from_backend(info.backend),
+                    });
+                }
+            }
+
+            gpu_infos
+        })
     });
 
-    let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-    let mut gpu_infos = Vec::new();
+    const GPU_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+    let start = std::time::Instant::now();
 
-    for adapter in adapters {
-        let info = adapter.get_info();
-
-        // Only include discrete/integrated GPUs, skip software renderers
-        if matches!(
-            info.device_type,
-            wgpu::DeviceType::DiscreteGpu | wgpu::DeviceType::IntegratedGpu
-        ) {
-            gpu_infos.push(GpuInfo {
-                name: info.name.clone(),
-                _memory_mb: 0,
-                _vendor: vendor_from_backend(info.backend),
-            });
+    loop {
+        if handle.is_finished() {
+            return match handle.join() {
+                Ok(Ok(infos)) => Ok(infos),
+                Ok(Err(_panic)) => {
+                    debug!("wgpu GPU discovery panicked — falling back to 0 GPUs");
+                    Ok(Vec::new())
+                }
+                Err(_) => {
+                    debug!("wgpu GPU discovery thread failed — falling back to 0 GPUs");
+                    Ok(Vec::new())
+                }
+            };
         }
+        if start.elapsed() > GPU_PROBE_TIMEOUT {
+            debug!("wgpu GPU discovery timed out after 5s — falling back to 0 GPUs");
+            return Ok(Vec::new());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
-
-    Ok(gpu_infos)
 }
 
 /// Fallback when GPU discovery not available

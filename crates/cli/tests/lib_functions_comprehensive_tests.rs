@@ -149,7 +149,7 @@ resources:
 security:
   isolation_level: "high"
   trust_level: "medium"
-  beardog_required: false
+  security_required: false
   crypto_policies: []
   allowed_networks: []
   forbidden_syscalls: []
@@ -205,7 +205,7 @@ resources: {}
 security:
   isolation_level: "high"
   trust_level: "high"
-  beardog_required: true
+  security_required: true
   crypto_policies: []
   allowed_networks: []
   forbidden_syscalls: []
@@ -228,7 +228,7 @@ storage:
 
     assert_eq!(manifest.primals.len(), 1);
     assert!(manifest.primals.contains_key("beardog"));
-    assert!(manifest.security.beardog_required);
+    assert!(manifest.security.security_required);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -318,7 +318,7 @@ resources: {}
 security:
   isolation_level: "medium"
   trust_level: "medium"
-  beardog_required: false
+  security_required: false
   crypto_policies: []
   allowed_networks: []
   forbidden_syscalls: []
@@ -370,7 +370,7 @@ fn create_test_manifest() -> BiomeManifest {
         security: BiomeSecurity {
             isolation_level: "high".to_string(),
             trust_level: "medium".to_string(),
-            beardog_required: false,
+            security_required: false,
             crypto_policies: vec![],
             allowed_networks: vec![],
             forbidden_syscalls: vec![],
@@ -416,9 +416,9 @@ fn test_validate_manifest_missing_cpu_limit() {
 }
 
 #[test]
-fn test_validate_manifest_beardog_required_but_not_configured() {
+fn test_validate_manifest_security_required_but_not_configured() {
     let mut manifest = create_test_manifest();
-    manifest.security.beardog_required = true;
+    manifest.security.security_required = true;
     // No beardog in primals
 
     let warnings = validate_manifest(&manifest).unwrap();
@@ -433,7 +433,7 @@ fn test_validate_manifest_beardog_required_but_not_configured() {
 #[test]
 fn test_validate_manifest_security_configured() {
     let mut manifest = create_test_manifest();
-    manifest.security.beardog_required = true;
+    manifest.security.security_required = true;
     manifest.primals.insert(
         "beardog".to_string(),
         PrimalConfig {
@@ -620,7 +620,7 @@ fn test_validate_manifest_dependency_on_primal() {
 fn test_validate_manifest_multiple_issues() {
     let mut manifest = create_test_manifest();
     manifest.resources.cpu_limit = None; // Issue 1: No CPU limit
-    manifest.security.beardog_required = true; // Issue 2: BearDog required but not configured
+    manifest.security.security_required = true; // Issue 2: BearDog required but not configured
 
     // Issue 3: Undefined dependency
     manifest.services.insert(
@@ -707,7 +707,7 @@ resources:
 security:
   isolation_level: "high"
   trust_level: "high"
-  beardog_required: false
+  security_required: false
   crypto_policies: []
   allowed_networks: []
   forbidden_syscalls: []

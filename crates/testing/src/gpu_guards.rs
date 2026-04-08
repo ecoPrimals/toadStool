@@ -6,6 +6,15 @@
 //! create a wgpu adapter/device pair. These guards detect the driver at test
 //! time and skip tests that would crash.
 //!
+//! ## Environment Variables
+//!
+//! | Variable | Effect |
+//! |----------|--------|
+//! | `TOADSTOOL_WGPU_SAFE=1` | Force-enable wgpu tests (known-safe config) |
+//! | `TOADSTOOL_WGPU_SAFE=0` | Force-skip wgpu tests |
+//! | `TOADSTOOL_HEADLESS=1` | Headless mode — restricts to Vulkan-only backends |
+//! | `TOADSTOOL_GPU_ADAPTER` | Adapter name for driver heuristics |
+//!
 //! ## Usage
 //!
 //! ```rust,ignore
@@ -14,7 +23,7 @@
 //! #[test]
 //! fn my_wgpu_test() {
 //!     if !gpu_guards::is_wgpu_safe() {
-//!         eprintln!("SKIP: wgpu unsafe on this driver");
+//!         eprintln!("SKIP: {}", gpu_guards::wgpu_skip_reason());
 //!         return;
 //!     }
 //!     // ... test body
@@ -51,6 +60,18 @@ pub fn is_wgpu_safe() -> bool {
     }
 
     !detect_nvidia_proprietary()
+}
+
+/// Returns `true` when headless mode is active (`TOADSTOOL_HEADLESS=1`).
+///
+/// In headless mode, GPU discovery restricts to Vulkan-only backends to avoid
+/// GL/GLES backends that probe for X11/Wayland display servers. This enables
+/// pure compute through DRM render nodes without an HDMI stub or display server.
+#[must_use]
+pub fn is_headless() -> bool {
+    std::env::var("TOADSTOOL_HEADLESS")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
 }
 
 /// Returns a human-readable skip message for wgpu tests.
@@ -151,5 +172,21 @@ mod tests {
         let reason = wgpu_skip_reason();
         assert!(reason.contains("NVIDIA"));
         assert!(reason.contains("SIGSEGV"));
+    }
+
+    #[test]
+    fn is_headless_respects_env() {
+        temp_env::with_var("TOADSTOOL_HEADLESS", Some("1"), || {
+            assert!(is_headless());
+        });
+        temp_env::with_var("TOADSTOOL_HEADLESS", Some("true"), || {
+            assert!(is_headless());
+        });
+        temp_env::with_var("TOADSTOOL_HEADLESS", Some("0"), || {
+            assert!(!is_headless());
+        });
+        temp_env::with_var("TOADSTOOL_HEADLESS", None::<&str>, || {
+            assert!(!is_headless());
+        });
     }
 }

@@ -163,8 +163,9 @@ pub struct BiomeSecurity {
     pub isolation_level: String,
     /// Trust level for workload execution
     pub trust_level: String,
-    /// Whether BearDog crypto is required
-    pub beardog_required: bool,
+    /// Whether a security/crypto service is required
+    #[serde(alias = "beardog_required")]
+    pub security_required: bool,
     /// Crypto policy names
     pub crypto_policies: Vec<String>,
     /// Allowed network CIDRs

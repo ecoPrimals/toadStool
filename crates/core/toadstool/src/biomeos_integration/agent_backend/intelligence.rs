@@ -6,7 +6,7 @@ use super::AgentBackend;
 use super::types::{AgentInfo, AgentResourceUsage, AgentStatus, ModelInfo};
 use crate::{ToadStoolError, ToadStoolResult};
 
-/// Production implementation using Squirrel Unix Socket API (Pure Rust!)
+/// Production implementation using intelligence service Unix Socket API (Pure Rust!)
 ///
 /// **TRUE PRIMAL**: Uses unix sockets for local IPC (no HTTP, no TLS, no ring!)
 pub struct IntelligenceBackend {

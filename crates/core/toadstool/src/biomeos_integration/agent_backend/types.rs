@@ -7,7 +7,7 @@ use std::time::SystemTime;
 pub struct AgentInfo {
     /// Agent name
     pub name: String,
-    /// Agent ID in Squirrel
+    /// Agent ID in intelligence service
     pub agent_id: String,
     /// Model being used
     pub model: String,
@@ -32,7 +32,7 @@ pub struct AgentInfo {
 pub struct ModelInfo {
     /// Model name
     pub name: String,
-    /// Model ID in Squirrel
+    /// Model ID in intelligence service
     pub model_id: String,
     /// Model type
     pub model_type: String,

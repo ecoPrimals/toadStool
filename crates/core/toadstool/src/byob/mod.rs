@@ -2,7 +2,7 @@
 //! # BYOB (Bring Your Own Biome) Compute Execution
 //!
 //! Handles compute execution requests for team biome deployments.
-//! Receives requests from Songbird and executes team services using Toadstool's
+//! Receives requests from the coordination service and executes team services using Toadstool's
 //! universal compute capabilities.
 //!
 //! ## Module Organization

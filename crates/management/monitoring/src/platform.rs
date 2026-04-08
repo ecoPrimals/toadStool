@@ -114,7 +114,10 @@ async fn measure_linux_resources(
 }
 
 #[cfg(target_os = "linux")]
-#[allow(clippy::similar_names)]
+#[allow(
+    clippy::similar_names,
+    reason = "tx_bytes/rx_bytes are domain-standard names"
+)]
 #[expect(
     clippy::unused_async,
     reason = "kept for API consistency with async resource monitoring"

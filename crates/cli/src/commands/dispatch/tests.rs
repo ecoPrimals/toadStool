@@ -35,7 +35,7 @@ resources:
 security:
   isolation_level: "high"
   trust_level: "medium"
-  beardog_required: false
+  security_required: false
   crypto_policies: []
   allowed_networks: []
   forbidden_syscalls: []

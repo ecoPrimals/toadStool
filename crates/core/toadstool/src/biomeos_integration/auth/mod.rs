@@ -158,7 +158,7 @@ impl AuthenticationManager {
     ///
     /// Returns an error if crypto service discovery fails or the backend cannot be initialized.
     pub async fn with_crypto_service(config: AuthManagerConfig) -> ToadStoolResult<Self> {
-        let backend = super::auth_backend::BearDogBackend::new_async().await?;
+        let backend = super::auth_backend::SecurityBackend::new_async().await?;
         Ok(Self {
             config,
             current_token: None,
@@ -167,12 +167,12 @@ impl AuthenticationManager {
         })
     }
 
-    /// Creates auth manager with BearDog backend (deprecated).
+    /// Creates auth manager with legacy security backend (deprecated).
     #[must_use]
     #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover()")]
-    #[expect(deprecated)]
+    #[allow(deprecated)]
     pub fn with_security(config: AuthManagerConfig) -> Self {
-        let backend = super::auth_backend::BearDogBackend::new(config.security_endpoint.clone());
+        let backend = super::auth_backend::SecurityBackend::new(config.security_endpoint.clone());
         Self {
             config,
             current_token: None,

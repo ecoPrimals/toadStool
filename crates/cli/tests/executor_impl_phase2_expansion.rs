@@ -112,15 +112,11 @@ fn test_biome_start_primal_dependency_order() {
 }
 
 #[test]
-fn test_biome_start_beardog_required_flag() {
-    // Test: BearDog requirement check
-    // Covers: Security requirement
+fn test_biome_start_security_required_flag() {
+    let security_required = true;
 
-    let beardog_required = true;
-
-    if beardog_required {
-        // Must start BearDog first
-        assert!(beardog_required);
+    if security_required {
+        assert!(security_required);
     }
 }
 

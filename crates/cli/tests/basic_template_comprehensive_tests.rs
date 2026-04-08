@@ -161,7 +161,7 @@ fn test_basic_template_security() {
 
     assert_eq!(security.isolation_level, "high");
     assert_eq!(security.trust_level, "verified");
-    assert!(security.beardog_required);
+    assert!(security.security_required);
 }
 
 #[test]
@@ -301,7 +301,7 @@ fn test_development_template_relaxed_security() {
 
     assert_eq!(security.isolation_level, "medium");
     assert_eq!(security.trust_level, "development");
-    assert!(security.beardog_required);
+    assert!(security.security_required);
 }
 
 #[test]
@@ -342,8 +342,8 @@ fn test_both_templates_require_beardog() {
     // Both templates use generic "pki-provider" capability (typically implemented by beardog)
     assert!(basic_primals.contains_key("pki-provider"));
     assert!(dev_primals.contains_key("pki-provider"));
-    assert!(basic_security.beardog_required);
-    assert!(dev_security.beardog_required);
+    assert!(basic_security.security_required);
+    assert!(dev_security.security_required);
 }
 
 #[test]

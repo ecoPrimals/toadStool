@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! AI agent deployment and management via Squirrel.
+//! AI agent deployment and management via intelligence service.
 //!
 //! Configuration and the [`AgentDeploymentManager`] live in submodules; public
 //! types from `agent_backend` are re-exported here for a stable API surface.

@@ -85,7 +85,7 @@ mod tests {
     fn test_create_sovereign_template() {
         let (name, _, _, _, _res, security, _, _) = create_sovereign_template();
         assert!(name.contains("sovereign"));
-        assert!(security.beardog_required);
+        assert!(security.security_required);
         assert_eq!(security.isolation_level, "maximum");
     }
 

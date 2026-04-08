@@ -43,7 +43,7 @@ cpu_limit = 1.0
 [security]
 isolation_level = "standard"
 trust_level = "medium"
-beardog_required = false
+security_required = false
 crypto_policies = []
 allowed_networks = []
 forbidden_syscalls = []

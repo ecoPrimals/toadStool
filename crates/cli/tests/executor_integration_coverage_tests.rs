@@ -24,7 +24,7 @@ cpu_limit = 1.0
 memory_limit = "512M"
 
 [security]
-beardog_required = false
+security_required = false
 isolation_level = "standard"
 
 [primals]
@@ -72,7 +72,7 @@ cpu_limit = 2.0
 memory_limit = "1G"
 
 [security]
-beardog_required = false
+security_required = false
 isolation_level = "standard"
 
 [primals]

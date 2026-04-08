@@ -320,14 +320,14 @@ fn test_biome_security_high_isolation() {
     let security = BiomeSecurity {
         isolation_level: "high".to_string(),
         trust_level: "zero-trust".to_string(),
-        beardog_required: true,
+        security_required: true,
         crypto_policies: vec!["tls-1.3".to_string(), "aes-256".to_string()],
         allowed_networks: vec!["10.0.0.0/8".to_string()],
         forbidden_syscalls: vec!["ptrace".to_string(), "mount".to_string()],
     };
 
     assert_eq!(security.isolation_level, "high");
-    assert!(security.beardog_required);
+    assert!(security.security_required);
     assert_eq!(security.crypto_policies.len(), 2);
     assert_eq!(security.forbidden_syscalls.len(), 2);
 }
@@ -337,14 +337,14 @@ fn test_biome_security_minimal() {
     let security = BiomeSecurity {
         isolation_level: "low".to_string(),
         trust_level: "trusted".to_string(),
-        beardog_required: false,
+        security_required: false,
         crypto_policies: vec![],
         allowed_networks: vec![],
         forbidden_syscalls: vec![],
     };
 
     assert_eq!(security.isolation_level, "low");
-    assert!(!security.beardog_required);
+    assert!(!security.security_required);
     assert!(security.crypto_policies.is_empty());
 }
 
@@ -353,7 +353,7 @@ fn test_biome_security_serialization() {
     let security = BiomeSecurity {
         isolation_level: "medium".to_string(),
         trust_level: "standard".to_string(),
-        beardog_required: true,
+        security_required: true,
         crypto_policies: vec![],
         allowed_networks: vec![],
         forbidden_syscalls: vec![],

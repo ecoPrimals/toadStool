@@ -181,7 +181,7 @@ pub enum DetectionError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     /// External HTTP detection disabled.
-    #[error("External HTTP detection disabled - use Songbird for external HTTP")]
+    #[error("External HTTP detection disabled - use coordination service for external HTTP")]
     ExternalHttpDisabled,
     /// Container ID not found in environment.
     #[error("Container ID not found")]

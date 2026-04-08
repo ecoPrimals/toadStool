@@ -21,6 +21,7 @@ use toadstool_server::{
     resource_optimizer::ResourceOptimizer,
     resource_validator::ResourceValidator,
 };
+use toadstool_testing::gpu_guards;
 
 /// Helper to create a graph node using the builder pattern
 fn create_node(
@@ -97,17 +98,21 @@ async fn test_sequential_workflow() {
     );
     assert_eq!(estimate.cpu_cores, 8, "Peak CPU should be node_d's 8 cores");
 
-    let validator = ResourceValidator::new();
-    let availability = validator
-        .validate_availability(&graph)
-        .await
-        .expect("Validation should succeed");
+    if gpu_guards::is_wgpu_safe() {
+        let validator = ResourceValidator::new();
+        let availability = validator
+            .validate_availability(&graph)
+            .await
+            .expect("Validation should succeed");
 
-    println!(
-        "Sequential workflow - Available: {}, Gaps: {}",
-        availability.available,
-        availability.gaps.len()
-    );
+        println!(
+            "Sequential workflow - Available: {}, Gaps: {}",
+            availability.available,
+            availability.gaps.len()
+        );
+    } else {
+        eprintln!("{}", gpu_guards::wgpu_skip_reason());
+    }
 
     let optimizer = ResourceOptimizer::new();
     let suggestions = optimizer
@@ -315,21 +320,25 @@ async fn test_gpu_workflow() {
         "Should require 16GB GPU memory"
     );
 
-    let validator = ResourceValidator::new();
-    let availability = validator
-        .validate_availability(&graph)
-        .await
-        .expect("Validation should succeed");
+    if gpu_guards::is_wgpu_safe() {
+        let validator = ResourceValidator::new();
+        let availability = validator
+            .validate_availability(&graph)
+            .await
+            .expect("Validation should succeed");
 
-    if !availability.available {
-        println!(
-            "GPU gaps found: {}",
-            availability
-                .gaps
-                .iter()
-                .filter(|gap| gap.resource_type.contains("gpu"))
-                .count()
-        );
+        if !availability.available {
+            println!(
+                "GPU gaps found: {}",
+                availability
+                    .gaps
+                    .iter()
+                    .filter(|gap| gap.resource_type.contains("gpu"))
+                    .count()
+            );
+        }
+    } else {
+        eprintln!("{}", gpu_guards::wgpu_skip_reason());
     }
 
     let optimizer = ResourceOptimizer::new();

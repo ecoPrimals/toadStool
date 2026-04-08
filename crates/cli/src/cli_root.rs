@@ -107,7 +107,7 @@ pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
     let mut warnings = Vec::new();
 
     // Check for required primals
-    if !manifest.primals.contains_key(well_known::BEARDOG) && manifest.security.beardog_required {
+    if !manifest.primals.contains_key(well_known::BEARDOG) && manifest.security.security_required {
         warnings.push("A security service is required but not configured".to_string());
     }
 

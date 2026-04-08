@@ -50,7 +50,7 @@ fn test_basic_template_structure() {
     assert!(resources.memory_limit.is_some());
 
     // Security should require beardog
-    assert!(security.beardog_required);
+    assert!(security.security_required);
 
     // Networking should have a network mode
     assert!(!networking.mode.is_empty());
@@ -266,7 +266,7 @@ fn test_all_templates_have_capability_providers() {
 
         // Security should enforce capability requirements
         assert!(
-            security.beardog_required, // This field now means "PKI capability required"
+            security.security_required, // This field now means "PKI capability required"
             "Template '{name}' should require PKI capability"
         );
     }
@@ -433,7 +433,7 @@ fn test_template_security_levels_are_appropriate() {
     for (name, _, _, _, _, security, _, _) in templates {
         // All templates should require beardog for zero-trust
         assert!(
-            security.beardog_required,
+            security.security_required,
             "Template '{name}' should require beardog"
         );
 

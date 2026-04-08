@@ -63,7 +63,7 @@ fn test_genomics_template_structure() {
 
     // Should have enhanced security for sensitive genomic data
     assert!(
-        security.beardog_required
+        security.security_required
             || security.isolation_level == "high"
             || security.isolation_level == "maximum",
         "Genomics should require PKI/security"
@@ -110,7 +110,7 @@ fn test_genomics_template_security() {
 
     // Should require PKI/security capability
     assert!(
-        security.beardog_required,
+        security.security_required,
         "Genomics must require PKI/security for data protection"
     );
 }
@@ -212,7 +212,7 @@ fn test_sovereign_template_structure() {
         security.isolation_level, "maximum",
         "Sovereign template must have maximum isolation"
     );
-    assert!(security.beardog_required);
+    assert!(security.security_required);
 
     // Networking should be restricted
     assert!(!networking.mode.is_empty());
@@ -227,7 +227,7 @@ fn test_sovereign_template_maximum_security() {
 
     // Maximum security settings
     assert_eq!(security.isolation_level, "maximum");
-    assert!(security.beardog_required);
+    assert!(security.security_required);
 
     // Should have crypto policies
     assert!(
@@ -429,7 +429,7 @@ fn test_all_specialized_templates_have_pki_capability() {
         );
 
         assert!(
-            security.beardog_required,
+            security.security_required,
             "{template_type} template '{name}' should require PKI/security"
         );
     }

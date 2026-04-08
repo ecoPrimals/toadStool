@@ -185,7 +185,7 @@ fn test_genomics_template_security() {
     let (_, _, _, _, _, security, _, _) = create_genomics_template();
 
     // Genomics handles sensitive data
-    assert!(security.beardog_required);
+    assert!(security.security_required);
     assert!(!security.isolation_level.is_empty());
 }
 
@@ -306,7 +306,7 @@ fn test_sovereign_template_maximum_security() {
     let (_, _, _, _, _, security, _, _) = create_sovereign_template();
 
     assert_eq!(security.isolation_level, "maximum");
-    assert!(security.beardog_required);
+    assert!(security.security_required);
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn test_all_specialized_templates_have_beardog() {
         });
         assert!(has_pki, "Template must have PKI capability provider");
         assert!(
-            security.beardog_required,
+            security.security_required,
             "Template must require PKI/security"
         );
     }

@@ -39,7 +39,7 @@ memory_limit = "512M"
 [security]
 isolation_level = "basic"
 trust_level = "default"
-beardog_required = false
+security_required = false
 
 [networking]
 mode = "bridge"

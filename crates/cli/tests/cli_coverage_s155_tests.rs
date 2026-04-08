@@ -334,7 +334,7 @@ fn test_validate_manifest_missing_beardog_warning() {
         security: BiomeSecurity {
             isolation_level: "high".to_string(),
             trust_level: "verified".to_string(),
-            beardog_required: true,
+            security_required: true,
             crypto_policies: vec![],
             allowed_networks: vec![],
             forbidden_syscalls: vec![],
@@ -606,7 +606,7 @@ mod template_tests {
         assert!(primals.contains_key("pki-provider"));
         assert!(services.contains_key("compute"));
         assert_eq!(resources.cpu_limit, Some(4.0));
-        assert!(security.beardog_required);
+        assert!(security.security_required);
     }
 
     #[test]

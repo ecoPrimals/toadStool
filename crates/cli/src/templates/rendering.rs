@@ -282,7 +282,7 @@ mod tests {
             security: BiomeSecurity {
                 isolation_level: "standard".to_string(),
                 trust_level: "medium".to_string(),
-                beardog_required: false,
+                security_required: false,
                 crypto_policies: vec![],
                 allowed_networks: vec![],
                 forbidden_syscalls: vec![],

@@ -462,7 +462,7 @@ mod tests {
 
         let service = DiscoveredService {
             instance_id: Uuid::new_v4(),
-            primal_type: "nestgate".to_string(),
+            primal_type: "storage".to_string(),
             version: "1.0.0".to_string(),
             capabilities: vec![Capability {
                 name: "storage".to_string(),

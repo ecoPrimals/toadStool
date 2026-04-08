@@ -9,7 +9,7 @@
 //! The types are split into the following modules by functional concern:
 //!
 //! - [`manifest`] - Core biome manifest and metadata structures
-//! - [`config`] - Primal service configuration (ToadStool, Songbird, BearDog, etc.)
+//! - [`config`] - Primal service configuration (compute, coordination, security, etc.)
 //! - [`auth`] - Authentication, authorization, and security policy types
 //! - [`storage`] - Storage configuration, volumes, and provisioning
 //! - [`agent`] - AI agent deployment and model configuration
@@ -48,7 +48,7 @@
 pub mod agent;
 /// Authentication, authorization, and security policy types.
 pub mod auth;
-/// Primal service configuration (ToadStool, Songbird, BearDog, etc.).
+/// Primal service configuration (compute, coordination, security, etc.).
 pub mod config;
 /// Core biome manifest and metadata structures.
 pub mod manifest;

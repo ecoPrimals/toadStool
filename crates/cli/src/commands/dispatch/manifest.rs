@@ -70,7 +70,7 @@ pub async fn execute_validate(
             println!("  Services: {}", manifest.services.len());
             println!(
                 "  Security Required: {}",
-                manifest.security.beardog_required
+                manifest.security.security_required
             );
         }
     }

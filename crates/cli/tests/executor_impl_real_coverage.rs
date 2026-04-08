@@ -262,17 +262,17 @@ fn test_biome_already_running_check_logic() {
 
 #[test]
 fn test_primal_dependency_ordering() {
-    // Test that beardog_required flag is properly checked
-    let beardog_required = true;
+    // Test that security_required flag is properly checked
+    let security_required = true;
     let beardog_present = true;
 
-    assert!(beardog_required);
+    assert!(security_required);
     assert!(beardog_present);
 
-    // Logic: if beardog_required, must start beardog first
-    if beardog_required && beardog_present {
+    // Logic: if security_required, must start beardog first
+    if security_required && beardog_present {
         // This is the correct path - both conditions are true
-        assert!(beardog_required && beardog_present);
+        assert!(security_required && beardog_present);
     }
 }
 

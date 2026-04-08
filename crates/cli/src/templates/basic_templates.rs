@@ -134,7 +134,7 @@ pub fn create_basic_template() -> TemplateComponents {
     let security = BiomeSecurity {
         isolation_level: "high".to_string(),
         trust_level: "verified".to_string(),
-        beardog_required: true,
+        security_required: true,
         crypto_policies: vec!["default".to_string()],
         allowed_networks: vec!["private".to_string()],
         forbidden_syscalls: vec!["mount".to_string(), "reboot".to_string()],

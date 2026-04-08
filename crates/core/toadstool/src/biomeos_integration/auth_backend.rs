@@ -127,6 +127,7 @@ pub struct SecurityBackend {
 }
 
 /// Legacy alias for [`SecurityBackend`].
+#[deprecated(since = "0.3.0", note = "Use SecurityBackend directly")]
 pub type BearDogBackend = SecurityBackend;
 
 impl SecurityBackend {

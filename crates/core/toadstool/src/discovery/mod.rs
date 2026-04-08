@@ -48,7 +48,7 @@ use uuid::Uuid;
 pub struct DiscoveredService {
     /// Unique instance ID
     pub instance_id: Uuid,
-    /// Primal type (e.g., "songbird", "nestgate")
+    /// Primal type (e.g., "coordination", "storage")
     pub primal_type: String,
     /// Version
     pub version: String,

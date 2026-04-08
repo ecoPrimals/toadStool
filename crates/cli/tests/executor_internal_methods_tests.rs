@@ -68,7 +68,7 @@ fn create_minimal_manifest(name: &str) -> BiomeManifest {
         security: BiomeSecurity {
             isolation_level: "basic".to_string(),
             trust_level: "default".to_string(),
-            beardog_required: false,
+            security_required: false,
             crypto_policies: vec![],
             allowed_networks: vec![],
             forbidden_syscalls: vec![],

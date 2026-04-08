@@ -57,7 +57,7 @@ impl BiomeExecutor {
         let mut processes = Vec::new();
         let mut log_files = HashMap::new();
 
-        if manifest.security.beardog_required {
+        if manifest.security.security_required {
             info!(
                 "🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")"
             );
