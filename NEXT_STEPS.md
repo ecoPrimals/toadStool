@@ -1,8 +1,8 @@
-# ToadStool/BarraCuda -- Next Steps
+# ToadStool -- Next Steps
 
-**Updated**: April 5, 2026 -- S188 Deep Debt — Cross-Primal Doc Cleanup
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,512 tests (0 failures) | **~67 JSON-RPC methods** | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** (23 forbid + 20 deny) | **~66 unsafe blocks** (all in hw containment) | **91 #[allow] / 776 #[expect]** | **425 legacy-compat cross-primal refs** (92% reduction from 5,104) | **~3m30s test runtime**
-**Latest**: S188 — Cross-primal doc cleanup: capability-based language in 61 files, cross-primal 550→425 (remaining are all backward-compat serde aliases, env var fallbacks, interned constants)
+**Updated**: April 8, 2026 -- S191 Wire Standard L3 Cost Estimates + Deep Debt Audit
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,514 tests (0 failures) | **~67 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 #[allow]** | **0 production TODOs** | **~3m30s test runtime**
+**Latest**: S191 — Wire Standard L3 cost_estimates (energy/time/compute model, 55+ methods) + operation_dependencies DAG + user-visible primal-name cleanup (0 remaining) + stale biome.yaml removed
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,512 tests** (S188, 0 failures). Target 90%.
+**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,514 tests** (S191, 0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -125,7 +125,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 21,853 tests (S184); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 21,514 tests (S191); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -156,7 +156,16 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-155b)
+## Completed This Session (S90-191)
+
+### Session S191: Wire Standard L3 + Deep Debt Audit (Apr 8, 2026)
+- **S191 (Apr 8, 2026)**: Wire Standard L3 `cost_estimates` (55+ methods, energy/time/compute model) and `operation_dependencies` (20+ chains) added to `capabilities.list`. Last 4 user-visible primal names removed. Stale root `biome.yaml` deleted. Fresh audit: 0 production TODOs, 0 user-facing primal names, all unsafe in containment, all mocks gated. 21,514 tests, 0 failures.
+
+### Session S190: Wire Standard L2 Compliance (Apr 8, 2026)
+- **S190 (Apr 8, 2026)**: `health.liveness` → `"status": "alive"`, `capabilities.list` → wire envelope, `identity.get` → `domain` + `license`. Separated `compute.capabilities` from `capabilities.list`.
+
+### Session S189: GAP-MATRIX-05 + Debris (Apr 7, 2026)
+- **S189 (Apr 7, 2026)**: Server mode docs rewritten (67 methods, 11 namespaces). Deleted stale `biome-production.yaml`. Un-ignored sys-crate test. Fixed broken doc links.
 
 ### Session S188: Cross-Primal Doc Cleanup (Apr 5, 2026)
 - **S188 (Apr 5, 2026)**: Cross-primal doc cleanup — capability-based language in 61 files across all crates. Replaced primal names (Songbird, BearDog, NestGate, Squirrel, CoralReef, BarraCuda) with capability-based language in doc comments, error messages, test assertions. Cross-primal refs 550→425 (remaining are all backward-compat: serde aliases, env var fallbacks, interned string constants, capability mapping tables). Full audit confirmed: unsafe at FFI boundaries only (15 blocks), thread::sleep at hardware boundaries only (8 sites), production mocks fully gated, all production files <700L. All quality gates green: fmt, clippy, doc 0 warnings, 21,512 tests pass.

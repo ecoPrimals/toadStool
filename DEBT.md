@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 5, 2026 — S188
+**Date**: April 8, 2026 — S191
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -25,6 +25,23 @@ Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
 Evolve when cycle-accurate CPU cores are implemented.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+## S189-191 Resolved Debt (Wire Standard L3, Documentation, Debris)
+
+### D-WIRE-L3-COST — RESOLVED S191
+Wire Standard L3 `cost_estimates` and `operation_dependencies` added to `capabilities.list`. 55+ methods with per-method cost model (cpu, gpu_eligible, latency_ms, energy, memory_pressure). Energy/time/compute model — not monetary. 20+ operation dependency chains.
+
+### D-USER-VISIBLE-PRIMAL-NAMES — RESOLVED S191
+Last 4 user-visible hardcoded primal names removed from CLI strings (cli_root banner, dispatch manifest, universal adapter errors). Zero user-facing primal names remain.
+
+### D-WIRE-L2 — RESOLVED S190
+Wire Standard L2 compliance: `health.liveness` returns `"status": "alive"`, `capabilities.list` returns wire envelope, `identity.get` returns `domain` and `license`.
+
+### D-GAP-MATRIX-05 — RESOLVED S189
+Server mode documented: `SERVER_METHODS.md` rewritten (67 methods, 11 namespaces), `DAEMON_MODE_USER_GUIDE.md` updated with correct CLI commands and socket verification.
+
+### D-STALE-DEBRIS — RESOLVED S189/S191
+Removed `examples/biome-production.yaml` (392L), root `biome.yaml` (96L) — both unreferenced, stale primal names, non-UDS health checks. Fixed broken doc links, stale changelog claims, un-ignored sys-crate test.
 
 ## S185-186 Resolved Debt (Unsafe Evolution — Abstractions, OwnedFd, Centralized Dispatch)
 
@@ -774,7 +791,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (185K lines, llvm-cov). **21,853 tests passing** (S184). Target 90%. Remaining gaps: hardware-dependent paths (V4L2/VFIO), specialty runtimes. Push ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (185K lines, llvm-cov). **21,514 tests passing** (S191). Target 90%. Remaining gaps: hardware-dependent paths (V4L2/VFIO), specialty runtimes. Push ongoing. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |

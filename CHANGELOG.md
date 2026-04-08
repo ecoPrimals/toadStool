@@ -5,7 +5,45 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 5, 2026 (Sessions 43-184)
+## [Unreleased] - April 8, 2026 (Sessions 43-191)
+
+### Session S191 (Apr 8, 2026) — Wire Standard L3 Cost Estimates + Deep Debt Audit
+
+#### Wire Standard L3: Compute Cost Model
+- `capabilities.list` now returns `cost_estimates` (55+ methods) and `operation_dependencies` (20+ prerequisite chains)
+- Cost model: energy/time/compute intensity — not monetary. Fields: `cpu`, `gpu_eligible`, `latency_ms`, `energy`, `memory_pressure`
+- Completes Wire Standard Level 3 (partial) compliance for ToadStool
+
+#### User-Visible Primal Name Cleanup (4 strings, 3 files)
+- `cli_root.rs`: "BearDog cryptographic security" → "Cryptographic security"
+- `dispatch/manifest.rs`: "BearDog Required" → "Security Required"
+- `universal.rs`: 4× "Songbird" → "coordination service" in error messages and doc comments
+
+#### Debris Removal
+- Deleted stale root `biome.yaml` (unreferenced, hardcoded primal names, HTTP health checks)
+
+#### Fresh Audit Results (All Clean)
+- **0** production TODOs/FIXMEs/HACKs
+- **0** user-visible hardcoded primal names
+- All 20 files >800L are test files; production all <400L
+- All unsafe code in containment crates (hw-safe, nvpmu, display, gpu)
+- All mocks properly `#[cfg(test)]` gated
+- External C deps: only `esp-idf-sys` (optional IoT) + `core-foundation-sys` (optional macOS)
+- **21,514 tests**, 0 failures
+
+### Session S190 (Apr 8, 2026) — Wire Standard L2 Compliance
+
+- `health.liveness` returns `"status": "alive"` (Wire Standard L1)
+- `capabilities.list` returns wire envelope: primal, version, methods, provided/consumed capabilities
+- `identity.get` returns `domain: "compute"`, `license: "AGPL-3.0-or-later"` (Wire Standard L2)
+- Separated `compute.capabilities` (hardware metadata) from `capabilities.list` (wire envelope)
+
+### Session S189 (Apr 7, 2026) — GAP-MATRIX-05 Resolution + Debris
+
+- Server mode docs: comprehensive rewrite of `SERVER_METHODS.md` (67 methods, 11 namespaces) and `DAEMON_MODE_USER_GUIDE.md`
+- Deleted stale `examples/biome-production.yaml` (392L, unreferenced)
+- Un-ignored `test_only_acceptable_sys_crates`, refined `-sys` filter, added `drm-sys` to acceptable list
+- Fixed broken `TESTING.md` link, stale `CHANGELOG.md` TODO claim
 
 ### Session S184 (Apr 5, 2026) — Deep Debt Phase 3: Final Async I/O, 5 Refactors, Last String Evolution
 
