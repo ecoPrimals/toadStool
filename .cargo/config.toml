@@ -1,6 +1,7 @@
-# biomeOS Cross-Compilation Configuration
+# biomeOS Cross-Compilation + Build Performance Configuration
 # TRUE ecoBin v2.0 → genomeBin Evolution
 # Created: January 30, 2026
+# Updated: April 8, 2026 — S194 build performance optimization
 
 [build]
 # NOTE: -D warnings moved to [workspace.lints.rust] in Cargo.toml
@@ -8,6 +9,24 @@
 # genomeBin PIE compliance: verified — x86_64 and aarch64 Linux default to PIE.
 # Explicit flag not needed; would conflict with target-specific rustflags.
 # Verified: `file target/release/toadstool` → "ELF 64-bit LSB pie executable"
+
+# ============================================================================
+# DEV LINKER SELECTION (x86_64 Linux native target)
+# ============================================================================
+# mold is 3-5x faster than GNU ld for linking (30-60s savings on clean build).
+# To enable: install mold + clang, then uncomment below.
+#
+#   sudo apt install mold clang          # Debian/Ubuntu
+#   sudo dnf install mold clang          # Fedora
+#   brew install mold llvm               # macOS (use lld instead)
+#
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+#
+# For lld (LLVM linker, ~2x faster than GNU ld, works without clang):
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 # ARM64 Linux (musl for static linking)
 [target.aarch64-unknown-linux-musl]

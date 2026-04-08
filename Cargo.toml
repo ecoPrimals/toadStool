@@ -178,21 +178,35 @@ tempfile = "3.8"
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.4"
 
+# ============================================================================
+# BUILD PROFILES — tuned for 45-crate, 602-package workspace
+# ============================================================================
+# Baseline (clean build, Ryzen 7 5700X / 16 threads / 62 GB):
+#   dev:          ~2m30s wall (26m CPU)  — mold linker cuts ~30s
+#   release:      ~8-12m wall            — LTO + codegen-units=1
+#   release-fast: ~6-10m wall            — LTO + opt-level=3
+#   lib tests:    ~45s execution
+# ============================================================================
+
 [profile.dev]
-# Local crate code: unoptimized for fast incremental builds
 opt-level = 0
-debug = true
+# line-tables-only: keeps backtraces but cuts debug info size ~60%
+# change to `true` (or 2) if you need full variable inspection in a debugger
+debug = "line-tables-only"
 overflow-checks = true
+# unpacked splits debug info per object file — faster incremental linking
+split-debuginfo = "unpacked"
+# 256 codegen units: max parallelism for local crates in dev
+codegen-units = 256
+incremental = true
 
 [profile.dev.package."*"]
-# Dependencies (naga, wgpu, spirv-tools, etc.) at opt-level 2:
-# shader compilation in naga is 5-10x faster optimized.
+# Dependencies (naga, wgpu, tarpc, serde, etc.) at opt-level 2:
+# naga shader compilation is 5-10x faster optimized; serde derive is faster.
 opt-level = 2
 
 [profile.release]
 # genomeBin: size-optimized for single-binary deployment (ecoBin v3.0)
-# NOTE: .cargo/config.toml also sets release profile (strip, panic=abort).
-# Cargo.toml is the single source of truth; config.toml adds target-specific flags.
 opt-level = "z"
 debug = false
 lto = true
@@ -201,7 +215,7 @@ strip = true
 panic = "abort"
 
 [profile.release-fast]
-# Speed-optimized release for benchmarks and latency-sensitive builds
+# Speed-optimized release for benchmarks and latency-sensitive production
 inherits = "release"
 opt-level = 3
 strip = false
