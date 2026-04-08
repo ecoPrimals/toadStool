@@ -41,6 +41,17 @@ pub fn get_family_id() -> String {
     paths::resolve_family_id(&SocketPathEnv::from_env())
 }
 
+/// BTSP insecure guard: refuse if `FAMILY_ID` + `BIOMEOS_INSECURE=1`.
+///
+/// Call at server startup before binding sockets.
+///
+/// # Errors
+///
+/// Returns a description of the security conflict.
+pub fn check_insecure_guard() -> Result<(), String> {
+    paths::validate_insecure_guard(&SocketPathEnv::from_env())
+}
+
 /// Get routing (AI / intelligence) socket path.
 #[must_use]
 pub fn get_routing_socket_path() -> PathBuf {

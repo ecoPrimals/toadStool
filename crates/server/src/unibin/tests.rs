@@ -401,3 +401,43 @@ async fn create_executor_standalone_mode_true_lowercase() {
     })
     .await;
 }
+
+// ── BTSP insecure guard at server startup ────────────────────────────────
+
+#[tokio::test]
+async fn run_server_main_refuses_family_plus_insecure() {
+    temp_env::async_with_vars(
+        [
+            ("BIOMEOS_FAMILY_ID", Some("production-1")),
+            ("BIOMEOS_INSECURE", Some("1")),
+        ],
+        async {
+            let result = run_server_main(None, None).await;
+            assert!(result.is_err(), "must refuse when FAMILY_ID + INSECURE");
+            let err = result.unwrap_err().to_string();
+            assert!(
+                err.contains("BTSP security conflict"),
+                "error should mention BTSP: {err}"
+            );
+        },
+    )
+    .await;
+}
+
+#[test]
+fn insecure_guard_allows_dev_mode_via_api() {
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_FAMILY_ID", None::<&str>),
+            ("BIOMEOS_INSECURE", Some("1")),
+            ("TOADSTOOL_FAMILY_ID", None::<&str>),
+            ("TOADSTOOL_FAMILY", None::<&str>),
+        ],
+        || {
+            assert!(
+                toadstool_common::primal_sockets::check_insecure_guard().is_ok(),
+                "guard should not fire without FAMILY_ID"
+            );
+        },
+    );
+}

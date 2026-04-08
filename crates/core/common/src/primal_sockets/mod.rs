@@ -24,9 +24,9 @@ mod paths;
 mod tests;
 
 pub use api::{
-    ensure_biomeos_dir, get_biomeos_dir, get_family_id, get_nucleus_socket_path,
-    get_routing_socket_path, get_runtime_dir, get_socket_path_for_capability,
-    get_toadstool_socket_path,
+    check_insecure_guard, ensure_biomeos_dir, get_biomeos_dir, get_family_id,
+    get_nucleus_socket_path, get_routing_socket_path, get_runtime_dir,
+    get_socket_path_for_capability, get_toadstool_socket_path,
 };
 pub use discovery::{
     SocketDiscoveryError, discover_coordination_socket, discover_crypto_socket,
@@ -34,7 +34,8 @@ pub use discovery::{
 };
 pub use env::SocketPathEnv;
 pub use paths::{
-    resolve_biomeos_dir, resolve_capability_socket_fallback, resolve_family_id,
+    is_btsp_required, resolve_biomeos_dir, resolve_capability_socket_fallback, resolve_family_id,
     resolve_nucleus_socket, resolve_routing_socket, resolve_runtime_dir,
     resolve_socket_path_for_service, resolve_toadstool_socket, service_label_to_capability_id,
+    validate_insecure_guard,
 };

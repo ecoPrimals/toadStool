@@ -44,6 +44,11 @@ impl DaemonServer {
     /// 5. Start API server
     /// 6. Begin heartbeat
     pub async fn start(config: DaemonConfig) -> Result<Self> {
+        // BTSP Protocol Standard §Compliance: refuse if FAMILY_ID + BIOMEOS_INSECURE=1
+        if let Err(msg) = toadstool_common::primal_sockets::check_insecure_guard() {
+            return Err(crate::CliError::Other(msg));
+        }
+
         info!("🍄 Initializing ToadStool daemon server...");
 
         // Announce capabilities via mDNS (if enabled)
@@ -52,8 +57,7 @@ impl DaemonServer {
             info!("  - Capability: Compute (wasm, container, python, native, gpu)");
             info!("  - Capability: Storage (local, distributed, encrypted)");
             info!("  - Capability: Orchestration (workflow coordination)");
-            // Discovery engine will register these capabilities with songBird
-            // Uses primal_integration module for runtime discovery
+            // Discovery engine registers capabilities via primal_integration module
         } else {
             info!("📍 Discovery disabled - running in standalone mode");
         }
@@ -63,8 +67,7 @@ impl DaemonServer {
         info!("✅ Workload manager initialized");
 
         // Phase 4: Resource monitor via system metrics
-        // Phase 5: Health reporting via songBird integration
-        // Both integrated with primal_integration discovery system
+        // Phase 5: Health reporting via coordination service integration
 
         info!("✅ ToadStool daemon server initialized");
 
@@ -135,7 +138,7 @@ impl DaemonServer {
         // 1. Stop accepting new workloads
         // 2. Stop JSON-RPC servers (Unix + TCP)
         // 3. Gracefully terminate running workloads
-        // 4. Unregister from songBird (if registered)
+        // 4. Unregister from coordination service (if registered)
 
         info!("✅ Shutdown complete");
         Ok(())

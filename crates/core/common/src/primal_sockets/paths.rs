@@ -49,6 +49,45 @@ pub fn resolve_family_id(env: &SocketPathEnv) -> String {
         .unwrap_or_else(|| "default".to_string())
 }
 
+/// BTSP Protocol Standard §Compliance: validate insecure guard.
+///
+/// When `FAMILY_ID` is set (non-"default") **and** `BIOMEOS_INSECURE=1`,
+/// the primal **must refuse to start**. This combination is contradictory:
+/// `FAMILY_ID` activates production-mode BTSP handshake, while
+/// `BIOMEOS_INSECURE` disables all security. Allowing both would create
+/// a false sense of security.
+///
+/// Returns `Ok(())` if the environment is consistent, or `Err(message)`
+/// describing the conflict.
+pub fn validate_insecure_guard(env: &SocketPathEnv) -> Result<(), String> {
+    let family_id = resolve_family_id(env);
+    let is_production_family = family_id != "default";
+
+    let is_insecure = env
+        .biomeos_insecure
+        .as_deref()
+        .is_some_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
+
+    if is_production_family && is_insecure {
+        return Err(format!(
+            "BTSP security conflict: FAMILY_ID={family_id:?} (production) \
+             with BIOMEOS_INSECURE=1 (development). These are mutually exclusive. \
+             Either unset BIOMEOS_INSECURE for production, or unset FAMILY_ID for development. \
+             See BTSP_PROTOCOL_STANDARD.md §Compliance Checklist."
+        ));
+    }
+
+    Ok(())
+}
+
+/// Returns `true` when `FAMILY_ID` is set to a non-default value,
+/// indicating BTSP handshake is expected on incoming connections.
+#[must_use]
+pub fn is_btsp_required(env: &SocketPathEnv) -> bool {
+    let family_id = resolve_family_id(env);
+    family_id != "default"
+}
+
 /// Pure logic: resolve socket path for a capability id (`crypto`, `coordination`, …).
 ///
 /// Precedence: `BIOMEOS_{CAP}_SOCKET` → legacy env fallbacks (`BEARDOG_SOCKET`, `SONGBIRD_SOCKET`, …) →

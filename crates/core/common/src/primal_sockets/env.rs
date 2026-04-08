@@ -35,6 +35,8 @@ pub struct SocketPathEnv {
     pub biomeos_socket_path: Option<String>,
     /// `NUCLEUS_SOCKET` override for Nucleus socket
     pub nucleus_socket: Option<String>,
+    /// `BIOMEOS_INSECURE` — when "1", disables BTSP (dev only; conflicts with `FAMILY_ID`)
+    pub biomeos_insecure: Option<String>,
 }
 
 impl SocketPathEnv {
@@ -67,6 +69,7 @@ impl SocketPathEnv {
             toadstool_socket: std::env::var("TOADSTOOL_SOCKET").ok(),
             biomeos_socket_path: std::env::var("BIOMEOS_SOCKET_PATH").ok(),
             nucleus_socket: std::env::var("NUCLEUS_SOCKET").ok(),
+            biomeos_insecure: std::env::var("BIOMEOS_INSECURE").ok(),
         }
     }
 

@@ -90,11 +90,26 @@ pub async fn run_server_main(
     );
     info!("CPU, GPU, Neuromorphic - Different orders of the same architecture");
 
+    // BTSP Protocol Standard §Compliance: refuse if FAMILY_ID + BIOMEOS_INSECURE=1
+    if let Err(msg) = toadstool_common::primal_sockets::check_insecure_guard() {
+        error!("🔒 {msg}");
+        return Err(ServerError::Configuration(msg));
+    }
+
     let family_id = resolve_family_id(family_id_override);
     let node_id = resolve_node_id();
 
     info!("Family ID: {}", family_id);
     info!("Node ID: {}", node_id);
+
+    // BTSP awareness: log security posture
+    let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+    if toadstool_common::primal_sockets::is_btsp_required(&env) {
+        info!("🔒 BTSP mode: FAMILY_ID set — production security posture");
+        info!("🔒 Family-scoped socket handshake expected on incoming connections");
+    } else {
+        info!("🔓 Development mode: no FAMILY_ID — BTSP handshake not required");
+    }
 
     info!("🔍 Socket Path Discovery:");
     info!(

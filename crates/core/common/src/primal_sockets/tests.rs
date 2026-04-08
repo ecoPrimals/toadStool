@@ -406,3 +406,85 @@ fn test_resolve_service_socket_empty_service_name() {
     let result = resolve_socket_path_for_service("", &env, None);
     assert!(result.to_string_lossy().ends_with(".sock"));
 }
+
+// ── BTSP insecure guard tests ─────────────────────────────────────────────
+
+#[test]
+fn insecure_guard_allows_dev_mode_no_family() {
+    let env = SocketPathEnv {
+        biomeos_insecure: Some("1".to_string()),
+        ..test_env()
+    };
+    assert!(validate_insecure_guard(&env).is_ok());
+}
+
+#[test]
+fn insecure_guard_allows_production_family_without_insecure() {
+    let env = SocketPathEnv {
+        biomeos_family_id: Some("nat0".to_string()),
+        ..test_env()
+    };
+    assert!(validate_insecure_guard(&env).is_ok());
+}
+
+#[test]
+fn insecure_guard_refuses_family_plus_insecure() {
+    let env = SocketPathEnv {
+        biomeos_family_id: Some("nat0".to_string()),
+        biomeos_insecure: Some("1".to_string()),
+        ..test_env()
+    };
+    let err = validate_insecure_guard(&env).unwrap_err();
+    assert!(err.contains("BTSP security conflict"), "got: {err}");
+    assert!(err.contains("nat0"), "should mention the family ID");
+}
+
+#[test]
+fn insecure_guard_refuses_family_plus_insecure_true() {
+    let env = SocketPathEnv {
+        biomeos_family_id: Some("production-1".to_string()),
+        biomeos_insecure: Some("true".to_string()),
+        ..test_env()
+    };
+    assert!(validate_insecure_guard(&env).is_err());
+}
+
+#[test]
+fn insecure_guard_allows_default_family_with_insecure() {
+    let env = SocketPathEnv {
+        biomeos_family_id: Some("default".to_string()),
+        biomeos_insecure: Some("1".to_string()),
+        ..test_env()
+    };
+    assert!(validate_insecure_guard(&env).is_ok());
+}
+
+#[test]
+fn insecure_guard_allows_no_family_no_insecure() {
+    let env = test_env();
+    assert!(validate_insecure_guard(&env).is_ok());
+}
+
+#[test]
+fn is_btsp_required_with_family() {
+    let env = SocketPathEnv {
+        biomeos_family_id: Some("nat0".to_string()),
+        ..test_env()
+    };
+    assert!(is_btsp_required(&env));
+}
+
+#[test]
+fn is_btsp_required_without_family() {
+    let env = test_env();
+    assert!(!is_btsp_required(&env));
+}
+
+#[test]
+fn is_btsp_required_default_family() {
+    let env = SocketPathEnv {
+        biomeos_family_id: Some("default".to_string()),
+        ..test_env()
+    };
+    assert!(!is_btsp_required(&env));
+}
