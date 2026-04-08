@@ -173,10 +173,10 @@ impl JsonRpcHandler {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
             }
             "compute.version" => return core::version_info(&self.version).await,
-            "compute.capabilities"
-            | "capabilities.list"
-            | "capability.list"
-            | "primal.capabilities" => return self.workload.query_capabilities().await,
+            "capabilities.list" | "capability.list" | "primal.capabilities" => {
+                return core::capabilities_list(&self.semantic_registry, &self.version).await;
+            }
+            "compute.capabilities" => return self.workload.query_capabilities().await,
             "compute.discover_capabilities" => {
                 return core::discover_capabilities(&self.semantic_registry, &self.version).await;
             }

@@ -15,6 +15,8 @@ use crate::rpc_types::HealthStatus;
 type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
 
 /// Returns health status with uptime and error count.
+///
+/// Wire Standard L1: includes `"status": "alive"` for biomeOS liveness probes.
 #[expect(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
@@ -39,8 +41,13 @@ pub(crate) async fn health(
         error_count: error_count_val,
         resource_utilization: 0.0,
     };
-    serde_json::to_value(status)
-        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))
+    let mut value = serde_json::to_value(status)
+        .map_err(|e| JsonRpcError::internal_error(format!("Serialization error: {e}")))?;
+    // Wire Standard L1: biomeOS probes expect "status": "alive"
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("status".into(), serde_json::Value::String("alive".into()));
+    }
+    Ok(value)
 }
 
 /// Returns version and protocol information.
@@ -60,23 +67,22 @@ pub(crate) async fn version_info(version: &str) -> JsonRpcResult {
     Ok(serde_json::json!(info))
 }
 
-/// Returns discovered capabilities including semantic methods.
-#[expect(
-    clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
-)]
-pub(crate) async fn discover_capabilities(
-    semantic_registry: &SemanticMethodRegistry,
-    version: &str,
-) -> JsonRpcResult {
+/// Builds the sorted flat methods list from direct routes + semantic registry.
+fn all_callable_methods(semantic_registry: &SemanticMethodRegistry) -> Vec<&str> {
     let semantic_methods: Vec<&str> = semantic_registry.semantic_names().into_iter().collect();
 
-    let mut direct_methods = vec![
+    let mut methods = vec![
+        "capabilities.list",
         "identity.get",
         "health.liveness",
         "health.readiness",
+        "health.check",
         "toadstool.health",
         "toadstool.version",
+        "toadstool.submit_workload",
+        "toadstool.query_status",
+        "toadstool.cancel_workload",
+        "toadstool.list_workloads",
         "toadstool.query_capabilities",
         "toadstool.resources.estimate",
         "toadstool.resources.validate_availability",
@@ -84,6 +90,8 @@ pub(crate) async fn discover_capabilities(
         "resources.estimate",
         "resources.validate_availability",
         "resources.suggest_optimizations",
+        "ai.local_inference",
+        "ai.local_execute",
         "compute.health",
         "compute.version",
         "compute.capabilities",
@@ -98,10 +106,21 @@ pub(crate) async fn discover_capabilities(
         "compute.dispatch.result",
         "compute.dispatch.forward",
         "compute.dispatch.capabilities",
+        "compute.hardware.observe",
+        "compute.hardware.distill",
+        "compute.hardware.apply",
+        "compute.hardware.share_recipe",
+        "compute.hardware.auto_init",
+        "compute.hardware.auto_init_all",
+        "compute.hardware.status",
+        "compute.hardware.vfio_devices",
+        "compute.performance_surface.report",
+        "compute.performance_surface.query",
+        "compute.performance_surface.list",
+        "compute.route.multi_unit",
         "gpu.query_info",
         "gpu.query_memory",
         "gpu.query_telemetry",
-        "provenance.query",
         "gate.update",
         "gate.remove",
         "gate.list",
@@ -112,37 +131,130 @@ pub(crate) async fn discover_capabilities(
         "transport.open",
         "transport.stream",
         "transport.status",
-        "compute.hardware.observe",
-        "compute.hardware.distill",
-        "compute.hardware.apply",
-        "compute.hardware.share_recipe",
-        "compute.hardware.auto_init",
-        "compute.hardware.auto_init_all",
-        "compute.hardware.status",
-        "compute.hardware.vfio_devices",
+        "shader.dispatch",
+        "ember.list",
+        "ember.status",
+        "provenance.query",
     ];
 
     for m in &semantic_methods {
-        if !direct_methods.contains(m) {
-            direct_methods.push(m);
+        if !methods.contains(m) {
+            methods.push(m);
         }
     }
-    direct_methods.sort_unstable();
+    methods.sort_unstable();
+    methods
+}
 
-    let capabilities = serde_json::json!({
+/// Wire Standard L2 `capabilities.list` response.
+///
+/// Returns `{primal, version, methods, provided_capabilities}` per
+/// `CAPABILITY_WIRE_STANDARD.md` v1.0.
+#[expect(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
+pub(crate) async fn capabilities_list(
+    semantic_registry: &SemanticMethodRegistry,
+    version: &str,
+) -> JsonRpcResult {
+    let methods = all_callable_methods(semantic_registry);
+
+    Ok(serde_json::json!({
+        "primal": toadstool_common::constants::PRIMAL_NAME,
+        "version": version,
+        "methods": methods,
+        "provided_capabilities": [
+            {
+                "type": "compute",
+                "methods": ["submit", "status", "result", "cancel", "list",
+                            "dispatch.submit", "dispatch.status", "dispatch.result",
+                            "dispatch.forward", "dispatch.capabilities",
+                            "hardware.observe", "hardware.distill", "hardware.apply",
+                            "hardware.share_recipe", "hardware.auto_init",
+                            "hardware.auto_init_all", "hardware.status",
+                            "hardware.vfio_devices",
+                            "performance_surface.report", "performance_surface.query",
+                            "performance_surface.list", "route.multi_unit",
+                            "health", "version", "capabilities", "discover_capabilities"],
+                "version": version,
+                "description": "GPU job queue, hardware dispatch, and performance routing"
+            },
+            {
+                "type": "toadstool",
+                "methods": ["submit_workload", "query_status", "cancel_workload",
+                            "list_workloads", "query_capabilities", "health", "version",
+                            "resources.estimate", "resources.validate_availability",
+                            "resources.suggest_optimizations"],
+                "version": version,
+                "description": "High-level workload executor (multi-runtime)"
+            },
+            {
+                "type": "gpu",
+                "methods": ["query_info", "query_memory", "query_telemetry"],
+                "description": "GPU hardware info and telemetry"
+            },
+            {
+                "type": "gate",
+                "methods": ["update", "remove", "list", "route"],
+                "description": "Distributed cross-gate routing"
+            },
+            {
+                "type": "transport",
+                "methods": ["discover", "list", "route", "open", "stream", "status"],
+                "description": "Hardware transport (DRM, V4L2, serial)"
+            },
+            {
+                "type": "shader",
+                "methods": ["dispatch"],
+                "description": "Sovereign shader dispatch (VFIO/DRM passthrough)"
+            },
+            {
+                "type": "ember",
+                "methods": ["list", "status"],
+                "description": "glowPlug/ember GPU device lifecycle"
+            }
+        ],
+        "consumed_capabilities": [
+            "security.sign",
+            "security.verify",
+            "storage.artifact.store",
+            "storage.artifact.retrieve",
+            "coordination.register",
+            "coordination.discover"
+        ],
+        "protocol": "jsonrpc-2.0",
+        "transport": ["uds", "tcp"]
+    }))
+}
+
+/// Returns discovered capabilities including semantic methods.
+///
+/// Legacy `compute.discover_capabilities` — returns node capabilities
+/// and merged method list.
+#[expect(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
+pub(crate) async fn discover_capabilities(
+    semantic_registry: &SemanticMethodRegistry,
+    version: &str,
+) -> JsonRpcResult {
+    let methods = all_callable_methods(semantic_registry);
+
+    Ok(serde_json::json!({
         "node_capabilities": [
             "compute", "workload", "orchestration",
             "gpu", "wasm", "container", "hardware_transport",
             "shader_dispatch", "hardware_learning"
         ],
-        "methods": direct_methods,
+        "methods": methods,
         "version": version,
         "primal": toadstool_common::constants::PRIMAL_NAME
-    });
-    Ok(capabilities)
+    }))
 }
 
-/// Returns primal identity per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
+/// Returns primal identity per Wire Standard L2 + `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
 ///
 /// Every primal MUST implement `identity.get` so orchestrators and peers
 /// can discover name, version, capabilities, and protocol.
@@ -170,6 +282,8 @@ pub(crate) async fn identity_get(
     Ok(serde_json::json!({
         "primal": toadstool_common::constants::PRIMAL_NAME,
         "version": version,
+        "domain": "compute",
+        "license": "AGPL-3.0-or-later",
         "protocol": "JSON-RPC 2.0",
         "capabilities": capabilities,
         "methods": semantic_methods,
@@ -221,7 +335,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn health_includes_version_uptime_and_error_count() {
+    async fn health_includes_version_uptime_error_count_and_wire_status() {
         let ver = "unit-test-9.9.9";
         let start = Instant::now()
             .checked_sub(Duration::from_secs(2))
@@ -229,12 +343,17 @@ mod tests {
         let errors = AtomicU64::new(7);
         let v = health(ver, start, &errors).await.expect("health ok");
         assert_eq!(v["healthy"], true);
+        assert_eq!(
+            v["status"], "alive",
+            "Wire Standard L1: status must be 'alive'"
+        );
         assert_eq!(v["version"], ver);
         assert!(v["uptime_secs"].as_u64().unwrap() >= 2);
         assert_eq!(v["error_count"], 7);
         errors.fetch_add(1, Ordering::Relaxed);
         let v2 = health(ver, start, &errors).await.expect("health ok");
         assert_eq!(v2["error_count"], 8);
+        assert_eq!(v2["status"], "alive");
     }
 
     #[tokio::test]
@@ -271,11 +390,69 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn identity_get_lists_core_capabilities_and_methods() {
+    async fn capabilities_list_returns_wire_standard_envelope() {
+        let reg = SemanticMethodRegistry::new();
+        let cap = capabilities_list(&reg, "wire-1.0")
+            .await
+            .expect("capabilities_list");
+        assert_eq!(cap["primal"], toadstool_common::constants::PRIMAL_NAME);
+        assert_eq!(cap["version"], "wire-1.0");
+
+        let methods = cap["methods"].as_array().expect("methods array");
+        assert!(!methods.is_empty());
+        let strs: Vec<&str> = methods.iter().map(|m| m.as_str().unwrap()).collect();
+        let mut sorted = strs.clone();
+        sorted.sort_unstable();
+        assert_eq!(strs, sorted, "methods must be sorted");
+
+        assert!(
+            strs.contains(&"capabilities.list"),
+            "must advertise capabilities.list"
+        );
+        assert!(
+            strs.contains(&"health.liveness"),
+            "must advertise health.liveness"
+        );
+        assert!(
+            strs.contains(&"identity.get"),
+            "must advertise identity.get"
+        );
+        assert!(
+            strs.contains(&"compute.submit"),
+            "must advertise compute.submit"
+        );
+        assert!(
+            strs.contains(&"shader.dispatch"),
+            "must advertise shader.dispatch"
+        );
+        assert!(strs.contains(&"ember.list"), "must advertise ember.list");
+
+        let groups = cap["provided_capabilities"]
+            .as_array()
+            .expect("provided_capabilities");
+        assert!(groups.len() >= 5, "should have multiple capability groups");
+        let group_types: Vec<&str> = groups.iter().map(|g| g["type"].as_str().unwrap()).collect();
+        assert!(group_types.contains(&"compute"));
+        assert!(group_types.contains(&"toadstool"));
+        assert!(group_types.contains(&"gpu"));
+        assert!(group_types.contains(&"transport"));
+        assert!(group_types.contains(&"shader"));
+
+        assert!(cap["consumed_capabilities"].as_array().is_some());
+        assert_eq!(cap["protocol"], "jsonrpc-2.0");
+    }
+
+    #[tokio::test]
+    async fn identity_get_includes_domain_and_license() {
         let reg = SemanticMethodRegistry::new();
         let id = identity_get("id-ver", &reg).await.expect("identity_get");
         assert_eq!(id["primal"], toadstool_common::constants::PRIMAL_NAME);
         assert_eq!(id["version"], "id-ver");
+        assert_eq!(id["domain"], "compute", "Wire Standard L2: domain field");
+        assert_eq!(
+            id["license"], "AGPL-3.0-or-later",
+            "Wire Standard L2: license field"
+        );
         assert_eq!(id["protocol"], "JSON-RPC 2.0");
         assert_eq!(id["transport"], "unix-socket");
         let sock = id["socket_name"].as_str().expect("socket_name");

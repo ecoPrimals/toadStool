@@ -398,7 +398,7 @@ fn test_only_acceptable_sys_crates() {
             crate_line.contains("drm-sys") ||          // DRM/KMS kernel ioctls (display crate) ✅
             crate_line.contains("pyo3-ffi") ||         // Python FFI (optional) ✅
             crate_line.contains("seccomp-sys") ||      // Security (optional) ✅
-            crate_line.contains("renderdoc-sys");      // GPU debugging (optional) ✅
+            crate_line.contains("renderdoc-sys"); // GPU debugging (optional) ✅
 
         assert!(
             is_acceptable,
