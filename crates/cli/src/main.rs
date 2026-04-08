@@ -10,7 +10,7 @@
 //!
 //! 🎯 **SOVEREIGN SCIENCE**: Your compute, your data, your control
 //! 🚀 **UNIVERSAL COMPUTE**: If it has a chip and memory, ToadStool runs on it
-//! 🔒 **ZERO TRUST**: BearDog cryptographic security by default
+//! 🔒 **ZERO TRUST**: Cryptographic security by default
 //!
 //! ## `UniBin` Architecture
 //!

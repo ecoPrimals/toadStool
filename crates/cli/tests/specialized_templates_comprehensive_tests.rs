@@ -83,7 +83,7 @@ fn test_science_template_storage() {
     let (_, _, _, _, _, _, _, storage) = create_science_template();
 
     // Should have NestGate integration for data
-    assert!(storage.nestgate_integration.is_some());
+    assert!(storage.storage_integration.is_some());
 }
 
 // ============================================================================
@@ -194,7 +194,7 @@ fn test_genomics_template_storage() {
     let (_, _, _, _, _, _, _, storage) = create_genomics_template();
 
     // Should have storage for datasets or NestGate
-    assert!(storage.nestgate_integration.is_some() || !storage.datasets.is_empty());
+    assert!(storage.storage_integration.is_some() || !storage.datasets.is_empty());
 }
 
 // ============================================================================
@@ -283,7 +283,7 @@ fn test_distributed_template_storage() {
     let (_, _, _, _, _, _, _, storage) = create_distributed_template();
 
     // Distributed systems need shared storage
-    assert!(storage.nestgate_integration.is_some());
+    assert!(storage.storage_integration.is_some());
 }
 
 // ============================================================================
@@ -345,7 +345,7 @@ fn test_sovereign_template_secure_storage() {
     let (_, _, _, _, _, _, _, storage) = create_sovereign_template();
 
     // Must have NestGate for secure storage
-    assert!(storage.nestgate_integration.is_some());
+    assert!(storage.storage_integration.is_some());
     // Must have backup policy
     assert!(storage.backup_policy.is_some());
 }
@@ -509,9 +509,9 @@ fn test_data_intensive_templates_have_storage() {
     let distributed_storage = create_distributed_template().7;
 
     // Data-intensive templates should have storage config
-    assert!(science_storage.nestgate_integration.is_some() || !science_storage.datasets.is_empty());
+    assert!(science_storage.storage_integration.is_some() || !science_storage.datasets.is_empty());
     assert!(
-        genomics_storage.nestgate_integration.is_some() || !genomics_storage.datasets.is_empty()
+        genomics_storage.storage_integration.is_some() || !genomics_storage.datasets.is_empty()
     );
-    assert!(distributed_storage.nestgate_integration.is_some());
+    assert!(distributed_storage.storage_integration.is_some());
 }

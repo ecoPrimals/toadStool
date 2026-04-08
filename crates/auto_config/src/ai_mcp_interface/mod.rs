@@ -214,7 +214,7 @@ mod tests {
     use std::collections::HashMap;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_squirrel_mcp_interface_creation() {
+    async fn test_intelligence_mcp_interface_creation() {
         let interface = AiMcpInterface::new();
         assert!(interface.is_ok());
     }
@@ -268,7 +268,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn test_squirrel_mcp_context_handling() {
+    async fn test_intelligence_mcp_context_handling() {
         let interface = AiMcpInterface::new().unwrap();
         let stats = interface.get_session_stats().await;
 

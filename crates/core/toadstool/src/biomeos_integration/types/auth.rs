@@ -8,7 +8,7 @@ use std::time::Duration;
 /// Biome security configuration (auth, policies, network).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeSecurity {
-    /// Enable `BearDog` integration
+    /// Enable security service integration
     pub security: bool,
     /// Security policies
     pub policies: Vec<SecurityPolicy>,

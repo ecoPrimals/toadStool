@@ -190,8 +190,9 @@ pub struct BiomeNetworking {
 /// Storage configuration for a biome
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeStorage {
-    /// NestGate integration version or config
-    pub nestgate_integration: Option<String>,
+    /// Storage service integration version or config
+    #[serde(alias = "nestgate_integration")]
+    pub storage_integration: Option<String>,
     /// Dataset definitions
     pub datasets: Vec<DatasetConfig>,
     /// Volume definitions

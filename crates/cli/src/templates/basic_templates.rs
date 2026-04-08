@@ -152,7 +152,7 @@ pub fn create_basic_template() -> TemplateComponents {
     };
 
     let storage = BiomeStorage {
-        nestgate_integration: None,
+        storage_integration: None,
         datasets: vec![],
         volumes: vec![],
         backup_policy: None,

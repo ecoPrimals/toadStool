@@ -2,9 +2,9 @@
 // storage_backend_evolved.rs - Capability-based storage backend
 //
 // DEEP DEBT EVOLUTION: Discovers storage providers by capability, not by name.
-// Doesn't know or care if it's "nestgate" - just asks "Who can store data?"
+// Doesn't know or care about service names - just asks "Who can store data?"
 //
-// Migration from: storage_backend.rs (hardcoded "nestgate")
+// Migration from: storage_backend.rs (which hardcoded service names)
 // Evolution: Capability-based discovery, proper error handling, zero unwrap()
 
 use serde::{Deserialize, Serialize};

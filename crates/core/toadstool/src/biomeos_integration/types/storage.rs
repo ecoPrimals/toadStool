@@ -2,7 +2,7 @@
 //! Storage configuration types for BiomeOS integration
 //!
 //! This module contains types for storage provisioning, volumes,
-//! and NestGate integration.
+//! and storage service integration.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -13,8 +13,9 @@ use std::time::SystemTime;
 /// Storage configuration for the biome
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeStorage {
-    /// Enable `NestGate` integration
-    pub nestgate_integration: bool,
+    /// Enable storage service integration
+    #[serde(alias = "nestgate_integration")]
+    pub storage_integration: bool,
     /// Global storage settings
     pub global_settings: HashMap<String, serde_json::Value>,
     /// Storage classes
@@ -51,7 +52,7 @@ pub struct PersistentVolume {
     pub host_path: Option<PathBuf>,
 }
 
-/// Storage provisioning request to `NestGate`
+/// Storage provisioning request to the storage service
 ///
 /// Uses `Arc<str>` for `volume_name` and size (wateringHole zero-copy): clone = refcount bump.
 #[derive(Debug, Clone, Serialize, Deserialize)]

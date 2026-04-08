@@ -43,7 +43,7 @@ impl VisualizationClient {
     /// 1. Coordination-plane: `capability.discover("shader")` via biomeOS (Tier 1)
     /// 2. Capability socket: `$XDG_RUNTIME_DIR/biomeos/shader.sock` (Tier 2)
     /// 3. ecoPrimals capability: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
-    /// 4. Legacy identity fallback: `CORALREEF_*` env vars, on-disk manifest, filename scan
+    /// 4. Legacy identity fallback: visualization service env vars, on-disk manifest, filename scan
     async fn discover() -> Option<UnixJsonRpcClient> {
         // Tier 1: Ask the coordination service who provides "shader" capability.
         // This is the preferred path per CAPABILITY_BASED_DISCOVERY_STANDARD.md.

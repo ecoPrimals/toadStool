@@ -47,7 +47,7 @@ networking:
   network_policies: []
 
 storage:
-  nestgate_integration: false
+  storage_integration: false
   datasets: []
   volumes: []
 "#

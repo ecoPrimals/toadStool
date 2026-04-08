@@ -80,7 +80,7 @@ fn create_minimal_manifest(name: &str) -> BiomeManifest {
             network_policies: vec![],
         },
         storage: BiomeStorage {
-            nestgate_integration: None,
+            storage_integration: None,
             datasets: vec![],
             volumes: vec![],
             backup_policy: None,

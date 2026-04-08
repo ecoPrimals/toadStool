@@ -72,7 +72,7 @@ fn test_genomics_template_structure() {
 
     // Should have storage for datasets
     assert!(
-        !storage.datasets.is_empty() || storage.nestgate_integration.is_some(),
+        !storage.datasets.is_empty() || storage.storage_integration.is_some(),
         "Genomics template should have storage configuration"
     );
 
@@ -218,7 +218,7 @@ fn test_sovereign_template_structure() {
     assert!(!networking.mode.is_empty());
 
     // Storage should be secure (check for NestGate integration)
-    assert!(storage.nestgate_integration.is_some());
+    assert!(storage.storage_integration.is_some());
 }
 
 #[test]
@@ -248,7 +248,7 @@ fn test_sovereign_template_encryption() {
 
     // All storage must use NestGate for security
     assert!(
-        storage.nestgate_integration.is_some(),
+        storage.storage_integration.is_some(),
         "Sovereign template must use NestGate integration"
     );
 

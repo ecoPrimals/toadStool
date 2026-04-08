@@ -161,7 +161,7 @@ networking:
   network_policies: []
 
 storage:
-  nestgate_integration: false
+  storage_integration: false
   datasets: []
   volumes: []
 "#;
@@ -217,7 +217,7 @@ networking:
   network_policies: []
 
 storage:
-  nestgate_integration: false
+  storage_integration: false
   datasets: []
   volumes: []
 "#;
@@ -330,7 +330,7 @@ networking:
   network_policies: []
 
 storage:
-  nestgate_integration: false
+  storage_integration: false
   datasets: []
   volumes: []
 "#;
@@ -382,7 +382,7 @@ fn create_test_manifest() -> BiomeManifest {
             network_policies: vec![],
         },
         storage: BiomeStorage {
-            nestgate_integration: None,
+            storage_integration: None,
             datasets: vec![],
             volumes: vec![],
             backup_policy: None,
@@ -719,7 +719,7 @@ networking:
   network_policies: []
 
 storage:
-  nestgate_integration: true
+  storage_integration: true
   datasets: []
   volumes: []
 "#;
@@ -730,7 +730,7 @@ storage:
     let warnings = validate_manifest(&manifest).unwrap();
 
     assert_eq!(manifest.metadata.name, "roundtrip-biome");
-    assert!(manifest.storage.nestgate_integration.is_some());
+    assert!(manifest.storage.storage_integration.is_some());
     // Warnings may or may not be present depending on manifest content
     // warnings.len() is always >= 0 (usize), so just verify it's accessible
     let _ = warnings.len();

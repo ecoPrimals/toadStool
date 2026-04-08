@@ -2,7 +2,7 @@
 //! # ToadStool tarpc Client Implementation
 //!
 //! Type-safe client for communicating with ToadStool compute services.
-//! Follows Songbird's pattern for inter-primal communication.
+//! Follows the standard pattern for inter-primal communication.
 //!
 //! **Deep Debt Compliance**:
 //! - Unix sockets as primary transport (no TCP hardcoding)

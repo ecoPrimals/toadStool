@@ -3,7 +3,7 @@
 //!
 //! **Self-Knowledge Pattern**: ToadStool knows it needs orchestration services
 //! (service-discovery, load-balancing, job-routing) but doesn't know specific
-//! service names like "Songbird".
+//! specific service names.
 //!
 //! This module provides a simple API for discovering and using orchestration
 //! services by capability.
@@ -25,7 +25,7 @@ impl OrchestrationClient {
     /// Create a new orchestration client
     ///
     /// Uses the default discovery engine which checks:
-    /// 1. Environment variables (`SONGBIRD_ENDPOINT`, etc.)
+    /// 1. Environment variables (capability endpoints, legacy `SONGBIRD_ENDPOINT`, etc.)
     /// 2. mDNS/local network
     /// 3. primal-capabilities.toml fallback
     pub fn new() -> Self {
@@ -144,7 +144,7 @@ impl Default for OrchestrationClient {
 
 /// Quick helper function for discovering orchestration services
 ///
-/// **Self-Knowledge Pattern**: No "Songbird" mentioned - discovers by capability!
+/// **Self-Knowledge Pattern**: discovers orchestration services by capability!
 ///
 /// # Example
 /// ```no_run
@@ -152,7 +152,7 @@ impl Default for OrchestrationClient {
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let endpoint = discover_orchestration().await?;
-/// // Use the endpoint (could be Songbird, or any compatible service!)
+/// // Use the endpoint (any compatible orchestration service)
 /// # Ok(())
 /// # }
 /// ```

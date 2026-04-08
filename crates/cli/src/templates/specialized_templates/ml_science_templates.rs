@@ -169,7 +169,7 @@ pub fn create_science_template() -> TemplateComponents {
     resources.storage_limit = Some("500GB".to_string());
 
     // Enable storage service integration
-    storage.nestgate_integration = Some("latest".to_string());
+    storage.storage_integration = Some("latest".to_string());
     storage.datasets = vec![
         DatasetConfig {
             name: "research-data".to_string(),

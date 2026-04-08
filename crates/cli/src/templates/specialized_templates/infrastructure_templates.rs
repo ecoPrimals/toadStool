@@ -148,7 +148,7 @@ pub fn create_distributed_template() -> TemplateComponents {
     networking.network_policies = vec!["cluster-internal".to_string()];
 
     // Distributed storage
-    storage.nestgate_integration = Some(versions::LATEST.to_string());
+    storage.storage_integration = Some(versions::LATEST.to_string());
 
     (
         name,
@@ -197,7 +197,7 @@ pub fn create_sovereign_template() -> TemplateComponents {
     resources.storage_limit = Some(resource_sizes::GB_100.to_string());
 
     // Secure storage with NestGate for maximum data protection
-    storage.nestgate_integration = Some(versions::LATEST.to_string());
+    storage.storage_integration = Some(versions::LATEST.to_string());
     storage.backup_policy = Some("encrypted-daily".to_string());
 
     (

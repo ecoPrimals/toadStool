@@ -306,7 +306,7 @@ impl EcosystemIntegrator {
         endpoint: String,
         mount_point: PathBuf,
         _dataset: Option<String>,
-    ) -> Result<NestGateMount> {
+    ) -> Result<StorageMount> {
         info!("🏠 Connecting to distributed storage via capability discovery");
 
         // ✅ MODERNIZED: Uses capability-based StorageAdapter
@@ -356,7 +356,7 @@ impl EcosystemIntegrator {
                 self.connections.insert("storage".to_string(), connection);
 
                 // Convert MountInfo to storage mount struct for backward compatibility
-                Ok(NestGateMount {
+                Ok(StorageMount {
                     dataset_name: mount_info.dataset_name,
                     mount_point: mount_info.mount_point,
                     endpoint: mount_info.endpoint,

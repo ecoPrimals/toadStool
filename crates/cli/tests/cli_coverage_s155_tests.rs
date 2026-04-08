@@ -346,7 +346,7 @@ fn test_validate_manifest_missing_beardog_warning() {
             network_policies: vec![],
         },
         storage: BiomeStorage {
-            nestgate_integration: None,
+            storage_integration: None,
             datasets: vec![],
             volumes: vec![],
             backup_policy: None,

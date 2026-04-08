@@ -348,7 +348,7 @@ mod tests {
             memory_info: "8.0 GB".to_string(),
             gpu_info: "Integrated Graphics".to_string(),
             storage_info: "100.0 GB SSD".to_string(),
-            ecosystem_services: vec!["songbird".to_string()],
+            ecosystem_services: vec!["coordination".to_string()],
             performance_class: "Mainstream".to_string(),
             optimal_runtimes: vec!["Native".to_string()],
         };
@@ -458,9 +458,9 @@ mod tests {
             8080
         );
         discovered.insert(
-            "songbird".to_string(),
+            "coordination".to_string(),
             ServiceInfo {
-                name: "songbird".to_string(),
+                name: "coordination".to_string(),
                 endpoint: test_endpoint,
                 service_type: "NetworkCoordination".to_string(),
                 version: "1.0".to_string(),
@@ -478,6 +478,10 @@ mod tests {
         let capabilities = SystemCapabilities::default();
         let summary = SystemSummary::from_capabilities(&capabilities, &ecosystem);
         assert_eq!(summary.ecosystem_services.len(), 1);
-        assert!(summary.ecosystem_services.contains(&"songbird".to_string()));
+        assert!(
+            summary
+                .ecosystem_services
+                .contains(&"coordination".to_string())
+        );
     }
 }

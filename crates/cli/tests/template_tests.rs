@@ -199,7 +199,7 @@ fn test_data_processing_template_has_storage() {
     // Should have storage configuration (volumes, datasets, or nestgate)
     let has_storage = !storage.volumes.is_empty()
         || !storage.datasets.is_empty()
-        || storage.nestgate_integration.is_some();
+        || storage.storage_integration.is_some();
 
     assert!(
         has_storage,

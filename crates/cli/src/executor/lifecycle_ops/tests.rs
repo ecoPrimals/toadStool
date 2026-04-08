@@ -60,7 +60,7 @@ fn make_minimal_container_manifest() -> crate::BiomeManifest {
             network_policies: vec![],
         },
         storage: crate::BiomeStorage {
-            nestgate_integration: None,
+            storage_integration: None,
             datasets: vec![],
             volumes: vec![],
             backup_policy: None,
@@ -119,7 +119,7 @@ fn make_local_manifest() -> crate::BiomeManifest {
             network_policies: vec![],
         },
         storage: crate::BiomeStorage {
-            nestgate_integration: None,
+            storage_integration: None,
             datasets: vec![],
             volumes: vec![],
             backup_policy: None,
