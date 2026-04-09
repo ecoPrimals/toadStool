@@ -416,7 +416,7 @@ async fn test_e2e_backend_capabilities() {
         memory.backend_name() == "CPU"
             || memory.backend_name() == "WebGPU"
             || memory.backend_name() == "Vulkan"
-            || memory.backend_name() == "OpenCL"
+            || memory.backend_name() == "OpenCL (deprecated)"
     );
 }
 

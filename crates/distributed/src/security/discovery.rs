@@ -117,9 +117,8 @@ impl SecurityDiscovery {
             ..Default::default()
         };
 
-        if let Ok(coordination_endpoint) = std::env::var("COORDINATION_ENDPOINT").or_else(|_| {
-            std::env::var("SONGBIRD_ENDPOINT") // legacy env alias
-        }) {
+        let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+        if let Some(coordination_endpoint) = socket_env.coordination_connection_hint.clone() {
             discovery_config
                 .fallbacks
                 .insert("orchestration".to_string(), coordination_endpoint);

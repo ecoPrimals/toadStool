@@ -83,9 +83,10 @@ pub(super) fn convert_to_workload_spec(
             input_data: _,
             output_data_keys: _,
         } => {
-            // Parse as OpenCL for now (most universal)
+            // DEPRECATED S198: OpenCL removed — external GPU dispatch uses Vulkan/wgpu or barraCuda/coralReef via IPC.
+            // Workload file `source` is treated as CUDA source for this legacy path.
             Ok(WorkloadSpec::Gpu {
-                program: toadstool::workload::GpuProgramSource::OpenCL {
+                program: toadstool::workload::GpuProgramSource::Cuda {
                     source: source.clone(),
                 },
                 kernel_name: kernel_name.clone(),

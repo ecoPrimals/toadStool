@@ -13,8 +13,7 @@
 //! ## Selection Priority
 //! 1. `WebGPU` (pure Rust, universal) ✅ Always prefer
 //! 2. CUDA (vendor-specific) ⚠️ Python AI compatibility (interim; migrate when `WebGPU` covers stacks)
-//! 3. `OpenCL` (legacy) ⚠️ Fallback only
-//! 4. CPU Compute (always available) ✅ Safe fallback
+//! 3. CPU Compute (always available) ✅ Safe fallback
 
 use tracing::{info, warn};
 
@@ -34,7 +33,7 @@ pub enum BackendSelectionStrategy {
     SovereignOnly,
 
     /// Pragmatic: Prefer vendor backends for maximum performance
-    /// Uses CUDA/`OpenCL` when available, falls back to `WebGPU`
+    /// Uses CUDA when available, falls back to `WebGPU`
     Pragmatic,
 
     /// Specific: Use a specific framework (for testing/debugging)
@@ -96,20 +95,13 @@ impl BackendSelectionStrategy {
             return Some(GpuFramework::Cuda);
         }
 
-        // PRIORITY 4: OpenCL (legacy fallback)
-        if available.contains(&GpuFramework::OpenCl) {
-            info!("⚠️  Selected OpenCL (legacy fallback)");
-            info!("   Evolution status: Using OpenCL for compatibility");
-            return Some(GpuFramework::OpenCl);
-        }
-
-        // PRIORITY 5: Metal (Apple platforms)
+        // PRIORITY 4: Metal (Apple platforms)
         if available.contains(&GpuFramework::Metal) {
             info!("✅ Selected Metal (Apple platform, native)");
             return Some(GpuFramework::Metal);
         }
 
-        // PRIORITY 6: Vulkan
+        // PRIORITY 5: Vulkan
         if available.contains(&GpuFramework::Vulkan) {
             info!("✅ Selected Vulkan (cross-platform compute)");
             return Some(GpuFramework::Vulkan);
@@ -162,13 +154,7 @@ impl BackendSelectionStrategy {
             return Some(GpuFramework::Vulkan);
         }
 
-        // PRIORITY 5: OpenCL
-        if available.contains(&GpuFramework::OpenCl) {
-            info!("⚠️  Selected OpenCL (pragmatic mode, legacy)");
-            return Some(GpuFramework::OpenCl);
-        }
-
-        // PRIORITY 6: WebGPU as fallback
+        // PRIORITY 5: WebGPU as fallback
         if available.contains(&GpuFramework::WebGpu) {
             info!("✅ Selected WebGPU (pragmatic mode fallback)");
             return Some(GpuFramework::WebGpu);

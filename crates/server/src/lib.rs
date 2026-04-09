@@ -3,39 +3,11 @@
 #![warn(missing_docs)]
 #![cfg_attr(test, allow(deprecated))]
 #![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     clippy::doc_markdown,
-    clippy::single_match_else,
-    clippy::unnecessary_lazy_evaluations,
-    clippy::cast_lossless,
     clippy::doc_comment_double_space_linebreaks,
-    clippy::if_not_else,
-    clippy::items_after_statements,
-    clippy::manual_is_variant_and,
-    clippy::manual_let_else,
-    clippy::manual_midpoint,
-    clippy::map_unwrap_or,
-    clippy::match_same_arms,
-    clippy::must_use_candidate,
-    clippy::needless_continue,
-    clippy::needless_pass_by_value,
-    clippy::redundant_closure_for_method_calls,
-    clippy::ref_option,
-    clippy::return_self_not_must_use,
-    clippy::self_only_used_in_recursion,
     clippy::similar_names,
     clippy::struct_field_names,
-    clippy::unnecessary_debug_formatting,
-    clippy::unnecessary_wraps,
-    clippy::unreadable_literal,
-    clippy::unused_async,
-    clippy::unused_self,
-    clippy::used_underscore_binding,
-    clippy::float_cmp,
-    clippy::no_effect_underscore_binding,
-    clippy::struct_excessive_bools,
-    clippy::default_trait_access
+    clippy::module_name_repetitions
 )]
 
 //! # `ToadStool` Server Library
@@ -102,16 +74,14 @@ pub use errors::{ServerError, ServerResult};
 pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics};
 
 // Re-export server functions for daemon
+#[cfg(feature = "tarpc")]
 #[deprecated(
     since = "2.2.0",
     note = "Use pure_jsonrpc::JsonRpcHandler — no TCP hardcoding"
 )]
-// Re-export deprecated tarpc types for backward compatibility
 pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
-// EVOLVED: TestExecutor isolated to testing (deep debt principle)
-// Backward compatibility alias for test code
-#[cfg(test)]
+#[cfg(all(test, feature = "tarpc"))]
 #[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
 pub use tarpc_server::TestExecutor;
 
@@ -141,6 +111,7 @@ pub use mocks::{MockResourceMonitor, MockSystemResourcesWithUsage};
 pub mod background;
 pub mod capabilities; // Self-knowledge & peer discovery
 pub mod config;
+#[cfg(feature = "tarpc")]
 pub mod coordinator_executor;
 pub mod cross_gate; // Cross-gate compute delegation (job routing across mesh)
 pub mod errors;
@@ -170,9 +141,11 @@ pub mod resource_estimator;
 pub mod resource_optimizer;
 pub mod resource_validator;
 // routes: REMOVED — HTTP routes belong to edge/orchestration; use pure_jsonrpc
-pub mod rpc_types; // Pure RPC types (no HTTP deps)
+#[cfg(feature = "tarpc")]
+pub mod rpc_types; // Pure RPC types (depends on tarpc service definitions)
 // server: REMOVED — axum HTTP server is not the JSON-RPC surface here; use pure_jsonrpc
 pub mod state;
+#[cfg(feature = "tarpc")]
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
 
@@ -183,7 +156,9 @@ pub use background::start_background_services;
 pub use unibin::run_server_main;
 
 // Re-export pure RPC types (deep debt solution)
+#[cfg(feature = "tarpc")]
 pub use rpc_types::semantic_methods;
+#[cfg(feature = "tarpc")]
 pub use rpc_types::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
     ResourceRequirements, TarpcWorkloadSubmission, ToadStoolComputeRpc, ToadStoolComputeRpcClient,
@@ -191,6 +166,7 @@ pub use rpc_types::{
 };
 
 // Re-export coordinator executor
+#[cfg(feature = "tarpc")]
 pub use coordinator_executor::CoordinatorExecutor;
 
 // ManualJsonRpcServer: REMOVED S94 — use pure_jsonrpc::JsonRpcHandler

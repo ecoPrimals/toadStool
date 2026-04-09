@@ -279,11 +279,15 @@ impl ProtocolClient {
     // Background tasks
     // =========================================================================
 
+    #[expect(
+        clippy::unused_async,
+        reason = "spawns async tasks; outer fn does not await directly"
+    )]
     async fn start_background_tasks(&self) {
         if self.config.health_config.base.enabled {
             health::spawn_health_monitor(
                 Arc::clone(&self.services),
-                self.config.health_config.clone(),
+                &self.config.health_config,
                 self.event_bus.clone(),
             );
         }

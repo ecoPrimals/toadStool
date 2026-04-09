@@ -22,4 +22,4 @@ pub mod versions;
 pub use network::{
     DEFAULT_HOSTNAME, HTTP_PROTOCOL, HTTPS_PROTOCOL, LOCALHOST_IPV4, LOCALHOST_IPV6,
 };
-pub use primal_identity::PRIMAL_NAME;
+pub use primal_identity::{CAPABILITY_DOMAIN, PRIMAL_NAME};

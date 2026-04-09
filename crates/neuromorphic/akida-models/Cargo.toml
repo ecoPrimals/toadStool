@@ -25,7 +25,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 akida-driver = { path = "../akida-driver" }
 
 [dev-dependencies]
-hex = "0.4"
+hex = { workspace = true }
 tempfile = "3"
 
 [features]

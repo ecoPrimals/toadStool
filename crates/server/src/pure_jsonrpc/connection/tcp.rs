@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! TCP listener and per-connection handling for Pure JSON-RPC.
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -42,6 +41,10 @@ pub async fn serve_tcp(handler: Arc<JsonRpcHandler>, listener: TcpListener) -> S
     }
 }
 
+/// Handle a single TCP connection.
+///
+/// Supports both HTTP (single request-response) and persistent NDJSON sessions
+/// per `PRIMAL_IPC_PROTOCOL.md`.
 pub(crate) async fn handle_tcp_connection(
     handler: Arc<JsonRpcHandler>,
     stream: TcpStream,
@@ -55,21 +58,25 @@ pub(crate) async fn handle_tcp_connection(
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
 
-    let (body, is_http): (Cow<'_, [u8]>, bool) = if first_line.starts_with("POST")
+    if first_line.starts_with("POST")
         || first_line.starts_with("GET")
         || first_line.starts_with("HTTP")
     {
         let (_headers, body) = read_http_request_continuation_tcp(&mut reader).await?;
-        (Cow::Owned(body), true)
-    } else {
-        (Cow::Borrowed(first_line.trim().as_bytes()), false)
-    };
-
-    let response_body = process_request(&handler, &body).await?;
-
-    if is_http {
+        let response_body = process_request(&handler, &body).await?;
         write_http_response_tcp(&mut writer, &response_body).await?;
-    } else {
+        return Ok(());
+    }
+
+    // NDJSON session: process first line, then loop for subsequent lines
+    let mut line = first_line;
+    loop {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            break;
+        }
+
+        let response_body = process_request(&handler, trimmed.as_bytes()).await?;
         writer
             .write_all(&response_body)
             .await
@@ -82,6 +89,15 @@ pub(crate) async fn handle_tcp_connection(
             .flush()
             .await
             .map_err(|e| ServerError::Network(e.to_string()))?;
+
+        line.clear();
+        let n = reader
+            .read_line(&mut line)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        if n == 0 {
+            break;
+        }
     }
 
     Ok(())

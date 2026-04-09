@@ -68,8 +68,7 @@ impl UniversalUnifiedMemory {
     /// Priority order:
     /// 1. `WebGPU` (pure Rust, sovereign)
     /// 2. Vulkan (cross-vendor, modern)
-    /// 3. `OpenCL` (cross-vendor, legacy)
-    /// 4. CPU (always works)
+    /// 3. CPU (always works)
     ///
     /// # Example
     ///
@@ -183,17 +182,7 @@ impl UniversalUnifiedMemory {
             }
         }
 
-        // Priority 3: OpenCL (universal, legacy)
-        #[cfg(feature = "opencl")]
-        {
-            use crate::unified_memory::backends::opencl::OpenClBackend;
-            if let Ok(backend) = OpenClBackend::try_init().await {
-                tracing::info!("🎯 Selected OpenCL backend (cross-vendor)");
-                return Ok(Arc::new(backend));
-            }
-        }
-
-        // Priority 4: CPU (always works)
+        // Priority 3: CPU (always works)
         use crate::unified_memory::backends::cpu::CpuBackend;
         let backend = CpuBackend::try_init().await?;
         tracing::warn!("⚠️  Using CPU backend (no GPU unified memory available)");
@@ -228,16 +217,7 @@ impl UniversalUnifiedMemory {
             }
         }
 
-        // Priority 2: OpenCL (legacy fast)
-        #[cfg(feature = "opencl")]
-        {
-            use crate::unified_memory::backends::opencl::OpenClBackend;
-            if let Ok(backend) = OpenClBackend::try_init().await {
-                return Ok(Arc::new(backend));
-            }
-        }
-
-        // Priority 3: WebGPU (pure Rust)
+        // Priority 2: WebGPU (pure Rust)
         #[cfg(feature = "webgpu")]
         {
             use crate::unified_memory::backends::webgpu::WebGpuBackend;
@@ -269,18 +249,9 @@ impl UniversalUnifiedMemory {
                     Err(ToadStoolError::runtime("Vulkan feature not enabled"))
                 }
             }
-            BackendType::OpenCL => {
-                #[cfg(feature = "opencl")]
-                {
-                    use crate::unified_memory::backends::opencl::OpenClBackend;
-                    let backend = OpenClBackend::try_init().await?;
-                    Ok(Arc::new(backend))
-                }
-                #[cfg(not(feature = "opencl"))]
-                {
-                    Err(ToadStoolError::runtime("OpenCL feature not enabled"))
-                }
-            }
+            BackendType::OpenCL => Err(ToadStoolError::runtime(
+                "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
+            )),
             BackendType::WebGpu => {
                 #[cfg(feature = "webgpu")]
                 {

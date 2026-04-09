@@ -5,7 +5,7 @@ use serde_json::json;
 use std::path::Path;
 
 const SOCKETS: &[(&str, &str)] = &[
-    ("toadstool.jsonrpc.sock", "toadStool server"),
+    ("compute.sock", "toadStool server"),
     ("compute.sock", "barraCuda"),
     ("coralreef.sock", "coralReef"),
     ("coordination.sock", "songBird"),
@@ -69,7 +69,7 @@ async fn main() {
                 {
                     "name": "toadstool",
                     "capabilities": ["compute", "gpu", "science"],
-                    "socket": format!("{}/biomeos/toadstool.jsonrpc.sock", runtime_dir)
+                    "socket": format!("{}/biomeos/compute.sock", runtime_dir)
                 }
             ]
         }

@@ -46,6 +46,24 @@ pub struct VolatileMmio<'a> {
 }
 
 impl VolatileMmio<'_> {
+    /// Reject accesses whose end offset overflows `usize` or exceeds the region.
+    #[inline]
+    fn check_bounds(&self, offset: usize, width: usize) -> Result<(), MmioError> {
+        let end = offset.checked_add(width).ok_or(MmioError::OutOfBounds {
+            offset,
+            width,
+            region_size: self.size,
+        })?;
+        if end > self.size {
+            return Err(MmioError::OutOfBounds {
+                offset,
+                width,
+                region_size: self.size,
+            });
+        }
+        Ok(())
+    }
+
     /// Create a volatile MMIO view.
     ///
     /// # Safety
@@ -76,20 +94,19 @@ impl VolatileMmio<'_> {
     /// `read_u32`/`read_u64` methods delegate here.
     fn read_reg<T: Copy>(&self, offset: usize) -> Result<T, MmioError> {
         let width = std::mem::size_of::<T>();
-        if offset + width > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width,
-                region_size: self.size,
-            });
-        }
-        // SAFETY: bounds checked above; ptr valid for size bytes (constructor
-        // invariant); T is naturally aligned for MMIO; volatile prevents
-        // compiler reordering/elision.
-        Ok(unsafe {
-            let p = self.ptr.as_ptr().add(offset).cast::<T>();
-            std::ptr::read_volatile(p)
-        })
+        self.check_bounds(offset, width)?;
+        let base = self.ptr.as_ptr() as usize;
+        debug_assert!(
+            base.checked_add(offset)
+                .is_some_and(|a| a % std::mem::align_of::<T>() == 0),
+            "MMIO read: offset {offset:#x} yields misaligned {} pointer (base={base:#x})",
+            std::any::type_name::<T>(),
+        );
+        let p = self.ptr.as_ptr().wrapping_add(offset).cast::<T>();
+        // SAFETY: `check_bounds` ensures `offset+width <= self.size` so `p` lies in the
+        // mapped region; constructor invariant: region is valid for volatile reads.
+        // Alignment is asserted in debug builds (BAR/MMIO contract in release).
+        Ok(unsafe { std::ptr::read_volatile(p) })
     }
 
     /// Bounds-checked volatile write of a `T`-sized register.
@@ -98,19 +115,17 @@ impl VolatileMmio<'_> {
     /// `write_u32`/`write_u64` methods delegate here.
     fn write_reg<T: Copy>(&self, offset: usize, value: T) -> Result<(), MmioError> {
         let width = std::mem::size_of::<T>();
-        if offset + width > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width,
-                region_size: self.size,
-            });
-        }
-        // SAFETY: bounds checked above; ptr valid and mapped (constructor
-        // invariant); T is naturally aligned for MMIO.
-        unsafe {
-            let p = self.ptr.as_ptr().add(offset).cast::<T>();
-            std::ptr::write_volatile(p, value);
-        }
+        self.check_bounds(offset, width)?;
+        let base = self.ptr.as_ptr() as usize;
+        debug_assert!(
+            base.checked_add(offset)
+                .is_some_and(|a| a % std::mem::align_of::<T>() == 0),
+            "MMIO write: offset {offset:#x} yields misaligned {} pointer (base={base:#x})",
+            std::any::type_name::<T>(),
+        );
+        let p = self.ptr.as_ptr().wrapping_add(offset).cast::<T>();
+        // SAFETY: same as `read_reg`, for a single volatile store.
+        unsafe { std::ptr::write_volatile(p, value) }
         Ok(())
     }
 
@@ -158,16 +173,11 @@ impl VolatileMmio<'_> {
     ///
     /// Returns [`MmioError::OutOfBounds`] if the read would exceed the region.
     pub fn read_bytes(&self, offset: usize, buf: &mut [u8]) -> Result<(), MmioError> {
-        if offset + buf.len() > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width: buf.len(),
-                region_size: self.size,
-            });
-        }
+        self.check_bounds(offset, buf.len())?;
         for (i, byte) in buf.iter_mut().enumerate() {
-            // SAFETY: bounds checked above. Each byte offset is within the region.
-            *byte = unsafe { std::ptr::read_volatile(self.ptr.as_ptr().add(offset + i)) };
+            let p = self.ptr.as_ptr().wrapping_add(offset + i);
+            // SAFETY: `check_bounds` ensures every `offset + i` is within the mapped region.
+            *byte = unsafe { std::ptr::read_volatile(p) };
         }
         Ok(())
     }
@@ -180,18 +190,11 @@ impl VolatileMmio<'_> {
     ///
     /// Returns [`MmioError::OutOfBounds`] if the write would exceed the region.
     pub fn write_bytes(&self, offset: usize, data: &[u8]) -> Result<(), MmioError> {
-        if offset + data.len() > self.size {
-            return Err(MmioError::OutOfBounds {
-                offset,
-                width: data.len(),
-                region_size: self.size,
-            });
-        }
+        self.check_bounds(offset, data.len())?;
         for (i, &byte) in data.iter().enumerate() {
-            // SAFETY: bounds checked above. Each byte offset is within the region.
-            unsafe {
-                std::ptr::write_volatile(self.ptr.as_ptr().add(offset + i), byte);
-            }
+            let p = self.ptr.as_ptr().wrapping_add(offset + i);
+            // SAFETY: `check_bounds` ensures every `offset + i` is within the mapped region.
+            unsafe { std::ptr::write_volatile(p, byte) }
         }
         Ok(())
     }

@@ -62,7 +62,6 @@ impl Default for GpuDiscoveryConfig {
             enabled_frameworks: vec![
                 GpuFramework::WebGpu,        // Universal, future-ready
                 GpuFramework::Vulkan,        // Cross-platform
-                GpuFramework::OpenCl,        // Widely supported
                 GpuFramework::Cuda,          // NVIDIA performance
                 GpuFramework::Metal,         // Apple optimization
                 GpuFramework::Rocm,          // AMD optimization

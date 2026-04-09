@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use toadstool_common::interned_strings::primals as legacy;
 
 /// Generic configuration for any Primal
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,10 +95,10 @@ impl PrimalType {
             "compute" | "ai" | "ml" | "intelligence" => Ok(Self::Compute),
             "self" | "self_identity" | "toadstool" => Ok(Self::SelfIdentity),
             // Legacy primal-name aliases (backward compat for existing manifests)
-            "songbird" | "song-bird" => Ok(Self::Discovery),
-            "beardog" | "bear-dog" => Ok(Self::Crypto),
-            "nestgate" | "nest-gate" => Ok(Self::Storage),
-            "squirrel" => Ok(Self::Compute),
+            legacy::LEGACY_COORDINATION_LABEL | "song-bird" => Ok(Self::Discovery),
+            legacy::LEGACY_SECURITY_LABEL | "bear-dog" => Ok(Self::Crypto),
+            legacy::LEGACY_STORAGE_LABEL | "nest-gate" => Ok(Self::Storage),
+            legacy::LEGACY_INTELLIGENCE_LABEL => Ok(Self::Compute),
             "biomeos" => Ok(Self::Orchestration),
             other => Ok(Self::Custom(other.to_string())),
         }

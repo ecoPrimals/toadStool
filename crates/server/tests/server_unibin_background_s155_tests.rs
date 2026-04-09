@@ -37,17 +37,17 @@ use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
 
 #[test]
 fn s155_socket_filename_for_family_default() {
-    assert_eq!(socket_filename_for_family("default"), "toadstool.sock");
+    assert_eq!(socket_filename_for_family("default"), "compute.sock");
 }
 
 #[test]
 fn s155_socket_filename_for_family_empty() {
-    assert_eq!(socket_filename_for_family(""), "toadstool.sock");
+    assert_eq!(socket_filename_for_family(""), "compute.sock");
 }
 
 #[test]
 fn s155_socket_filename_for_family_custom() {
-    assert_eq!(socket_filename_for_family("nat0"), "toadstool-nat0.sock");
+    assert_eq!(socket_filename_for_family("nat0"), "compute-nat0.sock");
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn s155_get_socket_path_tmp_fallback_when_xdg_not_exists() {
             let result = get_socket_path("custom", "node1");
             assert!(result.is_ok());
             let path = result.unwrap();
-            assert!(path.ends_with("biomeos/toadstool-custom.sock"));
+            assert!(path.ends_with("biomeos/compute-custom.sock"));
         },
     );
 }

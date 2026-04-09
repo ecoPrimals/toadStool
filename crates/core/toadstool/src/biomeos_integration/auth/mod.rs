@@ -131,10 +131,8 @@ impl AuthenticationManager {
             Err(e) => tracing::debug!("Capability discovery failed: {}, trying fallbacks", e),
         }
 
-        if let Ok(endpoint) = std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
-            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
-            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
-        {
+        let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+        if let Some(endpoint) = socket_env.security_connection_hint {
             tracing::info!("Discovered crypto service via environment: {}", endpoint);
             let mut config = config;
             config.security_endpoint = endpoint;
@@ -170,7 +168,7 @@ impl AuthenticationManager {
     /// Creates auth manager with legacy security backend (deprecated).
     #[must_use]
     #[deprecated(since = "0.3.0", note = "Use with_crypto_service() or discover()")]
-    #[allow(deprecated)]
+    #[expect(deprecated, reason = "calls deprecated SecurityBackend constructor")]
     pub fn with_security(config: AuthManagerConfig) -> Self {
         let backend = super::auth_backend::SecurityBackend::new(config.security_endpoint.clone());
         Self {

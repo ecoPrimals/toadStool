@@ -7,7 +7,7 @@
 //! all `unsafe` into exactly 3 blocks — one per ioctl direction. Every public
 //! function is safe code that delegates to the appropriate helper.
 
-use std::os::unix::io::AsFd;
+use std::os::unix::io::{AsFd, AsRawFd};
 
 use rustix::ioctl;
 
@@ -19,8 +19,21 @@ fn ioctl_err(e: rustix::io::Errno) -> std::io::Error {
     std::io::Error::from_raw_os_error(e.raw_os_error())
 }
 
+/// Reject obviously invalid fds before issuing ioctls (closed fds are not detectable here).
+fn validate_v4l2_fd(fd: &impl AsFd) -> Result<(), std::io::Error> {
+    let raw = fd.as_fd().as_raw_fd();
+    if raw < 0 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "V4L2 ioctl: negative file descriptor",
+        ));
+    }
+    Ok(())
+}
+
 /// Read-only V4L2 ioctl: kernel fills a new `T` (VIDIOC_QUERYCAP pattern).
 fn v4l2_get<const NR: u8, T>(fd: impl AsFd) -> Result<T, std::io::Error> {
+    validate_v4l2_fd(&fd)?;
     // SAFETY: fd is a valid V4L2 device (AsFd contract); opcode
     // (VIDIOC_MAGIC, NR) is a compile-time constant matching V4L2 spec;
     // Getter allocates output and kernel writes into it.
@@ -36,6 +49,7 @@ fn v4l2_get<const NR: u8, T>(fd: impl AsFd) -> Result<T, std::io::Error> {
 /// Read-write V4L2 ioctl: kernel reads `*arg` and may write back
 /// (VIDIOC_S_FMT, REQBUFS, QUERYBUF, QBUF, DQBUF pattern).
 fn v4l2_update<const NR: u8, T>(fd: impl AsFd, arg: &mut T) -> Result<(), std::io::Error> {
+    validate_v4l2_fd(&fd)?;
     // SAFETY: fd valid; opcode matches V4L2 spec; arg points to a live,
     // correctly-typed repr(C) struct the kernel reads/writes.
     unsafe {
@@ -50,6 +64,7 @@ fn v4l2_update<const NR: u8, T>(fd: impl AsFd, arg: &mut T) -> Result<(), std::i
 /// Write-only V4L2 ioctl: kernel reads the value
 /// (VIDIOC_STREAMON, STREAMOFF pattern).
 fn v4l2_set<const NR: u8, T>(fd: impl AsFd, val: T) -> Result<(), std::io::Error> {
+    validate_v4l2_fd(&fd)?;
     // SAFETY: fd valid; opcode matches V4L2 spec; val is the correct type.
     unsafe {
         ioctl::ioctl(

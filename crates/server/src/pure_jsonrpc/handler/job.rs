@@ -24,8 +24,8 @@ impl JobHandler {
         }
     }
 
-    pub(super) fn job_queue_error(&self, err: JobQueueError) -> JsonRpcError {
-        let code = match &err {
+    pub(super) fn job_queue_error(err: &JobQueueError) -> JsonRpcError {
+        let code = match err {
             JobQueueError::JobNotFound { .. } => {
                 toadstool_common::constants::jsonrpc::error_codes::WORKLOAD_NOT_FOUND
             }
@@ -122,7 +122,7 @@ impl JobHandler {
                     "estimated_wait_ms": routing.estimated_wait_ms,
                 }
             })),
-            Err(e) => Err(self.job_queue_error(e)),
+            Err(e) => Err(Self::job_queue_error(&e)),
         }
     }
 
@@ -134,7 +134,7 @@ impl JobHandler {
         match self.job_queue.status(job_id).await {
             Ok(job) => serde_json::to_value(job)
                 .map_err(|e| JsonRpcError::internal_error(format!("Serialization: {e}"))),
-            Err(e) => Err(self.job_queue_error(e)),
+            Err(e) => Err(Self::job_queue_error(&e)),
         }
     }
 
@@ -146,7 +146,7 @@ impl JobHandler {
         self.job_queue
             .result(job_id)
             .await
-            .map_err(|e| self.job_queue_error(e))
+            .map_err(|e| Self::job_queue_error(&e))
     }
 
     pub(super) async fn compute_cancel(
@@ -158,7 +158,7 @@ impl JobHandler {
             .cancel(job_id)
             .await
             .map(|()| serde_json::json!({"cancelled": true}))
-            .map_err(|e| self.job_queue_error(e))
+            .map_err(|e| Self::job_queue_error(&e))
     }
 
     pub(super) async fn compute_list(

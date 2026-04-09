@@ -32,6 +32,7 @@ impl Default for ResourceEstimator {
     }
 }
 
+#[allow(clippy::unused_self)]
 impl ResourceEstimator {
     /// Create a new resource estimator with sensible defaults
     pub fn new() -> Self {
@@ -183,21 +184,19 @@ impl ResourceEstimator {
             .requirements
             .cpu
             .as_ref()
-            .map(|r| {
+            .map_or(self.default_cpu_cores, |r| {
                 #[expect(
                     clippy::cast_possible_truncation,
                     reason = "truncation acceptable for this conversion"
                 )]
                 u32::try_from(r.min_cores.round() as i64).unwrap_or(self.default_cpu_cores)
-            })
-            .unwrap_or(self.default_cpu_cores);
+            });
 
         let memory_bytes = node
             .requirements
             .memory
             .as_ref()
-            .map(|r| r.min_bytes)
-            .unwrap_or(self.default_memory_bytes);
+            .map_or(self.default_memory_bytes, |r| r.min_bytes);
 
         let gpu_memory_bytes = node
             .requirements

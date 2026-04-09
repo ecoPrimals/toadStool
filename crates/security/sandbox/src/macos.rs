@@ -7,8 +7,7 @@
 //! Requires `macos-sandbox` feature to enable Core Foundation bindings.
 
 use crate::{SandboxConfig, SandboxError, SandboxResult};
-use std::path::Path;
-use std::process::{Command, Stdio};
+use tracing::{debug, info, warn};
 
 /// macOS sandbox implementation
 pub struct MacOSSandbox {
@@ -23,7 +22,7 @@ impl MacOSSandbox {
 
     /// Apply macOS sandbox profile
     pub async fn apply_sandbox(&self) -> SandboxResult<()> {
-        log::info!("Applying macOS sandbox profile");
+        info!("Applying macOS sandbox profile");
 
         // Check if running on macOS
         if !cfg!(target_os = "macos") {
@@ -40,19 +39,18 @@ impl MacOSSandbox {
         // - Gatekeeper security framework
 
         // For now, implement basic checks and logging
-        log::info!("macOS sandbox profile applied (basic implementation)");
-        log::debug!(
-            "Sandbox config: isolation_level={:?}",
-            self.config.default_isolation_level
+        info!("macOS sandbox profile applied (basic implementation)");
+        debug!(
+            isolation_level = ?self.config.default_isolation_level,
+            "Sandbox config applied"
         );
 
-        // Verify sandbox capabilities
         if self.config.enable_seccomp {
-            log::warn!("Seccomp not available on macOS, using equivalent BSD restrictions");
+            warn!("Seccomp not available on macOS, using equivalent BSD restrictions");
         }
 
         if self.config.enable_namespace_isolation {
-            log::info!("Using macOS sandbox profiles for namespace-like isolation");
+            info!("Using macOS sandbox profiles for namespace-like isolation");
         }
 
         Ok(())
@@ -60,7 +58,7 @@ impl MacOSSandbox {
 
     /// Remove macOS sandbox restrictions
     pub async fn remove_sandbox(&self) -> SandboxResult<()> {
-        log::info!("Removing macOS sandbox restrictions");
+        info!("Removing macOS sandbox restrictions");
 
         // Check if running on macOS
         if !cfg!(target_os = "macos") {
@@ -76,10 +74,10 @@ impl MacOSSandbox {
         // - Restore original process entitlements
         // - Clean up sandbox-related file descriptors
 
-        log::info!("macOS sandbox restrictions removed (basic implementation)");
-        log::debug!(
-            "Sandbox cleanup completed for isolation_level={:?}",
-            self.config.default_isolation_level
+        info!("macOS sandbox restrictions removed (basic implementation)");
+        debug!(
+            isolation_level = ?self.config.default_isolation_level,
+            "Sandbox cleanup completed"
         );
 
         Ok(())

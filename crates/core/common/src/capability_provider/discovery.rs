@@ -4,6 +4,7 @@
 //! Queries the discovery service to find providers for a given capability.
 
 use crate::primal_identity::Capability;
+use crate::primal_sockets::{SocketPathEnv, resolve_capability_socket_fallback};
 use crate::unix_jsonrpc_client::UnixJsonRpcClient;
 use std::path::PathBuf;
 
@@ -13,16 +14,10 @@ use super::serialize;
 
 /// Query discovery service for all providers of a capability
 pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
-    let discovery_socket = std::env::var("BIOMEOS_COORDINATION_SOCKET")
-        .or_else(|_| std::env::var("COORDINATION_SOCKET"))
-        .or_else(|_| std::env::var("SONGBIRD_SOCKET")) // legacy
-        .unwrap_or_else(|_| {
-            let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-                .unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().into_owned());
-            format!("{runtime_dir}/biomeos/coordination.sock")
-        });
+    let env = SocketPathEnv::from_env();
+    let discovery_socket = resolve_capability_socket_fallback("coordination", &env);
 
-    let client = UnixJsonRpcClient::new(&discovery_socket);
+    let client = UnixJsonRpcClient::new(discovery_socket);
 
     let params = serde_json::json!({
         "capability": serialize::capability_to_string(&capability)

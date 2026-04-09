@@ -25,7 +25,10 @@ pub struct GpuInfo {
     pub compute_capability: String,
     /// CUDA support.
     pub supports_cuda: bool,
-    /// OpenCL support.
+    /// Legacy field retained for serde compatibility.
+    ///
+    /// DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC. Always `false`.
+    #[deprecated(note = "DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC")]
     pub supports_opencl: bool,
 }
 
@@ -52,6 +55,7 @@ pub async fn detect_gpus(_detector: &HardwareDetector) -> ToadStoolResult<Vec<Gp
 
 /// Parse nvidia-smi CSV output (--format=csv,noheader,nounits).
 /// Columns: name, memory.total (MB), `driver_version`
+#[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
 pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
@@ -69,7 +73,7 @@ pub(crate) fn parse_nvidia_smi_csv(output: &str) -> Vec<GpuInfo> {
                 driver_version: "unknown".to_string(),
                 compute_capability: get_nvidia_compute_capability(&name),
                 supports_cuda: true,
-                supports_opencl: true,
+                supports_opencl: false,
             });
         }
     }
@@ -94,6 +98,7 @@ async fn detect_nvidia_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 }
 
 /// Detect AMD GPUs
+#[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
 async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
     let mut gpus = Vec::new();
 
@@ -114,7 +119,7 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
                 driver_version: "Unknown".to_string(),
                 compute_capability: "RDNA".to_string(),
                 supports_cuda: false,
-                supports_opencl: true,
+                supports_opencl: false,
             });
         }
     }
@@ -123,6 +128,7 @@ async fn detect_amd_gpus() -> ToadStoolResult<Vec<GpuInfo>> {
 }
 
 /// Detect Intel GPUs
+#[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
 fn detect_intel_gpus() -> Vec<GpuInfo> {
     let mut gpus = Vec::new();
 
@@ -137,7 +143,7 @@ fn detect_intel_gpus() -> Vec<GpuInfo> {
             driver_version: "Unknown".to_string(),
             compute_capability: "Gen9+".to_string(),
             supports_cuda: false,
-            supports_opencl: true,
+            supports_opencl: false,
         });
     }
 
@@ -196,6 +202,7 @@ pub fn calculate_gpu_score(gpu_info: &[GpuInfo]) -> f64 {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
 

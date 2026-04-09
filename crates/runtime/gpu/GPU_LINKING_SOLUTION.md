@@ -5,6 +5,11 @@
 **Approach**: Universal capability-based runtime detection  
 **Philosophy**: Zero hardcoding, discover at runtime
 
+> **S198 Update**: OpenCL and CUDA backends are **deprecated** (S197-S198). The `opencl` feature
+> flag is a no-op; the `cuda` feature was removed. Only **wgpu** (WebGPU) and **Vulkan** are
+> active backends. OpenCL/CUDA compute is handled by barraCuda/coralReef via IPC. Code examples
+> below retain the original multi-framework design for historical context.
+
 ---
 
 ## 🎯 Problem Analysis
@@ -27,7 +32,7 @@ rust-lld: error: duplicate symbol: wgpu_render_bundle_*
 
 ```rust
 // ❌ OLD: Hardcoded frameworks at compile-time
-#[cfg(feature = "cuda")] use cudarc;
+// cuda: DEPRECATED S197 — CUDA dispatch via barraCuda/coralReef IPC
 #[cfg(feature = "opencl")] use ocl;
 #[cfg(feature = "vulkan")] use vulkano;
 
@@ -69,7 +74,7 @@ universal-agnostic = [] # Zero dependencies, pure runtime logic
 webgpu = ["wgpu"]
 opencl = ["ocl"]
 vulkan = ["vulkano", "ash"]
-cuda = ["cudarc"]
+cuda = []  # DEPRECATED S197 — CUDA via barraCuda/coralReef IPC
 
 # Users compile with what their system supports:
 # cargo build --features opencl    # For OpenCL systems

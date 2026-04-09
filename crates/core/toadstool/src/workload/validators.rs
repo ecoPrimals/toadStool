@@ -68,8 +68,10 @@ pub(super) fn validate_wasm_module(module: &WasmModuleSource) -> ToadStoolResult
 }
 
 /// Validate GPU program source
+#[expect(deprecated, reason = "OpenCL variant retained for serde (S198)")]
 pub(super) fn validate_gpu_program(program: &GpuProgramSource) -> ToadStoolResult<()> {
     match program {
+        // DEPRECATED S198: OpenCL removed — keep arm for persisted specs and validation.
         GpuProgramSource::OpenCL { source } => {
             if source.is_empty() {
                 return Err(ToadStoolError::validation("OpenCL source cannot be empty"));

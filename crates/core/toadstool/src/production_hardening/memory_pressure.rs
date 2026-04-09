@@ -47,7 +47,9 @@ pub enum MemoryPressureLevel {
 }
 
 /// Memory pressure callback trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
+///
+/// NOTE(async-dyn): [`MemoryPressureHandler`] stores `Arc<dyn MemoryPressureCallback>`. Native
+/// `async fn` in traits is not object-safe; `#[async_trait]` is required.
 #[async_trait]
 pub trait MemoryPressureCallback: Send + Sync {
     /// Invoked when memory pressure exceeds a threshold.
@@ -129,7 +131,6 @@ impl MemoryPressureHandler {
 /// Default memory pressure callback
 pub struct DefaultMemoryPressureCallback;
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl MemoryPressureCallback for DefaultMemoryPressureCallback {
     async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64) {

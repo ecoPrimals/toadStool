@@ -3,17 +3,19 @@
 //!
 //! ## Planned / Future Implementation
 //!
-//! These emulator structs and trait implementations are **infrastructure placeholders**
-//! for future CPU emulation support. They are registered in the embedded adapter
-//! registry and satisfy the type system, but all operations (except no-op `stop` and
-//! `clear_breakpoint`) return [`crate::SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder`]
-//! (mapped to [`toadstool::SystemError::NotSupported`]) until emulator cores exist.
+//! These emulator structs and trait implementations are **stub implementations** gated by the
+//! `embedded-placeholder-impls` Cargo feature for future CPU emulation support. They are registered
+//! in the embedded adapter registry and satisfy the type system, but all operations (except no-op
+//! `stop` and `clear_breakpoint`) return [`crate::SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder`]
+//! (mapped to [`toadstool::SystemError::NotSupported`]) — **not yet implemented for the named
+//! platform** until a core, memory map, and debug hooks exist.
 //!
 //! ## Feature Gates
 //!
-//! - **`embedded-placeholder-impls`** (current): compile these stub impls as placeholders.
-//! - When `embedded-hw` is added (real emulator cores), this module will be gated behind
-//!   `#[cfg(not(feature = "embedded-hw"))]` so the real impls take precedence.
+//! - **`embedded-placeholder-impls`** (default): compile these stubs so the registry resolves.
+//! - **`embedded-hw`** (reserved): when real emulator cores land, gate this module with
+//!   `#[cfg(all(feature = "embedded-placeholder-impls", not(feature = "embedded-hw")))]` and add
+//!   `#[cfg(feature = "embedded-hw")]` real impls.
 //!
 //! See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
 //!
@@ -33,8 +35,13 @@ use toadstool::ToadStoolError;
 use super::emulators::{Emulator6502, EmulatorZ80};
 use super::types::{CpuRegisters, EmbeddedEmulator as EmulatorTrait, EmulationStatus};
 
-fn emulator_placeholder_err(feature_id: &'static str, operation: &'static str) -> ToadStoolError {
+fn emulator_placeholder_err(
+    platform: &'static str,
+    feature_id: &'static str,
+    operation: &'static str,
+) -> ToadStoolError {
     SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
+        platform,
         feature_id,
         operation,
     }
@@ -45,7 +52,7 @@ fn emulator_placeholder_err(feature_id: &'static str, operation: &'static str) -
 ///
 /// See DEBT.md `D-EMBEDDED-EMULATOR` and module-level docs for evolution plan.
 macro_rules! impl_emulator_stub {
-    ($emulator:ty, $name:expr, $arch:expr, $feature_id:expr) => {
+    ($emulator:ty, $name:expr, $arch:expr, $platform:expr, $feature_id:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl EmulatorTrait for $emulator {
@@ -58,7 +65,11 @@ macro_rules! impl_emulator_stub {
             }
 
             async fn initialize(&mut self, _config: &EmbeddedConfig) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "initialize"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "initialize",
+                ))
             }
 
             async fn load_rom(
@@ -66,11 +77,11 @@ macro_rules! impl_emulator_stub {
                 _rom_data: &[u8],
                 _load_address: u32,
             ) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "load_rom"))
+                Err(emulator_placeholder_err($platform, $feature_id, "load_rom"))
             }
 
             async fn start(&mut self) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "start"))
+                Err(emulator_placeholder_err($platform, $feature_id, "start"))
             }
 
             async fn stop(&mut self) -> ToadStoolResult<()> {
@@ -78,31 +89,55 @@ macro_rules! impl_emulator_stub {
             }
 
             async fn step(&mut self) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "step"))
+                Err(emulator_placeholder_err($platform, $feature_id, "step"))
             }
 
             async fn get_status(&self) -> ToadStoolResult<EmulationStatus> {
-                Err(emulator_placeholder_err($feature_id, "get_status"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "get_status",
+                ))
             }
 
             async fn read_memory(&self, _address: u32, _length: u32) -> ToadStoolResult<Vec<u8>> {
-                Err(emulator_placeholder_err($feature_id, "read_memory"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "read_memory",
+                ))
             }
 
             async fn write_memory(&mut self, _address: u32, _data: &[u8]) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "write_memory"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "write_memory",
+                ))
             }
 
             async fn read_registers(&self) -> ToadStoolResult<CpuRegisters> {
-                Err(emulator_placeholder_err($feature_id, "read_registers"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "read_registers",
+                ))
             }
 
             async fn write_registers(&mut self, _registers: &CpuRegisters) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "write_registers"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "write_registers",
+                ))
             }
 
             async fn set_breakpoint(&mut self, _address: u32) -> ToadStoolResult<()> {
-                Err(emulator_placeholder_err($feature_id, "set_breakpoint"))
+                Err(emulator_placeholder_err(
+                    $platform,
+                    $feature_id,
+                    "set_breakpoint",
+                ))
             }
 
             async fn clear_breakpoint(&mut self, _address: u32) -> ToadStoolResult<()> {
@@ -116,12 +151,14 @@ impl_emulator_stub!(
     Emulator6502,
     "6502 Emulator",
     LegacyArchitecture::MOS6502,
+    "mos6502",
     "embedded_emulator_mos6502"
 );
 impl_emulator_stub!(
     EmulatorZ80,
     "Z80 Emulator",
     LegacyArchitecture::ZilogZ80,
+    "z80",
     "embedded_emulator_zilog_z80"
 );
 
@@ -160,8 +197,8 @@ mod tests {
             "expected not-supported wording, got: {msg}"
         );
         assert!(
-            msg.contains("emulator"),
-            "expected emulator feature or reason, got: {msg}"
+            msg.contains("not yet implemented") && msg.contains("platform"),
+            "expected platform-specific stub reason, got: {msg}"
         );
     }
 

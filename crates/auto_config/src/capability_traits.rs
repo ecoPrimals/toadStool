@@ -14,7 +14,9 @@ use crate::hardware::SystemCapabilities;
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of hardware detection.
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
+///
+/// NOTE(async-dyn): `into_trait()` returns `Box<dyn HardwareCapabilityDetector>`. Native `async fn`
+/// in traits is not object-safe; `#[async_trait]` is required.
 #[async_trait]
 pub trait HardwareCapabilityDetector: Send + Sync {
     /// Scan system hardware capabilities
@@ -25,7 +27,9 @@ pub trait HardwareCapabilityDetector: Send + Sync {
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of service discovery.
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
+///
+/// NOTE(async-dyn): `into_trait()` returns `Box<dyn EcosystemServiceDiscoverer>`. Native `async fn`
+/// in traits is not object-safe; `#[async_trait]` is required.
 #[async_trait]
 pub trait EcosystemServiceDiscoverer: Send + Sync {
     /// Discover available ecosystem services
@@ -37,7 +41,6 @@ pub trait EcosystemServiceDiscoverer: Send + Sync {
 // ============================================================================
 
 /// Adapter to make `HardwareDetector` implement the trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -46,7 +49,6 @@ impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
 }
 
 /// Adapter to make `EcosystemDiscoverer` implement the trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -110,7 +112,6 @@ impl Default for MockHardwareDetector {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl HardwareCapabilityDetector for MockHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -163,7 +164,6 @@ impl Default for MockEcosystemDiscoverer {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EcosystemServiceDiscoverer for MockEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
@@ -194,7 +194,6 @@ struct RealHardwareDetector {
     inner: crate::hardware::HardwareDetector,
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl HardwareCapabilityDetector for RealHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
@@ -207,7 +206,6 @@ struct RealEcosystemDiscoverer {
     inner: crate::ecosystem::EcosystemDiscoverer,
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl EcosystemServiceDiscoverer for RealEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {

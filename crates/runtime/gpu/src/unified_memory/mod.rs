@@ -15,9 +15,9 @@
 //!     ↓
 //! Backend Trait (abstraction)
 //!     ↓
-//! ┌──────────┬─────────┬─────────┬──────┐
-//! │ Vulkan   │ OpenCL  │ WebGPU  │ CPU  │
-//! └──────────┴─────────┴─────────┴──────┘
+//! ┌──────────┬─────────┬──────┐
+//! │ Vulkan   │ WebGPU  │ CPU  │
+//! └──────────┴─────────┴──────┘
 //!     ↓          ↓         ↓        ↓
 //! Intel/AMD/NVIDIA (hardware)
 //! ```
@@ -56,8 +56,9 @@
 //! Priority order (sovereignty-first):
 //! 1. **`WebGPU`** - Pure Rust, vendor-agnostic (future primary)
 //! 2. **Vulkan** - Cross-vendor, modern (current best)
-//! 3. **`OpenCL`** - Cross-vendor, legacy (compatibility)
-//! 4. **CPU** - Always available (fallback)
+//! 3. **CPU** - Always available (fallback)
+//!
+//! OpenCL-class unified memory is handled by **barraCuda** / **coralReef** (S198); the in-tree OpenCL backend stub always fails initialization.
 //!
 //! ## Zero-Copy Performance
 //!

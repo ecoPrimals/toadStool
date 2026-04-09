@@ -39,6 +39,10 @@ fn default_primal() -> String {
     PRIMAL_NAME.to_string()
 }
 
+#[expect(
+    clippy::ref_option,
+    reason = "serde helper signature uses &Option for serialize_with"
+)]
 fn serialize_duration<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -128,72 +132,84 @@ impl GraphNodeBuilder {
     }
 
     /// Sets the primal type.
+    #[must_use]
     pub fn primal(mut self, primal: impl Into<String>) -> Self {
         self.primal = primal.into();
         self
     }
 
     /// Sets CPU core requirement.
+    #[must_use]
     pub fn cpu(mut self, cores: f64) -> Self {
         self.cpu_cores = Some(cores);
         self
     }
 
     /// Sets memory requirement in bytes.
+    #[must_use]
     pub fn memory(mut self, bytes: u64) -> Self {
         self.memory_bytes = Some(bytes);
         self
     }
 
     /// Sets memory requirement in gigabytes.
+    #[must_use]
     pub fn memory_gb(mut self, gb: u64) -> Self {
         self.memory_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
 
     /// Sets GPU memory requirement in bytes.
+    #[must_use]
     pub fn gpu_memory(mut self, bytes: u64) -> Self {
         self.gpu_memory_bytes = Some(bytes);
         self
     }
 
     /// Sets GPU memory requirement in gigabytes.
+    #[must_use]
     pub fn gpu_memory_gb(mut self, gb: u64) -> Self {
         self.gpu_memory_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
 
     /// Sets storage requirement in bytes.
+    #[must_use]
     pub fn storage(mut self, bytes: u64) -> Self {
         self.storage_bytes = Some(bytes);
         self
     }
 
     /// Sets storage requirement in gigabytes.
+    #[must_use]
     pub fn storage_gb(mut self, gb: u64) -> Self {
         self.storage_bytes = Some(gb * 1024 * 1024 * 1024);
         self
     }
 
     /// Sets network bandwidth requirement in Mbps.
+    #[must_use]
     pub fn network_bandwidth(mut self, mbps: u64) -> Self {
         self.network_bandwidth_mbps = Some(mbps);
         self
     }
 
     /// Sets estimated duration.
+    #[must_use]
     pub fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
 
     /// Sets estimated duration in seconds.
+    #[must_use]
     pub fn duration_secs(mut self, secs: u64) -> Self {
         self.duration = Some(Duration::from_secs(secs));
         self
     }
 
     /// Adds a metadata key-value pair.
+    #[must_use]
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self
@@ -236,7 +252,7 @@ impl GraphNodeBuilder {
         }
 
         if let Some(mbps) = self.network_bandwidth_mbps {
-            let bytes_per_sec = mbps * 125000;
+            let bytes_per_sec = mbps * 125_000;
             requirements.network = Some(NetworkRequirements {
                 min_bandwidth: Some(bytes_per_sec),
                 max_bandwidth: None,
@@ -276,6 +292,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // exact builder values in test
     fn test_graph_node_builder_with_resources() {
         let node = GraphNode::builder("n3", "gpu_compute")
             .cpu(8.0)

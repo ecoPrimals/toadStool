@@ -15,7 +15,9 @@ pub enum GpuFramework {
     WebGpu,
     /// Vulkan compute (cross-platform, high-performance)
     Vulkan,
-    /// `OpenCL` (widely supported, vendor-agnostic)
+    /// Serialization / discovery only: OpenCL-class GPUs are handled by barraCuda/coralReef (not embedded here).
+    ///
+    /// **DEPRECATED S198:** direct OpenCL support was removed from this crate; use barraCuda/coralReef via IPC.
     OpenCl,
     /// NVIDIA CUDA (NVIDIA-specific, high-performance)
     Cuda,
@@ -48,7 +50,7 @@ impl GpuFramework {
     /// Check if framework is universally supported
     #[must_use]
     pub const fn is_universal(&self) -> bool {
-        matches!(self, Self::WebGpu | Self::Vulkan | Self::OpenCl)
+        matches!(self, Self::WebGpu | Self::Vulkan)
     }
 
     /// Get platform compatibility information
@@ -257,12 +259,12 @@ impl Default for DeviceUsage {
 /// Framework-specific device handles.
 #[derive(Debug)]
 pub enum FrameworkHandle {
-    /// OpenCL device.
-    #[cfg(feature = "opencl")]
-    OpenCl(ocl::Device),
-    /// CUDA context (cudarc 0.19).
-    #[cfg(feature = "cuda")]
-    Cuda(Arc<cudarc::driver::safe::CudaContext>),
+    /// DEPRECATED S198: OpenCL removed. Use barraCuda/coralReef via IPC.
+    #[deprecated(
+        since = "0.2.0",
+        note = "OpenCL removed — use barraCuda/coralReef via IPC"
+    )]
+    OpenCl,
     /// Vulkan device.
     #[cfg(feature = "vulkan")]
     Vulkan(Arc<vulkano::device::Device>),
@@ -281,13 +283,10 @@ pub enum FrameworkHandle {
 }
 
 impl Clone for FrameworkHandle {
+    #[expect(deprecated, reason = "OpenCL variant retained in enum (S198)")]
     fn clone(&self) -> Self {
         match self {
-            #[cfg(feature = "opencl")]
-            Self::OpenCl(device) => Self::OpenCl(*device),
-            #[cfg(feature = "cuda")]
-            // cudarc 0.19: CudaContext is in Arc, so we can clone it
-            Self::Cuda(context) => Self::Cuda(Arc::clone(context)),
+            Self::OpenCl => Self::OpenCl,
             #[cfg(feature = "vulkan")]
             Self::Vulkan(device) => Self::Vulkan(Arc::clone(device)),
             #[cfg(feature = "webgpu")]

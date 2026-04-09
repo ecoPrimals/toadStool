@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 8, 2026 -- S194 Deep Debt + Capability Evolution
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,526+ tests (0 failures) | **~67 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 #[allow]** | **0 production TODOs** | **~3m30s test runtime**
-**Latest**: S194 — Deep debt capability evolution (nestgate_integration→storage_integration, NestGateMount→StorageMount, doc comments). S193 — Headless GPU crash isolation + BTSP field renames. S192 — GAP-MATRIX-12 insecure guard
+**Updated**: April 9, 2026 -- S198 (TS-01, BTSP Phase 2 UDS, health triad, OpenCL deprecation, musl binary)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~67 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime**
+**Latest**: S198 — `visualization_client` unified `capability.discover` (TS-01); BTSP handshake on all UDS accepts; health liveness/readiness/check shapes; OpenCL stubbed; six modules split to <500 lines; musl-static ~11MB binary validated. S195–S197 (prior): tarpc wiring, fuzz infra, clippy, BTSP expect, cudarc removal
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,526+ tests** (S194, 0 failures). Target 90%.
+**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,600+ tests** (S198, 0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -123,16 +123,16 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **DF64 default path** -- transferred to barraCuda team (S93)
 - [x] **NpuDispatch trait** -- generic NPU interface (toadStool D-NPU)
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
-- [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]`; 3 stale suppressions removed (S131+)
+- [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 21,526+ tests (S194); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 21,600+ tests (S198); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
 - [x] **Zero-copy hot paths** -- `Cow<'static, str>`, `Arc<str>` in execution types (S129)
 - [x] **Generated artifacts cleaned** -- removed tracked JSON files from git (S129)
 - [x] **Primal overstep cleanup (S169)** -- Ollama, HTTP server stack (server+cli → Songbird), shader **compile** proxy (→ coralReef), science/ecology/deploy relay (→ biomeOS); pyo3/gbm/linfa/hmac/indicatif removed; **`shader.dispatch`** retained
-- [x] **coralReef shader compile path (S130; boundary S169)** -- S130 added real compile proxy; S169 removed compile from toadStool (coralReef-only); dispatch-only E2E remains via **`shader.dispatch`**
+- [x] **coralReef / shader compiler discovery (TS-01, S198)** -- `visualization_client.rs` uses `capability.discover` (no `CORALREEF_*` env, no coralreef-core.json, no coralreef dir scan). S169 removed compile from toadStool (coralReef-only); dispatch E2E via **`shader.dispatch`**
 - [x] **Cross-spring provenance** -- `cross_spring_provenance.rs`, `toadstool.provenance` JSON-RPC method (S130)
 - [x] **Sovereignty migration** -- remaining callers to capability-based APIs (toadStool D-SOV)
 - [x] **Hardware Transport wiring** -- transport.discover/list/route JSON-RPC + CLI commands
@@ -144,6 +144,9 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Sovereign pipeline** -- HardwareFingerprint, is_sovereign_capable, safe_allocation_limit, SubstrateCapabilityKind (S96)
 - [x] **SubstrateType expansion** -- 4→8 variants: IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum (S96)
 - [x] **God file splits (round 3)** -- dispatch.rs, detection.rs, engine.rs, protocols/lib.rs, specialized_templates.rs (S96)
+- [x] **BTSP Phase 2 (S198)** -- handshake on all UDS accept paths (tarpc + daemon JSON-RPC servers)
+- [x] **Health triad shapes (S198)** -- liveness / readiness / check JSON-RPC responses aligned
+- [x] **musl-static release binary (S198)** -- ~11MB x86_64 PIE stripped, validated
 - [x] **API orphan resolved** -- crates/api/ ByobApi extracted to container crate (S96)
 - [x] **V4L2 unsafe docs** -- All SAFETY comments on unsafe blocks (S96)
 - [x] **Debris cleanup** -- root tests/ stubs, stale checklists, false-positive TODOs (S95)
@@ -156,7 +159,20 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-194)
+## Completed This Session (S90-198)
+
+### Session S198: TS-01, BTSP Phase 2, Health Triad, OpenCL Deprecation, musl (Apr 9, 2026)
+- **TS-01 RESOLVED**: coralReef / shader-compiler discovery in `visualization_client.rs` — unified `capability.discover` (removed `CORALREEF_SOCKET`/`URL`, `coralreef-core.json`, coralreef directory scan).
+- **BTSP Phase 2 WIRED**: Handshake enforced on all UDS accept paths (`tarpc_server.rs`, `daemon/jsonrpc_server.rs`; pure JSON-RPC already had it).
+- **Health triad**: `health.liveness` → `{"status":"alive"}`; `health.readiness` → `{"status":"ready","version":...}`; `health.check` → full envelope.
+- **OpenCL deprecated**: `ocl` removed; OpenCL code paths stubbed; `GpuFramework::OpenCl` deprecated.
+- **Refactors**: Six large files → module dirs (handler/core, tarpc_server, interned_strings, ecosystem/types, storage, cloud_provider_trait), all <500 lines.
+- **Discovery**: `SocketPathEnv` hints + `resolve_capability_socket_fallback` for primal socket resolution.
+- **BearDog**: `auth.token.refresh` — real async RPC (placeholder evolved).
+- **Embedded**: `thiserror` platform-specific errors (stubs still placeholder behavior).
+- **Unsafe hardening**: nvpmu `VfioIrqSetPayload`, V4L2 fd validation, hw-safe debug asserts, secure_enclave `madvise` checks.
+- **musl-static**: ~11MB x86_64 PIE stripped binary built and validated.
+- **Workspace**: 228 files changed, net −5,157 lines; 0 clippy warnings, 0 fmt diffs, 0 test failures; **21,600+** tests.
 
 ### Session S194: Deep Debt — Capability-Based Field/Type/Doc Evolution (Apr 8, 2026)
 - **S194 (Apr 8, 2026)**: Renamed `nestgate_integration` → `storage_integration` (with `#[serde(alias)]`), `NestGateMount` → `StorageMount` in production return types. Updated doc comments across tarpc_client, CLI banner, auth types, storage types, orchestration discovery, visualization client. Renamed primal-named test functions to capability-based. Updated test data. ~400 intentional legacy-compat refs remain. 21,526+ tests, 0 failures.
@@ -253,7 +269,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **Corrupted test attributes**: 3 CLI test files with sed-corrupted `#[tokio::test]` attributes repaired.
 
 ### Session S130: Cross-Spring Shader Rewiring + Provenance (Mar 7, 2026)
-- **coralReef proxy**: `shader.compile.*` stubs evolved to real coralReef proxy handlers with capability-based discovery. `CoralReefClient` discovers via env vars → XDG manifest → socket fallback. Dynamic `coral_reef_available` in capabilities. Graceful naga-only fallback when coralReef unavailable.
+- **coralReef proxy**: `shader.compile.*` stubs evolved to real coralReef proxy handlers with capability-based discovery. Later: compile removed from toadStool (S169); **TS-01 / S198** — `visualization_client.rs` uses unified `capability.discover` only (legacy `CORALREEF_*` env, manifest, dir scan removed). Dynamic `coral_reef_available` in capabilities. Graceful naga-only fallback when compiler unavailable.
 - **Cross-spring provenance**: `cross_spring_provenance.rs` with 17+ documented flows across all 5 springs. `CrossSpringFlow` struct, `cross_spring_matrix()`, `provenance_json()`. New `toadstool.provenance` JSON-RPC method for ecosystem introspection.
 - **Capability port**: `SHADER_COMPILER` added to `capability_fallback` module (port 8090).
 - **Tests**: 31 new tests — 12 shader proxy tests, 6 benchmark validation tests, 13 provenance integration tests. Cross-spring WGSL samples from all 5 domains validated.

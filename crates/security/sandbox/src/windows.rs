@@ -5,8 +5,7 @@
 //! Windows security features and process isolation.
 
 use crate::{SandboxConfig, SandboxError, SandboxResult};
-use std::path::Path;
-use std::process::{Command, Stdio};
+use tracing::{debug, info, warn};
 
 /// Windows sandbox implementation
 pub struct WindowsSandbox {
@@ -21,7 +20,7 @@ impl WindowsSandbox {
 
     /// Apply Windows sandbox restrictions
     pub async fn apply_sandbox(&self) -> SandboxResult<()> {
-        log::info!("Applying Windows sandbox restrictions");
+        info!("Applying Windows sandbox restrictions");
 
         // Check if running on Windows
         if !cfg!(windows) {
@@ -38,15 +37,14 @@ impl WindowsSandbox {
         // - Job Objects for resource limiting
 
         // For now, implement basic checks and logging
-        log::info!("Windows sandbox restrictions applied (basic implementation)");
-        log::debug!(
-            "Sandbox config: isolation_level={:?}",
-            self.config.default_isolation_level
+        info!("Windows sandbox restrictions applied (basic implementation)");
+        debug!(
+            isolation_level = ?self.config.default_isolation_level,
+            "Sandbox config applied"
         );
 
-        // Verify sandbox requirements
         if self.config.enable_seccomp {
-            log::warn!("Seccomp not available on Windows, using equivalent restrictions");
+            warn!("Seccomp not available on Windows, using equivalent restrictions");
         }
 
         Ok(())
@@ -54,7 +52,7 @@ impl WindowsSandbox {
 
     /// Remove Windows sandbox restrictions
     pub async fn remove_sandbox(&self) -> SandboxResult<()> {
-        log::info!("Removing Windows sandbox restrictions");
+        info!("Removing Windows sandbox restrictions");
 
         // Check if running on Windows
         if !cfg!(windows) {
@@ -70,10 +68,10 @@ impl WindowsSandbox {
         // - Clean up temporary sandbox directories
         // - Release allocated resources
 
-        log::info!("Windows sandbox restrictions removed (basic implementation)");
-        log::debug!(
-            "Sandbox cleanup completed for isolation_level={:?}",
-            self.config.default_isolation_level
+        info!("Windows sandbox restrictions removed (basic implementation)");
+        debug!(
+            isolation_level = ?self.config.default_isolation_level,
+            "Sandbox cleanup completed"
         );
 
         Ok(())

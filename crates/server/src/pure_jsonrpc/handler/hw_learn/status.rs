@@ -22,7 +22,7 @@ impl HwLearnHandler {
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
         let store = self.open_store().ok();
-        let arch_count = store.as_ref().map(|s| s.architectures().len()).unwrap_or(0);
+        let arch_count = store.as_ref().map_or(0, |s| s.architectures().len());
 
         let chip = params
             .and_then(|p| p.get("chip"))

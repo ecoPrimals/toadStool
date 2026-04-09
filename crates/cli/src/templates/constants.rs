@@ -34,8 +34,9 @@ pub mod template_names {
 
 /// Service names used in templates
 ///
-/// Prefer capability ids (`storage`, `crypto`, `coordination`) from
-/// [`service_names`] instead of legacy orchestrator labels in new manifests.
+/// Prefer capability ids from [`toadstool_common::interned_strings::capabilities`]
+/// (`storage`, `crypto`, `coordination`, …) in new manifests — not legacy route labels
+/// ([`toadstool_common::interned_strings::primals`]).
 ///
 /// Generic service names (jupyter, postgres, redis) remain valid as these are
 /// third-party services, not ecoPrimals.
@@ -58,13 +59,14 @@ pub mod service_names {
     /// Coordination capability id
     pub const COORDINATION: &str = toadstool_common::interned_strings::capabilities::COORDINATION;
 
-    /// Legacy alias — same value as [`STORAGE`].
+    /// Legacy template symbol — evolved to capability id [`STORAGE`] (not the legacy route label
+    /// [`toadstool_common::interned_strings::primals::LEGACY_STORAGE_LABEL`]).
     pub const NESTGATE: &str = STORAGE;
 
-    /// Legacy alias — same value as [`CRYPTO`].
+    /// Legacy template symbol — evolved to capability id [`CRYPTO`].
     pub const BEARDOG: &str = CRYPTO;
 
-    /// Legacy alias — same value as [`COORDINATION`].
+    /// Legacy template symbol — evolved to capability id [`COORDINATION`].
     pub const SONGBIRD: &str = COORDINATION;
 }
 

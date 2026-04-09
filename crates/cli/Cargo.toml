@@ -98,7 +98,7 @@ colored = "2.0"
 # Encoding
 base64 = "0.22"
 sha2 = "0.10"
-hex = "0.4"
+hex = { workspace = true }
 
 # barracuda removed S94b: nautilus methods are now proxied to barraCuda via
 # capability-based IPC (JSON-RPC over Unix socket). Zero library coupling.
@@ -131,7 +131,9 @@ ecosystem = []
 universal = []
 monitoring = []
 templates = []
-daemon = []
+# BTSP on daemon JSON-RPC (FAMILY_ID production mode); passes through to toadstool-common
+btsp = ["toadstool-common/btsp"]
+daemon = ["btsp"]
 wasm = ["dep:toadstool-runtime-wasm", "dep:wasmi"]  # Optional: WASM runtime
 
 # GPU FEATURES: Sovereign + Pragmatic

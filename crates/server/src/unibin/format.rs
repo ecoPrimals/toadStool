@@ -32,12 +32,30 @@ pub fn ensure_biomeos_directory(runtime_dir: &Path) -> ServerResult<PathBuf> {
     Ok(biomeos_dir)
 }
 
-/// Get socket filename based on family ID
+/// Get socket filename based on family ID.
 ///
-/// - If family ID is "default" or not set: `toadstool.sock`
-/// - If family ID is set and not "default": `toadstool-{family_id}.sock`
+/// Uses the **capability domain** stem per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md`
+/// v1.1 — sockets are named for what the primal *does*, not what it *is*.
+///
+/// - If family ID is "default" or not set: `compute.sock`
+/// - If family ID is set and not "default": `compute-{family_id}.sock`
 #[must_use]
 pub fn socket_filename_for_family(family_id: &str) -> String {
+    let domain = toadstool_common::constants::primal_identity::CAPABILITY_DOMAIN;
+    if family_id.is_empty() || family_id == "default" {
+        format!("{domain}.sock")
+    } else {
+        format!("{domain}-{family_id}.sock")
+    }
+}
+
+/// Legacy primal-named socket filename (for backward-compatible symlink).
+///
+/// During migration from primal-named to domain-named sockets, a symlink
+/// `toadstool.sock → compute.sock` is maintained for callers that haven't
+/// updated to domain-based discovery.
+#[must_use]
+pub fn legacy_socket_filename_for_family(family_id: &str) -> String {
     let name = toadstool_common::constants::primal_identity::PRIMAL_NAME;
     if family_id.is_empty() || family_id == "default" {
         format!("{name}.sock")
@@ -152,17 +170,30 @@ mod tests {
 
     #[test]
     fn socket_filename_for_family_empty() {
-        assert_eq!(socket_filename_for_family(""), "toadstool.sock");
+        assert_eq!(socket_filename_for_family(""), "compute.sock");
     }
 
     #[test]
     fn socket_filename_for_family_default() {
-        assert_eq!(socket_filename_for_family("default"), "toadstool.sock");
+        assert_eq!(socket_filename_for_family("default"), "compute.sock");
     }
 
     #[test]
     fn socket_filename_for_family_custom() {
-        assert_eq!(socket_filename_for_family("nat0"), "toadstool-nat0.sock");
+        assert_eq!(socket_filename_for_family("nat0"), "compute-nat0.sock");
+    }
+
+    #[test]
+    fn legacy_socket_filename_for_family_empty() {
+        assert_eq!(legacy_socket_filename_for_family(""), "toadstool.sock");
+    }
+
+    #[test]
+    fn legacy_socket_filename_for_family_custom() {
+        assert_eq!(
+            legacy_socket_filename_for_family("nat0"),
+            "toadstool-nat0.sock"
+        );
     }
 
     #[test]
@@ -178,7 +209,7 @@ mod tests {
                 let result = get_socket_path("custom", "node1");
                 assert!(result.is_ok());
                 let path = result.unwrap();
-                assert!(path.ends_with("biomeos/toadstool-custom.sock"));
+                assert!(path.ends_with("biomeos/compute-custom.sock"));
             },
         );
     }
@@ -240,7 +271,7 @@ mod tests {
                 let result = get_socket_path("default", "node1");
                 assert!(result.is_ok());
                 let path = result.unwrap();
-                assert!(path.ends_with("biomeos/toadstool.sock"));
+                assert!(path.ends_with("biomeos/compute.sock"));
             },
         );
     }

@@ -576,19 +576,14 @@ The following modules were refactored from single-file layouts into multi-file m
 
 ---
 
-### 7.7 `runtime::gpu::backends::opencl_impl`
+### 7.7 `runtime::gpu::backends::opencl_impl` (DEPRECATED S198)
 
 **Location**: `crates/runtime/gpu/src/backends/opencl_impl/`
 
 **Structure**:
-- `mod.rs` — Module root, re-exports
-- `backend.rs` — OpenCL backend implementation
-- `resource.rs` — Resource management
-- `context.rs` — Context handling
-- `kernels.rs` — Kernel dispatch and management
-- `tests.rs` — Backend tests
+- `mod.rs` — Deprecated stub module (OpenCL removed S198)
 
-**Purpose**: OpenCL backend for GPU runtime; split from single `opencl_impl.rs` for maintainability.
+**Purpose**: OpenCL backend was removed in S198. OpenCL compute is handled by barraCuda/coralReef via IPC. The feature flag `opencl` exists as a no-op for backward compatibility. The stub returns `GpuError::BackendNotAvailable` on any operation.
 
 ---
 

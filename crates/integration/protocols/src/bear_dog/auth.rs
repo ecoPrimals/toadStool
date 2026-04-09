@@ -41,6 +41,18 @@ pub struct AuthResponse {
     pub policies: Vec<SecurityPolicy>,
 }
 
+/// Request body for JSON-RPC `auth.token.refresh` or `security.token.renew` on the BearDog security service.
+///
+/// The server returns an [`AuthResponse`]-shaped result with a new `access_token` and `expires_in`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokenRefreshRequest {
+    /// Current bearer token to rotate (may be near expiry).
+    pub access_token: String,
+    /// Client timestamp for replay protection.
+    #[serde(with = "toadstool_common::system_time_serde")]
+    pub timestamp: std::time::SystemTime,
+}
+
 impl AuthResponse {
     /// Create a standalone-mode response when Security is unavailable
     pub fn standalone() -> Self {

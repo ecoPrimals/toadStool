@@ -57,7 +57,8 @@ pub enum SpecializedArchitecture {
         /// Memory in GB.
         memory_gb: u32,
     },
-    /// OpenCL compute.
+    /// OpenCL compute (serde-compatible; not surfaced by detection).
+    #[deprecated(note = "DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC")]
     OpenCL {
         /// OpenCL version.
         version: String,
@@ -129,6 +130,7 @@ pub enum SpecializedArchitecture {
 
 impl SpecializedArchitecture {
     /// Get the architecture type name
+    #[expect(deprecated, reason = "OpenCL arm for persisted specs (S198)")]
     pub const fn architecture_type(&self) -> &'static str {
         match self {
             Self::TPU { .. } => "TPU",
@@ -136,6 +138,7 @@ impl SpecializedArchitecture {
             Self::IPU { .. } => "IPU",
             Self::CUDA { .. } => "CUDA",
             Self::ROCm { .. } => "ROCm",
+            // DEPRECATED S198
             Self::OpenCL { .. } => "OpenCL",
             Self::Vulkan { .. } => "Vulkan",
             Self::Metal { .. } => "Metal",
@@ -153,11 +156,13 @@ impl SpecializedArchitecture {
     }
 
     /// Check if architecture is a GPU compute platform
+    #[expect(deprecated, reason = "OpenCL arm for persisted specs (S198)")]
     pub const fn is_gpu_compute(&self) -> bool {
         matches!(
             self,
             Self::CUDA { .. }
                 | Self::ROCm { .. }
+                // DEPRECATED S198: persisted OpenCL-shaped values only
                 | Self::OpenCL { .. }
                 | Self::Vulkan { .. }
                 | Self::Metal { .. }

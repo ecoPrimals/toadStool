@@ -19,7 +19,7 @@
 //! - ✅ Pluggable (can swap for HSM/KMS/etc.)
 
 // Allow deprecated during migration - security will be evolved
-#![allow(deprecated)]
+#![expect(deprecated, reason = "security provider migration in progress")]
 
 pub mod adapters;
 pub mod client;

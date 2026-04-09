@@ -4,7 +4,14 @@
 //! High-performance binary RPC server for primal-to-primal communication.
 //! Follows the coordination service's architecture pattern.
 
-use futures::StreamExt;
+mod connection;
+mod executor;
+
+pub use executor::{StandaloneExecutor, WorkloadExecutor};
+
+#[cfg(test)]
+pub use executor::TestExecutor;
+
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -17,9 +24,11 @@ use tracing::{info, warn};
 use crate::errors::{ServerError, ServerResult};
 
 // Deep debt solution: Use pure RPC types from local module
+#[cfg(test)]
+use crate::rpc_types::{AvailableResources, ComputeUnit, ExecutionMetrics};
 use crate::rpc_types::{
-    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
-    ToadStoolComputeRpc, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+    ComputeCapabilities, HealthStatus, ToadStoolComputeRpc, WorkloadResult, WorkloadStatus,
+    WorkloadSubmission,
 };
 
 /// tarpc server state
@@ -90,24 +99,6 @@ impl ToadStoolTarpcServer {
     }
 }
 
-/// Workload executor trait (capability-based, not hardcoded)
-///
-/// Following principles:
-/// - Self-knowledge: knows only its own capabilities
-/// - Discovery: discovers other primals at runtime
-/// - Complete implementation: no mocks in production
-#[async_trait::async_trait]
-pub trait WorkloadExecutor {
-    /// Execute workload with given submission
-    async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String>;
-
-    /// Query this executor's capabilities (self-knowledge)
-    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String>;
-
-    /// Cancel running workload
-    async fn cancel(&self, workload_id: &str) -> Result<(), String>;
-}
-
 impl ToadStoolTarpcServer {
     /// Create new tarpc server with real executor
     ///
@@ -135,9 +126,7 @@ impl ToadStoolTarpcServer {
     ///
     /// Returns [`ServerError`] if directory creation, socket bind, permission setting, or accept fails.
     pub async fn serve_unix(self, socket_path: impl AsRef<std::path::Path>) -> ServerResult<()> {
-        use tarpc::server::{BaseChannel, Channel};
         use tokio::net::UnixListener;
-        use tokio_serde::formats::Json;
 
         let socket_path = socket_path.as_ref();
 
@@ -183,6 +172,12 @@ impl ToadStoolTarpcServer {
             socket_path
         );
 
+        let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+        let btsp_required = toadstool_common::primal_sockets::is_btsp_required(&env);
+        if btsp_required {
+            info!("🔒 tarpc Unix: BTSP handshake required (FAMILY_ID set)");
+        }
+
         loop {
             let (stream, _addr) = listener
                 .accept()
@@ -191,16 +186,13 @@ impl ToadStoolTarpcServer {
             let server = self.clone();
 
             tokio::spawn(async move {
-                let framed = tokio_util::codec::LengthDelimitedCodec::builder().new_framed(stream);
-                let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
+                let Ok(stream) =
+                    connection::unix_maybe_btsp_before_tarpc(stream, btsp_required).await
+                else {
+                    return;
+                };
 
-                let channel = BaseChannel::with_defaults(transport);
-                channel
-                    .execute(server.serve())
-                    .for_each(|rpc| async {
-                        tokio::spawn(rpc);
-                    })
-                    .await;
+                connection::serve_on_tarpc_channel(server, stream).await;
             });
         }
     }
@@ -244,9 +236,6 @@ impl ToadStoolTarpcServer {
     ///
     /// Returns [`ServerError`] if getting local address or accept fails.
     pub async fn serve_tcp(self, listener: tokio::net::TcpListener) -> ServerResult<()> {
-        use tarpc::server::{BaseChannel, Channel};
-        use tokio_serde::formats::Json;
-
         let local_addr = listener
             .local_addr()
             .map_err(|e| ServerError::Network(e.to_string()))?;
@@ -260,16 +249,7 @@ impl ToadStoolTarpcServer {
             let server = self.clone();
 
             tokio::spawn(async move {
-                let framed = tokio_util::codec::LengthDelimitedCodec::builder().new_framed(stream);
-                let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
-
-                let channel = BaseChannel::with_defaults(transport);
-                channel
-                    .execute(server.serve())
-                    .for_each(|rpc| async {
-                        tokio::spawn(rpc);
-                    })
-                    .await;
+                connection::serve_on_tarpc_channel(server, stream).await;
             });
         }
     }
@@ -380,7 +360,7 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
 
         Ok(HealthStatus {
             healthy: true,
-            version: self.version.as_ref().to_string(),
+            version: Arc::clone(&self.version),
             uptime_secs: uptime.as_secs(),
             resource_utilization: self.calculate_resource_utilization().await,
             active_workloads: active_count,
@@ -390,201 +370,6 @@ impl ToadStoolComputeRpc for ToadStoolTarpcServer {
     }
 }
 
-/// Standalone executor for single-instance mode
-///
-/// Deep debt principle: Complete implementation with real system query
-/// - Queries actual CPU cores
-/// - Queries actual system memory
-/// - Queries actual GPU devices
-/// - NO hardcoded values (self-knowledge only)
-pub struct StandaloneExecutor {
-    capabilities: ComputeCapabilities,
-}
-
-impl StandaloneExecutor {
-    /// Creates a new standalone executor with system-queried capabilities.
-    pub fn new() -> Self {
-        // Query real system resources (self-knowledge)
-        let cpu_cores = std::thread::available_parallelism()
-            .map(|n| u32::try_from(n.get()).unwrap_or(4))
-            .unwrap_or(4);
-
-        let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
-            total: 0,
-            available: 0,
-            used: 0,
-            swap_total: 0,
-            swap_free: 0,
-        });
-
-        Self {
-            capabilities: ComputeCapabilities {
-                service_id: "toadstool-standalone".to_string(),
-                compute_units: vec![ComputeUnit {
-                    id: "cpu-0".to_string(),
-                    unit_type: "cpu".to_string(),
-                    name: format!("CPU Compute ({cpu_cores} cores)"),
-                    cores: cpu_cores,
-                    memory_bytes: mem.total,
-                    tflops: Self::estimate_cpu_tflops(cpu_cores),
-                    utilization: 0.0,
-                }],
-                supported_workload_types: vec![
-                    "cpu_compute".to_string(),
-                    "gpu_compute".to_string(),
-                    "neural_compute".to_string(),
-                ],
-                available_resources: AvailableResources {
-                    total_cpu_cores: cpu_cores,
-                    available_cpu_cores: cpu_cores,
-                    total_memory_bytes: mem.total,
-                    available_memory_bytes: mem.available,
-                    total_gpu_memory_bytes: None,
-                    available_gpu_memory_bytes: None,
-                    cpu_utilization: Self::query_cpu_utilization(),
-                    memory_utilization: Self::query_memory_utilization(),
-                    gpu_utilization: None,
-                },
-                metadata: std::collections::HashMap::new(),
-            },
-        }
-    }
-
-    /// Estimate CPU TFLOPS based on core count
-    ///
-    /// Rough estimate: modern CPU core ~0.1 TFLOPS
-    fn estimate_cpu_tflops(cores: u32) -> Option<f64> {
-        Some((cores as f64) * 0.1)
-    }
-
-    /// Query actual CPU utilization via /proc/stat (pure Rust, zero C).
-    fn query_cpu_utilization() -> f32 {
-        toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0)
-    }
-
-    /// Query actual memory utilization via /proc/meminfo (pure Rust, zero C).
-    fn query_memory_utilization() -> f32 {
-        let Ok(mem) = toadstool_sysmon::memory_info() else {
-            return 0.0;
-        };
-        if mem.total == 0 {
-            return 0.0;
-        }
-        #[expect(
-            clippy::cast_precision_loss,
-            clippy::cast_possible_truncation,
-            reason = "precision loss and truncation acceptable for this conversion"
-        )]
-        let pct = ((mem.used as f64 / mem.total as f64) * 100.0) as f32;
-        pct
-    }
-}
-
-impl Default for StandaloneExecutor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait::async_trait]
-impl WorkloadExecutor for StandaloneExecutor {
-    async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        info!(
-            "Executing workload: {} (type: {})",
-            submission.workload_id.as_ref(),
-            submission.workload_type.as_ref()
-        );
-
-        // ═══════════════════════════════════════════════════════════════════════════
-        // ARCHITECTURE NOTE: Standalone vs Coordinated Execution
-        // ═══════════════════════════════════════════════════════════════════════════
-        //
-        // StandaloneExecutor is for single-node testing and development. For
-        // production distributed execution, use CoordinatorExecutor which routes
-        // workloads through the DistributedCoordinator (see coordinator_executor.rs).
-        //
-        // To enable real backend dispatch here, define a workload protocol:
-        // 1. submission.data should contain serialized operation spec
-        // 2. Parse to determine: operation type, input tensors, parameters
-        // 3. Dispatch via compute service (discovered at runtime via compute capability IPC)
-        //
-        // Current implementation: Returns processed result based on input size.
-        // This allows testing the full RPC pipeline without backend setup.
-        // ═══════════════════════════════════════════════════════════════════════════
-
-        let start = std::time::Instant::now();
-
-        let pre_cpu_util = Self::query_cpu_utilization();
-
-        // Process the workload data
-        // Real backends would parse submission.data and execute on GPU/CPU/NPU
-        // For now, we perform a CPU-bound operation proportional to input size
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "truncation acceptable for this conversion"
-        )] // i bounded by output len (≤1024)
-        let result_data = {
-            let input_len = submission.data.len();
-            // Simple processing: XOR-based transform (demonstrates actual work)
-            let mut output = vec![0u8; input_len.min(1024)];
-            for (i, byte) in output.iter_mut().enumerate() {
-                let input_byte = submission.data.get(i).copied().unwrap_or(0);
-                *byte = input_byte ^ (i as u8);
-            }
-            output
-        };
-
-        let execution_duration = start.elapsed().as_secs_f64();
-
-        let post_cpu_util = Self::query_cpu_utilization();
-        let avg_cpu_util = (pre_cpu_util + post_cpu_util) / 2.0;
-
-        // Estimate cores used based on utilization delta
-        let total_cores = std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .unwrap_or(4);
-        #[expect(
-            clippy::cast_precision_loss,
-            clippy::cast_possible_truncation,
-            reason = "precision loss and truncation acceptable for this conversion"
-        )]
-        let cores_used =
-            u32::try_from(((avg_cpu_util / 100.0) * total_cores as f32).ceil() as i64).unwrap_or(1);
-
-        Ok(WorkloadResult {
-            workload_id: submission.workload_id,
-            status: WorkloadStatus::Completed,
-            data: Some(result_data.into()),
-            error: None,
-            metrics: ExecutionMetrics {
-                queued_duration_secs: 0.0, // Immediate execution (no queue)
-                execution_duration_secs: execution_duration,
-                cpu_cores_used: cores_used.max(1),
-                memory_used_bytes: u64::try_from(submission.data.len()).unwrap_or(u64::MAX),
-                gpu_memory_used_bytes: if submission.workload_type.as_ref() == "gpu_compute" {
-                    Some(u64::try_from(submission.data.len()).unwrap_or(u64::MAX))
-                } else {
-                    None
-                },
-            },
-        })
-    }
-
-    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
-        Ok(self.capabilities.clone())
-    }
-
-    async fn cancel(&self, workload_id: &str) -> Result<(), String> {
-        warn!("Cancel requested for workload: {}", workload_id);
-        Ok(())
-    }
-}
-
-/// Type alias for test executor - uses the real StandaloneExecutor implementation.
-/// Named for test convenience, not because it mocks behavior.
 #[cfg(test)]
-pub type TestExecutor = StandaloneExecutor;
-
-#[cfg(test)]
-#[path = "tarpc_server_tests.rs"]
+#[path = "../tarpc_server_tests.rs"]
 mod tests;

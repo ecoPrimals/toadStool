@@ -125,8 +125,7 @@ impl HwLearnHandler {
         let bdf = params
             .and_then(|p| p.get("bdf"))
             .and_then(serde_json::Value::as_str)
-            .map(String::from)
-            .unwrap_or_else(|| gpus[0].bdf.clone());
+            .map_or_else(|| gpus[0].bdf.clone(), String::from);
 
         let gpu = gpus.iter().find(|g| g.bdf == bdf).ok_or_else(|| {
             JsonRpcError::invalid_params(format!("GPU {bdf} not found in PCI scan"))
@@ -166,17 +165,16 @@ impl HwLearnHandler {
             .first()
             .map(|g| g.card_path().to_string_lossy().into_owned());
         let card_path_owned;
-        let card_path = match params
+        let card_path = if let Some(p) = params
             .and_then(|p| p.get("card_path"))
             .and_then(serde_json::Value::as_str)
         {
-            Some(p) => p,
-            None => {
-                card_path_owned = default_card.unwrap_or_else(|| {
-                    toadstool_common::constants::compute::DEFAULT_DRI_CARD.to_string()
-                });
-                &card_path_owned
-            }
+            p
+        } else {
+            card_path_owned = default_card.unwrap_or_else(|| {
+                toadstool_common::constants::compute::DEFAULT_DRI_CARD.to_string()
+            });
+            &card_path_owned
         };
 
         if dry_run {
@@ -313,10 +311,10 @@ impl HwLearnHandler {
                 .iter()
                 .find(|g| g.pci_slot == bdf)
                 .or_else(|| sysmon_gpus.first())
-                .map(|g| g.card_path().to_string_lossy().into_owned())
-                .unwrap_or_else(|| {
-                    toadstool_common::constants::compute::DEFAULT_DRI_CARD.to_string()
-                })
+                .map_or_else(
+                    || toadstool_common::constants::compute::DEFAULT_DRI_CARD.to_string(),
+                    |g| g.card_path().to_string_lossy().into_owned(),
+                )
         };
 
         let store_dir = self.store_dir();

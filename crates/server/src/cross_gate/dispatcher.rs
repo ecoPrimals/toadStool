@@ -54,6 +54,8 @@ impl RemoteDispatcher {
         method: &str,
         params: serde_json::Value,
     ) -> Result<serde_json::Value, RemoteDispatchError> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
         // Construct JSON-RPC request
         let request = serde_json::json!({
             "jsonrpc": "2.0",
@@ -69,7 +71,6 @@ impl RemoteDispatcher {
             .await
             .map_err(|e| RemoteDispatchError::Transport(format!("TCP connect: {e}")))?;
 
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
         stream
             .write_all(&body)
             .await

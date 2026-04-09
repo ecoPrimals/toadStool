@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::CapabilityDomain;
 use toadstool_common::interned_strings::capabilities;
+use toadstool_common::interned_strings::primals;
 use toadstool_common::interned_strings::runtime_types;
 
 /// Resolve a manifest or template dependency label to a canonical capability id.
@@ -39,11 +40,17 @@ pub fn service_to_capability(service_name: &str) -> &'static str {
 #[must_use]
 pub fn get_capability_to_legacy_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
-    map.insert(capabilities::CRYPTO, "beardog"); // legacy alias
-    map.insert(capabilities::COORDINATION, "songbird"); // legacy alias
-    map.insert(capabilities::STORAGE, "nestgate"); // legacy alias
-    map.insert(capabilities::INTELLIGENCE, "squirrel"); // legacy alias
-    map.insert(capabilities::ROUTING, "squirrel"); // legacy alias
+    map.insert(capabilities::CRYPTO, primals::LEGACY_SECURITY_LABEL);
+    map.insert(
+        capabilities::COORDINATION,
+        primals::LEGACY_COORDINATION_LABEL,
+    );
+    map.insert(capabilities::STORAGE, primals::LEGACY_STORAGE_LABEL);
+    map.insert(
+        capabilities::INTELLIGENCE,
+        primals::LEGACY_INTELLIGENCE_LABEL,
+    );
+    map.insert(capabilities::ROUTING, primals::LEGACY_INTELLIGENCE_LABEL);
     map.insert(capabilities::COMPUTE, PRIMAL_NAME);
     map.insert("os", runtime_types::BIOMEOS);
     map
@@ -102,10 +109,13 @@ pub fn capabilities_to_dependencies(capabilities: &[&str]) -> Vec<String> {
 #[must_use]
 pub fn get_capability_mappings() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
-    map.insert("beardog", capabilities::CRYPTO); // legacy alias
-    map.insert("songbird", capabilities::COORDINATION); // legacy alias
-    map.insert("nestgate", capabilities::STORAGE); // legacy alias
-    map.insert("squirrel", capabilities::ROUTING); // legacy alias
+    map.insert(primals::LEGACY_SECURITY_LABEL, capabilities::CRYPTO);
+    map.insert(
+        primals::LEGACY_COORDINATION_LABEL,
+        capabilities::COORDINATION,
+    );
+    map.insert(primals::LEGACY_STORAGE_LABEL, capabilities::STORAGE);
+    map.insert(primals::LEGACY_INTELLIGENCE_LABEL, capabilities::ROUTING);
     map.insert(PRIMAL_NAME, capabilities::COMPUTE);
     map.insert(runtime_types::BIOMEOS, "os");
     map

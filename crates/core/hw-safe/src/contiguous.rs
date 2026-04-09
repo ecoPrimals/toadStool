@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // from_raw_parts in trait defaults — this is the single audit point
+#![allow(unsafe_code)] // NonNull::slice_from_raw_parts in trait defaults — single audit point
 
 //! Shared trait for types that own a contiguous byte region.
 //!
-//! [`ContiguousBytes`] centralises all `std::slice::from_raw_parts` calls into
-//! **exactly two** `unsafe` blocks (one for `&[u8]`, one for `&mut [u8]`).
+//! [`ContiguousBytes`] centralises slice construction into **exactly two**
+//! `unsafe` blocks (one for `&[u8]`, one for `&mut [u8]`), using
+//! `NonNull::slice_from_raw_parts` plus `as_ref` / `as_mut` (fat-pointer form).
 //! Each implementing type proves the pointer/length invariant once via
 //! `unsafe impl`; all slice access is then safe.
 
@@ -12,14 +13,15 @@ use std::ptr::NonNull;
 
 /// Types that own a contiguous, valid byte region.
 ///
-/// Default methods provide safe `as_bytes()`/`as_bytes_mut()` by calling
-/// `from_raw_parts` exactly once each, centralising the safety proof.
+/// Default methods provide safe `as_bytes()`/`as_bytes_mut()` by building a
+/// `NonNull<[u8]>` once each, centralising the safety proof.
 ///
 /// # Safety
 ///
 /// Implementors must guarantee:
 /// - [`raw_ptr()`](Self::raw_ptr) returns a pointer valid for
 ///   [`raw_len()`](Self::raw_len) bytes.
+/// - [`raw_len()`](Self::raw_len) is at most `isize::MAX` (required for slice types).
 /// - The region remains valid for the lifetime of `&self`.
 /// - `&mut self` guarantees exclusive access to the entire region.
 pub unsafe trait ContiguousBytes {
@@ -31,15 +33,33 @@ pub unsafe trait ContiguousBytes {
 
     /// Safe immutable byte slice over the owned region.
     fn as_bytes(&self) -> &[u8] {
-        // SAFETY: trait invariant guarantees ptr valid for len bytes;
-        // &self ensures no concurrent mutation.
-        unsafe { std::slice::from_raw_parts(self.raw_ptr().as_ptr(), self.raw_len()) }
+        let len = self.raw_len();
+        assert!(
+            isize::try_from(len).is_ok(),
+            "ContiguousBytes: raw_len {} exceeds isize::MAX (slice precondition)",
+            len
+        );
+        // SAFETY: trait invariant guarantees `ptr` valid for `len` bytes; `len` is checked
+        // above; `&self` ensures no concurrent mutation.
+        unsafe {
+            let nn = NonNull::slice_from_raw_parts(self.raw_ptr(), len);
+            nn.as_ref()
+        }
     }
 
     /// Safe mutable byte slice over the owned region.
     fn as_bytes_mut(&mut self) -> &mut [u8] {
-        // SAFETY: trait invariant guarantees ptr valid for len bytes;
-        // &mut self ensures exclusive access.
-        unsafe { std::slice::from_raw_parts_mut(self.raw_ptr().as_ptr(), self.raw_len()) }
+        let len = self.raw_len();
+        assert!(
+            isize::try_from(len).is_ok(),
+            "ContiguousBytes: raw_len {} exceeds isize::MAX (slice precondition)",
+            len
+        );
+        // SAFETY: trait invariant guarantees `ptr` valid for `len` bytes; `len` is checked
+        // above; `&mut self` ensures exclusive access.
+        unsafe {
+            let mut nn = NonNull::slice_from_raw_parts(self.raw_ptr(), len);
+            nn.as_mut()
+        }
     }
 }

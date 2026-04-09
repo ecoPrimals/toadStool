@@ -171,7 +171,7 @@ async fn workload_status_serde_all_variants() {
 async fn health_status_clone_debug_serde() {
     let h = HealthStatus {
         healthy: false,
-        version: "9.9.9".to_string(),
+        version: Arc::from("9.9.9"),
         uptime_secs: 42,
         resource_utilization: 0.88,
         active_workloads: 3,

@@ -2,6 +2,7 @@
 use super::*;
 use crate::rpc_types::{ResourceRequirements, WorkloadPriority};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 struct MockExecutor;
@@ -225,7 +226,7 @@ async fn test_mock_executor_health_check() {
     assert!(health.is_ok());
     let h = health.unwrap();
     assert!(h.healthy);
-    assert_eq!(h.version, "test-v1");
+    assert_eq!(h.version.as_ref(), "test-v1");
     assert!(h.resource_utilization >= 0.0 && h.resource_utilization <= 1.0);
 }
 
@@ -540,7 +541,7 @@ async fn test_tarpc_server_version_reflected_in_health() {
     let server = ToadStoolTarpcServer::new("2.3.4", executor, None);
     let health = server.health_check(tarpc::context::current()).await;
     assert!(health.is_ok());
-    assert_eq!(health.unwrap().version, "2.3.4");
+    assert_eq!(health.unwrap().version.as_ref(), "2.3.4");
 }
 
 #[tokio::test]
@@ -548,7 +549,7 @@ async fn test_health_status_serialization() {
     use crate::rpc_types::HealthStatus;
     let status = HealthStatus {
         healthy: true,
-        version: "1.2.3".to_string(),
+        version: Arc::from("1.2.3"),
         uptime_secs: 3600,
         resource_utilization: 0.5,
         active_workloads: 2,
@@ -690,7 +691,7 @@ async fn test_standalone_executor_estimate_cpu_tflops_via_capabilities() {
     let caps = exec.query_capabilities().await.expect("capabilities");
     assert!(!caps.compute_units.is_empty());
     let unit = &caps.compute_units[0];
-    let expected_tflops = (unit.cores as f64) * 0.1;
+    let expected_tflops = f64::from(unit.cores) * 0.1;
     assert_eq!(unit.tflops, Some(expected_tflops));
 }
 

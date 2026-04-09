@@ -27,7 +27,9 @@ pub struct DeviceDiscoveryService {
     last_discovery: Arc<RwLock<Option<Instant>>>,
 }
 
-/// Discovery Method Trait
+/// Discovery method for [`DeviceDiscoveryService`].
+///
+/// Stored as `Vec<Box<dyn DiscoveryMethod>>`; async methods use `#[async_trait]` for object safety.
 #[async_trait::async_trait]
 pub trait DiscoveryMethod: Send + Sync {
     /// Get discovery method name

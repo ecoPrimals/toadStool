@@ -141,7 +141,7 @@ jobs:
           sudo apt-get install -y libssl-dev pkg-config bc
       - name: Run coverage (tier 1)
         run: |
-          cargo llvm-cov --workspace --all-features --ignore-filename-regex "tests/" -- --skip performance
+          cargo llvm-cov --workspace --all-features --ignore-filename-regex "tests/" -- --skip performance_bench --skip slow
       - name: Generate coverage report
         run: |
           cargo llvm-cov report --json --output-path coverage.json

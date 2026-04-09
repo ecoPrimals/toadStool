@@ -145,11 +145,15 @@ impl HttpTransport {
     }
 }
 
-/// tRPC transport (tarpc over Unix sockets)
+/// tRPC transport (primal-to-primal over Unix sockets).
 ///
-/// Phase 3 transport: JSON-RPC is the required primary protocol per
-/// `wateringHole/PRIMAL_IPC_PROTOCOL.md`; tarpc is the optional high-performance
-/// secondary for primal-to-primal Rust-to-Rust paths.
+/// Per `wateringHole/PRIMAL_IPC_PROTOCOL.md`, JSON-RPC is the **required** IPC
+/// protocol — all primals must accept it. tarpc is the **optional** high-perf
+/// secondary for Rust-to-Rust paths.
+///
+/// This transport resolves the target primal's Unix socket and sends messages
+/// via JSON-RPC 2.0 (NDJSON). When the `tarpc-transport` feature is enabled,
+/// future evolution may negotiate tarpc binary framing for eligible peers.
 #[derive(Debug, Clone)]
 pub struct TRpcTransport {}
 
@@ -160,41 +164,64 @@ impl Default for TRpcTransport {
 }
 
 impl TRpcTransport {
-    /// Create a new tRPC transport
+    /// Create a new tRPC transport.
     pub const fn new() -> Self {
         Self {}
     }
 
-    /// Send message via tarpc over Unix sockets.
+    /// Send message to a primal via its Unix socket.
     ///
-    /// Requires the `tarpc-transport` feature. Without it, returns
-    /// [`ProtocolError::TRpcTransportNotAvailable`] at runtime.
-    /// JSON-RPC (primary) via `pure_jsonrpc` is the required IPC path;
-    /// tarpc is the optional high-performance secondary.
+    /// Resolves the socket path from the endpoint's `path` field (explicit socket)
+    /// or falls back to capability-based discovery using the endpoint `address`
+    /// as the capability domain name.
     ///
-    /// See DEBT.md `D-TARPC-PHASE3` for stabilization plan.
+    /// The message is forwarded as a JSON-RPC `protocol.forward` call so the
+    /// receiving primal can route it by `message_type`.
     pub async fn send_message(
         &self,
-        _message: &ProtocolMessage,
-        _endpoint: &ServiceEndpoint,
+        message: &ProtocolMessage,
+        endpoint: &ServiceEndpoint,
     ) -> ProtocolResult<ProtocolMessage> {
-        #[cfg(feature = "tarpc-transport")]
-        {
-            let _ = (_message, _endpoint);
-            Err(ProtocolError::TRpcTransportNotAvailable)
+        use std::path::PathBuf;
+        use toadstool_common::primal_sockets::get_socket_path_for_capability;
+        use toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient;
+
+        let socket = if let Some(ref path) = endpoint.path {
+            PathBuf::from(path)
+        } else {
+            get_socket_path_for_capability(&endpoint.address)
+        };
+
+        if !socket.exists() {
+            tracing::debug!(
+                socket = %socket.display(),
+                address = %endpoint.address,
+                "tRPC target socket not found — primal may not be running",
+            );
+            return Err(ProtocolError::TRpcTransportNotAvailable);
         }
-        #[cfg(not(feature = "tarpc-transport"))]
-        {
-            Err(ProtocolError::TRpcTransportNotAvailable)
-        }
+
+        let client = UnixJsonRpcClient::new(socket);
+
+        let params = serde_json::to_value(message)
+            .map_err(|e| ProtocolError::Transport(format!("message serialization: {e}")))?;
+
+        let method = format!("protocol.forward.{}", message.message_type);
+
+        let response = client.call(&method, params).await.map_err(|e| {
+            ProtocolError::Transport(format!("Unix JSON-RPC to {}: {e}", endpoint.address))
+        })?;
+
+        serde_json::from_value(response)
+            .map_err(|e| ProtocolError::Transport(format!("response deserialization: {e}")))
     }
 
-    /// Check if endpoint uses tRPC transport
+    /// Check if endpoint uses tRPC transport.
     pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
         matches!(endpoint.transport, TransportType::TRpc)
     }
 
-    /// Return transport type
+    /// Return transport type.
     pub const fn transport_type(&self) -> TransportType {
         TransportType::TRpc
     }

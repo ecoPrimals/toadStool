@@ -88,7 +88,6 @@ pub(crate) async fn perform_health_check(state: &ServerState) -> bool {
             match engine.get_metrics().await {
                 Ok(_) => {
                     // Engine is responding
-                    continue;
                 }
                 Err(e) => {
                     warn!("Runtime engine '{:?}' health check failed: {}", name, e);

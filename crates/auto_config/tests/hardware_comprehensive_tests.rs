@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(deprecated)]
 #![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"

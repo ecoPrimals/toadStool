@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(clippy::unwrap_used)]
+#![allow(deprecated)]
 
 //! Integration coverage for [`toadstool_runtime_gpu::engine::UniversalGpuEngine`] and its
 //! [`toadstool::execution::RuntimeEngine`] implementation.

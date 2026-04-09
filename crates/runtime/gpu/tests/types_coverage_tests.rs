@@ -400,7 +400,7 @@ fn gpu_framework_name_and_universal_and_platforms() {
 
     assert!(GpuFramework::WebGpu.is_universal());
     assert!(GpuFramework::Vulkan.is_universal());
-    assert!(GpuFramework::OpenCl.is_universal());
+    assert!(!GpuFramework::OpenCl.is_universal());
     assert!(!GpuFramework::Cuda.is_universal());
 
     let custom = GpuFramework::Custom("x".into());

@@ -38,6 +38,21 @@ fn madvise_linux_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
     use rustix::mm::{Advice, madvise};
     use std::ffi::c_void;
 
+    #[cfg(debug_assertions)]
+    {
+        debug_assert_eq!(
+            ptr.addr().get() % PAGE_SIZE,
+            0,
+            "madvise range must start on a page boundary (LockedMemory uses PAGE_SIZE alignment)"
+        );
+        debug_assert_eq!(
+            len % PAGE_SIZE,
+            0,
+            "madvise length must be a multiple of page size (caller rounds to page boundary)"
+        );
+        debug_assert!(len > 0, "madvise length must be non-zero");
+    }
+
     // SAFETY: `ptr`/`len` describe the same page-aligned region locked by `LockedMemory` in the
     // caller. `LinuxDontDump` does not alter buffer bytes for heap memory.
     let result = unsafe { madvise(ptr.as_ptr().cast::<c_void>(), len, Advice::LinuxDontDump) };

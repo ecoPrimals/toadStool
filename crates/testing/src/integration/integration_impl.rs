@@ -15,6 +15,41 @@ impl IntegrationTestManager {
         }
     }
 
+    /// Records a subtest outcome into `test_data` as `"passed"` or `"failed: …"`.
+    fn record_subtest_outcome<E: std::fmt::Display>(
+        test_data: &mut HashMap<String, String>,
+        key: &str,
+        result: std::result::Result<(), E>,
+    ) {
+        match result {
+            Ok(()) => {
+                test_data.insert(key.to_string(), "passed".to_string());
+            }
+            Err(e) => {
+                test_data.insert(key.to_string(), format!("failed: {e}"));
+            }
+        }
+    }
+
+    /// Like [`Self::record_subtest_outcome`], but appends `component` to `components_tested` on success.
+    fn record_subtest_outcome_with_component<E: std::fmt::Display>(
+        test_data: &mut HashMap<String, String>,
+        components_tested: &mut Vec<String>,
+        key: &str,
+        component: &str,
+        result: std::result::Result<(), E>,
+    ) {
+        match result {
+            Ok(()) => {
+                test_data.insert(key.to_string(), "passed".to_string());
+                components_tested.push(component.to_string());
+            }
+            Err(e) => {
+                test_data.insert(key.to_string(), format!("failed: {e}"));
+            }
+        }
+    }
+
     /// Test OS-layer compatibility across different platforms
     async fn test_os_layer_compatibility(&self) -> Result<IntegrationTestResult> {
         let test_name = "os_layer_compatibility";
@@ -36,45 +71,34 @@ impl IntegrationTestManager {
         let mut components_tested = vec!["os_layer".to_string()];
 
         // Test different OS compatibility layers
-        match self.test_linux_compatibility(&mut context).await {
-            Ok(()) => {
-                test_data.insert("linux_compatibility".to_string(), "passed".to_string());
-                components_tested.push("linux_os".to_string());
-            }
-            Err(e) => {
-                test_data.insert("linux_compatibility".to_string(), format!("failed: {e}"));
-            }
-        }
-
-        match self.test_windows_compatibility(&mut context).await {
-            Ok(()) => {
-                test_data.insert("windows_compatibility".to_string(), "passed".to_string());
-                components_tested.push("windows_os".to_string());
-            }
-            Err(e) => {
-                test_data.insert("windows_compatibility".to_string(), format!("failed: {e}"));
-            }
-        }
-
-        match self.test_macos_compatibility(&mut context).await {
-            Ok(()) => {
-                test_data.insert("macos_compatibility".to_string(), "passed".to_string());
-                components_tested.push("macos_os".to_string());
-            }
-            Err(e) => {
-                test_data.insert("macos_compatibility".to_string(), format!("failed: {e}"));
-            }
-        }
-
-        match self.test_legacy_compatibility(&mut context).await {
-            Ok(()) => {
-                test_data.insert("legacy_compatibility".to_string(), "passed".to_string());
-                components_tested.push("legacy_os".to_string());
-            }
-            Err(e) => {
-                test_data.insert("legacy_compatibility".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "linux_compatibility",
+            "linux_os",
+            self.test_linux_compatibility(&mut context).await,
+        );
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "windows_compatibility",
+            "windows_os",
+            self.test_windows_compatibility(&mut context).await,
+        );
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "macos_compatibility",
+            "macos_os",
+            self.test_macos_compatibility(&mut context).await,
+        );
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "legacy_compatibility",
+            "legacy_os",
+            self.test_legacy_compatibility(&mut context).await,
+        );
 
         let duration = start_time.elapsed();
         let metrics = context.metrics_collector.finalize();
@@ -123,34 +147,25 @@ impl IntegrationTestManager {
         let components_tested = vec!["biomeos_integration".to_string()];
 
         // Test service registration
-        match self.test_biomeos_service_registration(&mut context).await {
-            Ok(()) => {
-                test_data.insert("service_registration".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("service_registration".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "service_registration",
+            self.test_biomeos_service_registration(&mut context).await,
+        );
 
         // Test workload execution
-        match self.test_biomeos_workload_execution(&mut context).await {
-            Ok(()) => {
-                test_data.insert("workload_execution".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("workload_execution".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "workload_execution",
+            self.test_biomeos_workload_execution(&mut context).await,
+        );
 
         // Test ecosystem message handling
-        match self.test_biomeos_ecosystem_messaging(&mut context).await {
-            Ok(()) => {
-                test_data.insert("ecosystem_messaging".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("ecosystem_messaging".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "ecosystem_messaging",
+            self.test_biomeos_ecosystem_messaging(&mut context).await,
+        );
 
         let duration = start_time.elapsed();
         let metrics = context.metrics_collector.finalize();
@@ -202,44 +217,32 @@ impl IntegrationTestManager {
         let components_tested = vec!["security_sandboxing".to_string()];
 
         // Test sandbox creation and lifecycle
-        match self.test_sandbox_lifecycle(&mut context).await {
-            Ok(()) => {
-                test_data.insert("sandbox_lifecycle".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("sandbox_lifecycle".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "sandbox_lifecycle",
+            self.test_sandbox_lifecycle(&mut context).await,
+        );
 
         // Test resource limits enforcement
-        match self.test_sandbox_resource_limits(&mut context).await {
-            Ok(()) => {
-                test_data.insert("resource_limits".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("resource_limits".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "resource_limits",
+            self.test_sandbox_resource_limits(&mut context).await,
+        );
 
         // Test security policy enforcement
-        match self.test_sandbox_security_policies(&mut context).await {
-            Ok(()) => {
-                test_data.insert("security_policies".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("security_policies".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "security_policies",
+            self.test_sandbox_security_policies(&mut context).await,
+        );
 
         // Test isolation levels
-        match self.test_sandbox_isolation_levels(&mut context).await {
-            Ok(()) => {
-                test_data.insert("isolation_levels".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("isolation_levels".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "isolation_levels",
+            self.test_sandbox_isolation_levels(&mut context).await,
+        );
 
         let duration = start_time.elapsed();
         let metrics = context.metrics_collector.finalize();
@@ -295,44 +298,32 @@ impl IntegrationTestManager {
         ];
 
         // Test OS-layer + biomeOS integration
-        match self.test_os_layer_biomeos_integration(&mut context).await {
-            Ok(()) => {
-                test_data.insert("os_layer_biomeos".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("os_layer_biomeos".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "os_layer_biomeos",
+            self.test_os_layer_biomeos_integration(&mut context).await,
+        );
 
         // Test biomeOS + security sandboxing
-        match self.test_biomeos_security_integration(&mut context).await {
-            Ok(()) => {
-                test_data.insert("biomeos_security".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("biomeos_security".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "biomeos_security",
+            self.test_biomeos_security_integration(&mut context).await,
+        );
 
         // Test OS-layer + security sandboxing
-        match self.test_os_layer_security_integration(&mut context).await {
-            Ok(()) => {
-                test_data.insert("os_layer_security".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("os_layer_security".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "os_layer_security",
+            self.test_os_layer_security_integration(&mut context).await,
+        );
 
         // Test full stack integration
-        match self.test_full_stack_integration(&mut context).await {
-            Ok(()) => {
-                test_data.insert("full_stack".to_string(), "passed".to_string());
-            }
-            Err(e) => {
-                test_data.insert("full_stack".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome(
+            &mut test_data,
+            "full_stack",
+            self.test_full_stack_integration(&mut context).await,
+        );
 
         let duration = start_time.elapsed();
         let metrics = context.metrics_collector.finalize();
@@ -421,73 +412,59 @@ impl IntegrationTestManager {
         let mut components_tested = vec!["large_biome_performance".to_string()];
 
         // Test 1: Large biome deployment performance
-        match self.test_large_biome_deployment(&mut context).await {
-            Ok(()) => {
-                test_data.insert("large_biome_deployment".to_string(), "passed".to_string());
-                components_tested.push("biome_deployment".to_string());
-            }
-            Err(e) => {
-                test_data.insert("large_biome_deployment".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "large_biome_deployment",
+            "biome_deployment",
+            self.test_large_biome_deployment(&mut context).await,
+        );
 
         // Test 2: Multi-Primal resource usage under load
-        match self.test_multi_primal_resource_usage(&mut context).await {
-            Ok(()) => {
-                test_data.insert("multi_primal_resources".to_string(), "passed".to_string());
-                components_tested.push("multi_primal_resources".to_string());
-            }
-            Err(e) => {
-                test_data.insert("multi_primal_resources".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "multi_primal_resources",
+            "multi_primal_resources",
+            self.test_multi_primal_resource_usage(&mut context).await,
+        );
 
         // Test 3: Scalability limits testing
-        match self.test_scalability_limits(&mut context).await {
-            Ok(()) => {
-                test_data.insert("scalability_limits".to_string(), "passed".to_string());
-                components_tested.push("scalability_limits".to_string());
-            }
-            Err(e) => {
-                test_data.insert("scalability_limits".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "scalability_limits",
+            "scalability_limits",
+            self.test_scalability_limits(&mut context).await,
+        );
 
         // Test 4: Concurrent biome operations
-        match self.test_concurrent_biome_operations(&mut context).await {
-            Ok(()) => {
-                test_data.insert("concurrent_operations".to_string(), "passed".to_string());
-                components_tested.push("concurrent_operations".to_string());
-            }
-            Err(e) => {
-                test_data.insert("concurrent_operations".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "concurrent_operations",
+            "concurrent_operations",
+            self.test_concurrent_biome_operations(&mut context).await,
+        );
 
         // Test 5: Performance regression detection
-        match self
-            .test_performance_regression_detection(&mut context)
-            .await
-        {
-            Ok(()) => {
-                test_data.insert("regression_detection".to_string(), "passed".to_string());
-                components_tested.push("regression_detection".to_string());
-            }
-            Err(e) => {
-                test_data.insert("regression_detection".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "regression_detection",
+            "regression_detection",
+            self.test_performance_regression_detection(&mut context)
+                .await,
+        );
 
         // Test 6: Memory and CPU usage under high load
-        match self.test_resource_usage_under_load(&mut context).await {
-            Ok(()) => {
-                test_data.insert("resource_usage_load".to_string(), "passed".to_string());
-                components_tested.push("resource_usage_load".to_string());
-            }
-            Err(e) => {
-                test_data.insert("resource_usage_load".to_string(), format!("failed: {e}"));
-            }
-        }
+        Self::record_subtest_outcome_with_component(
+            &mut test_data,
+            &mut components_tested,
+            "resource_usage_load",
+            "resource_usage_load",
+            self.test_resource_usage_under_load(&mut context).await,
+        );
 
         let duration = start_time.elapsed();
         let metrics = context.metrics_collector.finalize();

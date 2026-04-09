@@ -4,7 +4,8 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use toadstool_common::interned_strings::biomeos_manifest_serde as manifest_serde;
 
 use super::tokens::{AuthenticationToken, TokenVerificationStatus};
 use crate::biomeos_integration::types::{
@@ -71,33 +72,92 @@ pub struct VerificationResult {
     pub verification_time: SystemTime,
 }
 
-/// BiomeOS manifest sections by service capability (legacy primal names accepted via serde aliases).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// BiomeOS manifest sections by service capability (legacy primal manifest keys via
+/// [`toadstool_common::interned_strings::biomeos_manifest_serde`]).
+#[derive(Debug, Clone)]
 pub enum PrimalTypeConfig {
     /// ToadStool orchestration primal.
     ToadStool(ToadStoolConfig),
     /// Coordination / discovery service.
-    #[serde(rename = "Coordination", alias = "Songbird", alias = "songbird")]
     Coordination(CoordinationConfig),
     /// Security / crypto service.
-    #[serde(
-        rename = "SecurityService",
-        alias = "BearDog",
-        alias = "bearDog",
-        alias = "beardog"
-    )]
     SecurityService(SecurityConfig),
     /// Storage service.
-    #[serde(
-        rename = "StorageService",
-        alias = "NestGate",
-        alias = "nestgate",
-        alias = "nest-gate"
-    )]
     StorageService(StorageConfig),
     /// Intelligence / ML agent service.
-    #[serde(rename = "IntelligenceService", alias = "Squirrel", alias = "squirrel")]
     IntelligenceService(IntelligenceConfig),
     /// Full biomeOS manifest.
     BiomeOS(BiomeOSConfig),
+}
+
+impl Serialize for PrimalTypeConfig {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(1))?;
+        match self {
+            Self::ToadStool(c) => map.serialize_entry(manifest_serde::TOADSTOOL, c)?,
+            Self::Coordination(c) => map.serialize_entry(manifest_serde::COORDINATION, c)?,
+            Self::SecurityService(c) => map.serialize_entry(manifest_serde::SECURITY_SERVICE, c)?,
+            Self::StorageService(c) => map.serialize_entry(manifest_serde::STORAGE_SERVICE, c)?,
+            Self::IntelligenceService(c) => {
+                map.serialize_entry(manifest_serde::INTELLIGENCE_SERVICE, c)?;
+            }
+            Self::BiomeOS(c) => map.serialize_entry(manifest_serde::BIOME_OS, c)?,
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for PrimalTypeConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let map = HashMap::<String, serde_json::Value>::deserialize(deserializer)?;
+        if map.len() != 1 {
+            return Err(D::Error::custom(format!(
+                "expected exactly one primal manifest key, found {}",
+                map.len()
+            )));
+        }
+        let (k, v) = map.into_iter().next().expect("len checked");
+        match k.as_str() {
+            manifest_serde::TOADSTOOL => ToadStoolConfig::deserialize(v)
+                .map(Self::ToadStool)
+                .map_err(D::Error::custom),
+            manifest_serde::COORDINATION
+            | manifest_serde::LEGACY_SONGBIRD_PASCAL
+            | manifest_serde::LEGACY_SONGBIRD_LOWER => CoordinationConfig::deserialize(v)
+                .map(Self::Coordination)
+                .map_err(D::Error::custom),
+            manifest_serde::SECURITY_SERVICE
+            | manifest_serde::LEGACY_BEARDOG_PASCAL
+            | manifest_serde::LEGACY_BEARDOG_CAMEL
+            | manifest_serde::LEGACY_BEARDOG_LOWER => SecurityConfig::deserialize(v)
+                .map(Self::SecurityService)
+                .map_err(D::Error::custom),
+            manifest_serde::STORAGE_SERVICE
+            | manifest_serde::LEGACY_NESTGATE_PASCAL
+            | manifest_serde::LEGACY_NESTGATE_LOWER
+            | manifest_serde::LEGACY_NESTGATE_KEBAB => StorageConfig::deserialize(v)
+                .map(Self::StorageService)
+                .map_err(D::Error::custom),
+            manifest_serde::INTELLIGENCE_SERVICE
+            | manifest_serde::LEGACY_SQUIRREL_PASCAL
+            | manifest_serde::LEGACY_SQUIRREL_LOWER => IntelligenceConfig::deserialize(v)
+                .map(Self::IntelligenceService)
+                .map_err(D::Error::custom),
+            manifest_serde::BIOME_OS => BiomeOSConfig::deserialize(v)
+                .map(Self::BiomeOS)
+                .map_err(D::Error::custom),
+            other => Err(D::Error::custom(format!(
+                "unknown primal manifest tag: {other}"
+            ))),
+        }
+    }
 }

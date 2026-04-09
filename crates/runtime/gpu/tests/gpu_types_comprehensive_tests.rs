@@ -25,7 +25,7 @@ fn test_gpu_framework_vulkan() {
 fn test_gpu_framework_opencl() {
     let framework = GpuFramework::OpenCl;
     assert_eq!(framework.name(), "OpenCL");
-    assert!(framework.is_universal());
+    assert!(!framework.is_universal());
 }
 
 #[test]
@@ -350,7 +350,7 @@ fn test_multi_framework_support() {
     ];
 
     let universal_count = frameworks.iter().filter(|f| f.is_universal()).count();
-    assert_eq!(universal_count, 3);
+    assert_eq!(universal_count, 2);
 }
 
 #[test]

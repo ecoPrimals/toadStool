@@ -3,8 +3,10 @@
 
 //! Aligned heap allocation with RAII cleanup.
 //!
-//! [`AlignedAlloc`] wraps `std::alloc::alloc_zeroed` / `dealloc` to provide
-//! heap memory with arbitrary alignment. This consolidates the duplicate
+//! [`AlignedAlloc`] wraps [`Layout`] with [`std::alloc::alloc_zeroed`] / [`std::alloc::dealloc`]
+//! (the supported way to use the **global** allocator for a custom layout; a [`std::alloc::GlobalAlloc`]
+//! impl is only needed when **implementing** an allocator, not when allocating through one).
+//! It provides heap memory with arbitrary alignment. This consolidates the duplicate
 //! allocation patterns across:
 //!
 //! - `gpu` `AlignedBuffer` (cpu backend)

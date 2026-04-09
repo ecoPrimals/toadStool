@@ -11,7 +11,7 @@ use toadstool_common::constants::primal_identity::audience;
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 use super::*;
-use crate::biomeos_integration::types::ToadStoolConfig;
+use crate::biomeos_integration::types::{CoordinationConfig, ToadStoolConfig};
 
 fn test_config() -> AuthManagerConfig {
     AuthManagerConfig {
@@ -133,6 +133,29 @@ fn test_primal_type_config_toadstool_variant() {
     };
     let primal = PrimalTypeConfig::ToadStool(toad_config);
     assert!(matches!(primal, PrimalTypeConfig::ToadStool(c) if c.enabled));
+}
+
+#[test]
+fn primal_type_config_deserializes_legacy_songbird_manifest_key() {
+    let json = r#"{"Songbird":{"enabled":true,"service_mesh":false,"config":{}}}"#;
+    let parsed: PrimalTypeConfig = serde_json::from_str(json).expect("deserialize");
+    assert!(matches!(parsed, PrimalTypeConfig::Coordination(ref c) if c.enabled));
+}
+
+#[test]
+fn primal_type_config_serializes_canonical_coordination_tag() {
+    let cfg = CoordinationConfig {
+        enabled: false,
+        service_mesh: true,
+        port_range: None,
+        load_balancing: None,
+        health_checks: None,
+        config: HashMap::new(),
+    };
+    let primal = PrimalTypeConfig::Coordination(cfg);
+    let out = serde_json::to_string(&primal).expect("serialize");
+    assert!(out.contains("\"Coordination\""));
+    assert!(!out.contains("Songbird"));
 }
 
 // ── DEEP tests: signature bypass, expiry, public key, token audience ───

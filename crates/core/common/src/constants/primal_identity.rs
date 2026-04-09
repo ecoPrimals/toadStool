@@ -32,10 +32,17 @@
 
 /// This primal's canonical name.
 ///
-/// Used for socket paths, config directories, IPC registration, and log
-/// prefixes. Every occurrence of the string `"toadstool"` in production
-/// code should reference this constant.
+/// Used for config directories, IPC registration, and log prefixes.
+/// Every occurrence of the string `"toadstool"` in production code
+/// should reference this constant.
 pub const PRIMAL_NAME: &str = "toadstool";
+
+/// Primary capability domain per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1.
+///
+/// Socket files use the domain stem, not the primal name:
+/// `$BIOMEOS_SOCKET_DIR/{DOMAIN}.sock` (dev) or
+/// `$BIOMEOS_SOCKET_DIR/{DOMAIN}-{family_id}.sock` (production).
+pub const CAPABILITY_DOMAIN: &str = "compute";
 
 /// Human-readable display name (used in UI, logs, user-agent strings).
 pub const PRIMAL_DISPLAY_NAME: &str = "ToadStool";

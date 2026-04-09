@@ -37,6 +37,14 @@ semver = { version = "1.0.27", features = ["serde"] }
 # mDNS bootstrap discovery (Songbird's domain; cold-start only)
 mdns-sd = { version = "0.10", optional = true }
 
+# BTSP handshake (pure Rust crypto per BTSP_PROTOCOL_STANDARD.md)
+x25519-dalek = { workspace = true, optional = true }
+hkdf = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+chacha20poly1305 = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+
 [dev-dependencies]
 tokio-test = { workspace = true }
 tokio = { workspace = true }
@@ -45,9 +53,11 @@ tempfile = "3"
 temp-env = { version = "0.3", features = ["async_closure"] }
 
 [features]
-default = ["mdns"]
+default = ["mdns", "btsp"]
 # mDNS bootstrap discovery (Songbird's domain; use for cold-start only)
 mdns = ["dep:mdns-sd"]
+# BTSP handshake for production socket authentication
+btsp = ["dep:x25519-dalek", "dep:hkdf", "dep:hmac", "dep:sha2", "dep:chacha20poly1305", "dep:rand"]
 
 [lints]
 workspace = true

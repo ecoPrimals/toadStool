@@ -144,6 +144,10 @@ impl SafeMmapRegion {
     /// after a successful `map_raw` call.
     #[must_use]
     pub fn as_volatile(&self) -> VolatileMmio<'_> {
+        debug_assert!(
+            self.mmap.len() > 0,
+            "SafeMmapRegion invariant: non-empty mapping (see open_validated)"
+        );
         // SAFETY: mmap is valid (from a successful map_raw call). as_mut_ptr
         // returns a valid pointer for len() bytes. The VolatileMmio borrows
         // self, preventing use-after-unmap.

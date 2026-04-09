@@ -195,9 +195,7 @@ impl UniversalRuntime {
 
             match caps.unit_type {
                 ComputeUnitType::Cpu => stats.num_cpu += 1,
-                ComputeUnitType::GpuOpenCl
-                | ComputeUnitType::GpuWgpu
-                | ComputeUnitType::GpuVulkan => stats.num_gpu += 1,
+                ComputeUnitType::GpuWgpu | ComputeUnitType::GpuVulkan => stats.num_gpu += 1,
                 ComputeUnitType::Neuromorphic => stats.num_neuromorphic += 1,
                 ComputeUnitType::Custom(_) => stats.num_custom += 1,
             }

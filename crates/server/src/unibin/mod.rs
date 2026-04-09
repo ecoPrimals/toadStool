@@ -13,7 +13,10 @@ pub use execution::{
     create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
     write_tcp_discovery_file,
 };
-pub use format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
+pub use format::{
+    ensure_biomeos_directory, get_socket_path, legacy_socket_filename_for_family,
+    socket_filename_for_family,
+};
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -182,7 +185,40 @@ pub async fn run_server_main(
 
     info!("🔌 Starting IPC servers (isomorphic mode)...");
 
-    let jsonrpc_socket = socket_path.with_extension("jsonrpc.sock");
+    // Primary socket uses the domain stem per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1:
+    //   compute.sock (dev) / compute-{fid}.sock (prod)
+    // The socket_path already has the domain-based name from get_socket_path().
+    let jsonrpc_socket = socket_path.clone();
+
+    // Legacy symlink: toadstool.sock → compute.sock for callers still using
+    // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
+    let legacy_filename = format::legacy_socket_filename_for_family(&family_id);
+    let legacy_socket = socket_path.parent().map(|dir| dir.join(legacy_filename));
+    if let Some(ref legacy) = legacy_socket
+        && legacy != &socket_path
+    {
+        let _ = std::fs::remove_file(legacy);
+        #[cfg(unix)]
+        {
+            if let Err(e) = std::os::unix::fs::symlink(&socket_path, legacy) {
+                warn!(
+                    "Could not create legacy symlink {} → {}: {e}",
+                    legacy.display(),
+                    socket_path.display()
+                );
+            } else {
+                info!(
+                    "🔗 Legacy symlink: {} → {}",
+                    legacy.display(),
+                    socket_path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                );
+            }
+        }
+    }
+
     let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
         Arc::clone(&executor),
         version,
@@ -222,12 +258,14 @@ pub async fn run_server_main(
     if socket_path.exists()
         && let Err(e) = tokio::fs::remove_file(&socket_path).await
     {
-        warn!("Failed to remove tarpc socket: {}", e);
+        warn!("Failed to remove domain socket: {}", e);
     }
-    if jsonrpc_socket.exists()
-        && let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await
+    // Clean up legacy symlink
+    if let Some(ref legacy) = legacy_socket
+        && (legacy.exists() || legacy.symlink_metadata().is_ok())
+        && let Err(e) = tokio::fs::remove_file(legacy).await
     {
-        warn!("Failed to remove JSON-RPC socket: {}", e);
+        warn!("Failed to remove legacy symlink: {}", e);
     }
 
     info!("ToadStool server stopped");

@@ -3,7 +3,10 @@
 //!
 //! **UniBin Standard Compliant**: Diagnose ToadStool installation, runtime,
 //! and ecosystem connectivity.
-#![allow(deprecated)]
+#![expect(
+    deprecated,
+    reason = "legacy ecosystem endpoints during capability migration"
+)]
 //!
 //! # Checks Performed
 //!

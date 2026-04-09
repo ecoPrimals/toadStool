@@ -20,10 +20,7 @@ use crate::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest, JsonRpcResponse};
 ///
 /// Uses owned body so JsonRpcRequest can borrow from it via `serde_json::from_slice`.
 #[cfg_attr(test, allow(dead_code))]
-pub(crate) async fn process_request(
-    handler: &JsonRpcHandler,
-    body: &[u8],
-) -> ServerResult<Vec<u8>> {
+pub async fn process_request(handler: &JsonRpcHandler, body: &[u8]) -> ServerResult<Vec<u8>> {
     let request: JsonRpcRequest = match serde_json::from_slice(body) {
         Ok(r) => r,
         Err(e) => {

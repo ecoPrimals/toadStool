@@ -39,9 +39,10 @@ pub async fn create_executor(
 
     if use_distributed {
         info!("Initializing distributed coordinator mode");
-        let _capabilities = capabilities::query_local_capabilities().await;
-        info!("Local capabilities: {:?}", _capabilities);
+        let capabilities = capabilities::query_local_capabilities().await;
+        info!("Local capabilities: {:?}", capabilities);
 
+        let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
         let config = DistributedConfig {
             instance_id: format!("toadstool-{family_id}"),
             standalone: StandaloneConfig {
@@ -51,10 +52,10 @@ pub async fn create_executor(
                 max_queue_size: 100,
             },
             coordination: Some(toadstool_distributed::CoordinationConfig {
-                endpoint: std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
-                    .or_else(|_| std::env::var("COORDINATION_ENDPOINT"))
-                    .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
-                    .unwrap_or_else(|_| {
+                endpoint: socket_env
+                    .coordination_connection_hint
+                    .clone()
+                    .unwrap_or_else(|| {
                         tracing::info!(
                             "No coordination endpoint configured, will use runtime discovery"
                         );
@@ -78,8 +79,8 @@ pub async fn create_executor(
         Ok(std::sync::Arc::new(executor))
     } else {
         info!("Using standalone executor (TOADSTOOL_STANDALONE=1)");
-        let _capabilities = capabilities::query_local_capabilities().await;
-        info!("Local capabilities: {:?}", _capabilities);
+        let capabilities = capabilities::query_local_capabilities().await;
+        info!("Local capabilities: {:?}", capabilities);
         Ok(std::sync::Arc::new(StandaloneExecutor::new()))
     }
 }
@@ -253,8 +254,7 @@ pub fn is_selinux_enforcing() -> bool {
     std::fs::read_to_string("/sys/fs/selinux/enforce")
         .ok()
         .and_then(|s| s.trim().parse::<u8>().ok())
-        .map(|enforce| enforce == 1)
-        .unwrap_or_default()
+        .is_some_and(|enforce| enforce == 1)
 }
 
 /// Wait for shutdown signal (SIGINT or SIGTERM)
@@ -263,14 +263,12 @@ pub async fn wait_for_shutdown_signal() -> super::ShutdownSignal {
     {
         use tokio::signal::unix::{SignalKind, signal};
 
-        let mut sigint = match signal(SignalKind::interrupt()) {
-            Ok(s) => s,
-            Err(_) => return super::ShutdownSignal::Error("Failed to register SIGINT handler"),
+        let Ok(mut sigint) = signal(SignalKind::interrupt()) else {
+            return super::ShutdownSignal::Error("Failed to register SIGINT handler");
         };
 
-        let mut sigterm = match signal(SignalKind::terminate()) {
-            Ok(s) => s,
-            Err(_) => return super::ShutdownSignal::Error("Failed to register SIGTERM handler"),
+        let Ok(mut sigterm) = signal(SignalKind::terminate()) else {
+            return super::ShutdownSignal::Error("Failed to register SIGTERM handler");
         };
 
         tokio::select! {

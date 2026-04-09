@@ -90,7 +90,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
         );
 
         // Convert WorkloadSubmission to ExecutionRequest (pass by ref to avoid full clone)
-        let request = convert_submission_to_request(&submission)?;
+        let request = convert_submission_to_request(&submission);
 
         // Submit to coordinator (isomorphic/fractal routing)
         let execution_id = self
@@ -145,7 +145,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 name: "Distributed Coordinator".to_string(),
                 cores: cpu_cores,
                 memory_bytes: total_memory,
-                tflops: Some((cpu_cores as f64) * 0.1),
+                tflops: Some(f64::from(cpu_cores) * 0.1),
                 utilization: 0.0,
             }],
             supported_workload_types: vec![
@@ -192,9 +192,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
 ///
 /// Deep debt principle: Type conversion without hardcoding
 /// Takes reference to avoid cloning workload_id, workload_type, priority, requirements.
-fn convert_submission_to_request(
-    submission: &WorkloadSubmission,
-) -> Result<ExecutionRequest, String> {
+fn convert_submission_to_request(submission: &WorkloadSubmission) -> ExecutionRequest {
     // Create workload spec from raw binary data
     // Bytes::clone is cheap (refcount); metadata clone necessary for env_vars
     let workload_spec = WorkloadSpec::Native {
@@ -213,7 +211,7 @@ fn convert_submission_to_request(
         .timeout_secs
         .map(Duration::from_secs);
 
-    Ok(ExecutionRequest {
+    ExecutionRequest {
         execution_id: uuid::Uuid::parse_str(submission.workload_id.as_ref())
             .unwrap_or_else(|_| uuid::Uuid::new_v4()),
         workload: workload_spec,
@@ -225,7 +223,7 @@ fn convert_submission_to_request(
         input_data: ExecutionInput::default(),
         callback_config: None,
         encryption_config: None,
-    })
+    }
 }
 
 /// Parse workload type string to RuntimeType hint
@@ -313,8 +311,7 @@ mod tests {
             },
         };
 
-        let request =
-            convert_submission_to_request(&submission).expect("Conversion should succeed");
+        let request = convert_submission_to_request(&submission);
 
         assert_eq!(
             request.execution_id.to_string(),
@@ -348,8 +345,7 @@ mod tests {
             },
         };
 
-        let request =
-            convert_submission_to_request(&submission).expect("Conversion should succeed");
+        let request = convert_submission_to_request(&submission);
 
         // Should not panic - invalid UUID gets replaced with new_v4
         assert!(uuid::Uuid::parse_str(&request.execution_id.to_string()).is_ok());
@@ -371,8 +367,7 @@ mod tests {
             },
         };
 
-        let request =
-            convert_submission_to_request(&submission).expect("Conversion should succeed");
+        let request = convert_submission_to_request(&submission);
         assert!(matches!(request.runtime_hint, Some(RuntimeType::Native)));
     }
 
@@ -392,8 +387,7 @@ mod tests {
             },
         };
 
-        let request =
-            convert_submission_to_request(&submission).expect("Conversion should succeed");
+        let request = convert_submission_to_request(&submission);
         assert!(matches!(request.runtime_hint, Some(RuntimeType::Wasm)));
     }
 

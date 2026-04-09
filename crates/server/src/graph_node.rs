@@ -57,6 +57,10 @@ fn default_primal() -> String {
     primal_identity::PRIMAL_NAME.to_string()
 }
 
+#[expect(
+    clippy::ref_option,
+    reason = "serde helper signature uses &Option for serialize_with"
+)]
 fn serialize_duration<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,

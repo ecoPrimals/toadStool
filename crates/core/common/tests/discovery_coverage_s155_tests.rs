@@ -341,7 +341,11 @@ fn test_resolve_nucleus_socket() {
 fn test_resolve_toadstool_socket() {
     let env = test_socket_env();
     let path = resolve_toadstool_socket(&env);
-    assert!(path.to_string_lossy().contains("toadstool"));
+    assert!(
+        path.to_string_lossy().ends_with("compute.sock"),
+        "Self-Knowledge v1.1: domain-based name, got: {}",
+        path.display()
+    );
 }
 
 #[test]

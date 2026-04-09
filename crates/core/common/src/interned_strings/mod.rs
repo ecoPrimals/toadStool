@@ -44,216 +44,11 @@
 //! let _legacy_crypto_route = primals::LEGACY_SECURITY_LABEL;
 //! ```
 
-/// Capability type constants (Deep Debt compliant)
-///
-/// These represent WHAT services do, not WHO provides them.
-/// Use these for capability-based discovery! Never match on primal names.
-pub mod capabilities {
-    /// Security capabilities (encryption, signing, key management)
-    pub const SECURITY: &str = "security";
-
-    /// Cryptographic capabilities (encryption, signing, key management, PKI).
-    /// Use for discovery: `discover_capability(capabilities::CRYPTO)`.
-    pub const CRYPTO: &str = "crypto";
-
-    /// Storage capabilities (persistence, compression, versioning)
-    pub const STORAGE: &str = "storage";
-
-    /// Coordination capabilities (service mesh, discovery, orchestration)
-    pub const COORDINATION: &str = "coordination";
-
-    /// Workload routing / MCP-style agent IPC
-    pub const ROUTING: &str = "routing";
-
-    /// AI/ML capabilities (inference, training, natural language)
-    pub const INTELLIGENCE: &str = "intelligence";
-
-    /// Compute capabilities (CPU, GPU, specialized hardware)
-    pub const COMPUTE: &str = "compute";
-
-    /// Monitoring capabilities (metrics, logging, tracing)
-    pub const MONITORING: &str = "monitoring";
-
-    /// Networking capabilities (routing, tunneling, VPN)
-    pub const NETWORKING: &str = "networking";
-
-    // Specific capability features
-
-    /// Encryption capability
-    pub const ENCRYPTION: &str = "encryption";
-
-    /// Digital signing capability
-    pub const SIGNING: &str = "signing";
-
-    /// Key management capability
-    pub const KEY_MANAGEMENT: &str = "key-management";
-
-    /// Public Key Infrastructure
-    pub const PKI: &str = "pki";
-
-    /// Audit logging capability
-    pub const AUDIT: &str = "audit";
-
-    /// Data persistence capability
-    pub const PERSISTENCE: &str = "persistence";
-
-    /// Data compression capability
-    pub const COMPRESSION: &str = "compression";
-
-    /// Version control capability
-    pub const VERSIONING: &str = "versioning";
-
-    /// GPU dispatch capability (native shader / compute pipeline)
-    pub const GPU_DISPATCH: &str = "gpu.dispatch";
-
-    /// Science GPU dispatch (JSON-RPC method family)
-    pub const SCIENCE_GPU_DISPATCH: &str = "science.gpu.dispatch";
-
-    /// Shader compilation capability (sovereign pipeline)
-    pub const SHADER_COMPILE: &str = "shader.compile";
-
-    /// Native shader compilation pipeline
-    pub const SHADER_COMPILE_NATIVE: &str = "shader.compile.native";
-
-    /// GPU hardware calibration (NVVM safety, precision tier probing).
-    pub const GPU_CALIBRATION: &str = "gpu.calibration";
-
-    /// Workload routing (substrate selection based on problem size).
-    pub const WORKLOAD_ROUTING: &str = "workload.routing";
-
-    /// Orchestration capability
-    pub const ORCHESTRATION: &str = "orchestration";
-
-    /// Ecology domain capability (airSpring)
-    pub const ECOLOGY: &str = "ecology";
-
-    /// Science domain capability
-    pub const SCIENCE: &str = "science";
-
-    /// Activation function capabilities (science GPU stack)
-    pub const ACTIVATIONS: &str = "science.activations";
-
-    /// RNG capabilities
-    pub const RNG: &str = "science.rng";
-
-    /// Special math functions
-    pub const SPECIAL_FUNCTIONS: &str = "science.special";
-
-    /// Biology domain capability (wetSpring — metagenomics, phylogenetics, mass spec)
-    pub const BIOLOGY: &str = "biology";
-
-    /// Health domain capability (healthSpring — PK/PD, NLME, biosignal)
-    pub const HEALTH: &str = "health";
-
-    /// Measurement/uncertainty domain capability (groundSpring — UQ, validation)
-    pub const MEASUREMENT: &str = "measurement";
-
-    /// Optimization domain capability (neuralSpring — ML, evolutionary computation)
-    pub const OPTIMIZATION: &str = "optimization";
-
-    /// Visualization / streaming pipeline capability (petalTongue)
-    pub const VISUALIZATION: &str = "visualization";
-}
-
-/// Protocol constants
-pub mod protocols {
-    /// HTTP protocol
-    pub const HTTP: &str = "http";
-
-    /// HTTPS protocol
-    pub const HTTPS: &str = "https";
-
-    /// gRPC protocol
-    pub const GRPC: &str = "grpc";
-
-    /// `WebSocket` protocol
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    pub const WEBSOCKET: &str = "websocket";
-
-    /// Secure `WebSocket` protocol
-    #[deprecated(
-        since = "0.5.0",
-        note = "WebSocket is deprecated. Use JSON-RPC 2.0 polling instead."
-    )]
-    pub const WSS: &str = "wss";
-
-    /// JSON-RPC protocol
-    pub const JSONRPC: &str = "jsonrpc";
-
-    /// TCP protocol
-    pub const TCP: &str = "tcp";
-
-    /// UDP protocol
-    pub const UDP: &str = "udp";
-
-    /// Unix domain socket
-    pub const UNIX: &str = "unix";
-
-    /// tarpc protocol
-    pub const TARPC: &str = "tarpc";
-}
-
-/// ⚠️ DEPRECATED: Legacy primal name constants
-///
-/// **For IPC addressing only** (socket paths, endpoint IDs, message routing).
-/// These are canonical names for addressing — NOT for capability matching.
-/// Use `capabilities::*` for discovery; use these only when you already have
-/// a discovered service and need its name for socket paths or routing.
-///
-/// # Migration Guide
-///
-/// ```ignore
-/// // ❌ OLD: treat a fixed orchestrator label as the service identity
-/// let service = discover_fixed_label("…").await?;
-///
-/// // ✅ NEW (capability-based WHAT):
-/// use toadstool_common::interned_strings::capabilities;
-/// let service = discover_capability(capabilities::CRYPTO).await?;
-/// ```
-/// Legacy primal name constants for backward-compatible IPC routing.
-///
-/// New code should use `capabilities::*` and `CapabilityDomain` instead.
-/// These constants are retained for env-var fallbacks, serde aliases,
-/// and existing deployment interop.
-pub mod primals {
-    /// Legacy IPC route string for security services (matches `BEARDOG_SOCKET` era paths).
-    pub const LEGACY_SECURITY_LABEL: &str = "beardog";
-
-    /// Legacy IPC route string for coordination services.
-    pub const LEGACY_COORDINATION_LABEL: &str = "songbird";
-
-    /// Legacy IPC route string for storage services.
-    pub const LEGACY_STORAGE_LABEL: &str = "nestgate";
-
-    /// Legacy IPC route string for intelligence / routing services.
-    pub const LEGACY_INTELLIGENCE_LABEL: &str = "squirrel";
-
-    /// Legacy IPC route label for crypto/security services
-    /// **DEPRECATED**: Use [`LEGACY_SECURITY_LABEL`] or `capabilities::CRYPTO` for discovery
-    #[deprecated(note = "use LEGACY_SECURITY_LABEL or capabilities::CRYPTO / SECURITY")]
-    pub const BEARDOG: &str = LEGACY_SECURITY_LABEL;
-
-    /// Legacy IPC route label for coordination / mesh
-    /// **DEPRECATED**: Use [`LEGACY_COORDINATION_LABEL`] or `capabilities::COORDINATION`
-    #[deprecated(note = "use LEGACY_COORDINATION_LABEL or capabilities::COORDINATION")]
-    pub const SONGBIRD: &str = LEGACY_COORDINATION_LABEL;
-
-    /// Legacy IPC route label for storage / artifacts
-    /// **DEPRECATED**: Use [`LEGACY_STORAGE_LABEL`] or `capabilities::STORAGE`
-    #[deprecated(note = "use LEGACY_STORAGE_LABEL or capabilities::STORAGE")]
-    pub const NESTGATE: &str = LEGACY_STORAGE_LABEL;
-
-    /// Legacy IPC route label for routing / agent IPC
-    /// **DEPRECATED**: Use [`LEGACY_INTELLIGENCE_LABEL`] or `capabilities::ROUTING` / `INTELLIGENCE`
-    #[deprecated(note = "use LEGACY_INTELLIGENCE_LABEL or capabilities::ROUTING / INTELLIGENCE")]
-    pub const SQUIRREL: &str = LEGACY_INTELLIGENCE_LABEL;
-
-    /// ToadStool compute service identifier
-    pub const TOADSTOOL: &str = "toadstool";
-}
+pub mod biomeos_manifest_serde;
+pub mod capabilities;
+pub mod primals;
+pub mod protocols;
+pub mod socket_env;
 
 /// Typed capability domain — use instead of scattered string literals.
 ///
@@ -452,6 +247,26 @@ mod tests {
         assert_eq!(primals::LEGACY_COORDINATION_LABEL, "songbird");
         assert_eq!(primals::LEGACY_STORAGE_LABEL, "nestgate");
         assert_eq!(primals::LEGACY_INTELLIGENCE_LABEL, "squirrel");
+    }
+
+    #[test]
+    fn test_socket_env_names_match_runtime() {
+        assert_eq!(socket_env::LEGACY_BEARDOG_SOCKET_ENV, "BEARDOG_SOCKET");
+        assert_eq!(socket_env::BIOMEOS_CRYPTO_SOCKET, "BIOMEOS_CRYPTO_SOCKET");
+        assert_eq!(
+            socket_env::TOADSTOOL_SECURITY_SOCKET,
+            "TOADSTOOL_SECURITY_SOCKET"
+        );
+    }
+
+    #[test]
+    fn test_biomeos_manifest_serde_tags() {
+        assert_eq!(biomeos_manifest_serde::COORDINATION, "Coordination");
+        assert_eq!(biomeos_manifest_serde::LEGACY_SONGBIRD_PASCAL, "Songbird");
+        assert_eq!(
+            biomeos_manifest_serde::LEGACY_BEARDOG_LOWER,
+            primals::LEGACY_SECURITY_LABEL
+        );
     }
 
     #[test]

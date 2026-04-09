@@ -116,7 +116,9 @@ impl DiscoveryEngine {
 /// Trait for capability provider discovery sources.
 ///
 /// Implement this to add custom discovery backends (e.g., custom registries).
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
+///
+/// NOTE(async-dyn): [`DiscoveryEngine`] stores `Vec<Box<dyn DiscoverySource>>`. Native `async fn` in
+/// traits is not object-safe; `#[async_trait]` is required.
 #[async_trait]
 pub trait DiscoverySource: Send + Sync {
     /// Discover capability providers from this source.
@@ -314,7 +316,6 @@ impl EnvironmentSource {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for EnvironmentSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
@@ -467,7 +468,6 @@ impl LocalRegistrySource {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl DiscoverySource for LocalRegistrySource {
     #[expect(deprecated)] // BIOMEOS used for platform path convention

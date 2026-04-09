@@ -79,25 +79,22 @@ pub async fn bind<P: AsRef<Path>>(path: P) -> ToadStoolResult<UnixListener> {
     Ok(listener)
 }
 
-/// Create capability symlinks pointing to the primal socket.
+/// Create legacy symlink so callers using the primal name still resolve.
 ///
-/// Per wateringHole v1.1 SHOULD: `compute.sock` → `toadstool.sock` so
-/// peers discover by capability (`compute`) not primal name (`toadstool`).
+/// Per Self-Knowledge v1.1 §Migration: primary socket is `compute.sock`
+/// (domain-based); legacy symlink `toadstool.sock → compute.sock` is
+/// maintained during the migration period.
 async fn create_capability_symlinks(socket_path: &Path) {
     let Some(parent) = socket_path.parent() else {
         return;
     };
 
-    for capability in &["compute"] {
-        let symlink = parent.join(format!("{capability}.sock"));
-        if symlink.exists() {
-            continue;
-        }
-        let target = socket_path.to_path_buf();
-        let link = symlink.clone();
-        let _ =
-            tokio::task::spawn_blocking(move || std::os::unix::fs::symlink(&target, &link)).await;
+    let legacy = parent.join("toadstool.sock");
+    if legacy.exists() || legacy.symlink_metadata().is_ok() {
+        return;
     }
+    let target = socket_path.to_path_buf();
+    let _ = tokio::task::spawn_blocking(move || std::os::unix::fs::symlink(&target, &legacy)).await;
 }
 
 /// Connect to Unix socket
@@ -138,9 +135,9 @@ mod tests {
         let path = default_path();
         let path_str = path.to_string_lossy();
 
-        // Should contain biomeos and toadstool.sock
+        // Self-Knowledge v1.1: domain-based name under biomeos dir
         assert!(path_str.contains("biomeos"));
-        assert!(path_str.contains("toadstool.sock"));
+        assert!(path_str.contains("compute.sock"));
     }
 
     #[tokio::test]

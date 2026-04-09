@@ -91,8 +91,6 @@ impl Capabilities {
 pub enum ComputeUnitType {
     /// CPU (x86, ARM, etc.)
     Cpu,
-    /// GPU (via OpenCL)
-    GpuOpenCl,
     /// GPU (via wgpu/WebGPU)
     GpuWgpu,
     /// GPU (via Vulkan)
@@ -107,7 +105,6 @@ impl fmt::Display for ComputeUnitType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Cpu => write!(f, "CPU"),
-            Self::GpuOpenCl => write!(f, "GPU (OpenCL)"),
             Self::GpuWgpu => write!(f, "GPU (wgpu)"),
             Self::GpuVulkan => write!(f, "GPU (Vulkan)"),
             Self::Neuromorphic => write!(f, "Neuromorphic"),

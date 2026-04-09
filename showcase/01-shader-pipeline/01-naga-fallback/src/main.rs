@@ -70,8 +70,8 @@ async fn main() {
     // Section: Socket Check
     println!("{}", "► Socket Check".cyan());
     let sock_path = std::env::var("XDG_RUNTIME_DIR")
-        .map(|d| format!("{}/biomeos/toadstool.jsonrpc.sock", d))
-        .unwrap_or_else(|_| format!("{}/biomeos/toadstool.jsonrpc.sock", runtime_dir_fallback()));
+        .map(|d| format!("{}/biomeos/compute.sock", d))
+        .unwrap_or_else(|_| format!("{}/biomeos/compute.sock", runtime_dir_fallback()));
 
     let live = Path::new(&sock_path).exists()
         && UnixStream::connect(&sock_path).await.is_ok();

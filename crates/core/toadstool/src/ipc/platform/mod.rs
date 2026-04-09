@@ -82,10 +82,10 @@ impl Endpoint {
             }
         }
 
-        // Default: Unix socket (Linux desktop, macOS)
+        // Default: domain-based Unix socket per Self-Knowledge v1.1
         let runtime_dir = get_runtime_dir();
         Self::Unix {
-            path: PathBuf::from(format!("{runtime_dir}/biomeos/toadstool.sock")),
+            path: PathBuf::from(format!("{runtime_dir}/biomeos/compute.sock")),
         }
     }
 

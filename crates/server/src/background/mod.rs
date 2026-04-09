@@ -3,7 +3,10 @@
 //!
 //! ## Module structure
 //!
-#![allow(rustdoc::private_intra_doc_links)]
+#![expect(
+    rustdoc::private_intra_doc_links,
+    reason = "module-level rustdoc links to private items for maintainer navigation"
+)]
 //!
 //! - [`resource`] — CPU/memory monitoring, ResourceUsageUpdate events
 //! - [`health`] — Health checks, HealthStatusChanged events

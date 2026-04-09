@@ -223,15 +223,24 @@ impl hw_learn::applicator::RegisterAccess for VfioBar0Access {
 // MSI-X interrupt support for VFIO completion notification
 // ═══════════════════════════════════════════════════════════
 
-const VFIO_TYPE: u8 = b';';
-const VFIO_BASE: u8 = 100;
+use toadstool_hw_safe::vfio_dma::{VFIO_BASE, VFIO_TYPE};
 const OP_DEVICE_SET_IRQS: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 10);
 
 struct VfioPtrIoctl<const OP: Opcode, T> {
     ptr: *mut T,
 }
 
-// SAFETY: VFIO struct ioctl; T is repr(C) matching kernel ABI.
+// SAFETY:
+// - `T` is `#[repr(C)]` and matches the kernel’s userspace layout for this `OP`
+//   (here: VFIO’s `struct vfio_irq_set` plus trailing `i32` eventfd per `argsz`).
+// - `as_ptr` passes the buffer the kernel reads for this ioctl; `opcode()` matches
+//   VFIO’s registered command.
+// - `IS_MUTATING = true`: the kernel may update userspace-visible state for this
+//   VFIO command path (conservative; avoids mis-optimization in rustix).
+// - `output_from_ptr`: for this ioctl the Rust [`Ioctl::Output`] is `()`; the kernel
+//   does not marshal a separate return value through `extract_output` beyond the
+//   standard ioctl result. After a successful syscall, callers do not read `T` back
+//   through this hook (VFIO consumed the buffer per `argsz`).
 unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
     type Output = ();
     const IS_MUTATING: bool = true;
@@ -243,9 +252,14 @@ unsafe impl<const OP: Opcode, T> Ioctl for VfioPtrIoctl<OP, T> {
         self.ptr.cast()
     }
     unsafe fn output_from_ptr(
-        _: IoctlOutput,
-        _: *mut std::ffi::c_void,
+        _ioctl_ret: IoctlOutput,
+        extract_output: *mut std::ffi::c_void,
     ) -> rustix::io::Result<Self::Output> {
+        // `extract_output` is the same address passed to `ioctl` (see rustix `Ioctl`).
+        debug_assert!(
+            !extract_output.is_null(),
+            "rustix always passes the ioctl buffer pointer"
+        );
         Ok(())
     }
 }
@@ -261,7 +275,13 @@ struct VfioIrqSet {
     index: u32,
     start: u32,
     count: u32,
-    // followed by eventfd data (i32)
+}
+
+/// Kernel `vfio_irq_set` plus trailing `i32` eventfd (see VFIO `DEVICE_SET_IRQS`).
+#[repr(C)]
+struct VfioIrqSetPayload {
+    irq_set: VfioIrqSet,
+    eventfd: i32,
 }
 
 /// MSI-X interrupt configuration for VFIO devices.
@@ -288,38 +308,42 @@ impl VfioMsixInterrupt {
 
         let fd_val = eventfd.as_raw_fd();
 
-        // Build the VFIO_DEVICE_SET_IRQS payload: VfioIrqSet header + eventfd i32
         #[expect(
             clippy::cast_possible_truncation,
             reason = "compile-time struct sizes always fit u32"
         )]
-        let argsz = (std::mem::size_of::<VfioIrqSet>() + std::mem::size_of::<i32>()) as u32;
-        let mut payload = Vec::with_capacity(argsz as usize);
+        let argsz = std::mem::size_of::<VfioIrqSetPayload>() as u32;
 
-        let irq_set = VfioIrqSet {
-            argsz,
-            flags: VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER,
-            index: VFIO_PCI_MSIX_IRQ_INDEX,
-            start: vector,
-            count: 1,
+        let mut payload = VfioIrqSetPayload {
+            irq_set: VfioIrqSet {
+                argsz,
+                flags: VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER,
+                index: VFIO_PCI_MSIX_IRQ_INDEX,
+                start: vector,
+                count: 1,
+            },
+            eventfd: fd_val,
         };
 
-        payload.extend_from_slice(&irq_set.argsz.to_ne_bytes());
-        payload.extend_from_slice(&irq_set.flags.to_ne_bytes());
-        payload.extend_from_slice(&irq_set.index.to_ne_bytes());
-        payload.extend_from_slice(&irq_set.start.to_ne_bytes());
-        payload.extend_from_slice(&irq_set.count.to_ne_bytes());
-        payload.extend_from_slice(&fd_val.to_ne_bytes());
+        if device_fd.as_raw_fd() < 0 {
+            return Err(NvPmuError::Hardware(
+                "VFIO device fd is invalid (negative)".into(),
+            ));
+        }
 
-        #[expect(
-            clippy::cast_ptr_alignment,
-            reason = "VFIO SET_IRQS reads argsz from the header to determine actual layout"
-        )]
+        debug_assert_eq!(
+            payload.irq_set.argsz as usize,
+            std::mem::size_of::<VfioIrqSetPayload>(),
+            "VFIO argsz must cover header + eventfd"
+        );
+
         let ioctl = VfioPtrIoctl::<OP_DEVICE_SET_IRQS, _> {
-            ptr: payload.as_mut_ptr().cast::<VfioIrqSet>(),
+            ptr: std::ptr::addr_of_mut!(payload),
         };
 
-        // SAFETY: device_fd is a valid VFIO device; payload matches kernel ABI.
+        // SAFETY: `device_fd` is an open VFIO device (`OwnedFd`). `payload` is a
+        // correctly sized, aligned `repr(C)` struct matching the kernel ABI for
+        // `VFIO_DEVICE_SET_IRQS` with eventfd data.
         unsafe { rustix::ioctl::ioctl(device_fd.as_fd(), ioctl) }
             .map_err(|e| NvPmuError::Hardware(format!("MSI-X configure vector {vector}: {e}")))?;
 

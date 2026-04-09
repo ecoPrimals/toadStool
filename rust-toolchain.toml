@@ -1,0 +1,11 @@
+# ecoPrimals / toadStool — Rust toolchain pinning
+# Ensures CI and local builds use the same compiler.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy", "llvm-tools-preview"]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
+]

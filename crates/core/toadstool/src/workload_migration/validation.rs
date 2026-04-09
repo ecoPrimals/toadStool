@@ -81,6 +81,8 @@ impl Default for ResourceRequirements {
 
 impl ResourceRequirements {
     /// Derive resource requirements from a `WorkloadSpec`.
+    ///
+    /// GPU/OpenCL-shaped persisted specs deserialize as before; external GPU execution uses Vulkan/wgpu or barraCuda/coralReef (S198).
     #[must_use]
     pub fn from_spec(spec: &WorkloadSpec) -> Self {
         match spec {
@@ -253,6 +255,7 @@ pub fn validate_migration(
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use crate::workload_migration::{MigrationRecommendation, MigrationTarget};

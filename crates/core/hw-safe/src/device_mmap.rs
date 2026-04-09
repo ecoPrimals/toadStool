@@ -12,7 +12,7 @@
 //! - `akida-driver::mmio` BAR mapping
 //! - `display::v4l2` capture buffer mapping
 
-use std::os::fd::AsFd;
+use std::os::fd::{AsFd, AsRawFd};
 use std::ptr::NonNull;
 
 use crate::ExclusivePtr;
@@ -57,6 +57,19 @@ impl DeviceMmap {
     pub fn map_shared_rw(fd: impl AsFd, offset: u64, size: usize) -> Result<Self, DeviceMmapError> {
         if size == 0 {
             return Err(DeviceMmapError::ZeroSize);
+        }
+
+        if isize::try_from(size).is_err() {
+            return Err(DeviceMmapError::MmapFailed(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "mmap length exceeds isize::MAX",
+            )));
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            let raw = fd.as_fd().as_raw_fd();
+            debug_assert!(raw >= 0, "AsFd: negative fd");
         }
 
         // SAFETY: fd is a valid open descriptor (AsFd contract); offset and
@@ -149,6 +162,11 @@ unsafe impl ContiguousBytes for DeviceMmap {
         self.ptr.as_non_null()
     }
     fn raw_len(&self) -> usize {
+        debug_assert!(self.size > 0, "zero-size maps are rejected in constructor");
+        debug_assert!(
+            isize::try_from(self.size).is_ok(),
+            "ContiguousBytes: raw_len must fit isize (slice precondition)"
+        );
         self.size
     }
 }

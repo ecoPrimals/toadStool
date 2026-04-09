@@ -1,16 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(
-    clippy::must_use_candidate,
-    clippy::unused_async,
-    clippy::needless_pass_by_value,
-    clippy::assigning_clones,
-    clippy::unreadable_literal,
-    clippy::doc_markdown,
-    clippy::uninlined_format_args,
-    clippy::missing_errors_doc
-)]
+#![allow(clippy::doc_markdown)]
 
 //! # `ToadStool` Protocol Integration Layer
 //!

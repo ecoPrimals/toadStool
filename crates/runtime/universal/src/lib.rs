@@ -28,6 +28,10 @@
 //! A unified runtime that treats CPU, GPU, and neuromorphic processors as
 //! different orders of the same parallel compute architecture.
 //!
+//! In-process GPU acceleration uses **wgpu** (Vulkan, Metal, Direct3D 12). OpenCL
+//! is not implemented here; external OpenCL dispatch goes through **barraCuda** /
+//! **coralReef** via IPC.
+//!
 //! # Philosophy
 //!
 //! **Not this** (Traditional):
@@ -84,7 +88,6 @@ pub mod types;
 
 #[cfg(feature = "cpu")]
 pub use backends::CpuComputeUnit;
-#[cfg(feature = "opencl")]
 #[expect(deprecated)]
 pub use backends::OpenClComputeUnit;
 #[cfg(feature = "wgpu-backend")]

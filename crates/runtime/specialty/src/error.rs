@@ -45,23 +45,29 @@ pub enum SpecialtyRuntimeError {
     #[error("Other error: {0}")]
     Other(String),
 
-    /// Infrastructure placeholder: [`crate::embedded::types::ProgrammerInterface`] until hardware backends exist.
+    /// Not available on this platform / build: [`crate::embedded::types::ProgrammerInterface`] until hardware backends exist.
     ///
     /// See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
-    #[error("{operation}: {detail}")]
+    #[error("{operation} is not yet implemented for platform `{platform}`: {detail}")]
     EmbeddedProgrammerPlaceholder {
+        /// Stable platform id (e.g. `generic_isp`, `parallel_eprom`).
+        platform: &'static str,
         /// Operation name (e.g. `"Memory read"`).
         operation: &'static str,
-        /// Why the stub returns an error.
+        /// What a full implementation would require (transport, protocol, device support).
         detail: &'static str,
     },
 
-    /// Infrastructure placeholder: [`crate::embedded::types::EmbeddedEmulator`] until CPU cores exist.
+    /// Not available on this platform / build: [`crate::embedded::types::EmbeddedEmulator`] until CPU cores exist.
     ///
     /// See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
-    #[error("emulator feature {feature_id}: {operation}")]
+    #[error(
+        "`{operation}` is not yet implemented for platform `{platform}` (feature {feature_id})"
+    )]
     EmbeddedEmulatorPlaceholder {
-        /// Stable feature id (e.g. `embedded_emulator_mos6502`).
+        /// Architecture / platform id (e.g. `mos6502`, `z80`).
+        platform: &'static str,
+        /// Stable feature id for `SystemError::NotSupported` mapping (e.g. `embedded_emulator_mos6502`).
         feature_id: &'static str,
         /// Operation name (e.g. `"step"`).
         operation: &'static str,
@@ -71,16 +77,21 @@ pub enum SpecialtyRuntimeError {
 impl From<SpecialtyRuntimeError> for ToadStoolError {
     fn from(err: SpecialtyRuntimeError) -> Self {
         match err {
-            SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder { operation, detail } => {
-                ToadStoolError::not_supported(format!("{operation}: {detail}"))
-            }
+            SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
+                platform,
+                operation,
+                detail,
+            } => ToadStoolError::not_supported(format!(
+                "{operation} is not yet implemented for platform `{platform}`: {detail}"
+            )),
             SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
+                platform,
                 feature_id,
                 operation,
             } => SystemError::NotSupported {
                 feature: feature_id.to_string(),
                 reason: format!(
-                    "{operation}: embedded CPU emulator core not implemented (infrastructure placeholder)"
+                    "{operation} is not yet implemented for platform `{platform}`: embedded CPU emulator core not available in this build"
                 ),
             }
             .into(),
@@ -218,6 +229,7 @@ mod tests {
     #[test]
     fn embedded_programmer_placeholder_maps_to_not_supported() {
         let spec = SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
+            platform: "generic_isp",
             operation: "Memory read",
             detail: "test detail",
         };
@@ -233,6 +245,7 @@ mod tests {
     #[test]
     fn embedded_emulator_placeholder_maps_to_system_not_supported() {
         let spec = SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
+            platform: "mos6502",
             feature_id: "embedded_emulator_mos6502",
             operation: "step",
         };

@@ -7,12 +7,14 @@
 //! so that `nvpmu` and `akida-driver` share the same kernel ABI structs
 //! and unsafe ioctl wrappers instead of duplicating them.
 
-use std::os::fd::{BorrowedFd, RawFd};
+use std::os::fd::BorrowedFd;
 
 use rustix::ioctl::{self, Ioctl, IoctlOutput, Opcode, opcode};
 
-const VFIO_TYPE: u8 = b';';
-const VFIO_BASE: u8 = 100;
+/// VFIO ioctl type byte (Linux kernel ABI: `';'` = 0x3B).
+pub const VFIO_TYPE: u8 = b';';
+/// VFIO ioctl base number (kernel ABI: first VFIO opcode = 100).
+pub const VFIO_BASE: u8 = 100;
 const OP_IOMMU_MAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 13);
 const OP_IOMMU_UNMAP_DMA: Opcode = opcode::none(VFIO_TYPE, VFIO_BASE + 14);
 
@@ -136,50 +138,6 @@ pub unsafe fn dma_map(container_fd: BorrowedFd<'_>, map: &VfioDmaMap) -> std::io
 /// correspond to a previously mapped region.
 pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
     do_ioctl(container_fd, DmaUnmapIoctl(unmap))
-}
-
-/// Map a host buffer into the device IOMMU using a raw file descriptor.
-///
-/// Prefer [`dma_map`] with `OwnedFd`/`BorrowedFd` for stronger fd validity
-/// guarantees. This wrapper exists for callers that only have a `RawFd`.
-///
-/// # Errors
-///
-/// Returns an I/O error if the ioctl fails.
-///
-/// # Safety
-///
-/// Same invariants as [`dma_map`], plus:
-/// - `fd` must be a valid, open VFIO container file descriptor that remains
-///   open for the duration of this call.
-#[deprecated(note = "prefer dma_map() with BorrowedFd/OwnedFd for fd safety")]
-pub unsafe fn dma_map_fd(fd: RawFd, map: &VfioDmaMap) -> std::io::Result<()> {
-    // SAFETY: caller guarantees fd is valid and open.
-    let borrowed = unsafe { BorrowedFd::borrow_raw(fd) };
-    // SAFETY: caller guarantees map invariants (see dma_map docs).
-    unsafe { dma_map(borrowed, map) }
-}
-
-/// Remove a device IOMMU mapping using a raw file descriptor.
-///
-/// Prefer [`dma_unmap`] with `OwnedFd`/`BorrowedFd` for stronger fd validity
-/// guarantees. This wrapper exists for callers that only have a `RawFd`.
-///
-/// # Errors
-///
-/// Returns an I/O error if the ioctl fails.
-///
-/// # Safety
-///
-/// Same invariants as [`dma_unmap`], plus:
-/// - `fd` must be a valid, open VFIO container file descriptor that remains
-///   open for the duration of this call.
-#[deprecated(note = "prefer dma_unmap() with BorrowedFd/OwnedFd for fd safety")]
-pub unsafe fn dma_unmap_fd(fd: RawFd, unmap: &VfioDmaUnmap) -> std::io::Result<()> {
-    // SAFETY: caller guarantees fd is valid and open.
-    let borrowed = unsafe { BorrowedFd::borrow_raw(fd) };
-    // SAFETY: caller guarantees unmap invariants (see dma_unmap docs).
-    unsafe { dma_unmap(borrowed, unmap) }
 }
 
 /// Align `size` up to the nearest multiple of `page`.

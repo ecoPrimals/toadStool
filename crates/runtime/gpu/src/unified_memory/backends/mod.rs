@@ -8,7 +8,6 @@ pub mod cpu;
 #[cfg(feature = "vulkan")]
 pub mod vulkan;
 
-#[cfg(feature = "opencl")]
 pub mod opencl;
 
 #[cfg(feature = "webgpu")]
@@ -20,7 +19,6 @@ pub use cpu::CpuBackend;
 #[cfg(feature = "vulkan")]
 pub use vulkan::VulkanBackend;
 
-#[cfg(feature = "opencl")]
 pub use opencl::OpenClBackend;
 
 #[cfg(feature = "webgpu")]

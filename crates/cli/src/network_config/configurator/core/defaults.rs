@@ -9,6 +9,7 @@ use toadstool_common::config_bases::{
     TelemetryConfig, TimeoutConfig,
 };
 use toadstool_common::interned_strings::capabilities;
+use toadstool_common::primal_sockets::SocketPathEnv;
 
 // --- Network configurator defaults (overridable via env) ---
 
@@ -191,19 +192,16 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                 },
                 security: SecurityServiceIntegrationConfig {
                     enabled: true,
-                    endpoint: std::env::var("SECURITY_ENDPOINT")
-                        .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
-                        .or_else(|_| {
+                    endpoint: {
+                        let env = SocketPathEnv::from_env();
+                        env.security_connection_hint.unwrap_or_else(|| {
                             let domains = ServiceDomainsConfig::from_env();
                             let port = std::env::var("TOADSTOOL_SECURITY_PORT")
                                 .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_PORT"))
                                 .unwrap_or_else(|_| "8000".to_string());
-                            Ok::<_, std::env::VarError>(format!(
-                                "http://{}:{}",
-                                domains.security, port
-                            ))
+                            format!("http://{}:{}", domains.security, port)
                         })
-                        .unwrap_or_default(),
+                    },
                     auth_token: None,
                     signature_verification: true,
                     crypto_lock: true,

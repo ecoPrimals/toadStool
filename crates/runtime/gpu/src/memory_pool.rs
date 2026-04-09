@@ -1,37 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU Memory Pool - Efficient buffer reuse
 //!
-//! Reduces allocation overhead by reusing GPU buffers
+//! Reduces allocation overhead by reusing GPU buffers.
+//! OpenCL buffer pooling was removed S198; use barraCuda/coralReef for vendor pools.
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[cfg(feature = "opencl")]
-use std::collections::VecDeque;
-#[cfg(feature = "opencl")]
-use toadstool::error::{ToadStoolError, ToadStoolResult};
-
-#[cfg(feature = "opencl")]
-use ocl::{Buffer, Queue};
-
 /// Memory pool for GPU buffers
 ///
-/// Maintains a pool of pre-allocated buffers to reduce allocation overhead
+/// Maintains pool statistics; native buffer reuse is provided by WebGPU/Vulkan paths.
 pub struct MemoryPool {
-    /// Available buffers by size bucket
-    #[cfg(feature = "opencl")]
-    buffers: Arc<RwLock<Vec<BufferBucket>>>,
-    #[cfg(not(feature = "opencl"))]
     _phantom: std::marker::PhantomData<()>,
 
     /// Statistics
     stats: Arc<RwLock<PoolStatistics>>,
-}
-
-#[cfg(feature = "opencl")]
-struct BufferBucket {
-    size: usize,
-    buffers: VecDeque<Buffer<u8>>,
 }
 
 /// Memory pool statistics.
@@ -60,125 +43,11 @@ impl MemoryPool {
     /// Create a memory pool with specific bucket capacity
     ///
     /// More buckets = finer-grained size matching, less waste
-    pub fn with_capacity(bucket_count: usize) -> Self {
-        #[cfg(feature = "opencl")]
-        let buffers = {
-            let mut buckets = Vec::with_capacity(bucket_count);
-            for i in 0..bucket_count {
-                let size = 1024 * (1 << i); // 1KB, 2KB, 4KB, 8KB, ...
-                buckets.push(BufferBucket {
-                    size,
-                    buffers: VecDeque::with_capacity(4), // 4 buffers per bucket
-                });
-            }
-            Arc::new(RwLock::new(buckets))
-        };
-
-        #[cfg(not(feature = "opencl"))]
-        let _ = bucket_count;
-
+    pub fn with_capacity(_bucket_count: usize) -> Self {
         Self {
-            #[cfg(feature = "opencl")]
-            buffers,
-            #[cfg(not(feature = "opencl"))]
             _phantom: std::marker::PhantomData,
             stats: Arc::new(RwLock::new(PoolStatistics::default())),
         }
-    }
-
-    /// Get buffer from pool or allocate new
-    #[cfg(feature = "opencl")]
-    pub async fn acquire_buffer(&self, size: usize, queue: &Queue) -> ToadStoolResult<Buffer<u8>> {
-        // Try to find buffer in pool
-        {
-            let mut buffers = self.buffers.write().await;
-
-            // Find bucket with this size
-            if let Some(bucket) = buffers
-                .iter_mut()
-                .find(|b| b.size >= size && b.size < size * 2)
-                && let Some(buffer) = bucket.buffers.pop_front()
-            {
-                // Cache hit!
-                let mut stats = self.stats.write().await;
-                stats.cache_hits += 1;
-                stats.total_bytes_reused += size as u64;
-                drop(stats);
-
-                tracing::debug!(
-                    "Memory pool cache hit: {} bytes (pool size: {})",
-                    size,
-                    bucket.buffers.len()
-                );
-
-                return Ok(buffer);
-            }
-        }
-
-        // Cache miss - allocate new buffer
-        let mut stats = self.stats.write().await;
-        stats.cache_misses += 1;
-        stats.allocations += 1;
-        stats.total_bytes_allocated += size as u64;
-        drop(stats);
-
-        tracing::debug!("Memory pool cache miss: allocating {} bytes", size);
-
-        Buffer::<u8>::builder()
-            .queue(queue.clone())
-            .len(size)
-            .build()
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to allocate buffer: {}", e)))
-    }
-
-    /// Return buffer to pool for reuse
-    #[cfg(feature = "opencl")]
-    pub async fn release_buffer(&self, buffer: Buffer<u8>) {
-        let size = buffer.len();
-        let mut buffers = self.buffers.write().await;
-
-        // Find or create bucket
-        let bucket = buffers
-            .iter_mut()
-            .find(|b| b.size >= size && b.size < size * 2);
-
-        if let Some(bucket) = bucket {
-            // Add to existing bucket (limit pool size per bucket)
-            if bucket.buffers.len() < 16 {
-                bucket.buffers.push_back(buffer);
-
-                let mut stats = self.stats.write().await;
-                stats.deallocations += 1;
-                drop(stats);
-
-                tracing::debug!(
-                    "Buffer returned to pool: {} bytes (pool size: {})",
-                    size,
-                    bucket.buffers.len()
-                );
-            } else {
-                // Pool full, drop buffer (will be freed)
-                tracing::debug!("Buffer pool full for size {}, dropping buffer", size);
-            }
-        } else {
-            // Create new bucket
-            buffers.push(BufferBucket {
-                size,
-                buffers: {
-                    let mut queue = VecDeque::new();
-                    queue.push_back(buffer);
-                    queue
-                },
-            });
-
-            let mut stats = self.stats.write().await;
-            stats.deallocations += 1;
-            drop(stats);
-
-            tracing::debug!("New buffer bucket created: {} bytes", size);
-        }
-
-        drop(buffers);
     }
 
     /// Get pool statistics
@@ -188,12 +57,6 @@ impl MemoryPool {
 
     /// Clear all buffers from pool
     pub async fn clear(&self) {
-        #[cfg(feature = "opencl")]
-        {
-            let mut buffers = self.buffers.write().await;
-            buffers.clear();
-        }
-
         tracing::info!("Memory pool cleared");
     }
 

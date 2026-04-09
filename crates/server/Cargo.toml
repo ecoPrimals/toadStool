@@ -22,10 +22,10 @@ toadstool-integration-protocols = { path = "../integration/protocols" }
 # JSON-RPC server
 # jsonrpsee removed (pulls ring C dependency). pure_jsonrpc is canonical (Pure Rust).
 
-# tarpc for high-performance RPC
-tarpc = { workspace = true }
-tokio-util = { version = "0.7", features = ["codec"] }
-tokio-serde = { version = "0.9", features = ["json"] }
+# tarpc for high-performance RPC (optional per wateringHole PRIMAL_IPC_PROTOCOL)
+tarpc = { workspace = true, optional = true }
+tokio-util = { version = "0.7", features = ["codec"], optional = true }
+tokio-serde = { version = "0.9", features = ["json"], optional = true }
 
 # Base64 encoding
 base64 = "0.22"
@@ -76,9 +76,11 @@ wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdo
 futures = { workspace = true }
 
 [features]
-default = ["api", "gpu-discovery"]
+default = ["api", "gpu-discovery", "tarpc", "btsp"]
 api = []
 gpu-discovery = ["wgpu"]
+tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
+btsp = ["toadstool-common/btsp"]
 # Exposes `mocks` module (MockResourceMonitor, etc.) for integration tests / tools — not default
 test-mocks = []
 
@@ -100,12 +102,17 @@ test-mocks = []
 # Reference: wateringHole/UNIBIN_ARCHITECTURE_STANDARD.md
 
 [dev-dependencies]
+criterion = { workspace = true }
 hw-learn = { path = "../core/hw-learn" }
 tokio-test = "0.4"
 tempfile = "3.8"
 temp-env = { version = "0.3", features = ["async_closure"] }
 toadstool-testing = { path = "../testing" }
 proptest = { workspace = true }
+
+[[bench]]
+name = "jsonrpc_throughput"
+harness = false
 
 [lints]
 workspace = true

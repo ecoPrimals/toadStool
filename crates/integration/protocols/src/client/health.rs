@@ -14,7 +14,7 @@ use crate::types::{HealthStatus, ProtocolEvent, ServiceInfo};
 /// Periodically checks endpoint connectivity and emits ServiceHealthChanged events.
 pub fn spawn_health_monitor(
     services: Arc<RwLock<HashMap<Arc<str>, ServiceInfo>>>,
-    health_config: HealthConfig,
+    health_config: &HealthConfig,
     event_bus: broadcast::Sender<ProtocolEvent>,
 ) {
     let interval = health_config.base.interval;

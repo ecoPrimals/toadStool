@@ -4,7 +4,10 @@
 //! This module contains all type definitions used by the specialty runtime,
 //! organized into logical submodules for better maintainability.
 
-#![allow(ambiguous_glob_reexports)]
+#![expect(
+    ambiguous_glob_reexports,
+    reason = "convenience re-exports; canonical types chosen in crate lib"
+)]
 
 pub mod configs;
 pub mod cross_compilation;

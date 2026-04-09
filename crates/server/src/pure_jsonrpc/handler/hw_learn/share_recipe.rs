@@ -173,7 +173,10 @@ mod tests {
         let value = handler.hw_learn_share_recipe(Some(&params)).await.unwrap();
         assert_eq!(value.get("action"), Some(&json!("list")));
         assert_eq!(value.get("domain"), Some(&json!("compute.hardware")));
-        let count = value.get("count").and_then(|c| c.as_u64()).unwrap();
+        let count = value
+            .get("count")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap();
         assert_eq!(count, 0);
     }
 

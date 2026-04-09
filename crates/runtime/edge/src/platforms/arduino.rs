@@ -5,15 +5,14 @@
 //! Supports various Arduino boards with serial communication and code deployment.
 
 use async_trait::async_trait;
-use digest::Digest;
-use md5::Md5;
 use serialport::{SerialPort, SerialPortType};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 use toadstool::{
@@ -325,7 +324,7 @@ impl ArduinoDevice {
 
     /// Compile Arduino code
     async fn compile_code(&self, code: &str) -> ToadStoolResult<Vec<u8>> {
-        let code_hash = format!("{:x}", Md5::digest(code.as_bytes()));
+        let code_hash = format!("{:x}", Sha256::digest(code.as_bytes()));
         
         // Check cache first
         {
@@ -539,7 +538,7 @@ impl EdgeDevice for ArduinoDevice {
                 id: execution_id,
                 status: ExecutionStatus::Running,
                 started_at,
-                code_hash: format!("{:x}", Md5::digest(code.as_bytes())),
+                code_hash: format!("{:x}", Sha256::digest(code.as_bytes())),
             });
         }
         

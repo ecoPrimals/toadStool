@@ -42,22 +42,27 @@ impl DispatchHandler {
             )));
         }
 
-        let workgroup_size = p
-            .get("workgroup_size")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                let x = arr.first().and_then(|v| v.as_u64()).unwrap_or(256) as u32;
-                let y = arr.get(1).and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-                let z = arr.get(2).and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-                [x, y, z]
-            })
-            .unwrap_or([256, 1, 1]);
+        let workgroup_size =
+            p.get("workgroup_size")
+                .and_then(|v| v.as_array())
+                .map_or([256, 1, 1], |arr| {
+                    let x = arr
+                        .first()
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(256) as u32;
+                    let y = arr.get(1).and_then(serde_json::Value::as_u64).unwrap_or(1) as u32;
+                    let z = arr.get(2).and_then(serde_json::Value::as_u64).unwrap_or(1) as u32;
+                    [x, y, z]
+                });
 
         let buffer_descs = p.get("buffers").cloned().unwrap_or(serde_json::json!([]));
 
-        let timeout_ms = p.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(
-            toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
-        );
+        let timeout_ms = p
+            .get("timeout_ms")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(
+                toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
+            );
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {

@@ -7,7 +7,7 @@
 //! - Container runtime (Docker/Podman)
 //! - WASM runtime (Wasmtime/WASI)
 //! - Python runtime (`PyO3`)
-//! - GPU compute (CUDA/OpenCL)
+//! - GPU compute (CUDA, Vulkan, wgpu; OpenCL removed — see S198)
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -215,10 +215,10 @@ impl Default for PythonConfig {
 
 /// GPU compute configuration
 ///
-/// Settings for GPU-accelerated workloads via CUDA/OpenCL.
+/// Settings for GPU-accelerated workloads (Vulkan/wgpu; legacy `opencl` string tolerated for serde).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuConfig {
-    /// GPU runtime backend (cuda, opencl, metal, vulkan)
+    /// GPU runtime backend (`cuda`, `vulkan`, `wgpu`, `metal`; `opencl` deprecated — S198)
     pub runtime: String,
 
     /// GPU device IDs to use (e.g., [0, 1] for first two GPUs)

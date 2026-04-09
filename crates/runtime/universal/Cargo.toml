@@ -26,7 +26,6 @@ toadstool-runtime-native = { path = "../native" }
 toadstool-runtime-gpu = { path = "../gpu", optional = true }
 
 # GPU backends (all optional, capability-based discovery)
-ocl = { version = "0.19", optional = true }
 wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdoc) ✅
 bytemuck = { version = "1.14", features = ["derive", "extern_crate_alloc"], optional = true }
 futures-intrusive = { version = "0.5", optional = true }
@@ -39,12 +38,14 @@ hw-learn = { path = "../../core/hw-learn", optional = true }
 toadstool-sysmon = { path = "../../core/sysmon", optional = true }
 
 [features]
+# `opencl` is retained as a no-op feature for compatibility with older dependency graphs
+# that enabled `toadstool-runtime-gpu/opencl` (also empty). In-tree GPU is wgpu/Vulkan only.
 default = ["cpu", "wgpu-backend"]
 cpu = []
-opencl = ["ocl", "toadstool-runtime-gpu/opencl"]
+opencl = ["toadstool-runtime-gpu/opencl"]
 wgpu-backend = ["dep:wgpu", "bytemuck", "futures-intrusive"]
 hardware-learning = ["hw-learn", "toadstool-sysmon"]
-all = ["cpu", "opencl", "wgpu-backend", "hardware-learning"]
+all = ["cpu", "wgpu-backend", "hardware-learning"]
 
 [dev-dependencies]
 criterion = "0.5"

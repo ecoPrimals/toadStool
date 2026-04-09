@@ -89,7 +89,7 @@
 //!
 //! ## Specialized Architectures
 //! - AI/ML accelerators (TPU, NPU, IPU)
-//! - GPU compute (CUDA, ROCm, OpenCL, Vulkan, Metal)
+//! - GPU compute (CUDA, ROCm, Vulkan, Metal; OpenCL removed — S198, use barraCuda/coralReef via IPC)
 //! - Signal processors (DSP)
 //! - Network processors (DPU)
 //! - Custom silicon (ASIC)

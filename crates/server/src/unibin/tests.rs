@@ -13,24 +13,24 @@ use super::{resolve_family_id, resolve_node_id};
 
 #[test]
 fn socket_filename_for_family_default() {
-    assert_eq!(socket_filename_for_family("default"), "toadstool.sock");
+    assert_eq!(socket_filename_for_family("default"), "compute.sock");
 }
 
 #[test]
 fn socket_filename_for_family_empty() {
-    assert_eq!(socket_filename_for_family(""), "toadstool.sock");
+    assert_eq!(socket_filename_for_family(""), "compute.sock");
 }
 
 #[test]
 fn socket_filename_for_family_custom() {
-    assert_eq!(socket_filename_for_family("nat0"), "toadstool-nat0.sock");
+    assert_eq!(socket_filename_for_family("nat0"), "compute-nat0.sock");
 }
 
 #[test]
 fn socket_filename_for_family_alphanumeric() {
     assert_eq!(
         socket_filename_for_family("family123"),
-        "toadstool-family123.sock"
+        "compute-family123.sock"
     );
 }
 
@@ -38,7 +38,7 @@ fn socket_filename_for_family_alphanumeric() {
 fn socket_filename_for_family_with_hyphens() {
     assert_eq!(
         socket_filename_for_family("my-family-id"),
-        "toadstool-my-family-id.sock"
+        "compute-my-family-id.sock"
     );
 }
 
@@ -46,7 +46,7 @@ fn socket_filename_for_family_with_hyphens() {
 fn socket_filename_for_family_special_chars() {
     assert_eq!(
         socket_filename_for_family("dev_env"),
-        "toadstool-dev_env.sock"
+        "compute-dev_env.sock"
     );
 }
 
@@ -54,7 +54,7 @@ fn socket_filename_for_family_special_chars() {
 fn socket_filename_for_family_whitespace() {
     assert_eq!(
         socket_filename_for_family(" default "),
-        "toadstool- default .sock"
+        "compute- default .sock"
     );
 }
 
@@ -367,7 +367,7 @@ fn get_socket_path_xdg_runtime_dir_fallback() {
             let result = get_socket_path("default", "node1");
             assert!(result.is_ok());
             let path = result.unwrap();
-            assert!(path.ends_with("biomeos/toadstool.sock"));
+            assert!(path.ends_with("biomeos/compute.sock"));
             // biomeos dir is created by ensure_biomeos_directory; socket file doesn't exist until server binds
             assert!(path.parent().unwrap().exists());
         },

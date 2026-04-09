@@ -45,7 +45,6 @@ impl UniversalKernelCompiler {
             _target_frameworks: vec![
                 GpuFramework::WebGpu,
                 GpuFramework::Vulkan,
-                GpuFramework::OpenCl,
                 GpuFramework::Cuda,
                 GpuFramework::Metal,
                 GpuFramework::Rocm,
@@ -71,6 +70,11 @@ impl UniversalKernelCompiler {
         target_framework: GpuFramework,
         device: &UniversalComputeDevice,
     ) -> ToadStoolResult<Arc<CompiledKernel>> {
+        if matches!(target_framework, GpuFramework::OpenCl) {
+            return Err(toadstool::error::ToadStoolError::runtime(
+                "OpenCL kernel compilation removed (S198): use barraCuda/coralReef via IPC.",
+            ));
+        }
         let cache_key = self.generate_cache_key(kernel_source, &format, &target_framework, device);
 
         if self.config.caching.enabled {
@@ -97,7 +101,7 @@ impl UniversalKernelCompiler {
 
     /// Internal kernel compilation — returns optimized source for JIT frameworks.
     ///
-    /// WGSL and `OpenCL` compile shaders at pipeline creation / runtime, so this
+    /// WGSL compiles shaders at pipeline creation / runtime, so this
     /// stage applies optimizations and returns source bytes. AOT compilation
     /// (e.g. nvrtc for CUDA, naga for SPIR-V) would be added here when
     /// targeting specific binary formats.

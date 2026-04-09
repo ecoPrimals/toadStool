@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Start operations: biome, primal, and service startup
 
-#![allow(deprecated)]
+#![expect(
+    deprecated,
+    reason = "legacy well-known endpoints during capability migration"
+)]
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

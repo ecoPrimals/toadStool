@@ -82,18 +82,24 @@ impl DiscoveryClient {
         node_data: &serde_json::Value,
     ) -> ToadStoolResult<NodeRegistration> {
         use toadstool_common::constants::ecosystem::node_type;
+        use toadstool_common::interned_strings::capabilities;
 
         let node_id = node_data["node_id"]
             .as_str()
             .ok_or_else(|| ToadStoolError::runtime("Missing node_id in discovery data"))?
             .to_string();
 
+        // `type` may be a legacy product label (node_type::*) or a capability id (see `capabilities::*`).
         let type_str = node_data["type"].as_str().unwrap_or(node_type::TOADSTOOL);
         let parsed_node_type = match type_str {
             s if s == node_type::TOADSTOOL => NodeType::ToadStool,
-            s if s == node_type::NESTGATE => NodeType::Storage, // legacy alias
-            s if s == node_type::BEARDOG => NodeType::Security, // legacy alias
-            s if s == node_type::SONGBIRD => NodeType::Coordination, // legacy alias
+            s if s == node_type::NESTGATE || s == capabilities::STORAGE => NodeType::Storage,
+            s if s == node_type::BEARDOG || s == capabilities::CRYPTO || s == "security" => {
+                NodeType::Security
+            }
+            s if s == node_type::SONGBIRD || s == capabilities::COORDINATION => {
+                NodeType::Coordination
+            }
             custom => NodeType::Custom(custom.to_string()),
         };
 

@@ -98,6 +98,10 @@ impl ExecutionGraph {
         Ok(())
     }
 
+    #[expect(
+        clippy::self_only_used_in_recursion,
+        reason = "DFS keeps &self for cycle validation context"
+    )]
     fn dfs_visit<'a>(
         &self,
         node: &'a str,
@@ -198,36 +202,42 @@ impl ExecutionGraphBuilder {
     }
 
     /// Adds a node to the graph.
+    #[must_use]
     pub fn node(mut self, node: GraphNode) -> Self {
         self.nodes.push(node);
         self
     }
 
     /// Adds multiple nodes to the graph.
+    #[must_use]
     pub fn nodes(mut self, nodes: impl IntoIterator<Item = GraphNode>) -> Self {
         self.nodes.extend(nodes);
         self
     }
 
     /// Adds an edge to the graph.
+    #[must_use]
     pub fn edge(mut self, edge: GraphEdge) -> Self {
         self.edges.push(edge);
         self
     }
 
     /// Adds an edge from one node to another.
+    #[must_use]
     pub fn connect(mut self, from: impl Into<String>, to: impl Into<String>) -> Self {
         self.edges.push(GraphEdge::new(from, to));
         self
     }
 
     /// Adds multiple edges to the graph.
+    #[must_use]
     pub fn edges(mut self, edges: impl IntoIterator<Item = GraphEdge>) -> Self {
         self.edges.extend(edges);
         self
     }
 
     /// Adds a metadata key-value pair.
+    #[must_use]
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.metadata.insert(key.into(), value.into());
         self

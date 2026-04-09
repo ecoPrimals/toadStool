@@ -9,8 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
-use digest::Digest;
-use md5::Md5;
+use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -126,7 +125,7 @@ impl CrossCompilationToolchain {
         info!("Cross-compiling for platform: {:?}", platform);
         
         // Generate cache key
-        let source_hash = format!("{:x}", Md5::digest(code));
+        let source_hash = format!("{:x}", Sha256::digest(code));
         let cache_key = format!("{}_{}", source_hash, self.get_platform_key(platform));
         
         // Check cache first

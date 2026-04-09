@@ -36,7 +36,9 @@ pub async fn query_local_capabilities() -> Vec<Arc<str>> {
     #[cfg(feature = "gpu-discovery")]
     {
         let adapters = wgpu::Instance::default().enumerate_adapters(wgpu::Backends::all());
-        if !adapters.is_empty() {
+        if adapters.is_empty() {
+            tracing::info!("No GPUs detected (CPU-only mode)");
+        } else {
             capabilities.push(Arc::from("gpu"));
 
             for adapter in adapters {
@@ -77,8 +79,6 @@ pub async fn query_local_capabilities() -> Vec<Arc<str>> {
                     capabilities.push(Arc::from("oneapi"));
                 }
             }
-        } else {
-            tracing::info!("No GPUs detected (CPU-only mode)");
         }
     }
 

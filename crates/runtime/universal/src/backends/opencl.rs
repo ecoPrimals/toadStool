@@ -1,89 +1,56 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! OpenCL compute unit implementation (capability-based fallback)
+//! **Deprecated** — OpenCL is not implemented in the universal runtime.
 //!
-//! This module is compiled only when the `opencl` feature is enabled.
-
+//! In-process GPU compute uses **wgpu** (Vulkan, Metal, Direct3D 12). OpenCL-style
+//! dispatch is handled out-of-tree via **barraCuda** / **coralReef** over IPC.
 //!
-//! **STATUS**: ⚠️ **DEPRECATED** - Use `wgpu` backend instead
-//!
-//! ## Capability-Based Fallback (Not a Stub)
-//!
-//! This module is a **capability-based fallback**: when the `opencl` feature is enabled
-//! but OpenCL is not available at runtime (e.g. no ICD, no compatible GPU), it returns
-//! clear, actionable errors rather than panicking. This is intentional design, not a stub.
-//!
-//! To enable OpenCL: add `opencl` feature to Cargo.toml and install OpenCL ICD
-//! for your platform (e.g. `ocl-icd-opencl-dev` on Debian, `opencl-headers` on Fedora).
-//!
-//! ## Why Deprecated
-//!
-//! 1. **wgpu is pure Rust** - No FFI, no unsafe in application code
-//! 2. **Broader hardware support** - Works on NVIDIA, AMD, Intel via Vulkan/Metal/DX12
-//! 3. **Modern API** - Better async support, clear error handling
-//! 4. **Production-ready** - Verified, tested, documented
-//! 5. **Maintenance** - ocl crate API changes frequently, wgpu is stable
-//!
-//! ## Migration Path
-//!
-//! ```rust,ignore
-//! // OLD (OpenCL)
-//! let device = OpenClComputeUnit::from_device(ocl_device)?;
-//! device.execute(workload).await?;
-//!
-//! // NEW (wgpu) - Recommended
-//! let device = WgpuDevice::new().await?;
-//! let backend = WgpuBackend::new(device);
-//! backend.execute(workload).await?;
-//! ```
-//!
-//! This module is kept for legacy compatibility only.
-//! **New code should use `wgpu_backend` instead.**
+//! The [`OpenClComputeUnit`] name is kept only for migration visibility; it cannot
+//! be used for real execution.
 
 use crate::types::*;
+use std::sync::OnceLock;
 
-/// OpenCL compute unit (DEPRECATED - use wgpu instead)
-///
-/// **Deep Debt Evolution**:
-/// - ✅ Returns clear errors when OpenCL unavailable (no panics)
-/// - ✅ Clear migration path to wgpu
-/// - ✅ Feature-gated for legacy compatibility
-///
-/// **Recommendation**: Use `WgpuBackend` for production
+fn legacy_opencl_capabilities() -> &'static Capabilities {
+    static CAPS: OnceLock<Capabilities> = OnceLock::new();
+    CAPS.get_or_init(|| {
+        let tag = u32::from_le_bytes(*b"OCL\0");
+        Capabilities {
+            unit_type: ComputeUnitType::Custom(tag),
+            parallelism: Parallelism {
+                num_units: 0,
+                model: ExecutionModel::Mimd,
+            },
+            power_profile: PowerProfile::Medium,
+            latency: LatencyProfile {
+                typical_ms: 0,
+                deterministic: false,
+            },
+            memory_capacity: 0,
+            memory_bandwidth: 0,
+            compute_throughput: 0.0,
+            optimal_batch_size: 0,
+            supported_ops: vec![],
+            supported_types: vec![],
+        }
+    })
+}
+
+/// Legacy OpenCL compute unit placeholder (non-functional).
 #[deprecated(
     since = "0.2.0",
-    note = "Use wgpu backend for pure Rust GPU compute. OpenCL is legacy-only."
+    note = "OpenCL was removed from this crate; use wgpu/Vulkan or barraCuda/coralReef IPC."
 )]
 pub struct OpenClComputeUnit {
-    name: String,
-    capabilities: Capabilities,
-    _device: ocl::Device,
+    _private: (),
 }
 
 #[expect(deprecated)]
 impl OpenClComputeUnit {
-    /// Create from an OpenCL device (DEPRECATED)
-    ///
-    /// **Evolution Decision**: NOT implementing OpenCL backend
-    ///
-    /// **Rationale**:
-    /// 1. wgpu covers all OpenCL use cases (NVIDIA, AMD, Intel)
-    /// 2. wgpu is pure Rust (no FFI, safer)
-    /// 3. wgpu has better async support
-    /// 4. Maintaining two GPU backends adds complexity
-    ///
-    /// **If you need GPU compute**, use `wgpu` via `toadstool-runtime-gpu` or
-    /// discover compute services via capability-based IPC.
-    ///
-    /// Returns clear error directing users to wgpu
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use wgpu backend or discover compute services via compute capability"
-    )]
-    pub fn from_device(_device: ocl::Device) -> Result<Self, ComputeError> {
+    /// Always fails — OpenCL is not available in this runtime.
+    pub fn new() -> Result<Self, ComputeError> {
         Err(ComputeError::BackendError(
-            "OpenCL backend not available. Install OpenCL ICD for your platform \
-             (e.g. ocl-icd-opencl-dev on Debian) and enable the 'opencl' feature. \
-             For production, prefer wgpu via toadstool-runtime-gpu (pure Rust, safer)."
+            "OpenCL is not available in toadstool-runtime-universal. \
+             Use wgpu for Vulkan/Metal/DX12, or barraCuda/coralReef for IPC OpenCL dispatch."
                 .to_string(),
         ))
     }
@@ -93,19 +60,17 @@ impl OpenClComputeUnit {
 #[async_trait::async_trait]
 impl ComputeUnit for OpenClComputeUnit {
     fn capabilities(&self) -> &Capabilities {
-        &self.capabilities
+        legacy_opencl_capabilities()
     }
 
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> &'static str {
+        "OpenCL (deprecated)"
     }
 
     async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
-        // Capability-based fallback: clear error when OpenCL isn't available
-        Err(ComputeError::ExecutionFailed(
-            "OpenCL backend not available. Install OpenCL ICD and enable the 'opencl' feature. \
-             For production, migrate to wgpu via toadstool-runtime-gpu. \
-             See docs/architecture/UNIVERSAL_GPU_STRATEGY.md for migration guide."
+        Err(ComputeError::BackendError(
+            "OpenCL is not available in toadstool-runtime-universal. \
+             Use wgpu or barraCuda/coralReef IPC."
                 .to_string(),
         ))
     }

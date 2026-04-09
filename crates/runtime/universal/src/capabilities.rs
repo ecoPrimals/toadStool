@@ -14,7 +14,7 @@ impl CapabilityDiscovery {
     ///
     /// This function discovers compute resources at runtime:
     /// - CPU cores and capabilities
-    /// - GPU devices (OpenCL, wgpu, etc.)
+    /// - GPU devices (wgpu when enabled)
     /// - Neuromorphic processors (future)
     ///
     /// No hardcoded assumptions - everything is discovered!
@@ -24,14 +24,6 @@ impl CapabilityDiscovery {
         // Discover CPU
         if let Some(cpu) = Self::discover_cpu() {
             units.push(cpu);
-        }
-
-        // Discover GPU (OpenCL) - DEPRECATED, use wgpu instead
-        // OpenCL support is legacy - kept for compatibility but returns empty Vec
-        #[cfg(feature = "opencl")]
-        {
-            #[expect(deprecated)]
-            units.extend(Self::discover_opencl());
         }
 
         // Discover GPU (wgpu) — isolated so driver crashes don't bring down the process
@@ -66,26 +58,6 @@ impl CapabilityDiscovery {
         {
             None
         }
-    }
-
-    /// Discover OpenCL devices
-    ///
-    /// **DEPRECATED**: OpenCL support is legacy. Use wgpu instead.
-    ///
-    /// **Why Deprecated**:
-    /// - OpenCL requires C bindings (FFI complexity)
-    /// - ocl crate API has breaking changes
-    /// - wgpu provides pure Rust alternative
-    /// - wgpu is vendor-agnostic (NVIDIA, AMD, Intel, Apple)
-    ///
-    /// **Migration**: Use `discover_wgpu()` for GPU compute
-    #[cfg(feature = "opencl")]
-    #[deprecated(
-        since = "3.0.0",
-        note = "Use wgpu instead - pure Rust, vendor-agnostic"
-    )]
-    fn discover_opencl() -> Vec<Box<dyn ComputeUnit>> {
-        Vec::new()
     }
 
     /// Discover wgpu adapters.

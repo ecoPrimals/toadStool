@@ -50,8 +50,7 @@ impl HwLearnHandler {
             let power_controller = nvpmu::GpuPowerController::new(&gpu.bdf);
             let power_state = power_controller
                 .power_state()
-                .map(|s| format!("{s:?}"))
-                .unwrap_or_else(|_| "unknown".to_string());
+                .map_or_else(|_| "unknown".to_string(), |s| format!("{s:?}"));
             let supports_reset = power_controller.supports_reset();
 
             vfio_devices.push(serde_json::json!({

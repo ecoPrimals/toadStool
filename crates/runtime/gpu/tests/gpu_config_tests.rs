@@ -67,10 +67,10 @@ fn test_discovery_config_has_vulkan() {
 }
 
 #[test]
-fn test_discovery_config_has_opencl() {
+fn test_discovery_config_no_opencl_by_default_s198() {
     let config = GpuDiscoveryConfig::default();
 
-    assert!(config.enabled_frameworks.contains(&GpuFramework::OpenCl));
+    assert!(!config.enabled_frameworks.contains(&GpuFramework::OpenCl));
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn test_discovery_config_has_directcompute() {
 fn test_discovery_config_framework_count() {
     let config = GpuDiscoveryConfig::default();
 
-    assert_eq!(config.enabled_frameworks.len(), 7);
+    assert_eq!(config.enabled_frameworks.len(), 6);
 }
 
 #[test]

@@ -57,7 +57,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::workload_manager::WorkloadManager;
 
@@ -155,13 +155,25 @@ pub async fn start_jsonrpc_server(
         "🐚 Methods: ai.nautilus.{{status,observe,train,predict,screen,edges,shell.export,shell.import}}"
     );
 
+    let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+    let btsp_required = toadstool_common::primal_sockets::is_btsp_required(&env);
+    if btsp_required {
+        info!("🔒 Daemon JSON-RPC: BTSP handshake required (FAMILY_ID set)");
+    }
+
     // Accept connections
     loop {
         match listener.accept().await {
             Ok((stream, _addr)) => {
                 let state_clone = state.clone();
+                let btsp = btsp_required;
                 tokio::spawn(async move {
-                    if let Err(e) = handle_connection(stream, state_clone).await {
+                    let result = if btsp {
+                        handle_btsp_daemon_connection(stream, state_clone).await
+                    } else {
+                        handle_connection(stream, state_clone).await
+                    };
+                    if let Err(e) = result {
                         error!("Connection handler error: {}", e);
                     }
                 });
@@ -252,6 +264,108 @@ async fn handle_tcp_connection(
     }
 
     Ok(())
+}
+
+/// BTSP production path: handshake then length-prefixed JSON-RPC frames (see `BTSP_PROTOCOL_STANDARD.md`).
+#[cfg(feature = "btsp")]
+async fn handle_btsp_daemon_connection(
+    stream: UnixStream,
+    state: ServerState,
+) -> crate::Result<()> {
+    use toadstool_common::btsp;
+
+    let family_seed = resolve_daemon_family_seed()?;
+    let mut stream = stream;
+
+    match btsp::BtspServer::accept_handshake(&mut stream, &family_seed).await {
+        Ok(session) => {
+            info!(
+                "🔒 BTSP daemon handshake complete: cipher={}, session_id={:02x?}",
+                session.cipher.as_str(),
+                &session.session_id[..4]
+            );
+        }
+        Err(e) => {
+            warn!("🔒 BTSP handshake rejected (daemon JSON-RPC): {e}");
+            let _ = btsp::BtspServer::send_handshake_error(&mut stream).await;
+            return Err(crate::CliError::Other(format!(
+                "BTSP handshake failed: {e}"
+            )));
+        }
+    }
+
+    loop {
+        match btsp::framing::read_frame(&mut stream).await {
+            Ok(frame) => {
+                let response = match serde_json::from_slice::<JsonRpcRequest>(&frame) {
+                    Ok(request) => super::routes::handle_request(request, &state).await,
+                    Err(e) => JsonRpcResponse {
+                        jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: error_codes::PARSE_ERROR,
+                            message: format!("Parse error: {e}"),
+                            data: None,
+                        }),
+                        id: None,
+                    },
+                };
+                let response_json = serde_json::to_string(&response)?;
+                if let Err(e) =
+                    btsp::framing::write_frame(&mut stream, response_json.as_bytes()).await
+                {
+                    warn!("BTSP daemon JSON-RPC write error: {e}");
+                    break;
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => {
+                warn!("BTSP daemon JSON-RPC read error: {e}");
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Production path when the `btsp` crate feature is **disabled**.
+///
+/// When [`toadstool_common::primal_sockets::is_btsp_required`] is true, clients expect BTSP;
+/// without the feature we cannot handshake. Logs at target `btsp`, shuts down the stream, and
+/// returns (same policy as the server crate tarpc BTSP gate). Unset family ID env vars for
+/// development NDJSON on this socket.
+#[cfg(not(feature = "btsp"))]
+async fn handle_btsp_daemon_connection(
+    mut stream: UnixStream,
+    _state: ServerState,
+) -> crate::Result<()> {
+    warn!(
+        target: "btsp",
+        "BTSP required (FAMILY_ID set) but this binary was built without the `btsp` Cargo feature — closing connection; rebuild with `btsp` enabled or unset family ID env vars for development NDJSON"
+    );
+    if let Err(e) = stream.shutdown().await {
+        warn!(target: "btsp", "shutdown after BTSP-disabled close: {e}");
+    }
+    Ok(())
+}
+
+/// Resolve family seed for BTSP (`FAMILY_SEED` or `.family.seed` in biomeOS dir).
+#[cfg(feature = "btsp")]
+fn resolve_daemon_family_seed() -> crate::Result<Vec<u8>> {
+    if let Ok(seed) = std::env::var("FAMILY_SEED") {
+        return Ok(seed.into_bytes());
+    }
+    let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+    let seed_path = biomeos_dir.join(".family.seed");
+    if seed_path.exists() {
+        return std::fs::read(&seed_path).map_err(|e| {
+            crate::CliError::InvalidConfig(format!("Failed to read family seed: {e}"))
+        });
+    }
+    Err(crate::CliError::InvalidConfig(
+        "BTSP requires FAMILY_SEED env var or .family.seed file in biomeOS directory".to_string(),
+    ))
 }
 
 /// Handle a single client connection

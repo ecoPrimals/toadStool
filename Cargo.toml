@@ -60,7 +60,7 @@ members = [
     "examples",
 ]
 
-exclude = []
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "0.1.0"
@@ -154,8 +154,14 @@ bollard = "0.18" # Docker API
 aes-gcm = "0.10.3"
 ed25519-dalek = { version = "2.0", features = ["rand_core"] }
 hex = "0.4"
-# EVOLVED: hmac removed — unused; no crate imports it
 sha2 = "0.10"
+
+# BTSP handshake (BTSP_PROTOCOL_STANDARD.md): pure Rust, no C FFI
+x25519-dalek = { version = "2.0", features = ["static_secrets"] }
+hkdf = "0.12"
+hmac = "0.12"
+chacha20poly1305 = "0.10"
+rand = "0.8"
 
 # Networking
 # EVOLVED: ipnet removed (Mar 12, 2026) — unused; no crate references it

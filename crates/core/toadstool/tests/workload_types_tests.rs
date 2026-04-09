@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(deprecated)]
 //! Comprehensive tests for workload types
 
 use std::collections::HashMap;

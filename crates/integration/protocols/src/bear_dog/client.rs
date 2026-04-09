@@ -12,10 +12,13 @@ use toadstool::{
     security::SecurityContext,
 };
 
-use super::auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse};
+use super::auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, TokenRefreshRequest};
 use super::config::SecurityConfig;
 use super::policy::{SecurityAuditEvent, SecurityPolicy};
 use super::transport;
+
+/// Skew before nominal expiry when we proactively refresh (same window as `ensure_valid_token`).
+const TOKEN_REFRESH_SKEW: Duration = Duration::from_secs(60);
 
 /// PKI security service integration via Unix socket JSON-RPC.
 pub struct SecurityServiceIntegration {
@@ -81,7 +84,7 @@ impl BearDogIntegration {
                 }
                 {
                     let mut policies = self.active_policies.write().await;
-                    *policies = auth_response.policies.clone();
+                    policies.clone_from(&auth_response.policies);
                 }
 
                 info!("✅ Authenticated with PKI security service (Pure Rust)");
@@ -216,7 +219,13 @@ impl BearDogIntegration {
         }
     }
 
-    /// Start token refresh, validation, and audit flush background tasks
+    /// Spawns long-running Tokio tasks for the security integration: periodic PKI token refresh,
+    /// optional continuous zero-trust validation when `continuous_monitoring` is enabled, and
+    /// periodic audit buffer flushes. Call after the client is constructed and wired into the runtime.
+    #[expect(
+        clippy::unused_async,
+        reason = "async kept for trait compat and future token refresh I/O"
+    )]
     pub async fn start_background_tasks(self: Arc<Self>) -> ToadStoolResult<()> {
         info!("🔄 Starting security service background tasks");
 
@@ -275,7 +284,7 @@ impl BearDogIntegration {
     async fn ensure_valid_token(&self) -> ToadStoolResult<()> {
         let expires_at = self.token_expires_at.lock().await;
         if let Some(expiry) = *expires_at
-            && Instant::now() + Duration::from_secs(60) > expiry
+            && Instant::now() + TOKEN_REFRESH_SKEW > expiry
         {
             drop(expires_at);
             return self.refresh_token_if_needed().await;
@@ -283,9 +292,111 @@ impl BearDogIntegration {
         Ok(())
     }
 
+    /// Refresh the PKI access token when it is missing, past expiry, or within [`TOKEN_REFRESH_SKEW`]
+    /// of expiry. Calls the BearDog security service over the same Unix JSON-RPC transport as
+    /// [`Self::authenticate`], trying `auth.token.refresh` first and `security.token.renew` if
+    /// the server reports an unknown method.
+    ///
+    /// Standalone mode ([`AuthResponse::is_standalone`]) skips network I/O. On refresh failure,
+    /// stored token and expiry are cleared so callers do not keep using a stale credential.
     async fn refresh_token_if_needed(&self) -> ToadStoolResult<()> {
-        info!("🔄 Refreshing PKI security access token");
-        Ok(())
+        let access_token = {
+            let guard = self.access_token.lock().await;
+            guard.clone()
+        };
+        let Some(access_token) = access_token else {
+            return Ok(());
+        };
+        if access_token == "standalone" {
+            return Ok(());
+        }
+
+        let expiry = *self.token_expires_at.lock().await;
+        let now = Instant::now();
+        let needs_refresh = match expiry {
+            None => true,
+            Some(t) => now + TOKEN_REFRESH_SKEW >= t,
+        };
+        if !needs_refresh {
+            return Ok(());
+        }
+
+        info!("🔄 Refreshing PKI security access token via JSON-RPC");
+
+        let refresh_req = TokenRefreshRequest {
+            access_token,
+            timestamp: std::time::SystemTime::now(),
+        };
+
+        let result = self
+            .call_token_refresh(&refresh_req)
+            .await
+            .and_then(|value| {
+                serde_json::from_value::<AuthResponse>(value).map_err(|e| {
+                    ToadStoolError::security(format!("Failed to parse token refresh response: {e}"))
+                })
+            });
+
+        match result {
+            Ok(auth_response) => {
+                {
+                    let mut token = self.access_token.lock().await;
+                    *token = Some(auth_response.access_token.clone());
+                }
+                {
+                    let mut expires_at = self.token_expires_at.lock().await;
+                    *expires_at =
+                        Some(Instant::now() + Duration::from_secs(auth_response.expires_in));
+                }
+                {
+                    let mut policies = self.active_policies.write().await;
+                    policies.clone_from(&auth_response.policies);
+                }
+                info!("✅ PKI security access token refreshed");
+                Ok(())
+            }
+            Err(e) => {
+                {
+                    let mut token = self.access_token.lock().await;
+                    *token = None;
+                }
+                {
+                    let mut expires_at = self.token_expires_at.lock().await;
+                    *expires_at = None;
+                }
+                error!("Token refresh failed; cleared cached credential: {}", e);
+                Err(e)
+            }
+        }
+    }
+
+    /// Performs `auth.token.refresh`, falling back to `security.token.renew` for older services.
+    async fn call_token_refresh(
+        &self,
+        refresh_req: &TokenRefreshRequest,
+    ) -> ToadStoolResult<serde_json::Value> {
+        match transport::make_jsonrpc_request(
+            &self.config.socket_path,
+            "auth.token.refresh",
+            refresh_req,
+        )
+        .await
+        {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("Method not found") || msg.contains("method not found") {
+                    transport::make_jsonrpc_request(
+                        &self.config.socket_path,
+                        "security.token.renew",
+                        refresh_req,
+                    )
+                    .await
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 
     async fn audit_authorization_decision(

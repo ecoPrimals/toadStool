@@ -48,7 +48,9 @@ impl Capability {
         Self {
             id: "compute_gpu".to_string(),
             name: "GPU Computing".to_string(),
-            description: "GPU-accelerated computation (CUDA, OpenCL, WebGPU)".to_string(),
+            description:
+                "GPU-accelerated computation (CUDA, Vulkan, WebGPU; OpenCL removed — S198)"
+                    .to_string(),
             resource_requirements: CapabilityResources {
                 min_cpu_cores: 2,
                 min_memory_mb: 2048,

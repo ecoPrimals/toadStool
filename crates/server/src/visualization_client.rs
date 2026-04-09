@@ -4,6 +4,12 @@
 //! Discovers a shader compilation provider at runtime; the caller never names a specific primal.
 //! Used by the dispatch handler to check compiler availability and coordinate compile-then-dispatch
 //! pipelines. Gracefully degrades when no provider is available.
+//!
+//! Discovery tiers (per `wateringHole/CAPABILITY_BASED_DISCOVERY_STANDARD.md`):
+//! - **Tier 0:** `TOADSTOOL_SHADER_COMPILER_ADDR` (explicit override; evaluated in the blocking fallback after Tier 1 does not yield a usable socket).
+//! - **Tier 1:** Coordination plane — `capability.discover("shader")` via `CapabilityProvider::discover`.
+//! - **Tier 2:** Domain capability socket — `$XDG_RUNTIME_DIR/biomeos/shader.sock`.
+//! - **Tier 3:** `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`, then capability-named scan under `biomeos/` for `*.sock` with stem prefix `shader`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -38,12 +44,9 @@ impl VisualizationClient {
     /// discovers the "shader" capability, not a specific primal. The caller
     /// never needs to know which primal implements the capability.
     ///
-    /// Discovery tiers:
-    /// 0. `TOADSTOOL_SHADER_COMPILER_ADDR` env var (explicit override)
-    /// 1. Coordination-plane: `capability.discover("shader")` via biomeOS (Tier 1)
-    /// 2. Capability socket: `$XDG_RUNTIME_DIR/biomeos/shader.sock` (Tier 2)
-    /// 3. ecoPrimals capability: `$XDG_RUNTIME_DIR/ecoPrimals/shader_compile.sock`
-    /// 4. Legacy identity fallback: visualization service env vars, on-disk manifest, filename scan
+    /// Tier 1 (`capability.discover`) is tried first. If that does not yield a
+    /// usable socket, [`discover_blocking`] runs the Tier 0 / 2 / 3 chain (env
+    /// override, then well-known capability paths, then capability-named dir scan).
     async fn discover() -> Option<UnixJsonRpcClient> {
         // Tier 1: Ask the coordination service who provides "shader" capability.
         // This is the preferred path per CAPABILITY_BASED_DISCOVERY_STANDARD.md.
@@ -70,15 +73,17 @@ impl VisualizationClient {
             }
         }
 
-        // Tiers 0, 2-4: filesystem probing on the blocking pool
+        // Tiers 0, 2, 3: filesystem probing on the blocking pool
         tokio::task::spawn_blocking(Self::discover_blocking)
             .await
             .ok()
             .flatten()
     }
 
+    /// Filesystem fallback for [`discover`]: Tier 0 (`TOADSTOOL_SHADER_COMPILER_ADDR`), Tier 2
+    /// (`biomeos/shader.sock`), Tier 3 (`ecoPrimals/shader_compile.sock`, then `shader*.sock` scan).
     fn discover_blocking() -> Option<UnixJsonRpcClient> {
-        // Tier 0: Explicit override (always wins)
+        // Tier 0: Explicit override (first check in this fallback chain)
         if let Ok(addr) = std::env::var("TOADSTOOL_SHADER_COMPILER_ADDR") {
             let path = PathBuf::from(&addr);
             if path.exists() {
@@ -98,39 +103,16 @@ impl VisualizationClient {
             return Some(UnixJsonRpcClient::new(capability_sock));
         }
 
-        // Tier 3: ecoPrimals capability socket
+        // Tier 3a: ecoPrimals capability socket
         let eco_sock = runtime.join("ecoPrimals").join("shader_compile.sock");
         if eco_sock.exists() {
             debug!(path = %eco_sock.display(), "shader compiler discovered via ecoPrimals capability socket");
             return Some(UnixJsonRpcClient::new(eco_sock));
         }
 
-        // Tier 4: Legacy identity-based fallbacks (backward compat)
-        for env_name in ["CORALREEF_SOCKET", "CORALREEF_URL"] {
-            if let Ok(val) = std::env::var(env_name) {
-                let path = PathBuf::from(&val);
-                if path.exists() {
-                    debug!(path = %path.display(), env = env_name, "shader compiler discovered via legacy env");
-                    return Some(UnixJsonRpcClient::new(path));
-                }
-            }
-        }
-
-        let manifest = runtime.join("ecoPrimals").join("coralreef-core.json");
-        if let Some(socket) = read_socket_from_manifest(&manifest)
-            && socket.exists()
-        {
-            debug!(path = %socket.display(), "shader compiler discovered via legacy manifest");
-            return Some(UnixJsonRpcClient::new(socket));
-        }
-
+        // Tier 3b: capability-named scan under biomeos (e.g. `shader-*.sock`)
         if let Some(sock) = scan_dir_for_socket(&biomeos, "shader") {
             debug!(path = %sock.display(), "shader compiler discovered via capability socket scan");
-            return Some(UnixJsonRpcClient::new(sock));
-        }
-
-        if let Some(sock) = scan_dir_for_socket(&biomeos, "coralreef") {
-            debug!(path = %sock.display(), "shader compiler discovered via legacy on-disk socket name");
             return Some(UnixJsonRpcClient::new(sock));
         }
 
@@ -175,22 +157,6 @@ fn scan_dir_for_socket(dir: &std::path::Path, prefix: &str) -> Option<PathBuf> {
     matches.into_iter().next()
 }
 
-/// Read socket path from a legacy on-disk discovery manifest (JSON).
-fn read_socket_from_manifest(manifest_path: &std::path::Path) -> Option<PathBuf> {
-    let content = std::fs::read_to_string(manifest_path).ok()?;
-    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
-    json.get("transports")
-        .and_then(|t| t.get("jsonrpc"))
-        .and_then(|j| j.get("path"))
-        .and_then(|p| p.as_str())
-        .map(PathBuf::from)
-        .or_else(|| {
-            json.get("socket")
-                .and_then(|s| s.as_str())
-                .map(PathBuf::from)
-        })
-}
-
 /// Shared shader-compiler client wrapped in `Arc` for handler use.
 pub type SharedVisualizationClient = Arc<VisualizationClient>;
 
@@ -215,32 +181,6 @@ mod tests {
         assert!(Arc::strong_count(&client) == 1);
     }
 
-    #[test]
-    fn test_manifest_parsing_with_transports() {
-        let json = r#"{"transports":{"jsonrpc":{"path":"/tmp/coralreef.sock"}}}"#;
-        let tmp = std::env::temp_dir().join("test_manifest_cr.json");
-        std::fs::write(&tmp, json).unwrap();
-        let result = read_socket_from_manifest(&tmp);
-        assert_eq!(result, Some(PathBuf::from("/tmp/coralreef.sock")));
-        let _ = std::fs::remove_file(&tmp);
-    }
-
-    #[test]
-    fn test_manifest_parsing_with_socket_fallback() {
-        let json = r#"{"socket":"/tmp/fallback.sock"}"#;
-        let tmp = std::env::temp_dir().join("test_manifest_fb.json");
-        std::fs::write(&tmp, json).unwrap();
-        let result = read_socket_from_manifest(&tmp);
-        assert_eq!(result, Some(PathBuf::from("/tmp/fallback.sock")));
-        let _ = std::fs::remove_file(&tmp);
-    }
-
-    #[test]
-    fn test_manifest_parsing_missing_file() {
-        let result = read_socket_from_manifest(std::path::Path::new("/nonexistent/file.json"));
-        assert!(result.is_none());
-    }
-
     #[tokio::test]
     async fn test_client_not_available_without_compiler() {
         let client = VisualizationClient::new();
@@ -249,12 +189,12 @@ mod tests {
 
     #[test]
     fn test_scan_dir_for_socket_finds_prefixed() {
-        let dir = std::env::temp_dir().join("test_scan_shader_legacy");
+        let dir = std::env::temp_dir().join("test_scan_shader_capability");
         let _ = std::fs::create_dir_all(&dir);
-        let sock = dir.join("coralreef-core-default.sock");
+        let sock = dir.join("shader-compile-default.sock");
         std::fs::write(&sock, b"").unwrap();
 
-        let result = scan_dir_for_socket(&dir, "coralreef");
+        let result = scan_dir_for_socket(&dir, "shader");
         assert_eq!(result, Some(sock));
 
         let _ = std::fs::remove_dir_all(&dir);
@@ -262,11 +202,11 @@ mod tests {
 
     #[test]
     fn test_scan_dir_for_socket_no_match() {
-        let dir = std::env::temp_dir().join("test_scan_no_cr");
+        let dir = std::env::temp_dir().join("test_scan_no_shader");
         let _ = std::fs::create_dir_all(&dir);
         std::fs::write(dir.join("other.sock"), b"").unwrap();
 
-        let result = scan_dir_for_socket(&dir, "coralreef");
+        let result = scan_dir_for_socket(&dir, "shader");
         assert!(result.is_none());
 
         let _ = std::fs::remove_dir_all(&dir);
@@ -274,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_scan_dir_for_socket_missing_dir() {
-        let result = scan_dir_for_socket(std::path::Path::new("/nonexistent/dir"), "coralreef");
+        let result = scan_dir_for_socket(std::path::Path::new("/nonexistent/dir"), "shader");
         assert!(result.is_none());
     }
 }

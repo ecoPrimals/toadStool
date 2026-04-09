@@ -18,12 +18,15 @@ struct GpuInfo {
 ///
 /// This queries the actual system state at runtime. No hardcoded values.
 pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, ValidationError> {
+    const CPU_FALLBACK_CORES: u32 = 4;
+    const CPU_AVAILABLE_PERCENT: u32 = 80;
+    const NETWORK_FALLBACK_MBPS: u64 = 100;
+    const NETWORK_HIGH_TRAFFIC_THRESHOLD: u64 = 1_000_000_000;
+    const NETWORK_HIGH_MBPS: u64 = 1000;
+
     debug!("Querying system capabilities");
 
     // Query CPU
-    const CPU_FALLBACK_CORES: u32 = 4;
-    const CPU_AVAILABLE_PERCENT: u32 = 80;
-
     let total_cpu_cores = std::thread::available_parallelism()
         .map(|n| u32::try_from(n.get()).unwrap_or(CPU_FALLBACK_CORES))
         .unwrap_or(CPU_FALLBACK_CORES);
@@ -52,9 +55,6 @@ pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, Va
         query_gpu_capabilities().await;
 
     let interfaces = toadstool_sysmon::network_stats().unwrap_or_default();
-    const NETWORK_FALLBACK_MBPS: u64 = 100;
-    const NETWORK_HIGH_TRAFFIC_THRESHOLD: u64 = 1_000_000_000;
-    const NETWORK_HIGH_MBPS: u64 = 1000;
 
     let network_bandwidth_mbps = if interfaces.is_empty() {
         NETWORK_FALLBACK_MBPS
@@ -92,10 +92,10 @@ pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, Va
 async fn query_gpu_capabilities() -> (u64, u64, usize, Vec<String>) {
     match discover_gpus_via_wgpu().await {
         Ok(ref gpus) if !gpus.is_empty() => {
+            const GPU_ESTIMATED_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+
             let gpu_count = gpus.len();
             let gpu_types: Vec<String> = gpus.iter().map(|g: &GpuInfo| g.name.clone()).collect();
-
-            const GPU_ESTIMATED_MEMORY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
             let estimated_memory_per_gpu = GPU_ESTIMATED_MEMORY_BYTES;
             let total_gpu_memory = estimated_memory_per_gpu * gpu_count as u64; // fits: GPU count < u64::MAX
@@ -132,6 +132,8 @@ fn select_backends() -> wgpu::Backends {
     reason = "async signature required by trait/interface"
 )]
 async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
+    const GPU_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
     let handle = std::thread::spawn(|| {
         std::panic::catch_unwind(|| {
             let backends = select_backends();
@@ -162,7 +164,6 @@ async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
         })
     });
 
-    const GPU_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
     let start = std::time::Instant::now();
 
     loop {

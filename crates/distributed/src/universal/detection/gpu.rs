@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! GPU and specialized architecture detection
 //!
-//! CUDA, ROCm, and OpenCL capability probing.
+//! CUDA and ROCm capability probing (OpenCL detection removed — S198; use barraCuda/coralReef via IPC).
 
 use super::helpers::check_command_exists;
 
@@ -99,37 +99,42 @@ pub fn get_rocm_gfx_version() -> String {
     "unknown".to_string()
 }
 
-/// Check for OpenCL support
+/// Check for OpenCL support (always false — OpenCL is not a supported external backend; use barraCuda/coralReef via IPC).
+///
+/// Kept for API compatibility; substrate detection no longer consults OpenCL (S198).
+#[allow(
+    dead_code,
+    reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
+)]
 pub fn check_opencl_support() -> bool {
-    #[cfg(target_os = "linux")]
-    {
-        let vendors = std::path::Path::new("/etc/OpenCL/vendors");
-        if vendors.is_dir()
-            && let Ok(entries) = std::fs::read_dir(vendors)
-        {
-            for entry in entries.flatten() {
-                if entry.path().extension().is_some_and(|e| e == "icd") {
-                    return true;
-                }
-            }
-        }
-    }
-    check_command_exists("clinfo")
+    false
 }
 
-/// Get OpenCL version
+/// Get OpenCL version (legacy stub — not supported)
+#[allow(
+    dead_code,
+    reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
+)]
 pub fn get_opencl_version() -> String {
-    "2.0".to_string()
+    "not supported (S198: use barraCuda/coralReef via IPC)".to_string()
 }
 
-/// Get OpenCL device type
+/// Get OpenCL device type (legacy stub — not supported)
+#[allow(
+    dead_code,
+    reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
+)]
 pub fn get_opencl_device_type() -> String {
-    "GPU".to_string()
+    "none".to_string()
 }
 
-/// Get OpenCL compute units
+/// Get OpenCL compute units (legacy stub — not supported)
+#[allow(
+    dead_code,
+    reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
+)]
 pub const fn get_opencl_compute_units() -> u32 {
-    64
+    0
 }
 
 #[cfg(test)]
@@ -138,26 +143,25 @@ mod tests {
 
     #[test]
     fn test_check_opencl_support() {
-        let support = check_opencl_support();
-        let _ = support;
+        assert!(!check_opencl_support());
     }
 
     #[test]
     fn test_get_opencl_compute_units() {
         let units = get_opencl_compute_units();
-        assert!(units > 0);
+        assert_eq!(units, 0);
     }
 
     #[test]
     fn test_get_opencl_version() {
         let version = get_opencl_version();
-        assert_eq!(version, "2.0");
+        assert!(version.contains("S198"));
     }
 
     #[test]
     fn test_get_opencl_device_type() {
         let device_type = get_opencl_device_type();
-        assert_eq!(device_type, "GPU");
+        assert_eq!(device_type, "none");
     }
 
     #[test]

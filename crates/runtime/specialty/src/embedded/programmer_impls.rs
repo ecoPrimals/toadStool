@@ -3,17 +3,19 @@
 //!
 //! ## Planned / Future Implementation
 //!
-//! These programmer structs and trait implementations are **infrastructure placeholders**
-//! for future hardware programmer support. They are registered in the embedded adapter
-//! registry and satisfy the type system, but all operations (except no-op `disconnect`)
-//! return [`crate::SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder`] (mapped to
-//! [`toadstool::ToadStoolError::not_supported`]) until hardware-specific implementations exist.
+//! These programmer structs and trait implementations are **stub implementations** gated by the
+//! `embedded-placeholder-impls` Cargo feature for future hardware programmer support.
+//! They are registered in the embedded adapter registry and satisfy the type system, but all
+//! operations (except no-op `disconnect`) return [`crate::SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder`]
+//! (mapped to [`toadstool::ToadStoolError::not_supported`]) — **not yet implemented for the
+//! named platform** until transport and device-specific code exists.
 //!
 //! ## Feature Gates
 //!
-//! - **`embedded-placeholder-impls`** (current): compile these stub impls as placeholders.
-//! - When `embedded-hw` is added (real programmer support), this module will be gated
-//!   behind `#[cfg(not(feature = "embedded-hw"))]` so real impls take precedence.
+//! - **`embedded-placeholder-impls`** (default): compile these stubs so the registry resolves.
+//! - **`embedded-hw`** (reserved): when real programmer backends are added, gate this module with
+//!   `#[cfg(all(feature = "embedded-placeholder-impls", not(feature = "embedded-hw")))]` and provide
+//!   `#[cfg(feature = "embedded-hw")]` real impls alongside.
 //!
 //! See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
 //!
@@ -35,11 +37,12 @@ use toadstool::ToadStoolError;
 use super::programmers::{EPROMProgrammer, GenericProgrammer};
 use super::types::{ProgrammerInterface as ProgrammerTrait, TargetInfo};
 
-const PROGRAMMER_PLACEHOLDER_DETAIL: &str =
-    "requires hardware-specific programmer support (infrastructure placeholder; not implemented)";
+/// Explains what a non-stub programmer needs (DEBT `D-EMBEDDED-PROGRAMMER`).
+const PROGRAMMER_PLACEHOLDER_DETAIL: &str = "requires host transport (USB/serial/parallel), target protocol (ISP/ICSP/JTAG), and programming algorithms";
 
-fn programmer_placeholder_err(operation: &'static str) -> ToadStoolError {
+fn programmer_placeholder_err(platform: &'static str, operation: &'static str) -> ToadStoolError {
     SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
+        platform,
         operation,
         detail: PROGRAMMER_PLACEHOLDER_DETAIL,
     }
@@ -50,7 +53,7 @@ fn programmer_placeholder_err(operation: &'static str) -> ToadStoolError {
 ///
 /// See DEBT.md `D-EMBEDDED-PROGRAMMER` and module-level docs for evolution plan.
 macro_rules! impl_programmer_stub {
-    ($programmer:ty, $name:expr, $interface:expr) => {
+    ($programmer:ty, $name:expr, $interface:expr, $platform:expr) => {
         // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
         #[async_trait]
         impl ProgrammerTrait for $programmer {
@@ -63,11 +66,14 @@ macro_rules! impl_programmer_stub {
             }
 
             async fn initialize(&mut self, _config: &ProgrammingInterface) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err("Programmer initialization"))
+                Err(programmer_placeholder_err(
+                    $platform,
+                    "Programmer initialization",
+                ))
             }
 
             async fn connect(&mut self) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err("Programmer connect"))
+                Err(programmer_placeholder_err($platform, "Programmer connect"))
             }
 
             async fn disconnect(&mut self) -> ToadStoolResult<()> {
@@ -79,15 +85,15 @@ macro_rules! impl_programmer_stub {
                 _address: u32,
                 _length: u32,
             ) -> ToadStoolResult<Vec<u8>> {
-                Err(programmer_placeholder_err("Memory read"))
+                Err(programmer_placeholder_err($platform, "Memory read"))
             }
 
             async fn write_memory(&mut self, _address: u32, _data: &[u8]) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err("Memory write"))
+                Err(programmer_placeholder_err($platform, "Memory write"))
             }
 
             async fn erase_memory(&mut self, _address: u32, _length: u32) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err("Memory erase"))
+                Err(programmer_placeholder_err($platform, "Memory erase"))
             }
 
             async fn verify_memory(
@@ -95,11 +101,11 @@ macro_rules! impl_programmer_stub {
                 _address: u32,
                 _data: &[u8],
             ) -> ToadStoolResult<bool> {
-                Err(programmer_placeholder_err("Memory verify"))
+                Err(programmer_placeholder_err($platform, "Memory verify"))
             }
 
             async fn get_target_info(&self) -> ToadStoolResult<TargetInfo> {
-                Err(programmer_placeholder_err("Target info"))
+                Err(programmer_placeholder_err($platform, "Target info"))
             }
         }
     };
@@ -108,12 +114,14 @@ macro_rules! impl_programmer_stub {
 impl_programmer_stub!(
     GenericProgrammer,
     "Generic Programmer",
-    ProgrammingInterfaceType::ISP
+    ProgrammingInterfaceType::ISP,
+    "generic_isp"
 );
 impl_programmer_stub!(
     EPROMProgrammer,
     "EPROM Programmer",
-    ProgrammingInterfaceType::Parallel
+    ProgrammingInterfaceType::Parallel,
+    "parallel_eprom"
 );
 
 #[cfg(test)]
@@ -139,8 +147,8 @@ mod tests {
             "expected not-supported wording, got: {msg}"
         );
         assert!(
-            msg.contains("hardware-specific") || msg.contains("Programmer"),
-            "expected programmer stub reason, got: {msg}"
+            msg.contains("not yet implemented") && msg.contains("platform"),
+            "expected platform-specific stub reason, got: {msg}"
         );
     }
 

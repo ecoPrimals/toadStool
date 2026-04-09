@@ -54,7 +54,9 @@ mod tests;
 pub use types::{DiscoveryConfig, DiscoveryError, DiscoveryMethod};
 
 use crate::primal_identity::Capability;
-use crate::service_discovery::{DiscoveredService, ServiceDiscovery, ServiceDiscoveryTrait};
+use crate::service_discovery::{
+    DiscoveredService, ServiceDiscovery, ServiceDiscoveryTrait, localhost_capability_fallback,
+};
 use std::time::Duration;
 
 /// PATH-based binary lookup (pure Rust, no external `which` crate).
@@ -234,9 +236,11 @@ impl CapabilityDiscovery {
         Ok(Box::new(discovery))
     }
 
-    /// Try localhost fallback for development
-    const fn try_localhost_fallback(_capability: &Capability) -> Vec<DiscoveredService> {
-        // Return empty for now - localhost fallback should use environment variables
-        vec![]
+    /// Try localhost fallback for development (ecoPrimals / biomeOS sockets, `TOADSTOOL_LOCAL_PORT`, …).
+    ///
+    /// Delegates to [`crate::service_discovery::localhost_capability_fallback`] so behavior stays
+    /// aligned with [`crate::service_discovery::ServiceDiscovery::discover_from_fallbacks`].
+    fn try_localhost_fallback(capability: &Capability) -> Vec<DiscoveredService> {
+        localhost_capability_fallback(capability)
     }
 }

@@ -13,7 +13,8 @@ use tracing::{debug, info, warn};
 use crate::constants::PRIMAL_NAME;
 use crate::discovery_defaults::{DiscoveryConfig, LocalhostFallbacks};
 use crate::primal_identity::{
-    Capability, CoordinationCapability, PrimalIdentity, ServiceEndpoint, StorageCapability,
+    Capability, ComputeCapability, CoordinationCapability, PrimalIdentity, ServiceEndpoint,
+    StorageCapability,
 };
 
 use super::discovery_config::discover_from_config;
@@ -245,7 +246,7 @@ impl ServiceDiscovery {
 
     /// Probe `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` (with TMPDIR/temp fallbacks when
     /// `XDG_RUNTIME_DIR` is unset) and build [`DiscoveredService`] entries for existing paths.
-    fn services_from_eco_primals_runtime_sockets() -> Vec<DiscoveredService> {
+    pub(crate) fn services_from_eco_primals_runtime_sockets() -> Vec<DiscoveredService> {
         const SOCKET_SPECS: &[(&str, Capability)] = &[
             (
                 PRIMAL_NAME,
@@ -315,13 +316,139 @@ impl ServiceDiscovery {
                         CoordinationCapability::ServiceDiscovery,
                     )),
                     "storage" => Some(Capability::Storage(StorageCapability::ObjectStorage)),
-                    "compute" => Some(Capability::Compute(
-                        crate::primal_identity::ComputeCapability::NativeExecution,
-                    )),
+                    "compute" => Some(Capability::Compute(ComputeCapability::NativeExecution)),
                     _ => None,
                 }
             })
             .collect()
+    }
+}
+
+/// Fallback when primary discovery finds no services for this capability.
+///
+/// Second-line fallback when the primary [`ServiceDiscovery`] pass returned no services for
+/// `capability` (e.g. mDNS/env empty, cache miss). Uses the same mechanisms as
+/// [`ServiceDiscovery::discover_from_fallbacks`] — ecoPrimals runtime sockets, biomeOS capability
+/// socket paths from [`crate::primal_sockets::get_socket_path_for_capability`], optional
+/// `TOADSTOOL_LOCAL_PORT` for native compute, and the deprecated `TOADSTOOL_URL`-style TCP fallback
+/// for compute when [`crate::discovery_defaults::LocalhostFallbacks`] allow it — filtered to the
+/// requested capability.
+#[must_use]
+pub fn localhost_capability_fallback(capability: &Capability) -> Vec<DiscoveredService> {
+    let mut out: Vec<DiscoveredService> =
+        ServiceDiscovery::services_from_eco_primals_runtime_sockets()
+            .into_iter()
+            .filter(|s| s.has_capability(capability))
+            .collect();
+
+    let now = SystemTime::now();
+
+    if let Some(cat) = biomeos_category(capability) {
+        let path = crate::primal_sockets::get_socket_path_for_capability(cat);
+        if path.exists() {
+            let path_str = path.display().to_string();
+            let already = out.iter().any(|s| {
+                s.endpoints
+                    .iter()
+                    .any(|e| e.protocol == "unix" && e.address == path_str)
+            });
+            if !already {
+                let url = format!("unix://{}", path_str);
+                if let Ok(endpoint) = ServiceEndpoint::from_url_string(&url) {
+                    let ep = endpoint.with_metadata("path", path_str);
+                    let slug = path.file_name().and_then(|s| s.to_str()).unwrap_or("sock");
+                    out.push(DiscoveredService {
+                        id: format!("localhost-fallback-{slug}"),
+                        name: format!("fallback-{cat}"),
+                        version: "dev".to_string(),
+                        capabilities: vec![capability.clone()],
+                        endpoints: vec![ep],
+                        metadata: {
+                            let mut m = HashMap::new();
+                            m.insert(
+                                "source".to_string(),
+                                "localhost-capability-fallback".to_string(),
+                            );
+                            m
+                        },
+                        discovered_at: now,
+                        last_seen: now,
+                        healthy: true,
+                    });
+                }
+            }
+        }
+    }
+
+    if matches!(
+        capability,
+        Capability::Compute(ComputeCapability::NativeExecution)
+    ) {
+        let port: u16 = std::env::var("TOADSTOOL_LOCAL_PORT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        if port > 0 {
+            let has_local_port = out.iter().any(|s| {
+                s.metadata
+                    .get("source")
+                    .is_some_and(|v| v == "TOADSTOOL_LOCAL_PORT")
+            });
+            if !has_local_port {
+                out.push(DiscoveredService {
+                    id: "localhost-compute-local-port".to_string(),
+                    name: "localhost-compute".to_string(),
+                    version: "dev".to_string(),
+                    capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
+                    endpoints: vec![ServiceEndpoint::http(
+                        crate::constants::network::DEFAULT_HOSTNAME,
+                        port,
+                    )],
+                    metadata: {
+                        let mut m = HashMap::new();
+                        m.insert("source".to_string(), "TOADSTOOL_LOCAL_PORT".to_string());
+                        m
+                    },
+                    discovered_at: now,
+                    last_seen: now,
+                    healthy: true,
+                });
+            }
+        }
+
+        let fallbacks = crate::discovery_defaults::LocalhostFallbacks::default();
+        if fallbacks.should_use_fallback() {
+            if let Some(url) = fallbacks.get_fallback_url(PRIMAL_NAME) {
+                if let Ok(ep) = ServiceEndpoint::from_url_string(&url) {
+                    let mut meta = HashMap::new();
+                    meta.insert("source".to_string(), "fallback-tcp".to_string());
+                    meta.insert("deprecation".to_string(), "tcp_url_fallback".to_string());
+                    out.push(DiscoveredService {
+                        id: format!("fallback-{PRIMAL_NAME}"),
+                        name: PRIMAL_NAME.to_string(),
+                        version: "dev".to_string(),
+                        capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
+                        endpoints: vec![ep],
+                        metadata: meta,
+                        discovered_at: now,
+                        last_seen: now,
+                        healthy: true,
+                    });
+                }
+            }
+        }
+    }
+
+    out
+}
+
+fn biomeos_category(capability: &Capability) -> Option<&'static str> {
+    match capability {
+        Capability::Crypto(_) => Some("crypto"),
+        Capability::Storage(_) => Some("storage"),
+        Capability::Coordination(_) => Some("coordination"),
+        Capability::Compute(_) => Some("compute"),
+        _ => None,
     }
 }
 

@@ -30,7 +30,7 @@ async-trait = { workspace = true }
 futures = { workspace = true }
 # PURE RUST: reqwest removed - unix sockets only! ✅
 url = { workspace = true }
-regex = "1.0"
+regex = { workspace = true }
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon (pure Rust /proc)
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix

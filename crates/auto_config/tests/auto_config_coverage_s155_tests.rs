@@ -340,6 +340,7 @@ async fn test_mock_hardware_detector_custom_capabilities() {
 
 #[cfg(feature = "test-mocks")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[allow(clippy::similar_names)]
 async fn test_mock_ecosystem_discoverer_with_services() {
     let mut svcs = HashMap::new();
     svcs.insert(

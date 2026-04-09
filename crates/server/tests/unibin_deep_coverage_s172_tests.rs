@@ -127,7 +127,7 @@ fn unibin_s172_get_socket_path_xdg_empty_string_uses_fallback_or_tmp() {
         ],
         || {
             let p = get_socket_path("default", "node").expect("path");
-            assert!(p.ends_with("biomeos/toadstool.sock"));
+            assert!(p.ends_with("biomeos/compute.sock"));
         },
     );
 }

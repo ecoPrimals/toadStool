@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![allow(deprecated)]
 //! Tests for engine lifecycle, devices, runtime trait, and configuration.
 
 use super::*;

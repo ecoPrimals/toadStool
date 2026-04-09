@@ -76,7 +76,7 @@ fn test_toadstool_socket_biomeos_standard() {
         ..Default::default()
     };
     let path = resolve_toadstool_socket(&env);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/toadstool.sock"));
+    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/compute.sock"));
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn test_socket_path_for_service_known() {
         ..Default::default()
     };
     let path = resolve_socket_path_for_service("toadstool", &env, None);
-    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/toadstool.sock"));
+    assert_eq!(path, PathBuf::from("/run/user/1000/biomeos/compute.sock"));
 }
 
 #[test]
@@ -378,6 +378,10 @@ fn test_get_nucleus_socket_path() {
 #[test]
 fn test_get_toadstool_socket_path() {
     let path = get_toadstool_socket_path();
-    assert!(path.to_str().unwrap().contains("toadstool"));
+    assert!(
+        path.to_str().unwrap().contains("compute"),
+        "Self-Knowledge v1.1: domain-based name, got: {}",
+        path.display()
+    );
     assert!(path.to_str().unwrap().contains(".sock"));
 }

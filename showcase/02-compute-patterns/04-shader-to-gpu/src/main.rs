@@ -132,7 +132,7 @@ async fn main() {
     let biomeos = format!("{}/biomeos", runtime_dir);
 
     let sockets = [
-        ("toadstool.jsonrpc.sock", "toadStool"),
+        ("compute.sock", "toadStool"),
         ("coralreef.sock", "coralReef"),
         ("compute.sock", "barraCuda"),
     ];

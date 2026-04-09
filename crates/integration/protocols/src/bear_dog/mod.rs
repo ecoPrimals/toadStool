@@ -11,7 +11,7 @@ mod policy;
 mod trait_;
 mod transport;
 
-pub use auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse};
+pub use auth::{AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, TokenRefreshRequest};
 pub use client::{BearDogIntegration, SecurityServiceIntegration};
 pub use config::SecurityConfig;
 pub use policy::{PolicyRule, SecurityAuditEvent, SecurityPolicy};

@@ -3,8 +3,16 @@
 //!
 //! This module defines the trait interface for authentication backends and provides
 //! production and test implementations using proper dependency injection.
+//!
+//! **Connection hints**: prefer capability-based discovery (`SecurityBackend::new_async`).
+//! Environment fallbacks are centralized in `toadstool_common::primal_sockets::SocketPathEnv`
+//! (`security_connection_hint` and `resolve_capability_socket_fallback`), not direct `BEARDOG_*`
+//! env lookups — see `auth::AuthManager::discover`.
 
-#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+#![expect(
+    deprecated,
+    reason = "IPC addressing requires well-known legacy names during migration"
+)]
 
 use async_trait::async_trait;
 #[cfg(any(test, feature = "test-mocks"))]

@@ -1,0 +1,190 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! Length-prefixed BTSP frame codec.
+//!
+//! All BTSP frames use the same wire format regardless of cipher suite:
+//!
+//! ```text
+//! [ Length: 4 bytes BE u32 ][ Payload: Length bytes ]
+//! ```
+//!
+//! Max frame size: 16 MiB (`MAX_FRAME_SIZE`).
+//!
+//! In dev mode (NDJSON), framing uses newlines. In production (BTSP),
+//! framing uses length-prefixed frames — this module handles the latter.
+
+use std::io;
+
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+
+use super::types::MAX_FRAME_SIZE;
+
+/// Read a single length-prefixed frame from the stream.
+///
+/// Returns the frame payload (without the length header).
+///
+/// # Errors
+///
+/// - `UnexpectedEof` if the stream closes before a complete frame.
+/// - `InvalidData` if the frame exceeds `MAX_FRAME_SIZE`.
+pub async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> io::Result<Vec<u8>> {
+    let mut len_buf = [0u8; 4];
+    reader.read_exact(&mut len_buf).await?;
+    let len = u32::from_be_bytes(len_buf);
+
+    if len > MAX_FRAME_SIZE {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("BTSP frame too large: {len} bytes (max {MAX_FRAME_SIZE})"),
+        ));
+    }
+
+    let mut payload = vec![0u8; len as usize];
+    reader.read_exact(&mut payload).await?;
+    Ok(payload)
+}
+
+/// Write a single length-prefixed frame to the stream.
+///
+/// # Errors
+///
+/// - `InvalidData` if the payload exceeds `MAX_FRAME_SIZE`.
+/// - I/O errors from the underlying stream.
+pub async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, payload: &[u8]) -> io::Result<()> {
+    let len: u32 = payload.len().try_into().map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "BTSP frame payload too large: {} bytes (max {})",
+                payload.len(),
+                MAX_FRAME_SIZE
+            ),
+        )
+    })?;
+
+    if len > MAX_FRAME_SIZE {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("BTSP frame too large: {len} bytes (max {MAX_FRAME_SIZE})"),
+        ));
+    }
+
+    writer.write_all(&len.to_be_bytes()).await?;
+    writer.write_all(payload).await?;
+    writer.flush().await?;
+    Ok(())
+}
+
+/// Buffered frame reader that wraps an async stream.
+pub struct BtspFrameReader<R> {
+    inner: R,
+}
+
+impl<R: AsyncRead + Unpin> BtspFrameReader<R> {
+    /// Create a new frame reader.
+    pub const fn new(inner: R) -> Self {
+        Self { inner }
+    }
+
+    /// Read the next frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns I/O errors or `InvalidData` for oversized frames.
+    pub async fn read(&mut self) -> io::Result<Vec<u8>> {
+        read_frame(&mut self.inner).await
+    }
+}
+
+/// Buffered frame writer that wraps an async stream.
+pub struct BtspFrameWriter<W> {
+    inner: W,
+}
+
+impl<W: AsyncWrite + Unpin> BtspFrameWriter<W> {
+    /// Create a new frame writer.
+    pub const fn new(inner: W) -> Self {
+        Self { inner }
+    }
+
+    /// Write a frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns I/O errors or `InvalidData` for oversized payloads.
+    pub async fn write(&mut self, payload: &[u8]) -> io::Result<()> {
+        write_frame(&mut self.inner, payload).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn round_trip_single_frame() {
+        let payload = b"hello BTSP";
+        let mut buf = Vec::new();
+
+        write_frame(&mut buf, payload).await.expect("write");
+        assert_eq!(buf.len(), 4 + payload.len());
+
+        let mut cursor = io::Cursor::new(buf);
+        let read_back = read_frame(&mut cursor).await.expect("read");
+        assert_eq!(read_back, payload);
+    }
+
+    #[tokio::test]
+    async fn round_trip_empty_frame() {
+        let mut buf = Vec::new();
+        write_frame(&mut buf, b"").await.expect("write");
+
+        let mut cursor = io::Cursor::new(buf);
+        let read_back = read_frame(&mut cursor).await.expect("read");
+        assert!(read_back.is_empty());
+    }
+
+    #[tokio::test]
+    async fn round_trip_multiple_frames() {
+        let frames: Vec<&[u8]> = vec![b"frame-1", b"frame-2-longer", b"f3"];
+        let mut buf = Vec::new();
+
+        for f in &frames {
+            write_frame(&mut buf, f).await.expect("write");
+        }
+
+        let mut cursor = io::Cursor::new(buf);
+        for expected in &frames {
+            let got = read_frame(&mut cursor).await.expect("read");
+            assert_eq!(got.as_slice(), *expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_oversized_frame_on_read() {
+        let bad_len = (MAX_FRAME_SIZE + 1).to_be_bytes();
+        let mut cursor = io::Cursor::new(bad_len.to_vec());
+        let err = read_frame(&mut cursor).await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("too large"));
+    }
+
+    #[tokio::test]
+    async fn frame_reader_writer_types() {
+        let payload = b"typed-frame";
+        let mut buf = Vec::new();
+
+        let mut writer = BtspFrameWriter::new(&mut buf);
+        writer.write(payload).await.expect("write");
+
+        let mut reader = BtspFrameReader::new(io::Cursor::new(buf));
+        let got = reader.read().await.expect("read");
+        assert_eq!(got, payload);
+    }
+
+    #[tokio::test]
+    async fn read_frame_eof_returns_error() {
+        let mut cursor = io::Cursor::new(vec![0u8, 0, 0]);
+        let err = read_frame(&mut cursor).await.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
+    }
+}

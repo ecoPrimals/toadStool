@@ -148,16 +148,16 @@ impl<'a> PlatformPaths<'a> {
         self.runtime_dir().join("biomeos")
     }
 
-    /// ToadStool main socket path
+    /// ToadStool main socket path (domain-based per Self-Knowledge v1.1).
     #[must_use]
     pub fn toadstool_socket(&self) -> PathBuf {
-        self.toadstool_socket_dir().join("toadstool.sock")
+        self.toadstool_socket_dir().join("compute.sock")
     }
 
-    /// ToadStool JSON-RPC socket path
+    /// ToadStool JSON-RPC socket path (same as main socket since v1.1).
     #[must_use]
     pub fn toadstool_jsonrpc_socket(&self) -> PathBuf {
-        self.toadstool_socket_dir().join("toadstool.jsonrpc.sock")
+        self.toadstool_socket_dir().join("compute.sock")
     }
 
     /// ToadStool data directory

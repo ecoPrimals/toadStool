@@ -61,7 +61,7 @@ thiserror = { workspace = true }
 toadstool-sysmon = { workspace = true }
 
 # Configuration
-config = "0.15"
+config = { workspace = true }
 [[test]]
 name = "coordination_rpc_coverage_tests"
 required-features = ["testing"]

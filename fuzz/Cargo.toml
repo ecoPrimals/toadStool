@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+[package]
+name = "toadstool-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tokio = { version = "1", features = ["rt", "io-util"] }
+
+# Crates under test
+toadstool-common = { path = "../crates/core/common" }
+toadstool-config = { path = "../crates/core/config" }
+
+# For direct JSON-RPC parsing (serde_json::from_slice on raw bytes)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+[[bin]]
+name = "fuzz_jsonrpc_parse"
+path = "fuzz_targets/fuzz_jsonrpc_parse.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_config_toml"
+path = "fuzz_targets/fuzz_config_toml.rs"
+doc = false
+
+[[bin]]
+name = "fuzz_btsp_framing"
+path = "fuzz_targets/fuzz_btsp_framing.rs"
+doc = false

@@ -108,8 +108,7 @@ skip = [
 ]
 
 skip-tree = [
-    # CUDA / GPU backends bring a dense C-FFI tree that is separately audited.
-    { name = "cudarc", reason = "GPU backend — separately audited, feature-gated" },
+    # cudarc removed S197 — CUDA dispatch via barraCuda/coralReef IPC
     # Secure enclave runtime uses zstd (C FFI) as dev-dep only
     { name = "toadstool-runtime-secure-enclave", reason = "zstd-sys is dev-dep only, not in production binary" },
     # Integration tests use reqwest/ring for HTTP testing — not in production binary

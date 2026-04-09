@@ -128,14 +128,10 @@ impl UniversalGpuEngine {
                      Consider using WebGPU for cross-platform compatibility.",
                 ))
             }
-            GpuFramework::OpenCl => {
-                // OpenCL support requires additional platform-specific dependencies
-                // Users should use WebGPU for cross-platform GPU compute
-                Err(ToadStoolError::configuration(
-                    "OpenCL framework requires manual enablement via 'opencl' feature flag. \
-                     Consider using WebGPU for cross-platform compatibility.",
-                ))
-            }
+            GpuFramework::OpenCl => Err(ToadStoolError::configuration(
+                "OpenCL framework removed from this crate (S198). Use barraCuda/coralReef via IPC, \
+                 or WebGPU/Vulkan for in-tree GPU compute.",
+            )),
             _ => {
                 // For other frameworks, use fallback implementation
                 let framework = crate::frameworks::FallbackFramework::new(framework_type);

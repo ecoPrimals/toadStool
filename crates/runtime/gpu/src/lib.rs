@@ -29,7 +29,7 @@
 //! **Philosophy**: "If it has parallel compute units, we can harness it"
 //!
 //! This module implements a truly universal GPU compute runtime that can:
-//! - Discover and utilize ANY parallel compute framework (CUDA, `OpenCL`, Vulkan, `ROCm`, Metal, `WebGPU`, `DirectCompute`)
+//! - Discover and utilize parallel compute frameworks (Vulkan, `ROCm`, Metal, `WebGPU`, `DirectCompute`; CUDA/OpenCL-class via barraCuda/coralReef IPC)
 //! - Execute GPU workloads recursively (GPU workloads spawning GPU workloads)
 //! - Provide universal kernel compilation and optimization
 //! - Self-heal through automatic framework and device fallback
@@ -57,10 +57,7 @@ pub mod unified_memory;
 // glowPlug/ember GPU implementation (hardware-agnostic lifecycle traits)
 pub mod glowplug;
 
-// Real GPU backends (no mocks)
-// EVOLVED: Feature gates are CORRECT here - they enable optional optimizations
-// WebGPU (wgpu) is the universal default, always available without features
-#[cfg(feature = "opencl")]
+// Real GPU backends (no mocks): WebGPU + Vulkan in-tree; CUDA/OpenCL stubs for API compatibility.
 pub mod backends;
 
 // Re-export main types and traits for convenience
@@ -162,7 +159,7 @@ mod tests {
     #[test]
     fn test_opencl_framework() {
         let opencl = GpuFramework::OpenCl;
-        assert!(opencl.is_universal());
+        assert!(!opencl.is_universal());
         assert!(opencl.platform_compatibility().len() >= 3);
         assert_eq!(opencl.name(), "OpenCL");
     }
@@ -241,7 +238,7 @@ mod tests {
     fn test_multiple_frameworks_compatibility() {
         let frameworks = vec![
             (GpuFramework::Cuda, false),
-            (GpuFramework::OpenCl, true),
+            (GpuFramework::OpenCl, false),
             (GpuFramework::WebGpu, true),
         ];
 

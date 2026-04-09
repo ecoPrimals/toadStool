@@ -176,6 +176,7 @@ impl UniversalGpuEngine {
     ) -> ToadStoolResult<ComputeWorkload> {
         let kernel_source = match &request.workload {
             WorkloadSpec::Gpu { program, .. } => {
+                #[expect(deprecated, reason = "OpenCL/CUDA arms for persisted GPU specs (S198)")]
                 match program {
                     toadstool::workload::GpuProgramSource::OpenCL { source }
                     | toadstool::workload::GpuProgramSource::Cuda { source } => source.clone(),

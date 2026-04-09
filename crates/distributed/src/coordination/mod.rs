@@ -10,7 +10,10 @@
 //! When ToadStool needs to talk outside local (or even sometimes local), it uses Coordination.
 //! When massive jobs drop, ToadStool breaks them up and sends them via Coordination to hundreds of nodes.
 
-#![allow(deprecated)]
+#![expect(
+    deprecated,
+    reason = "legacy coordination API pending migration to coordination_integration"
+)]
 
 pub mod broadcasting;
 pub mod capability_client; // ✅ Production-ready capability-based discovery client

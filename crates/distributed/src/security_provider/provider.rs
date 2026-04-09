@@ -13,7 +13,7 @@ use super::types::{
     SecurityPermission, SignatureAlgorithm, SignatureResult, VerificationResult,
 };
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-mocks"))]
 use super::types::{DecryptionMetadata, SecurityProof};
 
 /// Security Provider - generic interface for security operations

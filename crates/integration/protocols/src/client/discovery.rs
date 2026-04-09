@@ -6,7 +6,10 @@ use tracing::info;
 use crate::config::ServiceDiscoveryConfig;
 use crate::types::{ProtocolResult, ServiceInfo};
 
-/// Register service with discovery service
+#[expect(
+    clippy::unused_async,
+    reason = "async signature kept for when discovery performs real I/O"
+)]
 pub async fn register_with_discovery(
     service_info: &ServiceInfo,
     _discovery_config: &ServiceDiscoveryConfig,
@@ -23,7 +26,10 @@ pub async fn register_with_discovery(
     Ok(())
 }
 
-/// Discover services from registry
+#[expect(
+    clippy::unused_async,
+    reason = "async signature kept for when discovery performs real I/O"
+)]
 pub async fn discover_from_registry(
     service_name: &str,
     _discovery_config: &ServiceDiscoveryConfig,

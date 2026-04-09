@@ -1,23 +1,49 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! OpenCL Backend Implementation
+//! OpenCL Backend — **DEPRECATED S198**
 //!
-//! Real GPU execution using OpenCL - works on NVIDIA, AMD, Intel
-//! No mocks, no hardcoding, capability-based discovery
+//! Direct `ocl` FFI has been removed. OpenCL-style dispatch is now handled by
+//! **barraCuda** and **coralReef** via capability-based IPC.
 //!
-//! ## Module structure
-//! - `backend`: Core OpenClBackend, device discovery, program compilation, kernel execution
-//! - `resource`: OpenClComputeResource, UniversalComputeResource implementation
-//! - `context`: OpenClComputeContext, workload dispatch
-//! - `kernels`: Built-in kernel selection and work size helpers
+//! ## Migration
+//!
+//! ```ignore
+//! // OLD: direct ocl FFI
+//! let backend = OpenClBackend::new()?;
+//!
+//! // NEW: capability-based IPC
+//! let gpu = discover_capability("gpu.dispatch.opencl").await?;
+//! gpu.call("gpu.dispatch", kernel_request).await?;
+//! ```
 
-mod backend;
-mod context;
-mod kernels;
-mod resource;
+use std::sync::Arc;
 
-#[cfg(test)]
-mod tests;
+use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-// Re-export public API for backward compatibility
-pub use backend::{DeviceInfo, OpenClBackend};
-pub use resource::OpenClComputeResource;
+/// Stub — OpenCL backend removed S198; use barraCuda/coralReef via IPC.
+#[deprecated(
+    since = "0.2.0",
+    note = "ocl removed S198. OpenCL dispatch is handled by barraCuda/coralReef via IPC."
+)]
+pub struct OpenClBackend {
+    _private: (),
+}
+
+#[expect(deprecated)]
+impl OpenClBackend {
+    /// Always returns an error directing callers to barraCuda/coralReef.
+    pub fn new() -> ToadStoolResult<Self> {
+        Err(ToadStoolError::runtime(
+            "OpenClBackend removed (S198): use barraCuda or coralReef via capability-based IPC \
+             for OpenCL-class dispatch. See ecosystem GPU primals.",
+        ))
+    }
+}
+
+/// Stub — OpenCL compute resource removed S198; use barraCuda/coralReef via IPC.
+#[deprecated(
+    since = "0.2.0",
+    note = "ocl removed S198. OpenCL dispatch is handled by barraCuda/coralReef via IPC."
+)]
+pub struct OpenClComputeResource {
+    _backend: Arc<()>,
+}

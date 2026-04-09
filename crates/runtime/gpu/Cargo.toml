@@ -6,7 +6,7 @@ description = "ToadStool Universal GPU Compute Runtime - If it has parallel comp
 license.workspace = true
 repository.workspace = true
 readme = "README.md"
-keywords = ["gpu", "compute", "cuda", "opencl", "webgpu"]
+keywords = ["gpu", "compute", "cuda", "webgpu", "vulkan"]
 categories = ["hardware-support", "science"]
 
 [dependencies]
@@ -56,15 +56,12 @@ wgpu = { workspace = true, optional = true, features = ["wgsl"] }
 vulkano = { version = "0.34", optional = true }
 ash = { version = "0.37", optional = true }
 
-# OpenCL support (universal) - Only enabled explicitly
-ocl = { version = "0.19", optional = true }
-
 # Universal intermediate representations - Only for spirv feature
 spirv = { version = "0.3", optional = true }
 
-# CUDA support (NVIDIA-specific) - Only enabled explicitly
-# Upgraded from 0.11 to 0.19 for proper device queries (name, compute_capability, memory)
-cudarc = { version = "0.19", optional = true, features = ["cuda-version-from-build-system"] }
+# CUDA support (NVIDIA-specific) — DEPRECATED S197
+# cudarc removed: CUDA dispatch is now handled by barraCuda / coralReef via IPC.
+# The `cuda` feature flag is retained as a no-op for backward compatibility.
 
 # JIT compilation and optimization - Only for jit feature
 # Aligned to cranelift 0.105 (same as wgpu transitive dep) to avoid dual-version compile overhead
@@ -81,16 +78,16 @@ default = ["webgpu"]
 webgpu = ["wgpu"]
 
 # OPTIMIZATION: Vendor-specific backends (pragmatic, opt-in)
-# Use when ecosystem requires it (e.g., Python AI needs CUDA in 2025)
-cuda = ["cudarc"]          # For PyTorch/TensorFlow AI workloads
-opencl = ["ocl"]           # Legacy fallback for broader compatibility
+cuda = []                  # DEPRECATED S197: CUDA dispatch via barraCuda/coralReef IPC
+# DEPRECATED S198: OpenCL dispatch via barraCuda/coralReef IPC. Feature retained as no-op for backward compat.
+opencl = []
 vulkan = ["vulkano", "ash"] # Direct Vulkan for advanced use cases
 
-# AI/ML CONVENIENCE: CUDA + WebGPU fallback
-ai-ml = ["cuda", "webgpu"]
+# AI/ML CONVENIENCE: WebGPU (CUDA now via barraCuda IPC)
+ai-ml = ["webgpu"]
 
-# MAXIMUM COMPATIBILITY: All backends (testing, development)
-all-backends = ["webgpu", "cuda", "opencl", "vulkan"]
+# MAXIMUM COMPATIBILITY: All Rust-native backends
+all-backends = ["webgpu", "vulkan"]
 
 # Platform-specific detection features (no dependencies, pure logic)
 detect-nvidia = []
@@ -99,9 +96,9 @@ detect-intel = []
 detect-apple = []
 
 # EVOLUTION PATH:
-# 2025: CUDA needed for Python AI (PyTorch/TensorFlow)
-# 2026+: WebGPU AI libraries mature (torch-webgpu, Burn, Candle)
-# 2027+: Drop CUDA, go full WebGPU (true vendor agnosticism)
+# S197: cudarc removed — CUDA dispatch delegated to barraCuda/coralReef via IPC
+# S198: ocl removed — OpenCL dispatch delegated to barraCuda/coralReef via IPC
+# ToadStool embeds WebGPU (wgpu) and Vulkan (ash/vulkano) only; vendor/OpenCL-class paths live in primals
 
 # Additional features (independent)
 spirv = ["dep:spirv"]

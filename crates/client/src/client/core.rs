@@ -51,8 +51,8 @@ pub(crate) fn resolve_socket_path(base_url: &str) -> PathBuf {
     if let Ok(s) = std::env::var("TOADSTOOL_SOCKET") {
         return PathBuf::from(s);
     }
-    // Default: ToadStool JSON-RPC socket per platform_paths
-    toadstool_common::platform_paths::toadstool_socket_dir().join("toadstool.jsonrpc.sock")
+    // Default: domain-based socket per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1
+    toadstool_common::platform_paths::toadstool_socket_dir().join("compute.sock")
 }
 
 /// ToadStool client for interacting with ToadStool servers

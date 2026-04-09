@@ -34,10 +34,10 @@ pub struct PollConfig<'a> {
 }
 
 // VFIO kernel ABI structs are now in hw-safe::vfio_setup (used by tests).
-#[allow(unused_imports)]
+#[allow(unused_imports, reason = "re-exports for tests and future DMA wiring")]
 pub use toadstool_hw_safe::vfio_setup::{VfioDeviceInfo, VfioGroupStatus, VfioRegionInfo};
 
-#[allow(unused_imports)]
+#[allow(unused_imports, reason = "re-exports for tests and future DMA wiring")]
 pub use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap};
 
 #[cfg(test)]

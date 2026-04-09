@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use super::env::SocketPathEnv;
 use crate::interned_strings::CapabilityDomain;
 
-pub(super) const SELF_SOCKET: &str = "toadstool.sock";
+/// Domain-based socket name per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1.
+pub(super) const SELF_SOCKET: &str = "compute.sock";
 
 /// Map a *peer* service label (legacy primal name or capability ID) to a canonical capability id.
 ///
@@ -88,9 +89,46 @@ pub fn is_btsp_required(env: &SocketPathEnv) -> bool {
     family_id != "default"
 }
 
+/// If `hint` is `unix:///path` or an absolute filesystem path, returns that path for IPC.
+/// HTTP(S) URLs return [`None`] — those are not local socket paths.
+#[must_use]
+pub fn unix_path_from_connection_hint(hint: &str) -> Option<PathBuf> {
+    let t = hint.trim();
+    if let Some(rest) = t.strip_prefix("unix://") {
+        if !rest.is_empty() {
+            return Some(PathBuf::from(rest));
+        }
+        return None;
+    }
+    if t.starts_with('/') && !t.contains("://") {
+        return Some(PathBuf::from(t));
+    }
+    None
+}
+
+fn connection_hint_for_capability<'a>(cap: &str, env: &'a SocketPathEnv) -> Option<&'a str> {
+    match cap {
+        "crypto" | "security" => env.security_connection_hint.as_deref(),
+        "coordination" => env.coordination_connection_hint.as_deref(),
+        "storage" => env.storage_connection_hint.as_deref(),
+        "routing" | "intelligence" | "ai" => env.routing_connection_hint.as_deref(),
+        _ => None,
+    }
+}
+
 /// Pure logic: resolve socket path for a capability id (`crypto`, `coordination`, …).
 ///
-/// Precedence: `BIOMEOS_{CAP}_SOCKET` → legacy env fallbacks (`BEARDOG_SOCKET`, `SONGBIRD_SOCKET`, …) →
+/// ## Capability mapping (PRIMAL_SELF_KNOWLEDGE_STANDARD)
+///
+/// | Capability id | Domain | Legacy identity env (socket / endpoint fallbacks) |
+/// | --- | --- | --- |
+/// | `crypto`, `security` | Security / auth | `BEARDOG_*` |
+/// | `coordination` | Registry / mesh | `SONGBIRD_*` |
+/// | `storage` | Object / artifact storage | `NESTGATE_*` |
+/// | `routing`, `intelligence`, `ai` | AI / MCP-style IPC | `SQUIRREL_*` |
+///
+/// Precedence: `BIOMEOS_{CAP}_SOCKET` → `TOADSTOOL_*_SOCKET` / legacy `*_SOCKET` →
+/// connection hints that resolve to Unix paths (`TOADSTOOL_*_ENDPOINT`, `*_ENDPOINT`, legacy `*_URL`) →
 /// `{capability}.sock` under the biomeOS runtime directory (never product-code filenames).
 #[must_use]
 pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv) -> PathBuf {
@@ -116,6 +154,12 @@ pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv)
         _ => None,
     } {
         return PathBuf::from(p);
+    }
+
+    if let Some(hint) = connection_hint_for_capability(cap, env)
+        && let Some(p) = unix_path_from_connection_hint(hint)
+    {
+        return p;
     }
 
     resolve_biomeos_dir(env).join(format!("{cap}.sock"))
@@ -307,8 +351,11 @@ mod tests {
             ..test_env()
         };
         let path = resolve_toadstool_socket(&env);
-        assert!(path.to_string_lossy().contains("toadstool"));
-        assert!(path.to_string_lossy().ends_with("toadstool.sock"));
+        assert!(
+            path.to_string_lossy().ends_with("compute.sock"),
+            "Self-Knowledge v1.1: domain-based socket name, got: {}",
+            path.display()
+        );
     }
 
     #[test]
@@ -328,7 +375,7 @@ mod tests {
         assert!(crypto.to_string_lossy().ends_with("crypto.sock"));
 
         let path = resolve_socket_path_for_service("toad-stool", &env, None);
-        assert!(path.to_string_lossy().contains("toadstool"));
+        assert!(path.to_string_lossy().ends_with("compute.sock"));
     }
 
     #[test]
@@ -365,5 +412,28 @@ mod tests {
         };
         let path = resolve_capability_socket_fallback("crypto", &env);
         assert_eq!(path, PathBuf::from("/via/biomeos/crypto.sock"));
+    }
+
+    #[test]
+    fn test_unix_path_from_connection_hint() {
+        assert_eq!(
+            unix_path_from_connection_hint("unix:///run/crypto.sock"),
+            Some(PathBuf::from("/run/crypto.sock"))
+        );
+        assert_eq!(
+            unix_path_from_connection_hint("/var/run/coordination.sock"),
+            Some(PathBuf::from("/var/run/coordination.sock"))
+        );
+        assert!(unix_path_from_connection_hint("http://localhost:8080").is_none());
+    }
+
+    #[test]
+    fn test_resolve_crypto_socket_from_legacy_endpoint_unix_scheme() {
+        let env = SocketPathEnv {
+            security_connection_hint: Some("unix:///custom/from-endpoint.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_capability_socket_fallback("crypto", &env);
+        assert_eq!(path, PathBuf::from("/custom/from-endpoint.sock"));
     }
 }

@@ -64,9 +64,7 @@ impl JsonRpcHandler {
     ) -> Self {
         let local_gate_id = std::env::var("TOADSTOOL_GATE_ID")
             .or_else(|_| std::env::var("HOSTNAME"))
-            .or_else(|_| {
-                toadstool_sysmon::system::hostname().ok_or_else(|| std::env::VarError::NotPresent)
-            })
+            .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
             .unwrap_or_else(|_| String::from("local"));
         Self {
             version: version.into(),
@@ -102,7 +100,9 @@ impl JsonRpcHandler {
             };
         }
 
-        info!("JSON-RPC request: {}", request.method.as_ref());
+        let id = request.id.clone().unwrap_or(serde_json::Value::Null);
+
+        info!(method = %request.method.as_ref(), "JSON-RPC request");
 
         match self
             .handle_method(request.method.as_ref(), request.params.as_ref())
@@ -112,20 +112,20 @@ impl JsonRpcHandler {
                 jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
                 result: Some(result),
                 error: None,
-                id: request.id.clone().unwrap_or(serde_json::Value::Null),
+                id,
             },
             Err(err) => {
                 self.error_count.fetch_add(1, Ordering::Relaxed);
                 error!(
-                    "JSON-RPC error for {}: {}",
-                    request.method.as_ref(),
-                    err.message
+                    method = %request.method.as_ref(),
+                    error = %err.message,
+                    "JSON-RPC error",
                 );
                 JsonRpcResponse {
                     jsonrpc: Cow::Borrowed(JSONRPC_VERSION),
                     result: None,
                     error: Some(err),
-                    id: request.id.clone().unwrap_or(serde_json::Value::Null),
+                    id,
                 }
             }
         }
@@ -147,9 +147,12 @@ impl JsonRpcHandler {
             "toadstool.cancel_workload" => return self.workload.cancel_workload(params).await,
             "toadstool.list_workloads" => return self.job.list_workloads(params).await,
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
-            "toadstool.health" | "health.liveness" | "health.readiness" | "health.check" => {
+            // Wire Standard L1/L2: triad shapes differ; full payload only for check + legacy name.
+            "toadstool.health" | "health.check" => {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
             }
+            "health.liveness" => return core::health_liveness().await,
+            "health.readiness" => return core::health_readiness(self.version.as_ref()).await,
             "identity.get" => {
                 return core::identity_get(&self.version, &self.semantic_registry).await;
             }
@@ -206,7 +209,7 @@ impl JsonRpcHandler {
             "gate.list" => return self.job.gate_list().await,
             "gate.route" => return self.job.gate_route(params).await,
 
-            "transport.discover" => return self.transport.transport_discover(params).await,
+            "transport.discover" => return Ok(TransportHandler::transport_discover(params)),
             "transport.list" => return self.transport.transport_list().await,
             "transport.route" => return self.transport.transport_route(params).await,
             "transport.open" => return self.transport.transport_open(params).await,
@@ -231,8 +234,8 @@ impl JsonRpcHandler {
 
             "shader.dispatch" => return self.dispatch.shader_dispatch(params).await,
 
-            "ember.list" => return self.ember_list().await,
-            "ember.status" => return self.ember_status().await,
+            "ember.list" => return Ok(self.ember_list()),
+            "ember.status" => return Ok(self.ember_status()),
 
             "compute.performance_surface.report" => {
                 return self.silicon.report(params).await;
@@ -313,17 +316,14 @@ impl JsonRpcHandler {
     // Ember domain — toadStool-native GPU device management
     // ═══════════════════════════════════════════════════════════
 
-    async fn ember_list(&self) -> Result<serde_json::Value, JsonRpcError> {
+    fn ember_list(&self) -> serde_json::Value {
         let list = self.glowplug.list_devices();
-        Ok(serde_json::to_value(list).unwrap_or_else(|_| serde_json::json!({"devices": []})))
+        serde_json::to_value(list).unwrap_or_else(|_| serde_json::json!({"devices": []}))
     }
 
-    async fn ember_status(&self) -> Result<serde_json::Value, JsonRpcError> {
+    fn ember_status(&self) -> serde_json::Value {
         let status = self.glowplug.status();
-        Ok(
-            serde_json::to_value(status)
-                .unwrap_or_else(|_| serde_json::json!({"available": false})),
-        )
+        serde_json::to_value(status).unwrap_or_else(|_| serde_json::json!({"available": false}))
     }
 }
 
@@ -365,6 +365,35 @@ mod tests {
         assert!(result["version"].as_str().is_some());
         assert!(result["uptime_secs"].as_u64().is_some());
         assert!(result["error_count"].as_u64().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_health_triad_liveness_readiness_check() {
+        let handler = test_handler();
+
+        let live = handler
+            .handle_request(&mk_request("health.liveness", None, 10))
+            .await;
+        assert!(live.error.is_none());
+        let r = live.result.expect("liveness");
+        assert_eq!(r["status"], "alive");
+        assert!(r.get("healthy").is_none(), "liveness must be minimal");
+
+        let ready = handler
+            .handle_request(&mk_request("health.readiness", None, 11))
+            .await;
+        assert!(ready.error.is_none());
+        let r = ready.result.expect("readiness");
+        assert_eq!(r["status"], "ready");
+        assert_eq!(r["version"], "test-1.0.0");
+
+        let check = handler
+            .handle_request(&mk_request("health.check", None, 12))
+            .await;
+        assert!(check.error.is_none());
+        let r = check.result.expect("check");
+        assert!(r["healthy"].as_bool().unwrap());
+        assert_eq!(r["status"], "alive");
     }
 
     #[tokio::test]

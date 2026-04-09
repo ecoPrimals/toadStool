@@ -36,10 +36,7 @@ impl TransportHandler {
         }
     }
 
-    pub(super) async fn transport_discover(
-        &self,
-        _params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, JsonRpcError> {
+    pub(super) fn transport_discover(_params: Option<&serde_json::Value>) -> serde_json::Value {
         let display = toadstool_display::discover_display_transports();
         let capture = toadstool_display::discover_capture_transports();
         let serial = toadstool_display::serial_transport::discover_serial_transports();
@@ -60,7 +57,7 @@ impl TransportHandler {
             })
             .collect();
 
-        Ok(serde_json::json!({"transports": all, "count": all.len()}))
+        serde_json::json!({"transports": all, "count": all.len()})
     }
 
     pub(super) async fn transport_list(&self) -> Result<serde_json::Value, JsonRpcError> {
@@ -99,7 +96,7 @@ impl TransportHandler {
         )]
         let buf_size = params
             .get("buf_size")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(65536) as usize;
 
         let mut router = self.transport_router.lock().await;
@@ -182,7 +179,7 @@ impl TransportHandler {
         )]
         let buf_size = params
             .get("buf_size")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(65536) as usize;
 
         {
@@ -235,15 +232,12 @@ impl TransportHandler {
                     r.route_once(&rx_id, &tx_id, buf_size)
                 };
 
-                match result {
-                    Ok(n) => {
-                        bytes_counter.fetch_add(n as u64, std::sync::atomic::Ordering::Relaxed);
-                        backoff_ms = 1;
-                    }
-                    Err(_) => {
-                        tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
-                        backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
-                    }
+                if let Ok(n) = result {
+                    bytes_counter.fetch_add(n as u64, std::sync::atomic::Ordering::Relaxed);
+                    backoff_ms = 1;
+                } else {
+                    tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                    backoff_ms = (backoff_ms * 2).min(MAX_BACKOFF_MS);
                 }
 
                 tokio::task::yield_now().await;
@@ -380,8 +374,8 @@ mod tests {
 
     #[tokio::test]
     async fn transport_discover_returns_transports_and_count() {
-        let h = TransportHandler::new();
-        let v = h.transport_discover(None).await.unwrap();
+        let _h = TransportHandler::new();
+        let v = TransportHandler::transport_discover(None);
         assert!(v.get("transports").is_some());
         assert!(v.get("count").is_some());
         assert_eq!(

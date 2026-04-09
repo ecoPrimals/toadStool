@@ -47,9 +47,9 @@ impl LockedMemory {
     pub fn new(size: usize, align: usize) -> Result<Self, LockError> {
         let inner = AlignedAlloc::new(size, align)?;
 
-        // SAFETY: ptr is valid for `size` bytes (from AlignedAlloc). mlock is
-        // a no-mutation syscall that pins existing pages. We munlock in Drop
-        // with the same pointer and size.
+        // SAFETY: rustix `mlock` is `unsafe fn`: the range must be valid to read. `AlignedAlloc`
+        // owns `size` bytes at `as_ptr()`. `mlock` does not change bytes; we pair with `munlock`
+        // in `Drop` using the same pointer and length.
         unsafe {
             rustix::mm::mlock(inner.as_ptr().as_ptr().cast(), inner.size())
                 .map_err(|e| LockError::Mlock(e.into()))?;
@@ -94,8 +94,8 @@ impl LockedMemory {
 
 impl Drop for LockedMemory {
     fn drop(&mut self) {
-        // SAFETY: ptr and size are from the successful mlock in new().
-        // Drop runs exactly once; no outstanding borrows can exist.
+        // SAFETY: same address range passed to `mlock` in `new()`; rustix `munlock` documents the
+        // same provenance requirements as `mlock`. `Drop` runs once; no `&self` borrows remain.
         unsafe {
             let _ = rustix::mm::munlock(self.inner.as_ptr().as_ptr().cast(), self.inner.size());
         }

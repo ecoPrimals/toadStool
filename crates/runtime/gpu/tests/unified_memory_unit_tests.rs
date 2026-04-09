@@ -390,7 +390,7 @@ async fn test_automatic_backend_selection() {
     assert!(!name.is_empty());
     // Should be one of the supported backends
     assert!(
-        name == "CPU" || name == "WebGPU" || name == "Vulkan" || name == "OpenCL",
+        name == "CPU" || name == "WebGPU" || name == "Vulkan" || name == "OpenCL (deprecated)",
         "Unknown backend: {name}"
     );
 }

@@ -67,6 +67,7 @@ impl Default for ServerConfig {
 
 impl ServerConfig {
     /// Set bind address
+    #[must_use]
     pub fn bind_address<S: Into<String>>(mut self, address: S) -> Self {
         self.bind_address = address.into();
         self
@@ -215,7 +216,8 @@ impl Default for HealthCheckConfig {
 /// Primal capability system configuration.
 ///
 /// Fields use capability-domain names per `CAPABILITY_BASED_DISCOVERY_STANDARD.md`.
-/// Legacy env var names for coordination/intelligence endpoints are accepted as fallbacks.
+/// Endpoint hints come from [`toadstool_common::primal_sockets::SocketPathEnv`] (includes legacy
+/// `SONGBIRD_ENDPOINT` / `SQUIRREL_ENDPOINT` chains as fallbacks).
 #[derive(Debug, Clone)]
 pub struct PrimalCapabilitiesConfig {
     /// Enable capability provider
@@ -236,16 +238,11 @@ pub struct PrimalCapabilitiesConfig {
 
 impl Default for PrimalCapabilitiesConfig {
     fn default() -> Self {
+        let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
         Self {
-            enabled: std::env::var("ENABLE_PRIMAL_CAPABILITIES")
-                .map(|v| v == "true")
-                .unwrap_or_default(),
-            coordination_endpoint: std::env::var("COORDINATION_ENDPOINT")
-                .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
-                .ok(),
-            ai_processing_endpoint: std::env::var("AI_PROCESSING_ENDPOINT")
-                .or_else(|_| std::env::var("SQUIRREL_ENDPOINT"))
-                .ok(),
+            enabled: std::env::var("ENABLE_PRIMAL_CAPABILITIES").is_ok_and(|v| v == "true"),
+            coordination_endpoint: socket_env.coordination_connection_hint,
+            ai_processing_endpoint: socket_env.routing_connection_hint,
             heartbeat_interval_secs: std::env::var("PRIMAL_HEARTBEAT_INTERVAL")
                 .ok()
                 .and_then(|v| v.parse().ok())
@@ -288,6 +285,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] // exact defaults in test
     fn test_health_check_config_default() {
         let config = HealthCheckConfig::default();
         assert!(config.check_runtime_engines);

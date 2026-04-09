@@ -77,8 +77,11 @@ impl Watchdog {
                         break;
                     }
                     let (lock, cvar) = &*wake_clone;
-                    let guard = lock.lock().unwrap();
-                    let _ = cvar.wait_timeout(guard, poll_interval).unwrap();
+                    let Ok(guard) = lock.lock() else {
+                        tracing::error!("watchdog condvar mutex poisoned — exiting");
+                        break;
+                    };
+                    let _ = cvar.wait_timeout(guard, poll_interval);
                 }
 
                 tracing::info!("nvpmu watchdog stopped");
@@ -96,8 +99,9 @@ impl Watchdog {
     pub fn stop(&self) {
         self.running.store(false, Ordering::Relaxed);
         let (lock, cvar) = &*self.wake;
-        let _guard = lock.lock().unwrap();
-        cvar.notify_all();
+        if let Ok(_guard) = lock.lock() {
+            cvar.notify_all();
+        }
     }
 
     /// Whether the watchdog is still running.

@@ -399,8 +399,12 @@ pub trait ToadStoolComputeRpc {
 pub struct HealthStatus {
     /// Service is healthy
     pub healthy: bool,
-    /// Service version
-    pub version: String,
+    /// Service version (`Arc<str>`: clone on hot paths is a refcount bump, not a string copy)
+    #[serde(
+        serialize_with = "serialize_arc_str",
+        deserialize_with = "deserialize_arc_str"
+    )]
+    pub version: Arc<str>,
     /// Uptime (seconds)
     pub uptime_secs: u64,
     /// Current resource utilization (0.0-1.0)

@@ -42,7 +42,9 @@ impl CachedPolicy {
 }
 
 /// Policy manager trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
+///
+/// NOTE(async-dyn): Consumers (e.g. `toadstool-security-sandbox` via `Arc<dyn PolicyManager>`).
+/// Native `async fn` in traits is not object-safe; `#[async_trait]` is required.
 #[async_trait]
 pub trait PolicyManager: Send + Sync {
     /// Load policy from storage
@@ -233,7 +235,6 @@ impl FilePolicyManager {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
 #[async_trait]
 impl PolicyManager for FilePolicyManager {
     async fn load_policy(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {

@@ -210,7 +210,7 @@ fn test_platform_paths_toadstool_jsonrpc_socket() {
     let paths = PlatformPaths::new(&env);
     assert_eq!(
         paths.toadstool_jsonrpc_socket(),
-        PathBuf::from("/run/user/1000/biomeos/toadstool.jsonrpc.sock")
+        PathBuf::from("/run/user/1000/biomeos/compute.sock")
     );
 }
 

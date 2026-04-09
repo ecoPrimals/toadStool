@@ -314,6 +314,7 @@ impl ZeroConfigDeployment {
     }
 
     /// Discover GPU information
+    #[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
     async fn discover_gpu(&self) -> Result<GpuInfo> {
         debug!("Discovering GPU information");
 
@@ -336,7 +337,7 @@ impl ZeroConfigDeployment {
                             model: parts[1].trim().to_string(),
                             memory_bytes: parts[2].trim().parse::<u64>().unwrap_or(0) * 1024 * 1024,
                             cuda: true,
-                            opencl: true,
+                            opencl: false,
                         });
                     }
                 }

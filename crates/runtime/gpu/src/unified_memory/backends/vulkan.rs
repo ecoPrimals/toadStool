@@ -191,10 +191,6 @@ impl VulkanBackend {
     /// * `device` - Existing vk::Device handle (reserved)
     /// * `physical_device` - Physical device handle (reserved)
     /// * `max_allocation` - Maximum allocation size
-    #[expect(
-        dead_code,
-        reason = "Vulkan device constructor; used when Vulkan runtime is available"
-    )]
     pub const fn with_device(
         _device: u64,          // vk::Device as u64
         _physical_device: u64, // vk::PhysicalDevice as u64
@@ -439,12 +435,9 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires Vulkan GPU hardware"]
     async fn test_vulkan_allocation() {
-        let backend = match VulkanBackend::try_init().await {
-            Ok(b) => b,
-            Err(_) => {
-                println!("Skipping test - Vulkan not available");
-                return;
-            }
+        let Ok(backend) = VulkanBackend::try_init().await else {
+            println!("Skipping test - Vulkan not available");
+            return;
         };
 
         // Allocate a buffer

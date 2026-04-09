@@ -1,0 +1,41 @@
+Open Research Commons License (ORC)
+
+Copyright (c) 2025-2026 ecoPrimals Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of the game mechanics, interaction patterns, and procedural systems described
+in this project (the "Mechanics"), to use, study, modify, and redistribute
+the Mechanics, subject to the following conditions:
+
+1. SHARE-ALIKE: Any derivative work that incorporates these Mechanics must
+   be distributed under this same license or a compatible copyleft license.
+
+2. ATTRIBUTION: Derivative works must give appropriate credit to the
+   ecoPrimals project, provide a link to this license, and indicate if
+   changes were made.
+
+3. NON-ENCLOSURE: The Mechanics may not be used to create proprietary
+   systems that restrict access to equivalent functionality. Patent claims
+   on the Mechanics themselves are waived for any use that complies with
+   this license.
+
+4. INTEROPERABILITY: Implementations of these Mechanics must maintain
+   compatibility with the ecoPrimals ecosystem's published wire protocols
+   and capability-based discovery standards.
+
+THE MECHANICS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE MECHANICS OR THE USE OR OTHER DEALINGS IN
+THE MECHANICS.
+
+---
+
+This license is part of the scyBorg triple-license structure:
+  - AGPL-3.0-or-later: Source code
+  - ORC: Game mechanics, interaction patterns, procedural systems
+  - CC-BY-SA 4.0: Creative assets, documentation, narrative content
+
+See LICENSE (AGPL-3.0) and LICENSE-CC-BY-SA for the other legs.

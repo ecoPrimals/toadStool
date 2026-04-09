@@ -88,8 +88,9 @@ impl HugePageMemory {
         let map_flags = MapFlags::hugetlb_with_size_log2(page_size.log2())
             .ok_or(HugePageError::Unsupported(page_size))?;
 
-        // SAFETY: mmap_anonymous creates a fresh anonymous mapping; no fd involved.
-        // We own the returned pointer exclusively.
+        // SAFETY: rustix exposes `mmap_anonymous` as `unsafe fn` (like libc): the caller must
+        // prove `addr`/`length` are valid for mapping. We pass `null` and `aligned_size` from
+        // this function; the kernel returns the only pointer we treat as valid.
         let raw = unsafe {
             mmap_anonymous(
                 std::ptr::null_mut(),
@@ -102,10 +103,11 @@ impl HugePageMemory {
 
         let ptr = NonNull::new(raw.cast::<u8>()).expect("mmap_anonymous returned null after Ok");
 
-        // SAFETY: ptr is valid for aligned_size bytes from the mmap above.
+        // SAFETY: `ptr`/`aligned_size` describe the mapping returned above; rustix `mlock` requires
+        // the range to be valid to read (it is).
         if let Err(e) = unsafe { mlock(ptr.as_ptr().cast(), aligned_size) } {
             // Cleanup: munmap the region we just mapped.
-            // SAFETY: ptr and aligned_size from the successful mmap above.
+            // SAFETY: same mapping as the successful `mmap_anonymous`.
             unsafe {
                 let _ = munmap(ptr.as_ptr().cast(), aligned_size);
             }
@@ -145,7 +147,8 @@ impl HugePageMemory {
 
 impl Drop for HugePageMemory {
     fn drop(&mut self) {
-        // SAFETY: ptr and size from successful mmap_anonymous + mlock in new().
+        // SAFETY: `ptr`/`size` match the still-mapped region from `new()`; rustix `munlock`/`munmap`
+        // require the same provenance as the original mapping syscalls.
         unsafe {
             let _ = munlock(self.ptr.as_ptr().cast(), self.size);
             let _ = munmap(self.ptr.as_ptr().cast(), self.size);

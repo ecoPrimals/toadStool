@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // Unsafe Send/Sync impls for GPU allocation handles
+#![allow(unsafe_code)]
+// `unsafe impl Send/Sync` for `GpuPtr` — raw pointers are not `Send`/`Sync` by default (see rust-lang/rust#48214)
 //! Backend trait for unified memory implementations
 
 use crate::unified_memory::types::{
@@ -8,26 +9,29 @@ use crate::unified_memory::types::{
 use async_trait::async_trait;
 use toadstool::error::ToadStoolResult;
 
-/// Thread-safe raw pointer for GPU/SVM allocations.
+/// Opaque CPU/GPU address token for unified-memory allocations.
 ///
-/// Wraps `*mut u8` with `Send + Sync` so that allocation structs containing
-/// GPU-owned memory can be transferred across threads without per-type
-/// `unsafe impl Send/Sync`.
+/// `repr(transparent)` wrapper around `*mut u8`. Raw pointers do not implement [`Send`] or
+/// [`Sync`] in Rust’s type system (see rust-lang/rust#48214), so this crate supplies
+/// explicit `unsafe impl`s with documented invariants.
 ///
-/// # Safety (of the `Send + Sync` impls)
+/// # Semantic invariant (API contract)
 ///
-/// GPU-allocated memory is owned exclusively by the allocation handle.
-/// The underlying GPU APIs (Vulkan, OpenCL, wgpu) are thread-safe per their
-/// specifications. Correct synchronization of actual memory *access* is
-/// enforced by the `UnifiedMemoryBackend` protocol (map/unmap/sync), not
-/// by the pointer itself.
+/// Each [`GpuPtr`] must correspond to **one** backend-owned allocation (no aliasing between
+/// unrelated handles). Concurrent **access** to the memory (CPU/GPU coherence, queues) is
+/// enforced by [`UnifiedMemoryBackend`] and buffer synchronization—not by [`GpuPtr`] alone.
 #[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct GpuPtr(*mut u8);
 
-// SAFETY: see struct-level doc.
+// SAFETY: `GpuPtr` is an opaque address/handle produced by GPU APIs (Vulkan, wgpu, etc.).
+// Moving or sharing the *value* across threads is allowed when the backend documents
+// thread-safe use of those APIs; the pointer does not refer to Rust stack data or TLS.
 unsafe impl Send for GpuPtr {}
-// SAFETY: see struct-level doc.
+
+// SAFETY: Shared references to values containing `GpuPtr` (e.g. `&BackendAllocation` in
+// async trait objects) require `Sync` on the handle type. Same invariant as `Send`: the
+// address is backend-owned unified memory, not Rust-managed aliased `&mut` data.
 unsafe impl Sync for GpuPtr {}
 
 impl GpuPtr {
@@ -65,9 +69,6 @@ pub enum BackendAllocation {
     /// Vulkan memory allocation
     Vulkan(VulkanAllocation),
 
-    /// `OpenCL` SVM allocation
-    OpenCL(OpenClAllocation),
-
     /// `WebGPU` buffer allocation
     WebGpu(WebGpuAllocation),
 
@@ -86,19 +87,6 @@ pub struct VulkanAllocation {
 
     /// Mapped CPU pointer
     pub cpu_ptr: GpuPtr,
-}
-
-/// `OpenCL` SVM allocation details
-#[derive(Debug)]
-pub struct OpenClAllocation {
-    /// SVM pointer (unified CPU/GPU address)
-    pub ptr: GpuPtr,
-
-    /// Size in bytes
-    pub size: usize,
-
-    /// `OpenCL` context handle (for cleanup)
-    pub context_handle: u64,
 }
 
 /// `WebGPU` allocation details
@@ -320,7 +308,6 @@ mod tests {
         // WebGpuAllocation contains wgpu::Buffer which is larger
         assert!(size_of::<BackendAllocation>() <= 512); // Increased for WebGpu
         assert!(size_of::<VulkanAllocation>() <= 32);
-        assert!(size_of::<OpenClAllocation>() <= 32);
         // WebGpuAllocation is larger due to containing wgpu::Buffer (complex type)
         assert!(size_of::<WebGpuAllocation>() <= 256);
         assert!(size_of::<CpuAllocation>() <= 24);
@@ -339,7 +326,6 @@ mod tests {
         fn assert_send_sync<T: Send + Sync>() {}
 
         assert_send_sync::<VulkanAllocation>();
-        assert_send_sync::<OpenClAllocation>();
         assert_send_sync::<WebGpuAllocation>();
         assert_send_sync::<CpuAllocation>();
         assert_send_sync::<BackendAllocation>();

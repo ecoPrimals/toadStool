@@ -71,7 +71,7 @@ impl SiliconHandler {
 
         let tolerance = params
             .get("tolerance_required")
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .ok_or_else(|| JsonRpcError::invalid_params("missing 'tolerance_required'"))?;
 
         let store = self.measurements.read().await;
@@ -90,13 +90,12 @@ impl SiliconHandler {
             }));
         }
 
-        let best = match matching.iter().max_by(|a, b| {
+        let Some(best) = matching.iter().max_by(|a, b| {
             a.throughput_gflops
                 .partial_cmp(&b.throughput_gflops)
                 .unwrap_or(std::cmp::Ordering::Equal)
-        }) {
-            Some(m) => m,
-            None => return Err(JsonRpcError::internal_error("no matching measurement")),
+        }) else {
+            return Err(JsonRpcError::internal_error("no matching measurement"));
         };
 
         let fallback = matching
@@ -152,7 +151,7 @@ impl SiliconHandler {
             "operations": operations,
             "gpu_models": gpu_models,
             "silicon_units": silicon_units,
-            "all_known_units": SiliconUnit::ALL.iter().map(|u| u.as_str()).collect::<Vec<_>>()
+            "all_known_units": SiliconUnit::ALL.iter().map(toadstool_core::SiliconUnit::as_str).collect::<Vec<_>>()
         }))
     }
 
@@ -194,7 +193,7 @@ impl SiliconHandler {
 
             let tolerance = item
                 .get("tolerance")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .ok_or_else(|| JsonRpcError::invalid_params("workload item missing 'tolerance'"))?;
 
             let routed = route_single_op(&store, op, tolerance);
@@ -247,7 +246,9 @@ fn route_single_op(store: &[PerformanceMeasurement], op: &str, tolerance: f64) -
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-    let fallback = if best.silicon_unit != SiliconUnit::ShaderCore {
+    let fallback = if best.silicon_unit == SiliconUnit::ShaderCore {
+        None
+    } else {
         Some(Box::new(RoutedOperation {
             operation: op.to_string(),
             silicon_unit: shader_fallback.map_or(SiliconUnit::ShaderCore, |f| f.silicon_unit),
@@ -259,8 +260,6 @@ fn route_single_op(store: &[PerformanceMeasurement], op: &str, tolerance: f64) -
             reason: String::from("shader core fallback"),
             fallback: None,
         }))
-    } else {
-        None
     };
 
     RoutedOperation {
@@ -339,7 +338,9 @@ fn route_heuristic(op: &str, tolerance: f64) -> RoutedOperation {
         )
     };
 
-    let fallback = if unit != SiliconUnit::ShaderCore {
+    let fallback = if unit == SiliconUnit::ShaderCore {
+        None
+    } else {
         Some(Box::new(RoutedOperation {
             operation: op.to_string(),
             silicon_unit: SiliconUnit::ShaderCore,
@@ -348,8 +349,6 @@ fn route_heuristic(op: &str, tolerance: f64) -> RoutedOperation {
             reason: String::from("shader core fallback (heuristic)"),
             fallback: None,
         }))
-    } else {
-        None
     };
 
     RoutedOperation {

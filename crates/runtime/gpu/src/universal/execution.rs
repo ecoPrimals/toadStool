@@ -138,7 +138,7 @@ pub enum KernelLanguage {
     Wgsl,
     /// SPIR-V.
     Spirv,
-    /// `OpenCL` C.
+    /// `OpenCL` C (dispatch via barraCuda/coralReef; not compiled in-tree — S198).
     OpenClC,
     /// CUDA.
     Cuda,

@@ -56,7 +56,7 @@ async fn main() {
         "params": {
             "primal": "toadstool",
             "capabilities": CAPABILITIES,
-            "socket": "toadstool.jsonrpc.sock",
+            "socket": "compute.sock",
             "version": "0.1.0"
         },
         "id": 1

@@ -181,7 +181,11 @@ mod tests {
             temp_env::with_var_unset("TOADSTOOL_SOCKET", || {
                 temp_env::with_var_unset("BIOMEOS_SOCKET_PATH", || {
                     let path = get_toadstool_socket_path();
-                    assert!(path.to_string_lossy().contains("toadstool"));
+                    assert!(
+                        path.to_string_lossy().ends_with("compute.sock"),
+                        "Self-Knowledge v1.1: domain-based name, got: {}",
+                        path.display()
+                    );
                 });
             });
         });

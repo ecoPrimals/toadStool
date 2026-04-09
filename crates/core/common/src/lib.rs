@@ -19,6 +19,8 @@ use uuid::Uuid;
 
 // Public modules
 pub mod auth;
+#[cfg(feature = "btsp")]
+pub mod btsp;
 pub mod capability_discovery; // NEW: Pure infant discovery API (modern interface)
 pub mod capability_provider; // NEW: Deep Debt - Capability-based service provider abstraction
 pub mod config_bases;

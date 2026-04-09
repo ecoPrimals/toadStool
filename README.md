@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **21,526+ tests, 0 failures** (S194), 121 ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **21,600+ tests, 0 failures** (S198), 121 ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
@@ -58,7 +58,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files **< 400 lines** (S166: seven former monoliths split into module dirs) |
+| File size limit | All production files **< 500 lines** (S198: six large modules split into dirs; S166: seven former monoliths) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -244,7 +244,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,526+** (S194), 0 failures |
+| Workspace tests | **21,600+** (S198), 0 failures |
 | Full workspace test time | ~2m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -265,16 +265,17 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,526+ tests (S194); ~80-85% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,600+ tests (S198); ~80-85% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S198 (Apr 9, 2026)**: TS-01 closed — `visualization_client.rs` uses unified `capability.disciscover` for coralReef/shader compiler (removed `CORALREEF_*` env, `coralreef-core.json`, coralreef dir scan). **BTSP Phase 2** — handshake on all UDS accept paths (`tarpc_server.rs`, `daemon/jsonrpc_server.rs`). **Health triad** — `health.liveness` / `readiness` / `check` response shapes aligned. OpenCL deprecated (`ocl` removed; `GpuFramework::OpenCl` stubbed). `#[allow]` → `#[expect]` where lints fire (~80 justified `#[allow]` remain). Six large files refactored into module dirs (handler/core, tarpc_server, interned_strings, ecosystem/types, storage, cloud_provider_trait — all <500 lines). **Capability discovery** — `SocketPathEnv` hints + `resolve_capability_socket_fallback` for primal lookups. BearDog `auth.token.refresh` async impl. Embedded stubs: `thiserror` platform errors. Unsafe hardening (nvpmu `VfioIrqSetPayload`, V4L2 fd checks, hw-safe debug asserts, secure_enclave `madvise`). **musl** static x86_64 PIE binary (~11MB) validated. Net −5,157 lines / 228 files; 0 clippy warnings, 0 fmt diffs, 0 test failures.
 - **S194 (Apr 8, 2026)**: Deep debt — evolved remaining `nestgate_integration` → `storage_integration`, `NestGateMount` → `StorageMount`, primal-named test functions to capability-based, doc comments cleaned across tarpc_client, CLI banner, auth/storage types, orchestration discovery. ~400 intentional legacy-compat refs remain (env fallbacks, serde aliases). 21,526+ tests, 0 failures.
 - **S193 (Apr 8, 2026)**: Headless GPU architecture — `wgpu` crash isolation via `catch_unwind` + thread timeout in `discover_gpus_via_wgpu()`. `TOADSTOOL_HEADLESS=1` env var restricts to Vulkan backend. `gpu_guards::is_headless()`. BTSP insecure guard field rename (`beardog_required` → `security_required`). Cross-primal doc cleanup continues.
 - **S192 (Apr 8, 2026)**: GAP-MATRIX-12 — `validate_insecure_guard()` at server startup refuses when both `FAMILY_ID` + `BIOMEOS_INSECURE=1` are set. BTSP client awareness for family-scoped socket handshake. +11 tests.
 - **S188 (Apr 5, 2026)**: Cross-primal doc cleanup — capability-based language in 61 files; cross-primal references 550→425; remaining are all backward-compatibility (serde aliases, env var fallbacks, interned constants). Full audit: unsafe at FFI boundaries only, thread::sleep at hardware boundaries only, production mocks fully gated, all files <700L.
-- **S185-186 (Apr 5, 2026)**: Unsafe evolution — full audit of all ~90 unsafe sites. Removed 4 redundant `unsafe impl Send/Sync` (LockedMemory, Bar0Access). Evolved akida-driver DMA to `OwnedFd`. Centralized ioctl dispatch into `do_ioctl` helpers (VFIO, V4L2, DRM). Generic `read_reg<T>`/`write_reg<T>` for volatile MMIO. Created `ExclusivePtr` newtype (auto-derives Send+Sync for memory types, -6 unsafe impls). Created `ContiguousBytes` trait (centralizes `from_raw_parts` into 2 blocks, -6 unsafe blocks). Evolved nvpmu DMA from `RawFd` to `OwnedFd`. **Net: ~59→~36 unsafe blocks, ~20→~15 unsafe impls.** All remaining unsafe pinned for ecosystem evolution (coralReef/barracuda replace CUDA/OpenCL). Zero behavioral changes.
+- **S185-186 (Apr 5, 2026)**: Unsafe evolution — full audit of all ~90 unsafe sites. Removed 4 redundant `unsafe impl Send/Sync` (LockedMemory, Bar0Access). Evolved akida-driver DMA to `OwnedFd`. Centralized ioctl dispatch into `do_ioctl` helpers (VFIO, V4L2, DRM). Generic `read_reg<T>`/`write_reg<T>` for volatile MMIO. Created `ExclusivePtr` newtype (auto-derives Send+Sync for memory types, -6 unsafe impls). Created `ContiguousBytes` trait (centralizes `from_raw_parts` into 2 blocks, -6 unsafe blocks). Evolved nvpmu DMA from `RawFd` to `OwnedFd`. **Net: ~59→~36 unsafe blocks, ~20→~15 unsafe impls.** All remaining unsafe pinned for ecosystem evolution (coralReef/barracuda vs CUDA; OpenCL deprecated S198). Zero behavioral changes.
 - **S175 (Apr 3, 2026)**: Unsafe code reduction Phase 1+2. V4L2 ioctls extracted to `v4l2::ioctl` containment module (device.rs now pure safe Rust). GPU backend constructors (`with_device`/`with_context`) made safe. 6 `unsafe impl Send/Sync` consolidated into single `GpuPtr` newtype. `HugePageMemory` RAII type in hw-safe absorbs raw mmap/mlock from nvpmu/dma.rs. Consumer `unsafe {}` blocks reduced 80% (56→11). Total: 59 actual unsafe blocks (48 in containment zones). 0 clippy warnings.
 - **S174 (Apr 3, 2026)**: Unsafe audit — deleted duplicate `VolatileSlice` from akida-driver (replaced with `hw-safe::VolatileMmio`). Added `dma_map_fd`/`dma_unmap_fd` safe wrappers in hw-safe. Net −10 unsafe blocks (89→79 grep, 77 actual). All quality gates green.
 - **S172-5 (Apr 2, 2026)**: Capability-based discovery compliance per primalSpring audit. Evolved ~105 foreign primal references across 40 files: `ServiceDomainsConfig` fields (`songbird`→`coordination`, `beardog`→`security`, `nestgate`→`storage`, `squirrel`→`ai_processing`); `SOCKET_FILENAME` from `beardog.sock`→`security.sock` (Tier 3 capability-domain socket); `EndpointConfig` fields; `EcosystemServices` fields; `PrimalCapabilitiesConfig` fields; all with `#[serde(alias)]` for backward compat and legacy env var fallbacks. 0 clippy warnings, 0 doc warnings, 0 test failures.
@@ -310,9 +311,10 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,526+ tests (S194); ~80-85% lib-only line (185K instrumented); remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S198); ~80-85% lib-only line (185K instrumented); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
+| D-BTSP-PHASE2 | ~~BTSP on all UDS accept paths~~ | **RESOLVED** -- S198: handshake wired in `tarpc_server.rs` and `daemon/jsonrpc_server.rs` (pure JSON-RPC already had it) |
 
 ### Resolved (S94b)
 
@@ -354,7 +356,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 8, 2026 — S194. **21,526+** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S194**: Deep debt — capability-based field/type/doc evolution. **S193**: Headless GPU crash isolation + BTSP field renames. **S192**: GAP-MATRIX-12 BTSP insecure guard. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 9, 2026 — S198. **21,600+** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S198**: TS-01 (`capability.discover`), BTSP Phase 2 UDS, health triad, OpenCL deprecation, module splits (<500 lines target), musl static binary, net −5K lines — quality gates green. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

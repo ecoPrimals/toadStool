@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2025 ecoPrimals
+#![allow(deprecated)]
 #![allow(
     clippy::float_cmp,
     reason = "exact comparison intended in this context"

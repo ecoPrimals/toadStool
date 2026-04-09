@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! # Real GPU + CPU Pool with Universal Abstraction
 //!
-//! Uses ToadStool's universal compute interface - works with CUDA, `OpenCL`, Vulkan, or CPU
+//! Uses ToadStool's universal compute interface - works with Vulkan, wgpu, or CPU
 //! No backend-specific code needed!
 //!
 //! ```cargo
 //! [dependencies]
 //! toadstool = { path = "../crates/core/toadstool" }
-//! toadstool-runtime-gpu = { path = "../crates/runtime/gpu", features = ["opencl"] }
+//! toadstool-runtime-gpu = { path = "../crates/runtime/gpu" }
 //! tokio = { version = "1", features = ["full"] }
 //! tracing = "0.1"
 //! tracing-subscriber = "0.3"
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("║                                                              ║");
     println!("║  🍄 ToadStool Universal GPU + CPU Pool Demo                ║");
     println!("║                                                              ║");
-    println!("║  Backend-agnostic: Works with CUDA, OpenCL, Vulkan, or CPU  ║");
+    println!("║  Backend-agnostic: Works with Vulkan, wgpu, or CPU          ║");
     println!("║                                                              ║");
     println!("╚══════════════════════════════════════════════════════════════╝");
     println!();
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // WORKLOAD 1: Matrix Multiplication (GPU-optimized, CPU fallback)
     // ========================================================================
     println!("1️⃣  Matrix Multiplication (2048x2048)");
-    println!("   Backend: Universal (CUDA/OpenCL/Vulkan/CPU auto-select)");
+    println!("   Backend: Universal (Vulkan/wgpu/CPU auto-select)");
     println!();
 
     let matrix_requirements = ComputeRequirements {
@@ -344,7 +344,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🎯 Universal Abstraction Benefits:");
     println!();
-    println!("   ✅ Backend-agnostic code (same code works on CUDA, OpenCL, Vulkan, CPU)");
+    println!("   ✅ Backend-agnostic code (same code works on Vulkan, wgpu, CPU)");
     println!("   ✅ Automatic resource selection based on workload requirements");
     println!("   ✅ Load balancing across available resources");
     println!("   ✅ Graceful fallback (GPU → CPU when GPU unavailable)");
@@ -357,7 +357,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   2. Analyzed workload requirements (threads, memory, operations)");
     println!("   3. Selected optimal resource for each workload");
     println!("   4. Executed using Rayon parallel execution on CPU");
-    println!("   5. (When GPU available: Would auto-use CUDA/OpenCL/Vulkan)");
+    println!("   5. (When GPU available: Would auto-use Vulkan/wgpu)");
     println!();
 
     println!("🚀 Add GPU to Pool:");

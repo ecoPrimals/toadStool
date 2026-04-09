@@ -36,7 +36,8 @@ impl AgentDeploymentManager {
     ///
     /// # Discovery Order
     ///
-    /// 1. Environment variable: `TOADSTOOL_AI_ENDPOINT` (or legacy `SQUIRREL_ENDPOINT`)
+    /// 1. Environment: capability-domain hints via [`toadstool_common::primal_sockets::SocketPathEnv`]
+    ///    (`TOADSTOOL_AI_ENDPOINT`, `AI_PROCESSING_ENDPOINT`, legacy `SQUIRREL_ENDPOINT`, …)
     /// 2. mDNS/local network discovery for "ai-orchestration" or "storage" capability
     /// 3. Unix socket discovery at standard paths
     ///
@@ -74,11 +75,9 @@ impl AgentDeploymentManager {
             }
         }
 
-        // Priority 2: Check environment variables (capability-domain first)
-        if let Ok(endpoint) = std::env::var("TOADSTOOL_AI_ENDPOINT")
-            .or_else(|_| std::env::var("AI_PROCESSING_ENDPOINT"))
-            .or_else(|_| std::env::var("SQUIRREL_ENDPOINT"))
-        {
+        // Priority 2: Capability-domain / legacy routing endpoint hints (see SocketPathEnv)
+        let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+        if let Some(endpoint) = socket_env.routing_connection_hint {
             tracing::info!("Discovered ML service via environment: {}", endpoint);
             let mut config = config;
             config.ai_processing_endpoint = endpoint;
@@ -95,9 +94,9 @@ impl AgentDeploymentManager {
         }
 
         Err(crate::ToadStoolError::configuration(
-            "No AI provider discovered. Set TOADSTOOL_AI_ENDPOINT, AI_PROCESSING_ENDPOINT, or \
-             SQUIRREL_ENDPOINT; configure ai_processing_endpoint in the agent deployment config; \
-             or ensure an AI/orchestration service is reachable via capability discovery.",
+            "No AI provider discovered. Set TOADSTOOL_AI_ENDPOINT / AI_PROCESSING_ENDPOINT (see \
+             SocketPathEnv routing hints); configure ai_processing_endpoint in the agent deployment \
+             config; or ensure an AI/orchestration service is reachable via capability discovery.",
         ))
     }
 

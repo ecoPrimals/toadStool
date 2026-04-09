@@ -37,5 +37,5 @@ pub use paths::{
     is_btsp_required, resolve_biomeos_dir, resolve_capability_socket_fallback, resolve_family_id,
     resolve_nucleus_socket, resolve_routing_socket, resolve_runtime_dir,
     resolve_socket_path_for_service, resolve_toadstool_socket, service_label_to_capability_id,
-    validate_insecure_guard,
+    unix_path_from_connection_hint, validate_insecure_guard,
 };

@@ -9,7 +9,10 @@
 //!
 //! ⚠️ **MIGRATION NOTICE**: Uses deprecated hardcoded ports during transition to capability-based discovery.
 
-#![allow(deprecated)] // Module uses deprecated fields during migration
+#![expect(
+    deprecated,
+    reason = "module uses deprecated fields during capability migration"
+)]
 
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;

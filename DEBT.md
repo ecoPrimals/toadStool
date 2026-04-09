@@ -1,30 +1,244 @@
 # Active Technical Debt Register
 
-**Date**: April 8, 2026 — S194
+**Date**: April 9, 2026 — S198
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 ## Active Debt
 
-### D-TARPC-PHASE3
+### D-TARPC-PHASE3-BINARY
 **Crate**: `integration/protocols` | **Feature**: `tarpc-transport`
-`TRpcTransport::send_message` returns `TRpcTransportNotAvailable` — tarpc binary
-transport is not yet wired. Evolve once `toadstool_common::tarpc_service` API
-stabilizes and coordination mesh negotiation supports protocol switching.
+`TRpcTransport::send_message` now wired (S197): resolves target primal's Unix
+socket via capability discovery and sends via JSON-RPC 2.0 (the universal
+protocol per wateringHole). **Phase 3b**: negotiate tarpc binary framing for
+eligible Rust-to-Rust peers when coordination mesh supports protocol switching.
 Files: `transport.rs`.
 
 ### D-EMBEDDED-PROGRAMMER
 **Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
 ISP/ICSP/parallel programmer trait impls return `EmbeddedProgrammerPlaceholder` errors.
-Evolve when hardware-specific transport layers (USB, parallel, serial) land.
+**Partially resolved S198**: `thiserror`-based platform-specific error types replace generic placeholders; behavior remains placeholder until hardware-specific transport layers (USB, parallel, serial) land.
 Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
 
 ### D-EMBEDDED-EMULATOR
 **Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
 MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
-Evolve when cycle-accurate CPU cores are implemented.
+**Partially resolved S198**: Typed errors as above; cycle-accurate CPU cores and real emulation still deferred.
 Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+
+### D-COVERAGE-GAP
+**Scope**: Workspace | **Metric**: `cargo llvm-cov`
+Line coverage at 83.6% (target: 90%). Gap concentrated in integration crates,
+runtime backends (GPU/container/WASM), and distributed coordination paths.
+`cudarc` blocker resolved S197 (removed). `--all-features` should now work on
+machines without CUDA toolkit.
+Files: `scripts/run-coverage.sh`, `.github/workflows/ci.yml`.
+
+### D-FUZZ-TARGETS-UNSAFE
+**Crate**: `runtime/gpu` | Scope: `unified_memory/buffer/access.rs`
+Remaining unsafe surface: two `from_raw_parts(_mut)` call sites. Safety docs
+now accurately distinguish runtime-checked vs backend-contract-assumed invariants.
+Dead u8 alignment check removed S197. Evolution: fuzz the access paths, consider
+`NonNull::slice_from_raw_parts` for fat-pointer representation.
+Files: `buffer/access.rs`.
+
+### D-FUZZ-TARGETS — PARTIAL S197
+**Scope**: Workspace | **Dir**: `fuzz/`
+Initial `cargo-fuzz` / `libfuzzer` infrastructure added (S197). Three targets:
+`fuzz_jsonrpc_parse` (JSON-RPC 2.0 deser), `fuzz_config_toml` (config deser +
+validation), `fuzz_btsp_framing` (BTSP length-prefixed frame decode).
+Remaining: integrate into CI, add seed corpus, run extended campaigns, add
+proptest bridge for property-based input generation.
+Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`.
+
+
+## S198 Resolved Debt (TS-01 visualization, BTSP Phase 2 UDS, health triad)
+
+### D-GAP-TS01-VISUALIZATION — RESOLVED S198
+**TS-01** closed for `crates/server/src/visualization_client.rs`: coralReef / shader-compiler discovery is unified on `capability.discover` (same direction as D-GAP-TS01-CAPABILITY-DISCOVERY S172-3 for `coral_reef_client.rs`). Removed `CORALREEF_SOCKET` / `CORALREEF_URL`, `coralreef-core.json` manifest, and coralreef directory scan.
+
+### D-BTSP-PHASE2 — RESOLVED S198
+BTSP handshake is enforced on **all** Unix-domain-socket accept paths: `tarpc_server.rs`, `daemon/jsonrpc_server.rs` (pure JSON-RPC main server already required BTSP).
+
+### D-GAP-HEALTH-TRIAD — RESOLVED S198
+Canonical shapes: `health.liveness` → `{"status":"alive"}`; `health.readiness` → `{"status":"ready","version":...}`; `health.check` → full health envelope (details per handler).
+
+
+## S197 Resolved Debt (Transport Wiring, Fuzz Infra, Clippy, Dep Audit)
+
+### D-TARPC-PHASE3 — RESOLVED S197
+Wired `TRpcTransport::send_message` in `integration/protocols/transport.rs`.
+Transport resolves the target primal's Unix socket via capability-based
+discovery (`get_socket_path_for_capability`) and forwards via JSON-RPC 2.0
+(`UnixJsonRpcClient`), the universal protocol per wateringHole.
+Remaining: negotiate tarpc binary framing for Rust-to-Rust peers (Phase 3b).
+
+### D-FUZZ-TARGETS-INIT — RESOLVED S197
+Created `fuzz/` directory with `cargo-fuzz` / `libfuzzer` infrastructure:
+- `fuzz_jsonrpc_parse`: JSON-RPC 2.0 request deserialization
+- `fuzz_config_toml`: ToadStool TOML config deser + `validate()`
+- `fuzz_btsp_framing`: BTSP length-prefixed frame decode via async `Cursor`
+Workspace `Cargo.toml` excludes `fuzz/` from workspace members.
+
+### D-CLIPPY-SERVER-BLANKET — RESOLVED S197
+Server crate `#![allow(clippy::...)]` reduced from 34 suppressed lints to 5
+(doc_markdown, doc_comment_double_space_linebreaks, similar_names,
+struct_field_names, module_name_repetitions). All 51 warnings fixed:
+`#[must_use]` on builders, `let...else`, `unused_async`, `unused_self`,
+`items_after_statements`, `manual_let_else`, `unreadable_literal`,
+`unnecessary_debug_formatting`, `unnecessary_wraps`, `ref_option`.
+Similar cleanup applied to `auto_config` and `protocols` crates.
+
+### D-DEP-AUDIT — RESOLVED S197
+Audited all workspace dependencies for non–pure-Rust surface. No `ring`,
+`openssl-sys`, `libc` (direct), or `sqlite` in production deps. All crypto
+uses pure Rust crates (ed25519-dalek, x25519-dalek, chacha20poly1305, sha2).
+Remaining native surface is hardware-facing (wgpu, drm, serialport, rustix)
+and properly feature-gated. `ocl`/`cl-sys` legacy OpenCL stack noted for
+future monitoring.
+
+## S197 Earlier Resolved (Unsafe Tightening, VFIO Dedup, Legacy Names, Deps)
+
+### D-UNSAFE-UNIFIEDMEMORY — RESOLVED S197
+Tightened `from_raw_parts(_mut)` safety in `unified_memory/buffer/access.rs`:
+- Removed dead `align_of::<u8>()` check (u8 alignment is always 1)
+- Rewrote safety documentation with tabular invariant-enforcement mapping
+  that accurately distinguishes runtime-checked vs backend-contract-assumed
+- Documented what `validate_cpu_ptr` proves (allocation handle alive, NULL-page
+  guard, non-zero size) vs what it assumes (backend maps `size` bytes, pointer
+  remains mapped until `free_unified`)
+Files: `runtime/gpu/src/unified_memory/buffer/access.rs`.
+
+### D-VFIO-DEDUP — RESOLVED S197
+Merged duplicate VFIO ioctl scaffolding:
+- Exported `VFIO_TYPE` and `VFIO_BASE` from `hw-safe::vfio_dma` as public constants
+- `nvpmu/src/vfio.rs` now imports from `hw-safe` instead of redeclaring
+- Removed deprecated `dma_map_fd`/`dma_unmap_fd` (zero callers outside definition)
+Files: `hw-safe/src/vfio_dma.rs`, `nvpmu/src/vfio.rs`.
+
+### D-BTSP-EXPECT-EVOLVE — RESOLVED S197
+Evolved BTSP handshake `expect("HMAC accepts any key size")` on both client and
+server to fallible `map_err(|e| HandshakeError::KeyDerivation(...))`. Replaced
+`unwrap_or_default()` in `send_handshake_error` with compile-time fallback bytes.
+Files: `common/src/btsp/client.rs`, `common/src/btsp/server.rs`.
+
+### D-LEGACY-NAME-CENTRALIZE — RESOLVED S197
+Evolved inline string literals `"beardog"`, `"songbird"`, `"nestgate"`, `"squirrel"`
+in production code to use centralized `interned_strings::primals::LEGACY_*_LABEL`
+constants. Key files: `cli/src/templates/capability_helpers.rs` (6 map insertions),
+`integration/primals/src/primal_types.rs` (4 match arms).
+
+### D-CUDARC-DEPRECATE — RESOLVED S197
+Removed `cudarc` C-FFI dependency from `runtime/gpu`. CUDA dispatch is now
+handled by **barraCuda** (PTX, cuDNN, single-GPU) and **coralReef** (multi-GPU)
+via capability-based IPC — ToadStool discovers CUDA capability at runtime
+through the ecosystem mesh rather than embedding the NVIDIA toolchain.
+- Removed `cudarc = "0.19"` dependency and 5 source files (~33 KiB)
+- Replaced `cuda_impl/` with a deprecated stub pointing to barraCuda/coralReef
+- `cuda` feature flag retained as empty no-op for backward compat
+- `ai-ml` and `all-backends` features no longer pull CUDA
+- Removed `cudarc` from `deny.toml` skip-tree
+- Removed `FrameworkHandle::Cuda` variant from `types.rs`
+- Resolves **D-CUDARC-FEATURE-GATE** — `--all-features` builds no longer
+  require nvcc/CUDA toolkit
+Files: `runtime/gpu/Cargo.toml`, `runtime/gpu/src/backends/cuda_impl/*`,
+`runtime/gpu/src/types.rs`, `deny.toml`.
+
+### D-WORKSPACE-DEPS-RECONCILE — RESOLVED S197
+Reconciled workspace dependency declarations for `regex`, `config`, and `hex`:
+- `regex`: `auto_config`, `runtime/specialty`, `security/policies` → `{ workspace = true }`
+- `config`: `distributed`, `management/analytics` → `{ workspace = true }`
+- `hex`: `cli`, `runtime/wasm`, `security/policies`, `neuromorphic/akida-models` → `{ workspace = true }`
+Eliminated version drift risk (inline versions `"1.0"` vs workspace `"1.10"`).
+
+## S196 Resolved Debt (Socket Naming, BTSP Handshake, Framing, Family ID)
+
+### D-SOCKET-DOMAIN-NAMING — RESOLVED S196
+Evolved socket naming from primal-based (`toadstool.sock`) to domain-based
+(`compute.sock` / `compute-{fid}.sock`) per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md`
+v1.1. Legacy symlink `toadstool.sock → compute.sock` maintained during migration.
+Removed separate `.jsonrpc.sock` socket — unified to single domain-named socket.
+Updated `identity.get` to report `socket_name: "compute.sock"`.
+Files: `server/src/unibin/format.rs`, `server/src/unibin/mod.rs`,
+`common/src/constants/primal_identity.rs`, `common/src/primal_sockets/paths.rs`,
+`common/src/platform_paths/paths.rs`, `client/src/client/core.rs`,
+`core/toadstool/src/ipc/platform/{mod,unix}.rs`, showcase examples.
+
+### D-BTSP-HANDSHAKE — RESOLVED S196
+Implemented full BTSP handshake per `BTSP_PROTOCOL_STANDARD.md` v1.0.0:
+- Client: `BtspClient::handshake()` (ephemeral X25519, HKDF-SHA256,
+  HMAC-SHA256 challenge-response)
+- Server: `BtspServer::accept_handshake()` (verification + session keys)
+- Pure Rust crypto stack: `x25519-dalek`, `hkdf`, `hmac`, `sha2`,
+  `chacha20poly1305` — no C FFI (ecoBin compliant)
+- Feature-gated behind `btsp` (default on)
+- Full round-trip test: handshake succeeds with matching seed, rejects
+  with wrong seed, directional key agreement verified
+Files: `common/src/btsp/{mod,types,client,server,framing}.rs`,
+`common/Cargo.toml`, workspace `Cargo.toml`.
+
+### D-BTSP-FRAMING — RESOLVED S196
+Implemented length-prefixed BTSP frame codec (4-byte BE u32, max 16 MiB) per
+`BTSP_PROTOCOL_STANDARD.md`. Server connection handler detects BTSP mode
+(`is_btsp_required()`) and switches between NDJSON (dev) and length-prefixed
+framing (production). `BtspFrameReader`/`BtspFrameWriter` types for typed access.
+Files: `common/src/btsp/framing.rs`, `server/src/pure_jsonrpc/connection/unix.rs`.
+
+### D-FAMILY-ID-PRECEDENCE — RESOLVED S196
+Fixed `SocketPathEnv::from_env()` to read `TOADSTOOL_FAMILY_ID` first per
+`PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1 (`{PRIMAL}_FAMILY_ID → FAMILY_ID`).
+Previous order was `BIOMEOS_FAMILY_ID → TOADSTOOL_FAMILY`; now
+`TOADSTOOL_FAMILY_ID → TOADSTOOL_FAMILY → BIOMEOS_FAMILY_ID`.
+Files: `common/src/primal_sockets/env.rs`.
+
+## S195 Resolved Debt (Standards Compliance, NDJSON, Logging, Benchmarks)
+
+### D-SCYBORG-LICENSE — RESOLVED S195
+Added `LICENSE-ORC` (Open Research Commons) and `LICENSE-CC-BY-SA` (Creative Commons
+Attribution-ShareAlike 4.0) to complete the scyBorg triple license per
+`wateringHole/LICENSING_AND_COPYLEFT.md`. AGPL-3.0 was already present as `LICENSE`.
+
+### D-TARPC-SERVER-GATE — RESOLVED S195
+Feature-gated `tarpc` on server crate per wateringHole `PRIMAL_IPC_PROTOCOL.md`
+(tarpc OPTIONAL, JSON-RPC REQUIRED). `tarpc`, `tokio-util`, `tokio-serde` now
+optional behind `tarpc` feature (default=on for backward compat). Modules
+`tarpc_server`, `rpc_types`, `coordinator_executor` gated with `#[cfg(feature = "tarpc")]`.
+Files: `server/Cargo.toml`, `server/src/lib.rs`.
+
+### D-NDJSON-SESSION — RESOLVED S195
+Evolved `pure_jsonrpc` server Unix+TCP handlers from single-shot to persistent
+NDJSON sessions per `PRIMAL_IPC_PROTOCOL.md`. Connections now loop: read line →
+process → write response + newline → read next line until EOF. HTTP path remains
+single request-response. Backward compatible with existing single-request clients.
+Files: `connection/unix.rs`, `connection/tcp.rs`.
+
+### D-LOGGING-INCONSISTENCY — RESOLVED S195
+Evolved `security/sandbox/{macos,windows}.rs` from `log::` to `tracing::` macros
+(structured fields). Aligns all crates on `tracing` as the single logging facade.
+Files: `sandbox/src/macos.rs`, `sandbox/src/windows.rs`.
+
+### D-WATCHDOG-UNWRAP — RESOLVED S195
+Replaced `.lock().unwrap()` in `nvpmu/watchdog.rs` production thread with graceful
+mutex-poisoning handling. Watchdog exits loop on poison; `stop()` skips notify on
+poison. No more panic risk from std::sync::Mutex poisoning.
+Files: `nvpmu/src/watchdog.rs`.
+
+### D-CI-SKIP-MISMATCH — RESOLVED S195
+Fixed CI coverage step `--skip performance` (overly broad) to match local script:
+`--skip performance_bench --skip slow`. Prevents skipping `testing::performance`
+module coverage (~360 lines).
+Files: `.github/workflows/ci.yml`.
+
+### D-TOOLCHAIN-FILE — RESOLVED S195
+Added `rust-toolchain.toml` pinning stable channel with `rustfmt`, `clippy`,
+`llvm-tools-preview` components and musl cross-compile targets.
+
+### D-BENCHMARKS — RESOLVED S195
+Created Criterion benchmark infrastructure. `server/benches/jsonrpc_throughput.rs`
+benchmarks `process_request` for `capabilities.list`, `health.liveness`, `identity.get`.
+`process_request` promoted to pub for bench access.
+Files: `server/benches/jsonrpc_throughput.rs`, `server/Cargo.toml`.
 
 ## S192-194 Resolved Debt (BTSP Guard, Headless GPU, Capability Field Evolution)
 
@@ -338,7 +552,11 @@ single-line delegations.
 Gap TS-01 closed. `coral_reef_client.rs` discovery evolved from identity-based
 (coralreef env vars, manifests, socket name scan) to capability-based: primary
 tier is now `$XDG_RUNTIME_DIR/biomeos/shader.sock` (per CAPABILITY_BASED_DISCOVERY_STANDARD v1.1).
-Identity-based tiers demoted to legacy fallback. `songbird_integration/discovery/client.rs`
+`crates/server/src/visualization_client.rs` aligned with the same standard: Tier 1 is
+`capability.discover("shader")`, then Tier 0 / 2 / 3 (`TOADSTOOL_SHADER_COMPILER_ADDR`,
+`shader.sock`, `ecoPrimals/shader_compile.sock`, capability-named `shader*.sock` scan only).
+Legacy `CORALREEF_*` env, `coralreef-core.json`, and `coralreef*.sock` identity fallbacks removed.
+`songbird_integration/discovery/client.rs`
 `clone()` evolved to prefer `coordination.sock` over `songbird.sock`. `resolve_primal()`
 and `connect_to_primal()` deprecated in favour of `find_by_capability()`.
 

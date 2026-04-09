@@ -63,6 +63,9 @@ test_results.txt
 models/huggingface/
 models/akida/
 
+# Stray build artifacts
+rust_out
+
 # Fossilized directories (moved to ecoPrimals/fossil/)
 results/
 ui/

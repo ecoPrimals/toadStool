@@ -137,7 +137,10 @@ pub struct GpuInfo {
     pub memory_bytes: u64,
     /// CUDA availability
     pub cuda: bool,
-    /// OpenCL availability
+    /// Legacy field retained for serde compatibility.
+    ///
+    /// DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC. Always `false` from discovery.
+    #[deprecated(note = "DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC")]
     pub opencl: bool,
 }
 
@@ -365,6 +368,7 @@ impl Default for OsInfo {
 }
 
 impl Default for GpuInfo {
+    #[expect(deprecated, reason = "GpuInfo fields during S198 migration")]
     fn default() -> Self {
         Self {
             count: 0,

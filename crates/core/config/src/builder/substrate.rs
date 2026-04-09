@@ -34,7 +34,7 @@ pub enum SubstratePreference {
     Auto,
     /// Use a specific substrate type.
     Specific(SubstrateType),
-    /// Select by capability names (e.g. `["cuda", "opencl"]`).
+    /// Select by capability names (e.g. `["cuda", "vulkan", "wgpu"]`).
     ByCapability(Vec<String>),
 }
 
@@ -44,7 +44,7 @@ pub enum SubstratePreference {
 pub enum SubstrateType {
     /// CPU execution.
     Cpu,
-    /// `GPU` (`CUDA`, `OpenCL`, `etc`.).
+    /// GPU (`CUDA`, Vulkan, wgpu, etc.; OpenCL removed — see S198).
     Gpu,
     /// Neural processing unit.
     Npu,

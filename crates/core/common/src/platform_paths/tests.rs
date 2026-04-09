@@ -54,7 +54,7 @@ fn test_toadstool_socket() {
     let paths = PlatformPaths::new(&env);
     assert_eq!(
         paths.toadstool_socket(),
-        PathBuf::from("/run/user/1000/biomeos/toadstool.sock")
+        PathBuf::from("/run/user/1000/biomeos/compute.sock")
     );
 }
 

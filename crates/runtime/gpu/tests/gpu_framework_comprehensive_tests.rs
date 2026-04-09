@@ -56,9 +56,9 @@ fn test_gpu_framework_universality() {
     let cuda = GpuFramework::Cuda;
     assert!(!cuda.is_universal());
 
-    // OpenCL is universal
+    // OpenCL: serialization-only in-tree (S198); not `is_universal()`
     let opencl = GpuFramework::OpenCl;
-    assert!(opencl.is_universal());
+    assert!(!opencl.is_universal());
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn test_framework_priority_ordering() {
     let frameworks = vec![
         GpuFramework::Cuda,   // NVIDIA high-perf
         GpuFramework::Vulkan, // Cross-platform high-perf
-        GpuFramework::OpenCl, // Universal
+        GpuFramework::OpenCl, // Legacy label in config lists
         GpuFramework::WebGpu, // Future-ready
     ];
 
@@ -338,7 +338,7 @@ fn test_fallback_strategy() {
     let mut config = UniversalGpuConfig::default();
     config.discovery.enabled_frameworks = vec![
         GpuFramework::Cuda,
-        GpuFramework::OpenCl, // Fallback
+        GpuFramework::OpenCl, // Legacy label
         GpuFramework::WebGpu, // Final fallback
     ];
 

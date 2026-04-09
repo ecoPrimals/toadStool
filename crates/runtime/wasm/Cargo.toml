@@ -60,7 +60,7 @@ thiserror = { workspace = true }
 # System integration
 tempfile = { workspace = true }
 sha2 = "0.10"
-hex = "0.4"
+hex = { workspace = true }
 
 [features]
 # PURE RUST: default features simplified

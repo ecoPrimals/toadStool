@@ -26,11 +26,11 @@ toml = "0.8"
 
 # Security and cryptography
 sha2 = "0.10"
-hex = "0.4"
+hex = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Collections and utilities
-regex = "1.0"
+regex = { workspace = true }
 toadstool-sysmon = { workspace = true }
 
 # Logging and tracing

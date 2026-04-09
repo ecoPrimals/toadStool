@@ -18,7 +18,7 @@ pub use types_mod::{BiomeTemplate, CustomServiceSpec, CustomTemplateSpec};
 
 // Zero-copy constants
 pub mod capability_constants;
-pub mod constants; // DEPRECATED: Contains hardcoded primal names // NEW: Capability-based constants (Deep Debt compliant)
+pub mod constants; // Capability ids + legacy template aliases (see `constants::service_names` docs)
 
 // Template implementations
 pub mod basic_templates;

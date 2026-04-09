@@ -63,7 +63,7 @@ async fn test_server_creation() {
         .health_check(Context::current())
         .await
         .expect("Health check failed");
-    assert_eq!(health.version, "0.1.0");
+    assert_eq!(health.version.as_ref(), "0.1.0");
     assert_eq!(health.active_workloads, 0);
 }
 
@@ -86,7 +86,7 @@ async fn test_health_check() {
         .expect("Health check failed");
 
     assert!(health.healthy);
-    assert_eq!(health.version, "0.1.0");
+    assert_eq!(health.version.as_ref(), "0.1.0");
     assert_eq!(health.active_workloads, 0);
 }
 

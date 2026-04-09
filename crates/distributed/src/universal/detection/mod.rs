@@ -335,13 +335,7 @@ impl UniversalSubstrateCapabilities {
             });
         }
 
-        if gpu::check_opencl_support() {
-            architectures.push(SpecializedArchitecture::OpenCL {
-                version: gpu::get_opencl_version(),
-                device_type: gpu::get_opencl_device_type(),
-                compute_units: gpu::get_opencl_compute_units(),
-            });
-        }
+        // DEPRECATED S198: OpenCL is not advertised as an available substrate; Vulkan/wgpu are external GPU backends.
 
         Ok(architectures)
     }

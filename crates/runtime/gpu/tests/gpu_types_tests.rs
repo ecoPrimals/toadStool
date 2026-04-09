@@ -25,7 +25,7 @@ fn test_gpu_framework_vulkan() {
 fn test_gpu_framework_opencl() {
     let framework = GpuFramework::OpenCl;
     assert_eq!(framework.name(), "OpenCL");
-    assert!(framework.is_universal());
+    assert!(!framework.is_universal());
 }
 
 #[test]

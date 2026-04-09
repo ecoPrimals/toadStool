@@ -99,7 +99,6 @@ fn test_capabilities_score_supported_positive() {
 #[test]
 fn test_compute_unit_type_display() {
     assert_eq!(format!("{}", ComputeUnitType::Cpu), "CPU");
-    assert_eq!(format!("{}", ComputeUnitType::GpuOpenCl), "GPU (OpenCL)");
     assert_eq!(format!("{}", ComputeUnitType::GpuWgpu), "GPU (wgpu)");
     assert_eq!(format!("{}", ComputeUnitType::GpuVulkan), "GPU (Vulkan)");
     assert_eq!(format!("{}", ComputeUnitType::Neuromorphic), "Neuromorphic");

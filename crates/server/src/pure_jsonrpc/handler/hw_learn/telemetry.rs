@@ -80,7 +80,7 @@ mod tests {
         );
         let count = value
             .get("gpu_count")
-            .and_then(|c| c.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .expect("gpu_count");
         let gpus = value
             .get("gpus")

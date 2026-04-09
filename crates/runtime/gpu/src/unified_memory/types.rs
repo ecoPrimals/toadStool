@@ -151,7 +151,7 @@ pub enum BackendType {
     /// Vulkan backend
     Vulkan,
 
-    /// `OpenCL` backend
+    /// OpenCL-class backend (not implemented in-tree; use barraCuda/coralReef). **DEPRECATED S198** stub for config/serialization.
     OpenCL,
 
     /// `WebGPU` backend
@@ -175,14 +175,14 @@ impl fmt::Display for BackendType {
 /// Backend selection strategy
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BackendStrategy {
-    /// Automatic: Sovereignty-first (`WebGPU` > Vulkan > `OpenCL` > CPU)
+    /// Automatic: Sovereignty-first (`WebGPU` > Vulkan > CPU)
     #[default]
     Automatic,
 
     /// Sovereignty only: `WebGPU` or fail
     SovereignOnly,
 
-    /// Performance: Prefer fastest backend (Vulkan > `OpenCL` > `WebGPU` > CPU)
+    /// Performance: Prefer fastest backend (Vulkan > `WebGPU` > CPU)
     Performance,
 
     /// Specific backend
