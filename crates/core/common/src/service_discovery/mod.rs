@@ -9,6 +9,7 @@ mod discovery_config;
 mod discovery_mdns;
 mod discovery_registry;
 mod endpoint;
+mod fallback;
 mod service;
 #[cfg(test)]
 mod tests;
@@ -16,7 +17,8 @@ mod tests;
 mod tests_registry;
 mod types;
 
-pub use service::{ServiceDiscovery, localhost_capability_fallback};
+pub use fallback::localhost_capability_fallback;
+pub use service::ServiceDiscovery;
 pub use types::{
     DiscoveredService, DiscoveryError, DiscoveryMethod, DiscoveryResult, ServiceDiscoveryTrait,
 };

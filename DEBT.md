@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 9, 2026 — S198
+**Date**: April 11, 2026 — S200
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -52,6 +52,60 @@ Remaining: integrate into CI, add seed corpus, run extended campaigns, add
 proptest bridge for property-based input generation.
 Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`.
 
+
+### D-RUSTIX-DISPLAY-038
+**Crate**: `runtime/display` | **Dep**: `rustix 0.38`
+V4L2 ioctl wrappers use `Getter`/`Updater`/`Setter` convenience types removed in
+rustix 1.x. Migration requires rewriting ~3 unsafe ioctl helpers to the new `Ioctl`
+trait pattern (as hw-safe and nvpmu already use). Low urgency: display crate is a
+leaf and the 0.38 version is safe; the only impact is having two rustix majors in
+the dependency tree.
+Files: `v4l2/ioctl.rs`, `drm/device.rs`, `v4l2/device.rs`.
+
+### D-ASYNC-DYN-MARKERS
+**Scope**: Workspace (~55 files) | **Marker**: `NOTE(async-dyn)`
+Traits using `#[async_trait]` because native `async fn` in `dyn Trait` is not yet
+stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_trait]`
+dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
+**Not actionable** — marker is accurate documentation.
+
+## S200 Resolved Debt (Deep Debt Cleanup & Modernization)
+
+### D-SERVICE-DISCOVERY-SIZE — RESOLVED S200
+**Crate**: `core/common` | **File**: `service_discovery/service.rs`
+File at 755 lines combined discovery + fallback logic. Extracted `fallback.rs` (186 lines)
+for socket/TCP fallback resolution. `service.rs` reduced to 552 lines with cleaner
+separation of concerns. `DiscoveredService::discovered_now()` and `.with_metadata()`
+eliminate ~120 lines of repetitive construction boilerplate across all callers.
+
+### D-RUSTIX-CLI-038 — RESOLVED S200
+**Crate**: `cli` | **Dep**: `rustix 0.38` (dev-dependency)
+Upgraded to rustix 1.1. `Signal::Int` → `Signal::INT`, `Signal::Term` → `Signal::TERM`.
+All test code updated and passing.
+
+### D-DEEP-AUDIT — RESOLVED S200
+Full debt audit confirmed:
+- 0 production unwraps (all `.unwrap()` in `#[cfg(test)]` or `#[test]`)
+- 0 production mocks (all `MockProvider`/`MockPrimal`/`InMemoryAuthBackend` behind `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`)
+- 0 user-visible hardcoded primal names in production
+- All hardcoded IPs/ports are self-configuration constants or test data
+- ~66 unsafe blocks, all in hardware containment (hw-safe, nvpmu, akida-driver, display) with SAFETY comments
+- 3 justified `#[expect(clippy::expect_used)]` in production (compile-time constant parse, catastrophic thread pool failure, assertion-guarded NonNull)
+
+## S199 Resolved Debt (Pipeline Dispatch, primalSpring Upstream Gaps)
+
+### D-PIPELINE-DISPATCH — RESOLVED S199
+**Crate**: `server` | **Feature**: `compute.dispatch.pipeline.*`
+primalSpring upstream gap: neuralSpring (PG-05) needed ordered multi-stage dispatch
+(tokenize → attention → FFN) for ML inference over IPC. Implemented
+`compute.dispatch.pipeline.submit` and `compute.dispatch.pipeline.status` JSON-RPC
+methods. DAG-based topological execution with per-stage result forwarding via
+`previous_results`. Wire L3 cost estimates, semantic mappings, and capability
+advertisement added. 16 new tests (unit + integration). Resolves both:
+- **PG-05 (Medium)**: Stable `compute.dispatch.submit` / `compute.execute` IPC
+- **neuralSpring pipeline scheduling (Low)**: Ordered multi-stage dispatch hints
+Files: `dispatch/pipeline.rs`, `dispatch/types.rs`, `dispatch/mod.rs`,
+`handler/mod.rs`, `wire_l3.rs`, `mappings_core.rs`, `capabilities.rs`.
 
 ## S198 Resolved Debt (TS-01 visualization, BTSP Phase 2 UDS, health triad)
 

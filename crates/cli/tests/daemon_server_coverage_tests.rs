@@ -137,7 +137,7 @@ async fn daemon_server_run_shuts_down_on_sigint() {
             tokio::task::yield_now().await;
         }
         let pid = rustix::process::getpid();
-        let _ = rustix::process::kill_process(pid, rustix::process::Signal::Int);
+        let _ = rustix::process::kill_process(pid, rustix::process::Signal::INT);
     });
     let result = tokio::time::timeout(Duration::from_secs(5), handle).await;
     assert!(result.is_ok(), "run should complete within timeout");

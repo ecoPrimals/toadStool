@@ -2,9 +2,8 @@
 //! Service discovery implementation
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 
 use async_trait::async_trait;
 use tokio::sync::RwLock;
@@ -20,6 +19,7 @@ use crate::primal_identity::{
 use super::discovery_config::discover_from_config;
 use super::discovery_mdns::discover_via_mdns;
 use super::discovery_registry::discover_from_registry;
+use super::fallback::services_from_eco_primals_runtime_sockets;
 use super::types::{
     DiscoveredService, DiscoveryError, DiscoveryMethod, DiscoveryResult, ServiceDiscoveryTrait,
 };
@@ -182,17 +182,13 @@ impl ServiceDiscovery {
                     .unwrap_or("unknown");
                 let cap_key = format!("TOADSTOOL_SERVICE_{service_name}_CAPABILITIES");
                 let capabilities_str = std::env::var(&cap_key).unwrap_or_default();
-                let service = DiscoveredService {
-                    id: format!("env-{}", service_name.to_lowercase()),
-                    name: service_name.to_lowercase(),
-                    version: "unknown".to_string(),
-                    capabilities: Self::parse_capabilities(&capabilities_str),
-                    endpoints: vec![ServiceEndpoint::from_url_string(&value)?],
-                    metadata: HashMap::new(),
-                    discovered_at: SystemTime::now(),
-                    last_seen: SystemTime::now(),
-                    healthy: true,
-                };
+                let service = DiscoveredService::discovered_now(
+                    format!("env-{}", service_name.to_lowercase()),
+                    service_name.to_lowercase(),
+                    "unknown",
+                    Self::parse_capabilities(&capabilities_str),
+                    vec![ServiceEndpoint::from_url_string(&value)?],
+                );
                 debug!("Discovered service from environment: {}", service.name);
                 services.push(service);
             }
@@ -201,13 +197,11 @@ impl ServiceDiscovery {
     }
 
     fn discover_from_fallbacks(&self) -> DiscoveryResult<Vec<DiscoveredService>> {
-        let mut services = Vec::new();
         if !self.fallbacks.should_use_fallback() {
-            return Ok(services);
+            return Ok(Vec::new());
         }
 
-        // c) wateringHole: prefer Unix sockets under $XDG_RUNTIME_DIR/ecoPrimals/ before TCP.
-        let socket_services = Self::services_from_eco_primals_runtime_sockets();
+        let socket_services = services_from_eco_primals_runtime_sockets();
         if !socket_services.is_empty() {
             info!(
                 count = socket_services.len(),
@@ -216,94 +210,25 @@ impl ServiceDiscovery {
             return Ok(socket_services);
         }
 
-        // d) Last resort: explicit TCP URL from env (deprecated for inter-primal use).
         if let Some(url) = self.fallbacks.get_fallback_url(PRIMAL_NAME) {
             warn!(
                 "TCP URL fallback for {} is deprecated for inter-primal discovery; prefer Unix sockets at $XDG_RUNTIME_DIR/ecoPrimals/{{capability}}.sock (wateringHole), or TOADSTOOL_SERVICE_*_URL endpoints",
                 PRIMAL_NAME
             );
-            services.push(DiscoveredService {
-                id: format!("fallback-{PRIMAL_NAME}"),
-                name: PRIMAL_NAME.to_string(),
-                version: "dev".to_string(),
-                capabilities: vec![Capability::Compute(
+            let svc = DiscoveredService::discovered_now(
+                format!("fallback-{PRIMAL_NAME}"),
+                PRIMAL_NAME,
+                "dev",
+                vec![Capability::Compute(
                     crate::primal_identity::ComputeCapability::NativeExecution,
                 )],
-                endpoints: vec![ServiceEndpoint::from_url_string(&url)?],
-                metadata: {
-                    let mut meta = HashMap::new();
-                    meta.insert("source".to_string(), "fallback-tcp".to_string());
-                    meta.insert("deprecation".to_string(), "tcp_url_fallback".to_string());
-                    meta
-                },
-                discovered_at: SystemTime::now(),
-                last_seen: SystemTime::now(),
-                healthy: true,
-            });
+                vec![ServiceEndpoint::from_url_string(&url)?],
+            )
+            .with_metadata("source", "fallback-tcp")
+            .with_metadata("deprecation", "tcp_url_fallback");
+            return Ok(vec![svc]);
         }
-        Ok(services)
-    }
-
-    /// Probe `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` (with TMPDIR/temp fallbacks when
-    /// `XDG_RUNTIME_DIR` is unset) and build [`DiscoveredService`] entries for existing paths.
-    pub(crate) fn services_from_eco_primals_runtime_sockets() -> Vec<DiscoveredService> {
-        const SOCKET_SPECS: &[(&str, Capability)] = &[
-            (
-                PRIMAL_NAME,
-                Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution),
-            ),
-            (
-                "compute",
-                Capability::Compute(crate::primal_identity::ComputeCapability::NativeExecution),
-            ),
-            (
-                "coordination",
-                Capability::Coordination(CoordinationCapability::ServiceDiscovery),
-            ),
-            (
-                "storage",
-                Capability::Storage(StorageCapability::ObjectStorage),
-            ),
-        ];
-
-        let runtime_base = std::env::var_os("XDG_RUNTIME_DIR")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("TMPDIR").map(PathBuf::from))
-            .unwrap_or_else(std::env::temp_dir);
-        let eco_dir = runtime_base.join("ecoPrimals");
-        let now = SystemTime::now();
-
-        let mut out = Vec::new();
-        for &(slug, ref cap) in SOCKET_SPECS {
-            let sock_path = eco_dir.join(format!("{slug}.sock"));
-            if !sock_path.exists() {
-                continue;
-            }
-            let url = format!("unix://{}", sock_path.display());
-            let endpoint = match ServiceEndpoint::from_url_string(&url) {
-                Ok(ep) => ep,
-                Err(e) => {
-                    warn!(path = %sock_path.display(), error = %e, "invalid unix socket URL for ecoPrimals fallback");
-                    continue;
-                }
-            };
-            out.push(DiscoveredService {
-                id: format!("fallback-socket-{slug}"),
-                name: slug.to_string(),
-                version: "dev".to_string(),
-                capabilities: vec![cap.clone()],
-                endpoints: vec![endpoint],
-                metadata: {
-                    let mut m = HashMap::new();
-                    m.insert("source".to_string(), "fallback-unix-socket".to_string());
-                    m
-                },
-                discovered_at: now,
-                last_seen: now,
-                healthy: true,
-            });
-        }
-        out
+        Ok(Vec::new())
     }
 
     pub(crate) fn parse_capabilities(capabilities_str: &str) -> Vec<Capability> {
@@ -321,134 +246,6 @@ impl ServiceDiscovery {
                 }
             })
             .collect()
-    }
-}
-
-/// Fallback when primary discovery finds no services for this capability.
-///
-/// Second-line fallback when the primary [`ServiceDiscovery`] pass returned no services for
-/// `capability` (e.g. mDNS/env empty, cache miss). Uses the same mechanisms as
-/// [`ServiceDiscovery::discover_from_fallbacks`] — ecoPrimals runtime sockets, biomeOS capability
-/// socket paths from [`crate::primal_sockets::get_socket_path_for_capability`], optional
-/// `TOADSTOOL_LOCAL_PORT` for native compute, and the deprecated `TOADSTOOL_URL`-style TCP fallback
-/// for compute when [`crate::discovery_defaults::LocalhostFallbacks`] allow it — filtered to the
-/// requested capability.
-#[must_use]
-pub fn localhost_capability_fallback(capability: &Capability) -> Vec<DiscoveredService> {
-    let mut out: Vec<DiscoveredService> =
-        ServiceDiscovery::services_from_eco_primals_runtime_sockets()
-            .into_iter()
-            .filter(|s| s.has_capability(capability))
-            .collect();
-
-    let now = SystemTime::now();
-
-    if let Some(cat) = biomeos_category(capability) {
-        let path = crate::primal_sockets::get_socket_path_for_capability(cat);
-        if path.exists() {
-            let path_str = path.display().to_string();
-            let already = out.iter().any(|s| {
-                s.endpoints
-                    .iter()
-                    .any(|e| e.protocol == "unix" && e.address == path_str)
-            });
-            if !already {
-                let url = format!("unix://{}", path_str);
-                if let Ok(endpoint) = ServiceEndpoint::from_url_string(&url) {
-                    let ep = endpoint.with_metadata("path", path_str);
-                    let slug = path.file_name().and_then(|s| s.to_str()).unwrap_or("sock");
-                    out.push(DiscoveredService {
-                        id: format!("localhost-fallback-{slug}"),
-                        name: format!("fallback-{cat}"),
-                        version: "dev".to_string(),
-                        capabilities: vec![capability.clone()],
-                        endpoints: vec![ep],
-                        metadata: {
-                            let mut m = HashMap::new();
-                            m.insert(
-                                "source".to_string(),
-                                "localhost-capability-fallback".to_string(),
-                            );
-                            m
-                        },
-                        discovered_at: now,
-                        last_seen: now,
-                        healthy: true,
-                    });
-                }
-            }
-        }
-    }
-
-    if matches!(
-        capability,
-        Capability::Compute(ComputeCapability::NativeExecution)
-    ) {
-        let port: u16 = std::env::var("TOADSTOOL_LOCAL_PORT")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0);
-        if port > 0 {
-            let has_local_port = out.iter().any(|s| {
-                s.metadata
-                    .get("source")
-                    .is_some_and(|v| v == "TOADSTOOL_LOCAL_PORT")
-            });
-            if !has_local_port {
-                out.push(DiscoveredService {
-                    id: "localhost-compute-local-port".to_string(),
-                    name: "localhost-compute".to_string(),
-                    version: "dev".to_string(),
-                    capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
-                    endpoints: vec![ServiceEndpoint::http(
-                        crate::constants::network::DEFAULT_HOSTNAME,
-                        port,
-                    )],
-                    metadata: {
-                        let mut m = HashMap::new();
-                        m.insert("source".to_string(), "TOADSTOOL_LOCAL_PORT".to_string());
-                        m
-                    },
-                    discovered_at: now,
-                    last_seen: now,
-                    healthy: true,
-                });
-            }
-        }
-
-        let fallbacks = crate::discovery_defaults::LocalhostFallbacks::default();
-        if fallbacks.should_use_fallback() {
-            if let Some(url) = fallbacks.get_fallback_url(PRIMAL_NAME) {
-                if let Ok(ep) = ServiceEndpoint::from_url_string(&url) {
-                    let mut meta = HashMap::new();
-                    meta.insert("source".to_string(), "fallback-tcp".to_string());
-                    meta.insert("deprecation".to_string(), "tcp_url_fallback".to_string());
-                    out.push(DiscoveredService {
-                        id: format!("fallback-{PRIMAL_NAME}"),
-                        name: PRIMAL_NAME.to_string(),
-                        version: "dev".to_string(),
-                        capabilities: vec![Capability::Compute(ComputeCapability::NativeExecution)],
-                        endpoints: vec![ep],
-                        metadata: meta,
-                        discovered_at: now,
-                        last_seen: now,
-                        healthy: true,
-                    });
-                }
-            }
-        }
-    }
-
-    out
-}
-
-fn biomeos_category(capability: &Capability) -> Option<&'static str> {
-    match capability {
-        Capability::Crypto(_) => Some("crypto"),
-        Capability::Storage(_) => Some("storage"),
-        Capability::Coordination(_) => Some("coordination"),
-        Capability::Compute(_) => Some("compute"),
-        _ => None,
     }
 }
 

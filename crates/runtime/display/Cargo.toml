@@ -13,7 +13,7 @@ categories = ["gui", "graphics", "hardware-support"]
 # Display management (Pure Rust! ARM64 compatible!)
 drm = "0.14"                # Safe DRM/KMS bindings (Pure Rust, no linux-unsafe!)
 drm-fourcc = "2.2"          # Pixel format definitions (Pure Rust!)
-rustix = { version = "0.38", features = ["fs", "mm", "process", "io_uring"] }  # Safe system calls (Pure Rust!)
+rustix = { version = "0.38", features = ["fs", "mm", "process", "io_uring"] }  # Safe system calls (Pure Rust!) — v0.38 until V4L2 ioctl wrappers migrated to 1.x Ioctl trait pattern
 
 # Input handling (Pure Rust!)
 evdev = "0.13"              # Pure Rust evdev (NO libevdev!)

@@ -18,6 +18,10 @@ where
     add_mapping("compute.resume", "resume_workload");
     add_mapping("compute.cancel", "cancel_workload");
 
+    // Pipeline dispatch — ordered multi-stage compute (neuralSpring ML inference)
+    add_mapping("compute.pipeline.submit", "pipeline_submit");
+    add_mapping("compute.pipeline.status", "pipeline_status");
+
     // Runtime-specific variants
     add_mapping("compute.container.run", "run_container");
     add_mapping("compute.container.stop", "stop_container");

@@ -49,6 +49,8 @@ impl DispatchHandler {
                 "compute.dispatch.result",
                 "compute.dispatch.forward",
                 "compute.dispatch.capabilities",
+                "compute.dispatch.pipeline.submit",
+                "compute.dispatch.pipeline.status",
                 "shader.dispatch",
             ],
             "vfio_gpus": vfio_gpus,

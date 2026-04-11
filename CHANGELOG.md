@@ -5,7 +5,62 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 8, 2026 (Sessions 43-191)
+## [Unreleased] - April 11, 2026 (Sessions 43-200)
+
+### Session S200 (Apr 11, 2026) — Deep Debt Cleanup & Modernization
+
+#### Service Discovery Refactoring
+- REFACTOR: Extracted `localhost_capability_fallback`, `services_from_eco_primals_runtime_sockets`, and `biomeos_category` from `service_discovery/service.rs` → new `fallback.rs` module
+- `service.rs` reduced from 755 → 552 lines (logically cohesive: cache-based discovery only)
+- `fallback.rs`: 186 lines, cleanly owns all fallback resolution (Unix socket probing, TCP fallback, capability socket paths)
+
+#### `DiscoveredService` Construction Modernization
+- NEW: `DiscoveredService::discovered_now()` constructor — eliminates 8+ repetitive `SystemTime::now()` / `healthy: true` / `HashMap::new()` patterns
+- NEW: `DiscoveredService::with_metadata()` builder method — fluent API for attaching metadata
+- All fallback construction sites updated to use builder API (reduces ~120 lines of boilerplate)
+
+#### Dependency Evolution: rustix 0.38 → 1.1
+- EVOLVED: `toadstool-cli` dev-dependency: rustix 0.38 → 1.1 (Signal::Int → Signal::INT, Signal::Term → Signal::TERM)
+- DOCUMENTED: `toadstool-display` stays on rustix 0.38 until V4L2 ioctl wrappers migrate from `Getter`/`Updater`/`Setter` API to rustix 1.x `Ioctl` trait pattern
+- All workspace crates now on rustix 1.x except `display` (requires ioctl API migration)
+
+#### Deep Debt Audit Results
+- **Hardcoding**: All hardcoded IPs/ports/primal names verified — 100% in `#[cfg(test)]` blocks or centralized constants (`defaults/network.rs` uses port 0 everywhere)
+- **Mocks**: All `MockProvider`, `MockPrimal`, `InMemoryAuthBackend` verified — 100% under `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]`
+- **Production .unwrap()**: Zero production unwraps confirmed — all `.unwrap()` in test code only
+- **Production .expect()**: 3 justified `#[expect(clippy::expect_used)]` with documented reasons (compile-time constant, catastrophic system failure, assertion-guarded)
+- **Unsafe code**: ~66 blocks, all in hardware containment crates (hw-safe, nvpmu, akida-driver, display) with SAFETY comments
+- **NOTE(async-dyn)**: ~55 markers identified — these CANNOT be resolved until Rust stabilizes `dyn Trait` with native async fn; markers accurately document the constraint
+
+#### Quality Gates
+- `cargo fmt --check`: PASS (0 violations)
+- `cargo clippy --workspace --all-targets --all-features`: PASS (0 warnings)
+- `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`: PASS
+- `cargo test --workspace`: PASS (0 failures)
+
+### Session S199 (Apr 11, 2026) — Pipeline Dispatch (primalSpring Upstream Gaps)
+
+#### Pipeline Dispatch — Ordered Multi-Stage Compute (neuralSpring PG-05)
+- NEW: `compute.dispatch.pipeline.submit` JSON-RPC method — accepts a DAG of stages with dependency edges, validates the graph (no cycles, known stages), executes in topological order via Kahn's algorithm
+- NEW: `compute.dispatch.pipeline.status` JSON-RPC method — query pipeline execution progress
+- Per-stage `previous_results` forwarding: downstream stages receive outputs from completed upstream stages
+- Supported stage methods: `compute.dispatch.submit`, `shader.dispatch`
+- Pipeline types: `PipelineStageRequest`, `PipelineJob`, `PipelineStatus`, `PipelineSubstrate` (scheduling hint)
+- Wire L3 cost estimates for pipeline methods
+- Semantic mappings: `compute.pipeline.submit` → `pipeline_submit`, `compute.pipeline.status` → `pipeline_status`
+- `compute.dispatch.capabilities` now advertises pipeline methods
+- 16 new tests: topological sort (linear, diamond, cycle, unknown stage, no edges), parse_edges, pipeline submit (empty, single, multi-stage ordered, cycle, unsupported method, result forwarding), pipeline status (found, not found)
+
+#### primalSpring Upstream Gap Resolution
+- Resolves PG-05 (Medium): stable `compute.dispatch.submit` / `compute.execute` IPC for wetSpring, neuralSpring, airSpring deployment-time hardware routing
+- Resolves neuralSpring pipeline scheduling (Low): ML inference needs ordered dispatch (tokenize → attention → FFN) — now supported via DAG pipeline API
+- Context: `wateringHole/PORTABILITY_DEBT_AND_NODE_DELEGATION.md` Node Atomic delegation pattern — toadStool owns DRM/VFIO lifecycle, consumers dispatch via IPC
+
+#### Quality Gates
+- `cargo fmt --check`: PASS (0 violations)
+- `cargo clippy --workspace --all-targets --all-features`: PASS (0 warnings)
+- All pipeline files <700 lines (pipeline.rs: 669, types.rs: 148)
+- All `#[expect(dead_code)]` annotations with documented reasons
 
 ### Session S191 (Apr 8, 2026) — Wire Standard L3 Cost Estimates + Deep Debt Audit
 

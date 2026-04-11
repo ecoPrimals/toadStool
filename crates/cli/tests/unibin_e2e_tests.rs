@@ -268,7 +268,7 @@ async fn test_server_graceful_shutdown() {
         if let Some(pid) = cmd.id() {
             // SAFETY: Pid::from_raw requires non-zero pid (we check via cmd.id())
             if let Some(pid) = Pid::from_raw(pid as i32) {
-                let _ = kill_process(pid, Signal::Term);
+                let _ = kill_process(pid, Signal::TERM);
             }
         }
     }

@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 9, 2026 -- S198 (TS-01, BTSP Phase 2 UDS, health triad, OpenCL deprecation, musl binary)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~67 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime**
-**Latest**: S198 — `visualization_client` unified `capability.discover` (TS-01); BTSP handshake on all UDS accepts; health liveness/readiness/check shapes; OpenCL stubbed; six modules split to <500 lines; musl-static ~11MB binary validated. S195–S197 (prior): tarpc wiring, fuzz infra, clippy, BTSP expect, cudarc removal
+**Updated**: April 11, 2026 -- S200 (Deep Debt Cleanup & Modernization)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display**
+**Latest**: S200 — Deep debt audit confirmed: 0 production unwraps/mocks/hardcoded names; service_discovery/service.rs refactored (755→552 lines) with `fallback.rs` extraction + `DiscoveredService::discovered_now()` builder; rustix cli 0.38→1.1; display ioctl migration documented. S199 (prior): pipeline dispatch, primalSpring upstream gaps
 
 ---
 
@@ -76,6 +76,10 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | Phase 3: tarpc binary transport | Pending |
 | Property-based testing for computation modules | Pending |
 | Multi-primal integration test infrastructure | Pending |
+| Pipeline dispatch for ordered multi-stage (neuralSpring PG-05) | **RESOLVED** S199 — `compute.dispatch.pipeline.submit` + `.status` |
+| Stable compute.dispatch.submit IPC for springs (PG-05) | **RESOLVED** S199 — methods stable, pipeline scheduling added |
+| Deep debt audit + service_discovery refactor | **RESOLVED** S200 — 0 production unwraps/mocks/hardcoded names; fallback.rs extraction |
+| rustix version unification | **RESOLVED** S200 (cli 0.38→1.1); display stays 0.38 (ioctl API migration needed) |
 
 ### Transferred to Other Teams
 

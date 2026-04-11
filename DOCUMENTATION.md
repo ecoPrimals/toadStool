@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 9, 2026 — S198
+**Last Updated**: April 11, 2026 — S200
 
 ---
 
@@ -30,12 +30,14 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S198 — April 9, 2026)
+## Current State (S200 — April 11, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **21,600+ tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite. Net **−5,157 lines** across **228 files** (S198 session batch).
-- **~67 JSON-RPC methods**. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
+- **21,600+ tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **~69 JSON-RPC methods**. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
+- **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
+- **Deep debt audit (S200)**: 0 production unwraps, 0 production mocks, 0 hardcoded primal names. Service discovery refactored. rustix aligned to 1.x across workspace (except display V4L2 ioctl migration pending).
 - **TS-01 / shader compiler discovery** — `visualization_client.rs` uses unified `capability.discover` (no `CORALREEF_*` env, no coralreef-core.json, no coralreef dir scan).
 - **BTSP Phase 2** — Handshake enforced on every UDS accept path (JSON-RPC + tarpc + daemon servers).
 - **OpenCL deprecated** — `ocl` removed; GPU OpenCL paths stubbed; `GpuFramework::OpenCl` retained as deprecated variant.

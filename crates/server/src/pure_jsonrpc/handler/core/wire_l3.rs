@@ -111,6 +111,14 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         "compute.dispatch.forward".into(),
         cost("medium", false, 50, "medium", "low"),
     );
+    map.insert(
+        "compute.dispatch.pipeline.submit".into(),
+        cost("high", true, 500, "high", "high"),
+    );
+    map.insert(
+        "compute.dispatch.pipeline.status".into(),
+        cost("negligible", false, 1, "negligible", "none"),
+    );
 
     // Hardware learning — BAR0/MMIO reads
     map.insert(
@@ -233,6 +241,7 @@ pub(super) fn operation_dependencies() -> serde_json::Value {
         "toadstool.cancel_workload":["toadstool.submit_workload"],
         "compute.dispatch.status":  ["compute.dispatch.submit"],
         "compute.dispatch.result":  ["compute.dispatch.submit"],
+        "compute.dispatch.pipeline.status": ["compute.dispatch.pipeline.submit"],
         "compute.hardware.distill": ["compute.hardware.observe"],
         "compute.hardware.apply":   ["compute.hardware.distill"],
         "compute.hardware.share_recipe": ["compute.hardware.distill"],

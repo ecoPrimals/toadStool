@@ -197,6 +197,12 @@ impl JsonRpcHandler {
             "compute.dispatch.capabilities" => {
                 return self.dispatch.dispatch_capabilities(params).await;
             }
+            "compute.dispatch.pipeline.submit" => {
+                return self.dispatch.pipeline_submit(params).await;
+            }
+            "compute.dispatch.pipeline.status" => {
+                return self.dispatch.pipeline_status(params).await;
+            }
 
             "gpu.query_info" | "gpu.info" => return core::gpu_info().await,
             "gpu.query_memory" | "gpu.memory" => return core::gpu_memory().await,
@@ -280,6 +286,8 @@ impl JsonRpcHandler {
             "dispatch_result" => self.dispatch.dispatch_result(params).await,
             "dispatch_capabilities" => self.dispatch.dispatch_capabilities(params).await,
             "shader_dispatch" => self.dispatch.shader_dispatch(params).await,
+            "pipeline_submit" => self.dispatch.pipeline_submit(params).await,
+            "pipeline_status" => self.dispatch.pipeline_status(params).await,
             "toadstool_provenance" => Self::toadstool_provenance().await,
             "gpu_info" => core::gpu_info().await,
             "gpu_memory" => core::gpu_memory().await,

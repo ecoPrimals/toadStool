@@ -83,6 +83,38 @@ pub struct DiscoveredService {
 }
 
 impl DiscoveredService {
+    /// Construct a newly-discovered service with `discovered_at` and `last_seen` set to now.
+    ///
+    /// `metadata` defaults to empty; callers can populate it after construction.
+    #[must_use]
+    pub fn discovered_now(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        version: impl Into<String>,
+        capabilities: Vec<Capability>,
+        endpoints: Vec<ServiceEndpoint>,
+    ) -> Self {
+        let now = SystemTime::now();
+        Self {
+            id: id.into(),
+            name: name.into(),
+            version: version.into(),
+            capabilities,
+            endpoints,
+            metadata: HashMap::new(),
+            discovered_at: now,
+            last_seen: now,
+            healthy: true,
+        }
+    }
+
+    /// Attach a single key-value metadata pair (builder-style).
+    #[must_use]
+    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+
     /// Returns whether this service advertises the given capability.
     #[must_use]
     pub fn has_capability(&self, capability: &Capability) -> bool {
