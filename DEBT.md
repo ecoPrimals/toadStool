@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 11, 2026 — S200
+**Date**: April 11, 2026 — S201
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -68,6 +68,23 @@ Traits using `#[async_trait]` because native `async fn` in `dyn Trait` is not ye
 stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_trait]`
 dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
 **Not actionable** — marker is accurate documentation.
+
+## S201 Resolved Debt (primalSpring Gap Closure & Coverage Push)
+
+### D-PRIMALSPRING-GAP-PIPELINE — CONFIRMED RESOLVED S199
+primalSpring April 11 audit listed "Pipeline scheduling for ordered dispatch (Open)"
+and "Multi-stage pipeline ordering is still caller-side composition." This was stale:
+`compute.dispatch.pipeline.submit` was implemented in S199 with full DAG-based
+topological ordering, `previous_results` forwarding, and the exact tokenize→attention→FFN
+pattern neuralSpring needs. The audit's own conclusion confirms: "All springs should
+use stable compute.dispatch.pipeline.submit (S199) for multi-stage workloads."
+
+### D-COVERAGE-PUSH-S201 — +46 tests
+Wire L3 structural validation (14), dispatch types Display/serde/equality (12),
+security hardening submodule tests: rate_limiter (6), intrusion detection (7),
+input_validator (13), audit logger (7). All pure-logic, no hardware required.
+Files: `wire_l3.rs`, `dispatch/types.rs`, `rate_limiter.rs`, `intrusion.rs`,
+`input_validator.rs`, `audit.rs`.
 
 ## S200 Resolved Debt (Deep Debt Cleanup & Modernization)
 

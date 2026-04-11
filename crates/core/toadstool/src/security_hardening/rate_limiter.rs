@@ -146,3 +146,67 @@ impl RateLimiter {
         warn!("Client {} banned for {:?}", client_id, duration);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fast_config(max_per_min: u32, max_per_day: u32) -> RateLimitingConfig {
+        RateLimitingConfig {
+            max_requests_per_minute: max_per_min,
+            max_requests_per_hour: 10000,
+            max_requests_per_day: max_per_day,
+            sliding_window: Duration::from_secs(60),
+            burst_allowance: 5,
+        }
+    }
+
+    #[tokio::test]
+    async fn new_client_is_allowed() {
+        let limiter = RateLimiter::new(fast_config(10, 1000));
+        assert!(limiter.check_rate_limit("new").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn rate_limit_enforced_at_threshold() {
+        let limiter = RateLimiter::new(fast_config(3, 1000));
+        assert!(limiter.check_rate_limit("c").await.unwrap());
+        assert!(limiter.check_rate_limit("c").await.unwrap());
+        assert!(limiter.check_rate_limit("c").await.unwrap());
+        assert!(!limiter.check_rate_limit("c").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn clients_are_independent() {
+        let limiter = RateLimiter::new(fast_config(1, 1000));
+        assert!(limiter.check_rate_limit("a").await.unwrap());
+        assert!(!limiter.check_rate_limit("a").await.unwrap());
+        assert!(limiter.check_rate_limit("b").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn banned_client_is_rejected() {
+        let limiter = RateLimiter::new(fast_config(100, 10000));
+        assert!(limiter.check_rate_limit("victim").await.unwrap());
+        limiter.ban_client("victim", Duration::from_secs(3600)).await;
+        assert!(!limiter.check_rate_limit("victim").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn ban_does_not_affect_other_clients() {
+        let limiter = RateLimiter::new(fast_config(100, 10000));
+        limiter
+            .ban_client("banned", Duration::from_secs(3600))
+            .await;
+        assert!(limiter.check_rate_limit("innocent").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn daily_limit_enforced() {
+        let limiter = RateLimiter::new(fast_config(10000, 3));
+        assert!(limiter.check_rate_limit("d").await.unwrap());
+        assert!(limiter.check_rate_limit("d").await.unwrap());
+        assert!(limiter.check_rate_limit("d").await.unwrap());
+        assert!(!limiter.check_rate_limit("d").await.unwrap());
+    }
+}

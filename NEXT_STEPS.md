@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 11, 2026 -- S200 (Deep Debt Cleanup & Modernization)
+**Updated**: April 11, 2026 -- S201 (primalSpring Gap Closure & Coverage Push)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display**
-**Latest**: S200 — Deep debt audit confirmed: 0 production unwraps/mocks/hardcoded names; service_discovery/service.rs refactored (755→552 lines) with `fallback.rs` extraction + `DiscoveredService::discovered_now()` builder; rustix cli 0.38→1.1; display ioctl migration documented. S199 (prior): pipeline dispatch, primalSpring upstream gaps
+**Latest**: S201 — primalSpring April 11 downstream audit closure: pipeline scheduling confirmed resolved (S199), +46 tests (wire L3 structural, dispatch types, security hardening submodules). S200 (prior): deep debt audit, service_discovery refactor, rustix evolution
 
 ---
 
@@ -163,7 +163,12 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-198)
+## Completed This Session (S90-201)
+
+### Session S201: primalSpring Gap Closure & Coverage Push (Apr 11, 2026)
+- **primalSpring April 11 downstream audit**: Confirmed pipeline scheduling (`compute.dispatch.pipeline.submit`) fully resolved in S199. Stale audit entry closed. D-RUSTIX-DISPLAY-038 and D-ASYNC-DYN-MARKERS confirmed genuinely blocked.
+- **Coverage push: +46 tests**: Wire L3 structural validation (14), dispatch types Display/serde/equality (12), security hardening submodules: rate_limiter (6), intrusion detection (7), input_validator (13), audit logger (7). All pure-logic, zero hardware deps.
+- Verification: `cargo check` + `cargo clippy -D warnings` green, all 46 new tests passing.
 
 ### Session S198: TS-01, BTSP Phase 2, Health Triad, OpenCL Deprecation, musl (Apr 9, 2026)
 - **TS-01 RESOLVED**: coralReef / shader-compiler discovery in `visualization_client.rs` — unified `capability.discover` (removed `CORALREEF_SOCKET`/`URL`, `coralreef-core.json`, coralreef directory scan).

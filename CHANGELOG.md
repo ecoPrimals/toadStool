@@ -5,7 +5,28 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 11, 2026 (Sessions 43-200)
+## [Unreleased] - April 11, 2026 (Sessions 43-201)
+
+### Session S201 (Apr 11, 2026) — primalSpring Gap Closure & Coverage Push
+
+#### primalSpring Downstream Audit Resolution
+- CONFIRMED: Pipeline scheduling gap (compute.dispatch.pipeline.submit) fully resolved in S199 — the audit's "REMAINING DEBT" entry was stale relative to its own conclusion
+- CONFIRMED: D-RUSTIX-DISPLAY-038 (V4L2 ioctl migration) — genuinely blocked on rustix evolution, properly documented
+- CONFIRMED: D-ASYNC-DYN-MARKERS — genuinely blocked on Rust language evolution, ~55 markers properly document constraint
+- CONFIRMED: All springs should use stable `compute.dispatch.pipeline.submit` (S199) for multi-stage workloads
+
+#### Coverage Push: +46 New Tests
+- **Wire L3 structural tests** (14 tests): cost_estimates/operation_dependencies field validation, tier correctness, GPU-eligible verification, pipeline latency ordering, dependency DAG consistency (all prereqs exist in cost_estimates, no self-references)
+- **Dispatch types tests** (12 tests): Display impls for DispatchStatus/PipelineStatus/PipelineSubstrate, serde roundtrip, PipelineStageRequest deserialization (with/without substrate), PipelineStageResult serialization, equality semantics
+- **Security hardening — rate_limiter tests** (6 tests): threshold enforcement, client independence, ban rejection, ban isolation, daily limit enforcement
+- **Security hardening — intrusion detection tests** (7 tests): auto-ban at threshold, risk score accumulation, ban expiry, manual ban, client isolation
+- **Security hardening — input_validator tests** (13 tests): XSS/SQL injection/command injection rejection, case-insensitive matching, max length enforcement, HTML entity sanitization, null byte removal, truncation, empty input, permissive config
+- **Security hardening — audit logger tests** (7 tests): event logging/retrieval, limit enforcement, recency ordering, serde roundtrip, severity ordering, event type serialization
+
+#### Quality Gates
+- `cargo check`: PASS
+- `cargo clippy -D warnings`: PASS (0 warnings)
+- All 46 new tests passing
 
 ### Session S200 (Apr 11, 2026) — Deep Debt Cleanup & Modernization
 

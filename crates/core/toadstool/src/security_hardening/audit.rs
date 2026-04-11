@@ -110,3 +110,110 @@ impl SecurityAuditLogger {
         events.iter().rev().take(limit).cloned().collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_event(severity: SecuritySeverity, event_type: SecurityEventType) -> SecurityAuditEvent {
+        SecurityAuditEvent {
+            id: Uuid::new_v4(),
+            event_type,
+            timestamp: SystemTime::now(),
+            client_id: Some("test-client".into()),
+            ip_address: None,
+            user_agent: None,
+            details: HashMap::new(),
+            severity,
+        }
+    }
+
+    #[tokio::test]
+    async fn empty_logger_returns_no_events() {
+        let logger = SecurityAuditLogger::new(AuditConfig::default());
+        assert!(logger.get_recent_events(10).await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn logged_events_are_retrievable() {
+        let logger = SecurityAuditLogger::new(AuditConfig::default());
+        let event = make_event(
+            SecuritySeverity::Medium,
+            SecurityEventType::AuthenticationAttempt,
+        );
+        let id = event.id;
+        logger.log_event(event).await;
+
+        let events = logger.get_recent_events(10).await;
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, id);
+    }
+
+    #[tokio::test]
+    async fn recent_events_respects_limit() {
+        let logger = SecurityAuditLogger::new(AuditConfig::default());
+        for _ in 0..5 {
+            logger
+                .log_event(make_event(
+                    SecuritySeverity::Low,
+                    SecurityEventType::RateLimitExceeded,
+                ))
+                .await;
+        }
+        let events = logger.get_recent_events(3).await;
+        assert_eq!(events.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn recent_events_are_most_recent_first() {
+        let logger = SecurityAuditLogger::new(AuditConfig::default());
+        let first = make_event(SecuritySeverity::Low, SecurityEventType::PolicyViolation);
+        let first_id = first.id;
+        let second = make_event(SecuritySeverity::High, SecurityEventType::IntrusionAttempt);
+        let second_id = second.id;
+
+        logger.log_event(first).await;
+        logger.log_event(second).await;
+
+        let events = logger.get_recent_events(10).await;
+        assert_eq!(events[0].id, second_id);
+        assert_eq!(events[1].id, first_id);
+    }
+
+    #[test]
+    fn security_severity_ordering() {
+        assert!(SecuritySeverity::Critical > SecuritySeverity::High);
+        assert!(SecuritySeverity::High > SecuritySeverity::Medium);
+        assert!(SecuritySeverity::Medium > SecuritySeverity::Low);
+    }
+
+    #[test]
+    fn audit_event_serde_roundtrip() {
+        let event = make_event(
+            SecuritySeverity::Critical,
+            SecurityEventType::CapabilityAbuse,
+        );
+        let json = serde_json::to_string(&event).unwrap();
+        let decoded: SecurityAuditEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(event.id, decoded.id);
+        assert_eq!(event.severity, decoded.severity);
+    }
+
+    #[test]
+    fn security_event_type_serde_roundtrip() {
+        let types = [
+            SecurityEventType::AuthenticationAttempt,
+            SecurityEventType::AuthorizationFailure,
+            SecurityEventType::InputValidationFailure,
+            SecurityEventType::RateLimitExceeded,
+            SecurityEventType::SuspiciousActivity,
+            SecurityEventType::IntrusionAttempt,
+            SecurityEventType::PolicyViolation,
+            SecurityEventType::CapabilityAbuse,
+        ];
+        for t in types {
+            let json = serde_json::to_string(&t).unwrap();
+            let _decoded: SecurityEventType = serde_json::from_str(&json).unwrap();
+        }
+    }
+}

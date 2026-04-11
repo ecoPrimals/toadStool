@@ -158,3 +158,84 @@ pub enum ActivityType {
     /// Suspicious pattern (rate, sequence, etc.).
     SuspiciousPattern,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn strict_config() -> IntrusionDetectionConfig {
+        IntrusionDetectionConfig {
+            anomaly_threshold: 0.5,
+            activity_window: Duration::from_secs(300),
+            auto_ban_threshold: 3,
+            ban_duration: Duration::from_secs(60),
+            allowed_ips: vec!["127.0.0.1".into()],
+        }
+    }
+
+    #[tokio::test]
+    async fn new_client_is_not_banned() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        assert!(!ids.is_banned("fresh").await);
+    }
+
+    #[tokio::test]
+    async fn normal_requests_do_not_trigger_ban() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        ids.record_activity("c", ActivityType::Request).await;
+        ids.record_activity("c", ActivityType::Request).await;
+        assert!(!ids.is_banned("c").await);
+    }
+
+    #[tokio::test]
+    async fn failed_attempts_trigger_auto_ban_at_threshold() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        ids.record_activity("attacker", ActivityType::FailedAttempt)
+            .await;
+        ids.record_activity("attacker", ActivityType::FailedAttempt)
+            .await;
+        assert!(!ids.is_banned("attacker").await);
+        ids.record_activity("attacker", ActivityType::FailedAttempt)
+            .await;
+        assert!(ids.is_banned("attacker").await);
+    }
+
+    #[tokio::test]
+    async fn suspicious_patterns_accumulate_risk_score() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        // 3 suspicious patterns = 0.6 risk score, exceeds 0.5 threshold
+        ids.record_activity("probe", ActivityType::SuspiciousPattern)
+            .await;
+        ids.record_activity("probe", ActivityType::SuspiciousPattern)
+            .await;
+        assert!(!ids.is_banned("probe").await);
+        ids.record_activity("probe", ActivityType::SuspiciousPattern)
+            .await;
+        assert!(ids.is_banned("probe").await);
+    }
+
+    #[tokio::test]
+    async fn manual_ban_works() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        ids.ban_client("target", Duration::from_secs(60), "test")
+            .await;
+        assert!(ids.is_banned("target").await);
+    }
+
+    #[tokio::test]
+    async fn ban_does_not_affect_other_clients() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        ids.ban_client("bad", Duration::from_secs(60), "test")
+            .await;
+        assert!(!ids.is_banned("good").await);
+    }
+
+    #[tokio::test]
+    async fn expired_ban_is_cleared() {
+        let ids = IntrusionDetectionSystem::new(strict_config());
+        ids.ban_client("temp", Duration::from_millis(1), "test")
+            .await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        assert!(!ids.is_banned("temp").await);
+    }
+}
