@@ -20,7 +20,7 @@ tracing = "0.1"
 thiserror = { workspace = true }
 
 # Legacy system communication
-serialport = { version = "4.3", default-features = false }
+serialport = { version = "4.3", default-features = false, optional = true }
 rexpect = "0.5"
 telnet = "0.2"
 regex = { workspace = true }
@@ -78,6 +78,7 @@ embedded-placeholder-impls = []
 embedded-hw = []
 # mainframe = ["ibm-mq", "cobol-parser", "jcl-parser"]  # Missing dependencies
 # embedded = ["cortex-m", "bindgen"]  # Missing dependencies
+serial-transport = ["serialport"]
 industrial = []  # ["ethercat", "canbus", "profinet"] - dependencies not on crates.io
 # legacy-networking = ["netbios", "ipx", "decnet"]  # Missing dependencies
 # real-time = ["real-time-for-the-masses", "vxworks-sys", "qnx-sys"]  # Missing dependencies

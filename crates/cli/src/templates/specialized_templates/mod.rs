@@ -9,7 +9,7 @@
 //! - `create_quantum_template()`: Qiskit, quantum computing simulators
 //! - `create_genomics_template()`: Bioconductor, enhanced security for genomic data
 //! - `create_vision_template()`: OpenCV, computer vision processing
-//! - `create_distributed_template()`: Songbird orchestration, multi-node clusters
+//! - `create_distributed_template()`: coordination / orchestration, multi-node clusters
 //! - `create_sovereign_template()`: Maximum security, air-gapped configuration
 //! - `create_custom_template()`: User-specified custom configurations
 //!

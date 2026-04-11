@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 11, 2026 -- S201 (primalSpring Gap Closure & Coverage Push)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display**
-**Latest**: S201 — primalSpring April 11 downstream audit closure: pipeline scheduling confirmed resolved (S199), +46 tests (wire L3 structural, dispatch types, security hardening submodules). S200 (prior): deep debt audit, service_discovery refactor, rustix evolution
+**Updated**: April 11, 2026 -- S202 (Deep Debt Execution: Capability-Based Evolution)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **34 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display** | **capability-based primal references (no hardcoded names)**
+**Latest**: S202 — Deep debt execution: hardcoded `"toadstool"` literals → `PRIMAL_NAME`, `"coral_reef_available"` → `"shader_compiler_available"`, ~15 doc comments evolved to capability wording, `serialport` feature-gated, dead code removed, `jsonrpc_server.rs` DRY'd. S201 (prior): primalSpring gap closure, +46 tests
 
 ---
 
@@ -163,7 +163,17 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-201)
+## Completed This Session (S90-202)
+
+### Session S202: Deep Debt Execution — Capability-Based Evolution (Apr 11, 2026)
+- **Hardcoded literal evolution**: 3 production `"toadstool"` literals → `PRIMAL_NAME` constant (self_identity.rs, bear_dog/client.rs, identity.rs). `"coral_reef_available"` JSON-RPC key → `"shader_compiler_available"`.
+- **Primal-name doc evolution**: ~15 production doc comments evolved from primal names (BearDog, NestGate, Songbird, Squirrel) to capability-based wording. Serde aliases and legacy mapping tables retained.
+- **Dead code removal**: `proxy_to_barracuda` legacy alias removed (dead_code, no callers).
+- **Smart refactoring**: `jsonrpc_server.rs` — extracted `dispatch_or_parse_error()` helper, DRY'd 3 duplicated parse-error patterns.
+- **Dependency evolution**: `serialport` in `toadstool-runtime-specialty` made optional behind `serial-transport` feature.
+- **Unsafe audit**: 34 unsafe blocks confirmed — all in hw containment (mmap, ioctl, volatile MMIO, DMA), all genuinely necessary, all SAFETY-documented. No blocks removable.
+- **Mock audit**: Zero production mocks found. All Mock* types gated behind `#[cfg(test)]` or `test-mocks` feature.
+- **Large file audit**: Most >500-line files are test-only. `jsonrpc_server.rs` (659) was the main prod candidate (now DRY'd).
 
 ### Session S201: primalSpring Gap Closure & Coverage Push (Apr 11, 2026)
 - **primalSpring April 11 downstream audit**: Confirmed pipeline scheduling (`compute.dispatch.pipeline.submit`) fully resolved in S199. Stale audit entry closed. D-RUSTIX-DISPLAY-038 and D-ASYNC-DYN-MARKERS confirmed genuinely blocked.

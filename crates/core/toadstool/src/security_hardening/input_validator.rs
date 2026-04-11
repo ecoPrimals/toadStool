@@ -107,12 +107,20 @@ mod tests {
 
     #[test]
     fn rejects_javascript_protocol() {
-        assert!(default_validator().validate_input("javascript:void(0)").is_err());
+        assert!(
+            default_validator()
+                .validate_input("javascript:void(0)")
+                .is_err()
+        );
     }
 
     #[test]
     fn rejects_sql_injection_union() {
-        assert!(default_validator().validate_input("1 UNION SELECT *").is_err());
+        assert!(
+            default_validator()
+                .validate_input("1 UNION SELECT *")
+                .is_err()
+        );
     }
 
     #[test]
@@ -122,7 +130,11 @@ mod tests {
 
     #[test]
     fn rejects_command_injection_pipe() {
-        assert!(default_validator().validate_input("foo | cat /etc/passwd").is_err());
+        assert!(
+            default_validator()
+                .validate_input("foo | cat /etc/passwd")
+                .is_err()
+        );
     }
 
     #[test]

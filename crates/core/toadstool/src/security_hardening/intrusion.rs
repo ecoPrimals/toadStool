@@ -225,8 +225,7 @@ mod tests {
     #[tokio::test]
     async fn ban_does_not_affect_other_clients() {
         let ids = IntrusionDetectionSystem::new(strict_config());
-        ids.ban_client("bad", Duration::from_secs(60), "test")
-            .await;
+        ids.ban_client("bad", Duration::from_secs(60), "test").await;
         assert!(!ids.is_banned("good").await);
     }
 

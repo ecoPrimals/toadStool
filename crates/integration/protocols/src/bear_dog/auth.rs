@@ -41,7 +41,7 @@ pub struct AuthResponse {
     pub policies: Vec<SecurityPolicy>,
 }
 
-/// Request body for JSON-RPC `auth.token.refresh` or `security.token.renew` on the BearDog security service.
+/// Request body for JSON-RPC `auth.token.refresh` or `security.token.renew` on the crypto/security capability provider.
 ///
 /// The server returns an [`AuthResponse`]-shaped result with a new `access_token` and `expires_in`.
 #[derive(Debug, Clone, Serialize, Deserialize)]

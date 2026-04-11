@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 11, 2026 — S200
+**Last Updated**: April 11, 2026 — S202
 
 ---
 
@@ -30,23 +30,19 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S200 — April 11, 2026)
+## Current State (S202 — April 11, 2026)
 
-**Post-budding, dependency-sovereign, IPC-first, fully concurrent.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
+**Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **21,600+ tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **~69 JSON-RPC methods**. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
-- **Deep debt audit (S200)**: 0 production unwraps, 0 production mocks, 0 hardcoded primal names. Service discovery refactored. rustix aligned to 1.x across workspace (except display V4L2 ioctl migration pending).
+- **Capability-based everywhere (S202)**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers. API keys evolved (e.g., `shader_compiler_available`).
 - **TS-01 / shader compiler discovery** — `visualization_client.rs` uses unified `capability.discover` (no `CORALREEF_*` env, no coralreef-core.json, no coralreef dir scan).
 - **BTSP Phase 2** — Handshake enforced on every UDS accept path (JSON-RPC + tarpc + daemon servers).
-- **OpenCL deprecated** — `ocl` removed; GPU OpenCL paths stubbed; `GpuFramework::OpenCl` retained as deprecated variant.
-- **glowPlug/ember subsystem** — toadStool-native hardware lifecycle (absorbed from coralReef). `toadstool-glowplug`, `toadstool-ember`, `toadstool-hw-safe` crates.
-- **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; S198 hardening (nvpmu ABI types, V4L2 fd checks, secure_enclave `madvise`). 41 crates forbid, 6 deny `unsafe_code`.
-- **ecoBin v3.0** — Zero C FFI deps. Crypto delegated to security service. HTTP delegated to coordination service. Optional **musl-static** ~11MB x86_64 PIE binary validated (S198).
-- **Capability-based discovery** — Primals discover each other by capability, not name. Self-knowledge principle. S176–S198: struct fields, docs, `SocketPathEnv` / `resolve_capability_socket_fallback`, embedded `thiserror` stubs. **~400** intentional legacy-compat refs remain (serde aliases, env var fallbacks, parse_type).
+- **34 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented. 41 crates forbid, 6 deny `unsafe_code`.
+- **ecoBin v3.0** — Zero C FFI deps. `serialport` feature-gated in specialty crate (S202). Crypto delegated to security service. HTTP delegated to coordination service.
 - **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + thread timeout.
-- **BTSP Tier 2** — `validate_insecure_guard()` at server startup (GAP-MATRIX-12). Family-scoped socket handshake on all transports (S198 completes UDS parity).
 - **Fully concurrent tests** — All tests run with unlimited parallelism. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **AGPL-3.0-or-later** — All Cargo.toml + all .rs files aligned. `deny.toml` enforced.
 

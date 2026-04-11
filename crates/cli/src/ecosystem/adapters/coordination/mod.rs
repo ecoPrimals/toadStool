@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coordination adapter - capability-based coordination and service discovery
 //!
-//! This adapter replaces the hardcoded Songbird integration with a generic
+//! This adapter replaces hardcoded coordination-service integration with a generic
 //! coordination adapter that works with ANY service providing coordination capabilities.
 //!
 //! # Migration from Songbird

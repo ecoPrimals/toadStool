@@ -115,6 +115,23 @@ pub(crate) mod error_codes {
     pub use toadstool_common::constants::jsonrpc::error_codes::*;
 }
 
+/// Parse a raw JSON line into a request, dispatch it, and return the response.
+async fn dispatch_or_parse_error(raw: &[u8], state: &ServerState) -> JsonRpcResponse {
+    match serde_json::from_slice::<JsonRpcRequest>(raw) {
+        Ok(request) => super::routes::handle_request(request, state).await,
+        Err(e) => JsonRpcResponse {
+            jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
+            result: None,
+            error: Some(JsonRpcError {
+                code: error_codes::PARSE_ERROR,
+                message: format!("Parse error: {e}"),
+                data: None,
+            }),
+            id: None,
+        },
+    }
+}
+
 /// Start JSON-RPC API server over Unix socket
 ///
 /// # Deep Debt Evolution
@@ -243,19 +260,7 @@ async fn handle_tcp_connection(
             break;
         }
 
-        let response = match serde_json::from_slice::<JsonRpcRequest>(line.as_bytes()) {
-            Ok(request) => super::routes::handle_request(request, &state).await,
-            Err(e) => JsonRpcResponse {
-                jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
-                result: None,
-                error: Some(JsonRpcError {
-                    code: error_codes::PARSE_ERROR,
-                    message: format!("Parse error: {e}"),
-                    data: None,
-                }),
-                id: None,
-            },
-        };
+        let response = dispatch_or_parse_error(line.as_bytes(), &state).await;
 
         let response_json = serde_json::to_string(&response)?;
         writer.write_all(response_json.as_bytes()).await?;
@@ -297,19 +302,7 @@ async fn handle_btsp_daemon_connection(
     loop {
         match btsp::framing::read_frame(&mut stream).await {
             Ok(frame) => {
-                let response = match serde_json::from_slice::<JsonRpcRequest>(&frame) {
-                    Ok(request) => super::routes::handle_request(request, &state).await,
-                    Err(e) => JsonRpcResponse {
-                        jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
-                        result: None,
-                        error: Some(JsonRpcError {
-                            code: error_codes::PARSE_ERROR,
-                            message: format!("Parse error: {e}"),
-                            data: None,
-                        }),
-                        id: None,
-                    },
-                };
+                let response = dispatch_or_parse_error(&frame, &state).await;
                 let response_json = serde_json::to_string(&response)?;
                 if let Err(e) =
                     btsp::framing::write_frame(&mut stream, response_json.as_bytes()).await
@@ -383,21 +376,7 @@ async fn handle_connection(stream: UnixStream, state: ServerState) -> crate::Res
             break;
         }
 
-        let response = match serde_json::from_slice::<JsonRpcRequest>(line.as_bytes()) {
-            Ok(request) => super::routes::handle_request(request, &state).await,
-            Err(e) => JsonRpcResponse {
-                jsonrpc: toadstool_common::constants::jsonrpc::VERSION.to_string(),
-                result: None,
-                error: Some(JsonRpcError {
-                    code: error_codes::PARSE_ERROR,
-                    message: format!("Parse error: {e}"),
-                    data: None,
-                }),
-                id: None,
-            },
-        };
-
-        // Send response
+        let response = dispatch_or_parse_error(line.as_bytes(), &state).await;
         let response_json = serde_json::to_string(&response)?;
         writer.write_all(response_json.as_bytes()).await?;
         writer.write_all(b"\n").await?;

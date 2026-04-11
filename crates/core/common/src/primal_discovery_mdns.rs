@@ -14,7 +14,7 @@
 //! - `cap_{name}={version}` - capability with version
 //! - `cap_{name}_features={comma,separated}` - optional features
 //! - `instance_id={uuid}` - unique service instance
-//! - `primal_type={type}` - type of primal (songbird, beardog, etc.)
+//! - `primal_type={type}` - type of primal (discovered by capability at runtime)
 
 use crate::primal_discovery::{
     DiscoveryConfig, DiscoveryError, DiscoveryMethod, PrimalEndpoint, TrustLevel,

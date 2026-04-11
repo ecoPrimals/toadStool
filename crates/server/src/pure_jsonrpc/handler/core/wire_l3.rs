@@ -295,7 +295,10 @@ mod tests {
                 "{method} missing 'energy'"
             );
             assert!(
-                entry.get("memory_pressure").and_then(|v| v.as_str()).is_some(),
+                entry
+                    .get("memory_pressure")
+                    .and_then(|v| v.as_str())
+                    .is_some(),
                 "{method} missing 'memory_pressure'"
             );
         }
@@ -332,7 +335,9 @@ mod tests {
         let costs = cost_estimates();
         let map = costs.as_object().unwrap();
         for method in ["health.liveness", "health.check", "health.readiness"] {
-            let entry = map.get(method).unwrap_or_else(|| panic!("missing {method}"));
+            let entry = map
+                .get(method)
+                .unwrap_or_else(|| panic!("missing {method}"));
             assert_eq!(entry["cpu"], "negligible", "{method} cpu");
             assert_eq!(entry["energy"], "negligible", "{method} energy");
             assert!(!entry["gpu_eligible"].as_bool().unwrap(), "{method} gpu");
@@ -348,7 +353,9 @@ mod tests {
             "compute.dispatch.submit",
             "compute.dispatch.pipeline.submit",
         ] {
-            let entry = map.get(method).unwrap_or_else(|| panic!("missing {method}"));
+            let entry = map
+                .get(method)
+                .unwrap_or_else(|| panic!("missing {method}"));
             assert!(
                 entry["gpu_eligible"].as_bool().unwrap(),
                 "{method} should be gpu_eligible"
@@ -360,7 +367,9 @@ mod tests {
     fn cost_estimates_pipeline_submit_has_higher_latency_than_single_dispatch() {
         let costs = cost_estimates();
         let map = costs.as_object().unwrap();
-        let single = map["compute.dispatch.submit"]["latency_ms"].as_u64().unwrap();
+        let single = map["compute.dispatch.submit"]["latency_ms"]
+            .as_u64()
+            .unwrap();
         let pipeline = map["compute.dispatch.pipeline.submit"]["latency_ms"]
             .as_u64()
             .unwrap();
@@ -417,12 +426,12 @@ mod tests {
     fn operation_dependencies_pipeline_status_depends_on_pipeline_submit() {
         let deps = operation_dependencies();
         let map = deps.as_object().unwrap();
-        let pipeline_status_prereqs = map["compute.dispatch.pipeline.status"]
-            .as_array()
-            .unwrap();
-        assert!(pipeline_status_prereqs
-            .iter()
-            .any(|v| v == "compute.dispatch.pipeline.submit"));
+        let pipeline_status_prereqs = map["compute.dispatch.pipeline.status"].as_array().unwrap();
+        assert!(
+            pipeline_status_prereqs
+                .iter()
+                .any(|v| v == "compute.dispatch.pipeline.submit")
+        );
     }
 
     #[test]

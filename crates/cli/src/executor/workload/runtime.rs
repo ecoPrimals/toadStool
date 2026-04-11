@@ -54,7 +54,7 @@ pub(super) async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator)
     info!("   ✅ Native runtime registered");
 
     // Python runtime removed — pyo3 FFI violates ecoBin v3.0.
-    // Python workloads route to Squirrel via IPC.
+    // Python workloads route to the AI/routing capability provider via IPC.
     debug!("   ℹ️  Python runtime: delegate to AI/routing service via IPC");
 
     // WASM runtime - Optional (has zstd C dependency)

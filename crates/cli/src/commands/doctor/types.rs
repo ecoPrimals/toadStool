@@ -50,10 +50,10 @@ pub struct EcosystemReport {
     pub issues: Vec<String>,
 }
 
-/// Status of a single primal (BearDog, NestGate, Songbird, etc.)
+/// Status of a single discovered primal (by capability)
 #[derive(Debug, Serialize)]
 pub struct PrimalStatus {
-    /// Primal name (e.g. beardog, nestgate)
+    /// Primal capability or service name
     pub name: String,
     /// Whether the primal socket file exists
     pub socket_exists: bool,

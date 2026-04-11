@@ -9,6 +9,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::SystemTime;
+use toadstool_common::constants::PRIMAL_NAME;
 use uuid::Uuid;
 
 /// ToadStool's self-identity - what we know about OURSELVES
@@ -20,7 +21,7 @@ pub struct SelfIdentity {
     /// Our unique instance ID (generated at startup)
     pub instance_id: Uuid,
 
-    /// Our primal type (always "toadstool")
+    /// Our primal type (sourced from `PRIMAL_NAME` constant)
     pub primal_type: &'static str,
 
     /// Our version
@@ -114,7 +115,7 @@ impl SelfIdentity {
     pub fn new() -> Self {
         Self {
             instance_id: Uuid::new_v4(),
-            primal_type: "toadstool",
+            primal_type: PRIMAL_NAME,
             version: env!("CARGO_PKG_VERSION").to_string(),
             capabilities: Self::our_capabilities(),
             requirements: Self::our_requirements(),
@@ -377,7 +378,7 @@ mod tests {
     fn test_self_identity_creation() {
         let identity = SelfIdentity::new();
 
-        assert_eq!(identity.primal_type, "toadstool");
+        assert_eq!(identity.primal_type, PRIMAL_NAME);
         assert!(!identity.capabilities.is_empty());
         assert!(!identity.requirements.is_empty());
         assert_eq!(identity.version, env!("CARGO_PKG_VERSION"));
@@ -443,7 +444,7 @@ mod tests {
 
         let ad = identity.to_advertisement();
 
-        assert_eq!(ad.primal_type, "toadstool");
+        assert_eq!(ad.primal_type, PRIMAL_NAME);
         assert!(ad.endpoint.is_some());
         assert!(!ad.capabilities.is_empty());
     }

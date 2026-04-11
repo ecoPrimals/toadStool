@@ -2,7 +2,7 @@
 //! Primal Identity Constants — Self-Knowledge Module
 //!
 //! ToadStool only has knowledge of itself. Other primals are discovered at
-//! runtime through capability-based discovery (Songbird, `BirdSong`, mDNS).
+//! runtime through capability-based discovery (coordination service, mDNS).
 //!
 //! This module defines:
 //! - **Self-knowledge**: ToadStool's own identity, app name, socket paths
@@ -14,7 +14,7 @@
 //! 1. **Self-knowledge only**: ToadStool knows its own name, version, and
 //!    capabilities. It never hardcodes another primal's name or port.
 //! 2. **Capability-based discovery**: When ToadStool needs crypto, it asks for
-//!    `capability::CRYPTO_PROVIDER`, not "beardog".
+//!    `capability::CRYPTO_PROVIDER`, not a specific primal name.
 //! 3. **Runtime resolution**: Socket paths, ports, and endpoints for external
 //!    primals come from discovery, environment variables, or config — never
 //!    from compiled-in constants.

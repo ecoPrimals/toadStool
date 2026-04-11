@@ -45,7 +45,7 @@ pub enum CapabilityType {
 
     /// Intelligence capabilities (AI, ML, analysis, natural language)
     ///
-    /// Could be provided by: squirrel, `OpenAI`, local models, etc.
+    /// Could be provided by: any routing/intelligence capability provider, `OpenAI`, local models, etc.
     Intelligence {
         /// Intelligence features this provider supports
         features: Vec<IntelligenceFeature>,

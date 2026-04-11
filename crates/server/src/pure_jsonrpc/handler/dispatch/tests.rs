@@ -29,7 +29,7 @@ async fn dispatch_capabilities_returns_expected_structure() {
     assert!(result["vfio_gpus"].as_array().is_some());
     assert!(result["drm_gpus"].as_array().is_some());
     assert!(result["total_dispatch_count"].as_u64().is_some());
-    assert!(result["coral_reef_available"].is_boolean());
+    assert!(result["shader_compiler_available"].is_boolean());
 }
 
 #[tokio::test]

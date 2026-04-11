@@ -188,7 +188,9 @@ mod tests {
     async fn banned_client_is_rejected() {
         let limiter = RateLimiter::new(fast_config(100, 10000));
         assert!(limiter.check_rate_limit("victim").await.unwrap());
-        limiter.ban_client("victim", Duration::from_secs(3600)).await;
+        limiter
+            .ban_client("victim", Duration::from_secs(3600))
+            .await;
         assert!(!limiter.check_rate_limit("victim").await.unwrap());
     }
 

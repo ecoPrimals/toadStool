@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 11, 2026 — S201
+**Date**: April 11, 2026 — S202
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -43,13 +43,14 @@ Dead u8 alignment check removed S197. Evolution: fuzz the access paths, consider
 `NonNull::slice_from_raw_parts` for fat-pointer representation.
 Files: `buffer/access.rs`.
 
-### D-FUZZ-TARGETS — PARTIAL S197
+### D-FUZZ-TARGETS — CI & corpus (infra landed S197, remaining work)
 **Scope**: Workspace | **Dir**: `fuzz/`
 Initial `cargo-fuzz` / `libfuzzer` infrastructure added (S197). Three targets:
 `fuzz_jsonrpc_parse` (JSON-RPC 2.0 deser), `fuzz_config_toml` (config deser +
 validation), `fuzz_btsp_framing` (BTSP length-prefixed frame decode).
 Remaining: integrate into CI, add seed corpus, run extended campaigns, add
 proptest bridge for property-based input generation.
+See also: `D-FUZZ-TARGETS-UNSAFE` (GPU buffer access paths).
 Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`.
 
 
@@ -62,12 +63,37 @@ leaf and the 0.38 version is safe; the only impact is having two rustix majors i
 the dependency tree.
 Files: `v4l2/ioctl.rs`, `drm/device.rs`, `v4l2/device.rs`.
 
-### D-ASYNC-DYN-MARKERS
+## Known Limitations (not actionable debt)
+
+### D-ASYNC-DYN-MARKERS — Rust language constraint
 **Scope**: Workspace (~55 files) | **Marker**: `NOTE(async-dyn)`
 Traits using `#[async_trait]` because native `async fn` in `dyn Trait` is not yet
 stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_trait]`
 dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
-**Not actionable** — marker is accurate documentation.
+**Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
+
+## S202 Resolved Debt (Deep Debt Execution: Capability-Based Evolution)
+
+### D-HARDCODED-PRIMAL-LITERALS — RESOLVED S202
+Production `"toadstool"` string literals in `self_identity.rs`, `bear_dog/client.rs`,
+and `identity.rs` now use the `PRIMAL_NAME` constant from `toadstool_common::constants`.
+`"coral_reef_available"` JSON-RPC key evolved to `"shader_compiler_available"`.
+
+### D-PRIMAL-NAME-DOCS — RESOLVED S202
+~15 production doc comments referencing primal names (BearDog, NestGate, Songbird,
+Squirrel) evolved to capability-based wording. Serde aliases and legacy mapping
+tables retained for backward compatibility.
+
+### D-SERIALPORT-DEFAULT — RESOLVED S202
+`serialport` in `toadstool-runtime-specialty` made optional behind `serial-transport`
+feature. Default builds no longer pull C/libudev transitive dependencies.
+
+### D-DEAD-BARRACUDA-ALIAS — RESOLVED S202
+`proxy_to_barracuda` dead code alias removed from `nautilus_handlers.rs`.
+
+### D-JSONRPC-PARSE-DRY — RESOLVED S202
+Triplicated parse-error response pattern in `jsonrpc_server.rs` (Unix, TCP, BTSP)
+extracted into `dispatch_or_parse_error()` helper.
 
 ## S201 Resolved Debt (primalSpring Gap Closure & Coverage Push)
 

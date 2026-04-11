@@ -6,7 +6,7 @@
 //! invoked through protocol-agnostic interfaces.
 //!
 //! # Philosophy
-//! **"We don't know BearDog, NestGate, or Songbird. We know capabilities."**
+//! **"We don't know specific primals. We know capabilities."**
 //!
 //! Instead of hardcoded service connections, we discover services that provide
 //! the capabilities we need and interact with them through standard protocols.

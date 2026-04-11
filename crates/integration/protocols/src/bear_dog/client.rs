@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use toadstool_common::constants::PRIMAL_NAME;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -293,7 +294,7 @@ impl BearDogIntegration {
     }
 
     /// Refresh the PKI access token when it is missing, past expiry, or within [`TOKEN_REFRESH_SKEW`]
-    /// of expiry. Calls the BearDog security service over the same Unix JSON-RPC transport as
+    /// of expiry. Calls the crypto/security capability provider over the same Unix JSON-RPC transport as
     /// [`Self::authenticate`], trying `auth.token.refresh` first and `security.token.renew` if
     /// the server reports an unknown method.
     ///
@@ -408,7 +409,7 @@ impl BearDogIntegration {
         let audit_event = SecurityAuditEvent {
             event_id: Uuid::new_v4().to_string(),
             event_type: "authorization_decision".to_string(),
-            service_id: "toadstool".to_string(),
+            service_id: PRIMAL_NAME.to_string(),
             user_id: None,
             resource: resource.to_string(),
             action: action.to_string(),

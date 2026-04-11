@@ -41,7 +41,7 @@ impl DispatchHandler {
             "domain": "compute.dispatch",
             "operation": "capabilities",
             "sovereign_pipeline": true,
-            "coral_reef_available": coral_available,
+            "shader_compiler_available": coral_available,
             "dispatch_modes": ["vfio", "drm"],
             "methods": [
                 "compute.dispatch.submit",

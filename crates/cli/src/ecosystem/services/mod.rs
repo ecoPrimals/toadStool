@@ -10,11 +10,10 @@
 //!
 //! ## Old Way (Removed)
 //! ```rust,ignore
-//! use toadstool::ecosystem::services::{beardog, songbird, nestgate};
-//!
-//! beardog::install_permissions(path, false).await?;
-//! songbird::register(&addr, &reg).await?;
-//! nestgate::connect_storage(&addr, &mount, None).await?;
+//! // Legacy primal-name imports — replaced by capability adapters:
+//! // security::install_permissions(path, false).await?;
+//! // coordination::register(&addr, &reg).await?;
+//! // storage::connect_storage(&addr, &mount, None).await?;
 //! ```
 //!
 //! ## New Way (Current)
@@ -48,5 +47,5 @@
             See module docs for migration guide."
 )]
 
-// All service-specific modules (beardog, songbird, nestgate) have been removed.
+// All legacy service-specific modules have been removed.
 // Use the capability-based adapter system in `ecosystem::adapters` instead.

@@ -5,7 +5,33 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 11, 2026 (Sessions 43-201)
+## [Unreleased] - April 11, 2026 (Sessions 43-202)
+
+### Session S202 (Apr 11, 2026) — Deep Debt Execution: Capability-Based Evolution
+
+#### Hardcoded Literal Evolution
+- EVOLVED: `self_identity.rs` — `"toadstool"` literal → `PRIMAL_NAME` constant (single-sourced)
+- EVOLVED: `bear_dog/client.rs` — `"toadstool"` audit service_id → `PRIMAL_NAME`
+- EVOLVED: `identity.rs` — JSON-RPC `capabilities.list` type field → `PRIMAL_NAME`
+- EVOLVED: `dispatch/capabilities.rs` — `"coral_reef_available"` → `"shader_compiler_available"` (capability-based API key)
+
+#### Primal-Name Doc Comments → Capability Wording
+- Evolved ~15 production doc comments across `bear_dog/client.rs`, `auth.rs`, `coordinator/adapter.rs`, `coordinator/mod.rs`, `adapters/mod.rs`, `capabilities/mod.rs`, `services/mod.rs`, `infrastructure_templates.rs`, `primal_sockets/mod.rs`, `primal_identity.rs`, `primal_discovery_mdns.rs`, `doctor/types.rs`, `config_utils/network.rs`, `capability_types.rs`, `executor/workload/runtime.rs`, `services/types.rs`
+- Philosophy: "We don't know specific primals. We know capabilities."
+
+#### Dead Code Removal
+- REMOVED: `proxy_to_barracuda` legacy alias (dead code, `#[expect(dead_code)]` — no callers)
+
+#### Smart Refactoring
+- `jsonrpc_server.rs`: Extracted `dispatch_or_parse_error()` helper — DRY'd 3 duplicated parse-error-response patterns (Unix NDJSON, TCP, BTSP)
+
+#### Dependency Evolution
+- `toadstool-runtime-specialty`: `serialport` made optional behind `serial-transport` feature (ecoBin compliance — C/libudev not pulled into default builds)
+
+#### Quality Gates
+- `cargo fmt`: PASS
+- `cargo clippy -- -D warnings`: PASS (0 warnings)
+- `cargo test --workspace`: PASS (0 failures)
 
 ### Session S201 (Apr 11, 2026) — primalSpring Gap Closure & Coverage Push
 

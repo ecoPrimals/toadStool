@@ -12,7 +12,7 @@ use crate::ecosystem::capabilities::StandardCapability;
 /// Coordination adapter - provides coordination operations via capability discovery
 ///
 /// This adapter discovers and invokes coordination services without knowing their identity.
-/// Services could be Songbird, Consul, etcd, Kubernetes service discovery, or custom implementations.
+/// Backends include Consul, etcd, Kubernetes service discovery, or any custom coordination provider.
 pub struct CoordinationAdapter {
     /// Universal service adapter for invoking capabilities
     universal: Arc<UniversalServiceAdapter>,

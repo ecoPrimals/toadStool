@@ -6,7 +6,7 @@
 //! not **what they are called** (service names).
 //!
 //! # Core Principle
-//! **"We don't care if it's BearDog, AWS KMS, or HSM. We care that it can sign with Ed25519."**
+//! **"We don't care which provider it is — AWS KMS, HSM, or anything else. We care that it can sign with Ed25519."**
 
 pub mod registry;
 pub mod resolver;

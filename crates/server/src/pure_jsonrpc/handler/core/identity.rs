@@ -2,6 +2,7 @@
 //! Identity, capability discovery, and Wire Standard L3 `capabilities.list`.
 
 use toadstool::semantic_methods::SemanticMethodRegistry;
+use toadstool_common::constants::PRIMAL_NAME;
 
 use super::DIRECT_JSONRPC_METHODS;
 use super::JsonRpcResult;
@@ -59,7 +60,7 @@ pub(crate) async fn capabilities_list(
                 "description": "GPU job queue, hardware dispatch, and performance routing"
             },
             {
-                "type": "toadstool",
+                "type": PRIMAL_NAME,
                 "methods": ["submit_workload", "query_status", "cancel_workload",
                             "list_workloads", "query_capabilities", "health", "version",
                             "resources.estimate", "resources.validate_availability",

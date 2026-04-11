@@ -196,7 +196,7 @@ pub fn create_sovereign_template() -> TemplateComponents {
     resources.memory_limit = Some(resource_sizes::GB_16.to_string());
     resources.storage_limit = Some(resource_sizes::GB_100.to_string());
 
-    // Secure storage with NestGate for maximum data protection
+    // Secure storage with storage capability provider for maximum data protection
     storage.storage_integration = Some(versions::LATEST.to_string());
     storage.backup_policy = Some("encrypted-daily".to_string());
 

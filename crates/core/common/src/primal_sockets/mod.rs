@@ -12,7 +12,7 @@
 //! ## TRUE PRIMAL Architecture
 //!
 //! - **No HTTP**: All primal communication via unix sockets
-//! - **Coordination service (Songbird) handles external**: Only the coordination service (Songbird) uses HTTP/TLS for external
+//! - **Coordination capability handles external**: Only the coordination capability provider uses HTTP/TLS for external
 //! - **Local IPC**: Fast, secure, pure Rust
 //! - **Discovery-Based**: Socket paths from environment/runtime
 

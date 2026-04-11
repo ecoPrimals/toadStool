@@ -20,7 +20,7 @@ use crate::network;
 ///
 /// **Env pattern**: Prefer `TOADSTOOL_{CAPABILITY}_PORT` and `{CAPABILITY}_PORT` (e.g.
 /// `TOADSTOOL_COORDINATION_PORT`, `COORDINATION_PORT`), then legacy `{PRIMAL_NAME}_PORT`
-/// (`SONGBIRD_PORT`, `BEARDOG_PORT`, …) via [`crate::ports::resolve_capability_port`].
+/// (legacy env names) via [`crate::ports::resolve_capability_port`].
 #[must_use]
 #[deprecated(
     since = "0.92.0",
@@ -35,7 +35,7 @@ pub fn get_primal_default_port(primal_name: &str) -> u16 {
         "SONGBIRD" => ("COORDINATION", capability_fallback::COORDINATION),
         "BEARDOG" => ("SECURITY", capability_fallback::SECURITY),
         "NESTGATE" => ("STORAGE", capability_fallback::STORAGE),
-        // Squirrel → intelligence / platform processing (see TOADSTOOL_INTELLIGENCE_* env vars)
+        // Legacy intelligence / platform processing mapping (see TOADSTOOL_INTELLIGENCE_* env vars)
         "SQUIRREL" => ("PLATFORM", capability_fallback::PLATFORM),
         "BIOMEOS" => ("ECOSYSTEM", capability_fallback::ECOSYSTEM),
         _ => return crate::defaults::network::API_PORT,

@@ -95,7 +95,7 @@ impl ServiceType {
 /// Service endpoint configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceEndpoint {
-    /// Service name (e.g., "songbird", "squirrel", "toadstool")
+    /// Service name (e.g., "coordination", "intelligence", "compute")
     pub name: String,
 
     /// Service type

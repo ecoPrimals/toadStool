@@ -37,15 +37,6 @@ pub async fn proxy_nautilus_rpc(method: &str, params: &Value) -> Result<Value, N
     })
 }
 
-/// Legacy name — prefer [`proxy_nautilus_rpc`].
-#[expect(
-    dead_code,
-    reason = "API compat alias; default path uses proxy_nautilus_rpc"
-)]
-pub async fn proxy_to_barracuda(method: &str, params: &Value) -> Result<Value, NautilusRpcError> {
-    proxy_nautilus_rpc(method, params).await
-}
-
 #[cfg(test)]
 #[cfg(feature = "nautilus")]
 mod tests {
