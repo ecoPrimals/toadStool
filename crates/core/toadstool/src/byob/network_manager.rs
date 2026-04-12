@@ -9,6 +9,9 @@ use std::sync::Arc;
 
 use super::byob_types::{NetworkInfo, ServiceEndpoint, ServiceSpec};
 use super::config::ByobExecutorConfig;
+use toadstool_config::defaults::network::{
+    DOCUMENTATION_PREFIX, GATEWAY_FALLBACK_IP, INTERNAL_IP_BASE, INTERNAL_IP_OFFSET,
+};
 
 /// Trait for managing Docker networks in BYOB deployments
 ///
@@ -69,7 +72,7 @@ pub trait NetworkManager: Send + Sync {
                     None
                 }
             })
-            .unwrap_or_else(|| "10.0.0.1".to_string())
+            .unwrap_or_else(|| GATEWAY_FALLBACK_IP.to_string())
     }
 }
 
@@ -104,7 +107,11 @@ impl NetworkManager for ByobNetworkManager {
         for (service_name, service_spec) in services {
             // ✅ CAPABILITY-BASED: Allocate IP from available pool
             // Calculate internal IP based on position (10.0.0.10+)
-            let internal_ip = format!("10.0.0.{}", 10 + service_endpoints.len());
+            let internal_ip = format!(
+                "{}.{}",
+                INTERNAL_IP_BASE,
+                INTERNAL_IP_OFFSET + service_endpoints.len()
+            );
 
             // ✅ RUNTIME DISCOVERY: External IP allocation based on service needs
             let external_ip = self.allocate_external_ip(service_spec, team_id);
@@ -146,7 +153,11 @@ impl NetworkManager for ByobNetworkManager {
         let ip_offset = team_hash % 1000;
 
         // Use base 203.0.113.0/24 (TEST-NET-3 range, safe for examples)
-        Some(format!("203.0.113.{}", ip_offset % 254 + 1))
+        Some(format!(
+            "{}.{}",
+            DOCUMENTATION_PREFIX,
+            ip_offset % 254 + 1
+        ))
     }
 }
 
@@ -158,11 +169,14 @@ impl NetworkManager for ByobNetworkManager {
 mod tests {
     use super::*;
     use std::time::Duration;
+    use toadstool_config::defaults::network::{
+        DEFAULT_NETWORK_SUBNET, GATEWAY_FALLBACK_IP, INTERNAL_IP_BASE, TEST_NET_3_PREFIX,
+    };
 
     fn create_test_config() -> Arc<ByobExecutorConfig> {
         Arc::new(ByobExecutorConfig {
             max_concurrent_deployments: 10,
-            default_network_subnet: "10.0.0.0/24".to_string(),
+            default_network_subnet: DEFAULT_NETWORK_SUBNET.to_string(),
             resource_monitoring_interval: Duration::from_secs(60),
             health_check_interval: Duration::from_secs(30),
             deployment_timeout: Duration::from_secs(300),
@@ -220,14 +234,14 @@ mod tests {
         let network = manager.create_deployment_network(
             "team-123",
             "deploy-456",
-            "10.0.0.0/24".to_string(),
+            DEFAULT_NETWORK_SUBNET.to_string(),
             &services,
         );
 
         // Verify network properties
         assert_eq!(network.network_name, "byob-team-123-deploy-456");
-        assert_eq!(network.subnet_cidr, "10.0.0.0/24");
-        assert_eq!(network.gateway_ip, "10.0.0.1");
+        assert_eq!(network.subnet_cidr, DEFAULT_NETWORK_SUBNET);
+        assert_eq!(network.gateway_ip, GATEWAY_FALLBACK_IP);
 
         // Verify service endpoints
         assert_eq!(network.service_endpoints.len(), 2);
@@ -236,11 +250,11 @@ mod tests {
 
         // Verify IP allocation
         let web_endpoint = network.service_endpoints.get("web").unwrap();
-        assert!(web_endpoint.internal_ip.starts_with("10.0.0.")); // Internal IP allocated
+        assert!(web_endpoint.internal_ip.starts_with(INTERNAL_IP_BASE)); // Internal IP allocated
         assert!(web_endpoint.external_ip.is_some()); // Web service gets external IP
 
         let db_endpoint = network.service_endpoints.get("db").unwrap();
-        assert!(db_endpoint.internal_ip.starts_with("10.0.0.")); // Internal IP allocated
+        assert!(db_endpoint.internal_ip.starts_with(INTERNAL_IP_BASE)); // Internal IP allocated
         assert!(db_endpoint.external_ip.is_none()); // DB doesn't expose web ports
 
         // Verify IPs are different
@@ -257,7 +271,7 @@ mod tests {
 
         assert!(external_ip.is_some());
         let ip = external_ip.unwrap();
-        assert!(ip.starts_with("203.0.113.")); // TEST-NET-3 range
+        assert!(ip.starts_with(&format!("{}.", TEST_NET_3_PREFIX))); // TEST-NET-3 range
     }
 
     #[test]

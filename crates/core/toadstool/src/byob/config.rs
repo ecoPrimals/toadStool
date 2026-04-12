@@ -4,8 +4,9 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+use toadstool_config::defaults::network::DEFAULT_NETWORK_SUBNET;
+
 const DEFAULT_MAX_CONCURRENT_DEPLOYMENTS: u32 = 50;
-const DEFAULT_NETWORK_SUBNET: &str = "10.0.0.0/24";
 const RESOURCE_MONITORING_INTERVAL: Duration = Duration::from_secs(30);
 const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(10);
 const DEPLOYMENT_TIMEOUT: Duration = Duration::from_secs(600);
@@ -46,7 +47,7 @@ impl Default for ByobExecutorConfig {
 
         Self {
             max_concurrent_deployments: DEFAULT_MAX_CONCURRENT_DEPLOYMENTS,
-            default_network_subnet: DEFAULT_NETWORK_SUBNET.to_string(),
+            default_network_subnet: DEFAULT_NETWORK_SUBNET.to_owned(),
             resource_monitoring_interval: RESOURCE_MONITORING_INTERVAL,
             health_check_interval: HEALTH_CHECK_INTERVAL,
             deployment_timeout: DEPLOYMENT_TIMEOUT,
@@ -99,7 +100,7 @@ mod tests {
         let config = ByobExecutorConfig::default();
 
         assert_eq!(config.max_concurrent_deployments, 50);
-        assert_eq!(config.default_network_subnet, "10.0.0.0/24");
+        assert_eq!(config.default_network_subnet, DEFAULT_NETWORK_SUBNET);
         assert_eq!(config.resource_monitoring_interval, Duration::from_secs(30));
         assert_eq!(config.health_check_interval, Duration::from_secs(10));
         assert_eq!(config.deployment_timeout, Duration::from_secs(600));

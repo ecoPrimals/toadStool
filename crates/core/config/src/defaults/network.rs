@@ -76,3 +76,39 @@ pub const DISCOVERY_PORT: u16 = 0;
 /// Default federation port for cross-primal communication
 /// Port 0 = OS-assigned at bind time.
 pub const FEDERATION_PORT: u16 = 0;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BYOB / ECOSYSTEM DISCOVERY SHARED LITERALS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Default CIDR for BYOB executor default network subnet.
+pub const DEFAULT_NETWORK_SUBNET: &str = "10.0.0.0/24";
+
+/// Gateway IP when the subnet base cannot be parsed (last octet forced to `.1`).
+pub const GATEWAY_FALLBACK_IP: &str = "10.0.0.1";
+
+/// First three octets for allocated internal service IPs in BYOB (`{base}.{offset+n}`).
+pub const INTERNAL_IP_BASE: &str = "10.0.0";
+
+/// Host octet for the first service in BYOB internal IP allocation.
+pub const INTERNAL_IP_OFFSET: usize = 10;
+
+/// Typical private-network `/24` ranges scanned for ecosystem discovery (RFC 1918-style defaults).
+pub const RFC1918_SCAN_RANGES: &[&str] = &[
+    "192.168.1.0/24",
+    "192.168.0.0/24",
+    "10.0.0.0/24",
+    "172.16.0.0/24",
+];
+
+/// Default TCP port when a URL has no port (HTTP probe).
+pub const PROBE_DEFAULT_PORT: u16 = 80;
+
+/// Host octets to probe when scanning a `/24` range for ecosystem services.
+pub const COMMON_SCAN_SUFFIXES: &[u8] = &[1, 2, 10, 20, 50, 100, 200, 254];
+
+/// RFC 5737 TEST-NET-3 documentation prefix (non-globally routable; safe for examples).
+pub const TEST_NET_3_PREFIX: &str = "203.0.113";
+
+/// Alias for documentation / example IP allocation (same as [`TEST_NET_3_PREFIX`]).
+pub const DOCUMENTATION_PREFIX: &str = TEST_NET_3_PREFIX;

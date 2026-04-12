@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 12, 2026 — S203d
+**Date**: April 12, 2026 — S203e
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -63,6 +63,22 @@ dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn pa
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
 ## S203 Resolved Debt (Deep Audit & Evolution Execution)
+
+### D-NETWORK-HARDCODING-CENTRALIZATION — RESOLVED S203e
+**Scope**: `auto_config`, `core/toadstool/byob`, `core/config`
+Hardcoded network ranges (RFC1918 scan ranges, gateway fallback, subnet
+defaults, host scan suffixes, TEST-NET-3 prefix) centralized to 8 named
+constants in `core/config/defaults/network.rs`. Three call sites updated.
+Files: `ecosystem_network.rs`, `byob/config.rs`, `byob/network_manager.rs`.
+
+### D-LARGE-FILE-REFACTOR-S203E — RESOLVED S203e
+**Scope**: 5 files across 4 crates
+Smart test extraction from production files >550 LOC:
+- `byob/byob_types.rs` (585→~280)
+- `cross_spring_provenance.rs` (581→~420)
+- `gpu_job_queue.rs` (581→~430)
+- `handler/silicon.rs` (575→~390)
+- `primal_capabilities/registry.rs` (581→~375)
 
 ### D-LD04-BTSP-AUTODETECT — RESOLVED S203d
 **Crate**: `server` | **Audit**: LD-04 (primalSpring downstream — partial blocker)

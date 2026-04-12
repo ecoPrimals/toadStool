@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 12, 2026 (Sessions 43-203)
 
+### Session S203e (Apr 12, 2026) — Deep Debt: Network Centralization + File Refactoring
+
+#### Hardcoded Network Centralization
+- CENTRALIZED: 8 network constants to `core/config/defaults/network.rs`
+  - `DEFAULT_NETWORK_SUBNET`, `GATEWAY_FALLBACK_IP`, `INTERNAL_IP_BASE`, `INTERNAL_IP_OFFSET`
+  - `RFC1918_SCAN_RANGES`, `PROBE_DEFAULT_PORT`, `COMMON_SCAN_SUFFIXES`
+  - `TEST_NET_3_PREFIX` / `DOCUMENTATION_PREFIX` (RFC 5737)
+- UPDATED: `auto_config/ecosystem_network.rs` — scan ranges/suffixes from constants
+- UPDATED: `byob/config.rs` — subnet from constant
+- UPDATED: `byob/network_manager.rs` — gateway, IP base, TEST-NET from constants
+
+#### Smart File Refactoring (5 production files)
+- EXTRACTED: `byob/byob_types.rs` tests → `byob_types_tests.rs` (585→~280)
+- EXTRACTED: `cross_spring_provenance.rs` tests → `cross_spring_provenance_tests.rs` (581→~420)
+- EXTRACTED: `gpu_job_queue.rs` tests → `gpu_job_queue_tests.rs` (581→~430)
+- EXTRACTED: `handler/silicon.rs` tests → `silicon_tests.rs` (575→~390)
+- EXTRACTED: `primal_capabilities/registry.rs` tests → `registry_tests.rs` (581→~375)
+
+#### Deep Audit Results
+- Zero TODO/FIXME/HACK/dbg!/Box<dyn Error>/.unwrap()/std::env::set_var in production
+- All unsafe in hw-safe/VFIO/DRM/V4L2/GPU containment zones with SAFETY docs
+- All mocks properly #[cfg(test)] or feature-gated
+- All hardcoded values now centralized to config/defaults constants
+- All external C deps behind optional features (blake3 pure-Rust confirmed)
+
 ### Session S203d (Apr 12, 2026) — LD-04 Resolution: BTSP Auto-Detect + Env-Safe Tests
 
 #### BTSP Plain-Text Auto-Detect (LD-04 Completion)

@@ -12,6 +12,9 @@ use tracing::debug;
 
 use crate::ecosystem_types::{ServiceInfo, ServicePattern, ServiceStatus};
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_config::defaults::network::{
+    COMMON_SCAN_SUFFIXES, PROBE_DEFAULT_PORT, RFC1918_SCAN_RANGES,
+};
 use toadstool_config::env_config::EnvironmentConfig;
 
 /// TCP connect timeout for `probe_service`. Production uses 2s; tests use a
@@ -27,12 +30,10 @@ const TCP_PROBE_CONNECT_TIMEOUT: Duration = if cfg!(test) {
 /// Returns a list of CIDR-style network ranges to scan for ecosystem services.
 #[must_use]
 pub fn get_local_network_ranges() -> Vec<String> {
-    let ranges = vec![
-        "192.168.1.0/24".to_string(),
-        "192.168.0.0/24".to_string(),
-        "10.0.0.0/24".to_string(),
-        "172.16.0.0/24".to_string(),
-    ];
+    let ranges: Vec<String> = RFC1918_SCAN_RANGES
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
 
     debug!("Using default network ranges: {:?}", ranges);
     ranges
@@ -53,7 +54,7 @@ pub async fn probe_service(
 
     let config = EnvironmentConfig::from_env();
     let host = url.host_str().unwrap_or(&config.network.bind_address);
-    let port = url.port().unwrap_or(80);
+    let port = url.port().unwrap_or(PROBE_DEFAULT_PORT);
     let socket_addr = format!("{host}:{port}");
 
     if timeout(TCP_PROBE_CONNECT_TIMEOUT, TcpStream::connect(&socket_addr))
@@ -110,9 +111,7 @@ pub async fn scan_network_range(
 
     let base = format!("{}.{}.{}", ip_parts[0], ip_parts[1], ip_parts[2]);
 
-    let scan_ips = vec![1, 2, 10, 20, 50, 100, 200, 254];
-
-    for ip_suffix in scan_ips {
+    for &ip_suffix in COMMON_SCAN_SUFFIXES {
         let ip = format!("{base}.{ip_suffix}");
 
         for (capability_key, pattern) in service_patterns {
@@ -160,13 +159,14 @@ pub async fn discover_network_services(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use toadstool_config::defaults::network::RFC1918_SCAN_RANGES;
 
     #[tokio::test]
     async fn test_network_range_parsing() {
         let ranges = get_local_network_ranges();
 
         assert!(!ranges.is_empty());
-        assert!(ranges.contains(&"192.168.1.0/24".to_string()));
+        assert!(ranges.contains(&RFC1918_SCAN_RANGES[0].to_string()));
     }
 
     #[tokio::test]
@@ -227,9 +227,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_local_network_ranges_has_four_defaults() {
         let ranges = get_local_network_ranges();
-        assert_eq!(ranges.len(), 4);
-        assert!(ranges.contains(&"192.168.1.0/24".to_string()));
-        assert!(ranges.contains(&"10.0.0.0/24".to_string()));
+        assert_eq!(ranges.len(), RFC1918_SCAN_RANGES.len());
+        assert!(ranges.contains(&RFC1918_SCAN_RANGES[0].to_string()));
+        assert!(ranges.contains(&RFC1918_SCAN_RANGES[2].to_string()));
     }
 
     #[tokio::test]
