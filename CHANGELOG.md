@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 12, 2026 (Sessions 43-203)
 
+### Session S203c (Apr 12, 2026) — Deep Debt: Smart File Refactoring + Stub Deprecation
+
+#### Smart File Refactoring (10 production files >500 LOC)
+- EXTRACTED: `cli/daemon/jsonrpc_server.rs` tests → `jsonrpc_server_tests.rs` (638→391)
+- EXTRACTED: `runtime/edge/lib.rs` tests → `lib_tests.rs` (636→404)
+- EXTRACTED: `security/policies/types.rs` tests → `types_tests.rs` (604→407)
+- EXTRACTED: `runtime/gpu/cpu_resource.rs` tests → `cpu_resource_tests.rs` (596→511)
+- EXTRACTED: `nvpmu/power_manager.rs` tests → `power_manager_tests.rs` (595→483)
+- EXTRACTED: `management/performance/implementation/mod.rs` tests → `mod_tests.rs` (594→194)
+- EXTRACTED: `runtime/gpu/distributed/mod.rs` tests → `mod_tests.rs` (590→417)
+- EXTRACTED: `server/handler/transport.rs` tests → `transport_tests.rs` (588→308)
+- EXTRACTED: `distributed/cloud/scheduling.rs` tests → `scheduling_tests.rs` (588→409)
+- EXTRACTED: `client/lib.rs` tests → `lib_tests.rs` (586→140)
+
+#### Deprecated Stub Cleanup
+- DEPRECATED: 4 OpenCL detection stubs in `distributed/universal/detection/gpu.rs`
+- REMOVED: Associated OpenCL stub tests (no deprecated API exercising in CI)
+
+#### Deep Audit Results
+- All `unsafe` code confirmed in hw-safe/VFIO/DRM containment zones with SAFETY docs
+- All mocks properly `#[cfg(test)]` or `#[cfg(any(test, feature = "test-mocks"))]` gated
+- All hardcoded values centralized in `core/config/defaults` — zero scattered literals
+- `blake3` confirmed pure-Rust (`default-features = false, features = ["std", "pure"]`)
+- Zero `Box<dyn Error>`, `.unwrap()`, or `std::env::set_var` in production code
+
+#### Quality Gates
+- `cargo clippy --workspace --all-targets`: PASS (0 warnings)
+- `cargo doc --workspace --no-deps`: PASS (0 warnings)
+- `cargo test --workspace`: PASS (0 failures)
+
 ### Session S203b (Apr 12, 2026) — primalSpring LD-04/LD-05: Persistent Connections + Socket Separation
 
 #### LD-04: UDS/TCP Persistent Connection (Blocking)

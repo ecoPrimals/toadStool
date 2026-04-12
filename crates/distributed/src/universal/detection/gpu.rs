@@ -102,6 +102,10 @@ pub fn get_rocm_gfx_version() -> String {
 /// Check for OpenCL support (always false — OpenCL is not a supported external backend; use barraCuda/coralReef via IPC).
 ///
 /// Kept for API compatibility; substrate detection no longer consults OpenCL (S198).
+#[deprecated(
+    since = "0.15.0",
+    note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
+)]
 #[allow(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
@@ -111,6 +115,10 @@ pub fn check_opencl_support() -> bool {
 }
 
 /// Get OpenCL version (legacy stub — not supported)
+#[deprecated(
+    since = "0.15.0",
+    note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
+)]
 #[allow(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
@@ -120,6 +128,10 @@ pub fn get_opencl_version() -> String {
 }
 
 /// Get OpenCL device type (legacy stub — not supported)
+#[deprecated(
+    since = "0.15.0",
+    note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
+)]
 #[allow(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
@@ -129,6 +141,10 @@ pub fn get_opencl_device_type() -> String {
 }
 
 /// Get OpenCL compute units (legacy stub — not supported)
+#[deprecated(
+    since = "0.15.0",
+    note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
+)]
 #[allow(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
@@ -140,29 +156,6 @@ pub const fn get_opencl_compute_units() -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_check_opencl_support() {
-        assert!(!check_opencl_support());
-    }
-
-    #[test]
-    fn test_get_opencl_compute_units() {
-        let units = get_opencl_compute_units();
-        assert_eq!(units, 0);
-    }
-
-    #[test]
-    fn test_get_opencl_version() {
-        let version = get_opencl_version();
-        assert!(version.contains("S198"));
-    }
-
-    #[test]
-    fn test_get_opencl_device_type() {
-        let device_type = get_opencl_device_type();
-        assert_eq!(device_type, "none");
-    }
 
     #[test]
     fn test_get_cuda_version() {

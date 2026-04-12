@@ -62,6 +62,27 @@ stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_
 dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
+### D-LARGE-FILE-REFACTOR-S203C — RESOLVED S203
+**Scope**: 10 files across 8 crates
+Smart refactoring: extracted inline `#[cfg(test)] mod tests` blocks from production
+files >500 LOC into separate `*_tests.rs` files. Files refactored:
+- `cli/daemon/jsonrpc_server.rs` (638→391)
+- `runtime/edge/lib.rs` (636→404)
+- `security/policies/types.rs` (604→407)
+- `runtime/gpu/cpu_resource.rs` (596→511)
+- `nvpmu/power_manager.rs` (595→483)
+- `management/performance/implementation/mod.rs` (594→194)
+- `runtime/gpu/distributed/mod.rs` (590→417)
+- `server/handler/transport.rs` (588→308)
+- `distributed/cloud/scheduling.rs` (588→409)
+- `client/lib.rs` (586→140)
+
+### D-OPENCL-DETECTION-STUBS — RESOLVED S203
+**Crate**: `distributed` | File: `universal/detection/gpu.rs`
+Four internal OpenCL detection stubs (`check_opencl_support`, `get_opencl_version`,
+`get_opencl_device_type`, `get_opencl_compute_units`) marked `#[deprecated]` with
+migration note. Associated tests removed (no deprecated API exercising in CI).
+
 ### D-UDS-SINGLE-SHOT — RESOLVED S203
 **Crate**: `server` | **Audit**: LD-04 (primalSpring downstream)
 HTTP mode in `pure_jsonrpc/connection/unix.rs` and `tcp.rs` was single-shot:
