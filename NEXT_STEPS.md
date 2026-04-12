@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 12, 2026 — S203c (Deep Debt Execution: Capability-Based Evolution)
+**Updated**: April 12, 2026 — S203e (Deep Debt: Network Centralization + BTSP Auto-Detect)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **34 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display** | **capability-based primal references (no hardcoded names)**
-**Latest**: S203c — Deep debt execution: hardcoded `"toadstool"` literals → `PRIMAL_NAME`, `"coral_reef_available"` → `"shader_compiler_available"`, ~15 doc comments evolved to capability wording, `serialport` feature-gated, dead code removed, `jsonrpc_server.rs` DRY'd. S201 (prior): primalSpring gap closure, +46 tests
+**Latest**: S203e — Network constants centralized (8 hardcoded values → config/defaults). BTSP auto-detect for plain-text peers (LD-04). 5 large files refactored (test extraction). Full deep audit: zero debt markers in production. S203d (prior): LD-04 BTSP resolution + env-safe test hardening.
 
 ---
 

@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 12, 2026 — S203c
+**Last Updated**: April 12, 2026 — S203e
 
 ---
 
@@ -30,7 +30,7 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S203c — April 12, 2026)
+## Current State (S203e — April 12, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
@@ -39,7 +39,8 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
 - **Capability-based everywhere (S202)**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers. API keys evolved (e.g., `shader_compiler_available`).
 - **TS-01 / shader compiler discovery** — `visualization_client.rs` uses unified `capability.discover` (no `CORALREEF_*` env, no coralreef-core.json, no coralreef dir scan).
-- **BTSP Phase 2** — Handshake enforced on every UDS accept path (JSON-RPC + tarpc + daemon servers).
+- **BTSP Phase 2 + Auto-Detect** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully.
+- **Network constants centralized** — 8 hardcoded values (RFC1918 ranges, gateway, scan suffixes, TEST-NET-3) → `core/config/defaults/network.rs`
 - **34 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented. 41 crates forbid, 6 deny `unsafe_code`.
 - **ecoBin v3.0** — Zero C FFI deps. `serialport` feature-gated in specialty crate (S202). Crypto delegated to security service. HTTP delegated to coordination service.
 - **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + thread timeout.

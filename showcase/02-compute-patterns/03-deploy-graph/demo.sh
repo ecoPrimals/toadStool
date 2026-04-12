@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# NOTE (S169): The demo program invoked below still references JSON-RPC methods removed in S169
-# (e.g. deploy.*). This showcase needs updating to match the current server API.
+# ARCHIVED (S169): This demo references JSON-RPC methods no longer in toadStool.
+# See showcase/00-local-primal/ for current demos.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
