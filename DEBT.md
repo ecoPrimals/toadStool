@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 12, 2026 — S203
+**Date**: April 12, 2026 — S203c
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -62,7 +62,9 @@ stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_
 dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
-### D-LARGE-FILE-REFACTOR-S203C — RESOLVED S203
+## S203 Resolved Debt (Deep Audit & Evolution Execution)
+
+### D-LARGE-FILE-REFACTOR-S203C — RESOLVED S203c
 **Scope**: 10 files across 8 crates
 Smart refactoring: extracted inline `#[cfg(test)] mod tests` blocks from production
 files >500 LOC into separate `*_tests.rs` files. Files refactored:
@@ -77,13 +79,13 @@ files >500 LOC into separate `*_tests.rs` files. Files refactored:
 - `distributed/cloud/scheduling.rs` (588→409)
 - `client/lib.rs` (586→140)
 
-### D-OPENCL-DETECTION-STUBS — RESOLVED S203
+### D-OPENCL-DETECTION-STUBS — RESOLVED S203c
 **Crate**: `distributed` | File: `universal/detection/gpu.rs`
 Four internal OpenCL detection stubs (`check_opencl_support`, `get_opencl_version`,
 `get_opencl_device_type`, `get_opencl_compute_units`) marked `#[deprecated]` with
 migration note. Associated tests removed (no deprecated API exercising in CI).
 
-### D-UDS-SINGLE-SHOT — RESOLVED S203
+### D-UDS-SINGLE-SHOT — RESOLVED S203b
 **Crate**: `server` | **Audit**: LD-04 (primalSpring downstream)
 HTTP mode in `pure_jsonrpc/connection/unix.rs` and `tcp.rs` was single-shot:
 processed one request, wrote `Connection: close`, and returned. Multi-step
@@ -94,7 +96,7 @@ NDJSON mode also fixed: empty lines between requests now skipped (previously
 broke the connection). +7 tests covering keep-alive and NDJSON persistence.
 Files: `connection/unix.rs`, `connection/tcp.rs`, `connection/tests.rs`.
 
-### D-SOCKET-NAMESPACE-COLLISION — RESOLVED S203
+### D-SOCKET-NAMESPACE-COLLISION — RESOLVED S203b
 **Crate**: `server` | **Audit**: LD-05 (primalSpring downstream)
 JSON-RPC and tarpc servers both bound the same `compute.sock` — tarpc's
 `serve_unix` removed JSON-RPC's socket file and re-bound, orphaning the
@@ -107,8 +109,6 @@ both sockets. This also resolves the barraCuda namespace conflict: toadStool
 claims `compute.sock` / `compute-tarpc.sock`, leaving `compute-math.sock`
 available for barraCuda.
 Files: `unibin/mod.rs`, `unibin/format.rs`.
-
-## S203 Resolved Debt (Deep Audit & Evolution Execution)
 
 ### D-RUSTIX-DISPLAY-038 — RESOLVED S203
 **Crate**: `runtime/display` | **Dep**: `rustix 0.38` → `1.1`
