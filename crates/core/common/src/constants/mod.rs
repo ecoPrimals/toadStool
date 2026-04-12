@@ -9,6 +9,7 @@
 //! String constants use `&'static str` for zero-cost sharing across the codebase.
 
 pub mod compute;
+pub mod discovery_ports;
 pub mod display;
 pub mod ecosystem;
 pub mod jsonrpc;

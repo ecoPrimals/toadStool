@@ -59,7 +59,7 @@ pub mod services;
 /// **Recommended**:
 /// - `EnvironmentConfig::from_env()` - Full configuration with env var support
 /// - `ports::capability_fallback` and `ports::resolve_capability_port` - Cold-start port defaults before discovery
-/// - `ConfigUtils::get_toadstool_port()` / `get_primal_default_port()` - Env-aware helpers where needed
+/// - `ConfigUtils::get_toadstool_port()` - Env-aware helpers where needed
 pub mod network;
 
 /// Application configuration constants

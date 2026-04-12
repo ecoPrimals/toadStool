@@ -70,17 +70,27 @@ impl UnifiedBuffer {
     /// | Valid for `size` bytes | Backend contract: `allocate_unified(size)` maps `size` bytes |
     /// | Exclusively borrowed | `&mut self` (borrow checker) |
     /// | No concurrent GPU access | Caller must sync before CPU write (`sync_to_cpu`) |
+    ///
+    /// The `unsafe` on [`NonNull::as_mut`] is **not** about pointer arithmetic or slice length:
+    /// [`NonNull::slice_from_raw_parts`] (safe) already pairs the data pointer with `size`.
+    /// The remaining obligation is the usual slice aliasing contract: the memory must be
+    /// valid for `size` bytes for reads/writes for the returned lifetime, and this `&mut`
+    /// must be the only active reference to those bytes (see table).
+    #[expect(
+        clippy::needless_pass_by_ref_mut,
+        reason = "&mut self required for soundness: exclusive borrow prevents aliased \
+                  mutable access to the underlying GPU allocation through the returned slice"
+    )]
     pub(in crate::unified_memory::buffer) fn as_cpu_slice_mut(
         &mut self,
     ) -> ToadStoolResult<&mut [u8]> {
         self.validate_cpu_ptr()?;
 
-        // SAFETY: see safety contract table above. `NonNull::slice_from_raw_parts` is the
-        // fat-pointer form of `from_raw_parts_mut`; invariants match those for a mutable slice.
-        Ok(unsafe {
-            let mut slice_nn = NonNull::slice_from_raw_parts(self.cpu_ptr, self.size);
-            slice_nn.as_mut()
-        })
+        let mut slice_ptr = NonNull::slice_from_raw_parts(self.cpu_ptr, self.size);
+        // SAFETY: `slice_ptr` is the fat pointer for this allocation; see safety contract
+        // above and `validate_cpu_ptr` for extent checks. `as_mut` requires valid memory
+        // for `size` bytes and exclusive mutability for the returned lifetime.
+        Ok(unsafe { slice_ptr.as_mut() })
     }
 
     /// Get immutable slice from CPU pointer (internal helper).
@@ -94,13 +104,16 @@ impl UnifiedBuffer {
     /// - Shared access via `&self` — Rust borrow checker ensures no `&mut` alias
     /// - Concurrent *reads* are safe; concurrent *GPU writes* are not
     ///   (caller must `sync_to_cpu` first)
+    ///
+    /// As with [`Self::as_cpu_slice_mut`], [`NonNull::as_ref`] is `unsafe` only for the
+    /// validity and aliasing contract on the underlying allocation, not for constructing
+    /// the slice metadata (that is handled by [`NonNull::slice_from_raw_parts`]).
     pub(in crate::unified_memory::buffer) fn as_cpu_slice(&self) -> ToadStoolResult<&[u8]> {
         self.validate_cpu_ptr()?;
 
-        // SAFETY: see `as_cpu_slice_mut` contract; `&self` ensures no concurrent `&mut`.
-        Ok(unsafe {
-            let slice_nn = NonNull::slice_from_raw_parts(self.cpu_ptr, self.size);
-            slice_nn.as_ref()
-        })
+        let slice_ptr = NonNull::slice_from_raw_parts(self.cpu_ptr, self.size);
+        // SAFETY: same allocation contract as `as_cpu_slice_mut`; `&self` forbids concurrent
+        // `&mut` to this buffer. Valid for reads for `size` bytes for the returned lifetime.
+        Ok(unsafe { slice_ptr.as_ref() })
     }
 }

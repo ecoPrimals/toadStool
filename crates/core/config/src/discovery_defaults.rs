@@ -167,7 +167,7 @@ impl FallbackEndpoints {
         let localhost_base_port = std::env::var("TOADSTOOL_DISCOVERY_FALLBACK_PORT")
             .ok()
             .and_then(|p| p.parse().ok())
-            .unwrap_or(9080u16);
+            .unwrap_or(crate::defaults::ports::DISCOVERY_LOCALHOST_FALLBACK_BASE);
         let enable_localhost_fallback = std::env::var("TOADSTOOL_DISCOVERY_FALLBACK_ENABLED")
             .ok()
             .and_then(|v| match v.to_lowercase().as_str() {

@@ -9,6 +9,7 @@
 //! workloads — resolves neuralSpring upstream gap for ML inference scheduling.
 
 mod capabilities;
+mod dag;
 mod forward;
 mod pipeline;
 mod queries;

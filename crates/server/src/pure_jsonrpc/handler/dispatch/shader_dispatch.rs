@@ -106,14 +106,18 @@ impl DispatchHandler {
                 );
             }
             return Ok(serde_json::json!({
-                "domain": "shader.dispatch",
+                "domain": "compute.dispatch",
+                "operation": "shader",
                 "job_id": job_id,
                 "status": "failed",
-                "bdf": bdf,
-                "dispatch_mode": dispatch_mode,
-                "binary_size": binary_bytes.len(),
+                "output": null,
                 "error": "visualization/shader service not available — sovereign GPU dispatch requires a running shader provider",
-                "note": "Start the shader/visualization capability provider or set CORALREEF_URL / legacy CORALREEF_SOCKET for compatibility",
+                "metadata": {
+                    "bdf": bdf,
+                    "dispatch_mode": dispatch_mode,
+                    "binary_size": binary_bytes.len(),
+                    "note": "Start the shader/visualization capability provider or set CORALREEF_URL / legacy CORALREEF_SOCKET for compatibility",
+                },
             }));
         }
 
@@ -145,17 +149,21 @@ impl DispatchHandler {
                             job.result = Some(result.clone());
                         }
                         return Ok(serde_json::json!({
-                            "domain": "shader.dispatch",
+                            "domain": "compute.dispatch",
+                            "operation": "shader",
                             "job_id": job_id,
                             "status": "completed",
-                            "bdf": bdf,
-                            "dispatch_mode": dispatch_mode,
-                            "binary_size": binary_bytes.len(),
-                            "arch": source_arch,
-                            "thermal_checked": thermal.is_some(),
-                            "workgroup_size": workgroup_size,
-                            "readback": readback,
-                            "result": result,
+                            "output": result,
+                            "error": null,
+                            "metadata": {
+                                "bdf": bdf,
+                                "dispatch_mode": dispatch_mode,
+                                "binary_size": binary_bytes.len(),
+                                "arch": source_arch,
+                                "thermal_checked": thermal.is_some(),
+                                "workgroup_size": workgroup_size,
+                                "readback": readback,
+                            },
                         }));
                     }
                     Err(e) => {
@@ -164,13 +172,17 @@ impl DispatchHandler {
                             job.status = DispatchStatus::Failed(e.to_string());
                         }
                         return Ok(serde_json::json!({
-                            "domain": "shader.dispatch",
+                            "domain": "compute.dispatch",
+                            "operation": "shader",
                             "job_id": job_id,
                             "status": "failed",
-                            "bdf": bdf,
-                            "dispatch_mode": dispatch_mode,
-                            "binary_size": binary_bytes.len(),
+                            "output": null,
                             "error": e.to_string(),
+                            "metadata": {
+                                "bdf": bdf,
+                                "dispatch_mode": dispatch_mode,
+                                "binary_size": binary_bytes.len(),
+                            },
                         }));
                     }
                 }
@@ -178,16 +190,21 @@ impl DispatchHandler {
         }
 
         Ok(serde_json::json!({
-            "domain": "shader.dispatch",
+            "domain": "compute.dispatch",
+            "operation": "shader",
             "job_id": job_id,
             "status": "submitted",
-            "bdf": bdf,
-            "dispatch_mode": dispatch_mode,
-            "binary_size": binary_bytes.len(),
-            "arch": source_arch,
-            "thermal_checked": thermal.is_some(),
-            "workgroup_size": workgroup_size,
-            "readback": readback,
+            "output": null,
+            "error": null,
+            "metadata": {
+                "bdf": bdf,
+                "dispatch_mode": dispatch_mode,
+                "binary_size": binary_bytes.len(),
+                "arch": source_arch,
+                "thermal_checked": thermal.is_some(),
+                "workgroup_size": workgroup_size,
+                "readback": readback,
+            },
         }))
     }
 }

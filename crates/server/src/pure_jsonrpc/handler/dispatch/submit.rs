@@ -81,6 +81,13 @@ impl DispatchHandler {
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);
 
+        {
+            let mut jobs = self.jobs.write().await;
+            if let Some(job) = jobs.get_mut(&job_id) {
+                job.status = DispatchStatus::Running;
+            }
+        }
+
         let needs_coral = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
         if needs_coral && !self.coral_client.is_available().await {
@@ -95,11 +102,14 @@ impl DispatchHandler {
                 "operation": "submit",
                 "job_id": job_id,
                 "status": "failed",
-                "bdf": bdf,
-                "dispatch_mode": dispatch_mode,
-                "binary_size": binary_bytes.len(),
+                "output": null,
                 "error": "visualization service not available — sovereign dispatch requires shader compiler driver",
-                "note": "Start the visualization service or set CORALREEF_URL to enable sovereign GPU dispatch",
+                "metadata": {
+                    "bdf": bdf,
+                    "dispatch_mode": dispatch_mode,
+                    "binary_size": binary_bytes.len(),
+                    "note": "Start the visualization service or set CORALREEF_URL to enable sovereign GPU dispatch",
+                },
             }));
         }
 
@@ -130,12 +140,15 @@ impl DispatchHandler {
                             "operation": "submit",
                             "job_id": job_id,
                             "status": "completed",
-                            "bdf": bdf,
-                            "dispatch_mode": dispatch_mode,
-                            "binary_size": binary_bytes.len(),
-                            "thermal_checked": thermal.is_some(),
-                            "workgroup_size": workgroup_size,
-                            "result": result,
+                            "output": result,
+                            "error": null,
+                            "metadata": {
+                                "bdf": bdf,
+                                "dispatch_mode": dispatch_mode,
+                                "binary_size": binary_bytes.len(),
+                                "thermal_checked": thermal.is_some(),
+                                "workgroup_size": workgroup_size,
+                            },
                         }));
                     }
                     Err(e) => {
@@ -148,10 +161,13 @@ impl DispatchHandler {
                             "operation": "submit",
                             "job_id": job_id,
                             "status": "failed",
-                            "bdf": bdf,
-                            "dispatch_mode": dispatch_mode,
-                            "binary_size": binary_bytes.len(),
+                            "output": null,
                             "error": e.to_string(),
+                            "metadata": {
+                                "bdf": bdf,
+                                "dispatch_mode": dispatch_mode,
+                                "binary_size": binary_bytes.len(),
+                            },
                         }));
                     }
                 }
@@ -163,11 +179,15 @@ impl DispatchHandler {
             "operation": "submit",
             "job_id": job_id,
             "status": "submitted",
-            "bdf": bdf,
-            "dispatch_mode": dispatch_mode,
-            "binary_size": binary_bytes.len(),
-            "thermal_checked": thermal.is_some(),
-            "workgroup_size": workgroup_size,
+            "output": null,
+            "error": null,
+            "metadata": {
+                "bdf": bdf,
+                "dispatch_mode": dispatch_mode,
+                "binary_size": binary_bytes.len(),
+                "thermal_checked": thermal.is_some(),
+                "workgroup_size": workgroup_size,
+            },
         }))
     }
 }

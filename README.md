@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **21,600+ tests, 0 failures** (S198), 121 ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **21,600+ tests, 0 failures** (S203), 121 ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
@@ -58,7 +58,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files **< 500 lines** (S198: six large modules split into dirs; S166: seven former monoliths) |
+| File size limit | All production files **< 500 lines** (S203: test extraction from background, federation, encryption, runtime modules) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -134,7 +134,7 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 
 - **Unix sockets** for all primal-to-primal communication
 - **JSON-RPC 2.0** protocol with semantic method naming (`{domain}.{operation}[.{variant}]`)
-- **tarpc** (0.34) for high-performance typed RPC
+- **tarpc** (0.37) for high-performance typed RPC
 - **Capability-based discovery** -- `get_socket_path_for_capability()` replaces all name-based lookup
 - **biomeOS socket standard**: `/run/user/$UID/biomeos/{primal}.sock`
 - **Multi-family support**: `--family-id` flag for `toadstool-{family_id}.sock`
@@ -244,7 +244,8 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,600+** (S198), 0 failures |
+| Workspace tests | **21,600+** (S203), 0 failures |
+| Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~2m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
@@ -265,11 +266,12 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,600+ tests (S198); ~80-85% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,600+ tests (S203); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S203 (Apr 12, 2026)**: Composition Elevation Sprint + Deep Debt Execution. **Dispatch wire contract standardized** — all 8 `compute.dispatch.*` handlers share canonical `{domain, operation, job_id, status, output, error, metadata}` envelope (unblocks primalSpring typed extractors for Node Atomic composition). Smart file refactoring: 4 production files >550 LOC refactored (test extraction from background 608→72, federation 594→109, encryption 568→257, runtime 576→249+stats). Primal name evolution: `get_primal_default_port` deprecated with migration to `resolve_capability_port`. Unsafe evolution: GPU buffer access evolved to `NonNull::slice_from_raw_parts` pattern. Port centralization: discovery fallback ports unified in `common/constants/discovery_ports.rs`. Clippy suppressions resolved (cast lints, unused_self). `deny.toml`: 6 stale RUSTSEC advisories removed. Wire contract documented in `specs/DISPATCH_WIRE_CONTRACT.md`. All quality gates green.
 - **S198 (Apr 9, 2026)**: TS-01 closed — `visualization_client.rs` uses unified `capability.disciscover` for coralReef/shader compiler (removed `CORALREEF_*` env, `coralreef-core.json`, coralreef dir scan). **BTSP Phase 2** — handshake on all UDS accept paths (`tarpc_server.rs`, `daemon/jsonrpc_server.rs`). **Health triad** — `health.liveness` / `readiness` / `check` response shapes aligned. OpenCL deprecated (`ocl` removed; `GpuFramework::OpenCl` stubbed). `#[allow]` → `#[expect]` where lints fire (~80 justified `#[allow]` remain). Six large files refactored into module dirs (handler/core, tarpc_server, interned_strings, ecosystem/types, storage, cloud_provider_trait — all <500 lines). **Capability discovery** — `SocketPathEnv` hints + `resolve_capability_socket_fallback` for primal lookups. BearDog `auth.token.refresh` async impl. Embedded stubs: `thiserror` platform errors. Unsafe hardening (nvpmu `VfioIrqSetPayload`, V4L2 fd checks, hw-safe debug asserts, secure_enclave `madvise`). **musl** static x86_64 PIE binary (~11MB) validated. Net −5,157 lines / 228 files; 0 clippy warnings, 0 fmt diffs, 0 test failures.
 - **S194 (Apr 8, 2026)**: Deep debt — evolved remaining `nestgate_integration` → `storage_integration`, `NestGateMount` → `StorageMount`, primal-named test functions to capability-based, doc comments cleaned across tarpc_client, CLI banner, auth/storage types, orchestration discovery. ~400 intentional legacy-compat refs remain (env fallbacks, serde aliases). 21,526+ tests, 0 failures.
 - **S193 (Apr 8, 2026)**: Headless GPU architecture — `wgpu` crash isolation via `catch_unwind` + thread timeout in `discover_gpus_via_wgpu()`. `TOADSTOOL_HEADLESS=1` env var restricts to Vulkan backend. `gpu_guards::is_headless()`. BTSP insecure guard field rename (`beardog_required` → `security_required`). Cross-primal doc cleanup continues.
@@ -311,7 +313,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S198); ~80-85% lib-only line (185K instrumented); remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S203); ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 | D-BTSP-PHASE2 | ~~BTSP on all UDS accept paths~~ | **RESOLVED** -- S198: handshake wired in `tarpc_server.rs` and `daemon/jsonrpc_server.rs` (pure JSON-RPC already had it) |
@@ -356,7 +358,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 9, 2026 — S198. **21,600+** workspace tests, 0 failures. ~80-85% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S198**: TS-01 (`capability.discover`), BTSP Phase 2 UDS, health triad, OpenCL deprecation, module splits (<500 lines target), musl static binary, net −5K lines — quality gates green. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 12, 2026 — S203. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S198**: TS-01 (`capability.discover`), BTSP Phase 2 UDS, health triad, OpenCL deprecation, module splits (<500 lines target), musl static binary, net −5K lines — quality gates green. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -25,6 +25,14 @@ pub enum MmioError {
         /// Total region size.
         region_size: usize,
     },
+    /// Access address is not naturally aligned for the register width.
+    #[error("MMIO access at effective address {address:#x} is not {alignment}-byte aligned")]
+    Misaligned {
+        /// Effective address (base + offset).
+        address: usize,
+        /// Required alignment in bytes.
+        alignment: usize,
+    },
 }
 
 /// Bounds-checked volatile MMIO view over a memory-mapped region.
@@ -92,20 +100,26 @@ impl VolatileMmio<'_> {
     ///
     /// Single unsafe primitive for all register-width reads. The public
     /// `read_u32`/`read_u64` methods delegate here.
+    fn check_alignment<T>(&self, offset: usize) -> Result<(), MmioError> {
+        let align = std::mem::align_of::<T>();
+        let addr = (self.ptr.as_ptr() as usize).wrapping_add(offset);
+        if addr % align != 0 {
+            return Err(MmioError::Misaligned {
+                address: addr,
+                alignment: align,
+            });
+        }
+        Ok(())
+    }
+
     fn read_reg<T: Copy>(&self, offset: usize) -> Result<T, MmioError> {
         let width = std::mem::size_of::<T>();
         self.check_bounds(offset, width)?;
-        let base = self.ptr.as_ptr() as usize;
-        debug_assert!(
-            base.checked_add(offset)
-                .is_some_and(|a| a % std::mem::align_of::<T>() == 0),
-            "MMIO read: offset {offset:#x} yields misaligned {} pointer (base={base:#x})",
-            std::any::type_name::<T>(),
-        );
+        self.check_alignment::<T>(offset)?;
         let p = self.ptr.as_ptr().wrapping_add(offset).cast::<T>();
         // SAFETY: `check_bounds` ensures `offset+width <= self.size` so `p` lies in the
-        // mapped region; constructor invariant: region is valid for volatile reads.
-        // Alignment is asserted in debug builds (BAR/MMIO contract in release).
+        // mapped region; `check_alignment` ensures natural alignment for `T`.
+        // Constructor invariant: region is valid for volatile reads.
         Ok(unsafe { std::ptr::read_volatile(p) })
     }
 
@@ -116,15 +130,10 @@ impl VolatileMmio<'_> {
     fn write_reg<T: Copy>(&self, offset: usize, value: T) -> Result<(), MmioError> {
         let width = std::mem::size_of::<T>();
         self.check_bounds(offset, width)?;
-        let base = self.ptr.as_ptr() as usize;
-        debug_assert!(
-            base.checked_add(offset)
-                .is_some_and(|a| a % std::mem::align_of::<T>() == 0),
-            "MMIO write: offset {offset:#x} yields misaligned {} pointer (base={base:#x})",
-            std::any::type_name::<T>(),
-        );
+        self.check_alignment::<T>(offset)?;
         let p = self.ptr.as_ptr().wrapping_add(offset).cast::<T>();
-        // SAFETY: same as `read_reg`, for a single volatile store.
+        // SAFETY: `check_bounds` + `check_alignment` ensure valid, aligned access
+        // within the mapped region. Constructor invariant: suitable for volatile writes.
         unsafe { std::ptr::write_volatile(p, value) }
         Ok(())
     }

@@ -238,14 +238,13 @@ impl AuthenticationManager {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
-        #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
         let payload = format!(
             "{}:{}:{}",
             token.id,
             target_primal,
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .map(|d| d.as_secs() as i64)
+                .map(|d| d.as_secs())
                 .unwrap_or(0)
         );
         self.sign_payload(&payload).await
@@ -260,13 +259,12 @@ impl AuthenticationManager {
         if !self.config.signature_validation {
             return Ok("signature_disabled".to_string());
         }
-        #[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
         let payload = format!(
             "verify:{}:{}",
             primal_name,
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .map(|d| d.as_secs() as i64)
+                .map(|d| d.as_secs())
                 .unwrap_or(0)
         );
         self.sign_payload(&payload).await

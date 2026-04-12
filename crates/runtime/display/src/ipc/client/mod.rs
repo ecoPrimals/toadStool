@@ -17,9 +17,7 @@ use std::path::PathBuf;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpStream, UnixStream};
 
-/// Cold-start fallback port for display IPC TCP transport.
-/// Mirrors `toadstool_config::ports::capability_fallback::DISPLAY_IPC`.
-const DISPLAY_IPC_FALLBACK_PORT: u16 = 8091;
+use toadstool_config::defaults::ports::DISPLAY_IPC_FALLBACK;
 
 /// Loopback address used when constructing TCP fallback endpoints.
 const LOOPBACK: &str = toadstool_common::constants::network::LOCALHOST_IPV4;
@@ -38,7 +36,7 @@ pub fn default_display_ipc_tcp_addr() -> String {
     let port = std::env::var("TOADSTOOL_DISPLAY_IPC_PORT")
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
-        .unwrap_or(DISPLAY_IPC_FALLBACK_PORT);
+        .unwrap_or(DISPLAY_IPC_FALLBACK);
     format!("{LOOPBACK}:{port}")
 }
 

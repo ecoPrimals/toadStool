@@ -35,3 +35,11 @@ pub const SIDECAR_LISTEN: u16 = 15001;
 
 /// Default service mesh sidecar admin port
 pub const SIDECAR_ADMIN: u16 = 15000;
+
+// ---------------------------------------------------------------------------
+// Discovery / IPC cold-start fallbacks (canonical definitions in `toadstool-common`)
+// ---------------------------------------------------------------------------
+
+pub use toadstool_common::constants::discovery_ports::{
+    DISCOVERY_HTTP_FALLBACK, DISCOVERY_LOCALHOST_FALLBACK_BASE, DISPLAY_IPC_FALLBACK,
+};

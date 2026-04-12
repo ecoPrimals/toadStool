@@ -32,7 +32,6 @@ impl Default for ResourceEstimator {
     }
 }
 
-#[allow(clippy::unused_self)]
 impl ResourceEstimator {
     /// Create a new resource estimator with sensible defaults
     pub fn new() -> Self {
@@ -63,7 +62,7 @@ impl ResourceEstimator {
         graph.validate().map_err(EstimationError::InvalidGraph)?;
 
         // Topological sort
-        let sorted_nodes = self.topological_sort(graph)?;
+        let sorted_nodes = Self::topological_sort(graph)?;
         debug!("Topological sort produced {} levels", sorted_nodes.len());
 
         // Estimate per-node resources
@@ -71,14 +70,14 @@ impl ResourceEstimator {
 
         // Aggregate resources
         let (total_cpu, total_memory, total_gpu, total_storage, total_network) =
-            self.aggregate_resources(&node_estimates, &sorted_nodes);
+            Self::aggregate_resources(&node_estimates, &sorted_nodes);
 
         // Calculate duration and parallelism
         let (duration, max_parallelism, critical_path) =
-            self.calculate_duration_and_parallelism(&node_estimates, &sorted_nodes);
+            Self::calculate_duration_and_parallelism(&node_estimates, &sorted_nodes);
 
         // Generate warnings
-        let warnings = self.generate_warnings(total_cpu, total_memory, total_gpu);
+        let warnings = Self::generate_warnings(total_cpu, total_memory, total_gpu);
 
         Ok(ResourceEstimate {
             graph_id: graph.id.clone(),
@@ -96,10 +95,7 @@ impl ResourceEstimator {
     }
 
     /// Perform topological sort on the graph
-    fn topological_sort(
-        &self,
-        graph: &ExecutionGraph,
-    ) -> Result<Vec<Vec<String>>, EstimationError> {
+    fn topological_sort(graph: &ExecutionGraph) -> Result<Vec<Vec<String>>, EstimationError> {
         let mut in_degree: HashMap<String, usize> = HashMap::new();
         let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -235,7 +231,6 @@ impl ResourceEstimator {
     }
 
     fn aggregate_resources(
-        &self,
         node_estimates: &HashMap<String, NodeEstimate>,
         sorted_nodes: &[Vec<String>],
     ) -> (u32, u64, u64, u64, u64) {
@@ -269,7 +264,6 @@ impl ResourceEstimator {
     }
 
     fn calculate_duration_and_parallelism(
-        &self,
         node_estimates: &HashMap<String, NodeEstimate>,
         sorted_nodes: &[Vec<String>],
     ) -> (Duration, usize, usize) {
@@ -292,12 +286,7 @@ impl ResourceEstimator {
         (total_duration, max_parallelism, critical_path)
     }
 
-    fn generate_warnings(
-        &self,
-        cpu_cores: u32,
-        memory_bytes: u64,
-        gpu_memory_bytes: u64,
-    ) -> Vec<String> {
+    fn generate_warnings(cpu_cores: u32, memory_bytes: u64, gpu_memory_bytes: u64) -> Vec<String> {
         let mut warnings = Vec::new();
 
         if cpu_cores > 64 {

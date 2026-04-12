@@ -463,8 +463,9 @@ mod tests {
             "shader.dispatch should route without error"
         );
         let result = response.result.expect("result present");
-        assert_eq!(result["domain"], "shader.dispatch");
+        assert_eq!(result["domain"], "compute.dispatch");
+        assert_eq!(result["operation"], "shader");
         assert!(result["job_id"].as_str().is_some());
-        assert_eq!(result["binary_size"], 4);
+        assert_eq!(result["metadata"]["binary_size"], 4);
     }
 }

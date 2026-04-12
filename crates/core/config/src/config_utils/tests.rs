@@ -2,8 +2,9 @@
 use super::*;
 
 #[test]
-#[expect(deprecated)]
 fn test_config_utils() {
+    use crate::ports::{capability_fallback, resolve_capability_port};
+
     temp_env::with_vars(
         [
             ("COORDINATION_PORT", Some("8080")),
@@ -14,9 +15,18 @@ fn test_config_utils() {
             ("TOADSTOOL_DEBUG", Some("false")),
         ],
         || {
-            assert_eq!(ConfigUtils::get_primal_default_port("SONGBIRD"), 8080);
-            assert_eq!(ConfigUtils::get_primal_default_port("BEARDOG"), 8081);
-            assert_eq!(ConfigUtils::get_primal_default_port("NESTGATE"), 8082);
+            assert_eq!(
+                resolve_capability_port("COORDINATION", capability_fallback::COORDINATION),
+                8080
+            );
+            assert_eq!(
+                resolve_capability_port("SECURITY", capability_fallback::SECURITY),
+                8081
+            );
+            assert_eq!(
+                resolve_capability_port("STORAGE", capability_fallback::STORAGE),
+                8082
+            );
             assert_eq!(ConfigUtils::get_bind_address(), "127.0.0.1");
             assert_eq!(ConfigUtils::get_environment(), "development");
             assert!(!ConfigUtils::get_debug_mode());
@@ -27,7 +37,10 @@ fn test_config_utils() {
                     ("TOADSTOOL_DEBUG", Some("true")),
                 ],
                 || {
-                    assert_eq!(ConfigUtils::get_primal_default_port("SONGBIRD"), 9080);
+                    assert_eq!(
+                        resolve_capability_port("COORDINATION", capability_fallback::COORDINATION),
+                        9080
+                    );
                     assert!(ConfigUtils::get_debug_mode());
                 },
             );
@@ -260,15 +273,16 @@ fn test_get_toadstool_endpoint() {
 }
 
 #[test]
-#[expect(deprecated)]
 fn test_get_squirrel_primal_default_port() {
+    use crate::ports::{capability_fallback, resolve_capability_port};
+
     temp_env::with_vars(
         [
             ("TOADSTOOL_PLATFORM_PORT", None::<&str>),
             ("PLATFORM_PORT", None::<&str>),
         ],
         || {
-            let port = ConfigUtils::get_primal_default_port("SQUIRREL");
+            let port = resolve_capability_port("PLATFORM", capability_fallback::PLATFORM);
             assert_eq!(
                 port, 8083,
                 "PLATFORM cold-start fallback = 8083 for cold-start bootstrap"

@@ -9,7 +9,7 @@
 //! service names. The new capability-based adapter system has replaced them:
 //!
 //! ## Old Way (Removed)
-//! ```rust,ignore
+//! ```text
 //! // Legacy primal-name imports — replaced by capability adapters:
 //! // security::install_permissions(path, false).await?;
 //! // coordination::register(&addr, &reg).await?;

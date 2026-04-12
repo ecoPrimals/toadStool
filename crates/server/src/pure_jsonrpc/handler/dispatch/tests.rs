@@ -24,12 +24,13 @@ async fn dispatch_capabilities_returns_expected_structure() {
         .expect("capabilities");
     assert_eq!(result["domain"], "compute.dispatch");
     assert_eq!(result["operation"], "capabilities");
-    assert!(result["sovereign_pipeline"].as_bool().unwrap());
-    assert!(result["dispatch_modes"].as_array().is_some());
-    assert!(result["vfio_gpus"].as_array().is_some());
-    assert!(result["drm_gpus"].as_array().is_some());
-    assert!(result["total_dispatch_count"].as_u64().is_some());
-    assert!(result["shader_compiler_available"].is_boolean());
+    assert_eq!(result["status"], "completed");
+    assert!(result["output"]["sovereign_pipeline"].as_bool().unwrap());
+    assert!(result["output"]["dispatch_modes"].as_array().is_some());
+    assert!(result["output"]["vfio_gpus"].as_array().is_some());
+    assert!(result["output"]["drm_gpus"].as_array().is_some());
+    assert!(result["output"]["total_dispatch_count"].as_u64().is_some());
+    assert!(result["output"]["shader_compiler_available"].is_boolean());
 }
 
 #[tokio::test]
@@ -38,7 +39,7 @@ async fn dispatch_capabilities_total_dispatch_count_increments_after_submit() {
     let before = handler
         .dispatch_capabilities(None)
         .await
-        .expect("capabilities")["total_dispatch_count"]
+        .expect("capabilities")["output"]["total_dispatch_count"]
         .as_u64()
         .expect("total_dispatch_count");
 
@@ -51,7 +52,7 @@ async fn dispatch_capabilities_total_dispatch_count_increments_after_submit() {
     let after = handler
         .dispatch_capabilities(None)
         .await
-        .expect("capabilities")["total_dispatch_count"]
+        .expect("capabilities")["output"]["total_dispatch_count"]
         .as_u64()
         .expect("total_dispatch_count");
     assert_eq!(after, before + 1);
@@ -163,7 +164,7 @@ async fn dispatch_submit_custom_dispatch_mode_registers_job_for_status_and_resul
         .expect("submit");
     assert_eq!(result["domain"], "compute.dispatch");
     let job_id = result["job_id"].as_str().expect("job_id");
-    assert_eq!(result["workgroup_size"], serde_json::json!([128, 2, 4]));
+    assert_eq!(result["metadata"]["workgroup_size"], serde_json::json!([128, 2, 4]));
 
     let status = handler
         .dispatch_status(Some(&serde_json::json!({ "job_id": job_id })))
@@ -171,7 +172,7 @@ async fn dispatch_submit_custom_dispatch_mode_registers_job_for_status_and_resul
         .expect("status");
     assert_eq!(status["job_id"], job_id);
     assert!(status["status"].as_str().is_some());
-    assert_eq!(status["bdf"], "0000:03:00.0");
+    assert_eq!(status["metadata"]["bdf"], "0000:03:00.0");
 
     let got = handler
         .dispatch_result(Some(&serde_json::json!({ "job_id": job_id })))
@@ -405,8 +406,9 @@ async fn shader_dispatch_accepts_base64_binary() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["domain"], "shader.dispatch");
-    assert_eq!(result["binary_size"], binary_data.len());
+    assert_eq!(result["domain"], "compute.dispatch");
+    assert_eq!(result["operation"], "shader");
+    assert_eq!(result["metadata"]["binary_size"], binary_data.len());
     assert!(result["job_id"].as_str().is_some());
 }
 
@@ -422,8 +424,8 @@ async fn shader_dispatch_accepts_u8_array_binary() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["domain"], "shader.dispatch");
-    assert_eq!(result["binary_size"], 4);
+    assert_eq!(result["domain"], "compute.dispatch");
+    assert_eq!(result["metadata"]["binary_size"], 4);
 }
 
 #[tokio::test]
@@ -443,10 +445,10 @@ async fn shader_dispatch_accepts_compile_result_shape() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["domain"], "shader.dispatch");
-    assert_eq!(result["arch"], "sm89");
-    assert_eq!(result["binary_size"], 5);
-    assert_eq!(result["workgroup_size"], serde_json::json!([64, 1, 1]));
+    assert_eq!(result["domain"], "compute.dispatch");
+    assert_eq!(result["metadata"]["arch"], "sm89");
+    assert_eq!(result["metadata"]["binary_size"], 5);
+    assert_eq!(result["metadata"]["workgroup_size"], serde_json::json!([64, 1, 1]));
 }
 
 #[tokio::test]
@@ -466,8 +468,8 @@ async fn shader_dispatch_compile_result_base64_binary() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["arch"], "gfx1030");
-    assert_eq!(result["binary_size"], 3);
+    assert_eq!(result["metadata"]["arch"], "gfx1030");
+    assert_eq!(result["metadata"]["binary_size"], 3);
 }
 
 #[tokio::test]
@@ -497,7 +499,7 @@ async fn shader_dispatch_readback_defaults_to_true() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["readback"], true);
+    assert_eq!(result["metadata"]["readback"], true);
 }
 
 #[tokio::test]
@@ -513,7 +515,7 @@ async fn shader_dispatch_readback_false_honored() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["readback"], false);
+    assert_eq!(result["metadata"]["readback"], false);
 }
 
 #[tokio::test]
@@ -532,7 +534,7 @@ async fn shader_dispatch_vfio_without_coral_returns_failed() {
         .shader_dispatch(Some(&params))
         .await
         .expect("shader dispatch");
-    assert_eq!(result["domain"], "shader.dispatch");
+    assert_eq!(result["domain"], "compute.dispatch");
     assert_eq!(result["status"], "failed");
     assert!(
         result["error"]
@@ -544,7 +546,8 @@ async fn shader_dispatch_vfio_without_coral_returns_failed() {
 #[tokio::test]
 async fn shader_dispatch_increments_dispatch_count() {
     let handler = test_handler();
-    let before = handler.dispatch_capabilities(None).await.expect("caps")["total_dispatch_count"]
+    let before = handler.dispatch_capabilities(None).await.expect("caps")["output"]
+        ["total_dispatch_count"]
         .as_u64()
         .expect("count");
 
@@ -558,7 +561,8 @@ async fn shader_dispatch_increments_dispatch_count() {
         .await
         .expect("shader dispatch");
 
-    let after = handler.dispatch_capabilities(None).await.expect("caps")["total_dispatch_count"]
+    let after = handler.dispatch_capabilities(None).await.expect("caps")["output"]
+        ["total_dispatch_count"]
         .as_u64()
         .expect("count");
     assert_eq!(after, before + 1);

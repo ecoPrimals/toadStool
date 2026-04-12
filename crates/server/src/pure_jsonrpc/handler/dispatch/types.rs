@@ -17,22 +17,28 @@ pub(super) struct DispatchJob {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum DispatchStatus {
     Submitted,
-    #[expect(
-        dead_code,
-        reason = "used once VFIO dispatch pipeline tracks in-flight jobs"
-    )]
     Running,
     Completed,
     Failed(String),
 }
 
+impl DispatchStatus {
+    /// Wire-stable status tag without embedded error details.
+    pub(super) fn as_str(&self) -> &str {
+        match self {
+            Self::Submitted => "submitted",
+            Self::Running => "running",
+            Self::Completed => "completed",
+            Self::Failed(_) => "failed",
+        }
+    }
+}
+
 impl std::fmt::Display for DispatchStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Submitted => write!(f, "submitted"),
-            Self::Running => write!(f, "running"),
-            Self::Completed => write!(f, "completed"),
             Self::Failed(msg) => write!(f, "failed: {msg}"),
+            other => f.write_str(other.as_str()),
         }
     }
 }
@@ -71,10 +77,6 @@ pub(super) struct PipelineStageRequest {
     pub(super) method: String,
     #[serde(default)]
     pub(super) params: serde_json::Value,
-    #[expect(
-        dead_code,
-        reason = "recorded for scheduling hints and future substrate-aware routing"
-    )]
     #[serde(default = "default_substrate")]
     pub(super) substrate: PipelineSubstrate,
 }
@@ -104,6 +106,7 @@ pub(super) struct PipelineJob {
 pub(super) struct PipelineStageResult {
     pub(super) stage_id: String,
     pub(super) method: String,
+    pub(super) substrate: PipelineSubstrate,
     pub(super) status: String,
     pub(super) elapsed_ms: u64,
     pub(super) result: Option<serde_json::Value>,
@@ -122,27 +125,33 @@ pub(super) enum PipelineStatus {
         failed_stage: String,
         error: String,
     },
-    #[expect(
-        dead_code,
-        reason = "used once pipeline pre-validation catches structural errors before execution"
-    )]
     Failed(String),
+}
+
+impl PipelineStatus {
+    /// Wire-stable status tag without embedded details.
+    pub(super) fn as_str(&self) -> &str {
+        match self {
+            Self::Submitted => "submitted",
+            Self::Running { .. } => "running",
+            Self::Completed => "completed",
+            Self::PartialFailure { .. } => "partial_failure",
+            Self::Failed(_) => "failed",
+        }
+    }
 }
 
 impl std::fmt::Display for PipelineStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Submitted => write!(f, "submitted"),
             Self::Running { current_stage } => write!(f, "running:{current_stage}"),
-            Self::Completed => write!(f, "completed"),
             Self::PartialFailure {
                 failed_stage,
                 error,
                 ..
-            } => {
-                write!(f, "partial_failure:{failed_stage}:{error}")
-            }
+            } => write!(f, "partial_failure:{failed_stage}:{error}"),
             Self::Failed(msg) => write!(f, "failed:{msg}"),
+            other => f.write_str(other.as_str()),
         }
     }
 }
@@ -250,6 +259,7 @@ mod tests {
         let result = PipelineStageResult {
             stage_id: "tok".into(),
             method: "compute.dispatch.submit".into(),
+            substrate: PipelineSubstrate::GpuPreferred,
             status: "completed".into(),
             elapsed_ms: 42,
             result: Some(serde_json::json!({"data": [1, 2]})),
@@ -258,6 +268,7 @@ mod tests {
         let val = serde_json::to_value(&result).unwrap();
         assert_eq!(val["stage_id"], "tok");
         assert_eq!(val["elapsed_ms"], 42);
+        assert_eq!(val["substrate"], "gpu_preferred");
         assert!(val["error"].is_null());
         assert_eq!(val["result"]["data"], serde_json::json!([1, 2]));
     }
@@ -267,6 +278,7 @@ mod tests {
         let result = PipelineStageResult {
             stage_id: "broken".into(),
             method: "shader.dispatch".into(),
+            substrate: PipelineSubstrate::Any,
             status: "failed".into(),
             elapsed_ms: 5,
             result: None,

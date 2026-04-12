@@ -26,8 +26,8 @@
 //! # Phase 3: BAR0 MMIO register access for software PMU init
 //! # Phase 4: Sovereign power management (glow plug, five-state model)
 
-// bar0 and init modules require unsafe for mmap/MMIO — isolated from the rest
-#[allow(unsafe_code)]
+// dma and vfio modules require unsafe for VFIO ioctls and DMA mapping
+// bar0 uses safe hw-safe wrappers (DeviceMmap → VolatileMmio); no unsafe needed
 pub mod bar0;
 #[allow(unsafe_code)]
 pub mod dma;
@@ -35,7 +35,6 @@ pub mod error;
 pub mod fb;
 pub mod firmware;
 pub mod hwmon;
-#[allow(unsafe_code)]
 pub mod init;
 pub mod monitor;
 pub mod nvidia_smi;

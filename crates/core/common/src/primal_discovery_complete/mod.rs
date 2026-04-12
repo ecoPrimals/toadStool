@@ -41,12 +41,10 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+use crate::constants::discovery_ports::DISCOVERY_HTTP_FALLBACK;
 use crate::primal_identity::{Capability, DiscoveredService};
 use crate::runtime_discovery::DiscoveryClient;
 use crate::{ToadStoolError, ToadStoolResult};
-
-/// Fallback HTTP port when URL parsing yields an invalid port segment (last-resort fallback).
-const DISCOVERY_URL_HTTP_FALLBACK_PORT: u16 = 8080;
 
 /// Resolve a port from an environment variable, falling back to `default`.
 fn resolve_env_port(env_var: &str, default: u16) -> u16 {
@@ -358,7 +356,7 @@ impl PrimalDiscoveryEngine {
                             &host_port[..idx],
                             host_port[idx + 1..]
                                 .parse::<u16>()
-                                .unwrap_or(DISCOVERY_URL_HTTP_FALLBACK_PORT),
+                                .unwrap_or(DISCOVERY_HTTP_FALLBACK),
                         )
                     },
                 );
@@ -375,7 +373,7 @@ impl PrimalDiscoveryEngine {
                 crate::primal_identity::ServiceEndpoint {
                     protocol: "http".to_string(),
                     address: crate::constants::network::LOCALHOST_IPV4.to_string(),
-                    port: DISCOVERY_URL_HTTP_FALLBACK_PORT,
+                    port: DISCOVERY_HTTP_FALLBACK,
                     path: Some("/".to_string()),
                     metadata: HashMap::new(),
                 }
@@ -394,7 +392,7 @@ impl PrimalDiscoveryEngine {
             crate::primal_identity::ServiceEndpoint {
                 protocol: "http".to_string(),
                 address: crate::constants::network::LOCALHOST_IPV4.to_string(),
-                port: DISCOVERY_URL_HTTP_FALLBACK_PORT,
+                port: DISCOVERY_HTTP_FALLBACK,
                 path: Some("/".to_string()),
                 metadata: HashMap::new(),
             }

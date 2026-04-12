@@ -5,7 +5,51 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 11, 2026 (Sessions 43-202)
+## [Unreleased] - April 12, 2026 (Sessions 43-203)
+
+### Session S203 (Apr 12, 2026) — Composition Elevation Sprint + Deep Debt Execution
+
+#### Dispatch Wire Contract Standardization (Blocking Composition)
+- STANDARDIZED: All 8 `compute.dispatch.*` handlers share canonical envelope: `{domain, operation, job_id, status, output, error, metadata}`
+- EVOLVED: `shader.dispatch` domain `"shader.dispatch"` → `"compute.dispatch"` with `operation: "shader"`
+- EVOLVED: Pipeline domain `"compute.dispatch.pipeline"` → `"compute.dispatch"` with `operation: "pipeline.submit"` / `"pipeline.status"`
+- EVOLVED: Status field from compound strings (`"failed: msg"`) to clean enum values + separate `error` field
+- EVOLVED: Inline result/bdf/workgroup fields → structured `output` + `metadata` objects
+- ADDED: `DispatchStatus::as_str()` and `PipelineStatus::as_str()` for wire-stable status tags
+- ADDED: `specs/DISPATCH_WIRE_CONTRACT.md` — full wire contract documentation for primalSpring typed extractors
+
+#### Smart File Refactoring (4 production files >550 LOC)
+- EXTRACTED: `server/background/mod.rs` tests → `tests.rs` (608→72 lines)
+- EXTRACTED: `distributed/federation/mod.rs` tests → `tests.rs` (594→109 lines)
+- EXTRACTED: `encryption/provider.rs` tests → `provider_tests.rs` (568→257 lines)
+- EXTRACTED: `runtime/universal/runtime.rs` tests → `runtime_tests.rs`, `RuntimeStats` → `stats.rs` (576→249 lines)
+
+#### Primal Name Evolution
+- DEPRECATED: `get_primal_default_port` with migration path to `resolve_capability_port`
+- MIGRATED: All callers to capability identifiers (COORDINATION, SECURITY, STORAGE, PLATFORM)
+
+#### Unsafe Code Evolution
+- EVOLVED: GPU buffer `access.rs` — `from_raw_parts` → `NonNull::slice_from_raw_parts` (safe metadata) + scoped `unsafe { .as_ref() }`
+- DOCUMENTED: Safety contracts narrowed to aliasing-only invariant
+
+#### Port Centralization
+- CENTRALIZED: Discovery fallback ports from 4 scattered modules → `common/constants/discovery_ports.rs`
+- ADDED: Re-exports via `config/defaults/ports.rs` as single registry
+
+#### Clippy Suppression Cleanup
+- RESOLVED: `unused_self` in `estimator.rs` — converted helpers to associated functions
+- RESOLVED: `cast_sign_loss`/`cast_possible_wrap` in `auth/mod.rs` — eliminated `as` casts
+- DOCUMENTED: `needless_pass_by_ref_mut` in buffer `access.rs` as soundness requirement
+
+#### deny.toml Advisory Cleanup
+- REMOVED: 6 stale RUSTSEC ignores (no longer in dependency graph)
+- UPDATED: RUSTSEC-2024-0436 reason (paste via statrs→nalgebra→simba chain)
+
+#### Quality Gates
+- `cargo fmt`: PASS
+- `cargo clippy --workspace --all-targets`: PASS (0 warnings)
+- `cargo doc --workspace --no-deps`: PASS (0 warnings)
+- `cargo test --workspace`: PASS (0 failures)
 
 ### Session S202 (Apr 11, 2026) — Deep Debt Execution: Capability-Based Evolution
 

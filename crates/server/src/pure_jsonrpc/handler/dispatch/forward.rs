@@ -28,9 +28,13 @@ impl DispatchHandler {
             Ok(result) => Ok(serde_json::json!({
                 "domain": "compute.dispatch",
                 "operation": "forward",
-                "endpoint": endpoint,
+                "job_id": null,
                 "status": "completed",
-                "result": result,
+                "output": result,
+                "error": null,
+                "metadata": {
+                    "endpoint": endpoint,
+                },
             })),
             Err(e) => Err(JsonRpcError::internal_error(format!(
                 "Remote dispatch to {endpoint} failed: {e}"

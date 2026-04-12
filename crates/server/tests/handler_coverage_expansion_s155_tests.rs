@@ -217,7 +217,7 @@ async fn dispatch_submit_then_status_and_result() {
     let status_result = status_resp.result.expect("status result");
     assert_eq!(status_result["job_id"], job_id);
     assert!(status_result["status"].as_str().is_some());
-    assert!(status_result["bdf"].as_str().is_some());
+    assert!(status_result["metadata"]["bdf"].as_str().is_some());
 
     let result_params = serde_json::json!({ "job_id": job_id });
     let result_req = mk_request("compute.dispatch.result", Some(result_params), 3);
@@ -264,8 +264,8 @@ async fn dispatch_capabilities_returns_structure() {
     let result = response.result.expect("result present");
     assert_eq!(result["domain"], "compute.dispatch");
     assert_eq!(result["operation"], "capabilities");
-    assert!(result["sovereign_pipeline"].as_bool().unwrap());
-    assert!(result["dispatch_modes"].as_array().is_some());
+    assert!(result["output"]["sovereign_pipeline"].as_bool().unwrap());
+    assert!(result["output"]["dispatch_modes"].as_array().is_some());
 }
 
 // Science domains tests: REMOVED — ecology/discovery/deploy are biomeOS's domain

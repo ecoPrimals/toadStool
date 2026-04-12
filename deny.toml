@@ -57,17 +57,10 @@ version = 2
 # Block any crate with an active security advisory.
 # Exceptions may be added below with justification.
 ignore = [
-    # Transitive unmaintained deps we cannot fix directly:
-    { id = "RUSTSEC-2024-0387", reason = "opentelemetry_api: transitive via tracing-opentelemetry, awaiting upstream merge into opentelemetry" },
-    { id = "RUSTSEC-2024-0436", reason = "paste: transitive via simba→nalgebra→statrs, no drop-in replacement available" },
-    # wasmtime 18: optional dep behind feature-gated `jit` (not compiled by default).
-    # WASI advisories are not relevant — we do not expose WASI host functions.
-    # Upgrade to wasmtime 29+ is a major migration tracked as future debt.
-    { id = "RUSTSEC-2024-0438", reason = "wasmtime: Windows device filenames — Linux-only, WASI not exposed" },
-    { id = "RUSTSEC-2025-0046", reason = "wasmtime: fd_renumber host panic — WASI not exposed in our runtime" },
-    { id = "RUSTSEC-2025-0118", reason = "wasmtime: shared linear memory unsoundness — optional jit feature, not compiled by default" },
-    { id = "RUSTSEC-2026-0020", reason = "wasmtime: WASI resource exhaustion — WASI not exposed in our runtime" },
-    { id = "RUSTSEC-2026-0021", reason = "wasmtime: wasi:http fields panic — WASI HTTP not used" },
+    # INFO (unmaintained): paste has no patched release; advisory suggests pastey/with_builtin_macros for dependents.
+    # We pull paste via statrs → nalgebra → simba (management analytics/performance; statrs 0.18 is latest on crates.io).
+    # Optional `jit` on toadstool-runtime-gpu also pulls wasmtime → paste; not enabled by default.
+    { id = "RUSTSEC-2024-0436", reason = "paste unmaintained (INFO); transitive via statrs→nalgebra→simba; optional gpu jit→wasmtime also uses paste — await upstream or major dep changes" },
 ]
 
 # ── Bans ──────────────────────────────────────────────────────────────────────

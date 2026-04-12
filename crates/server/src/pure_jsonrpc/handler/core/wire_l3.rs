@@ -29,10 +29,36 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         "health.readiness",
         "capabilities.list",
         "identity.get",
+        "toadstool.health",
         "toadstool.version",
+        "compute.health",
+        "compute.version",
+        "compute.capabilities",
+        "compute.discover_capabilities",
+        "compute.dispatch.capabilities",
         "provenance.query",
     ] {
         map.insert(m.into(), cost("negligible", false, 0, "negligible", "none"));
+    }
+
+    // AI inference — variable cost depending on model
+    map.insert(
+        "ai.local_inference".into(),
+        cost("variable", true, 200, "variable", "variable"),
+    );
+    map.insert(
+        "ai.local_execute".into(),
+        cost("variable", true, 100, "variable", "variable"),
+    );
+
+    // toadstool-prefixed resource methods (aliases to resources.*)
+    for (prefixed, canonical) in [
+        ("toadstool.resources.estimate", "resources.estimate"),
+        ("toadstool.resources.validate_availability", "resources.validate_availability"),
+        ("toadstool.resources.suggest_optimizations", "resources.suggest_optimizations"),
+    ] {
+        let _ = canonical;
+        map.insert(prefixed.into(), cost("medium", false, 10, "low", "low"));
     }
 
     // Workload lifecycle
@@ -287,7 +313,7 @@ mod tests {
                 "{method} missing 'gpu_eligible'"
             );
             assert!(
-                entry.get("latency_ms").and_then(|v| v.as_u64()).is_some(),
+                entry.get("latency_ms").and_then(serde_json::Value::as_u64).is_some(),
                 "{method} missing 'latency_ms'"
             );
             assert!(

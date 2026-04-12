@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 11, 2026 — S202
+**Date**: April 12, 2026 — S203
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -43,25 +43,15 @@ Dead u8 alignment check removed S197. Evolution: fuzz the access paths, consider
 `NonNull::slice_from_raw_parts` for fat-pointer representation.
 Files: `buffer/access.rs`.
 
-### D-FUZZ-TARGETS — CI & corpus (infra landed S197, remaining work)
+### D-FUZZ-TARGETS — seed corpus & extended campaigns
 **Scope**: Workspace | **Dir**: `fuzz/`
-Initial `cargo-fuzz` / `libfuzzer` infrastructure added (S197). Three targets:
-`fuzz_jsonrpc_parse` (JSON-RPC 2.0 deser), `fuzz_config_toml` (config deser +
-validation), `fuzz_btsp_framing` (BTSP length-prefixed frame decode).
-Remaining: integrate into CI, add seed corpus, run extended campaigns, add
-proptest bridge for property-based input generation.
+Three fuzz targets landed (S197) and **CI smoke integration landed (S203)**.
+`ci.yml` now runs all three targets with `cargo fuzz run` (2min/target, nightly).
+Remaining: add seed corpus from real JSON-RPC traffic, run extended campaigns,
+add proptest bridge for property-based input generation.
 See also: `D-FUZZ-TARGETS-UNSAFE` (GPU buffer access paths).
-Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`.
+Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
 
-
-### D-RUSTIX-DISPLAY-038
-**Crate**: `runtime/display` | **Dep**: `rustix 0.38`
-V4L2 ioctl wrappers use `Getter`/`Updater`/`Setter` convenience types removed in
-rustix 1.x. Migration requires rewriting ~3 unsafe ioctl helpers to the new `Ioctl`
-trait pattern (as hw-safe and nvpmu already use). Low urgency: display crate is a
-leaf and the 0.38 version is safe; the only impact is having two rustix majors in
-the dependency tree.
-Files: `v4l2/ioctl.rs`, `drm/device.rs`, `v4l2/device.rs`.
 
 ## Known Limitations (not actionable debt)
 
@@ -71,6 +61,114 @@ Traits using `#[async_trait]` because native `async fn` in `dyn Trait` is not ye
 stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_trait]`
 dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
+
+## S203 Resolved Debt (Deep Audit & Evolution Execution)
+
+### D-RUSTIX-DISPLAY-038 — RESOLVED S203
+**Crate**: `runtime/display` | **Dep**: `rustix 0.38` → `1.1`
+V4L2 ioctl wrappers migrated from `ReadOpcode`/`WriteOpcode`/`ReadWriteOpcode` +
+`Getter`/`Updater`/`Setter` to rustix 1.x `ioctl::opcode::{read,write,read_write}`
+const functions via type-concrete macros (`v4l2_getter!`, `v4l2_updater!`, `v4l2_setter!`).
+Eliminates duplicate `rustix` majors from the dependency tree. Unused features
+(`mm`, `process`, `io_uring`) dropped; only `fs` + `all-apis` remain.
+Files: `Cargo.toml`, `v4l2/ioctl.rs`.
+
+### D-CLIPPY-WARNINGS — RESOLVED S203
+Four clippy warnings eliminated by evolving dead code into production use:
+- `DispatchStatus::Running` wired in `submit.rs` (set before dispatch)
+- `PipelineStageRequest.substrate` wired through to `PipelineStageResult` (visible in responses)
+- `PipelineStatus::Failed` wired for graph validation failures (tracked pipelines)
+- Redundant closure in `wire_l3.rs` replaced with method reference
+
+### D-DOC-EMPTY-CODEBLOCK — RESOLVED S203
+Empty Rust code block in `cli/src/ecosystem/services/mod.rs` changed from
+`rust,ignore` to `text` (commented-out legacy code is not valid Rust).
+
+### D-NVPMU-STALE-ALLOWS — RESOLVED S203
+Stale `#[allow(unsafe_code)]` removed from `bar0` and `init` modules in `nvpmu`
+(neither contains `unsafe` blocks — they use safe `hw-safe` wrappers).
+
+### D-MMIO-ALIGNMENT — EVOLVED S203
+`volatile_mmio.rs` alignment checks evolved from `debug_assert!` to release-mode
+`MmioError::Misaligned` error returns. Prevents potential UB from misaligned
+volatile reads/writes in release builds.
+
+### D-FUZZ-CI — RESOLVED S203
+Fuzz smoke job added to `.github/workflows/ci.yml`: three targets
+(`fuzz_jsonrpc_parse`, `fuzz_config_toml`, `fuzz_btsp_framing`) run with
+`-max_total_time=120` on nightly via `cargo-fuzz`. Matrix strategy with
+`fail-fast: false`.
+
+### D-BYOB-HARDCODED — RESOLVED S203
+BYOB config hardcoded ports and timeouts extracted to named constants
+(`DEFAULT_MAX_CONCURRENT_DEPLOYMENTS`, `COMMON_WEB_SERVICE_PORTS`, etc.).
+Coordinator port now dynamically appended rather than statically positioned.
+
+### D-DISPATCH-RESPONSE-SHAPE — RESOLVED S203
+**Scope**: `server/dispatch/` (all handlers) | **Blocking**: Composition Elevation
+primalSpring's typed extractors (`extract_rpc_result<T>` / `extract_rpc_dispatch<T>`)
+required a consistent envelope across all dispatch variants. Previously:
+- `shader.dispatch` responses used `"domain": "shader.dispatch"` and omitted `"operation"`
+- Pipeline responses used `"domain": "compute.dispatch.pipeline"` with flat `stage_results`
+- Status fields embedded error details in compound strings (`"failed: msg"`)
+- `result` was sometimes present, sometimes absent, sometimes null
+
+All 8 dispatch operations now share a single canonical envelope:
+`{ domain, operation, job_id, status, output, error, metadata }`.
+Status field is always a clean enum value (`submitted|running|completed|failed|partial_failure`).
+Error details moved to dedicated `error` field. Type-specific context in `metadata`.
+Wire contract documented in `specs/DISPATCH_WIRE_CONTRACT.md`.
+Completes Node Atomic chain: coralReef → toadStool → barraCuda composition parity.
+
+### D-DISPATCH-STATUS-COMPOUND — RESOLVED S203
+**Crate**: `server/dispatch/types.rs`
+`DispatchStatus::Display` and `PipelineStatus::Display` produced compound strings
+(`"failed: msg"`, `"running:stage_id"`) that leaked internal state into the wire
+`status` field. Added `as_str()` methods returning clean wire-stable enum tags.
+`Display` impl preserved for debug/logging use.
+
+### D-LARGE-FILE-REFACTOR — RESOLVED S203
+**Scope**: Workspace (6 production files >550 LOC)
+Smart test extraction from oversized `mod.rs` / `lib.rs` files:
+- `server/src/background/mod.rs` 608→72 lines (tests → `tests.rs`)
+- `distributed/src/cloud/federation/mod.rs` 594→109 (tests → `tests.rs`)
+- `core/toadstool/src/encryption/provider.rs` 568→257 (tests → `provider_tests.rs`)
+- `runtime/universal/src/runtime.rs` 576→249 (tests → `runtime_tests.rs`, `RuntimeStats` → `stats.rs`)
+
+### D-PRIMAL-PORT-DEPRECATION — RESOLVED S203
+**Crate**: `core/config/src/config_utils/network.rs`
+`get_primal_default_port` (maps legacy primal names to capability ports) deprecated
+with migration path. All callers migrated to `resolve_capability_port` directly
+with capability identifiers (`COORDINATION`, `SECURITY`, `STORAGE`, `PLATFORM`).
+
+### D-DISCOVERY-PORT-CENTRALIZATION — RESOLVED S203
+**Scope**: `core/common`, `core/config`, `runtime/display`
+Scattered fallback port definitions (`DISCOVERY_HTTP_PORT_FALLBACK` 8080,
+`TOADSTOOL_DISCOVERY_FALLBACK_PORT` 9080, `DISPLAY_IPC_FALLBACK_PORT` 8091)
+centralized into `common/constants/discovery_ports.rs` with re-exports via
+`config/defaults/ports.rs`.
+
+### D-CLIPPY-SUPPRESSIONS — RESOLVED S203
+Resolved rather than suppressed:
+- `server/resource_estimator/estimator.rs`: `unused_self` → converted helpers to
+  associated functions
+- `core/toadstool/biomeos_integration/auth/mod.rs`: `cast_sign_loss`/`cast_possible_wrap`
+  → eliminated `as` casts with direct `u64` from `Duration::as_secs()`
+- `runtime/gpu/buffer/access.rs`: `needless_pass_by_ref_mut` → documented as
+  soundness requirement (exclusive borrow prevents aliased mutable GPU access)
+
+### D-UNSAFE-BUFFER-EVOLUTION — RESOLVED S203
+**Crate**: `runtime/gpu/src/unified_memory/buffer/access.rs`
+`from_raw_parts`/`from_raw_parts_mut` evolved to `NonNull::slice_from_raw_parts`
+(safe metadata construction) + `unsafe { .as_ref()/.as_mut() }` (aliasing contract
+only). Safety documentation updated to match the narrower invariant.
+
+### D-DENY-TOML-STALE-ADVISORIES — RESOLVED S203
+**Scope**: `deny.toml`
+Six stale RUSTSEC ignores removed (advisories no longer in dependency graph):
+RUSTSEC-2024-0387, RUSTSEC-2024-0438, RUSTSEC-2025-0046, RUSTSEC-2025-0118,
+RUSTSEC-2026-0020, RUSTSEC-2026-0021. Only RUSTSEC-2024-0436 (paste via
+statrs→nalgebra→simba chain, INFO-level unmaintained) remains with updated reason.
 
 ## S202 Resolved Debt (Deep Debt Execution: Capability-Based Evolution)
 

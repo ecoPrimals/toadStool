@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use super::types::DispatchStatus;
 use super::DispatchHandler;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
@@ -18,14 +19,23 @@ impl DispatchHandler {
             JsonRpcError::internal_error(format!("Dispatch job {job_id} not found"))
         })?;
 
+        let (status_str, error_str) = match &job.status {
+            DispatchStatus::Failed(msg) => ("failed", Some(msg.clone())),
+            other => (other.as_str(), None),
+        };
+
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "status",
             "job_id": job_id,
-            "status": job.status.to_string(),
-            "bdf": job.bdf,
-            "binary_size": job.binary_size,
-            "elapsed_ms": job.submitted_at.elapsed().as_millis() as u64,
+            "status": status_str,
+            "output": null,
+            "error": error_str,
+            "metadata": {
+                "bdf": job.bdf,
+                "binary_size": job.binary_size,
+                "elapsed_ms": job.submitted_at.elapsed().as_millis() as u64,
+            },
         }))
     }
 
@@ -43,12 +53,19 @@ impl DispatchHandler {
             JsonRpcError::internal_error(format!("Dispatch job {job_id} not found"))
         })?;
 
+        let (status_str, error_str) = match &job.status {
+            DispatchStatus::Failed(msg) => ("failed", Some(msg.clone())),
+            other => (other.as_str(), None),
+        };
+
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "result",
             "job_id": job_id,
-            "status": job.status.to_string(),
-            "result": job.result,
+            "status": status_str,
+            "output": job.result,
+            "error": error_str,
+            "metadata": {},
         }))
     }
 }

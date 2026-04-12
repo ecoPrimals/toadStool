@@ -25,12 +25,11 @@ impl ConfigUtils {
     /// Get primal port by capability/env name (capability-based lookup)
     #[must_use]
     #[deprecated(
-        since = "0.92.0",
-        note = "Use capability-based discovery via infant_discovery instead of primal-name port lookup"
+        since = "0.15.0",
+        note = "Use resolve_capability_port directly with capability identifiers: COORDINATION, SECURITY, STORAGE, PLATFORM"
     )]
-    #[expect(deprecated)]
     pub fn get_primal_default_port(primal_name: &str) -> u16 {
-        network::get_primal_default_port(primal_name)
+        network::resolve_legacy_primal_default_port(primal_name)
     }
 
     /// Get ToadStool port from environment or default
@@ -377,5 +376,4 @@ impl ConfigUtils {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests;

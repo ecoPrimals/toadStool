@@ -47,8 +47,12 @@ pub mod toadstool {
 /// Capabilities map to port ranges rather than primal-specific assignments.
 /// Each capability resolves via: env var → config file → this fallback.
 pub mod capability_fallback {
+    use toadstool_common::constants::discovery_ports::{
+        DISCOVERY_HTTP_FALLBACK, DISPLAY_IPC_FALLBACK,
+    };
+
     /// Coordination capability (orchestration, scheduling)
-    pub const COORDINATION: u16 = 8080;
+    pub const COORDINATION: u16 = DISCOVERY_HTTP_FALLBACK;
 
     /// Security capability (auth, policy, zero-trust)
     pub const SECURITY: u16 = 8081;
@@ -69,7 +73,7 @@ pub mod capability_fallback {
     pub const SHADER_COMPILER: u16 = 8090;
 
     /// Display IPC capability (local display server communication)
-    pub const DISPLAY_IPC: u16 = 8091;
+    pub const DISPLAY_IPC: u16 = DISPLAY_IPC_FALLBACK;
 }
 
 /// Port registry for runtime configuration

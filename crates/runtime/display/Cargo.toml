@@ -13,7 +13,7 @@ categories = ["gui", "graphics", "hardware-support"]
 # Display management (Pure Rust! ARM64 compatible!)
 drm = "0.14"                # Safe DRM/KMS bindings (Pure Rust, no linux-unsafe!)
 drm-fourcc = "2.2"          # Pixel format definitions (Pure Rust!)
-rustix = { version = "0.38", features = ["fs", "mm", "process", "io_uring"] }  # Safe system calls (Pure Rust!) — v0.38 until V4L2 ioctl wrappers migrated to 1.x Ioctl trait pattern
+rustix = { version = "1.1", features = ["fs", "all-apis"] }  # Safe system calls (Pure Rust!) — evolved from 0.38 to 1.x Ioctl trait pattern (S203)
 
 # Input handling (Pure Rust!)
 evdev = "0.13"              # Pure Rust evdev (NO libevdev!)
@@ -43,6 +43,9 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 # Common utilities
 toadstool-common = { path = "../../core/common" }
+
+# Cold-start port defaults (shared registry; see `toadstool_config::defaults::ports`)
+toadstool-config = { path = "../../core/config" }
 
 # Safe hardware primitives (DeviceMmap for V4L2 buffer mapping)
 toadstool-hw-safe = { path = "../../core/hw-safe" }

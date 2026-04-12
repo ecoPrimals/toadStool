@@ -11,6 +11,7 @@ use toadstool_common::constants::primal_identity::PRIMAL_NAME;
 use toadstool_config::config_utils::ConfigUtils;
 use toadstool_config::defaults::network as defaults_network;
 use toadstool_config::defaults::ports as defaults_ports;
+use toadstool_config::ports::{capability_fallback, resolve_capability_port};
 use toadstool_config::defaults::storage as defaults_storage;
 use toadstool_config::env_config::{
     EnvConfigLoader, EnvironmentConfig, MonitoringEnvConfig, NetworkEnvConfig, ResourceEnvConfig,
@@ -31,16 +32,6 @@ fn env_config_loader_default_matches_new() {
 }
 
 #[test]
-#[expect(deprecated)]
-fn get_primal_default_port_unknown_returns_api_port() {
-    assert_eq!(
-        ConfigUtils::get_primal_default_port("XYZZY"),
-        defaults_network::API_PORT
-    );
-}
-
-#[test]
-#[expect(deprecated)]
 fn primal_ports_resolve_when_legacy_env_unset() {
     temp_env::with_vars_unset(
         [
@@ -58,21 +49,20 @@ fn primal_ports_resolve_when_legacy_env_unset() {
             "SQUIRREL_PORT",
         ],
         || {
-            use toadstool_config::ports::capability_fallback;
             assert_eq!(
-                ConfigUtils::get_primal_default_port("SONGBIRD"),
+                resolve_capability_port("COORDINATION", capability_fallback::COORDINATION),
                 capability_fallback::COORDINATION
             );
             assert_eq!(
-                ConfigUtils::get_primal_default_port("BEARDOG"),
+                resolve_capability_port("SECURITY", capability_fallback::SECURITY),
                 capability_fallback::SECURITY
             );
             assert_eq!(
-                ConfigUtils::get_primal_default_port("NESTGATE"),
+                resolve_capability_port("STORAGE", capability_fallback::STORAGE),
                 capability_fallback::STORAGE
             );
             assert_eq!(
-                ConfigUtils::get_primal_default_port("SQUIRREL"),
+                resolve_capability_port("PLATFORM", capability_fallback::PLATFORM),
                 capability_fallback::PLATFORM
             );
         },
