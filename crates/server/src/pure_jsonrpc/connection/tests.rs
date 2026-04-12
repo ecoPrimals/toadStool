@@ -222,6 +222,170 @@ async fn test_serve_unix_accepts_http_post() {
 }
 
 #[tokio::test]
+async fn test_tcp_http_keepalive_multi_request() {
+    let handler = Arc::new(test_handler());
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+
+    let server_handler = Arc::clone(&handler);
+    let _server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        handle_tcp_connection(server_handler, stream).await.expect("ok");
+    });
+
+    let mut client = TcpStream::connect(addr).await.expect("connect");
+
+    // First request (keep-alive default)
+    let body1 = r#"{"jsonrpc":"2.0","method":"toadstool.health","id":1}"#;
+    let http1 = format!(
+        "POST /rpc HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+        body1.len(),
+        body1
+    );
+    client.write_all(http1.as_bytes()).await.expect("write1");
+
+    let mut buf = vec![0u8; 4096];
+    let n = client.read(&mut buf).await.expect("read1");
+    let resp1 = String::from_utf8_lossy(&buf[..n]);
+    assert!(resp1.contains("HTTP/1.1 200 OK"), "first response ok");
+    assert!(
+        resp1.contains("Connection: keep-alive"),
+        "keep-alive header present"
+    );
+    assert!(resp1.contains("healthy"), "first response has health data");
+
+    // Second request on same connection (Connection: close to end)
+    let body2 = r#"{"jsonrpc":"2.0","method":"toadstool.version","id":2}"#;
+    let http2 = format!(
+        "POST /rpc HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body2.len(),
+        body2
+    );
+    client.write_all(http2.as_bytes()).await.expect("write2");
+
+    let mut buf2 = Vec::new();
+    client.read_to_end(&mut buf2).await.expect("read2");
+    let resp2 = String::from_utf8_lossy(&buf2);
+    assert!(resp2.contains("HTTP/1.1 200 OK"), "second response ok");
+    assert!(
+        resp2.contains("Connection: close"),
+        "close header on final response"
+    );
+}
+
+#[tokio::test]
+async fn test_unix_http_keepalive_multi_request() {
+    let handler = Arc::new(test_handler());
+    let dir = tempfile::tempdir().expect("tempdir");
+    let socket_path = dir.path().join("keepalive.sock");
+
+    let server_handler = Arc::clone(&handler);
+    let sock_path = socket_path.clone();
+    let _server = tokio::spawn(async move {
+        serve_unix(server_handler, sock_path).await.expect("serve");
+    });
+
+    let mut stream = await_unix_socket(&socket_path).await;
+
+    // First request (keep-alive)
+    let body1 = r#"{"jsonrpc":"2.0","method":"toadstool.health","id":1}"#;
+    let http1 = format!(
+        "POST /rpc HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+        body1.len(),
+        body1
+    );
+    stream.write_all(http1.as_bytes()).await.expect("write1");
+
+    let mut buf = vec![0u8; 4096];
+    let n = stream.read(&mut buf).await.expect("read1");
+    let resp1 = String::from_utf8_lossy(&buf[..n]);
+    assert!(resp1.contains("Connection: keep-alive"));
+
+    // Second request on same connection
+    let body2 = r#"{"jsonrpc":"2.0","method":"toadstool.version","id":2}"#;
+    let http2 = format!(
+        "POST /rpc HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body2.len(),
+        body2
+    );
+    stream.write_all(http2.as_bytes()).await.expect("write2");
+
+    let mut buf2 = Vec::new();
+    stream.read_to_end(&mut buf2).await.expect("read2");
+    let resp2 = String::from_utf8_lossy(&buf2);
+    assert!(resp2.contains("HTTP/1.1 200 OK"));
+    assert!(resp2.contains("Connection: close"));
+}
+
+#[tokio::test]
+async fn test_ndjson_with_blank_lines_between_requests() {
+    let handler = Arc::new(test_handler());
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let addr = listener.local_addr().expect("addr");
+
+    let server_handler = Arc::clone(&handler);
+    let _server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        handle_tcp_connection(server_handler, stream).await.expect("ok");
+    });
+
+    let mut client = TcpStream::connect(addr).await.expect("connect");
+
+    // Send two NDJSON requests with a blank line between them
+    let requests = concat!(
+        "{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n",
+        "\n",
+        "{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.version\",\"id\":2}\n",
+    );
+    client.write_all(requests.as_bytes()).await.expect("write");
+    client.shutdown().await.ok();
+
+    let mut buf = Vec::new();
+    client.read_to_end(&mut buf).await.expect("read");
+    let text = String::from_utf8_lossy(&buf);
+    let responses: Vec<&str> = text.lines().collect();
+    assert!(
+        responses.len() >= 2,
+        "expected 2 responses, got {}: {text}",
+        responses.len()
+    );
+
+    let r1: serde_json::Value = serde_json::from_str(responses[0]).expect("json1");
+    assert!(r1["result"]["healthy"].as_bool().is_some());
+    let r2: serde_json::Value = serde_json::from_str(responses[1]).expect("json2");
+    assert!(r2["result"]["version"].as_str().is_some());
+}
+
+#[tokio::test]
+async fn test_ndjson_unix_persistent_multi_request() {
+    let handler = Arc::new(test_handler());
+    let dir = tempfile::tempdir().expect("tempdir");
+    let socket_path = dir.path().join("ndjson-multi.sock");
+
+    let server_handler = Arc::clone(&handler);
+    let sock_path = socket_path.clone();
+    let _server = tokio::spawn(async move {
+        serve_unix(server_handler, sock_path).await.expect("serve");
+    });
+
+    let mut stream = await_unix_socket(&socket_path).await;
+
+    // Send three requests on the same connection
+    let r1 = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
+    let r2 = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.version\",\"id\":2}\n";
+    let r3 = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":3}\n";
+    stream.write_all(r1).await.expect("w1");
+    stream.write_all(r2).await.expect("w2");
+    stream.write_all(r3).await.expect("w3");
+    stream.shutdown().await.ok();
+
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf).await.expect("read");
+    let text = String::from_utf8_lossy(&buf);
+    assert_eq!(text.lines().count(), 3, "expected 3 responses: {text}");
+}
+
+#[tokio::test]
 async fn test_process_request_partial_json() {
     let handler = test_handler();
     let body = b"{\"jsonrpc\":\"2.0\",\"method\":";

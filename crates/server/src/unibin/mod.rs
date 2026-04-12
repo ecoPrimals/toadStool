@@ -185,10 +185,15 @@ pub async fn run_server_main(
 
     info!("🔌 Starting IPC servers (isomorphic mode)...");
 
-    // Primary socket uses the domain stem per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1:
-    //   compute.sock (dev) / compute-{fid}.sock (prod)
-    // The socket_path already has the domain-based name from get_socket_path().
+    // JSON-RPC (primary) uses the domain stem: compute.sock / compute-{fid}.sock
     let jsonrpc_socket = socket_path.clone();
+
+    // tarpc (secondary) uses a separate socket to avoid bind collision (LD-05):
+    //   compute-tarpc.sock / compute-{fid}-tarpc.sock
+    let tarpc_filename = format::tarpc_socket_filename_for_family(&family_id);
+    let socket_path = socket_path
+        .parent()
+        .map_or_else(|| socket_path.with_extension("tarpc.sock"), |dir| dir.join(tarpc_filename));
 
     // Legacy symlink: toadstool.sock → compute.sock for callers still using
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
@@ -258,7 +263,12 @@ pub async fn run_server_main(
     if socket_path.exists()
         && let Err(e) = tokio::fs::remove_file(&socket_path).await
     {
-        warn!("Failed to remove domain socket: {}", e);
+        warn!("Failed to remove tarpc socket: {}", e);
+    }
+    if jsonrpc_socket.exists()
+        && let Err(e) = tokio::fs::remove_file(&jsonrpc_socket).await
+    {
+        warn!("Failed to remove JSON-RPC socket: {}", e);
     }
     // Clean up legacy symlink
     if let Some(ref legacy) = legacy_socket

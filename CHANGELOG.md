@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 12, 2026 (Sessions 43-203)
 
+### Session S203b (Apr 12, 2026) — primalSpring LD-04/LD-05: Persistent Connections + Socket Separation
+
+#### LD-04: UDS/TCP Persistent Connection (Blocking)
+- EVOLVED: HTTP mode from single-shot (`Connection: close`, return) to HTTP/1.1 keep-alive loop
+- EVOLVED: NDJSON mode — empty lines between requests now skipped (previously broke connection)
+- FIXED: Multi-step dispatch sequences (submit → status → result) no longer get broken pipe
+- ADDED: `handle_http_keepalive_unix` / `handle_http_keepalive_tcp` — keep-alive loop respecting `Connection` header
+- ADDED: `handle_ndjson_unix` / `handle_ndjson_tcp` — extracted persistent NDJSON handlers
+- Files: `connection/unix.rs`, `connection/tcp.rs`
+
+#### LD-05: Socket Namespace Separation
+- FIXED: JSON-RPC and tarpc no longer bind the same `compute.sock` (race condition: tarpc overwrote JSON-RPC socket)
+- SEPARATED: JSON-RPC primary → `compute.sock`, tarpc secondary → `compute-tarpc.sock`
+- ADDED: `tarpc_socket_filename_for_family()` in `unibin/format.rs` for family-scoped tarpc socket names
+- UPDATED: Shutdown cleanup handles both socket files
+- Files: `unibin/mod.rs`, `unibin/format.rs`
+
+#### Tests
+- ADDED: `test_tcp_http_keepalive_multi_request` — two HTTP requests on one TCP connection
+- ADDED: `test_unix_http_keepalive_multi_request` — two HTTP requests on one UDS connection
+- ADDED: `test_ndjson_with_blank_lines_between_requests` — blank lines between NDJSON requests
+- ADDED: `test_ndjson_unix_persistent_multi_request` — three NDJSON requests on one UDS connection
+- ADDED: `tarpc_socket_filename_for_family_*` — 3 socket naming tests
+
+#### Quality Gates
+- `cargo fmt`: PASS
+- `cargo clippy --workspace --all-targets`: PASS (0 warnings)
+- `cargo doc --workspace --no-deps`: PASS (0 warnings)
+- `cargo test --workspace`: PASS (0 failures)
+
 ### Session S203 (Apr 12, 2026) — Composition Elevation Sprint + Deep Debt Execution
 
 #### Dispatch Wire Contract Standardization (Blocking Composition)

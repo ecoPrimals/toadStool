@@ -62,6 +62,31 @@ stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_
 dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
+### D-UDS-SINGLE-SHOT — RESOLVED S203
+**Crate**: `server` | **Audit**: LD-04 (primalSpring downstream)
+HTTP mode in `pure_jsonrpc/connection/unix.rs` and `tcp.rs` was single-shot:
+processed one request, wrote `Connection: close`, and returned. Multi-step
+dispatch sequences (submit → status → result) got broken pipe on second call.
+**Fix**: Evolved to HTTP/1.1 keep-alive loop — server reads subsequent HTTP
+requests on the same connection until client sends `Connection: close` or EOF.
+NDJSON mode also fixed: empty lines between requests now skipped (previously
+broke the connection). +7 tests covering keep-alive and NDJSON persistence.
+Files: `connection/unix.rs`, `connection/tcp.rs`, `connection/tests.rs`.
+
+### D-SOCKET-NAMESPACE-COLLISION — RESOLVED S203
+**Crate**: `server` | **Audit**: LD-05 (primalSpring downstream)
+JSON-RPC and tarpc servers both bound the same `compute.sock` — tarpc's
+`serve_unix` removed JSON-RPC's socket file and re-bound, orphaning the
+JSON-RPC listener. Clients connecting to `compute.sock` would reach the
+tarpc binary framing, not JSON-RPC.
+**Fix**: Separated socket paths: JSON-RPC primary on `compute.sock`,
+tarpc secondary on `compute-tarpc.sock`. New `tarpc_socket_filename_for_family`
+helper generates family-scoped tarpc socket names. Cleanup at shutdown handles
+both sockets. This also resolves the barraCuda namespace conflict: toadStool
+claims `compute.sock` / `compute-tarpc.sock`, leaving `compute-math.sock`
+available for barraCuda.
+Files: `unibin/mod.rs`, `unibin/format.rs`.
+
 ## S203 Resolved Debt (Deep Audit & Evolution Execution)
 
 ### D-RUSTIX-DISPLAY-038 — RESOLVED S203

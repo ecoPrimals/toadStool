@@ -41,10 +41,11 @@ pub async fn serve_tcp(handler: Arc<JsonRpcHandler>, listener: TcpListener) -> S
     }
 }
 
-/// Handle a single TCP connection.
+/// Handle a single TCP connection with persistent keep-alive.
 ///
-/// Supports both HTTP (single request-response) and persistent NDJSON sessions
-/// per `PRIMAL_IPC_PROTOCOL.md`.
+/// Supports both HTTP/1.1 keep-alive and persistent NDJSON sessions per
+/// `PRIMAL_IPC_PROTOCOL.md`. Multi-step dispatch sequences (submit → status →
+/// result) and health checks reuse the same connection without reconnecting.
 pub(crate) async fn handle_tcp_connection(
     handler: Arc<JsonRpcHandler>,
     stream: TcpStream,
@@ -53,42 +54,93 @@ pub(crate) async fn handle_tcp_connection(
     let mut reader = BufReader::new(reader);
 
     let mut first_line = String::new();
-    reader
+    let n = reader
         .read_line(&mut first_line)
         .await
         .map_err(|e| ServerError::Network(e.to_string()))?;
+    if n == 0 {
+        return Ok(());
+    }
 
     if first_line.starts_with("POST")
         || first_line.starts_with("GET")
         || first_line.starts_with("HTTP")
     {
-        let (_headers, body) = read_http_request_continuation_tcp(&mut reader).await?;
-        let response_body = process_request(&handler, &body).await?;
-        write_http_response_tcp(&mut writer, &response_body).await?;
-        return Ok(());
+        return handle_http_keepalive_tcp(handler, &mut reader, &mut writer, first_line).await;
     }
 
-    // NDJSON session: process first line, then loop for subsequent lines
-    let mut line = first_line;
+    handle_ndjson_tcp(handler, &mut reader, &mut writer, first_line).await
+}
+
+/// HTTP/1.1 keep-alive loop for TCP connections.
+async fn handle_http_keepalive_tcp(
+    handler: Arc<JsonRpcHandler>,
+    reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
+    writer: &mut tokio::net::tcp::OwnedWriteHalf,
+    first_request_line: String,
+) -> ServerResult<()> {
+    let mut request_line = first_request_line;
     loop {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
+        let (headers, body) = read_http_request_continuation_tcp(reader).await?;
+        let response_body = process_request(&handler, &body).await?;
+
+        let client_wants_close = headers
+            .get("connection")
+            .is_some_and(|v| v.eq_ignore_ascii_case("close"));
+
+        write_http_response_tcp(writer, &response_body, client_wants_close).await?;
+
+        if client_wants_close {
             break;
         }
 
-        let response_body = process_request(&handler, trimmed.as_bytes()).await?;
-        writer
-            .write_all(&response_body)
+        request_line.clear();
+        let n = reader
+            .read_line(&mut request_line)
             .await
             .map_err(|e| ServerError::Network(e.to_string()))?;
-        writer
-            .write_all(b"\n")
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
-        writer
-            .flush()
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
+        if n == 0 {
+            break;
+        }
+        let trimmed = request_line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !trimmed.starts_with("POST")
+            && !trimmed.starts_with("GET")
+            && !trimmed.starts_with("HTTP")
+        {
+            break;
+        }
+    }
+    Ok(())
+}
+
+/// NDJSON persistent session for TCP connections.
+async fn handle_ndjson_tcp(
+    handler: Arc<JsonRpcHandler>,
+    reader: &mut BufReader<tokio::net::tcp::OwnedReadHalf>,
+    writer: &mut tokio::net::tcp::OwnedWriteHalf,
+    first_line: String,
+) -> ServerResult<()> {
+    let mut line = first_line;
+    loop {
+        let trimmed = line.trim();
+        if !trimmed.is_empty() {
+            let response_body = process_request(&handler, trimmed.as_bytes()).await?;
+            writer
+                .write_all(&response_body)
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            writer
+                .write_all(b"\n")
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+            writer
+                .flush()
+                .await
+                .map_err(|e| ServerError::Network(e.to_string()))?;
+        }
 
         line.clear();
         let n = reader
@@ -99,7 +151,6 @@ pub(crate) async fn handle_tcp_connection(
             break;
         }
     }
-
     Ok(())
 }
 
@@ -140,12 +191,18 @@ async fn read_http_request_continuation_tcp(
 async fn write_http_response_tcp(
     writer: &mut tokio::net::tcp::OwnedWriteHalf,
     body: &[u8],
+    closing: bool,
 ) -> ServerResult<()> {
+    let conn_header = if closing {
+        "Connection: close"
+    } else {
+        "Connection: keep-alive"
+    };
     let header = format!(
         "HTTP/1.1 200 OK\r\n\
          Content-Type: application/json\r\n\
          Content-Length: {}\r\n\
-         Connection: close\r\n\
+         {conn_header}\r\n\
          \r\n",
         body.len()
     );
