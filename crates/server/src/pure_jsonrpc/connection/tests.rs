@@ -451,3 +451,120 @@ async fn test_process_request_array_not_supported() {
     let resp: serde_json::Value = serde_json::from_slice(&bytes).expect("json");
     assert!(resp.get("error").is_some());
 }
+
+#[test]
+fn is_plaintext_protocol_byte_detects_json() {
+    assert!(
+        super::unix::is_plaintext_protocol_byte(b'{'),
+        "JSON opening brace is plaintext"
+    );
+}
+
+#[test]
+fn is_plaintext_protocol_byte_detects_http() {
+    assert!(super::unix::is_plaintext_protocol_byte(b'P'), "POST");
+    assert!(super::unix::is_plaintext_protocol_byte(b'G'), "GET");
+    assert!(super::unix::is_plaintext_protocol_byte(b'H'), "HTTP");
+}
+
+#[test]
+fn is_plaintext_protocol_byte_rejects_btsp_prefix() {
+    assert!(
+        !super::unix::is_plaintext_protocol_byte(0x00),
+        "0x00 is BTSP length prefix"
+    );
+    assert!(
+        !super::unix::is_plaintext_protocol_byte(0x01),
+        "0x01 is large BTSP frame"
+    );
+}
+
+#[test]
+fn is_plaintext_protocol_byte_whitespace() {
+    assert!(super::unix::is_plaintext_protocol_byte(b'\t'), "tab");
+    assert!(super::unix::is_plaintext_protocol_byte(b'\n'), "newline");
+    assert!(super::unix::is_plaintext_protocol_byte(b' '), "space");
+}
+
+/// Verify that `handle_btsp_connection` auto-detects plain NDJSON
+/// and degrades gracefully instead of rejecting the connection.
+#[tokio::test]
+async fn test_btsp_autodetect_plain_ndjson() {
+    let handler = Arc::new(test_handler());
+    let (server_stream, mut client_stream) = UnixStream::pair().expect("pair");
+
+    let server_handle = tokio::spawn(async move {
+        super::unix::handle_btsp_connection(handler, server_stream)
+            .await
+            .expect("btsp handler");
+    });
+
+    let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"toadstool.health\",\"id\":1}\n";
+    client_stream.write_all(request).await.expect("write");
+    client_stream.shutdown().await.ok();
+
+    let mut buf = Vec::new();
+    client_stream.read_to_end(&mut buf).await.expect("read");
+    server_handle.await.expect("join");
+
+    let text = String::from_utf8_lossy(&buf);
+    assert!(
+        !text.is_empty(),
+        "BTSP socket should serve plain JSON-RPC via auto-detect"
+    );
+    let resp: serde_json::Value = serde_json::from_slice(&buf).expect("json");
+    assert!(
+        resp["result"]["healthy"].as_bool().is_some(),
+        "health response should be valid: {resp}"
+    );
+}
+
+/// Verify that `handle_btsp_connection` auto-detects HTTP and serves it.
+#[tokio::test]
+async fn test_btsp_autodetect_plain_http() {
+    let handler = Arc::new(test_handler());
+    let (server_stream, mut client_stream) = UnixStream::pair().expect("pair");
+
+    let server_handle = tokio::spawn(async move {
+        super::unix::handle_btsp_connection(handler, server_stream)
+            .await
+            .expect("btsp handler");
+    });
+
+    let body = r#"{"jsonrpc":"2.0","method":"toadstool.version","id":2}"#;
+    let http = format!(
+        "POST /rpc HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    client_stream
+        .write_all(http.as_bytes())
+        .await
+        .expect("write");
+
+    let mut buf = Vec::new();
+    client_stream.read_to_end(&mut buf).await.expect("read");
+    server_handle.await.expect("join");
+
+    let response = String::from_utf8_lossy(&buf);
+    assert!(
+        response.contains("HTTP/1.1 200 OK"),
+        "BTSP socket should serve HTTP via auto-detect: {response}"
+    );
+    assert!(
+        response.contains("test-conn-1.0.0"),
+        "version in response: {response}"
+    );
+}
+
+/// Verify that EOF on a BTSP socket is handled gracefully.
+#[tokio::test]
+async fn test_btsp_autodetect_eof() {
+    let handler = Arc::new(test_handler());
+    let (server_stream, client_stream) = UnixStream::pair().expect("pair");
+
+    drop(client_stream);
+
+    let result = super::unix::handle_btsp_connection(handler, server_stream).await;
+    assert!(result.is_ok(), "EOF should be handled gracefully");
+}

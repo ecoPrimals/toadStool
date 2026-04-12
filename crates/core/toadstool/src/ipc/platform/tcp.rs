@@ -169,11 +169,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_refused() {
-        // Try to connect to port that's not listening
-        let result = connect("127.0.0.1", 19_999).await;
+        // Bind an ephemeral port, capture it, then drop the listener so nothing is listening.
+        let listener = bind("127.0.0.1", 0).await.expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        drop(listener);
 
-        // Should fail (connection refused)
-        assert!(result.is_err());
+        let result = connect("127.0.0.1", port).await;
+        assert!(result.is_err(), "connection to closed port should fail");
     }
 
     #[tokio::test]

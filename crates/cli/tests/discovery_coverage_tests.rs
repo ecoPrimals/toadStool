@@ -235,9 +235,16 @@ async fn verify_service_unreachable_returns_false() {
 #[tokio::test(flavor = "current_thread")]
 #[allow(deprecated)]
 async fn verify_service_localhost_unbound_returns_false() {
+    // Bind an ephemeral port, capture it, then drop so nothing listens.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    drop(listener);
+
     let endpoint = ServiceEndpoint {
         service_type: EcosystemService::Unknown("test".to_string()),
-        address: "127.0.0.1:65535".parse().expect("parse"),
+        address: format!("127.0.0.1:{port}").parse().expect("parse"),
         version: Arc::from("1.0"),
         capabilities: vec![],
         trust_level: TrustLevel::Configured,

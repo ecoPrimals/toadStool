@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 12, 2026 — S203c
+**Date**: April 12, 2026 — S203d
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -63,6 +63,23 @@ dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn pa
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
 ## S203 Resolved Debt (Deep Audit & Evolution Execution)
+
+### D-LD04-BTSP-AUTODETECT — RESOLVED S203d
+**Crate**: `server` | **Audit**: LD-04 (primalSpring downstream — partial blocker)
+BTSP-enabled sockets rejected plain JSON-RPC: primalSpring's `CompositionContext`
+sends newline-delimited JSON-RPC and got `Broken pipe` on BTSP-framed sockets.
+**Fix**: `handle_btsp_connection` now auto-detects protocol via first-byte inspection.
+Binary (< 0x09) → BTSP handshake. Text (>= 0x09) → graceful fallback to NDJSON/HTTP.
+`PrependByte<S>` adapter re-injects the consumed byte for the BTSP path.
++7 tests covering both code paths.
+Files: `connection/unix.rs`, `connection/tests.rs`.
+
+### D-ENV-DEPENDENT-TESTS — RESOLVED S203d
+**Scope**: 2 tests across 2 crates
+`test_connect_refused` (port 19999) and `verify_service_localhost_unbound_returns_false`
+(port 65535) assumed specific ports were unbound — fragile in CI and shared environments.
+Replaced with ephemeral bind-then-drop pattern for guaranteed free port.
+Files: `ipc/platform/tcp.rs`, `cli/tests/discovery_coverage_tests.rs`.
 
 ### D-LARGE-FILE-REFACTOR-S203C — RESOLVED S203c
 **Scope**: 10 files across 8 crates

@@ -3,7 +3,10 @@
 //!
 //! Supports two modes per `BTSP_PROTOCOL_STANDARD.md`:
 //! - **Development** (no `FAMILY_ID`): NDJSON / HTTP hybrid
-//! - **Production** (`FAMILY_ID` set): BTSP handshake → length-prefixed frames
+//! - **Production** (`FAMILY_ID` set): Auto-detects per-connection — BTSP
+//!   binary clients get the full handshake + length-prefixed frames; plain-text
+//!   clients (e.g. primalSpring `CompositionContext`) degrade gracefully to
+//!   NDJSON / HTTP. Detection is instant via first-byte inspection.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -221,24 +224,124 @@ async fn handle_ndjson_unix(
     Ok(())
 }
 
-/// Handle a BTSP-authenticated connection (production mode).
+/// Returns `true` when a byte indicates a plain-text protocol
+/// (JSON-RPC, HTTP, NDJSON) rather than BTSP binary framing.
 ///
-/// 1. Perform BTSP handshake (verify family membership)
-/// 2. Process length-prefixed JSON-RPC frames until the connection closes
+/// BTSP length-prefixed frames start with a 4-byte BE u32 length header.
+/// For typical handshake payloads (< 2 KiB), the first byte is `0x00`.
+/// All text protocols start with printable ASCII or whitespace (>= 0x09).
+pub(super) const fn is_plaintext_protocol_byte(byte: u8) -> bool {
+    byte >= 0x09
+}
+
+/// Wraps a stream, prepending a single already-consumed byte.
 ///
-/// Per `BTSP_PROTOCOL_STANDARD.md`: no JSON-RPC methods are exposed before
-/// the handshake completes. If verification fails, the connection is dropped.
+/// Used by the BTSP auto-detect path: we read one byte to distinguish
+/// binary (BTSP) from text (JSON-RPC), then wrap the stream so
+/// `BtspServer::accept_handshake` sees the complete frame including
+/// that first byte.
+struct PrependByte<S> {
+    first: Option<u8>,
+    inner: S,
+}
+
+impl<S: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for PrependByte<S> {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        if let Some(b) = self.first.take() {
+            buf.put_slice(&[b]);
+            return std::task::Poll::Ready(Ok(()));
+        }
+        std::pin::Pin::new(&mut self.inner).poll_read(cx, buf)
+    }
+}
+
+impl<S: tokio::io::AsyncWrite + Unpin> tokio::io::AsyncWrite for PrependByte<S> {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::pin::Pin::new(&mut self.inner).poll_write(cx, buf)
+    }
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.inner).poll_flush(cx)
+    }
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.inner).poll_shutdown(cx)
+    }
+}
+
+/// Handle an incoming connection on a BTSP-enabled socket (production mode).
+///
+/// Auto-detects the wire protocol by peeking at the first byte:
+/// - **Binary** (first byte < 0x09): BTSP length-prefixed framing. Performs a
+///   full handshake (verify family membership) then processes length-prefixed
+///   JSON-RPC frames.
+/// - **Text** (first byte >= 0x09): Plain JSON-RPC / HTTP. Gracefully degrades
+///   to `handle_unix_connection` so composition peers (e.g. primalSpring's
+///   `CompositionContext`) that send newline-delimited JSON-RPC can reach
+///   compute capabilities without implementing BTSP client framing.
+///
+/// Per `BTSP_PROTOCOL_STANDARD.md`: BTSP handshake is still enforced for
+/// binary-framed clients. Plain-text fallback relies on Unix socket permissions
+/// (0600) for access control.
 #[cfg(feature = "btsp")]
-async fn handle_btsp_connection(
+pub(super) async fn handle_btsp_connection(
     handler: Arc<JsonRpcHandler>,
-    stream: UnixStream,
+    mut stream: UnixStream,
 ) -> ServerResult<()> {
     use toadstool_common::btsp;
 
-    // Read family seed from environment (FAMILY_SEED or .family.seed file)
+    let mut first = [0u8; 1];
+    let n = tokio::io::AsyncReadExt::read(&mut stream, &mut first)
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    if n == 0 {
+        return Ok(());
+    }
+
+    if is_plaintext_protocol_byte(first[0]) {
+        info!(
+            target: "btsp",
+            "Plain-text connection on BTSP socket (0x{:02x}), \
+             falling back to JSON-RPC for composition peer",
+            first[0]
+        );
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        let mut first_line = String::from(first[0] as char);
+        let n2 = reader
+            .read_line(&mut first_line)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        if n2 == 0 && first_line.trim().is_empty() {
+            return Ok(());
+        }
+        if first_line.starts_with("POST")
+            || first_line.starts_with("GET")
+            || first_line.starts_with("HTTP")
+        {
+            return handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await;
+        }
+        return handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await;
+    }
+
     let family_seed = resolve_family_seed()?;
 
-    let mut stream = stream;
+    let mut stream = PrependByte {
+        first: Some(first[0]),
+        inner: stream,
+    };
 
     match btsp::BtspServer::accept_handshake(&mut stream, &family_seed).await {
         Ok(session) => {
@@ -255,7 +358,6 @@ async fn handle_btsp_connection(
         }
     }
 
-    // Post-handshake: length-prefixed JSON-RPC frames
     loop {
         match btsp::framing::read_frame(&mut stream).await {
             Ok(frame) => {
@@ -278,19 +380,55 @@ async fn handle_btsp_connection(
 
 /// Production path when the `btsp` crate feature is **disabled**.
 ///
-/// [`is_btsp_required`](toadstool_common::primal_sockets::is_btsp_required) is true (e.g. `FAMILY_ID`
-/// set), so clients expect a BTSP handshake and length-prefixed frames. Without the `btsp`
-/// feature we cannot perform that handshake; we log at target `btsp`, shut down the socket, and
-/// return — consistent with [`crate::tarpc_server`]. For local NDJSON development, unset family ID
-/// env vars so the server uses [`handle_unix_connection`] only.
+/// Auto-detects plain-text connections and handles them as JSON-RPC, so
+/// composition peers can still reach compute capabilities. Binary-framed
+/// connections (actual BTSP) are rejected because we lack the handshake
+/// implementation.
 #[cfg(not(feature = "btsp"))]
-async fn handle_btsp_connection(
-    _handler: Arc<JsonRpcHandler>,
+pub(super) async fn handle_btsp_connection(
+    handler: Arc<JsonRpcHandler>,
     mut stream: UnixStream,
 ) -> ServerResult<()> {
+    let mut first = [0u8; 1];
+    let n = tokio::io::AsyncReadExt::read(&mut stream, &mut first)
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    if n == 0 {
+        return Ok(());
+    }
+
+    if is_plaintext_protocol_byte(first[0]) {
+        info!(
+            target: "btsp",
+            "Plain-text connection on BTSP socket (0x{:02x}) — \
+             btsp feature disabled, serving as JSON-RPC",
+            first[0]
+        );
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        let mut first_line = String::from(first[0] as char);
+        let n2 = reader
+            .read_line(&mut first_line)
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
+        if n2 == 0 && first_line.trim().is_empty() {
+            return Ok(());
+        }
+        if first_line.starts_with("POST")
+            || first_line.starts_with("GET")
+            || first_line.starts_with("HTTP")
+        {
+            return handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await;
+        }
+        return handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await;
+    }
+
     warn!(
         target: "btsp",
-        "BTSP required (FAMILY_ID set) but this binary was built without the `btsp` Cargo feature — closing connection; rebuild with `btsp` enabled or unset family ID env vars for development NDJSON"
+        "BTSP binary connection (0x{:02x}) but this binary was built \
+         without the `btsp` Cargo feature — closing connection; rebuild with \
+         `btsp` enabled or unset family ID env vars for development NDJSON",
+        first[0]
     );
     if let Err(e) = stream.shutdown().await {
         warn!(target: "btsp", "shutdown after BTSP-disabled close: {e}");

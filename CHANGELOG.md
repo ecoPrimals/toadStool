@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 12, 2026 (Sessions 43-203)
 
+### Session S203d (Apr 12, 2026) — LD-04 Resolution: BTSP Auto-Detect + Env-Safe Tests
+
+#### BTSP Plain-Text Auto-Detect (LD-04 Completion)
+- RESOLVED: `handle_btsp_connection` now auto-detects protocol via first-byte inspection
+  - Binary (first byte < 0x09): proceeds with BTSP handshake + length-prefixed frames
+  - Text (first byte >= 0x09): graceful fallback to NDJSON/HTTP JSON-RPC handling
+- primalSpring `CompositionContext` can now reach compute capabilities on BTSP-enabled sockets
+- `PrependByte<S>` adapter wraps consumed byte back into stream for BTSP path
+- Both `#[cfg(feature = "btsp")]` and `#[cfg(not(feature = "btsp"))]` paths updated
+- +7 tests: 3 BTSP auto-detect (NDJSON, HTTP, EOF), 4 `is_plaintext_protocol_byte` checks
+
+#### Env-Dependent Test Hardening
+- `test_connect_refused` (ipc/platform/tcp.rs): replaced hardcoded port 19999 with ephemeral bind-then-drop
+- `verify_service_localhost_unbound_returns_false` (discovery_coverage_tests.rs): same ephemeral pattern
+
 ### Session S203c (Apr 12, 2026) — Deep Debt: Smart File Refactoring + Stub Deprecation
 
 #### Smart File Refactoring (10 production files >500 LOC)
