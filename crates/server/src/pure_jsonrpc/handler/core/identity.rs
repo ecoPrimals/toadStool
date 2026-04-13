@@ -46,9 +46,10 @@ pub(crate) async fn capabilities_list(
         "provided_capabilities": [
             {
                 "type": "compute",
-                "methods": ["submit", "status", "result", "cancel", "list",
+                "methods": ["execute", "submit", "status", "result", "cancel", "list",
                             "dispatch.submit", "dispatch.status", "dispatch.result",
                             "dispatch.forward", "dispatch.capabilities",
+                            "dispatch.pipeline.submit", "dispatch.pipeline.status",
                             "hardware.observe", "hardware.distill", "hardware.apply",
                             "hardware.share_recipe", "hardware.auto_init",
                             "hardware.auto_init_all", "hardware.status",

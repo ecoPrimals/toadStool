@@ -46,6 +46,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "compute.version",
     "compute.capabilities",
     "compute.discover_capabilities",
+    "compute.execute",
     "compute.submit",
     "compute.status",
     "compute.result",

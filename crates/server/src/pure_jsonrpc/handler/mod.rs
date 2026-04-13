@@ -184,6 +184,7 @@ impl JsonRpcHandler {
                 return core::discover_capabilities(&self.semantic_registry, &self.version).await;
             }
 
+            "compute.execute" => return self.workload.submit_workload(params).await,
             "compute.submit" => return self.job.compute_submit(params).await,
             "compute.status" => return self.job.compute_status(params).await,
             "compute.result" => return self.job.compute_result(params).await,
