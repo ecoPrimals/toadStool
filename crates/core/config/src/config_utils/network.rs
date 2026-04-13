@@ -10,47 +10,6 @@ use toadstool_common::constants::network::DEFAULT_HOSTNAME;
 use crate::env_config::{EnvConfigLoader, NetworkEnvConfig};
 use crate::network;
 
-/// Legacy primal-name → capability port resolution (shared by [`ConfigUtils`]).
-#[must_use]
-pub(super) fn resolve_legacy_primal_default_port(primal_name: &str) -> u16 {
-    use crate::ports::{capability_fallback, resolve_capability_port};
-
-    let (capability, fallback) = match primal_name {
-        // Legacy primal names map to wateringHole capabilities; port env resolution
-        // prefers TOADSTOOL_{CAPABILITY}_PORT / {CAPABILITY}_PORT, then *_PORT legacy names.
-        "SONGBIRD" => ("COORDINATION", capability_fallback::COORDINATION),
-        "BEARDOG" => ("SECURITY", capability_fallback::SECURITY),
-        "NESTGATE" => ("STORAGE", capability_fallback::STORAGE),
-        // Legacy intelligence / platform processing mapping (see TOADSTOOL_INTELLIGENCE_* env vars)
-        "SQUIRREL" => ("PLATFORM", capability_fallback::PLATFORM),
-        "BIOMEOS" => ("ECOSYSTEM", capability_fallback::ECOSYSTEM),
-        _ => return crate::defaults::network::API_PORT,
-    };
-
-    resolve_capability_port(capability, fallback)
-}
-
-/// Get primal port by capability/env name (capability-based lookup)
-///
-/// **Purpose**: Defaults for initial connection discovery before runtime discovery.
-/// Used when capability-based discovery (coordination service, mDNS) is not yet available.
-///
-/// **Production**: Prefer `RuntimeDiscovery::discover_capability()` instead.
-/// This is the cold-start bootstrap path only.
-///
-/// **Env pattern**: Prefer `TOADSTOOL_{CAPABILITY}_PORT` and `{CAPABILITY}_PORT` (e.g.
-/// `TOADSTOOL_COORDINATION_PORT`, `COORDINATION_PORT`), then legacy `{PRIMAL_NAME}_PORT`
-/// (legacy env names) via [`crate::ports::resolve_capability_port`].
-#[must_use]
-#[deprecated(
-    since = "0.15.0",
-    note = "Use resolve_capability_port directly with capability identifiers: COORDINATION, SECURITY, STORAGE, PLATFORM"
-)]
-#[allow(dead_code)] // Stable deprecated entry point; no in-crate callers after migration to resolve_capability_port
-pub fn get_primal_default_port(primal_name: &str) -> u16 {
-    resolve_legacy_primal_default_port(primal_name)
-}
-
 /// Get ToadStool port from environment or default
 #[must_use]
 pub fn get_toadstool_port() -> u16 {
@@ -206,13 +165,3 @@ pub fn get_port_allocation_range() -> (u16, u16) {
     (start, end)
 }
 
-#[cfg(test)]
-mod legacy_primal_port_tests {
-    use super::resolve_legacy_primal_default_port;
-    use crate::defaults::network::API_PORT;
-
-    #[test]
-    fn unknown_legacy_primal_name_returns_api_port() {
-        assert_eq!(resolve_legacy_primal_default_port("XYZZY"), API_PORT);
-    }
-}

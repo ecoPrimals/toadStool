@@ -9,13 +9,6 @@
 // ToadStool self-knowledge ports
 // ============================================================================
 
-/// Legacy metrics default (0 = OS-assigned at bind; same default as `toadstool_config::ports::metrics_port()`).
-#[deprecated(
-    since = "0.1.0",
-    note = "Use toadstool_config::ports::metrics_port() instead"
-)]
-pub const METRICS_PORT: u16 = 0;
-
 /// Default BYOB (Bring Your Own Biome) coordinator/daemon port.
 /// Port 0 = OS-assigned at bind time (capability-based discovery resolves the actual port).
 pub const BYOB_DEFAULT_PORT: u16 = 0;
@@ -57,9 +50,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[expect(deprecated)]
     fn test_toadstool_ports() {
-        assert_eq!(METRICS_PORT, 0);
         assert_eq!(BYOB_DEFAULT_PORT, 0);
     }
 

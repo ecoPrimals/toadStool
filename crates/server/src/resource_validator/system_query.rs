@@ -127,15 +127,13 @@ fn select_backends() -> wgpu::Backends {
 /// wrapped in `catch_unwind`. This protects the caller from panics in the
 /// Vulkan/Mesa ICD loader. A 5-second timeout prevents hangs on broken drivers.
 #[cfg(feature = "gpu-discovery")]
-#[expect(
-    clippy::unused_async,
-    reason = "async signature required by trait/interface"
-)]
 async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
     const GPU_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
-    let handle = std::thread::spawn(|| {
-        std::panic::catch_unwind(|| {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+
+    std::thread::spawn(move || {
+        let result = std::panic::catch_unwind(|| {
             let backends = select_backends();
             let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
                 backends,
@@ -161,30 +159,24 @@ async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
             }
 
             gpu_infos
-        })
+        });
+        let _ = tx.send(result);
     });
 
-    let start = std::time::Instant::now();
-
-    loop {
-        if handle.is_finished() {
-            return match handle.join() {
-                Ok(Ok(infos)) => Ok(infos),
-                Ok(Err(_panic)) => {
-                    debug!("wgpu GPU discovery panicked — falling back to 0 GPUs");
-                    Ok(Vec::new())
-                }
-                Err(_) => {
-                    debug!("wgpu GPU discovery thread failed — falling back to 0 GPUs");
-                    Ok(Vec::new())
-                }
-            };
+    match tokio::time::timeout(GPU_PROBE_TIMEOUT, rx).await {
+        Ok(Ok(Ok(infos))) => Ok(infos),
+        Ok(Ok(Err(_panic))) => {
+            debug!("wgpu GPU discovery panicked — falling back to 0 GPUs");
+            Ok(Vec::new())
         }
-        if start.elapsed() > GPU_PROBE_TIMEOUT {
+        Ok(Err(_recv_err)) => {
+            debug!("wgpu GPU discovery thread dropped — falling back to 0 GPUs");
+            Ok(Vec::new())
+        }
+        Err(_timeout) => {
             debug!("wgpu GPU discovery timed out after 5s — falling back to 0 GPUs");
-            return Ok(Vec::new());
+            Ok(Vec::new())
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
     }
 }
 

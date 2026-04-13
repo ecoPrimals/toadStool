@@ -281,14 +281,6 @@ impl ToadStoolTarpcClient {
         &self.endpoint
     }
 
-    /// Get connected address (deprecated - use endpoint() instead)
-    #[deprecated(since = "0.2.0", note = "Use endpoint() for Unix socket support")]
-    pub const fn address(&self) -> Option<SocketAddr> {
-        match &self.endpoint {
-            ClientEndpoint::Tcp(addr) => Some(*addr),
-            ClientEndpoint::UnixSocket(_) => None,
-        }
-    }
 }
 
 #[cfg(test)]

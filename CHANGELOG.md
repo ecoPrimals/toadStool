@@ -5,7 +5,35 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 12, 2026 (Sessions 43-203)
+## [Unreleased] - April 13, 2026 (Sessions 43-203)
+
+### Session S203g (Apr 13, 2026) — Deep Debt: Test Extraction + Deprecated Removal + Idiomatic Evolution
+
+#### Smart File Refactoring (12 production files — test extraction)
+- EXTRACTED: `testing/builders.rs` tests → `builders_tests.rs` (680→~513)
+- EXTRACTED: `mainframe/as400/mod.rs` tests → `as400_tests.rs` (596→~221)
+- EXTRACTED: `backends/cpu/mod.rs` tests → `cpu_tests.rs` (575→~219)
+- EXTRACTED: `coordination_integration/client/rpc.rs` tests → `rpc_tests.rs` (575→~247)
+- EXTRACTED: `zero_config/service_discovery.rs` tests → `service_discovery_tests.rs` (572→~427)
+- EXTRACTED: `security_provider/software_hsm.rs` tests → `software_hsm_tests.rs` (567→~336)
+- EXTRACTED: `integration/storage/client.rs` tests → `client_tests.rs` (566→~228)
+- EXTRACTED: `ecosystem/adapters/crypto.rs` tests → `crypto_tests.rs` (566→~393)
+- EXTRACTED: `security/client_evolved/mod.rs` tests → `client_evolved_tests.rs` (563→~277)
+- EXTRACTED: `coordination/distribution.rs` tests → `distribution_tests.rs` (554→~305)
+- EXTRACTED: `service_discovery/service.rs` tests → `service_tests.rs` (551→~340)
+- EXTRACTED: `toadstool-core/npu_dispatch.rs` tests → `npu_dispatch_tests.rs` (549→~305)
+
+#### Deprecated Code Removal (P1 — zero external callers)
+- REMOVED: `FallbackEndpoints::localhost_endpoint` (since 0.3.0) — use `fallback_endpoint`
+- REMOVED: `METRICS_PORT` constant (since 0.1.0) — use `toadstool_config::ports::metrics_port()`
+- REMOVED: `capability_typical_provider` + entire `primal_capabilities` module (since 0.92.0) — use `infant_discovery`
+- REMOVED: `get_primal_default_port` wrappers (since 0.15.0) — use `resolve_capability_port`
+- REMOVED: `resolve_legacy_primal_default_port` (zero callers after wrapper removal)
+- REMOVED: `TarpcClient::address()` (since 0.2.0) — use `endpoint()`
+
+#### Idiomatic Rust Evolution
+- EVOLVED: `discover_gpus_via_wgpu` — replaced blocking `thread::sleep` poll loop with `tokio::sync::oneshot` + `tokio::time::timeout` (async-native, no executor blocking)
+- EVOLVED: `dispatch_forward` — replaced full JSON object clone with empty Map fallback when `params` key absent
 
 ### Session S203e (Apr 12, 2026) — Deep Debt: Network Centralization + File Refactoring
 

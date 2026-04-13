@@ -16,7 +16,10 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'endpoint'"))?;
 
-        let forward_params = p.get("params").cloned().unwrap_or_else(|| p.clone());
+        let forward_params = match p.get("params") {
+            Some(inner) => inner.clone(),
+            None => serde_json::Value::Object(serde_json::Map::new()),
+        };
 
         match crate::cross_gate::RemoteDispatcher::forward(
             endpoint,

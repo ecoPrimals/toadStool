@@ -58,7 +58,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files **< 500 lines** (S203e: 14 large modules refactored via test extraction; all production files target <500 lines) |
+| File size limit | All production files **< 500 lines** (S203g: 26 large modules refactored via test extraction across S203c/e/g; all production files target <500 lines) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -271,8 +271,10 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
-- **S203e (Apr 12, 2026)**: Deep debt — 8 hardcoded network constants centralized to `core/config/defaults/network.rs` (RFC1918 scan ranges, gateway, subnet, scan suffixes, TEST-NET-3). 5 production files >550 LOC refactored via test extraction (byob_types, cross_spring_provenance, gpu_job_queue, silicon, registry). Full deep audit: zero TODO/FIXME/HACK/dbg/unwrap/set_var in production; all unsafe in containment; all mocks test-gated; all hardcoding centralized.
-- **S203d (Apr 12, 2026)**: LD-04 resolution — BTSP auto-detect on UDS sockets. Plain-text clients (primalSpring `CompositionContext`) now get graceful fallback to NDJSON/HTTP on BTSP-enabled sockets. `PrependByte<S>` adapter for first-byte protocol detection. 2 env-dependent tests hardened (ephemeral port bind). +7 tests.
+- **S203g (Apr 13, 2026)**: Deep debt — 12 production files >540 LOC refactored via test extraction. 6 deprecated zero-caller items removed (`localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` module, `get_primal_default_port` wrappers, `TarpcClient::address()`). Blocking `thread::sleep` in async GPU discovery evolved to `tokio::oneshot` + `tokio::time::timeout`. Forward dispatch clone optimization.
+- **S203f (Apr 13, 2026)**: wetSpring V143 validation — `compute.execute` promoted to direct JSON-RPC route (PG-05 gap). Pipeline methods added to `capabilities.list`. plasmidBin metadata expanded to 46 callable methods.
+- **S203e (Apr 12, 2026)**: Deep debt — 8 hardcoded network constants centralized to `core/config/defaults/network.rs`. 5 production files refactored via test extraction. Full deep audit: zero TODO/FIXME/HACK/dbg/unwrap/set_var in production.
+- **S203d (Apr 12, 2026)**: LD-04 resolution — BTSP auto-detect on UDS sockets. `PrependByte<S>` adapter for first-byte protocol detection. 2 env-dependent tests hardened. +7 tests.
 - **S203c (Apr 12, 2026)**: Deep debt audit + smart file refactoring. Extracted test modules from **10** production files >550 LOC (jsonrpc_server 638→391, edge/lib 636→404, policies/types 604→407, cpu_resource 596→511, power_manager 595→483, performance/mod 594→194, gpu/distributed 590→417, transport 588→308, scheduling 588→409, client/lib 586→140). Deprecated 4 internal OpenCL detection stubs. Full audit confirms: all unsafe in containment zones with SAFETY docs, all mocks test-gated, all hardcoding centralized, blake3 pure-Rust verified. Zero `Box<dyn Error>`, `.unwrap()`, or `std::env::set_var` in production. All quality gates green.
 - **S203b (Apr 12, 2026)**: primalSpring LD-04/LD-05 resolution. HTTP mode evolved from single-shot to HTTP/1.1 keep-alive loop (multi-step dispatch no longer gets broken pipe). NDJSON mode resilient to blank lines. JSON-RPC and tarpc sockets separated (`compute.sock` + `compute-tarpc.sock`) — fixes internal bind collision and clears namespace for barraCuda. +7 tests.
 - **S203 (Apr 12, 2026)**: Composition Elevation Sprint + Deep Debt Execution. **Dispatch wire contract standardized** — all 8 `compute.dispatch.*` handlers share canonical `{domain, operation, job_id, status, output, error, metadata}` envelope (unblocks primalSpring typed extractors for Node Atomic composition). Smart file refactoring: 4 production files >550 LOC refactored (test extraction from background 608→72, federation 594→109, encryption 568→257, runtime 576→249+stats). Primal name evolution: `get_primal_default_port` deprecated with migration to `resolve_capability_port`. Unsafe evolution: GPU buffer access evolved to `NonNull::slice_from_raw_parts` pattern. Port centralization: discovery fallback ports unified in `common/constants/discovery_ports.rs`. Clippy suppressions resolved (cast lints, unused_self). `deny.toml`: 6 stale RUSTSEC advisories removed. Wire contract documented in `specs/DISPATCH_WIRE_CONTRACT.md`. All quality gates green.
@@ -317,7 +319,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S203e); ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S203g); ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 | D-BTSP-PHASE2 | ~~BTSP on all UDS accept paths~~ | **RESOLVED** -- S198: handshake wired in `tarpc_server.rs` and `daemon/jsonrpc_server.rs` (pure JSON-RPC already had it) |
@@ -362,7 +364,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 12, 2026 — S203e. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S198**: TS-01 (`capability.discover`), BTSP Phase 2 UDS, health triad, OpenCL deprecation, module splits (<500 lines target), musl static binary, net −5K lines — quality gates green. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 13, 2026 — S203g. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S203g**: 12 large-file test extractions, 6 deprecated zero-caller items removed, async GPU discovery evolved (no executor blocking), forward dispatch clone optimization — quality gates green. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

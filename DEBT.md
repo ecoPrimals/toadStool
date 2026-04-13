@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 12, 2026 — S203e
+**Date**: April 13, 2026 — S203g
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -63,6 +63,31 @@ dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn pa
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
 ## S203 Resolved Debt (Deep Audit & Evolution Execution)
+
+### D-LARGE-FILE-REFACTOR-S203G — RESOLVED S203g
+**Scope**: 12 files across 8 crates
+Smart test extraction from production files >540 LOC. Same pattern as S203c/S203e.
+Companion `*_tests.rs` files with `#[cfg(test)] mod *_tests;` or `#[path]` declarations.
+Files: builders, as400, cpu, rpc, service_discovery, software_hsm, client, crypto,
+client_evolved, distribution, service, npu_dispatch.
+
+### D-DEPRECATED-REMOVAL-S203G — RESOLVED S203g
+**Scope**: 5 crates (config, common, client)
+Removed 6 deprecated items with zero external callers:
+`localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` (+ entire module),
+`get_primal_default_port` (both wrappers), `resolve_legacy_primal_default_port`,
+`TarpcClient::address()`.
+
+### D-ASYNC-BLOCKING-GPU-DISCOVERY — RESOLVED S203g
+**Scope**: `server/resource_validator/system_query.rs`
+`discover_gpus_via_wgpu` was blocking the async executor with `std::thread::sleep` in a
+poll loop. Evolved to `tokio::sync::oneshot` channel + `tokio::time::timeout` — fully
+async-native, no executor blocking.
+
+### D-FORWARD-CLONE-OPTIMIZATION — RESOLVED S203g
+**Scope**: `server/pure_jsonrpc/handler/dispatch/forward.rs`
+`dispatch_forward` cloned the entire JSON request when `params` key was absent.
+Replaced with empty `serde_json::Map` fallback — avoids deep-cloning large payloads.
 
 ### D-NETWORK-HARDCODING-CENTRALIZATION — RESOLVED S203e
 **Scope**: `auto_config`, `core/toadstool/byob`, `core/config`

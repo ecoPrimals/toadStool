@@ -22,16 +22,6 @@ pub struct ConfigUtils;
 impl ConfigUtils {
     // ========== Network (delegate to network) ==========
 
-    /// Get primal port by capability/env name (capability-based lookup)
-    #[must_use]
-    #[deprecated(
-        since = "0.15.0",
-        note = "Use resolve_capability_port directly with capability identifiers: COORDINATION, SECURITY, STORAGE, PLATFORM"
-    )]
-    pub fn get_primal_default_port(primal_name: &str) -> u16 {
-        network::resolve_legacy_primal_default_port(primal_name)
-    }
-
     /// Get ToadStool port from environment or default
     #[must_use]
     pub fn get_toadstool_port() -> u16 {
