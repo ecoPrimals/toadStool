@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 12, 2026 — S203e
+**Last Updated**: April 13, 2026 — S203g
 
 ---
 
@@ -30,20 +30,20 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S203e — April 12, 2026)
+## Current State (S203g — April 13, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **21,600+ tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
-- **~69 JSON-RPC methods**. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
+- **~69 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`, socket at `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`).
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
-- **Capability-based everywhere (S202)**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers. API keys evolved (e.g., `shader_compiler_available`).
-- **TS-01 / shader compiler discovery** — `visualization_client.rs` uses unified `capability.discover` (no `CORALREEF_*` env, no coralreef-core.json, no coralreef dir scan).
+- **Capability-based everywhere**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers.
+- **Deprecated surface cleaned (S203g)**: 6 zero-caller deprecated items removed. 26 large files refactored via test extraction (S203c/e/g). Async GPU discovery evolved to non-blocking.
 - **BTSP Phase 2 + Auto-Detect** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully.
 - **Network constants centralized** — 8 hardcoded values (RFC1918 ranges, gateway, scan suffixes, TEST-NET-3) → `core/config/defaults/network.rs`
-- **34 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented. 41 crates forbid, 6 deny `unsafe_code`.
-- **ecoBin v3.0** — Zero C FFI deps. `serialport` feature-gated in specialty crate (S202). Crypto delegated to security service. HTTP delegated to coordination service.
-- **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + thread timeout.
+- **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented. 41 crates forbid, 6 deny `unsafe_code`.
+- **ecoBin v3.0** — Zero C FFI deps. `serialport` feature-gated in specialty crate. Crypto delegated to security service. HTTP delegated to coordination service.
+- **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + async timeout (S203g: evolved from blocking poll).
 - **Fully concurrent tests** — All tests run with unlimited parallelism. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.
 - **AGPL-3.0-or-later** — All Cargo.toml + all .rs files aligned. `deny.toml` enforced.
 

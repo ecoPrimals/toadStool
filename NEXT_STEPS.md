@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 12, 2026 — S203e (Deep Debt: Network Centralization + BTSP Auto-Detect)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **34 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display** | **capability-based primal references (no hardcoded names)**
-**Latest**: S203e — Network constants centralized (8 hardcoded values → config/defaults). BTSP auto-detect for plain-text peers (LD-04). 5 large files refactored (test extraction). Full deep audit: zero debt markers in production. S203d (prior): LD-04 BTSP resolution + env-safe test hardening.
+**Updated**: April 13, 2026 — S203g (Deep Debt: Test Extraction + Deprecated Removal + Idiomatic Evolution)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display** | **capability-based primal references (no hardcoded names)**
+**Latest**: S203g — 12 large-file test extractions (26 total across S203c/e/g). 6 deprecated zero-caller items removed. Async GPU discovery evolved (blocking poll → tokio oneshot+timeout). Forward dispatch clone optimization. S203f: wetSpring V143 validation, `compute.execute` direct route, plasmidBin metadata to 46 methods. S203d/e: LD-04 BTSP auto-detect, network centralization, env-safe tests.
 
 ---
 
@@ -163,7 +163,23 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-202)
+## Completed This Session (S90-203)
+
+### Session S203g: Deep Debt — Test Extraction + Deprecated Removal + Idiomatic Evolution (Apr 13, 2026)
+- **12 production files >540 LOC** refactored via test extraction (26 total across S203c/e/g). All production files now target <500 lines.
+- **6 deprecated zero-caller items removed**: `localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` module, `get_primal_default_port` wrappers, `TarpcClient::address()`.
+- **Async GPU discovery evolved**: blocking `std::thread::sleep` poll loop → `tokio::sync::oneshot` + `tokio::time::timeout` (async-native, no executor blocking).
+- **Forward dispatch clone optimization**: full JSON object clone → empty Map fallback.
+- 7,289 tests pass, 0 failures. Clippy 0 warnings.
+
+### Session S203f: wetSpring V143 Validation — Capability Surface (Apr 13, 2026)
+- **`compute.execute` promoted** to direct JSON-RPC route (closes wetSpring PG-05 gap).
+- **Pipeline methods** (`dispatch.pipeline.submit`, `dispatch.pipeline.status`) added to `capabilities.list`.
+- **plasmidBin metadata** expanded from 6 to 46 callable methods, `min_ipc_version = "2.0"`.
+
+### Session S203d/e: LD-04 BTSP Auto-Detect + Network Centralization + File Refactoring (Apr 12, 2026)
+- BTSP first-byte auto-detection for plain-text clients (primalSpring). `PrependByte<S>` adapter.
+- 8 hardcoded network constants centralized. 5+2 env-dependent tests hardened. 10 large files refactored.
 
 ### Session S202: Deep Debt Execution — Capability-Based Evolution (Apr 11, 2026)
 - **Hardcoded literal evolution**: 3 production `"toadstool"` literals → `PRIMAL_NAME` constant (self_identity.rs, bear_dog/client.rs, identity.rs). `"coral_reef_available"` JSON-RPC key → `"shader_compiler_available"`.

@@ -2,7 +2,7 @@
 
 **Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
 
-**Status**: Active | **Updated**: April 12, 2026 -- S203c
+**Status**: Active | **Updated**: April 13, 2026 -- S203g
 **License**: AGPL-3.0-only
 
 ---
@@ -20,12 +20,11 @@ cd showcase/00-local-primal
 ./05-gpu-job-queue/demo.sh          # 60s  - GPU dispatch and queue management
 ```
 
-### Compute Triangle Demo (toadStool + barraCuda + coralReef)
+### ~~Compute Triangle Demo~~ (ARCHIVED S169)
 
-```bash
-cd showcase/02-compute-patterns
-./04-shader-to-gpu/demo.sh          # The headline demo: compile -> dispatch -> execute
-```
+Levels 01 and 02 are archived — the JSON-RPC methods they demonstrated (`shader.compile.*`,
+`discovery.*`, `science.*`, `deploy.*`) were removed in S169 (compile → coralReef,
+science/deploy → biomeOS). See `00-local-primal/` for current demos.
 
 ---
 
@@ -44,27 +43,15 @@ APIs directly and runs on any machine with Rust installed.
 | 04-resource-management | 30s | Resource estimation, validation, optimization suggestions |
 | 05-gpu-job-queue | 60s | GPU job dispatch, queue management, capabilities |
 
-### Level 01: Shader Pipeline (toadStool + coralReef)
+### Level 01: Shader Pipeline — ARCHIVED (S169)
 
-Demonstrates shader compilation with naga fallback and coralReef integration.
+Archived — `shader.compile.*` methods removed from toadStool in S169 (compile is coralReef's
+domain). See `01-shader-pipeline/README.md` for details and current alternatives.
 
-| Demo | Time | What It Shows |
-|------|------|---------------|
-| 01-naga-fallback | 30s | WGSL compile via naga (no coralReef needed) |
-| 02-coralreef-compile | 60s | WGSL/SPIR-V compile via coralReef socket |
-| 03-compile-status | 30s | Async compilation status polling |
+### Level 02: Compute Patterns — ARCHIVED (S169)
 
-### Level 02: Compute Patterns (toadStool + barraCuda + coralReef)
-
-Demonstrates the compute triangle: toadStool decides WHERE, barraCuda decides WHAT,
-coralReef compiles HOW.
-
-| Demo | Time | What It Shows |
-|------|------|---------------|
-| 01-capability-discovery | 30s | Runtime discovery of compute.sock, coralreef.sock |
-| 02-science-dispatch | 60s | science.compute.submit + science.gpu.dispatch |
-| 03-deploy-graph | 60s | deploy.capability_call routing to barraCuda |
-| 04-shader-to-gpu | 120s | Full triangle: compile -> dispatch -> execute |
+Archived — `discovery.*`, `science.*`, `deploy.*` methods removed from toadStool in S169
+(science/deploy routing is biomeOS's domain). See `02-compute-patterns/README.md` for details.
 
 ### Level 03: Ecosystem Integration (toadStool + phase1 primals)
 
