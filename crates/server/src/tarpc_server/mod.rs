@@ -241,15 +241,28 @@ impl ToadStoolTarpcServer {
             .map_err(|e| ServerError::Network(e.to_string()))?;
         info!("✅ tarpc server listening on TCP: {}", local_addr);
 
+        let idle_secs = std::env::var("TOADSTOOL_TCP_IDLE_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS);
+        let idle_timeout = std::time::Duration::from_secs(idle_secs);
+
         loop {
-            let (stream, _addr) = listener
+            let (stream, addr) = listener
                 .accept()
                 .await
                 .map_err(|e| ServerError::Network(e.to_string()))?;
+            let _ = stream.set_nodelay(true);
             let server = self.clone();
 
             tokio::spawn(async move {
-                connection::serve_on_tarpc_channel(server, stream).await;
+                connection::serve_on_tarpc_channel_with_idle_timeout(
+                    server,
+                    stream,
+                    idle_timeout,
+                )
+                .await;
+                tracing::debug!("tarpc TCP connection from {addr} closed");
             });
         }
     }

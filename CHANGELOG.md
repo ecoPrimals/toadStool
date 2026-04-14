@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 13, 2026 (Sessions 43-203)
+## [Unreleased] - April 14, 2026 (Sessions 43-203)
+
+### Session S203h (Apr 14, 2026) — benchScale: TCP Idle Timeout (primalSpring exp082)
+
+#### TCP Idle Timeout (benchScale finding)
+- ADDED: `TCP_IDLE_TIMEOUT_SECS` constant (300s default) to `core/config/defaults/network.rs`
+- ADDED: `tcp_idle_timeout()` helper reads `TOADSTOOL_TCP_IDLE_TIMEOUT_SECS` env override
+- EVOLVED: `pure_jsonrpc/connection/tcp.rs` — all read loops (initial, HTTP keep-alive, NDJSON) wrapped with `tokio::time::timeout`. Idle connections now close after 5min (configurable).
+- EVOLVED: `tarpc_server/connection.rs` — new `serve_on_tarpc_channel_with_idle_timeout` with per-RPC idle timer reset via `tokio::time::timeout` on stream `.next()`
+- EVOLVED: `tarpc_server/mod.rs` — TCP accept loop now uses idle-timeout variant and sets `TCP_NODELAY`
+- ADDED: `TCP_NODELAY` set on all accepted TCP streams (JSON-RPC + tarpc)
+- ADDED: +2 tests for idle timeout config (default value, env override)
+- Resolves primalSpring benchScale exp082 (half-open connection held indefinitely)
 
 ### Session S203g (Apr 13, 2026) — Deep Debt: Test Extraction + Deprecated Removal + Idiomatic Evolution
 

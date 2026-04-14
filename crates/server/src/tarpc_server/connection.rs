@@ -28,6 +28,36 @@ where
         .await;
 }
 
+/// Like [`serve_on_tarpc_channel`] but closes the connection if no RPC arrives
+/// within `idle_timeout`. The timer resets after each RPC, so active connections
+/// are never killed — only truly idle ones.
+pub(super) async fn serve_on_tarpc_channel_with_idle_timeout<S>(
+    server: ToadStoolTarpcServer,
+    stream: S,
+    idle_timeout: std::time::Duration,
+) where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin + 'static,
+{
+    let framed = tokio_util::codec::LengthDelimitedCodec::builder().new_framed(stream);
+    let transport = tokio_serde::Framed::new(framed, Json::<_, _>::default());
+
+    let channel = BaseChannel::with_defaults(transport);
+    let mut rpcs = std::pin::pin!(channel.execute(server.serve()));
+
+    loop {
+        match tokio::time::timeout(idle_timeout, rpcs.next()).await {
+            Ok(Some(rpc)) => {
+                tokio::spawn(rpc);
+            }
+            Ok(None) => break,
+            Err(_) => {
+                info!("tarpc connection idle for {}s — closing", idle_timeout.as_secs());
+                break;
+            }
+        }
+    }
+}
+
 /// When `FAMILY_ID` is set, run BTSP before exposing tarpc length-delimited framing (BTSP Phase 2).
 pub(super) async fn unix_maybe_btsp_before_tarpc(
     mut stream: tokio::net::UnixStream,

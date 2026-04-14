@@ -3,14 +3,23 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::JsonRpcHandler;
 
 use super::process_request;
+
+pub(crate) fn tcp_idle_timeout() -> Duration {
+    let secs = std::env::var("TOADSTOOL_TCP_IDLE_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS);
+    Duration::from_secs(secs)
+}
 
 /// Serve JSON-RPC on a TCP listener (isomorphic fallback).
 ///
@@ -28,11 +37,12 @@ pub async fn serve_tcp(handler: Arc<JsonRpcHandler>, listener: TcpListener) -> S
 
     loop {
         match listener.accept().await {
-            Ok((stream, _addr)) => {
+            Ok((stream, addr)) => {
+                let _ = stream.set_nodelay(true);
                 let handler = Arc::clone(&handler);
                 tokio::spawn(async move {
                     if let Err(e) = handle_tcp_connection(handler, stream).await {
-                        error!("TCP connection error: {}", e);
+                        debug!("TCP connection from {addr} ended: {e}");
                     }
                 });
             }
@@ -50,14 +60,16 @@ pub(crate) async fn handle_tcp_connection(
     handler: Arc<JsonRpcHandler>,
     stream: TcpStream,
 ) -> ServerResult<()> {
+    let idle_timeout = tcp_idle_timeout();
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
 
     let mut first_line = String::new();
-    let n = reader
-        .read_line(&mut first_line)
-        .await
-        .map_err(|e| ServerError::Network(e.to_string()))?;
+    let n = match tokio::time::timeout(idle_timeout, reader.read_line(&mut first_line)).await {
+        Ok(Ok(n)) => n,
+        Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
+        Err(_) => return Err(ServerError::Network("TCP idle timeout on initial read".into())),
+    };
     if n == 0 {
         return Ok(());
     }
@@ -79,6 +91,7 @@ async fn handle_http_keepalive_tcp(
     writer: &mut tokio::net::tcp::OwnedWriteHalf,
     first_request_line: String,
 ) -> ServerResult<()> {
+    let idle_timeout = tcp_idle_timeout();
     let mut request_line = first_request_line;
     loop {
         let (headers, body) = read_http_request_continuation_tcp(reader).await?;
@@ -95,10 +108,15 @@ async fn handle_http_keepalive_tcp(
         }
 
         request_line.clear();
-        let n = reader
-            .read_line(&mut request_line)
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
+        let n = match tokio::time::timeout(idle_timeout, reader.read_line(&mut request_line)).await
+        {
+            Ok(Ok(n)) => n,
+            Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
+            Err(_) => {
+                debug!("HTTP keep-alive idle timeout — closing connection");
+                break;
+            }
+        };
         if n == 0 {
             break;
         }
@@ -123,6 +141,7 @@ async fn handle_ndjson_tcp(
     writer: &mut tokio::net::tcp::OwnedWriteHalf,
     first_line: String,
 ) -> ServerResult<()> {
+    let idle_timeout = tcp_idle_timeout();
     let mut line = first_line;
     loop {
         let trimmed = line.trim();
@@ -143,10 +162,14 @@ async fn handle_ndjson_tcp(
         }
 
         line.clear();
-        let n = reader
-            .read_line(&mut line)
-            .await
-            .map_err(|e| ServerError::Network(e.to_string()))?;
+        let n = match tokio::time::timeout(idle_timeout, reader.read_line(&mut line)).await {
+            Ok(Ok(n)) => n,
+            Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
+            Err(_) => {
+                debug!("NDJSON idle timeout — closing connection");
+                break;
+            }
+        };
         if n == 0 {
             break;
         }

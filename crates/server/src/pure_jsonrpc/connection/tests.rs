@@ -568,3 +568,26 @@ async fn test_btsp_autodetect_eof() {
     let result = super::unix::handle_btsp_connection(handler, server_stream).await;
     assert!(result.is_ok(), "EOF should be handled gracefully");
 }
+
+/// Verify tcp_idle_timeout reads from env and has a sensible default.
+#[test]
+fn test_tcp_idle_timeout_default() {
+    temp_env::with_var("TOADSTOOL_TCP_IDLE_TIMEOUT_SECS", None::<&str>, || {
+        let timeout = super::tcp::tcp_idle_timeout();
+        assert_eq!(
+            timeout,
+            std::time::Duration::from_secs(
+                toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS
+            )
+        );
+    });
+}
+
+/// Verify tcp_idle_timeout respects env override.
+#[test]
+fn test_tcp_idle_timeout_env_override() {
+    temp_env::with_var("TOADSTOOL_TCP_IDLE_TIMEOUT_SECS", Some("42"), || {
+        let timeout = super::tcp::tcp_idle_timeout();
+        assert_eq!(timeout, std::time::Duration::from_secs(42));
+    });
+}
