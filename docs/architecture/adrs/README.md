@@ -27,12 +27,12 @@ Architecture Decision Records (ADRs) capture important architectural decisions a
 | [ADR-003](./ADR-003-ntt-for-fhe-polynomial-multiplication.md) | Use NTT for FHE Multiplication | 2026-02-05 | **High** - 56x FHE speedup |
 | [ADR-004](./ADR-004-capability-based-service-discovery.md) | Capability-Based Service Discovery | 2026-02-05 | **Critical** - Distributed architecture foundation |
 
-### 🔄 Proposed
+### 🔄 Accepted (undocumented — decisions already in effect)
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| ADR-005 | Async Runtime Selection (tokio) | Planned |
-| ADR-006 | Error Handling Strategy (thiserror only — anyhow removed S74) | Planned |
+| ADR-005 | Async Runtime Selection (tokio) | Accepted (tokio 1.x workspace-wide since S69) |
+| ADR-006 | Error Handling Strategy (thiserror only — anyhow removed S74) | Accepted (thiserror 2.0 workspace-wide since S74) |
 
 ### ❌ Deprecated
 
@@ -180,9 +180,9 @@ Architecture Decision Records (ADRs) capture important architectural decisions a
 
 ## Quick Reference
 
-**Current Count**: 4 ADRs (4 accepted, 2 proposed, 0 deprecated)
+**Current Count**: 6 ADRs (6 accepted, 0 proposed, 0 deprecated)
 
-**Last Updated**: April 3, 2026
+**Last Updated**: April 14, 2026
 
 **Maintainer**: ToadStool/BarraCuda Core Team
 

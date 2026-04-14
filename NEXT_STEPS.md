@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 13, 2026 — S203g (Deep Debt: Test Extraction + Deprecated Removal + Idiomatic Evolution)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x everywhere except display** | **capability-based primal references (no hardcoded names)**
-**Latest**: S203g — 12 large-file test extractions (26 total across S203c/e/g). 6 deprecated zero-caller items removed. Async GPU discovery evolved (blocking poll → tokio oneshot+timeout). Forward dispatch clone optimization. S203f: wetSpring V143 validation, `compute.execute` direct route, plasmidBin metadata to 46 methods. S203d/e: LD-04 BTSP auto-detect, network centralization, env-safe tests.
+**Updated**: April 14, 2026 — S203i (Deep Debt: Massive Test Extraction + Hardcoding Evolution)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)**
+**Latest**: S203i — 52 production files refactored via test extraction (~10K lines moved). Production files >500L reduced 38→25 (no extractable test blocks remain). Hardcoding evolution: `CORALREEF_URL`/`SOCKET` refs → capability-neutral, `localhost` literal → `DEFAULT_HOSTNAME`. S203h: TCP idle timeout (300s configurable), `TCP_NODELAY` on all TCP streams. S203g: 6 deprecated removals, async GPU discovery, forward clone opt. S203f: wetSpring V143 validation, `compute.execute` direct route.
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~80-85% line coverage** (lib-only, 185K lines instrumented). **21,600+ tests** (S198, 0 failures). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **21,600+ tests** (0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -79,7 +79,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | Pipeline dispatch for ordered multi-stage (neuralSpring PG-05) | **RESOLVED** S199 — `compute.dispatch.pipeline.submit` + `.status` |
 | Stable compute.dispatch.submit IPC for springs (PG-05) | **RESOLVED** S199 — methods stable, pipeline scheduling added |
 | Deep debt audit + service_discovery refactor | **RESOLVED** S200 — 0 production unwraps/mocks/hardcoded names; fallback.rs extraction |
-| rustix version unification | **RESOLVED** S200 (cli 0.38→1.1); display stays 0.38 (ioctl API migration needed) |
+| rustix version unification | **RESOLVED** S200/S203 — rustix 1.x workspace-wide (display migrated S203) |
 
 ### Transferred to Other Teams
 
@@ -129,7 +129,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 21,600+ tests (S198); ~80-85% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 21,600+ tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -165,12 +165,21 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ## Completed This Session (S90-203)
 
+### Session S203i: Deep Debt — Massive Test Extraction + Hardcoding Evolution (Apr 14, 2026)
+- **52 production files** refactored via test extraction (~10K lines moved to companion files). Production files >500L reduced from 38→25 (remaining are pure production code — hardware drivers, type defs; no extractable test blocks, all <700L).
+- **Hardcoding evolution**: `CORALREEF_URL`/`CORALREEF_SOCKET` dispatch notes → capability-neutral guidance. `FallbackEndpoints` literal `"localhost"` → `DEFAULT_HOSTNAME` constant.
+- All quality gates green. Clippy 0 warnings. 21,600+ tests, 0 failures.
+
+### Session S203h: benchScale — TCP Idle Timeout (Apr 14, 2026)
+- **TCP idle timeout**: `TCP_IDLE_TIMEOUT_SECS` (300s default, env configurable). `tokio::time::timeout` wraps on all TCP read loops (JSON-RPC + tarpc). `TCP_NODELAY` on all accepted streams.
+- Resolves primalSpring benchScale exp082 (half-open connection held indefinitely).
+
 ### Session S203g: Deep Debt — Test Extraction + Deprecated Removal + Idiomatic Evolution (Apr 13, 2026)
-- **12 production files >540 LOC** refactored via test extraction (26 total across S203c/e/g). All production files now target <500 lines.
+- **12 production files >540 LOC** refactored via test extraction (26 total across S203c/e/g).
 - **6 deprecated zero-caller items removed**: `localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` module, `get_primal_default_port` wrappers, `TarpcClient::address()`.
 - **Async GPU discovery evolved**: blocking `std::thread::sleep` poll loop → `tokio::sync::oneshot` + `tokio::time::timeout` (async-native, no executor blocking).
 - **Forward dispatch clone optimization**: full JSON object clone → empty Map fallback.
-- 7,289 tests pass, 0 failures. Clippy 0 warnings.
+- All quality gates green. Clippy 0 warnings. 21,600+ tests, 0 failures.
 
 ### Session S203f: wetSpring V143 Validation — Capability Surface (Apr 13, 2026)
 - **`compute.execute` promoted** to direct JSON-RPC route (closes wetSpring PG-05 gap).

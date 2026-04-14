@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **21,600+ tests, 0 failures** (S203e), 121 ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **21,600+ tests, 0 failures**, 121 ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
@@ -234,7 +234,7 @@ toadStool/
 7. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 8. **Vendor-agnostic** -- WGPU/Vulkan for GPU discovery, any vendor works
 9. **Sovereign compute** -- no vendor lock-in, pure Rust core
-10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (~36 blocks, all justified; 25 in containment zones)
+10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (~66 blocks, all justified; all in hw-safe/GPU/VFIO/display containment crates)
 11. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -244,7 +244,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,600+** (S203e), 0 failures |
+| Workspace tests | **21,600+**, 0 failures |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~2m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
@@ -266,7 +266,7 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,600+ tests (S203e); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 21,600+ tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
@@ -366,7 +366,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 13, 2026 — S203g. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~67 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S203g**: 12 large-file test extractions, 6 deprecated zero-caller items removed, async GPU discovery evolved (no executor blocking), forward dispatch clone optimization — quality gates green. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 14, 2026 — S203i. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~69 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S203i**: 52 production-file test extractions (>500L files 38→25), hardcoding evolution (CORALREEF refs → capability-neutral). **S203h**: TCP idle timeout (300s), TCP_NODELAY. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 
