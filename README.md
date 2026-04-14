@@ -58,7 +58,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files **< 500 lines** (S203g: 26 large modules refactored via test extraction across S203c/e/g; all production files target <500 lines) |
+| File size limit | All production files target **< 500 lines** (S203i: 52 production files refactored via test extraction across S203c/e/g/i; 25 files remain >500 lines — pure production code with no extractable test blocks, all <700 lines) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -271,6 +271,8 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S203i (Apr 14, 2026)**: Deep debt — 52 production files refactored via test extraction (~10K+ lines moved to companion files). Hardcoding evolution: `CORALREEF_URL`/`CORALREEF_SOCKET` references replaced with capability-neutral guidance; literal `localhost` in `FallbackEndpoints` replaced with `DEFAULT_HOSTNAME` constant. Production files >500L reduced from 38→25.
+- **S203h (Apr 14, 2026)**: TCP idle timeout — `TCP_IDLE_TIMEOUT_SECS` (300s configurable), `tokio::time::timeout` wraps on all TCP read loops (JSON-RPC + tarpc), `TCP_NODELAY` on all accepted streams. Resolves primalSpring benchScale exp082.
 - **S203g (Apr 13, 2026)**: Deep debt — 12 production files >540 LOC refactored via test extraction. 6 deprecated zero-caller items removed (`localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` module, `get_primal_default_port` wrappers, `TarpcClient::address()`). Blocking `thread::sleep` in async GPU discovery evolved to `tokio::oneshot` + `tokio::time::timeout`. Forward dispatch clone optimization.
 - **S203f (Apr 13, 2026)**: wetSpring V143 validation — `compute.execute` promoted to direct JSON-RPC route (PG-05 gap). Pipeline methods added to `capabilities.list`. plasmidBin metadata expanded to 46 callable methods.
 - **S203e (Apr 12, 2026)**: Deep debt — 8 hardcoded network constants centralized to `core/config/defaults/network.rs`. 5 production files refactored via test extraction. Full deep audit: zero TODO/FIXME/HACK/dbg/unwrap/set_var in production.

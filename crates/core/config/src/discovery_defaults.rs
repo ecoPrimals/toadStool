@@ -24,6 +24,7 @@
 //! ```
 
 use std::time::Duration;
+use toadstool_common::constants::network::DEFAULT_HOSTNAME;
 
 /// Discovery configuration with sensible defaults
 #[derive(Debug, Clone)]
@@ -192,7 +193,8 @@ impl FallbackEndpoints {
     pub fn fallback_endpoint(&self, offset: u16) -> Result<String, std::io::Error> {
         if self.enable_localhost_fallback {
             Ok(format!(
-                "http://localhost:{}",
+                "http://{}:{}",
+                DEFAULT_HOSTNAME,
                 self.localhost_base_port + offset
             ))
         } else {

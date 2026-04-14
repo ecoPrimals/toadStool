@@ -116,7 +116,7 @@ impl DispatchHandler {
                     "bdf": bdf,
                     "dispatch_mode": dispatch_mode,
                     "binary_size": binary_bytes.len(),
-                    "note": "Start the shader/visualization capability provider or set CORALREEF_URL / legacy CORALREEF_SOCKET for compatibility",
+                    "note": "Start a shader/visualization capability provider — ToadStool discovers providers at runtime via capability registry",
                 },
             }));
         }

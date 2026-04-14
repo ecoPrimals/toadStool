@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - April 14, 2026 (Sessions 43-203)
 
+### Session S203i (Apr 14, 2026) — Deep Debt: Massive Test Extraction + Hardcoding Evolution
+
+#### Smart File Refactoring (52 production files — test extraction)
+- EXTRACTED: inline `#[cfg(test)] mod tests { ... }` blocks from 52 production files into companion `*_tests.rs` files
+- Pattern: `#[cfg(test)] #[path = "{name}_tests.rs"] mod tests;` — consistent with repo convention
+- Affected crates: `core/config`, `core/common`, `core/toadstool`, `core/nvpmu`, `core/sysmon`, `toadstool-core`, `server`, `cli`, `auto_config`, `distributed`, `integration/protocols`, `integration/security`, `management/performance`, `runtime/container`, `runtime/orchestration`, `runtime/specialty`, `runtime/display`, `runtime/secure_enclave`, `runtime/gpu`, `security/sandbox`, `neuromorphic/akida-driver`, `ml/burn-inference`
+- Total test lines extracted: ~10,000+ lines moved from production files to dedicated test files
+- 25 production files remain >500 lines (pure production code — hardware drivers, type definitions, crypto managers — no extractable test blocks)
+
+#### Hardcoding Evolution
+- EVOLVED: `FallbackEndpoints::fallback_endpoint()` — replaced literal `"localhost"` with `DEFAULT_HOSTNAME` constant
+- EVOLVED: `dispatch_submit` note — removed hardcoded `CORALREEF_URL` reference, replaced with capability-neutral guidance
+- EVOLVED: `shader_dispatch` note — removed hardcoded `CORALREEF_URL / CORALREEF_SOCKET` reference, replaced with capability-neutral guidance
+
 ### Session S203h (Apr 14, 2026) — benchScale: TCP Idle Timeout (primalSpring exp082)
 
 #### TCP Idle Timeout (benchScale finding)

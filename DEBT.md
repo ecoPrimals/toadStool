@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 14, 2026 — S203h
+**Date**: April 14, 2026 — S203i
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -63,6 +63,19 @@ dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn pa
 **Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
 
 ## S203 Resolved Debt (Deep Audit & Evolution Execution)
+
+### D-LARGE-FILE-REFACTOR-S203I — RESOLVED S203i
+**Scope**: 52 production files across 22 crates
+Massive test extraction sprint: inline `#[cfg(test)] mod tests { ... }` blocks extracted to
+companion `*_tests.rs` files. ~10,000+ lines of test code moved out of production modules.
+Production file count over 500 lines reduced from 38 to 25 (remaining files are pure production
+code — hardware drivers, type definitions, crypto managers — with no extractable test blocks).
+
+### D-HARDCODING-CORALREEF-NOTES-S203I — RESOLVED S203i
+**Scope**: `server/dispatch/submit.rs`, `server/dispatch/shader_dispatch.rs`
+Dispatch error metadata replaced hardcoded `CORALREEF_URL` / `CORALREEF_SOCKET` env var names
+with capability-neutral guidance. Also: `discovery_defaults.rs` literal `"localhost"` replaced
+with `DEFAULT_HOSTNAME` constant.
 
 ### D-LARGE-FILE-REFACTOR-S203G — RESOLVED S203g
 **Scope**: 12 files across 8 crates

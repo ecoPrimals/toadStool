@@ -108,7 +108,7 @@ impl DispatchHandler {
                     "bdf": bdf,
                     "dispatch_mode": dispatch_mode,
                     "binary_size": binary_bytes.len(),
-                    "note": "Start the visualization service or set CORALREEF_URL to enable sovereign GPU dispatch",
+                    "note": "Start a visualization capability provider — ToadStool discovers providers at runtime via capability registry",
                 },
             }));
         }
