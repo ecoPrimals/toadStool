@@ -81,8 +81,8 @@ impl ToadStoolTarpcClient {
     /// use toadstool_common::primal_sockets;
     ///
     /// # async fn example() -> Result<(), TarpcClientError> {
-    /// // Discover ToadStool socket via capability discovery
-    /// let socket_path = primal_sockets::get_toadstool_socket_path();
+    /// // Discover ToadStool tarpc socket via capability discovery
+    /// let socket_path = primal_sockets::get_toadstool_tarpc_socket_path();
     /// let client = ToadStoolTarpcClient::connect_unix(&socket_path).await?;
     /// # Ok(())
     /// # }
@@ -203,9 +203,7 @@ impl ToadStoolTarpcClient {
     /// # }
     /// ```
     pub async fn discover() -> Result<Self, TarpcClientError> {
-        // Use capability-based discovery to find compute service
-        // Falls back to standard ToadStool socket if discovery unavailable
-        let socket_path = toadstool_common::primal_sockets::get_toadstool_socket_path();
+        let socket_path = toadstool_common::primal_sockets::get_toadstool_tarpc_socket_path();
         Self::connect_unix(socket_path)
             .await
             .map_err(|e| TarpcClientError::Discovery(e.to_string()))
@@ -280,7 +278,6 @@ impl ToadStoolTarpcClient {
     pub const fn endpoint(&self) -> &ClientEndpoint {
         &self.endpoint
     }
-
 }
 
 #[cfg(test)]

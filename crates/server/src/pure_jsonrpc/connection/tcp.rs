@@ -68,7 +68,11 @@ pub(crate) async fn handle_tcp_connection(
     let n = match tokio::time::timeout(idle_timeout, reader.read_line(&mut first_line)).await {
         Ok(Ok(n)) => n,
         Ok(Err(e)) => return Err(ServerError::Network(e.to_string())),
-        Err(_) => return Err(ServerError::Network("TCP idle timeout on initial read".into())),
+        Err(_) => {
+            return Err(ServerError::Network(
+                "TCP idle timeout on initial read".into(),
+            ));
+        }
     };
     if n == 0 {
         return Ok(());

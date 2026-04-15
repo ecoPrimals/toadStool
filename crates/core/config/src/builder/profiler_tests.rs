@@ -204,8 +204,7 @@ fn test_profiler_config_to_file() {
 
 #[test]
 fn test_profiler_config_from_file_not_found() {
-    let err =
-        ProfilerConfig::from_file("/nonexistent/path/to/profiler.toml").expect_err("missing");
+    let err = ProfilerConfig::from_file("/nonexistent/path/to/profiler.toml").expect_err("missing");
     assert!(matches!(err, ConfigError::Io(_)));
 }
 

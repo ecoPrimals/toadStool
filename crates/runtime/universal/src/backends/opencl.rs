@@ -10,6 +10,11 @@
 use crate::types::*;
 use std::sync::OnceLock;
 
+/// Placeholder capability record for the removed OpenCL path (S198): empty ops/types, zero throughput.
+#[deprecated(
+    since = "0.1.0",
+    note = "OpenCL S198 stub; minimal/empty Capabilities are not hardware discovery."
+)]
 fn legacy_opencl_capabilities() -> &'static Capabilities {
     static CAPS: OnceLock<Capabilities> = OnceLock::new();
     CAPS.get_or_init(|| {
@@ -37,7 +42,7 @@ fn legacy_opencl_capabilities() -> &'static Capabilities {
 
 /// Legacy OpenCL compute unit placeholder (non-functional).
 #[deprecated(
-    since = "0.2.0",
+    since = "0.1.0",
     note = "OpenCL was removed from this crate; use wgpu/Vulkan or barraCuda/coralReef IPC."
 )]
 pub struct OpenClComputeUnit {
@@ -47,6 +52,10 @@ pub struct OpenClComputeUnit {
 #[expect(deprecated)]
 impl OpenClComputeUnit {
     /// Always fails — OpenCL is not available in this runtime.
+    #[deprecated(
+        since = "0.1.0",
+        note = "OpenClComputeUnit is a stub; use wgpu or barraCuda/coralReef IPC."
+    )]
     pub fn new() -> Result<Self, ComputeError> {
         Err(ComputeError::BackendError(
             "OpenCL is not available in toadstool-runtime-universal. \
@@ -60,7 +69,10 @@ impl OpenClComputeUnit {
 #[async_trait::async_trait]
 impl ComputeUnit for OpenClComputeUnit {
     fn capabilities(&self) -> &Capabilities {
-        legacy_opencl_capabilities()
+        #[expect(deprecated)]
+        {
+            legacy_opencl_capabilities()
+        }
     }
 
     fn name(&self) -> &'static str {

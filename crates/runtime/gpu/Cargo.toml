@@ -19,13 +19,13 @@ toadstool-hw-safe = { path = "../../core/hw-safe" }
 nvpmu = { path = "../../core/nvpmu" }
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
-async-trait = "0.1"
+tokio = { workspace = true }
+async-trait = { workspace = true }
 futures = { workspace = true }
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_yaml_ng = { workspace = true }
 
 # HTTP client for distributed execution
@@ -34,8 +34,8 @@ serde_yaml_ng = { workspace = true }
 bytes = { workspace = true }
 
 # Utilities
-uuid = { version = "1.8", features = ["v4", "serde"] }
-tracing = "0.1"
+uuid = { workspace = true }
+tracing = { workspace = true }
 thiserror = { workspace = true }
 # Concurrency primitives (for unified memory)
 # dashmap removed: evolved to std::sync::RwLock<HashMap>

@@ -25,7 +25,10 @@ pub struct MdnsDiscoveryService {
     /// Discovered services cache
     services: Arc<RwLock<HashMap<Uuid, DiscoveredService>>>,
     /// Configuration
-    #[allow(dead_code, reason = "Retained for future mDNS reconfiguration")]
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "Retained for future mDNS reconfiguration")
+    )]
     config: DiscoveryConfig,
 }
 

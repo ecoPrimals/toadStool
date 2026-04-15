@@ -4,6 +4,8 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use toadstool_common::constants::PRIMAL_NAME;
+
 use super::IpcEndpoint;
 use crate::DisplayError;
 
@@ -51,7 +53,7 @@ impl super::DisplayClient {
             let mut path = PathBuf::from(home);
             path.push(".local");
             path.push("share");
-            path.push("toadstool");
+            path.push(PRIMAL_NAME);
             path.push("display.sock");
             paths.push(path);
         }

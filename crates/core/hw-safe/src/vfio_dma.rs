@@ -140,6 +140,84 @@ pub unsafe fn dma_unmap(container_fd: BorrowedFd<'_>, unmap: &VfioDmaUnmap) -> s
     do_ioctl(container_fd, DmaUnmapIoctl(unmap))
 }
 
+/// Map a [`LockedMemory`](super::LockedMemory) buffer into the device IOMMU via VFIO.
+///
+/// Safe wrapper around [`dma_map`] -- the `LockedMemory` type guarantees valid,
+/// locked host memory, so the caller does not need `unsafe`.
+///
+/// # Errors
+///
+/// Returns an I/O error if the VFIO ioctl fails.
+#[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
+pub fn dma_map_locked(
+    container_fd: BorrowedFd<'_>,
+    mem: &super::LockedMemory,
+    iova: u64,
+    map_flags: u32,
+) -> std::io::Result<()> {
+    let map = VfioDmaMap {
+        argsz: std::mem::size_of::<VfioDmaMap>() as u32,
+        flags: map_flags,
+        vaddr: mem.as_ptr().as_ptr() as u64,
+        iova,
+        size: mem.size() as u64,
+    };
+    // SAFETY: `LockedMemory` guarantees `as_ptr()` is valid for `size()` bytes
+    // and the memory is mlock'd (pinned). `container_fd` validity is the
+    // caller's responsibility (enforced by `BorrowedFd` lifetime).
+    unsafe { dma_map(container_fd, &map) }
+}
+
+/// Remove a device IOMMU mapping via VFIO (safe).
+///
+/// # Errors
+///
+/// Returns an I/O error if the VFIO ioctl fails.
+#[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
+pub fn dma_unmap_region(
+    container_fd: BorrowedFd<'_>,
+    iova: u64,
+    size: usize,
+) -> std::io::Result<()> {
+    let unmap = VfioDmaUnmap {
+        argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
+        flags: 0,
+        iova,
+        size: size as u64,
+    };
+    // SAFETY: iova/size describe a previously mapped region (caller invariant).
+    // `container_fd` is valid by `BorrowedFd` lifetime.
+    unsafe { dma_unmap(container_fd, &unmap) }
+}
+
+/// Map a [`HugePageMemory`](super::huge_page::HugePageMemory) buffer into the
+/// device IOMMU via VFIO.
+///
+/// Safe wrapper around [`dma_map`] -- `HugePageMemory` guarantees valid, locked
+/// huge-page memory.
+///
+/// # Errors
+///
+/// Returns an I/O error if the VFIO ioctl fails.
+#[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
+pub fn dma_map_huge(
+    container_fd: BorrowedFd<'_>,
+    mem: &super::huge_page::HugePageMemory,
+    iova: u64,
+    map_flags: u32,
+) -> std::io::Result<()> {
+    let map = VfioDmaMap {
+        argsz: std::mem::size_of::<VfioDmaMap>() as u32,
+        flags: map_flags,
+        vaddr: mem.as_ptr().as_ptr() as u64,
+        iova,
+        size: mem.size() as u64,
+    };
+    // SAFETY: `HugePageMemory` guarantees `as_ptr()` is valid for `size()` bytes
+    // and the memory is mlock'd (pinned).
+    unsafe { dma_map(container_fd, &map) }
+}
+
 /// Align `size` up to the nearest multiple of `page`.
 #[must_use]
 pub const fn page_align_up(size: usize, page: usize) -> usize {

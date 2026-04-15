@@ -11,9 +11,8 @@ use std::sync::Arc;
 use temp_env::with_var;
 use toadstool::security::SecurityContext;
 use toadstool_integration_protocols::{
-    AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, BearDogIntegration,
-    BearDogIntegrationTrait, PolicyRule, SecurityAuditEvent, SecurityConfig, SecurityPolicy,
-    SecurityServiceConfig,
+    AuthRequest, AuthResponse, AuthzRequest, AuthzResponse, BearDogIntegration, PolicyRule,
+    SecurityAuditEvent, SecurityConfig, SecurityPolicy, SecurityServiceConfig,
 };
 
 #[test]
@@ -343,8 +342,7 @@ async fn test_trait_authenticate() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration: Box<dyn BearDogIntegrationTrait> =
-        Box::new(BearDogIntegration::new(config).unwrap());
+    let integration = BearDogIntegration::new(config).unwrap();
     let result = integration
         .authenticate(
             "svc",
@@ -363,8 +361,7 @@ async fn test_trait_authorize_without_token() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration: Box<dyn BearDogIntegrationTrait> =
-        Box::new(BearDogIntegration::new(config).unwrap());
+    let integration = BearDogIntegration::new(config).unwrap();
     let result = integration
         .authorize("/resource", "read", HashMap::new())
         .await;
@@ -377,8 +374,7 @@ async fn test_trait_zero_trust_validation() {
         socket_path: "/nonexistent/security.sock".to_string(),
         ..SecurityConfig::default()
     };
-    let integration: Box<dyn BearDogIntegrationTrait> =
-        Box::new(BearDogIntegration::new(config).unwrap());
+    let integration = BearDogIntegration::new(config).unwrap();
     let result = integration
         .zero_trust_validation(&SecurityContext::default())
         .await;

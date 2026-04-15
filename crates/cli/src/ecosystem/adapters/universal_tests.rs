@@ -79,9 +79,8 @@ fn test_protocol_selection_empty() {
 
 #[test]
 fn test_socket_path_from_endpoint_unix_prefix() {
-    let path =
-        UniversalServiceAdapter::socket_path_from_endpoint("unix:///var/run/toadstool.sock")
-            .unwrap();
+    let path = UniversalServiceAdapter::socket_path_from_endpoint("unix:///var/run/toadstool.sock")
+        .unwrap();
     assert_eq!(path, std::path::Path::new("/var/run/toadstool.sock"));
 }
 

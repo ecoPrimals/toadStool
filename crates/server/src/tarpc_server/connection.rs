@@ -51,7 +51,10 @@ pub(super) async fn serve_on_tarpc_channel_with_idle_timeout<S>(
             }
             Ok(None) => break,
             Err(_) => {
-                info!("tarpc connection idle for {}s — closing", idle_timeout.as_secs());
+                info!(
+                    "tarpc connection idle for {}s — closing",
+                    idle_timeout.as_secs()
+                );
                 break;
             }
         }

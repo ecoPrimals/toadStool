@@ -61,10 +61,9 @@ macro_rules! v4l2_updater {
             unsafe {
                 ioctl::ioctl(
                     fd,
-                    ioctl::Updater::<
-                        { ioctl::opcode::read_write::<$ty>(b'V', $nr) },
-                        $ty,
-                    >::new(arg),
+                    ioctl::Updater::<{ ioctl::opcode::read_write::<$ty>(b'V', $nr) }, $ty>::new(
+                        arg,
+                    ),
                 )
             }
             .map_err(ioctl_err)
@@ -91,11 +90,41 @@ macro_rules! v4l2_setter {
 
 // ── Public wrappers (all safe) ──────────────────────────────────────────
 
-v4l2_getter!(querycap, 0, v4l2_capability, "`VIDIOC_QUERYCAP` — query device capabilities.");
-v4l2_updater!(s_fmt, 5, v4l2_format, "`VIDIOC_S_FMT` — set capture format (kernel may negotiate).");
-v4l2_updater!(reqbufs, 8, v4l2_requestbuffers, "`VIDIOC_REQBUFS` — request mmap buffers.");
-v4l2_updater!(querybuf, 9, v4l2_buffer, "`VIDIOC_QUERYBUF` — query buffer info for mmap.");
-v4l2_updater!(qbuf, 15, v4l2_buffer, "`VIDIOC_QBUF` — queue a buffer for capture.");
-v4l2_updater!(dqbuf, 17, v4l2_buffer, "`VIDIOC_DQBUF` — dequeue a filled buffer.");
+v4l2_getter!(
+    querycap,
+    0,
+    v4l2_capability,
+    "`VIDIOC_QUERYCAP` — query device capabilities."
+);
+v4l2_updater!(
+    s_fmt,
+    5,
+    v4l2_format,
+    "`VIDIOC_S_FMT` — set capture format (kernel may negotiate)."
+);
+v4l2_updater!(
+    reqbufs,
+    8,
+    v4l2_requestbuffers,
+    "`VIDIOC_REQBUFS` — request mmap buffers."
+);
+v4l2_updater!(
+    querybuf,
+    9,
+    v4l2_buffer,
+    "`VIDIOC_QUERYBUF` — query buffer info for mmap."
+);
+v4l2_updater!(
+    qbuf,
+    15,
+    v4l2_buffer,
+    "`VIDIOC_QBUF` — queue a buffer for capture."
+);
+v4l2_updater!(
+    dqbuf,
+    17,
+    v4l2_buffer,
+    "`VIDIOC_DQBUF` — dequeue a filled buffer."
+);
 v4l2_setter!(streamon, 18, u32, "`VIDIOC_STREAMON` — start streaming.");
 v4l2_setter!(streamoff, 19, u32, "`VIDIOC_STREAMOFF` — stop streaming.");

@@ -9,15 +9,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use async_trait::async_trait;
-use hex;
-use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
+use crate::cache::{CachedPolicy, is_cache_valid};
+use crate::composition::{build_composed_policy, merge_evaluation_results};
 use crate::evaluator::ConditionEvaluator;
 use crate::executor::ActionExecutor;
 use crate::types::{
@@ -25,27 +24,11 @@ use crate::types::{
     PolicyResult, SecurityPolicy,
 };
 
-/// Cached policy with LRU metadata.
-#[derive(Debug, Clone)]
-struct CachedPolicy {
-    policy: SecurityPolicy,
-    cached_at: SystemTime,
-    access_count: u64,
-    last_accessed: SystemTime,
-}
-
-impl CachedPolicy {
-    fn touch(&mut self) {
-        self.access_count += 1;
-        self.last_accessed = SystemTime::now();
-    }
-}
-
 /// Policy manager trait
-///
-/// NOTE(async-dyn): Consumers (e.g. `toadstool-security-sandbox` via `Arc<dyn PolicyManager>`).
-/// Native `async fn` in traits is not object-safe; `#[async_trait]` is required.
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait PolicyManager: Send + Sync {
     /// Load policy from storage
     async fn load_policy(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy>;
@@ -125,16 +108,6 @@ impl FilePolicyManager {
         toml_path
     }
 
-    /// Check if cached policy is still valid
-    fn is_cache_valid(&self, cached_policy: &CachedPolicy) -> bool {
-        if !self.config.cache_enabled {
-            return false;
-        }
-
-        let cache_duration = Duration::from_secs(self.config.cache_ttl_hours * 3600);
-        cached_policy.cached_at.elapsed().unwrap_or(Duration::MAX) < cache_duration
-    }
-
     /// Load policy from file
     async fn load_policy_from_file(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {
         let file_path = self.policy_file_path(policy_id);
@@ -199,43 +172,8 @@ impl FilePolicyManager {
         info!("Saved policy {} to {}", policy.id, file_path.display());
         Ok(())
     }
-
-    /// Merge evaluation results from parent policies
-    #[expect(clippy::unused_self)]
-    fn merge_evaluation_results(
-        &self,
-        target: &mut PolicyEvaluationResult,
-        source: PolicyEvaluationResult,
-    ) {
-        target.applied_rules.extend(source.applied_rules);
-        target
-            .security_modifications
-            .extend(source.security_modifications);
-        target
-            .resource_modifications
-            .extend(source.resource_modifications);
-        target.warnings.extend(source.warnings);
-
-        // Update result based on priority
-        match (&target.result, &source.result) {
-            (_, PolicyResult::Deny) => target.result = PolicyResult::Deny,
-            (PolicyResult::Allow, other) => target.result = other.clone(),
-            _ => {} // Keep existing result
-        }
-    }
-
-    /// Generate composed policy ID
-    #[expect(clippy::unused_self)]
-    fn generate_composed_policy_id(&self, policy_ids: &[String]) -> String {
-        let mut hasher = Sha256::new();
-        for id in policy_ids {
-            hasher.update(id.as_bytes());
-        }
-        format!("composed_{}", &hex::encode(hasher.finalize())[..16])
-    }
 }
 
-#[async_trait]
 impl PolicyManager for FilePolicyManager {
     async fn load_policy(&self, policy_id: &str) -> ToadStoolResult<SecurityPolicy> {
         debug!("Loading policy: {}", policy_id);
@@ -244,7 +182,7 @@ impl PolicyManager for FilePolicyManager {
         {
             let mut cache = self.policy_cache.write().await;
             if let Some(cached) = cache.get_mut(policy_id)
-                && self.is_cache_valid(cached)
+                && is_cache_valid(cached, &self.config)
             {
                 debug!(
                     "Policy {} found in cache (hits: {})",
@@ -426,8 +364,8 @@ impl PolicyManager for FilePolicyManager {
 
         // Evaluate inherited policies first
         for parent_id in &policy.inherits {
-            let parent_result = self.evaluate_policy(parent_id, context).await?;
-            self.merge_evaluation_results(&mut result, parent_result);
+            let parent_result = Box::pin(self.evaluate_policy(parent_id, context)).await?;
+            merge_evaluation_results(&mut result, parent_result);
         }
 
         // Evaluate current policy rules
@@ -485,42 +423,7 @@ impl PolicyManager for FilePolicyManager {
             policies.push(policy);
         }
 
-        // Create composed policy
-        let composed_id = self.generate_composed_policy_id(policy_ids);
-        let mut composed_policy = SecurityPolicy {
-            id: composed_id,
-            name: format!("Composed Policy: {}", policy_ids.join(", ")),
-            version: "1.0.0".to_string(),
-            description: Some("Automatically composed policy".to_string()),
-            author: Some("ToadStool Policy Manager".to_string()),
-            created_at: SystemTime::now(),
-            modified_at: SystemTime::now(),
-            rules: Vec::new(),
-            inherits: Vec::new(),
-            metadata: HashMap::new(),
-            signature: None,
-        };
-
-        // Merge rules from all policies (sorted by priority)
-        let mut all_rules = Vec::new();
-        for policy in &policies {
-            for rule in &policy.rules {
-                all_rules.push(rule.clone());
-            }
-        }
-
-        all_rules.sort_by(|a, b| b.priority.cmp(&a.priority));
-        composed_policy.rules = all_rules;
-
-        // Merge metadata
-        for policy in &policies {
-            for (key, value) in &policy.metadata {
-                composed_policy
-                    .metadata
-                    .insert(format!("{}_{}", policy.id, key), value.clone());
-            }
-        }
-
+        let composed_policy = build_composed_policy(policy_ids, &policies);
         debug!(
             "Composed policy created with {} rules",
             composed_policy.rules.len()

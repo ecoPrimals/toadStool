@@ -22,6 +22,8 @@
 //! - [`evaluator`] - Policy condition evaluation logic
 //! - [`executor`] - Policy action execution logic
 
+mod cache;
+mod composition;
 pub mod error;
 pub mod evaluator;
 pub mod executor;

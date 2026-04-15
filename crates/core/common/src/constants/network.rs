@@ -45,6 +45,12 @@ pub const HTTP_PROTOCOL: &str = "http://";
 /// HTTPS protocol prefix
 pub const HTTPS_PROTOCOL: &str = "https://";
 
+/// Unix domain socket URL scheme (without `://`), for `unix://` URLs.
+pub const UNIX_SOCKET_URL_SCHEME: &str = "unix";
+
+/// Full prefix for Unix domain socket URLs (`{UNIX_SOCKET_URL_SCHEME}://`).
+pub const UNIX_SOCKET_URL_PREFIX: &str = "unix://";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,6 +74,12 @@ mod tests {
     fn test_protocol_constants() {
         assert_eq!(HTTP_PROTOCOL, "http://");
         assert_eq!(HTTPS_PROTOCOL, "https://");
+        assert_eq!(UNIX_SOCKET_URL_SCHEME, "unix");
+        assert_eq!(UNIX_SOCKET_URL_PREFIX, "unix://");
+        assert_eq!(
+            UNIX_SOCKET_URL_PREFIX,
+            format!("{UNIX_SOCKET_URL_SCHEME}://")
+        );
     }
 
     #[test]

@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
-use crate::resources::{
-    CpuMetrics, MemoryMetrics, NetworkMetrics, RuntimeMetrics, StorageMetrics,
-};
+use crate::resources::{CpuMetrics, MemoryMetrics, NetworkMetrics, RuntimeMetrics, StorageMetrics};
 use std::time::Duration;
 
 // Helper function to create test metrics

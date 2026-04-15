@@ -35,6 +35,10 @@ pub struct CudaBackend {
 #[expect(deprecated)]
 impl CudaBackend {
     /// Always returns an error directing callers to barraCuda/coralReef.
+    #[deprecated(
+        since = "0.1.0",
+        note = "CudaBackend is a stub (S197); use barraCuda/coralReef via capability IPC."
+    )]
     pub fn new() -> ToadStoolResult<Self> {
         Err(ToadStoolError::runtime(
             "CudaBackend removed (S197): use barraCuda or coralReef via capability-based IPC \

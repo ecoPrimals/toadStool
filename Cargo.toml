@@ -60,7 +60,7 @@ members = [
     "examples",
 ]
 
-exclude = ["fuzz"]
+exclude = ["fuzz", "crates/ml/burn-inference"]
 
 [workspace.package]
 version = "0.1.0"

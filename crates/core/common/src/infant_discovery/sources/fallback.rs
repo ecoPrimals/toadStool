@@ -8,6 +8,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::infant_discovery::capabilities::{DiscoveryError, EndpointSource};
+use crate::interned_strings::socket_env;
 
 /// Fallback source - provides fallbacks from environment variables
 ///
@@ -29,54 +30,54 @@ impl FallbackSource {
     pub fn new() -> Self {
         let mut fallbacks = HashMap::new();
 
-        if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
-            .or_else(|_| std::env::var("COORDINATION_URL"))
-            .or_else(|_| std::env::var("COORDINATION_ENDPOINT"))
-            .or_else(|_| std::env::var("SONGBIRD_URL")) // legacy
-            .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+        if let Ok(coordination) = std::env::var(socket_env::TOADSTOOL_COORDINATION_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::COORDINATION_URL))
+            .or_else(|_| std::env::var(socket_env::COORDINATION_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_URL)) // legacy
+            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_ENDPOINT))
         // legacy
         {
             fallbacks.insert("coordination".to_string(), coordination);
         }
 
-        if let Ok(security) = std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
-            .or_else(|_| std::env::var("SECURITY_URL"))
-            .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
-            .or_else(|_| std::env::var("BEARDOG_URL")) // legacy
-            .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
+        if let Ok(security) = std::env::var(socket_env::TOADSTOOL_SECURITY_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::SECURITY_URL))
+            .or_else(|_| std::env::var(socket_env::SECURITY_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_URL)) // legacy
+            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_ENDPOINT))
         // legacy
         {
             fallbacks.insert("security".to_string(), security);
         }
 
-        if let Ok(auth) = std::env::var("AUTHENTICATION_URL") {
+        if let Ok(auth) = std::env::var(socket_env::AUTHENTICATION_URL) {
             fallbacks.insert("authentication".to_string(), auth);
         }
 
-        if let Ok(storage) = std::env::var("TOADSTOOL_STORAGE_ENDPOINT")
-            .or_else(|_| std::env::var("STORAGE_URL"))
-            .or_else(|_| std::env::var("STORAGE_ENDPOINT"))
-            .or_else(|_| std::env::var("NESTGATE_URL")) // legacy
-            .or_else(|_| std::env::var("NESTGATE_ENDPOINT"))
+        if let Ok(storage) = std::env::var(socket_env::TOADSTOOL_STORAGE_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::STORAGE_URL))
+            .or_else(|_| std::env::var(socket_env::STORAGE_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_URL)) // legacy
+            .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_ENDPOINT))
         // legacy
         {
             fallbacks.insert("persistent_storage".to_string(), storage);
         }
 
-        if let Ok(ai) = std::env::var("TOADSTOOL_INTELLIGENCE_ENDPOINT")
-            .or_else(|_| std::env::var("TOADSTOOL_AI_PROCESSING_ENDPOINT"))
-            .or_else(|_| std::env::var("TOADSTOOL_AI_ENDPOINT"))
-            .or_else(|_| std::env::var("INTELLIGENCE_URL"))
-            .or_else(|_| std::env::var("INTELLIGENCE_ENDPOINT"))
-            .or_else(|_| std::env::var("AI_PROCESSING_URL"))
-            .or_else(|_| std::env::var("SQUIRREL_URL")) // legacy
-            .or_else(|_| std::env::var("SQUIRREL_ENDPOINT"))
+        if let Ok(ai) = std::env::var(socket_env::TOADSTOOL_INTELLIGENCE_ENDPOINT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_AI_PROCESSING_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_AI_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::INTELLIGENCE_URL))
+            .or_else(|_| std::env::var(socket_env::INTELLIGENCE_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::AI_PROCESSING_URL))
+            .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_URL)) // legacy
+            .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_ENDPOINT))
         // legacy
         {
             fallbacks.insert("ai_processing".to_string(), ai);
         }
 
-        if let Ok(nlp) = std::env::var("NLP_URL") {
+        if let Ok(nlp) = std::env::var(socket_env::NLP_URL) {
             fallbacks.insert("natural_language_processing".to_string(), nlp);
         }
 
@@ -135,11 +136,15 @@ impl EndpointSource for FallbackSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::interned_strings::socket_env;
 
     #[tokio::test]
     async fn test_fallback_source_coordination() {
         temp_env::async_with_vars(
-            [("COORDINATION_URL", Some("http://test-coordination:8081"))],
+            [(
+                socket_env::COORDINATION_URL,
+                Some("http://test-coordination:8081"),
+            )],
             async {
                 let source = FallbackSource::new();
                 let result = source.resolve("coordination").await.unwrap();
@@ -180,32 +185,38 @@ mod tests {
 
     #[tokio::test]
     async fn test_fallback_source_authentication() {
-        temp_env::async_with_vars([("AUTHENTICATION_URL", Some("http://auth:9090"))], async {
-            let source = FallbackSource::new();
-            let result = source.resolve("authentication").await.unwrap();
-            assert!(result.is_some());
-            let endpoint = result.unwrap();
-            assert!(endpoint.starts_with("http://"));
-            assert!(endpoint.contains("9090"));
-        })
+        temp_env::async_with_vars(
+            [(socket_env::AUTHENTICATION_URL, Some("http://auth:9090"))],
+            async {
+                let source = FallbackSource::new();
+                let result = source.resolve("authentication").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.starts_with("http://"));
+                assert!(endpoint.contains("9090"));
+            },
+        )
         .await;
     }
 
     #[tokio::test]
     async fn test_fallback_source_persistent_storage() {
-        temp_env::async_with_vars([("STORAGE_URL", Some("http://storage:5432"))], async {
-            let source = FallbackSource::new();
-            let result = source.resolve("persistent_storage").await.unwrap();
-            assert!(result.is_some());
-            let endpoint = result.unwrap();
-            assert!(endpoint.contains("5432"));
-        })
+        temp_env::async_with_vars(
+            [(socket_env::STORAGE_URL, Some("http://storage:5432"))],
+            async {
+                let source = FallbackSource::new();
+                let result = source.resolve("persistent_storage").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.contains("5432"));
+            },
+        )
         .await;
     }
 
     #[tokio::test]
     async fn test_fallback_source_nlp() {
-        temp_env::async_with_vars([("NLP_URL", Some("http://nlp:7777"))], async {
+        temp_env::async_with_vars([(socket_env::NLP_URL, Some("http://nlp:7777"))], async {
             let source = FallbackSource::new();
             let result = source.resolve("natural_language_processing").await.unwrap();
             assert!(result.is_some());
@@ -217,13 +228,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_fallback_source_security() {
-        temp_env::async_with_vars([("SECURITY_URL", Some("http://security:8082"))], async {
-            let source = FallbackSource::new();
-            let result = source.resolve("security").await.unwrap();
-            assert!(result.is_some());
-            let endpoint = result.unwrap();
-            assert!(endpoint.starts_with("http://"));
-        })
+        temp_env::async_with_vars(
+            [(socket_env::SECURITY_URL, Some("http://security:8082"))],
+            async {
+                let source = FallbackSource::new();
+                let result = source.resolve("security").await.unwrap();
+                assert!(result.is_some());
+                let endpoint = result.unwrap();
+                assert!(endpoint.starts_with("http://"));
+            },
+        )
         .await;
     }
 

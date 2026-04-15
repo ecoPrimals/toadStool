@@ -17,7 +17,7 @@ thiserror = { workspace = true }
 bytes = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Safe byte casting (replaces unsafe f32<->u8 conversions)
 bytemuck = { version = "1", features = ["derive"] }

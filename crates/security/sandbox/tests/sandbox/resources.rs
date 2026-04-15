@@ -3,6 +3,10 @@
 // Resource Limits Tests
 // ============================================================================
 
+use std::time::Duration;
+
+use toadstool_security_sandbox::*;
+
 #[test]
 fn test_resource_limits_default() {
     let limits = ResourceLimits::default();

@@ -54,8 +54,14 @@ pub(super) fn cost_estimates() -> serde_json::Value {
     // toadstool-prefixed resource methods (aliases to resources.*)
     for (prefixed, canonical) in [
         ("toadstool.resources.estimate", "resources.estimate"),
-        ("toadstool.resources.validate_availability", "resources.validate_availability"),
-        ("toadstool.resources.suggest_optimizations", "resources.suggest_optimizations"),
+        (
+            "toadstool.resources.validate_availability",
+            "resources.validate_availability",
+        ),
+        (
+            "toadstool.resources.suggest_optimizations",
+            "resources.suggest_optimizations",
+        ),
     ] {
         let _ = canonical;
         map.insert(prefixed.into(), cost("medium", false, 10, "low", "low"));

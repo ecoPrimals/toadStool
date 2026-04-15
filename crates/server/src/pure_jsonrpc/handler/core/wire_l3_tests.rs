@@ -27,7 +27,10 @@ fn cost_estimates_every_entry_has_required_fields() {
             "{method} missing 'gpu_eligible'"
         );
         assert!(
-            entry.get("latency_ms").and_then(serde_json::Value::as_u64).is_some(),
+            entry
+                .get("latency_ms")
+                .and_then(serde_json::Value::as_u64)
+                .is_some(),
             "{method} missing 'latency_ms'"
         );
         assert!(

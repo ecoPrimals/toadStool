@@ -29,6 +29,8 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+use crate::constants::PRIMAL_NAME;
+
 /// Opaque wrapper around a secret value.
 ///
 /// The inner `String` is zeroized on drop and never exposed through
@@ -197,7 +199,7 @@ fn credentials_file_path() -> Option<PathBuf> {
         .map(PathBuf::from)
         .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".config")))
         .ok()?;
-    Some(config_dir.join("toadstool").join("credentials"))
+    Some(config_dir.join(PRIMAL_NAME).join("credentials"))
 }
 
 /// File-based credential lookup from the toadStool credentials file.

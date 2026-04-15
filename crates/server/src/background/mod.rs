@@ -25,7 +25,7 @@ use tracing::info;
 use crate::state::ServerState;
 
 // Re-export for unit tests (only used in #[cfg(test)] mod tests)
-#[allow(unused_imports, reason = "re-export for unit tests")]
+#[cfg(test)]
 pub(crate) use health::perform_health_check;
 
 /// Start all background services

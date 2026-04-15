@@ -64,10 +64,20 @@ pub fn get_nucleus_socket_path() -> PathBuf {
     paths::resolve_nucleus_socket(&SocketPathEnv::from_env())
 }
 
-/// Get ToadStool main socket path.
+/// Get ToadStool main (JSON-RPC) socket path.
 #[must_use]
 pub fn get_toadstool_socket_path() -> PathBuf {
     paths::resolve_toadstool_socket(&SocketPathEnv::from_env())
+}
+
+/// Get ToadStool tarpc (hot-path) socket path.
+///
+/// tarpc uses a separate socket from JSON-RPC to avoid bind collision.
+/// Convention: `compute-tarpc.sock` or `compute-{family_id}-tarpc.sock`.
+/// Override via `TOADSTOOL_TARPC_SOCKET`.
+#[must_use]
+pub fn get_toadstool_tarpc_socket_path() -> PathBuf {
+    paths::resolve_toadstool_tarpc_socket(&SocketPathEnv::from_env())
 }
 
 /// Resolve socket path by capability rather than primal name.

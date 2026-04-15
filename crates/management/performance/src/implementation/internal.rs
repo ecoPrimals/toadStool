@@ -25,7 +25,10 @@ pub(super) struct BaselineMetrics {
 /// Runtime selector state (for future ML-based selection)
 #[derive(Default)]
 pub(super) struct RuntimeSelector {
-    #[allow(dead_code, reason = "Reserved for ML-based runtime selection")]
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "Reserved for ML-based runtime selection")
+    )]
     pub(super) last_selection: Option<RuntimeType>,
 }
 

@@ -4,6 +4,7 @@
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use toadstool_common::constants::platform_paths::devfs;
 use tracing::debug;
 
 use crate::ToadStoolResult;
@@ -134,7 +135,7 @@ fn detect_intel_gpus() -> Vec<GpuInfo> {
 
     // Intel GPU detection is more complex and platform-dependent
     // For now, we'll do a simple check
-    if cfg!(target_os = "linux") && Path::new("/dev/dri").exists() {
+    if cfg!(target_os = "linux") && Path::new(devfs::DRI_DIR).exists() {
         // Assume Intel integrated graphics
         gpus.push(GpuInfo {
             name: "Intel Integrated Graphics".to_string(),

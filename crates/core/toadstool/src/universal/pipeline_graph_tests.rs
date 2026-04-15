@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-
 use super::*;
 
 #[test]
@@ -150,9 +149,7 @@ fn pipeline_execution_with_failure() {
 #[test]
 fn stage_output_variants() {
     let scalar = StageOutput::Scalar(std::f64::consts::PI);
-    assert!(
-        matches!(scalar, StageOutput::Scalar(v) if (v - std::f64::consts::PI).abs() < 1e-10)
-    );
+    assert!(matches!(scalar, StageOutput::Scalar(v) if (v - std::f64::consts::PI).abs() < 1e-10));
 
     let vec_out = StageOutput::Vector(vec![1.0, 2.0, 3.0]);
     assert!(matches!(vec_out, StageOutput::Vector(ref v) if v.len() == 3));

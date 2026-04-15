@@ -3,8 +3,7 @@ use super::*;
 use crate::coordination::types::SplittingStrategyType;
 use crate::coordination::types::{DistributionConfig, JobAnalysis, JobDistributionStrategy};
 use crate::{
-    DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJob,
-    UniversalJobType,
+    DistributedRetryConfig, ExecutionTarget, ResourceRequirements, UniversalJob, UniversalJobType,
 };
 use std::collections::HashMap;
 use std::time::SystemTime;

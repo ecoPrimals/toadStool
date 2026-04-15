@@ -31,10 +31,10 @@ tokio-serde = { version = "0.9", features = ["json"], optional = true }
 base64 = "0.22"
 
 # Async runtime and channels
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
 
 # Async utilities
-async-trait = "0.1"
+async-trait = { workspace = true }
 
 # HTTP client - REMOVED: Legacy artifact from old Songbird HTTP registration
 # ARCHITECTURAL EVOLUTION (Jan 17, 2026):
@@ -49,18 +49,18 @@ async-trait = "0.1"
 # reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 bytes = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # UUID support
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { workspace = true }
 
 # System monitoring — Pure Rust via /proc (replaces sysinfo, zero C)
 toadstool-sysmon = { workspace = true }

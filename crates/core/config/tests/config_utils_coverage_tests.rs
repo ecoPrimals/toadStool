@@ -11,13 +11,13 @@ use toadstool_common::constants::primal_identity::PRIMAL_NAME;
 use toadstool_config::config_utils::ConfigUtils;
 use toadstool_config::defaults::network as defaults_network;
 use toadstool_config::defaults::ports as defaults_ports;
-use toadstool_config::ports::{capability_fallback, resolve_capability_port};
 use toadstool_config::defaults::storage as defaults_storage;
 use toadstool_config::env_config::{
     EnvConfigLoader, EnvironmentConfig, MonitoringEnvConfig, NetworkEnvConfig, ResourceEnvConfig,
     SecurityEnvConfig,
 };
 use toadstool_config::network as network_defaults;
+use toadstool_config::ports::{capability_fallback, resolve_capability_port};
 
 #[test]
 fn env_config_loader_default_matches_new() {

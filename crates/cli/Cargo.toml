@@ -55,7 +55,7 @@ toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 clap = { workspace = true, features = ["color", "suggestions"] }
 
 # Async runtime
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true }
 futures = { workspace = true }
 
 # Error handling
@@ -63,11 +63,11 @@ thiserror = { workspace = true }
 
 # Logging and tracing
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tracing-subscriber = { workspace = true }
 
 # Serialization (rc for Arc<str> zero-copy in metadata)
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = "1.0"
+serde = { workspace = true, features = ["rc"] }
+serde_json = { workspace = true }
 serde_yaml_ng = "0.10"
 toml = "0.8"
 bytes = { workspace = true }

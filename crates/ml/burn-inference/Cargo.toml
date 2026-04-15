@@ -1,11 +1,11 @@
 [package]
 name = "burn-inference"
 version = "0.1.0"
-edition.workspace = true
+edition = "2024"
 authors = ["ToadStool Team <team@toadstool.bio>"]
 description = "HuggingFace model inference via Burn (wgpu backend)"
-license.workspace = true
-repository.workspace = true
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/ecoPrimals/toadstool"
 readme = "README.md"
 keywords = ["ml", "inference", "burn", "wgpu", "huggingface"]
 categories = ["science", "machine-learning"]
@@ -30,7 +30,7 @@ image = { version = "0.25", optional = true }
 tokio = { version = "1.35", features = ["rt-multi-thread", "macros"] }
 
 # Error handling
-thiserror = { workspace = true }
+thiserror = "2.0"
 
 # Byte manipulation
 bytemuck = { version = "1.14", features = ["derive"] }

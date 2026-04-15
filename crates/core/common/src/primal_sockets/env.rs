@@ -35,8 +35,10 @@ pub struct SocketPathEnv {
     /// Routing / intelligence: `TOADSTOOL_INTELLIGENCE_SOCKET`, then deprecated legacy `SQUIRREL_SOCKET`
     /// (prefer `BIOMEOS_ROUTING_SOCKET` / capability discovery).
     pub legacy_intelligence_socket: Option<String>,
-    /// `TOADSTOOL_SOCKET` override for ToadStool main socket
+    /// `TOADSTOOL_SOCKET` override for ToadStool JSON-RPC socket (primary)
     pub toadstool_socket: Option<String>,
+    /// `TOADSTOOL_TARPC_SOCKET` override for ToadStool tarpc socket (hot-path)
+    pub toadstool_tarpc_socket: Option<String>,
     /// `BIOMEOS_SOCKET_PATH` override for Nucleus socket
     pub biomeos_socket_path: Option<String>,
     /// `NUCLEUS_SOCKET` override for Nucleus socket
@@ -88,36 +90,39 @@ impl SocketPathEnv {
                 .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_SOCKET_ENV))
                 .ok(),
             toadstool_socket: std::env::var(socket_env::TOADSTOOL_SOCKET).ok(),
+            toadstool_tarpc_socket: std::env::var(socket_env::TOADSTOOL_TARPC_SOCKET).ok(),
             biomeos_socket_path: std::env::var(socket_env::BIOMEOS_SOCKET_PATH).ok(),
             nucleus_socket: std::env::var(socket_env::NUCLEUS_SOCKET).ok(),
             biomeos_insecure: std::env::var(socket_env::BIOMEOS_INSECURE).ok(),
-            coordination_connection_hint: std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
-                .or_else(|_| std::env::var("COORDINATION_URL"))
-                .or_else(|_| std::env::var("COORDINATION_ENDPOINT"))
-                .or_else(|_| std::env::var("SONGBIRD_URL"))
-                .or_else(|_| std::env::var("SONGBIRD_ENDPOINT"))
+            coordination_connection_hint: std::env::var(
+                socket_env::TOADSTOOL_COORDINATION_ENDPOINT,
+            )
+            .or_else(|_| std::env::var(socket_env::COORDINATION_URL))
+            .or_else(|_| std::env::var(socket_env::COORDINATION_ENDPOINT))
+            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_URL))
+            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_ENDPOINT))
+            .ok(),
+            security_connection_hint: std::env::var(socket_env::TOADSTOOL_SECURITY_ENDPOINT)
+                .or_else(|_| std::env::var(socket_env::SECURITY_URL))
+                .or_else(|_| std::env::var(socket_env::SECURITY_ENDPOINT))
+                .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_URL))
+                .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_ENDPOINT))
                 .ok(),
-            security_connection_hint: std::env::var("TOADSTOOL_SECURITY_ENDPOINT")
-                .or_else(|_| std::env::var("SECURITY_URL"))
-                .or_else(|_| std::env::var("SECURITY_ENDPOINT"))
-                .or_else(|_| std::env::var("BEARDOG_URL"))
-                .or_else(|_| std::env::var("BEARDOG_ENDPOINT"))
+            storage_connection_hint: std::env::var(socket_env::TOADSTOOL_STORAGE_ENDPOINT)
+                .or_else(|_| std::env::var(socket_env::STORAGE_URL))
+                .or_else(|_| std::env::var(socket_env::STORAGE_ENDPOINT))
+                .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_URL))
+                .or_else(|_| std::env::var(socket_env::LEGACY_NESTGATE_ENDPOINT))
                 .ok(),
-            storage_connection_hint: std::env::var("TOADSTOOL_STORAGE_ENDPOINT")
-                .or_else(|_| std::env::var("STORAGE_URL"))
-                .or_else(|_| std::env::var("STORAGE_ENDPOINT"))
-                .or_else(|_| std::env::var("NESTGATE_URL"))
-                .or_else(|_| std::env::var("NESTGATE_ENDPOINT"))
-                .ok(),
-            routing_connection_hint: std::env::var("TOADSTOOL_AI_ENDPOINT")
-                .or_else(|_| std::env::var("TOADSTOOL_INTELLIGENCE_ENDPOINT"))
-                .or_else(|_| std::env::var("AI_PROCESSING_ENDPOINT"))
-                .or_else(|_| std::env::var("TOADSTOOL_AI_PROCESSING_ENDPOINT"))
-                .or_else(|_| std::env::var("INTELLIGENCE_URL"))
-                .or_else(|_| std::env::var("INTELLIGENCE_ENDPOINT"))
-                .or_else(|_| std::env::var("AI_PROCESSING_URL"))
-                .or_else(|_| std::env::var("SQUIRREL_URL"))
-                .or_else(|_| std::env::var("SQUIRREL_ENDPOINT"))
+            routing_connection_hint: std::env::var(socket_env::TOADSTOOL_AI_ENDPOINT)
+                .or_else(|_| std::env::var(socket_env::TOADSTOOL_INTELLIGENCE_ENDPOINT))
+                .or_else(|_| std::env::var(socket_env::AI_PROCESSING_ENDPOINT))
+                .or_else(|_| std::env::var(socket_env::TOADSTOOL_AI_PROCESSING_ENDPOINT))
+                .or_else(|_| std::env::var(socket_env::INTELLIGENCE_URL))
+                .or_else(|_| std::env::var(socket_env::INTELLIGENCE_ENDPOINT))
+                .or_else(|_| std::env::var(socket_env::AI_PROCESSING_URL))
+                .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_URL))
+                .or_else(|_| std::env::var(socket_env::LEGACY_SQUIRREL_ENDPOINT))
                 .ok(),
         }
     }

@@ -68,8 +68,7 @@ fn test_json_rpc_response_deserialization_with_result() {
 
 #[test]
 fn test_json_rpc_response_deserialization_with_error() {
-    let json =
-        r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":1}"#;
+    let json = r#"{"jsonrpc":"2.0","error":{"code":-32600,"message":"Invalid request"},"id":1}"#;
     let parsed: Result<JsonRpcResponse<serde_json::Value>, _> = serde_json::from_str(json);
     assert!(parsed.is_ok());
     let resp = parsed.unwrap();

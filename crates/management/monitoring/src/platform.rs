@@ -8,6 +8,9 @@ use std::process::Command;
 
 use crate::types::{MonitoringConfig, ResourceMonitorError};
 
+#[cfg(target_os = "linux")]
+use toadstool_common::constants::platform_paths::procfs;
+
 /// Total system memory in bytes, discovered at runtime via `/proc/meminfo`.
 /// Falls back to 4 `GiB` if `/proc` is unavailable (macOS, Windows).
 fn total_system_memory_bytes() -> f64 {
@@ -49,7 +52,7 @@ async fn measure_linux_resources(
     use std::fs;
 
     // Read from /proc/[pid]/stat for CPU info
-    let stat_path = format!("/proc/{pid}/stat");
+    let stat_path = procfs::proc_pid_stat(pid);
     let stat_content = fs::read_to_string(&stat_path)
         .map_err(|e| ResourceMonitorError::CommandExecutionFailed(e.to_string()))?;
 
@@ -69,7 +72,7 @@ async fn measure_linux_resources(
         .map_err(|e: std::num::ParseIntError| ResourceMonitorError::ParseError(e.to_string()))?;
 
     // Read memory info from /proc/[pid]/status
-    let status_path = format!("/proc/{pid}/status");
+    let status_path = procfs::proc_pid_status(pid);
     let status_content = fs::read_to_string(&status_path)
         .map_err(|e| ResourceMonitorError::CommandExecutionFailed(e.to_string()))?;
 
@@ -77,15 +80,32 @@ async fn measure_linux_resources(
     let _vm_size = parse_proc_status_value(&status_content, "VmSize")?;
 
     // Read IO stats from /proc/[pid]/io
-    let io_path = format!("/proc/{pid}/io");
-    let io_content = fs::read_to_string(&io_path).unwrap_or_default();
+    let io_path = procfs::proc_pid_io(pid);
+    let io_content = fs::read_to_string(&io_path).unwrap_or_else(|e| {
+        tracing::warn!(
+            path = %io_path,
+            error = %e,
+            "failed to read process IO stats; storage read/write counters will be zero"
+        );
+        String::new()
+    });
 
     let read_bytes = parse_proc_io_value(&io_content, "read_bytes").unwrap_or(0);
     let write_bytes = parse_proc_io_value(&io_content, "write_bytes").unwrap_or(0);
 
     // Network monitoring if enabled
     let network_metrics = if config.enable_network_monitoring {
-        measure_linux_network_stats(pid).await.unwrap_or_default()
+        match measure_linux_network_stats(pid).await {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::warn!(
+                    pid,
+                    error = %e,
+                    "linux network stats unavailable; using default network metrics"
+                );
+                toadstool::resources::NetworkMetrics::default()
+            }
+        }
     } else {
         toadstool::resources::NetworkMetrics::default()
     };
@@ -128,9 +148,9 @@ async fn measure_linux_network_stats(
     use std::fs;
 
     // Read network stats from /proc/[pid]/net/dev
-    let net_dev_path = format!("/proc/{pid}/net/dev");
+    let net_dev_path = procfs::proc_pid_net_dev(pid);
     let net_content = fs::read_to_string(&net_dev_path)
-        .or_else(|_| fs::read_to_string("/proc/net/dev")) // Fallback to system-wide stats
+        .or_else(|_| fs::read_to_string(procfs::PROC_NET_DEV)) // Fallback to system-wide stats
         .map_err(|_e| ResourceMonitorError::NetworkMonitoringNotAvailable)?;
 
     let mut rx_bytes_total = 0u64;

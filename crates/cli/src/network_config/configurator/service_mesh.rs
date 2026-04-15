@@ -4,7 +4,7 @@
 //! Provides service mesh-specific configuration and validation.
 
 use toadstool::error::ToadStoolResult;
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 /// Service mesh extension trait
 #[expect(
@@ -25,14 +25,17 @@ impl ServiceMeshExt for super::OrchestrationNetworkConfigurator {
 
         let config = &self.config.service_mesh;
         debug!("Mesh type: {}", config.mesh_type);
-
-        // Configuration details...
-        debug!("Service mesh configuration applied");
+        debug!(
+            "configuration stored; runtime application deferred to orchestration layer (service mesh)"
+        );
 
         Ok(())
     }
 
     fn validate_service_mesh_config(&self) -> ToadStoolResult<()> {
+        trace!(
+            "validate_service_mesh_config: structural checks (mesh type, sidecar port); no control plane connectivity test"
+        );
         let config = &self.config.service_mesh;
 
         if config.enabled {

@@ -34,8 +34,7 @@ impl toadstool_common::infant_discovery::EndpointSource for MockEndpointSource {
 async fn test_capability_discovery_pattern() {
     let discovery = Arc::new(DiscoveryEngine::new());
 
-    let result =
-        CapabilityClient::discover(discovery, vec!["service-discovery".to_string()]).await;
+    let result = CapabilityClient::discover(discovery, vec!["service-discovery".to_string()]).await;
 
     assert!(result.is_ok() || result.is_err());
 }
@@ -79,10 +78,9 @@ async fn test_get_best_service() {
 async fn test_get_best_service_empty_fails() {
     let discovery = Arc::new(DiscoveryEngine::new());
 
-    let client =
-        CapabilityClient::discover(discovery, vec!["nonexistent-capability".to_string()])
-            .await
-            .unwrap();
+    let client = CapabilityClient::discover(discovery, vec!["nonexistent-capability".to_string()])
+        .await
+        .unwrap();
 
     let result = client.get_best_service().await;
     assert!(result.is_err());

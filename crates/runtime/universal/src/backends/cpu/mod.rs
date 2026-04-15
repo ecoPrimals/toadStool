@@ -25,6 +25,9 @@
 use crate::types::*;
 use std::time::Instant;
 
+#[cfg(target_os = "linux")]
+use toadstool_common::constants::platform_paths::procfs;
+
 // Operation modules (organized by pattern)
 mod activation_ops; // ReLU, GELU, Tanh, Sigmoid, Softmax, Dropout (element-wise)
 mod basic_ops; // Map, filter, reduce, scan (embarrassingly parallel)
@@ -124,7 +127,7 @@ impl CpuComputeUnit {
         #[cfg(target_os = "linux")]
         {
             // Read from /proc/meminfo
-            if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+            if let Ok(meminfo) = std::fs::read_to_string(procfs::MEMINFO) {
                 for line in meminfo.lines() {
                     if line.starts_with("MemTotal:")
                         && let Some(kb_str) = line.split_whitespace().nth(1)

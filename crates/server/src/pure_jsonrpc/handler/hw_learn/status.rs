@@ -3,6 +3,7 @@
 
 use super::HwLearnHandler;
 use crate::pure_jsonrpc::types::JsonRpcError;
+use tracing::warn;
 
 impl HwLearnHandler {
     /// `compute.hardware.status` — Report hw-learn pipeline state and firmware inventory.
@@ -21,7 +22,16 @@ impl HwLearnHandler {
         &self,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        let store = self.open_store().ok();
+        let store = match self.open_store() {
+            Ok(s) => Some(s),
+            Err(e) => {
+                warn!(
+                    error = ?e,
+                    "hw_learn_status: could not open recipe store; recipe architecture count will be zero"
+                );
+                None
+            }
+        };
         let arch_count = store.as_ref().map_or(0, |s| s.architectures().len());
 
         let chip = params

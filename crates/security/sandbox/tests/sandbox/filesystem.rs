@@ -3,6 +3,10 @@
 // Filesystem Mount Tests
 // ============================================================================
 
+use std::path::PathBuf;
+
+use toadstool_security_sandbox::*;
+
 #[test]
 fn test_filesystem_mount_readonly() {
     let mount = FilesystemMount {
@@ -41,7 +45,10 @@ fn test_filesystem_mount_tmpfs() {
     };
 
     assert!(matches!(mount.mount_type, MountType::TmpFs));
-    assert!(mount.options.iter().any(|o| o.contains("size")));
+    assert!(mount
+        .options
+        .iter()
+        .any(|o: &String| o.contains("size")));
 }
 
 #[test]

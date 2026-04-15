@@ -57,7 +57,10 @@ impl fmt::Display for HealthStatus {
 }
 
 /// Probes a device's health. Implementations are hardware-class-specific.
-#[async_trait::async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "generic via type param, no dyn dispatch; associated Error type prevents object safety"
+)]
 pub trait HealthProbe: Send + Sync {
     /// Error type for probe failures.
     type Error: std::error::Error + Send + Sync + 'static;

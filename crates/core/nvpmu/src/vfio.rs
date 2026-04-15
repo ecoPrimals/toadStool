@@ -27,6 +27,7 @@ use crate::error::{NvPmuError, Result};
 use rustix::ioctl::{Ioctl, IoctlOutput, Opcode, opcode};
 use std::fs::OpenOptions;
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
+use toadstool_common::constants::platform_paths::devfs;
 use toadstool_hw_safe::vfio_setup::{
     self, VFIO_API_VERSION, VFIO_GROUP_FLAGS_VIABLE, VFIO_TYPE1V2_IOMMU,
 };
@@ -67,8 +68,8 @@ impl VfioBar0Access {
         let container = OpenOptions::new()
             .read(true)
             .write(true)
-            .open("/dev/vfio/vfio")
-            .map_err(|e| NvPmuError::Hardware(format!("/dev/vfio/vfio: {e}")))?;
+            .open(devfs::VFIO_CONTAINER)
+            .map_err(|e| NvPmuError::Hardware(format!("{}: {e}", devfs::VFIO_CONTAINER)))?;
 
         let api_version = vfio_setup::get_api_version(container.as_fd())
             .map_err(|e| vfio_err("GET_API_VERSION", &e))?;

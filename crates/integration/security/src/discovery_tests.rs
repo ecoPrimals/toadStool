@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-
 use super::*;
 
 #[tokio::test]
@@ -159,8 +158,7 @@ fn test_entropy_source_variants() {
 
 #[tokio::test]
 async fn test_entropy_client_with_endpoint_available_false() {
-    let socket_path =
-        toadstool_common::primal_sockets::get_biomeos_dir().join("nonexistent.sock");
+    let socket_path = toadstool_common::primal_sockets::get_biomeos_dir().join("nonexistent.sock");
     let client = EntropyClient {
         rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path),
         available: false,

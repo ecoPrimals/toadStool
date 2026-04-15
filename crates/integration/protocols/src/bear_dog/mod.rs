@@ -20,8 +20,6 @@ pub use trait_::SecurityServiceIntegrationTrait as BearDogIntegrationTrait;
 
 /// Type alias for security config.
 pub type SecurityServiceConfig = SecurityConfig;
-/// Trait object type for the security integration trait.
-pub type SecurityServiceTrait = dyn SecurityServiceIntegrationTrait;
 
 #[cfg(test)]
 mod tests {

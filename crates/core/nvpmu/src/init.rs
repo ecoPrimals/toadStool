@@ -43,6 +43,10 @@ use hw_learn::distiller::{
     DriverKind, GpuArch, InitRecipe, InitStep, RegFunction, Vendor, VerifyCheck,
 };
 
+/// Default DRI device node for PMU init (first GPU render node).
+/// Future: accept device path as parameter for multi-GPU support.
+const DEFAULT_DRI_DEVICE: &str = "/dev/dri/card0";
+
 /// Result of applying a PMU init recipe.
 #[derive(Debug, serde::Serialize)]
 pub struct InitResult {
@@ -229,7 +233,6 @@ fn tally_results(chip: String, result: &hw_learn::applicator::ApplyResult) -> In
 /// # Errors
 ///
 /// Returns error if JSON parsing fails or BAR0 read/write fails.
-#[allow(unsafe_code)]
 pub fn apply_recipe(
     recipe_json: &str,
     register_access: &mut dyn RegisterAccess,
@@ -247,7 +250,7 @@ pub fn apply_recipe(
     tracing::info!(chip = %chip, steps = init_recipe.steps.len(), "applying PMU init recipe via hw-learn");
 
     let mut applicator = RecipeApplicator::new(false).with_register_access(register_access);
-    let result = applicator.apply(&init_recipe, "/dev/dri/card0");
+    let result = applicator.apply(&init_recipe, DEFAULT_DRI_DEVICE);
 
     if result.verdict != ApplyVerdict::Success {
         for sr in &result.step_results {
@@ -268,7 +271,6 @@ pub fn apply_recipe(
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-#[allow(unsafe_code)]
 pub fn apply_recipe_safe(
     recipe_json: &str,
     register_access: &mut dyn RegisterAccess,
@@ -303,7 +305,6 @@ pub fn apply_recipe_safe(
 ///
 /// Returns error if thermal safety is violated. On partial init failure,
 /// returns `NvPmuError::PartialInit` with rollback status.
-#[allow(unsafe_code)]
 pub fn apply_with_recovery(
     recipe: &InitRecipe,
     register_access: &mut dyn RegisterAccess,
@@ -318,7 +319,7 @@ pub fn apply_with_recovery(
     let snapshot = RegisterSnapshot::capture(recipe, register_access);
 
     let mut applicator = RecipeApplicator::new(false).with_register_access(register_access);
-    let result = applicator.apply(recipe, "/dev/dri/card0");
+    let result = applicator.apply(recipe, DEFAULT_DRI_DEVICE);
 
     let success = result.verdict == ApplyVerdict::Success;
 
@@ -362,7 +363,6 @@ pub fn apply_with_recovery(
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-#[allow(unsafe_code)]
 pub fn apply_init_recipe(
     recipe: &InitRecipe,
     register_access: &mut dyn RegisterAccess,
@@ -375,7 +375,7 @@ pub fn apply_init_recipe(
     tracing::info!(chip = %chip, steps = recipe.steps.len(), "applying init recipe via hw-learn");
 
     let mut applicator = RecipeApplicator::new(false).with_register_access(register_access);
-    let result = applicator.apply(recipe, "/dev/dri/card0");
+    let result = applicator.apply(recipe, DEFAULT_DRI_DEVICE);
 
     if result.verdict != ApplyVerdict::Success {
         for sr in &result.step_results {

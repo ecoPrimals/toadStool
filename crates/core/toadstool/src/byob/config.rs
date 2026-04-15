@@ -7,11 +7,38 @@ use std::time::Duration;
 use toadstool_config::defaults::network::DEFAULT_NETWORK_SUBNET;
 
 const DEFAULT_MAX_CONCURRENT_DEPLOYMENTS: u32 = 50;
-const RESOURCE_MONITORING_INTERVAL: Duration = Duration::from_secs(30);
-const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(10);
-const DEPLOYMENT_TIMEOUT: Duration = Duration::from_secs(600);
+
+const RESOURCE_MONITORING_INTERVAL_SECS: u64 = 30;
+const HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
+const DEPLOYMENT_TIMEOUT_SECS: u64 = 600;
 const GRACEFUL_SHUTDOWN_TIMEOUT_SECS: u64 = 30;
-const COMMON_WEB_SERVICE_PORTS: &[u16] = &[80, 443, 8443, 3000, 8000, 9000];
+
+const RESOURCE_MONITORING_INTERVAL: Duration =
+    Duration::from_secs(RESOURCE_MONITORING_INTERVAL_SECS);
+const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS);
+const DEPLOYMENT_TIMEOUT: Duration = Duration::from_secs(DEPLOYMENT_TIMEOUT_SECS);
+
+/// Well-known HTTP (IANA).
+const WEB_SERVICE_PORT_HTTP: u16 = 80;
+/// Well-known HTTPS (IANA).
+const WEB_SERVICE_PORT_HTTPS: u16 = 443;
+/// Common alternate HTTPS (e.g. management UIs).
+const WEB_SERVICE_PORT_HTTPS_ALT: u16 = 8443;
+/// Typical frontend dev-server port.
+const WEB_SERVICE_PORT_DEV_HTTP: u16 = 3000;
+/// Common alternate HTTP (e.g. Python `http.server`).
+const WEB_SERVICE_PORT_ALT_HTTP: u16 = 8000;
+/// Common application / alternate service port.
+const WEB_SERVICE_PORT_ALT_SERVICE: u16 = 9000;
+
+const COMMON_WEB_SERVICE_PORTS: &[u16] = &[
+    WEB_SERVICE_PORT_HTTP,
+    WEB_SERVICE_PORT_HTTPS,
+    WEB_SERVICE_PORT_HTTPS_ALT,
+    WEB_SERVICE_PORT_DEV_HTTP,
+    WEB_SERVICE_PORT_ALT_HTTP,
+    WEB_SERVICE_PORT_ALT_SERVICE,
+];
 
 /// BYOB executor configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

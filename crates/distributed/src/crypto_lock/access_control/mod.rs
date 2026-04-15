@@ -5,6 +5,7 @@ mod manager;
 #[cfg(test)]
 mod tests;
 mod types;
+mod validation;
 
 pub use manager::ToadStoolCryptoLock;
 pub use types::{AccessPolicies, AccessResult, CryptoLockStatus, PermissionLevel};

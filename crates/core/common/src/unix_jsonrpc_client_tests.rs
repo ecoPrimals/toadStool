@@ -105,8 +105,7 @@ fn test_response_deserialization() {
 
 #[test]
 fn test_error_response_deserialization() {
-    let json =
-        r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
+    let json = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":"Invalid Request"}}"#;
     let response: JsonRpcResponse<'_> = serde_json::from_slice(json.as_bytes()).unwrap();
 
     assert!(response.result.is_none());

@@ -75,7 +75,13 @@ impl Default for NetworkLoadBalancer {
 /// Fault tolerance manager for network distribution
 pub struct FaultToleranceManager {
     _circuit_breakers: Arc<tokio::sync::RwLock<HashMap<String, CircuitBreaker>>>,
-    #[allow(dead_code, reason = "Reserved for fault-tolerance retry policy wiring")]
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "Reserved for fault-tolerance retry policy wiring; read in unit tests until production call sites land"
+        )
+    )]
     retries: Arc<RetryManager>,
 }
 

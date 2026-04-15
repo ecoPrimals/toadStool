@@ -73,7 +73,7 @@ pub struct CapabilityProvider {
     /// Registry of available capabilities
     registry: Arc<RwLock<CapabilityRegistry>>,
     /// Connected primal adapters
-    adapters: Arc<RwLock<HashMap<String, Box<dyn PrimalAdapter>>>>,
+    adapters: Arc<RwLock<HashMap<String, Box<CoordinationAdapter>>>>,
     /// Workload executor
     executor: Arc<WorkloadExecutor>,
 }
@@ -182,7 +182,7 @@ impl CapabilityProvider {
     async fn create_adapter_for_endpoint(
         &self,
         endpoint: &str,
-    ) -> Result<Box<dyn PrimalAdapter>, DistributedError> {
+    ) -> Result<Box<CoordinationAdapter>, DistributedError> {
         Ok(Box::new(CoordinationAdapter::new(endpoint)?))
     }
 }

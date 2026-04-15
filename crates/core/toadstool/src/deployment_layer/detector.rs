@@ -6,6 +6,7 @@
 
 use super::{CloudProvider, ContainerRuntime, DeploymentLayer, DetectionError};
 use std::path::Path;
+use toadstool_common::constants::platform_paths::{devfs, etc_paths, procfs};
 
 /// Layer detector for identifying deployment environment
 ///
@@ -71,7 +72,7 @@ impl LayerDetector {
                 container_id: self.read_container_id().await.ok(),
             }));
         }
-        if let Ok(cgroup) = tokio::fs::read_to_string("/proc/1/cgroup").await {
+        if let Ok(cgroup) = tokio::fs::read_to_string(procfs::PROC_INIT_CGROUP).await {
             if cgroup.contains("docker") {
                 return Ok(Some(DeploymentLayer::ContainerLayer {
                     runtime: ContainerRuntime::Docker,
@@ -138,7 +139,7 @@ impl LayerDetector {
     }
 
     async fn detect_middleware(&self) -> Result<Option<DeploymentLayer>, DetectionError> {
-        if let Ok(os_release) = tokio::fs::read_to_string("/etc/os-release").await {
+        if let Ok(os_release) = tokio::fs::read_to_string(etc_paths::OS_RELEASE).await {
             if !os_release.contains("biomeOS") && !os_release.contains("SteamOS") {
                 let (host_os, host_version) = self.parse_os_release(&os_release);
                 return Ok(Some(DeploymentLayer::MiddlewareLayer {
@@ -177,9 +178,9 @@ impl LayerDetector {
             return output.status.success() && !output.stdout.is_empty();
         }
         #[cfg(target_os = "linux")]
-        if tokio::fs::metadata("/dev/kvm").await.is_ok() {
+        if tokio::fs::metadata(devfs::KVM).await.is_ok() {
             if let Ok(output) = tokio::process::Command::new("lsof")
-                .arg("/dev/kvm")
+                .arg(devfs::KVM)
                 .output()
                 .await
             {
@@ -212,13 +213,13 @@ impl LayerDetector {
                 return true;
             }
         }
-        tokio::fs::metadata("/etc/kubernetes/manifests")
+        tokio::fs::metadata(etc_paths::KUBERNETES_MANIFESTS)
             .await
             .is_ok()
     }
 
     async fn read_container_id(&self) -> Result<String, DetectionError> {
-        let cgroup = tokio::fs::read_to_string("/proc/self/cgroup").await?;
+        let cgroup = tokio::fs::read_to_string(procfs::PROC_SELF_CGROUP).await?;
         if let Some(line) = cgroup.lines().next() {
             if let Some(id) = line.split('/').next_back() {
                 return Ok(id.to_string());
@@ -278,7 +279,7 @@ impl LayerDetector {
     }
 
     fn detect_gpu_passthrough(&self) -> bool {
-        Path::new("/dev/dri").exists()
+        Path::new(devfs::DRI_DIR).exists()
     }
 
     fn parse_os_release(&self, content: &str) -> (String, Option<String>) {

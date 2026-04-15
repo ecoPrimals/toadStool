@@ -55,7 +55,8 @@ pub use types::{DiscoveryConfig, DiscoveryError, DiscoveryMethod};
 
 use crate::primal_identity::Capability;
 use crate::service_discovery::{
-    DiscoveredService, ServiceDiscovery, ServiceDiscoveryTrait, localhost_capability_fallback,
+    DiscoveredService, DiscoveryError as SvcDiscoveryError, ServiceDiscovery,
+    ServiceDiscoveryTrait, localhost_capability_fallback,
 };
 use std::time::Duration;
 
@@ -73,7 +74,7 @@ fn which_in_path(binary: &str) -> bool {
 /// Service discovery is delegated to the coordination service (comms layer) via mDNS.
 pub struct CapabilityDiscovery {
     /// Underlying discovery implementation
-    discovery: Box<dyn ServiceDiscoveryTrait>,
+    discovery: ServiceDiscovery,
 
     /// Discovery timeout
     timeout: Duration,
@@ -147,8 +148,7 @@ impl CapabilityDiscovery {
         &self,
         capability: Capability,
     ) -> Result<Vec<DiscoveredService>, DiscoveryError> {
-        // Use timeout
-        let result = tokio::time::timeout(
+        let result: Result<Vec<DiscoveredService>, SvcDiscoveryError> = tokio::time::timeout(
             self.timeout,
             self.discovery.find_services_by_capability(&capability),
         )
@@ -207,8 +207,7 @@ impl CapabilityDiscovery {
     /// ## Evolution (Mar 29, 2026)
     ///
     /// Removed nested `Runtime::new()` + `block_on` anti-pattern; initialization is async-only.
-    async fn detect_discovery_backend_async()
-    -> Result<Box<dyn ServiceDiscoveryTrait>, DiscoveryError> {
+    async fn detect_discovery_backend_async() -> Result<ServiceDiscovery, DiscoveryError> {
         use crate::service_discovery::DiscoveryMethod;
 
         #[cfg(target_os = "linux")]
@@ -229,11 +228,9 @@ impl CapabilityDiscovery {
 
         tracing::info!("Using environment-based service discovery");
 
-        let discovery = ServiceDiscovery::new(DiscoveryMethod::Auto)
+        ServiceDiscovery::new(DiscoveryMethod::Auto)
             .await
-            .map_err(|e| DiscoveryError::DiscoveryFailed(e.to_string()))?;
-
-        Ok(Box::new(discovery))
+            .map_err(|e| DiscoveryError::DiscoveryFailed(e.to_string()))
     }
 
     /// Try localhost fallback for development (ecoPrimals / biomeOS sockets, `TOADSTOOL_LOCAL_PORT`, …).

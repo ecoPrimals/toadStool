@@ -4,6 +4,7 @@ use tokio::sync::RwLock;
 
 use toadstool::ToadStoolResult;
 use toadstool_common::constants::timeouts;
+use toadstool_common::interned_strings::socket_env;
 
 use crate::hosting::RecursiveHostingManager;
 use crate::metrics::UniversalMetricsCollector;
@@ -266,13 +267,13 @@ impl Default for NetworkEffectsConfig {
 
 impl Default for CoordinationSchedulerConfig {
     fn default() -> Self {
-        let port: u16 = std::env::var("TOADSTOOL_COORDINATION_PORT")
-            .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_PORT")) // legacy env alias
+        let port: u16 = std::env::var(socket_env::TOADSTOOL_COORDINATION_PORT)
+            .or_else(|_| std::env::var(socket_env::TOADSTOOL_SONGBIRD_PORT)) // legacy env alias
             .ok()
             .and_then(|p| p.parse().ok())
             .unwrap_or(toadstool_config::ports::capability_fallback::COORDINATION);
 
-        let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+        let host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
             .unwrap_or_else(|_| String::from(toadstool_config::defaults::network::LOCALHOST));
 
         Self {

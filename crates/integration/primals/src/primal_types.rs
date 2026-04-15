@@ -93,7 +93,8 @@ impl PrimalType {
             "discovery" | "coordination" => Ok(Self::Discovery),
             "orchestration" | "network" => Ok(Self::Orchestration),
             "compute" | "ai" | "ml" | "intelligence" => Ok(Self::Compute),
-            "self" | "self_identity" | "toadstool" => Ok(Self::SelfIdentity),
+            "self" | "self_identity" => Ok(Self::SelfIdentity),
+            s if s == legacy::TOADSTOOL => Ok(Self::SelfIdentity),
             // Legacy primal-name aliases (backward compat for existing manifests)
             legacy::LEGACY_COORDINATION_LABEL | "song-bird" => Ok(Self::Discovery),
             legacy::LEGACY_SECURITY_LABEL | "bear-dog" => Ok(Self::Crypto),

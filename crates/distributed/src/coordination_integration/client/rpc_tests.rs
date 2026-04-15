@@ -1,6 +1,6 @@
 use crate::coordination_integration::types::{
-    CoordinationResponse, HealthCheckRequest, LoadBalancingRequest, LoadBalancingStrategy, NodeInfo,
-    ServiceRegistration,
+    CoordinationResponse, HealthCheckRequest, LoadBalancingRequest, LoadBalancingStrategy,
+    NodeInfo, ServiceRegistration,
 };
 use std::collections::HashMap;
 use toadstool_common::service_discovery::DiscoveredService;

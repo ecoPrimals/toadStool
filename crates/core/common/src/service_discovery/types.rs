@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::primal_identity::{Capability, PrimalIdentity, ServiceEndpoint};
@@ -144,8 +143,10 @@ impl DiscoveredService {
 }
 
 /// Service discovery trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait ServiceDiscoveryTrait: Send + Sync {
     /// Finds all services that advertise the given capability.
     async fn find_services_by_capability(

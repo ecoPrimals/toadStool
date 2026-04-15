@@ -3,7 +3,6 @@
 //!
 //! Pluggable adapters for different primals in the ecoPrimals ecosystem
 
-use async_trait::async_trait;
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::interned_strings::capabilities;
 // No longer using reqwest - using unix sockets (pure Rust!)
@@ -16,8 +15,10 @@ use crate::error::DistributedError;
 ///
 /// Implement this trait to add support for a new primal.
 /// Each primal can have its own communication protocol and registration format.
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait PrimalAdapter: Send + Sync {
     /// Get the primal name
     fn primal_name(&self) -> &str;
@@ -106,8 +107,6 @@ impl CoordinationAdapter {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl PrimalAdapter for CoordinationAdapter {
     fn primal_name(&self) -> &str {
         capabilities::COORDINATION

@@ -15,14 +15,14 @@ categories = ["science", "hardware-support"]
 akida-driver = { path = "../akida-driver" }
 
 # Data handling
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }
 
 # Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["fmt"] }
 
 # Time measurement: evolved to std::time::Instant (pure Rust, no external dep)
 

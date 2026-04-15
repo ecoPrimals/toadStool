@@ -4,7 +4,7 @@
 //! Provides traffic management, load balancing, and routing configuration.
 
 use toadstool::error::ToadStoolResult;
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 /// Traffic management extension trait
 #[expect(
@@ -31,8 +31,9 @@ impl TrafficExt for super::OrchestrationNetworkConfigurator {
 
         let config = &self.config.traffic_management;
         debug!("Traffic management enabled: {}", config.enabled);
-
-        // Configuration details...
+        debug!(
+            "configuration stored; runtime application deferred to orchestration layer (traffic management)"
+        );
 
         Ok(())
     }
@@ -42,18 +43,71 @@ impl TrafficExt for super::OrchestrationNetworkConfigurator {
 
         let config = &self.config.load_balancing;
         debug!("Load balancing algorithm: {}", config.algorithm);
-
-        // Configuration details...
+        debug!(
+            "configuration stored; runtime application deferred to orchestration layer (load balancing)"
+        );
 
         Ok(())
     }
 
     fn validate_traffic_management_config(&self) -> ToadStoolResult<()> {
-        // Validation logic...
+        trace!(
+            "validate_traffic_management_config: structural checks (percentages, rate limits, strategies); no traffic plane probe"
+        );
+        let config = &self.config.traffic_management;
+
+        if !config.enabled {
+            return Ok(());
+        }
+
+        if config.canary.percentage > 100 {
+            return Err(toadstool::error::ToadStoolError::configuration(
+                "Canary percentage cannot exceed 100".to_string(),
+            ));
+        }
+
+        if config.traffic_mirroring.enabled && config.traffic_mirroring.percentage > 100 {
+            return Err(toadstool::error::ToadStoolError::configuration(
+                "Traffic mirroring percentage cannot exceed 100".to_string(),
+            ));
+        }
+
+        if config.traffic_splitting.enabled && config.traffic_splitting.strategy.trim().is_empty() {
+            return Err(toadstool::error::ToadStoolError::configuration(
+                "Traffic splitting strategy cannot be empty when traffic splitting is enabled"
+                    .to_string(),
+            ));
+        }
+
+        if config.rate_limiting.enabled {
+            if let Some(ref global) = config.rate_limiting.global_limit {
+                if global.requests_per_second == 0 || global.burst_size == 0 {
+                    return Err(toadstool::error::ToadStoolError::configuration(
+                        "Global rate limit requests_per_second and burst_size must be non-zero when set"
+                            .to_string(),
+                    ));
+                }
+                if global.window_size.is_zero() {
+                    return Err(toadstool::error::ToadStoolError::configuration(
+                        "Global rate limit window_size cannot be zero".to_string(),
+                    ));
+                }
+            }
+        }
+
+        if config.blue_green.enabled && config.blue_green.switch_strategy.trim().is_empty() {
+            return Err(toadstool::error::ToadStoolError::configuration(
+                "Blue-green switch strategy cannot be empty when blue-green is enabled".to_string(),
+            ));
+        }
+
         Ok(())
     }
 
     fn validate_load_balancing_config(&self) -> ToadStoolResult<()> {
+        trace!(
+            "validate_load_balancing_config: structural checks (algorithm, health thresholds); no backend reachability test"
+        );
         let config = &self.config.load_balancing;
 
         if config.enabled {

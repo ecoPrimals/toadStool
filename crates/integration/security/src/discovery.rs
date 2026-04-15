@@ -3,6 +3,7 @@
 //!
 //! Discovers a crypto/entropy provider at runtime — no hardcoded service identities.
 use toadstool_common::interned_strings::capabilities;
+use toadstool_common::interned_strings::socket_env;
 
 use crate::error::SecurityError;
 use crate::seed::{EphemeralSeed, SeedQuality};
@@ -54,7 +55,7 @@ impl EntropyClient {
     /// - Connection fails
     pub async fn discover() -> Result<Self, SecurityError> {
         // Step 1: Check environment variable (user can override)
-        if let Ok(endpoint) = std::env::var("TOADSTOOL_ENTROPY_SERVICE_URL") {
+        if let Ok(endpoint) = std::env::var(socket_env::TOADSTOOL_ENTROPY_SERVICE_URL) {
             tracing::info!("Using entropy service from environment: {}", endpoint);
             return Self::connect(&endpoint).await;
         }
@@ -103,7 +104,9 @@ impl EntropyClient {
         // DEEP DEBT EVOLUTION: Check Unix socket first (no hardcoded ports!)
         // Environment variable override takes precedence
         // `BEARDOG_URL`: legacy env alias (backward compat)
-        if let Ok(url) = std::env::var("SECURITY_URL").or_else(|_| std::env::var("BEARDOG_URL")) {
+        if let Ok(url) = std::env::var(socket_env::SECURITY_URL)
+            .or_else(|_| std::env::var(socket_env::LEGACY_BEARDOG_URL))
+        {
             tracing::debug!("Using crypto service URL from environment: {}", url);
             return Ok(url);
         }

@@ -89,8 +89,7 @@ fn test_string_to_capability_all_variants() {
 fn test_capability_error_variants() {
     use crate::primal_identity::CryptoCapability;
 
-    let err1 =
-        CapabilityError::NoProviderFound(Capability::Crypto(CryptoCapability::Encryption));
+    let err1 = CapabilityError::NoProviderFound(Capability::Crypto(CryptoCapability::Encryption));
     assert!(err1.to_string().contains("No provider found"));
 
     let err2 = CapabilityError::ProviderUnreachable("test-service".to_string());
@@ -325,13 +324,12 @@ async fn test_discover_no_provider_found() {
     let result = serde_json::json!({ "services": [] });
     let (socket_path, _server) = spawn_mock_discovery_server(result).await;
     let path_str = socket_path.to_str().unwrap().to_string();
-    let err =
-        temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await
-                .unwrap_err()
-        })
-        .await;
+    let err = temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
+        CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+            .await
+            .unwrap_err()
+    })
+    .await;
     std::fs::remove_file(&socket_path).ok();
 
     assert!(matches!(err, CapabilityError::NoProviderFound(_)));
@@ -342,13 +340,12 @@ async fn test_discover_invalid_response_no_services_array() {
     let result = serde_json::json!({ "not_services": [] });
     let (socket_path, _server) = spawn_mock_discovery_server(result).await;
     let path_str = socket_path.to_str().unwrap().to_string();
-    let err =
-        temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await
-                .unwrap_err()
-        })
-        .await;
+    let err = temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
+        CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+            .await
+            .unwrap_err()
+    })
+    .await;
     std::fs::remove_file(&socket_path).ok();
 
     assert!(matches!(err, CapabilityError::InvalidResponse(_)));
@@ -362,13 +359,12 @@ async fn test_discover_invalid_response_no_name() {
     });
     let (socket_path, _server) = spawn_mock_discovery_server(result).await;
     let path_str = socket_path.to_str().unwrap().to_string();
-    let err =
-        temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await
-                .unwrap_err()
-        })
-        .await;
+    let err = temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
+        CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+            .await
+            .unwrap_err()
+    })
+    .await;
     std::fs::remove_file(&socket_path).ok();
 
     assert!(matches!(err, CapabilityError::InvalidResponse(_)));
@@ -382,13 +378,12 @@ async fn test_discover_invalid_response_no_endpoint() {
     });
     let (socket_path, _server) = spawn_mock_discovery_server(result).await;
     let path_str = socket_path.to_str().unwrap().to_string();
-    let err =
-        temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await
-                .unwrap_err()
-        })
-        .await;
+    let err = temp_env::async_with_vars([("SONGBIRD_SOCKET", Some(path_str.as_str()))], async {
+        CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
+            .await
+            .unwrap_err()
+    })
+    .await;
     std::fs::remove_file(&socket_path).ok();
 
     assert!(matches!(err, CapabilityError::InvalidResponse(_)));
@@ -448,8 +443,7 @@ async fn test_discover_capabilities_from_service() {
 async fn test_discover_default_socket_path() {
     temp_env::async_with_vars([("SONGBIRD_SOCKET", None::<&str>)], async {
         let result =
-            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption))
-                .await;
+            CapabilityProvider::discover(Capability::Crypto(CryptoCapability::Encryption)).await;
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),

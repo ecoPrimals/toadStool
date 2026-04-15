@@ -330,18 +330,15 @@ fn test_update_model_from_history_multiple_runtimes() {
 #[test]
 fn test_create_optimizer_fastest() {
     let config = PerformanceConfig::default();
-    let opt = IntelligentPerformanceOptimizer::new(
-        config,
-        RuntimeSelectionStrategy::FastestExecution,
-    );
+    let opt =
+        IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::FastestExecution);
     let _ = opt;
 }
 
 #[test]
 fn test_create_optimizer_load_balance() {
     let config = PerformanceConfig::default();
-    let opt =
-        IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::LoadBalance);
+    let opt = IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::LoadBalance);
     let _ = opt;
 }
 
@@ -349,10 +346,8 @@ fn test_create_optimizer_load_balance() {
 fn test_create_optimizer_custom_weights() {
     let config = PerformanceConfig::default();
     let weights = SelectionWeights::default();
-    let opt = IntelligentPerformanceOptimizer::new(
-        config,
-        RuntimeSelectionStrategy::Custom { weights },
-    );
+    let opt =
+        IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::Custom { weights });
     let _ = opt;
 }
 
@@ -362,10 +357,8 @@ async fn test_predict_resources_returns_ok() {
     use toadstool::workload::ExecutableSource;
 
     let config = PerformanceConfig::default();
-    let opt = IntelligentPerformanceOptimizer::new(
-        config,
-        RuntimeSelectionStrategy::FastestExecution,
-    );
+    let opt =
+        IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::FastestExecution);
     let workload = WorkloadSpec::Native {
         executable: ExecutableSource::File {
             path: PathBuf::from("/usr/bin/true"),
@@ -382,10 +375,8 @@ async fn test_predict_resources_returns_ok() {
 #[tokio::test]
 async fn test_get_recommendations_returns_empty() {
     let config = PerformanceConfig::default();
-    let opt = IntelligentPerformanceOptimizer::new(
-        config,
-        RuntimeSelectionStrategy::FastestExecution,
-    );
+    let opt =
+        IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::FastestExecution);
     let recs = opt.get_recommendations().await.unwrap();
     assert!(recs.is_empty());
 }
@@ -393,9 +384,7 @@ async fn test_get_recommendations_returns_empty() {
 #[tokio::test]
 async fn test_update_model_returns_ok() {
     let config = PerformanceConfig::default();
-    let opt = IntelligentPerformanceOptimizer::new(
-        config,
-        RuntimeSelectionStrategy::FastestExecution,
-    );
+    let opt =
+        IntelligentPerformanceOptimizer::new(config, RuntimeSelectionStrategy::FastestExecution);
     opt.update_model().await.unwrap();
 }

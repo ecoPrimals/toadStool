@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+use crate::constants::PRIMAL_NAME;
+
 use super::env::{PathEnv, Platform};
 
 /// Platform-agnostic path resolver.
@@ -163,13 +165,13 @@ impl<'a> PlatformPaths<'a> {
     /// ToadStool data directory
     #[must_use]
     pub fn toadstool_data_dir(&self) -> PathBuf {
-        self.data_dir().join("toadstool")
+        self.data_dir().join(PRIMAL_NAME)
     }
 
     /// ToadStool cache directory
     #[must_use]
     pub fn toadstool_cache_dir(&self) -> PathBuf {
-        self.cache_dir().join("toadstool")
+        self.cache_dir().join(PRIMAL_NAME)
     }
 
     /// ToadStool log directory (in data dir for persistence)
@@ -181,7 +183,7 @@ impl<'a> PlatformPaths<'a> {
     /// ToadStool temp directory (session-scoped)
     #[must_use]
     pub fn toadstool_temp_dir(&self) -> PathBuf {
-        self.temp_dir().join("toadstool")
+        self.temp_dir().join(PRIMAL_NAME)
     }
 
     /// Display backend socket

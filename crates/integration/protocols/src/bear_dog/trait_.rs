@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security integration trait for testability and abstraction
 
-use async_trait::async_trait;
 use std::collections::HashMap;
 
 use toadstool::{error::ToadStoolResult, security::SecurityContext};
@@ -10,7 +9,10 @@ use super::auth::{AuthResponse, AuthzResponse};
 use super::client::SecurityServiceIntegration;
 
 /// Trait for security-service auth/authz operations (enables mocking in tests).
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait SecurityServiceIntegrationTrait: Send + Sync {
     /// Authenticate and obtain access token
     async fn authenticate(
@@ -36,7 +38,6 @@ pub trait SecurityServiceIntegrationTrait: Send + Sync {
     ) -> ToadStoolResult<bool>;
 }
 
-#[async_trait]
 impl SecurityServiceIntegrationTrait for SecurityServiceIntegration {
     async fn authenticate(
         &self,

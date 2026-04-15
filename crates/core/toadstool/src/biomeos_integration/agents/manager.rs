@@ -7,6 +7,7 @@ use super::super::agent_backend::AgentBackend;
 use super::super::types::{AgentConfig, ModelConfig};
 use super::config::AgentDeploymentConfig;
 use crate::ToadStoolResult;
+use tracing::warn;
 
 /// Agent deployment manager for the intelligence / ML agent service.
 ///
@@ -237,12 +238,18 @@ impl AgentDeploymentManager {
 
     /// List all deployed agents (now properly async!)
     pub async fn list_agents(&self) -> Vec<super::AgentInfo> {
-        self.backend.list_agents().await.unwrap_or_default()
+        self.backend.list_agents().await.unwrap_or_else(|e| {
+            warn!(error = %e, "list_agents: backend call failed; returning empty list");
+            Vec::new()
+        })
     }
 
     /// List all loaded models (now properly async!)
     pub async fn list_models(&self) -> Vec<super::ModelInfo> {
-        self.backend.list_models().await.unwrap_or_default()
+        self.backend.list_models().await.unwrap_or_else(|e| {
+            warn!(error = %e, "list_models: backend call failed; returning empty list");
+            Vec::new()
+        })
     }
 
     /// Get agent resource usage (now properly async!)

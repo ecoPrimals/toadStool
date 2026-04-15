@@ -78,18 +78,18 @@ deny = [
     { name = "openssl" },
     { name = "openssl-sys" },
     # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives
-    # Note: ring enters graph via reqwest (dev-dep) → rustls → ring; not in production binary
+    # License clarified in [[licenses.clarify]]; ban left commented — ring may still appear via
+    # optional TLS/HTTP feature graphs elsewhere, not the default server/core path.
     #{ name = "ring" },
     # zstd-sys — C FFI for zstd; banned in production paths
-    # Note: appears as dev-dep of toadstool-runtime-secure-enclave only
-    # Exempted via bans.skip below
+    # toadstool-runtime-secure-enclave uses ruzstd (pure Rust); no member-specific exemption needed.
     #{ name = "zstd-sys" },
     # tungstenite WebSocket — removed in R-011; must not return
     { name = "tungstenite" },
     { name = "tokio-tungstenite" },
     # reqwest — migrated to pure Rust Unix IPC in production (R-008)
-    # reqwest still used in dev/test deps (integration-tests)
-    # Commented out: dev-dep only, not in production binary
+    # Optional on some crates (e.g. edge http-downloads); integration-tests does not depend on it.
+    # Commented out: not on the default core binary path
     #{ name = "reqwest", reason = "Use unix-jsonrpc-client instead of reqwest in core paths" },
 ]
 
@@ -100,13 +100,11 @@ skip = [
     { name = "naga", reason = "wgpu dep" },
 ]
 
-skip-tree = [
-    # cudarc removed S197 — CUDA dispatch via barraCuda/coralReef IPC
-    # Secure enclave runtime uses zstd (C FFI) as dev-dep only
-    { name = "toadstool-runtime-secure-enclave", reason = "zstd-sys is dev-dep only, not in production binary" },
-    # Integration tests use reqwest/ring for HTTP testing — not in production binary
-    { name = "toadstool-integration-tests", reason = "reqwest + ring are test-only deps" },
-]
+# skip-tree: skip ban traversal for subtrees rooted at a workspace crate (e.g. when a banned dep is
+# confined to one member). Empty as of 2026-04: toadstool-integration-tests has no reqwest/ring
+# (see `cargo tree -p toadstool-integration-tests --depth 1`); toadstool-runtime-secure-enclave uses
+# ruzstd for Zstandard, not zstd-sys (see `cargo tree -p toadstool-runtime-secure-enclave`).
+skip-tree = []
 
 # ── Sources ───────────────────────────────────────────────────────────────────
 [sources]

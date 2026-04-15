@@ -164,4 +164,3 @@ pub fn get_port_allocation_range() -> (u16, u16) {
     let end = loader.get_u16("PORT_RANGE_END", crate::defaults::ports::RANGE_END);
     (start, end)
 }
-

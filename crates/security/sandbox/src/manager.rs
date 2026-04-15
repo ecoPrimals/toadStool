@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
-use toadstool_security_policies::{PolicyManager, SecurityPolicy};
+use toadstool_security_policies::{FilePolicyManager, SecurityPolicy};
 
 use super::helpers;
 use super::traits::SandboxManager;
@@ -28,7 +28,7 @@ use super::windows::WindowsSandboxManager;
 pub struct CrossPlatformSandboxManager {
     config: SandboxConfig,
     sandboxes: Arc<RwLock<HashMap<String, SandboxInfo>>>,
-    _policy_manager: Arc<dyn PolicyManager>,
+    _policy_manager: Arc<FilePolicyManager>,
 
     #[cfg(target_os = "linux")]
     linux_manager: LinuxSandboxManager,
@@ -49,7 +49,7 @@ impl CrossPlatformSandboxManager {
     /// platform-specific manager fails to initialize.
     pub async fn new(
         config: SandboxConfig,
-        policy_manager: Arc<dyn PolicyManager>,
+        policy_manager: Arc<FilePolicyManager>,
     ) -> ToadStoolResult<Self> {
         info!("Creating cross-platform sandbox manager");
 

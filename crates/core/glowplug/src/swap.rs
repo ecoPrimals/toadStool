@@ -47,7 +47,10 @@ pub struct SwapObservation {
 ///
 /// The orchestrator calls this after quiescing and persisting state,
 /// and before restoring state and health-checking.
-#[async_trait::async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "generic via type param, no dyn dispatch; associated Error type prevents object safety"
+)]
 pub trait SwapExecutor: Send + Sync + fmt::Debug {
     /// Error type for swap operations.
     type Error: std::error::Error + Send + Sync + 'static;

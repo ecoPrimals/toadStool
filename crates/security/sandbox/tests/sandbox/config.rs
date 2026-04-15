@@ -7,7 +7,6 @@
 use toadstool_security_sandbox::*;
 
 use std::path::PathBuf;
-use std::time::Duration;
 
 // ============================================================================
 // Sandbox Configuration Tests

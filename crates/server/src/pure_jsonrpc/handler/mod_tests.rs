@@ -11,11 +11,7 @@ fn test_handler() -> JsonRpcHandler {
     JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 
-fn mk_request(
-    method: &str,
-    params: Option<serde_json::Value>,
-    id: i32,
-) -> JsonRpcRequest<'static> {
+fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
     JsonRpcRequest {
         jsonrpc: Cow::Borrowed("2.0"),
         method: Cow::Owned(method.to_string()),

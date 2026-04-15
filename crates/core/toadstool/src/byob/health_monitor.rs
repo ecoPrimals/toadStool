@@ -25,7 +25,10 @@ use crate::ToadStoolResult;
 /// - ✅ Capability-based (checks service health check configs)
 /// - ✅ Zero hardcoding (uses service-defined health checks)
 /// - ✅ Agnostic (works with any health check command)
-#[async_trait::async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "single concrete impl (ByobHealthMonitor), no dyn dispatch"
+)]
 pub trait HealthMonitor: Send + Sync {
     /// Monitor health of all services in a deployment
     ///
@@ -70,7 +73,6 @@ impl ByobHealthMonitor {
     }
 }
 
-#[async_trait::async_trait]
 impl HealthMonitor for ByobHealthMonitor {
     async fn monitor_deployment_health(&self, deployment_id: Uuid) -> ToadStoolResult<()> {
         debug!("🔍 Monitoring health for deployment {}", deployment_id);

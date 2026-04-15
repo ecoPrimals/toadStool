@@ -144,8 +144,7 @@ fn security_context_has_permission_wildcard() {
 
 #[test]
 fn security_context_has_permission_custom() {
-    let ctx =
-        SecurityContext::default().with_capability(Capability::Custom("my_cap".to_string()));
+    let ctx = SecurityContext::default().with_capability(Capability::Custom("my_cap".to_string()));
     assert!(ctx.has_permission("my_cap"));
     assert!(!ctx.has_permission("other_cap"));
 }

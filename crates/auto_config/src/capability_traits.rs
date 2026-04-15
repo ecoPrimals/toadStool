@@ -4,8 +4,6 @@
 //! Trait-based interfaces for hardware and ecosystem detection.
 //! Enables dependency injection and testing with mock implementations.
 
-use async_trait::async_trait;
-
 use crate::ToadStoolResult;
 use crate::ecosystem::DiscoveredServices;
 use crate::hardware::SystemCapabilities;
@@ -14,10 +12,10 @@ use crate::hardware::SystemCapabilities;
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of hardware detection.
-///
-/// NOTE(async-dyn): `into_trait()` returns `Box<dyn HardwareCapabilityDetector>`. Native `async fn`
-/// in traits is not object-safe; `#[async_trait]` is required.
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait HardwareCapabilityDetector: Send + Sync {
     /// Scan system hardware capabilities
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities>;
@@ -27,10 +25,10 @@ pub trait HardwareCapabilityDetector: Send + Sync {
 ///
 /// This trait enables dependency injection and testing by allowing
 /// both real and mock implementations of service discovery.
-///
-/// NOTE(async-dyn): `into_trait()` returns `Box<dyn EcosystemServiceDiscoverer>`. Native `async fn`
-/// in traits is not object-safe; `#[async_trait]` is required.
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait EcosystemServiceDiscoverer: Send + Sync {
     /// Discover available ecosystem services
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices>;
@@ -41,7 +39,6 @@ pub trait EcosystemServiceDiscoverer: Send + Sync {
 // ============================================================================
 
 /// Adapter to make `HardwareDetector` implement the trait
-#[async_trait]
 impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
         Self::scan_system(self).await
@@ -49,7 +46,6 @@ impl HardwareCapabilityDetector for crate::hardware::HardwareDetector {
 }
 
 /// Adapter to make `EcosystemDiscoverer` implement the trait
-#[async_trait]
 impl EcosystemServiceDiscoverer for crate::ecosystem::EcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
         Self::discover_services(self).await
@@ -112,7 +108,6 @@ impl Default for MockHardwareDetector {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-#[async_trait]
 impl HardwareCapabilityDetector for MockHardwareDetector {
     async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
         // Instant return - no I/O
@@ -164,52 +159,10 @@ impl Default for MockEcosystemDiscoverer {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-#[async_trait]
 impl EcosystemServiceDiscoverer for MockEcosystemDiscoverer {
     async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
         // Instant return - no network I/O
         Ok(self.services.clone())
-    }
-}
-
-/// Implement the traits for real detectors
-impl crate::hardware::HardwareDetector {
-    /// Convert to trait object
-    #[must_use]
-    pub fn into_trait(self) -> Box<dyn HardwareCapabilityDetector> {
-        Box::new(RealHardwareDetector { inner: self })
-    }
-}
-
-impl crate::ecosystem::EcosystemDiscoverer {
-    /// Convert to trait object
-    #[must_use]
-    pub fn into_trait(self) -> Box<dyn EcosystemServiceDiscoverer> {
-        Box::new(RealEcosystemDiscoverer { inner: self })
-    }
-}
-
-/// Wrapper for real hardware detector
-struct RealHardwareDetector {
-    inner: crate::hardware::HardwareDetector,
-}
-
-#[async_trait]
-impl HardwareCapabilityDetector for RealHardwareDetector {
-    async fn scan_system(&mut self) -> ToadStoolResult<SystemCapabilities> {
-        self.inner.scan_system().await
-    }
-}
-
-/// Wrapper for real ecosystem discoverer
-struct RealEcosystemDiscoverer {
-    inner: crate::ecosystem::EcosystemDiscoverer,
-}
-
-#[async_trait]
-impl EcosystemServiceDiscoverer for RealEcosystemDiscoverer {
-    async fn discover_services(&mut self) -> ToadStoolResult<DiscoveredServices> {
-        self.inner.discover_services().await
     }
 }
 

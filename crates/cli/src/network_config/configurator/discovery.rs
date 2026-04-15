@@ -4,7 +4,7 @@
 //! Provides DNS discovery configuration and validation.
 
 use toadstool::error::ToadStoolResult;
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 /// Discovery extension trait
 #[expect(
@@ -26,19 +26,54 @@ impl DiscoveryExt for super::OrchestrationNetworkConfigurator {
         let config = &self.config.dns_discovery;
         debug!("DNS servers: {:?}", config.dns_servers);
         debug!("Search domains: {:?}", config.search_domains);
-
-        // Configuration details...
+        debug!(
+            "configuration stored; runtime application deferred to orchestration layer (DNS discovery)"
+        );
 
         Ok(())
     }
 
     fn validate_dns_discovery_config(&self) -> ToadStoolResult<()> {
+        trace!(
+            "validate_dns_discovery_config: structural checks (servers, domains, timeouts); no live DNS query"
+        );
         let config = &self.config.dns_discovery;
 
         if config.enabled && config.dns_servers.is_empty() {
             return Err(toadstool::error::ToadStoolError::configuration(
                 "At least one DNS server must be configured".to_string(),
             ));
+        }
+
+        if config.enabled {
+            for server in &config.dns_servers {
+                if server.trim().is_empty() {
+                    return Err(toadstool::error::ToadStoolError::configuration(
+                        "DNS server entries cannot be empty strings".to_string(),
+                    ));
+                }
+            }
+
+            if config.resolution_timeout.is_zero() {
+                return Err(toadstool::error::ToadStoolError::configuration(
+                    "DNS resolution timeout cannot be zero when DNS discovery is enabled"
+                        .to_string(),
+                ));
+            }
+
+            let sd = &config.service_domains;
+            if sd.compute.trim().is_empty()
+                || sd.coordination.trim().is_empty()
+                || sd.security.trim().is_empty()
+                || sd.storage.trim().is_empty()
+                || sd.ai_processing.trim().is_empty()
+                || sd.biomeos.trim().is_empty()
+            {
+                return Err(toadstool::error::ToadStoolError::configuration(
+                    "All capability service domain fields must be non-empty when DNS discovery is enabled"
+                        .to_string(),
+                ));
+            }
         }
 
         Ok(())

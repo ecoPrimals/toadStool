@@ -89,7 +89,6 @@ impl Default for Toolchain68000 {
     }
 }
 
-#[async_trait::async_trait]
 impl CrossCompilationToolchain for Toolchain6502 {
     fn name(&self) -> &'static str {
         self.name
@@ -162,7 +161,6 @@ impl CrossCompilationToolchain for Toolchain6502 {
     }
 }
 
-#[async_trait::async_trait]
 impl CrossCompilationToolchain for ToolchainZ80 {
     fn name(&self) -> &'static str {
         self.name
@@ -235,7 +233,6 @@ impl CrossCompilationToolchain for ToolchainZ80 {
     }
 }
 
-#[async_trait::async_trait]
 impl CrossCompilationToolchain for Toolchain68000 {
     fn name(&self) -> &'static str {
         self.name

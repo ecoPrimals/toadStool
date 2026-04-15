@@ -19,7 +19,7 @@ toadstool = { path = "../core/toadstool" }
 hw-learn = { path = "../core/hw-learn" }
 
 # Testing framework
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
 tokio-test = "0.4"
 
 # Mocking and testing utilities
@@ -31,13 +31,13 @@ wiremock = { version = "0.6", optional = true }
 futures = { workspace = true }
 
 # Serialization for test data
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_yaml_ng = "0.10"
 bytes = { workspace = true }
 
 # Time and UUID for test data
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { workspace = true }
 
 # Temporary directories and files for testing
 tempfile = "3.0"
@@ -48,8 +48,8 @@ tempfile = "3.0"
 # reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false, optional = true }
 
 # Logging for tests
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Random data generation
 rand = "0.8"

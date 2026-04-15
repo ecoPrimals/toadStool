@@ -16,7 +16,7 @@ toadstool-common = { path = "../../core/common" }
 bytes = { workspace = true }
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
 futures = { workspace = true }
 
 # WebAssembly runtime - Pure Rust Evolution (Jan 17, 2026)
@@ -49,13 +49,13 @@ wasmi_wasi = { version = "1.0" }
 wat = "1.0"
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_yaml_ng = { workspace = true }
 
 # Utilities
-uuid = { version = "1.8", features = ["v4", "serde"] }
-tracing = "0.1"
+uuid = { workspace = true }
+tracing = { workspace = true }
 thiserror = { workspace = true }
 # System integration
 tempfile = { workspace = true }

@@ -16,6 +16,7 @@
 //! - `instance_id={uuid}` - unique service instance
 //! - `primal_type={type}` - type of primal (discovered by capability at runtime)
 
+use crate::constants::network::HTTP_PROTOCOL;
 use crate::primal_discovery::{
     DiscoveryConfig, DiscoveryError, DiscoveryMethod, PrimalEndpoint, TrustLevel,
 };
@@ -142,7 +143,7 @@ impl MdnsAdapter {
                             .next()
                             .map_or_else(|| info.get_hostname().to_string(), ToString::to_string);
                         let port = info.get_port();
-                        let url = format!("http://{host}:{port}");
+                        let url = format!("{HTTP_PROTOCOL}{host}:{port}");
 
                         let service_id = instance_id
                             .unwrap_or_else(|| format!("{}:{}", info.get_hostname(), port));
@@ -224,7 +225,7 @@ impl MdnsAdapter {
                         .next()
                         .map_or_else(|| info.get_hostname().to_string(), ToString::to_string);
                     let port = info.get_port();
-                    let url = format!("http://{host}:{port}");
+                    let url = format!("{HTTP_PROTOCOL}{host}:{port}");
 
                     let service_id =
                         instance_id.unwrap_or_else(|| format!("{}:{}", info.get_hostname(), port));

@@ -9,6 +9,8 @@
 
 use std::collections::HashMap;
 
+use tracing::warn;
+
 use super::DispatchHandler;
 use super::dag::{parse_edges, topological_sort};
 use super::types::{PipelineJob, PipelineStageRequest, PipelineStageResult, PipelineStatus};
@@ -135,7 +137,13 @@ impl DispatchHandler {
             {
                 obj.insert(
                     "previous_results".to_string(),
-                    serde_json::to_value(&completed_results).unwrap_or_default(),
+                    serde_json::to_value(&completed_results).unwrap_or_else(|e| {
+                        warn!(
+                            error = %e,
+                            "failed to serialize previous_results for pipeline stage; using null"
+                        );
+                        serde_json::Value::Null
+                    }),
                 );
             }
 
@@ -251,7 +259,9 @@ impl DispatchHandler {
 
         let (status_str, error_str) = match &pj.status {
             PipelineStatus::Failed(msg) => ("failed", Some(msg.as_str())),
-            PipelineStatus::PartialFailure { error, .. } => ("partial_failure", Some(error.as_str())),
+            PipelineStatus::PartialFailure { error, .. } => {
+                ("partial_failure", Some(error.as_str()))
+            }
             other => (other.as_str(), None),
         };
 

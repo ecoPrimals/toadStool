@@ -25,7 +25,7 @@ use crate::error::{NvPmuError, Result};
 use std::os::fd::{AsFd, OwnedFd};
 use toadstool_hw_safe::LockedMemory;
 use toadstool_hw_safe::huge_page::{self, HugePageMemory};
-use toadstool_hw_safe::vfio_dma::{self, VfioDmaMap, VfioDmaUnmap, flags};
+use toadstool_hw_safe::vfio_dma::{self, flags};
 
 const PAGE_SIZE: usize = 4096;
 
@@ -83,13 +83,6 @@ impl DmaBuffer {
         self.size
     }
 
-    fn vaddr(&self) -> *mut u8 {
-        match &self.mem {
-            DmaMemory::Locked(m) => m.as_ptr().as_ptr(),
-            DmaMemory::HugePage(m) => m.as_ptr().as_ptr(),
-        }
-    }
-
     /// Host-accessible immutable view.
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
@@ -109,20 +102,8 @@ impl DmaBuffer {
 }
 
 impl Drop for DmaBuffer {
-    #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     fn drop(&mut self) {
-        let unmap = VfioDmaUnmap {
-            argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
-            flags: 0,
-            iova: self.iova,
-            size: self.size as u64,
-        };
-
-        // SAFETY: container_fd is a valid VFIO container (OwnedFd guarantees);
-        // unmap matches prior dma_map for this IOVA range.
-        let _ = unsafe { vfio_dma::dma_unmap(self.container_fd.as_fd(), &unmap) };
-
-        // LockedMemory / HugePageMemory handle their own cleanup via Drop.
+        let _ = vfio_dma::dma_unmap_region(self.container_fd.as_fd(), self.iova, self.size);
         tracing::debug!(iova = %format!("{:#x}", self.iova), "freed DMA buffer");
     }
 }
@@ -146,20 +127,23 @@ impl DmaAllocator {
         }
     }
 
-    #[expect(clippy::cast_possible_truncation, reason = "struct sizes fit u32")]
     fn iommu_map(&self, buf: &DmaBuffer) -> Result<()> {
-        let dma_map = VfioDmaMap {
-            argsz: std::mem::size_of::<VfioDmaMap>() as u32,
-            flags: flags::READ | flags::WRITE,
-            vaddr: buf.vaddr() as u64,
-            iova: buf.iova,
-            size: buf.size as u64,
-        };
-
-        // SAFETY: container_fd is a valid VFIO container (OwnedFd guarantees);
-        // vaddr from LockedMemory/HugePageMemory; IOVA range unused.
-        unsafe { vfio_dma::dma_map(self.container_fd.as_fd(), &dma_map) }
-            .map_err(|e| NvPmuError::Hardware(format!("VFIO DMA map failed: {e}")))
+        match &buf.mem {
+            DmaMemory::Locked(mem) => vfio_dma::dma_map_locked(
+                self.container_fd.as_fd(),
+                mem,
+                buf.iova,
+                flags::READ | flags::WRITE,
+            )
+            .map_err(|e| NvPmuError::Hardware(format!("VFIO DMA map failed: {e}"))),
+            DmaMemory::HugePage(mem) => vfio_dma::dma_map_huge(
+                self.container_fd.as_fd(),
+                mem,
+                buf.iova,
+                flags::READ | flags::WRITE,
+            )
+            .map_err(|e| NvPmuError::Hardware(format!("VFIO DMA map failed: {e}"))),
+        }
     }
 
     /// Allocate a DMA buffer of the given size.
@@ -327,11 +311,11 @@ mod tests {
 
     #[test]
     fn dma_map_struct_layout() {
-        assert!(std::mem::size_of::<VfioDmaMap>() >= 32);
+        assert!(std::mem::size_of::<vfio_dma::VfioDmaMap>() >= 32);
     }
 
     #[test]
     fn dma_unmap_struct_layout() {
-        assert!(std::mem::size_of::<VfioDmaUnmap>() >= 24);
+        assert!(std::mem::size_of::<vfio_dma::VfioDmaUnmap>() >= 24);
     }
 }

@@ -112,8 +112,8 @@ pub(super) fn topological_sort(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::PipelineSubstrate;
+    use super::*;
 
     #[test]
     fn topological_sort_linear_chain() {

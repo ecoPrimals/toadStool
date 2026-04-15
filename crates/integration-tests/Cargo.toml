@@ -20,11 +20,11 @@ toadstool-testing = { path = "../testing" }
 # barracuda is a separate primal — zero library coupling. Interact via JSON-RPC IPC.
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
 
 # Common test utilities
-uuid    = { version = "1.0", features = ["v4"] }
-serde   = { version = "1.0", features = ["derive"] }
+uuid    = { workspace = true }
+serde   = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

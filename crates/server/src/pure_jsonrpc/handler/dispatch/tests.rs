@@ -164,7 +164,10 @@ async fn dispatch_submit_custom_dispatch_mode_registers_job_for_status_and_resul
         .expect("submit");
     assert_eq!(result["domain"], "compute.dispatch");
     let job_id = result["job_id"].as_str().expect("job_id");
-    assert_eq!(result["metadata"]["workgroup_size"], serde_json::json!([128, 2, 4]));
+    assert_eq!(
+        result["metadata"]["workgroup_size"],
+        serde_json::json!([128, 2, 4])
+    );
 
     let status = handler
         .dispatch_status(Some(&serde_json::json!({ "job_id": job_id })))
@@ -448,7 +451,10 @@ async fn shader_dispatch_accepts_compile_result_shape() {
     assert_eq!(result["domain"], "compute.dispatch");
     assert_eq!(result["metadata"]["arch"], "sm89");
     assert_eq!(result["metadata"]["binary_size"], 5);
-    assert_eq!(result["metadata"]["workgroup_size"], serde_json::json!([64, 1, 1]));
+    assert_eq!(
+        result["metadata"]["workgroup_size"],
+        serde_json::json!([64, 1, 1])
+    );
 }
 
 #[tokio::test]
@@ -546,10 +552,10 @@ async fn shader_dispatch_vfio_without_coral_returns_failed() {
 #[tokio::test]
 async fn shader_dispatch_increments_dispatch_count() {
     let handler = test_handler();
-    let before = handler.dispatch_capabilities(None).await.expect("caps")["output"]
-        ["total_dispatch_count"]
-        .as_u64()
-        .expect("count");
+    let before =
+        handler.dispatch_capabilities(None).await.expect("caps")["output"]["total_dispatch_count"]
+            .as_u64()
+            .expect("count");
 
     let params = serde_json::json!({
         "binary": [1, 2],
@@ -561,10 +567,10 @@ async fn shader_dispatch_increments_dispatch_count() {
         .await
         .expect("shader dispatch");
 
-    let after = handler.dispatch_capabilities(None).await.expect("caps")["output"]
-        ["total_dispatch_count"]
-        .as_u64()
-        .expect("count");
+    let after =
+        handler.dispatch_capabilities(None).await.expect("caps")["output"]["total_dispatch_count"]
+            .as_u64()
+            .expect("count");
     assert_eq!(after, before + 1);
 }
 

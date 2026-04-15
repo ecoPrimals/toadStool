@@ -12,6 +12,7 @@ use tracing::debug;
 
 use crate::ecosystem_types::{ServiceInfo, ServicePattern, ServiceStatus};
 use crate::{ToadStoolError, ToadStoolResult};
+use toadstool_common::constants::network::HTTP_PROTOCOL;
 use toadstool_config::defaults::network::{
     COMMON_SCAN_SUFFIXES, PROBE_DEFAULT_PORT, RFC1918_SCAN_RANGES,
 };
@@ -116,7 +117,7 @@ pub async fn scan_network_range(
 
         for (capability_key, pattern) in service_patterns {
             for &port in &pattern.default_ports {
-                let endpoint = format!("http://{ip}:{port}");
+                let endpoint = format!("{HTTP_PROTOCOL}{ip}:{port}");
 
                 if let Ok(service_info) = probe_service(&endpoint, pattern).await {
                     debug!("Found {} capability at {}", capability_key, endpoint);

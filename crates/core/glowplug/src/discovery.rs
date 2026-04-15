@@ -13,7 +13,10 @@ use crate::device_id::DeviceId;
 ///
 /// Implementations scan the system for available hardware and return
 /// a list of device identities that glowPlug can then manage.
-#[async_trait::async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "generic via type param, no dyn dispatch; associated Error type prevents object safety"
+)]
 pub trait DeviceDiscovery: Send + Sync {
     /// Error type for discovery failures.
     type Error: std::error::Error + Send + Sync + 'static;

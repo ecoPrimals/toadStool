@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Comprehensive Sandbox Security Tests Module
-//!
-//! This module organizes sandbox security tests into logical groupings.
-//!
-//! ## Organization
-//! - `config` - Sandbox configuration and setup tests
-//! - `resources` - Resource limits and enforcement tests
-//! - `filesystem` - Filesystem isolation and mount tests
-//! - `network` - Network configuration and restriction tests  
-//! - `security` - Security violation and enforcement tests
 
+#[path = "config.rs"]
 mod config;
+#[path = "resources.rs"]
 mod resources;
+#[path = "filesystem.rs"]
 mod filesystem;
+#[path = "network.rs"]
 mod network;
+#[path = "security.rs"]
 mod security;
-

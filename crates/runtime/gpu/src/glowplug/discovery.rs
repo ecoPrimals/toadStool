@@ -6,6 +6,7 @@
 //! `/sys/bus/pci/devices/` for VGA-compatible controllers (class 0x0300)
 //! and 3D controllers (class 0x0302).
 
+use toadstool_common::constants::platform_paths::sysfs;
 use toadstool_glowplug::device_id::DeviceId;
 use toadstool_glowplug::discovery::DeviceDiscovery;
 
@@ -28,7 +29,6 @@ impl GpuDiscovery {
     }
 }
 
-#[async_trait::async_trait]
 impl DeviceDiscovery for GpuDiscovery {
     type Error = std::io::Error;
 
@@ -38,7 +38,7 @@ impl DeviceDiscovery for GpuDiscovery {
 
     async fn discover(&self) -> Result<Vec<DeviceId>, Self::Error> {
         let mut gpus = Vec::new();
-        let pci_dir = std::path::Path::new("/sys/bus/pci/devices");
+        let pci_dir = std::path::Path::new(sysfs::BUS_PCI_DEVICES);
 
         if !pci_dir.exists() {
             return Ok(gpus);

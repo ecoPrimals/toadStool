@@ -63,9 +63,11 @@ pub mod capability_categories {
 
 /// System-level config paths (last-resort fallback after XDG/home paths)
 pub mod paths {
+    use toadstool_common::constants::platform_paths::etc_paths;
+
     /// System-wide services config (fallback when user config not found).
     /// Override with env `TOADSTOOL_SYSTEM_SERVICES_CONFIG` via [`system_services_config_path`].
-    pub const SYSTEM_SERVICES_CONFIG: &str = "/etc/toadstool/services.toml";
+    pub const SYSTEM_SERVICES_CONFIG: &str = etc_paths::TOADSTOOL_SERVICES_TOML;
 
     /// Resolved path to the system services TOML: `TOADSTOOL_SYSTEM_SERVICES_CONFIG` or [`SYSTEM_SERVICES_CONFIG`].
     #[must_use]

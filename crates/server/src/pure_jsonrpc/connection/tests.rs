@@ -230,7 +230,9 @@ async fn test_tcp_http_keepalive_multi_request() {
     let server_handler = Arc::clone(&handler);
     let _server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.expect("accept");
-        handle_tcp_connection(server_handler, stream).await.expect("ok");
+        handle_tcp_connection(server_handler, stream)
+            .await
+            .expect("ok");
     });
 
     let mut client = TcpStream::connect(addr).await.expect("connect");
@@ -326,7 +328,9 @@ async fn test_ndjson_with_blank_lines_between_requests() {
     let server_handler = Arc::clone(&handler);
     let _server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.expect("accept");
-        handle_tcp_connection(server_handler, stream).await.expect("ok");
+        handle_tcp_connection(server_handler, stream)
+            .await
+            .expect("ok");
     });
 
     let mut client = TcpStream::connect(addr).await.expect("connect");

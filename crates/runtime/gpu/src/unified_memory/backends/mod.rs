@@ -19,6 +19,7 @@ pub use cpu::CpuBackend;
 #[cfg(feature = "vulkan")]
 pub use vulkan::VulkanBackend;
 
+#[expect(deprecated)]
 pub use opencl::OpenClBackend;
 
 #[cfg(feature = "webgpu")]

@@ -114,8 +114,7 @@ fn test_discovered_service_is_stale() {
 
 #[test]
 fn test_discovered_service_primary_endpoint() {
-    let endpoint =
-        ServiceEndpoint::from_url_string("http://localhost:8080").expect("valid url");
+    let endpoint = ServiceEndpoint::from_url_string("http://localhost:8080").expect("valid url");
     let service = DiscoveredService {
         id: "test-1".to_string(),
         name: "test".to_string(),
@@ -132,8 +131,7 @@ fn test_discovered_service_primary_endpoint() {
 
 #[test]
 fn test_discovered_service_healthy_endpoints() {
-    let endpoint =
-        ServiceEndpoint::from_url_string("http://localhost:8080").expect("valid url");
+    let endpoint = ServiceEndpoint::from_url_string("http://localhost:8080").expect("valid url");
     let service = DiscoveredService {
         id: "test-1".to_string(),
         name: "test".to_string(),

@@ -117,7 +117,9 @@ pub const DOCUMENTATION_PREFIX: &str = TEST_NET_3_PREFIX;
 // TCP CONNECTION LIFECYCLE
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Idle timeout for TCP connections (seconds). Connections with no activity for
-/// this duration are closed to prevent stale half-open connections accumulating
-/// in multi-gate WAN deployments. Override via `TOADSTOOL_TCP_IDLE_TIMEOUT_SECS`.
+/// Idle timeout for TCP connections (seconds).
+///
+/// Connections with no activity for this duration are closed to prevent stale
+/// half-open connections accumulating in multi-gate WAN deployments.
+/// Override via `TOADSTOOL_TCP_IDLE_TIMEOUT_SECS`.
 pub const TCP_IDLE_TIMEOUT_SECS: u64 = 300;

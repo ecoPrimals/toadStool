@@ -21,7 +21,7 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 /// Stub — OpenCL backend removed S198; use barraCuda/coralReef via IPC.
 #[deprecated(
-    since = "0.2.0",
+    since = "0.1.0",
     note = "ocl removed S198. OpenCL dispatch is handled by barraCuda/coralReef via IPC."
 )]
 pub struct OpenClBackend {
@@ -31,6 +31,10 @@ pub struct OpenClBackend {
 #[expect(deprecated)]
 impl OpenClBackend {
     /// Always returns an error directing callers to barraCuda/coralReef.
+    #[deprecated(
+        since = "0.1.0",
+        note = "OpenClBackend is a stub (S198); use barraCuda/coralReef via capability IPC."
+    )]
     pub fn new() -> ToadStoolResult<Self> {
         Err(ToadStoolError::runtime(
             "OpenClBackend removed (S198): use barraCuda or coralReef via capability-based IPC \
@@ -41,7 +45,7 @@ impl OpenClBackend {
 
 /// Stub — OpenCL compute resource removed S198; use barraCuda/coralReef via IPC.
 #[deprecated(
-    since = "0.2.0",
+    since = "0.1.0",
     note = "ocl removed S198. OpenCL dispatch is handled by barraCuda/coralReef via IPC."
 )]
 pub struct OpenClComputeResource {

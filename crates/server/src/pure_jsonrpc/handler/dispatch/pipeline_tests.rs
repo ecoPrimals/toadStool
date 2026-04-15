@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-
 #[tokio::test]
 async fn pipeline_submit_empty_stages_rejected() {
     let handler = super::super::DispatchHandler::new(

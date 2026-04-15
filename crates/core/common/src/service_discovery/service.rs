@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use async_trait::async_trait;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -249,8 +248,6 @@ impl ServiceDiscovery {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl ServiceDiscoveryTrait for ServiceDiscovery {
     async fn find_services_by_capability(
         &self,

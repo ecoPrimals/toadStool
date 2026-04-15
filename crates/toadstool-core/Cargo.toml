@@ -12,8 +12,8 @@ categories = ["hardware-support", "development-tools"]
 
 [dependencies]
 thiserror = { workspace = true }
-tracing = "0.1"
-serde = { version = "1", features = ["derive"] }
+tracing = { workspace = true }
+serde = { workspace = true }
 
 # For NPU backend selection
 akida-driver = { path = "../neuromorphic/akida-driver" }

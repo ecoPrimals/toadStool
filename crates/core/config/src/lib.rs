@@ -62,10 +62,12 @@ pub mod services;
 /// - `ConfigUtils::get_toadstool_port()` - Env-aware helpers where needed
 pub mod network;
 
+use toadstool_common::constants::PRIMAL_NAME;
+
 /// Application configuration constants
 pub mod app {
     /// Default application name
-    pub const DEFAULT_APP_NAME: &str = "toadstool";
+    pub const DEFAULT_APP_NAME: &str = super::PRIMAL_NAME;
 
     /// Default environment
     pub const DEFAULT_ENVIRONMENT: &str = "development";

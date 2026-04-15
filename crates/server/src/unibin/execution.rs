@@ -11,13 +11,14 @@ use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 use super::capabilities;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 
 /// Bind to any interface with OS-assigned port (TCP fallback when Unix sockets unavailable).
 ///
 /// Overridable via `TOADSTOOL_BIND_ADDRESS` environment variable.
 fn bind_any() -> String {
-    let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+    let host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
         .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
     format!("{host}:0")
 }
@@ -33,7 +34,7 @@ pub async fn create_executor(
 ) -> Result<std::sync::Arc<dyn WorkloadExecutor + Send + Sync>, ServerError> {
     info!("Creating executor with distributed coordinator (isomorphic/fractal)");
 
-    let use_distributed = std::env::var("TOADSTOOL_STANDALONE")
+    let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
         .map(|v| v != "1" && v.to_lowercase() != "true")
         .unwrap_or(true);
 
@@ -61,8 +62,8 @@ pub async fn create_executor(
                         );
                         String::new()
                     }),
-                auth_token: std::env::var("COORDINATION_AUTH_TOKEN")
-                    .or_else(|_| std::env::var("SONGBIRD_AUTH_TOKEN"))
+                auth_token: std::env::var(socket_env::COORDINATION_AUTH_TOKEN)
+                    .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_AUTH_TOKEN))
                     .ok(),
                 health_reporting_interval_secs: 60,
             }),
@@ -174,7 +175,8 @@ async fn start_tcp_servers(
 
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
-    let bind_addr = std::env::var("TOADSTOOL_TCP_BIND_ADDRESS").unwrap_or_else(|_| bind_any());
+    let bind_addr =
+        std::env::var(socket_env::TOADSTOOL_TCP_BIND_ADDRESS).unwrap_or_else(|_| bind_any());
 
     let tarpc_listener = TcpListener::bind(&bind_addr)
         .await
@@ -213,7 +215,7 @@ async fn start_tcp_servers(
 async fn start_tcp_jsonrpc_on_port(handler: Arc<JsonRpcHandler>, port: u16) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
-    let host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+    let host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
         .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
     let addr = format!("{host}:{port}");
     let listener = TcpListener::bind(&addr)
@@ -297,7 +299,7 @@ pub fn write_tcp_discovery_file(filename: &str, addr: &std::net::SocketAddr) -> 
 
     let content = format!("tcp:{addr}");
 
-    if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+    if let Ok(runtime_dir) = env::var(socket_env::XDG_RUNTIME_DIR) {
         let path = PathBuf::from(runtime_dir).join(filename);
         fs::write(&path, &content).map_err(|e| ServerError::Internal(e.to_string()))?;
         info!("📁 TCP discovery file: {}", path.display());

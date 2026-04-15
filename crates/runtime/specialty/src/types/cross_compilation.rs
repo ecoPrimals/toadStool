@@ -9,7 +9,10 @@ use super::LegacyArchitecture;
 use crate::ToadStoolResult;
 
 /// Cross-compilation toolchain trait for legacy architectures
-#[async_trait::async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "no dyn dispatch; concrete toolchain types used directly"
+)]
 pub trait CrossCompilationToolchain: Send + Sync {
     /// Get the toolchain name
     fn name(&self) -> &'static str;

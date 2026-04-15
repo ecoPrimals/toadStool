@@ -23,6 +23,9 @@ use tracing::{info, warn};
 
 use crate::errors::{ServerError, ServerResult};
 
+#[cfg(unix)]
+use toadstool_common::constants::platform_paths::procfs;
+
 // Deep debt solution: Use pure RPC types from local module
 #[cfg(test)]
 use crate::rpc_types::{AvailableResources, ComputeUnit, ExecutionMetrics};
@@ -81,7 +84,7 @@ impl ToadStoolTarpcServer {
     fn query_system_load() -> Option<f32> {
         #[cfg(unix)]
         {
-            if let Ok(loadavg) = std::fs::read_to_string("/proc/loadavg")
+            if let Ok(loadavg) = std::fs::read_to_string(procfs::LOADAVG)
                 && let Some(first) = loadavg.split_whitespace().next()
                 && let Ok(load) = first.parse::<f32>()
             {
@@ -256,12 +259,8 @@ impl ToadStoolTarpcServer {
             let server = self.clone();
 
             tokio::spawn(async move {
-                connection::serve_on_tarpc_channel_with_idle_timeout(
-                    server,
-                    stream,
-                    idle_timeout,
-                )
-                .await;
+                connection::serve_on_tarpc_channel_with_idle_timeout(server, stream, idle_timeout)
+                    .await;
                 tracing::debug!("tarpc TCP connection from {addr} closed");
             });
         }

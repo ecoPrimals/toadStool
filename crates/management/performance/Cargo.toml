@@ -17,11 +17,11 @@ toadstool-common = { path = "../../core/common" }
 toadstool-config = { path = "../../core/config" }
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
 
 # Serialization and configuration
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_yaml_ng = "0.10"
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
@@ -32,11 +32,11 @@ ndarray = { version = "0.16", features = ["serde"] }
 
 # Collections and utilities
 indexmap = "2.0"
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { workspace = true }
 
 # Logging and tracing
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Error handling
 thiserror = { workspace = true }

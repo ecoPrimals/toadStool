@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use super::types::DispatchStatus;
 use super::DispatchHandler;
+use super::types::DispatchStatus;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 impl DispatchHandler {

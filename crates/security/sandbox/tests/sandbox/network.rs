@@ -3,6 +3,8 @@
 // Network Configuration Tests
 // ============================================================================
 
+use toadstool_security_sandbox::*;
+
 #[test]
 fn test_network_config_disabled() {
     let config = NetworkConfig {

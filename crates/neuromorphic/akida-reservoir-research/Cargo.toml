@@ -13,9 +13,9 @@ categories = ["science", "hardware-support"]
 akida-driver = { path = "../akida-driver" }
 akida-models = { path = "../akida-models" }
 thiserror = { workspace = true }
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 ndarray = "0.16"
 rand = "0.8"
 rand_distr = "0.4"

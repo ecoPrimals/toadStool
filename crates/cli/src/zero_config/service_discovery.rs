@@ -15,7 +15,7 @@ use tokio::time::timeout;
 use tracing::debug;
 
 use super::types::ServiceEndpoint;
-use toadstool_common::constants::network::BIND_ANY;
+use toadstool_common::constants::network::{BIND_ANY, HTTP_PROTOCOL, UNIX_SOCKET_URL_SCHEME};
 
 /// mDNS multicast group address (RFC 6762)
 const MDNS_MULTICAST_ADDR: &str = "224.0.0.251";
@@ -93,7 +93,7 @@ impl ServiceDiscovery {
             toadstool_common::primal_sockets::get_socket_path_for_capability(capability_name);
 
         if socket_path.exists() {
-            let endpoint = format!("unix://{}", socket_path.display());
+            let endpoint = format!("{UNIX_SOCKET_URL_SCHEME}://{}", socket_path.display());
             debug!("Found capability socket: {}", endpoint);
 
             return Ok(Some(ServiceEndpoint {
@@ -174,7 +174,7 @@ impl ServiceDiscovery {
                     debug!("Found {} at {} via DNS-SD", capability_name, addr);
                     return Ok(Some(ServiceEndpoint {
                         name: capability_name.to_string(),
-                        endpoint: format!("http://{addr}"),
+                        endpoint: format!("{HTTP_PROTOCOL}{addr}"),
                         version: "unknown".to_string(),
                         status: "discovered".to_string(),
                         auth_required: false,
@@ -290,7 +290,11 @@ impl ServiceDiscovery {
                 debug!("Parsed mDNS A/AAAA record for {}: {}", capability_name, ip);
                 return Ok(Some(ServiceEndpoint {
                     name: capability_name.to_string(),
-                    endpoint: format!("http://{}:{}", ip, toadstool_config::ports::daemon_port()),
+                    endpoint: format!(
+                        "{HTTP_PROTOCOL}{}:{}",
+                        ip,
+                        toadstool_config::ports::daemon_port()
+                    ),
                     version: "1.0.0".to_string(),
                     status: "discovered".to_string(),
                     auth_required: false,
@@ -398,7 +402,7 @@ fn scan_biomeos_dir(capability_name: &str) -> Result<Option<ServiceEndpoint>> {
                 .and_then(|s| s.to_str())
                 .is_some_and(|s| s.starts_with(&prefix));
         if is_match && path.exists() {
-            let endpoint = format!("unix://{}", path.display());
+            let endpoint = format!("{UNIX_SOCKET_URL_SCHEME}://{}", path.display());
             tracing::debug!(
                 "biomeOS directory scan found {} socket: {}",
                 capability_name,

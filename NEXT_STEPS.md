@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 14, 2026 — S203i (Deep Debt: Massive Test Extraction + Hardcoding Evolution)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **~80 justified #[allow]** | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)**
-**Latest**: S203i — 52 production files refactored via test extraction (~10K lines moved). Production files >500L reduced 38→25 (no extractable test blocks remain). Hardcoding evolution: `CORALREEF_URL`/`SOCKET` refs → capability-neutral, `localhost` literal → `DEFAULT_HOSTNAME`. S203h: TCP idle timeout (300s configurable), `TCP_NODELAY` on all TCP streams. S203g: 6 deprecated removals, async GPU discovery, forward clone opt. S203f: wetSpring V143 validation, `compute.execute` direct route.
+**Updated**: April 15, 2026 — S203k (Deep Debt: Comprehensive Evolution Pass)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` 183→~144 (8 crates freed)** | **workspace deps unified**
+**Latest**: S203k — Comprehensive evolution: 13 async traits migrated to native AFIT (8 crates freed from async-trait dep). 70+ raw env var strings interned. HTTP/Unix protocol constants. Large file smart refactoring (4 files → submodule directories). Dead code cleanup, error swallowing → tracing::warn. Network configurator stubs → structural validation. 5 active debt items cataloged. S203j: tarpc socket unification, deprecated CUDA/OpenCL stubs, platform path constants, magic number evolution, workspace dep unification.
 
 ---
 

@@ -35,10 +35,7 @@ impl CryptoProvider for MockProvider {
         Ok(vec![])
     }
 
-    async fn generate_key(
-        &self,
-        _security_level: SecurityLevel,
-    ) -> ToadStoolResult<EncryptionKey> {
+    async fn generate_key(&self, _security_level: SecurityLevel) -> ToadStoolResult<EncryptionKey> {
         Ok(EncryptionKey::default())
     }
 

@@ -48,17 +48,18 @@ pub mod toadstool {
 /// Each capability resolves via: env var → config file → this fallback.
 pub mod capability_fallback {
     use toadstool_common::constants::discovery_ports::{
-        DISCOVERY_HTTP_FALLBACK, DISPLAY_IPC_FALLBACK,
+        DEFAULT_COORDINATION_PORT, DEFAULT_SECURITY_PORT, DEFAULT_STORAGE_PORT,
+        DISPLAY_IPC_FALLBACK,
     };
 
     /// Coordination capability (orchestration, scheduling)
-    pub const COORDINATION: u16 = DISCOVERY_HTTP_FALLBACK;
+    pub const COORDINATION: u16 = DEFAULT_COORDINATION_PORT;
 
     /// Security capability (auth, policy, zero-trust)
-    pub const SECURITY: u16 = 8081;
+    pub const SECURITY: u16 = DEFAULT_SECURITY_PORT;
 
     /// Storage capability (artifacts, pipelines)
-    pub const STORAGE: u16 = 8082;
+    pub const STORAGE: u16 = DEFAULT_STORAGE_PORT;
 
     /// Platform / intelligence capability (MCP, model hosting)
     pub const PLATFORM: u16 = 8083;

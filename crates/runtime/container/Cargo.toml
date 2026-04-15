@@ -16,20 +16,19 @@ toadstool-common = { path = "../../core/common" }
 toadstool-config = { path = "../../core/config" }
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
-async-trait = "0.1"
+tokio = { workspace = true }
 
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_yaml_ng = { workspace = true }
 bytes = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # UUID generation
-uuid = { version = "1.0", features = ["v4"] }
+uuid = { workspace = true }
 
 # Futures utilities
 futures = { workspace = true }
@@ -53,7 +52,7 @@ flate2 = { version = "1.0", default-features = false, features = ["rust_backend"
 # BYOB HTTP server — future: migrate to UDS JSON-RPC (songBird owns HTTP)
 axum = "0.7"
 clap = { workspace = true }
-tracing-subscriber = "0.3"
+tracing-subscriber = { workspace = true }
 toml = "0.8"
 
 [features]
@@ -64,6 +63,7 @@ docker = ["bollard"]
 # registry-auth = ["reqwest"]
 
 [dev-dependencies]
+async-trait = { workspace = true }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 tower = { version = "0.5", features = ["util"] }

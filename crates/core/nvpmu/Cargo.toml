@@ -10,13 +10,14 @@ keywords = ["gpu", "nvidia", "power-management", "pmu"]
 categories = ["hardware-support", "science"]
 
 [dependencies]
+toadstool-common = { path = "../common" }
 hw-learn = { path = "../hw-learn" }
 toadstool-hw-safe = { path = "../hw-safe" }
 rustix = { version = "1.1", features = ["mm", "event", "time"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-thiserror = "2"
-tracing = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
 
 [[bin]]
 name = "nvpmu-apply"

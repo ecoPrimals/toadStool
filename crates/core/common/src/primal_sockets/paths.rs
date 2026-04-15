@@ -183,7 +183,7 @@ pub fn resolve_nucleus_socket(env: &SocketPathEnv) -> PathBuf {
     resolve_biomeos_dir(env).join("nucleus.sock")
 }
 
-/// Pure logic: resolve toadstool socket
+/// Pure logic: resolve toadstool JSON-RPC socket (primary protocol)
 #[must_use]
 pub fn resolve_toadstool_socket(env: &SocketPathEnv) -> PathBuf {
     if let Some(ref socket) = env.toadstool_socket {
@@ -193,6 +193,26 @@ pub fn resolve_toadstool_socket(env: &SocketPathEnv) -> PathBuf {
         return PathBuf::from(socket);
     }
     resolve_biomeos_dir(env).join(SELF_SOCKET)
+}
+
+/// Pure logic: resolve toadstool tarpc socket (secondary, hot-path protocol).
+///
+/// tarpc uses a separate socket to avoid bind collision with the JSON-RPC
+/// primary listener. Convention: `compute-tarpc.sock` (or
+/// `compute-{family_id}-tarpc.sock` for non-default families).
+#[must_use]
+pub fn resolve_toadstool_tarpc_socket(env: &SocketPathEnv) -> PathBuf {
+    if let Some(ref socket) = env.toadstool_tarpc_socket {
+        return PathBuf::from(socket);
+    }
+    let family_id = resolve_family_id(env);
+    let domain = crate::constants::primal_identity::CAPABILITY_DOMAIN;
+    let filename = if family_id.is_empty() || family_id == "default" {
+        format!("{domain}-tarpc.sock")
+    } else {
+        format!("{domain}-{family_id}-tarpc.sock")
+    };
+    resolve_biomeos_dir(env).join(filename)
 }
 
 /// Pure logic: resolve socket path for any service label (capability id or legacy primal alias).
@@ -354,6 +374,46 @@ mod tests {
         assert!(
             path.to_string_lossy().ends_with("compute.sock"),
             "Self-Knowledge v1.1: domain-based socket name, got: {}",
+            path.display()
+        );
+    }
+
+    #[test]
+    fn test_resolve_toadstool_tarpc_socket_override() {
+        let env = SocketPathEnv {
+            toadstool_tarpc_socket: Some("/custom/tarpc.sock".to_string()),
+            ..test_env()
+        };
+        let path = resolve_toadstool_tarpc_socket(&env);
+        assert_eq!(path, PathBuf::from("/custom/tarpc.sock"));
+    }
+
+    #[test]
+    fn test_resolve_toadstool_tarpc_socket_default_family() {
+        let env = SocketPathEnv {
+            toadstool_tarpc_socket: None,
+            biomeos_family_id: None,
+            ..test_env()
+        };
+        let path = resolve_toadstool_tarpc_socket(&env);
+        assert!(
+            path.to_string_lossy().ends_with("compute-tarpc.sock"),
+            "expected compute-tarpc.sock, got: {}",
+            path.display()
+        );
+    }
+
+    #[test]
+    fn test_resolve_toadstool_tarpc_socket_custom_family() {
+        let env = SocketPathEnv {
+            toadstool_tarpc_socket: None,
+            biomeos_family_id: Some("nat0".to_string()),
+            ..test_env()
+        };
+        let path = resolve_toadstool_tarpc_socket(&env);
+        assert!(
+            path.to_string_lossy().ends_with("compute-nat0-tarpc.sock"),
+            "expected compute-nat0-tarpc.sock, got: {}",
             path.display()
         );
     }

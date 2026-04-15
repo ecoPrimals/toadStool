@@ -2,6 +2,8 @@
 //! CPU detection and capabilities
 
 use serde::{Deserialize, Serialize};
+#[cfg(any(target_os = "linux", target_arch = "riscv64"))]
+use toadstool_common::constants::platform_paths::procfs;
 use tracing::{debug, warn};
 
 use crate::ToadStoolResult;
@@ -69,7 +71,7 @@ pub struct CpuFeatures {
 /// Detect CPU capabilities and characteristics
 pub async fn detect_cpu(_detector: &HardwareDetector) -> ToadStoolResult<CpuInfo> {
     let mut cpu_info = if cfg!(target_os = "linux")
-        && let Ok(cpuinfo) = tokio::fs::read_to_string("/proc/cpuinfo").await
+        && let Ok(cpuinfo) = tokio::fs::read_to_string(procfs::CPUINFO).await
     {
         parse_linux_cpuinfo(&cpuinfo)
     } else {
@@ -301,7 +303,7 @@ fn detect_cpu_features() -> CpuFeatures {
     {
         // Probe the 'V' (vector) extension from the ISA string in /proc/cpuinfo.
         // Examples of ISA strings that include V: "rv64imafdc_v", "rva22u64v"
-        let has_v = std::fs::read_to_string("/proc/cpuinfo")
+        let has_v = std::fs::read_to_string(procfs::CPUINFO)
             .unwrap_or_default()
             .lines()
             .any(|l| {

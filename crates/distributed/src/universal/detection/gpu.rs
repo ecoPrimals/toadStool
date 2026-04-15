@@ -99,11 +99,11 @@ pub fn get_rocm_gfx_version() -> String {
     "unknown".to_string()
 }
 
-/// Check for OpenCL support (always false — OpenCL is not a supported external backend; use barraCuda/coralReef via IPC).
+/// Check for OpenCL support (**stub:** always `false` — not runtime probing; OpenCL is not an in-tree backend; use barraCuda/coralReef via IPC).
 ///
 /// Kept for API compatibility; substrate detection no longer consults OpenCL (S198).
 #[deprecated(
-    since = "0.15.0",
+    since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
 #[allow(
@@ -114,9 +114,9 @@ pub fn check_opencl_support() -> bool {
     false
 }
 
-/// Get OpenCL version (legacy stub — not supported)
+/// Get OpenCL version (**stub:** fixed string — not supported in-tree; S198).
 #[deprecated(
-    since = "0.15.0",
+    since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
 #[allow(
@@ -127,9 +127,9 @@ pub fn get_opencl_version() -> String {
     "not supported (S198: use barraCuda/coralReef via IPC)".to_string()
 }
 
-/// Get OpenCL device type (legacy stub — not supported)
+/// Get OpenCL device type (**stub:** always `"none"` — S198).
 #[deprecated(
-    since = "0.15.0",
+    since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
 #[allow(
@@ -140,9 +140,9 @@ pub fn get_opencl_device_type() -> String {
     "none".to_string()
 }
 
-/// Get OpenCL compute units (legacy stub — not supported)
+/// Get OpenCL compute units (**stub:** always `0` — S198).
 #[deprecated(
-    since = "0.15.0",
+    since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
 #[allow(

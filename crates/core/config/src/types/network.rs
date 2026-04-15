@@ -12,7 +12,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use crate::network;
-use toadstool_common::constants::network::{BIND_ALL_IPV4, LOCALHOST_IPV4};
+use toadstool_common::constants::network::{BIND_ALL_IPV4, HTTP_PROTOCOL, LOCALHOST_IPV4};
 
 /// Last-resort bind port when parsing the configured bind address fails (development fallback only).
 const BIND_FALLBACK_PORT: u16 = 3000;
@@ -127,19 +127,19 @@ impl Default for EndpointConfig {
         let coordination =
             std::env::var("TOADSTOOL_COORDINATION_SERVICE_URL").unwrap_or_else(|_| {
                 let port = crate::ports::capability_fallback::COORDINATION;
-                format!("http://{}:{}", config.network.bind_address, port)
+                format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
             });
         let security = std::env::var("TOADSTOOL_CRYPTO_SERVICE_URL").unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::SECURITY;
-            format!("http://{}:{}", config.network.bind_address, port)
+            format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
         });
         let storage = std::env::var("TOADSTOOL_STORAGE_SERVICE_URL").unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::STORAGE;
-            format!("http://{}:{}", config.network.bind_address, port)
+            format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
         });
         let ai_processing = std::env::var("TOADSTOOL_AI_SERVICE_URL").unwrap_or_else(|_| {
             let port = crate::ports::capability_fallback::PLATFORM;
-            format!("http://{}:{}", config.network.bind_address, port)
+            format!("{HTTP_PROTOCOL}{}:{}", config.network.bind_address, port)
         });
 
         Self {
@@ -153,15 +153,15 @@ impl Default for EndpointConfig {
             ai_processing,
             // Self-knowledge endpoints (still valid)
             federation: format!(
-                "http://{}:{}",
+                "{HTTP_PROTOCOL}{}:{}",
                 config.network.bind_address, config.network.federation_port
             ),
             metrics: format!(
-                "http://{}:{}",
+                "{HTTP_PROTOCOL}{}:{}",
                 config.network.bind_address, config.network.metrics_port
             ),
             health: format!(
-                "http://{}:{}",
+                "{HTTP_PROTOCOL}{}:{}",
                 config.network.bind_address, config.network.health_port
             ),
         }

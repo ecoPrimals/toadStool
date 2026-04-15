@@ -8,6 +8,7 @@ use toadstool_common::config_bases::{
     CacheConfig, ConnectionPoolConfig, HealthCheckConfig, HttpHealthCheckConfig, RetryConfig,
     TelemetryConfig, TimeoutConfig,
 };
+use toadstool_common::constants::platform_paths::{etc_paths, install_paths};
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::primal_sockets::SocketPathEnv;
 
@@ -23,7 +24,7 @@ const RFC1918_RANGES: &[&str] = &["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16
 
 fn default_audit_log_path() -> String {
     std::env::var("TOADSTOOL_AUDIT_LOG_PATH")
-        .unwrap_or_else(|_| "/var/log/toadstool/audit.log".into())
+        .unwrap_or_else(|_| install_paths::VAR_LOG_TOADSTOOL_AUDIT.into())
 }
 
 /// Discover DNS resolvers from the environment or host system.
@@ -46,7 +47,7 @@ pub(super) fn system_dns_resolvers() -> Vec<String> {
     }
 
     // Parse /etc/resolv.conf on POSIX systems
-    if let Ok(contents) = std::fs::read_to_string("/etc/resolv.conf") {
+    if let Ok(contents) = std::fs::read_to_string(etc_paths::RESOLV_CONF) {
         let servers: Vec<String> = contents
             .lines()
             .filter_map(|line| {

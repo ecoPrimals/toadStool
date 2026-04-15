@@ -6,10 +6,9 @@ use crate::{
     AuthenticationSettings, AuthenticationType, COBOLSettings, CommunicationRequirements,
     CommunicationSettings, CompilationRequirements, CompilerType, ConnectionSettings,
     CpuRequirements, FileSystemType, JCLSettings, LegacyAdapter, LegacyArchitecture, LegacyJob,
-    LegacyJobType, LegacyLanguage, LegacyRuntimeRequirements, LegacySystemType,
-    MainframeConfig, MainframeConnectionType, MemoryModel, MemoryRequirements, MemoryType,
-    NetworkRequirements, SpecialtyRuntimeConfig, StorageRequirements, StorageType,
-    TimingRequirements,
+    LegacyJobType, LegacyLanguage, LegacyRuntimeRequirements, LegacySystemType, MainframeConfig,
+    MainframeConnectionType, MemoryModel, MemoryRequirements, MemoryType, NetworkRequirements,
+    SpecialtyRuntimeConfig, StorageRequirements, StorageType, TimingRequirements,
 };
 use std::collections::HashMap;
 use std::time::Duration;
@@ -164,8 +163,7 @@ fn vax_serde_roundtrips() {
 #[test]
 fn mainframe_config_serde_roundtrip() {
     let c = minimal_mainframe_config();
-    let c2: MainframeConfig =
-        serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+    let c2: MainframeConfig = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
     assert_eq!(c.system_type, c2.system_type);
 }
 

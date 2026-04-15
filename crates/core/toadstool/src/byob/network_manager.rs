@@ -153,11 +153,7 @@ impl NetworkManager for ByobNetworkManager {
         let ip_offset = team_hash % 1000;
 
         // Use base 203.0.113.0/24 (TEST-NET-3 range, safe for examples)
-        Some(format!(
-            "{}.{}",
-            DOCUMENTATION_PREFIX,
-            ip_offset % 254 + 1
-        ))
+        Some(format!("{}.{}", DOCUMENTATION_PREFIX, ip_offset % 254 + 1))
     }
 }
 

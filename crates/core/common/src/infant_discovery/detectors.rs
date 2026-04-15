@@ -27,6 +27,8 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use crate::constants::platform_paths::procfs;
+
 use super::capabilities::{
     DetectedSubstrate, DiscoveryError, SubstrateCapability, SubstrateDetector, SubstrateType,
 };
@@ -74,7 +76,7 @@ impl BareMetalDetector {
     fn is_containerized() -> bool {
         // Check for cgroup-based containerization (generic, not Docker-specific)
         std::path::Path::new("/.dockerenv").exists()
-            || std::fs::read_to_string("/proc/self/cgroup").is_ok_and(|content| {
+            || std::fs::read_to_string(procfs::PROC_SELF_CGROUP).is_ok_and(|content| {
                 content.contains("docker")
                     || content.contains("containerd")
                     || content.contains("lxc")

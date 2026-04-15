@@ -191,9 +191,10 @@ pub async fn run_server_main(
     // tarpc (secondary) uses a separate socket to avoid bind collision (LD-05):
     //   compute-tarpc.sock / compute-{fid}-tarpc.sock
     let tarpc_filename = format::tarpc_socket_filename_for_family(&family_id);
-    let socket_path = socket_path
-        .parent()
-        .map_or_else(|| socket_path.with_extension("tarpc.sock"), |dir| dir.join(tarpc_filename));
+    let socket_path = socket_path.parent().map_or_else(
+        || socket_path.with_extension("tarpc.sock"),
+        |dir| dir.join(tarpc_filename),
+    );
 
     // Legacy symlink: toadstool.sock → compute.sock for callers still using
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.

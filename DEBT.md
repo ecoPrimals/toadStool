@@ -1,11 +1,38 @@
 # Active Technical Debt Register
 
-**Date**: April 14, 2026 — S203i
+**Date**: April 15, 2026 — S203k
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 ## Active Debt
+
+### D-SANDBOX-SIMULATION — Active
+**Crate**: `security/sandbox` | **File**: `linux.rs`
+Linux sandbox operations (`destroy_sandbox`, `setup_mount`, `apply_security_policy`,
+`get_sandbox_logs`, `monitor_sandbox`) return success without actual namespace/cgroup/
+seccomp/mount operations. `monitor_sandbox` returns all-zero `ResourceUsage`. Logs are
+synthetic strings. Requires real kernel namespace/cgroup integration to evolve.
+
+### D-PLUGIN-SIMULATE — Active
+**Crate**: `core/toadstool` | **File**: `plugin_system/manager.rs`
+`load_plugin` / `unload_plugin` simulate load/unload (no `dlopen`, no cleanup).
+Evolution requires plugin ABI design.
+
+### D-BYOB-RESOURCE-SIM — Active
+**Crate**: `core/toadstool` | **File**: `byob/byob_impl/mod.rs`
+`update_resource_usage` returns simulated CPU/memory/network from service specs,
+not real metrics. Evolution requires integration with cgroup stats or monitoring.
+
+### D-WORKLOAD-CLIENT-IPC — Active
+**Crate**: `client` | **File**: `client/core.rs`
+`submit_workload` / `get_execution_status` always return `Err` for non-GPU workload
+types. JSON-RPC method mapping not yet wired for native/container/wasm/python paths.
+
+### D-HW-LEARN-VERIFY — Active
+**Crate**: `core/hw-learn` | **File**: `applicator/verify.rs`
+`verify_register`, `verify_compute_readback`, `verify_memory_accessible` return
+failure results with debt-tracking messages. Requires nouveau UAPI parsing.
 
 ### D-TARPC-PHASE3-BINARY
 **Crate**: `integration/protocols` | **Feature**: `tarpc-transport`
@@ -55,12 +82,163 @@ Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
 
 ## Known Limitations (not actionable debt)
 
-### D-ASYNC-DYN-MARKERS — Rust language constraint
-**Scope**: Workspace (~55 files) | **Marker**: `NOTE(async-dyn)`
-Traits using `#[async_trait]` because native `async fn` in `dyn Trait` is not yet
-stable in Rust. Cannot resolve until Rust stabilizes this feature. The `#[async_trait]`
-dependency is pure Rust (proc-macro) and zero-overhead at runtime for non-dyn paths.
-**Not actionable** — resolves when Rust stabilizes the feature. Markers are accurate documentation.
+### D-ASYNC-DYN-MARKERS — Partially resolved, ongoing
+**Scope**: Workspace (~148 remaining `#[async_trait]` annotations, down from 183)
+**Wave 1-2**: Migrated 7 traits (zero-dyn + dead-code + concrete-type). Freed 3 crates.
+**Wave 3** (S203j): Migrated 6 more zero-dyn traits: `HealthMonitor`, `SwapExecutor`,
+`DeviceDiscovery`, `HealthProbe`, `CrossCompilationToolchain` (+ 3 impls), `GpuDiscovery`.
+10 more annotations removed. 5 more crates freed from `async-trait` dependency:
+`toadstool-glowplug`, `toadstool-management-monitoring`, `toadstool-runtime-native`,
+`toadstool-integration-security`, `toadstool-runtime-container` (moved to dev-dep).
+Total: 13 traits migrated, 8 crates freed across all waves.
+**Remaining ~148**: On traits with production `dyn` dispatch (`AuthBackend`, `AgentBackend`,
+`CryptoProvider`, `UnifiedMemoryBackend`, `EdgeDevice`, `WorkloadExecutor`, etc.).
+Migration requires Send-aware generics or enum dispatch (Squirrel Wave 2/3 pattern).
+
+## S203k Resolved Debt (Deep Debt Execution: Comprehensive Evolution Pass)
+
+### D-NET-CONFIG-VALIDATION — RESOLVED S203k
+**Scope**: `cli/network_config/configurator` (5 modules)
+Empty `apply_*` functions evolved with explicit "deferred to orchestration layer" debug
+messages. Empty `validate_*` functions evolved with structural validation: circuit breaker
+thresholds, health check intervals, DNS timeout/server validation, auth method checks,
+PKI/audit/isolation field validation, traffic management percentages, port range ordering.
+Files: `reliability.rs`, `security.rs`, `traffic.rs`, `service_mesh.rs`, `discovery.rs`.
+
+### D-ENV-INTERN-WAVE2 — RESOLVED S203k
+**Scope**: Workspace (6 modules, ~40+ raw strings)
+Remaining raw env var string literals centralized to `socket_env::*` constants. Added
+`TOADSTOOL_COORDINATION_URL/PORT`, `TOADSTOOL_SECURITY_URL/PORT`, `TOADSTOOL_STORAGE_URL/PORT`,
+`TOADSTOOL_SONGBIRD_PORT`, discovery/bind/auth/endpoint constants. Wired in
+`primal_discovery_complete`, `infant_discovery/fallback`, `distributed/scheduler`,
+`server/unibin/execution`, `integration/security/discovery`.
+Files: `socket_env.rs`, 6 consumer modules.
+
+### D-HTTP-PROTOCOL-LITERAL — RESOLVED S203k
+**Scope**: Workspace (7 modules)
+Raw `"http://"` in `format!` URLs replaced with `HTTP_PROTOCOL` constant from
+`toadstool_common::constants::network`. Added `UNIX_SOCKET_URL_SCHEME` (`"unix"`) and
+`UNIX_SOCKET_URL_PREFIX` (`"unix://"`) constants for Unix socket URL handling.
+Files: `network.rs`, `primal_discovery_mdns.rs`, `primal_discovery_complete/mod.rs`,
+`discovery_defaults.rs`, `discovery_engine/mod.rs`, `zero_config/service_discovery.rs`,
+`ecosystem_network.rs`, `config/types/network.rs`.
+
+### D-ERROR-SWALLOW — RESOLVED S203k
+**Scope**: 4 production paths
+`.unwrap_or_default()` silent error swallowing evolved to `tracing::warn!` + fallback:
+`agents/manager.rs` (list_agents/list_models), `monitoring/platform.rs` (proc I/O reads),
+`pipeline.rs` (serde serialization), `hw_learn/status.rs` (recipe store open).
+Files: 4 handler/service modules.
+
+### D-DEAD-CODE-LINT — RESOLVED S203k
+**Scope**: 4 crates
+`#[allow(dead_code)]` evolved to `#[cfg_attr(not(test), expect(dead_code, reason = "..."))]`
+with documented reasons: `load_balancer.rs` (retry policy), `internal.rs` (ML selection),
+`mdns/service.rs` (reconfig path). `background/mod.rs` unused import cleaned via
+`#[cfg(test)]` gating.
+
+### D-LARGE-FILE-REFACTOR-S203K — RESOLVED S203k
+**Scope**: 4 production files across 3 crates
+Smart refactoring (not line splits) into cohesive submodules:
+- `edge/platforms/arduino.rs` (679L) → directory module: `device.rs`, `serial.rs`,
+  `deploy.rs`, `edge_device.rs` (4 submodules)
+- `edge/discovery.rs` (644L) → directory module: `serial.rs`, `network.rs`, `usb.rs`,
+  `bluetooth.rs`, `mdns.rs` (5 strategy modules)
+- `crypto_lock/access_control/manager.rs` (601L) → extracted `validation.rs`
+  (delegation validation, resource limits, chain depth)
+- `security/policies/manager.rs` (546L) → extracted `cache.rs` (CachedPolicy, TTL)
+  and `composition.rs` (merge/compose helpers)
+
+### D-ACTIVE-DEBT-CATALOG — RESOLVED S203k
+Cataloged 5 previously-undocumented active debt items with D- prefix:
+`D-SANDBOX-SIMULATION`, `D-PLUGIN-SIMULATE`, `D-BYOB-RESOURCE-SIM`,
+`D-WORKLOAD-CLIENT-IPC`, `D-HW-LEARN-VERIFY`.
+
+## S203j Resolved Debt (Deep Debt Execution: Idiomatic Evolution Pass)
+
+### D-ASYNC-WAVE3-ZERO-DYN — RESOLVED S203j
+**Scope**: Workspace | **Audit**: primalSpring async-trait migration (Class 4)
+Migrated 6 zero-dyn traits to native `async fn` in trait: `HealthMonitor` (byob),
+`SwapExecutor`, `DeviceDiscovery`, `HealthProbe` (glowplug), `CrossCompilationToolchain`
+(specialty, +3 impls), `GpuDiscovery` (gpu). 10 annotations removed. 5 crates freed
+from `async-trait` dep (`glowplug`, `monitoring`, `native`, `integration/security`;
+`container` → dev-dep). All use `#[expect(async_fn_in_trait)]` with documented reasons.
+Files: `byob/health_monitor.rs`, `glowplug/{swap,discovery,health}.rs`,
+`specialty/{types/cross_compilation,cross_compilation}.rs`, `gpu/glowplug/discovery.rs`,
+5× `Cargo.toml`.
+
+### D-UNSAFE-LINT-NVPMU — RESOLVED S203j
+**Crate**: `nvpmu` | **Audit**: unsafe code audit
+Removed 4 redundant `#[allow(unsafe_code)]` attributes from `init.rs` functions that
+contain zero `unsafe` blocks. The functions call `RecipeApplicator::apply()` through
+safe `RegisterAccess` trait — no unsafe needed.
+Files: `nvpmu/src/init.rs`.
+
+### D-HARDCODED-DRI-DEVICE — RESOLVED S203j
+**Crate**: `nvpmu` | **Audit**: hardcoding evolution
+Hardcoded `/dev/dri/card0` in 3 init functions evolved to `DEFAULT_DRI_DEVICE` constant.
+Documents future: accept device path as parameter for multi-GPU support.
+Files: `nvpmu/src/init.rs`.
+
+### D-ENV-RAW-STRINGS — RESOLVED S203j
+**Scope**: `primal_sockets` | **Audit**: hardcoding evolution
+30+ raw env var string literals in `SocketPathEnv::from_env()` evolved to interned
+constants in `socket_env::*`. Added `TOADSTOOL_TARPC_SOCKET` and 25+ connection hint
+constants (`TOADSTOOL_COORDINATION_ENDPOINT`, `LEGACY_SONGBIRD_URL`, etc.).
+Files: `interned_strings/socket_env.rs`, `primal_sockets/env.rs`.
+
+### D-DEPRECATED-STUBS — RESOLVED S203j
+**Scope**: `runtime/gpu`, `runtime/universal`, `distributed`
+Deprecated CUDA/OpenCL production stubs marked with `#[deprecated(since = "0.1.0")]`:
+`CudaBackend`, `OpenClBackend`, `OpenClComputeUnit`, unified memory `OpenClBackend`,
+OpenCL detection helpers. Compile-time deprecation replaces runtime-only error returns.
+Files: `cuda_impl/mod.rs`, `opencl_impl/mod.rs`, `unified_memory/backends/opencl.rs`,
+`universal/backends/opencl.rs`, `distributed/universal/detection/gpu.rs`.
+
+### D-PLATFORM-PATHS-CONSTANTS — RESOLVED S203j
+**Scope**: Workspace | **Audit**: hardcoding evolution
+Created `constants::platform_paths` module with organized constants for procfs
+(`CPUINFO`, `MEMINFO`, `LOADAVG`, cgroup paths), devfs (`KVM`, `DRI_DIR`,
+`VFIO_CONTAINER`), sysfs (`BUS_PCI_DEVICES`), etc paths (`OS_RELEASE`,
+`TOADSTOOL_DIR`, `RESOLV_CONF`), install paths (`OPT_TOADSTOOL`). Helper functions
+for dynamic `/proc/{pid}/` paths. ~20 call sites across 10 crates evolved.
+Files: new `constants/platform_paths.rs`, + ~15 production files.
+
+### D-HARDCODED-PRIMAL-NAMES-S203J — RESOLVED S203j
+**Scope**: Workspace | **Audit**: capability-based evolution
+Remaining hardcoded `"toadstool"` string literals in production code evolved to
+`PRIMAL_NAME` constant: `policies/types.rs`, `secret_string.rs`, `platform_paths/paths.rs`,
+`display/ipc/client/discovery.rs`, `integration/primals/primal_types.rs`, `config/lib.rs`.
+Files: 6 production files.
+
+### D-WORKSPACE-DEPS — RESOLVED S203j
+**Scope**: Workspace manifests
+Unified inline dependency versions to `workspace = true` across all workspace member
+crates. `tokio`, `serde`, `serde_json`, `async-trait`, `thiserror`, `tracing`,
+`tracing-subscriber`, `uuid`, `futures`, `regex` — all consolidated. Extra features
+preserved where needed (e.g. `serde = { workspace = true, features = ["rc"] }`).
+Files: ~20 `Cargo.toml` files.
+
+### D-MAGIC-NUMBERS — RESOLVED S203j
+**Scope**: Workspace | **Audit**: hardcoding evolution
+Magic numbers evolved to named constants: discovery fallback ports (`DEFAULT_COORDINATION_PORT`,
+`DEFAULT_SECURITY_PORT`, `DEFAULT_STORAGE_PORT`), BYOB config (`RESOURCE_MONITORING_INTERVAL_SECS`,
+`HEALTH_CHECK_INTERVAL_SECS`, `DEPLOYMENT_TIMEOUT_SECS`, named web port constants),
+policy defaults (`POLICY_CACHE_TTL_HOURS`, `DEFAULT_MAX_COMPOSITION_DEPTH`,
+`POLICY_VALIDATION_TIMEOUT_MS`).
+Files: `primal_discovery_complete/mod.rs`, `byob/config.rs`, `policies/types.rs`,
+`discovery_ports.rs`, `defaults/ports.rs`.
+
+### D-TARPC-CLIENT-SOCKET — RESOLVED S203j
+**Crate**: `client` | **Audit**: primalSpring downstream (socket unification)
+`ToadStoolTarpcClient::discover()` resolved to the JSON-RPC socket (`compute.sock`)
+instead of the tarpc socket (`compute-tarpc.sock`). Client connections to the wrong
+socket got binary/JSON protocol mismatch errors.
+**Fix**: Added `resolve_toadstool_tarpc_socket` to `primal_sockets` (mirrors server's
+`tarpc_socket_filename_for_family` convention), interned `TOADSTOOL_TARPC_SOCKET` env
+var, and wired `discover()` to `get_toadstool_tarpc_socket_path()`. +3 unit tests.
+Files: `primal_sockets/paths.rs`, `primal_sockets/env.rs`, `primal_sockets/api.rs`,
+`primal_sockets/mod.rs`, `interned_strings/socket_env.rs`, `client/tarpc_client.rs`.
 
 ## S203 Resolved Debt (Deep Audit & Evolution Execution)
 

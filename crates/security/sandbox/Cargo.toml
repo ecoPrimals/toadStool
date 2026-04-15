@@ -17,17 +17,17 @@ toadstool-common = { path = "../../core/common" }
 toadstool-security-policies = { path = "../policies" }
 
 # Async runtime
-tokio = { version = "1.0", features = ["full"] }
+tokio = { workspace = true }
 
 # Serialization and configuration
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Security and cryptography
-uuid = { version = "1.0", features = ["v4", "serde"] }
+uuid = { workspace = true }
 
 # Logging and tracing
-tracing = "0.1"
+tracing = { workspace = true }
 
 # EVOLVED: nix removed (Feb 14, 2026) - prefer rustix
 # EVOLVED: caps removed (Mar 9, 2026) - unused, libc dep eliminated

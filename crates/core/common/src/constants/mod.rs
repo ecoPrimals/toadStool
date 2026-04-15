@@ -14,6 +14,7 @@ pub mod display;
 pub mod ecosystem;
 pub mod jsonrpc;
 pub mod network;
+pub mod platform_paths;
 pub mod primal_identity;
 pub mod resources;
 pub mod timeouts;
@@ -22,5 +23,6 @@ pub mod versions;
 // Re-export commonly used constants (narrowed from wildcards; submodules remain for full access)
 pub use network::{
     DEFAULT_HOSTNAME, HTTP_PROTOCOL, HTTPS_PROTOCOL, LOCALHOST_IPV4, LOCALHOST_IPV6,
+    UNIX_SOCKET_URL_PREFIX, UNIX_SOCKET_URL_SCHEME,
 };
 pub use primal_identity::{CAPABILITY_DOMAIN, PRIMAL_NAME};

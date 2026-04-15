@@ -9,8 +9,8 @@ use toadstool::execution::RuntimeConfig;
 use toadstool::resources::{ResourceMonitor, RuntimeMetrics, SystemResources};
 use toadstool::workload::{PortMapping, RegistryAuth, VolumeMount, WorkloadSpec};
 use toadstool::{
-    ExecutionRequest, IsolationLevel, PortProtocol, RuntimeEngine, RuntimeType,
-    SecurityContext, VolumeMountType,
+    ExecutionRequest, IsolationLevel, PortProtocol, RuntimeEngine, RuntimeType, SecurityContext,
+    VolumeMountType,
 };
 
 fn create_test_request(_image: &str) -> ExecutionRequest {
@@ -249,21 +249,14 @@ async fn test_with_resource_monitor() {
             fn get_metrics(
                 &self,
                 _workload_id: &str,
-            ) -> Pin<
-                Box<
-                    dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_,
-                >,
-            > {
+            ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_>>
+            {
                 Box::pin(async { Ok(toadstool::resources::RuntimeMetrics::default()) })
             }
             fn get_system_resources(
                 &self,
             ) -> Pin<
-                Box<
-                    dyn Future<Output = toadstool::ToadStoolResult<SystemResources>>
-                        + Send
-                        + '_,
-                >,
+                Box<dyn Future<Output = toadstool::ToadStoolResult<SystemResources>> + Send + '_>,
             > {
                 Box::pin(async { Ok(toadstool::resources::SystemResources::default()) })
             }
@@ -339,8 +332,7 @@ async fn test_capabilities_platform_features() {
     let engine = ContainerRuntimeEngine::default();
     let caps = engine.get_capabilities();
     assert!(
-        caps.platform_features.contains_key("volume_mounts")
-            || caps.platform_features.is_empty()
+        caps.platform_features.contains_key("volume_mounts") || caps.platform_features.is_empty()
     );
     assert!(!caps.supported_architectures.is_empty());
 }

@@ -13,6 +13,11 @@ use uuid::Uuid;
 
 use toadstool::security::{Capability, IsolationLevel, SecurityContext};
 use toadstool::workload::WorkloadSpec;
+use toadstool_common::constants::PRIMAL_NAME;
+
+const POLICY_CACHE_TTL_HOURS: u64 = 24;
+const DEFAULT_MAX_COMPOSITION_DEPTH: u32 = 10;
+const POLICY_VALIDATION_TIMEOUT_MS: u64 = 5000;
 
 /// Policy management configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,13 +44,13 @@ impl Default for PolicyManagerConfig {
         let paths = toadstool_common::platform_paths::PlatformPaths::new(&env);
 
         Self {
-            policy_dir: paths.config_dir().join("toadstool").join("policies"),
+            policy_dir: paths.config_dir().join(PRIMAL_NAME).join("policies"),
             cache_enabled: true,
-            cache_ttl_hours: 24,
+            cache_ttl_hours: POLICY_CACHE_TTL_HOURS,
             strict_enforcement: true,
             default_violation_action: ViolationAction::Terminate,
-            max_composition_depth: 10,
-            validation_timeout_ms: 5000,
+            max_composition_depth: DEFAULT_MAX_COMPOSITION_DEPTH,
+            validation_timeout_ms: POLICY_VALIDATION_TIMEOUT_MS,
         }
     }
 }

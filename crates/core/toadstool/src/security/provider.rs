@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Security provider trait
 
-use async_trait::async_trait;
-
 use crate::ToadStoolResult;
 
 use super::context::SecurityContext;
@@ -10,8 +8,10 @@ use super::policy::{AuditEvent, SecurityPolicy};
 use super::types::Capability;
 
 /// Security provider trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+#[expect(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; trait is internal, no dyn dispatch"
+)]
 pub trait SecurityProvider: Send + Sync {
     /// Create a security context
     async fn create_security_context(

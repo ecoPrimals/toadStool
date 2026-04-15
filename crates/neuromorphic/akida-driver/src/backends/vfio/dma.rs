@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // VFIO DMA map/unmap ioctls require unsafe
+// Evolved S204: unsafe DMA ioctls now delegated to hw-safe safe wrappers
 //! DMA buffer management for VFIO NPU backend
 //!
 //! Provides page-aligned, mlock'd, IOMMU-mapped memory buffers for
@@ -9,7 +9,7 @@ use crate::error::{AkidaError, Result};
 use std::os::fd::{AsFd, OwnedFd};
 
 use toadstool_hw_safe::LockedMemory;
-use toadstool_hw_safe::vfio_dma::{VfioDmaMap, VfioDmaUnmap, dma_map, dma_unmap, flags};
+use toadstool_hw_safe::vfio_dma::flags;
 
 /// DMA buffer for fast host-to-device data transfer.
 ///
@@ -37,31 +37,17 @@ impl DmaBuffer {
         let mem = LockedMemory::page_aligned(size)
             .map_err(|e| AkidaError::transfer_failed(format!("Failed to lock DMA memory: {e}")))?;
 
-        let vaddr = mem.as_ptr().as_ptr() as u64;
-
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "truncation acceptable for this conversion"
-        )]
-        let dma_map_arg = VfioDmaMap {
-            argsz: std::mem::size_of::<VfioDmaMap>() as u32,
-            flags: flags::READ | flags::WRITE,
-            vaddr,
-            iova,
-            size: size as u64,
-        };
-
         tracing::debug!(
-            "DMA map attempt: vaddr={:#x}, iova={:#x}, size={:#x}, flags={:#x}",
-            dma_map_arg.vaddr,
-            dma_map_arg.iova,
-            dma_map_arg.size,
-            dma_map_arg.flags
+            "DMA map attempt: vaddr={:p}, iova={iova:#x}, size={size:#x}",
+            mem.as_ptr().as_ptr(),
         );
 
-        // SAFETY: container_fd is the VFIO container (OwnedFd guarantees validity);
-        // map.vaddr points at mem's allocation for size bytes; IOVA range chosen by caller.
-        if let Err(e) = unsafe { dma_map(container_fd.as_fd(), &dma_map_arg) } {
+        if let Err(e) = toadstool_hw_safe::vfio_dma::dma_map_locked(
+            container_fd.as_fd(),
+            &mem,
+            iova,
+            flags::READ | flags::WRITE,
+        ) {
             tracing::warn!("DMA map failed: {e}");
             return Err(AkidaError::transfer_failed(format!(
                 "Failed to map DMA: {e}"
@@ -103,22 +89,12 @@ impl DmaBuffer {
 }
 
 impl Drop for DmaBuffer {
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "struct sizes always fit u32"
-    )]
     fn drop(&mut self) {
-        let dma_unmap_arg = VfioDmaUnmap {
-            argsz: std::mem::size_of::<VfioDmaUnmap>() as u32,
-            flags: 0,
-            iova: self.iova,
-            size: self.size as u64,
-        };
-
-        // SAFETY: container_fd is OwnedFd (guaranteed valid until Drop completes);
-        // iova/size match the prior dma_map call for this buffer.
-        let _ = unsafe { dma_unmap(self.container_fd.as_fd(), &dma_unmap_arg) };
-
+        let _ = toadstool_hw_safe::vfio_dma::dma_unmap_region(
+            self.container_fd.as_fd(),
+            self.iova,
+            self.size,
+        );
         tracing::debug!("Freed DMA buffer at iova={:#x}", self.iova);
     }
 }

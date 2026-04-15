@@ -41,7 +41,11 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
-use crate::constants::discovery_ports::DISCOVERY_HTTP_FALLBACK;
+use crate::constants::discovery_ports::{
+    DEFAULT_COORDINATION_PORT, DEFAULT_SECURITY_PORT, DEFAULT_STORAGE_PORT, DISCOVERY_HTTP_FALLBACK,
+};
+use crate::constants::network::HTTP_PROTOCOL;
+use crate::interned_strings::socket_env;
 use crate::primal_identity::{Capability, DiscoveredService};
 use crate::runtime_discovery::DiscoveryClient;
 use crate::{ToadStoolError, ToadStoolResult};
@@ -106,12 +110,12 @@ pub struct DiscoveryConfig {
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         // Environment-aware defaults
-        let enable_mdns = std::env::var("TOADSTOOL_MDNS_ENABLE")
+        let enable_mdns = std::env::var(socket_env::TOADSTOOL_MDNS_ENABLE)
             .map(|v| v == "true" || v == "1")
             .unwrap_or(true);
 
-        let require_mdns =
-            std::env::var("TOADSTOOL_MDNS_REQUIRE").is_ok_and(|v| v == "true" || v == "1");
+        let require_mdns = std::env::var(socket_env::TOADSTOOL_MDNS_REQUIRE)
+            .is_ok_and(|v| v == "true" || v == "1");
 
         Self {
             cache_ttl: Duration::from_secs(300), // 5 minutes
@@ -130,37 +134,43 @@ impl DiscoveryConfig {
     /// Each capability URL is resolved from env vars, falling back to
     /// `{bind_host}:{port}` using `toadstool_config::ports::capability_fallback`.
     fn default_fallbacks() -> HashMap<String, String> {
-        let coordination_port = resolve_env_port("TOADSTOOL_COORDINATION_PORT", 8080);
-        let security_port = resolve_env_port("TOADSTOOL_SECURITY_PORT", 8081);
-        let storage_port = resolve_env_port("TOADSTOOL_STORAGE_PORT", 8082);
+        let coordination_port = resolve_env_port(
+            socket_env::TOADSTOOL_COORDINATION_PORT,
+            DEFAULT_COORDINATION_PORT,
+        );
+        let security_port =
+            resolve_env_port(socket_env::TOADSTOOL_SECURITY_PORT, DEFAULT_SECURITY_PORT);
+        let storage_port =
+            resolve_env_port(socket_env::TOADSTOOL_STORAGE_PORT, DEFAULT_STORAGE_PORT);
 
-        let dev_mode = std::env::var("TOADSTOOL_DISCOVERY_FALLBACKS").is_ok()
-            || std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "development");
+        let dev_mode = std::env::var(socket_env::TOADSTOOL_DISCOVERY_FALLBACKS).is_ok()
+            || std::env::var(socket_env::TOADSTOOL_ENV)
+                .is_ok_and(|e| e == crate::interned_strings::env::DEVELOPMENT);
 
         if !dev_mode {
             return HashMap::new();
         }
 
-        let bind_host = std::env::var("TOADSTOOL_BIND_HOST")
-            .or_else(|_| std::env::var("BIND_HOST"))
+        let bind_host = std::env::var(socket_env::TOADSTOOL_BIND_HOST)
+            .or_else(|_| std::env::var(socket_env::BIND_HOST))
             .unwrap_or_else(|_| crate::constants::network::DEFAULT_HOSTNAME.to_string());
 
         let specs: &[(&str, &str, u16, &[&str])] = &[
             (
-                "TOADSTOOL_COORDINATION_URL",
-                "SONGBIRD_URL",
+                socket_env::TOADSTOOL_COORDINATION_URL,
+                socket_env::LEGACY_SONGBIRD_URL,
                 coordination_port,
                 &["orchestration", "coordination"],
             ),
             (
-                "TOADSTOOL_SECURITY_URL",
-                "BEARDOG_URL",
+                socket_env::TOADSTOOL_SECURITY_URL,
+                socket_env::LEGACY_BEARDOG_URL,
                 security_port,
                 &["security", "authentication"],
             ),
             (
-                "TOADSTOOL_STORAGE_URL",
-                "NESTGATE_URL",
+                socket_env::TOADSTOOL_STORAGE_URL,
+                socket_env::LEGACY_NESTGATE_URL,
                 storage_port,
                 &["storage"],
             ),
@@ -170,7 +180,7 @@ impl DiscoveryConfig {
         for (cap_env, legacy_env, port, keys) in specs {
             let url = std::env::var(cap_env)
                 .or_else(|_| std::env::var(legacy_env))
-                .unwrap_or_else(|_| format!("http://{bind_host}:{port}"));
+                .unwrap_or_else(|_| format!("{HTTP_PROTOCOL}{bind_host}:{port}"));
             for key in *keys {
                 fallbacks.insert((*key).to_string(), url.clone());
             }

@@ -304,8 +304,7 @@ mod tests {
             socket_path: "/nonexistent/security.sock".to_string(),
             ..SecurityConfig::default()
         };
-        let integration: Box<dyn SecurityServiceIntegrationTrait> =
-            Box::new(SecurityServiceIntegration::new(config).expect("new"));
+        let integration = SecurityServiceIntegration::new(config).expect("new");
         let result = integration
             .authenticate(
                 "svc",
@@ -324,8 +323,7 @@ mod tests {
             socket_path: "/nonexistent/security.sock".to_string(),
             ..SecurityConfig::default()
         };
-        let integration: Box<dyn SecurityServiceIntegrationTrait> =
-            Box::new(SecurityServiceIntegration::new(config).expect("new"));
+        let integration = SecurityServiceIntegration::new(config).expect("new");
         let result = integration
             .zero_trust_validation(&SecurityContext::default())
             .await;

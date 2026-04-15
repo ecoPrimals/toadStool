@@ -19,6 +19,7 @@ use std::time::Duration;
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
 #[expect(deprecated)] // Protocol compatibility: platform path convention
 use crate::constants::ecosystem::well_known::BIOMEOS;
+use crate::constants::network::{HTTP_PROTOCOL, UNIX_SOCKET_URL_PREFIX};
 use crate::{ToadStoolError, ToadStoolResult};
 
 #[cfg(test)]
@@ -171,11 +172,11 @@ impl MDnsSource {
 
         let endpoint_str = txt.get("endpoint").map_or_else(|| "", String::as_str);
         let endpoint = if endpoint_str.is_empty() {
-            ServiceEndpoint::Http(format!("http://{host}:{port}"))
+            ServiceEndpoint::Http(format!("{HTTP_PROTOCOL}{host}:{port}"))
         } else if let Ok(ep) = EnvironmentSource::parse_endpoint(endpoint_str) {
             ep
         } else {
-            ServiceEndpoint::Http(format!("http://{host}:{port}"))
+            ServiceEndpoint::Http(format!("{HTTP_PROTOCOL}{host}:{port}"))
         };
 
         let capability_str = txt.get("capability").map_or("coordination", String::as_str);
@@ -285,9 +286,9 @@ impl EnvironmentSource {
     pub(crate) fn parse_endpoint(url: &str) -> ToadStoolResult<ServiceEndpoint> {
         if url.starts_with("http://") || url.starts_with("https://") {
             Ok(ServiceEndpoint::Http(url.to_string()))
-        } else if url.starts_with("unix://") {
+        } else if url.starts_with(UNIX_SOCKET_URL_PREFIX) {
             let path = url
-                .strip_prefix("unix://")
+                .strip_prefix(UNIX_SOCKET_URL_PREFIX)
                 .ok_or_else(|| ToadStoolError::validation("Invalid unix socket URL".to_string()))?;
             Ok(ServiceEndpoint::UnixSocket(path.into()))
         } else if url.starts_with("tcp://") {
@@ -404,9 +405,9 @@ impl LocalRegistrySource {
     pub(crate) fn parse_endpoint(url: &str) -> ToadStoolResult<ServiceEndpoint> {
         if url.starts_with("http://") || url.starts_with("https://") {
             Ok(ServiceEndpoint::Http(url.to_string()))
-        } else if url.starts_with("unix://") {
+        } else if url.starts_with(UNIX_SOCKET_URL_PREFIX) {
             let path = url
-                .strip_prefix("unix://")
+                .strip_prefix(UNIX_SOCKET_URL_PREFIX)
                 .ok_or_else(|| ToadStoolError::validation("Invalid unix socket URL".to_string()))?;
             Ok(ServiceEndpoint::UnixSocket(path.into()))
         } else if url.starts_with("tcp://") {

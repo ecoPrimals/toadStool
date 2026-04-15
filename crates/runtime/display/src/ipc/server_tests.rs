@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-
 use super::*;
 use crate::ipc::{JsonRpcError, JsonRpcRequest, JsonRpcResponse};
 use std::net::{Ipv4Addr, SocketAddr};

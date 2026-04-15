@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
-use crate::types::{
-    DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements,
-};
+use crate::types::{DistributedRetryConfig, ExecutionTarget, JobPriority, ResourceRequirements};
 use std::time::SystemTime;
 use toadstool::ExecutionRequest;
 use uuid::Uuid;
@@ -80,12 +78,11 @@ async fn test_hybrid_cloud_scheduler_new_latency_sensitive() {
 
 #[tokio::test]
 async fn test_hybrid_cloud_scheduler_new_sustainability_focused() {
-    let scheduler =
-        HybridCloudScheduler::new(HybridSchedulingStrategy::SustainabilityFocused {
-            renewable_energy_preference: 0.8,
-        })
-        .await
-        .unwrap();
+    let scheduler = HybridCloudScheduler::new(HybridSchedulingStrategy::SustainabilityFocused {
+        renewable_energy_preference: 0.8,
+    })
+    .await
+    .unwrap();
     let _ = scheduler;
 }
 
