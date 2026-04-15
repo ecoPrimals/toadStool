@@ -123,3 +123,142 @@ impl ToadStoolCoordinationIntegration {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bytes::Bytes;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use uuid::Uuid;
+
+    use toadstool::error::{SystemError, ToadStoolError};
+
+    use super::super::types::{
+        CapacityConfig, ConnectionHealth, CoordinationConnection, CoordinationTransport,
+        GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
+        SubTask, SubTaskStatus, ToadStoolCoordinationIntegration,
+    };
+    use crate::universal::{UniversalScheduler, UniversalSchedulerConfig};
+    use toadstool_common::constants::network::LOCALHOST_IPV4;
+
+    fn connection_with_protocol(protocol: CoordinationTransport) -> CoordinationConnection {
+        let endpoint = format!("http://{}:{}", LOCALHOST_IPV4, 50051_u16);
+        CoordinationConnection {
+            endpoints: vec![endpoint.clone()],
+            active_endpoint: endpoint,
+            auth_token: None,
+            health_status: ConnectionHealth::Healthy,
+            protocol_config: ProtocolConfig {
+                protocol,
+                http: HttpProtocolConfig {
+                    timeout_ms: 5000,
+                    max_retries: 3,
+                    headers: HashMap::new(),
+                },
+                grpc: GrpcProtocolConfig {
+                    timeout_ms: 10_000,
+                    max_message_size: 4 * 1024 * 1024,
+                    compression: false,
+                },
+                message_queue: MessageQueueProtocolConfig {
+                    queue_name: "jobs".to_string(),
+                    exchange: "toadstool".to_string(),
+                    routing_key: "compute".to_string(),
+                },
+            },
+            #[cfg(feature = "channels")]
+            reply_channel: None,
+        }
+    }
+
+    fn capacity_config() -> CapacityConfig {
+        CapacityConfig {
+            monitoring_interval: Duration::from_secs(60),
+            resource_buffer: 0.1,
+        }
+    }
+
+    fn sample_subtask() -> SubTask {
+        SubTask {
+            id: Uuid::new_v4(),
+            payload: Bytes::from_static(b"payload"),
+            resource_requirements: crate::ResourceRequirements::default(),
+            priority: 1,
+            constraints: vec![],
+        }
+    }
+
+    async fn integration_with_protocol(
+        protocol: CoordinationTransport,
+    ) -> ToadStoolCoordinationIntegration {
+        let scheduler = Arc::new(
+            UniversalScheduler::new(UniversalSchedulerConfig::default())
+                .await
+                .expect("scheduler"),
+        );
+        ToadStoolCoordinationIntegration::new(
+            "transport-test".to_string(),
+            connection_with_protocol(protocol),
+            capacity_config(),
+            scheduler,
+        )
+        .await
+        .expect("integration")
+    }
+
+    #[tokio::test]
+    async fn submit_subtask_http_returns_not_supported() {
+        let integration = integration_with_protocol(CoordinationTransport::HTTP).await;
+        let err = integration
+            .submit_subtask_to_coordination(sample_subtask(), vec!["n1".to_string()])
+            .await
+            .expect_err("HTTP submission must be rejected");
+        assert!(
+            matches!(
+                err,
+                ToadStoolError::System(SystemError::NotSupported { .. })
+            ),
+            "expected NotSupported, got {err:?}"
+        );
+        assert!(
+            err.to_string().contains("HTTP job submission removed"),
+            "message should mention HTTP removal: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn submit_subtask_grpc_returns_not_supported() {
+        let integration = integration_with_protocol(CoordinationTransport::GRPC).await;
+        let err = integration
+            .submit_subtask_to_coordination(sample_subtask(), vec!["n1".to_string()])
+            .await
+            .expect_err("gRPC submission must be rejected");
+        assert!(
+            matches!(
+                err,
+                ToadStoolError::System(SystemError::NotSupported { .. })
+            ),
+            "expected NotSupported, got {err:?}"
+        );
+        assert!(
+            err.to_string().contains("gRPC job submission removed"),
+            "message should mention gRPC removal: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn submit_subtask_message_queue_returns_success() {
+        let integration = integration_with_protocol(CoordinationTransport::MessageQueue).await;
+        let subtask = sample_subtask();
+        let subtask_id = subtask.id;
+        let handle = integration
+            .submit_subtask_to_coordination(subtask, vec!["n1".to_string()])
+            .await
+            .expect("message queue path should succeed");
+        assert_eq!(handle.subtask_id, subtask_id);
+        assert_eq!(handle.target_nodes, vec!["n1".to_string()]);
+        assert!(matches!(handle.status, SubTaskStatus::Submitted));
+        assert!(!handle.coordination_job_id.is_nil());
+    }
+}

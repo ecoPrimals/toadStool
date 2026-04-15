@@ -86,7 +86,7 @@ pub struct JobResult {
 // ============================================================================
 
 /// Job complexity for scheduling and distribution decisions.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum JobComplexity {
     /// Single-node, short-running job.
     Simple,
@@ -201,7 +201,7 @@ pub struct SubTaskHandle {
 }
 
 /// Status of a distributed subtask.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SubTaskStatus {
     /// Submitted, not yet running.
     Submitted,

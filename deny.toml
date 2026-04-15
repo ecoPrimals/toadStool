@@ -78,9 +78,8 @@ deny = [
     { name = "openssl" },
     { name = "openssl-sys" },
     # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives
-    # License clarified in [[licenses.clarify]]; ban left commented — ring may still appear via
-    # optional TLS/HTTP feature graphs elsewhere, not the default server/core path.
-    #{ name = "ring" },
+    # License clarified in [[licenses.clarify]]; verified absent from Cargo.lock (S203l).
+    { name = "ring" },
     # zstd-sys — C FFI for zstd; banned in production paths
     # toadstool-runtime-secure-enclave uses ruzstd (pure Rust); no member-specific exemption needed.
     #{ name = "zstd-sys" },

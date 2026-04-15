@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 15, 2026 — S203k (Deep Debt: Comprehensive Evolution Pass)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **~3m30s test runtime** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` 183→~144 (8 crates freed)** | **workspace deps unified**
-**Latest**: S203k — Comprehensive evolution: 13 async traits migrated to native AFIT (8 crates freed from async-trait dep). 70+ raw env var strings interned. HTTP/Unix protocol constants. Large file smart refactoring (4 files → submodule directories). Dead code cleanup, error swallowing → tracing::warn. Network configurator stubs → structural validation. 5 active debt items cataloged. S203j: tarpc socket unification, deprecated CUDA/OpenCL stubs, platform path constants, magic number evolution, workspace dep unification.
+**Updated**: April 15, 2026 — S203l (primalSpring Downstream Audit Closure)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` dyn-ceiling: 158 (32 dyn-constrained traits)** | **`deny.toml` ring ban active** | **dual-socket documented**
+**Latest**: S203l — primalSpring downstream audit closure: async-trait dyn-ceiling verified (32 traits, all genuinely dyn-dispatched). `deny.toml` ring ban uncommented (ecoBin v3 compliant, ring absent from lockfile). Dual-socket naming canonically documented across README, CONTEXT, DOCUMENTATION, SERVER_METHODS (compute.sock + compute-tarpc.sock). S203k: comprehensive evolution pass (see below).
 
 ---
 

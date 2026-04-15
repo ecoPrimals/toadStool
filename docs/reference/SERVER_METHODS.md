@@ -9,17 +9,24 @@ ToadStool binds **two Unix sockets** plus an optional TCP listener:
 
 | Transport | Path | Protocol | Use case |
 |-----------|------|----------|----------|
-| Pure JSON-RPC | `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock` | JSON-RPC 2.0 (newline-delimited) | External clients, `socat`, springs, biomeOS Neural API |
-| tarpc | `$XDG_RUNTIME_DIR/biomeos/toadstool.sock` | tarpc binary (Tokio codec) | High-perf primal-to-primal IPC |
+| JSON-RPC (primary) | `$XDG_RUNTIME_DIR/biomeos/compute.sock` | JSON-RPC 2.0 (newline-delimited) | External clients, `socat`, springs, biomeOS Neural API |
+| tarpc (hot-path) | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` | tarpc binary (Tokio codec) | High-perf primal-to-primal IPC (Rust-to-Rust) |
 | TCP (optional) | `0.0.0.0:<port>` | JSON-RPC 2.0 | Cross-host access (`--port`) |
+
+The two protocols use **separate sockets** to avoid bind collision and allow independent
+lifecycle management. JSON-RPC is the universal entry point; tarpc is the optional
+performance channel for Rust peers.
 
 Socket paths can be overridden:
 
-- `TOADSTOOL_SOCKET` env var — overrides both socket paths
+- `TOADSTOOL_SOCKET` env var — overrides JSON-RPC socket path
+- `TOADSTOOL_TARPC_SOCKET` env var — overrides tarpc socket path
 - `--socket <PATH>` CLI flag
-- `--family-id <ID>` — creates `toadstool-{ID}.sock` / `toadstool-{ID}.jsonrpc.sock`
+- `--family-id <ID>` — creates `compute-{ID}.sock` / `compute-{ID}-tarpc.sock`
 
-A `compute.sock` capability symlink may also be created for biomeOS capability routing.
+biomeOS routes to `compute.sock` for capability-based dispatch. Clients requesting
+tarpc performance should resolve via `get_toadstool_tarpc_socket_path()` or the
+`TOADSTOOL_TARPC_SOCKET` env var.
 
 ### Starting the Server
 

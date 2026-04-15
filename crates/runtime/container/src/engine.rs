@@ -222,3 +222,176 @@ impl RuntimeEngine for ContainerRuntimeEngine {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use tokio::sync::RwLock;
+    use uuid::Uuid;
+
+    use toadstool::execution::RuntimeEngine;
+    use toadstool::resources::{CpuRequirements, MemoryRequirements, ResourceRequirements};
+    use toadstool::{ExecutionRequest, RuntimeCapabilities, WorkloadType};
+
+    use crate::ContainerRuntimeEngine;
+    use crate::types::{ContainerResourceLimits, ContainerRuntimeConfig};
+
+    fn test_engine() -> ContainerRuntimeEngine {
+        let mut platform_features = HashMap::new();
+        platform_features.insert("docker_support".to_string(), false);
+        platform_features.insert("volume_mounts".to_string(), true);
+        platform_features.insert("network_isolation".to_string(), true);
+
+        ContainerRuntimeEngine {
+            config: ContainerRuntimeConfig::default(),
+            docker: None,
+            active_containers: Arc::new(RwLock::new(HashMap::new())),
+            resource_monitor: None,
+            capabilities: RuntimeCapabilities {
+                supported_workloads: vec![WorkloadType::Container],
+                max_concurrent_executions: Some(100),
+                supported_architectures: vec!["linux/amd64".to_string(), "linux/arm64".to_string()],
+                platform_features,
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+        }
+    }
+
+    fn engine_with_resource_limits(limits: ContainerResourceLimits) -> ContainerRuntimeEngine {
+        let mut config = ContainerRuntimeConfig::default();
+        config.resource_limits = limits;
+        let mut engine = test_engine();
+        engine.config = config;
+        engine
+    }
+
+    fn execution_request_with_resources(resources: ResourceRequirements) -> ExecutionRequest {
+        ExecutionRequest {
+            execution_id: Uuid::nil(),
+            resources,
+            ..ExecutionRequest::default()
+        }
+    }
+
+    #[test]
+    fn validate_resource_requirements_memory_exceeds_limit_returns_error() {
+        let engine = engine_with_resource_limits(ContainerResourceLimits {
+            max_memory_bytes: 1024,
+            max_cpu_millicores: 10_000,
+            ..ContainerResourceLimits::default()
+        });
+        let request = execution_request_with_resources(ResourceRequirements {
+            memory: MemoryRequirements {
+                min_bytes: 512,
+                max_bytes: Some(2048),
+            },
+            ..ResourceRequirements::default()
+        });
+        let err = engine
+            .validate_resource_requirements(&request)
+            .expect_err("memory above limit should error");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Memory requirement") && msg.contains("exceeds limit"),
+            "unexpected error message: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_resource_requirements_cpu_exceeds_limit_returns_error() {
+        let engine = engine_with_resource_limits(ContainerResourceLimits {
+            max_memory_bytes: 1024 * 1024 * 1024,
+            max_cpu_millicores: 500,
+            ..ContainerResourceLimits::default()
+        });
+        let request = execution_request_with_resources(ResourceRequirements {
+            cpu: CpuRequirements {
+                min_cores: 0.1,
+                max_cores: Some(1.0),
+                architecture: None,
+            },
+            ..ResourceRequirements::default()
+        });
+        let err = engine
+            .validate_resource_requirements(&request)
+            .expect_err("cpu above limit should error");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("CPU requirement") && msg.contains("exceeds limit"),
+            "unexpected error message: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_resource_requirements_within_limits_ok() {
+        let engine = test_engine();
+        let request = execution_request_with_resources(ResourceRequirements {
+            memory: MemoryRequirements {
+                min_bytes: 128 * 1024 * 1024,
+                max_bytes: Some(256 * 1024 * 1024),
+            },
+            cpu: CpuRequirements {
+                min_cores: 0.25,
+                max_cores: Some(0.5),
+                architecture: None,
+            },
+            ..ResourceRequirements::default()
+        });
+        engine
+            .validate_resource_requirements(&request)
+            .expect("within limits should succeed");
+    }
+
+    #[test]
+    fn validate_resource_requirements_none_specified_ok() {
+        let engine = test_engine();
+        let request = execution_request_with_resources(ResourceRequirements {
+            memory: MemoryRequirements {
+                min_bytes: 1024,
+                max_bytes: None,
+            },
+            cpu: CpuRequirements {
+                min_cores: 0.1,
+                max_cores: None,
+                architecture: None,
+            },
+            ..ResourceRequirements::default()
+        });
+        engine
+            .validate_resource_requirements(&request)
+            .expect("no max requirements should succeed");
+    }
+
+    #[test]
+    fn supports_workload_container_true() {
+        let engine = test_engine();
+        assert!(engine.supports_workload(&WorkloadType::Container));
+    }
+
+    #[test]
+    fn supports_workload_other_types_false() {
+        let engine = test_engine();
+        assert!(!engine.supports_workload(&WorkloadType::Gpu));
+        assert!(!engine.supports_workload(&WorkloadType::Native));
+        assert!(!engine.supports_workload(&WorkloadType::Wasm));
+        assert!(!engine.supports_workload(&WorkloadType::Python));
+    }
+
+    #[test]
+    fn get_capabilities_returns_expected_runtime_capabilities() {
+        let engine = test_engine();
+        let caps = engine.get_capabilities();
+        assert_eq!(caps.supported_workloads, vec![WorkloadType::Container]);
+        assert_eq!(caps.max_concurrent_executions, Some(100));
+        assert_eq!(
+            caps.supported_architectures,
+            vec!["linux/amd64".to_string(), "linux/arm64".to_string()]
+        );
+        assert!(caps.version == env!("CARGO_PKG_VERSION"));
+        assert_eq!(caps.platform_features.get("volume_mounts"), Some(&true));
+        assert_eq!(caps.platform_features.get("network_isolation"), Some(&true));
+        assert_eq!(caps.platform_features.get("docker_support"), Some(&false));
+    }
+}

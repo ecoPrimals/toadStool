@@ -326,3 +326,117 @@ impl Default for FaultToleranceConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    // SPDX-License-Identifier: AGPL-3.0-or-later
+
+    use toadstool_config::defaults::network;
+    use toadstool_config::ports::capability_fallback;
+
+    use crate::types::{LoadBalancingStrategy, ResourceAllocationStrategy, ResourceLimits};
+
+    use super::{
+        CoordinationSchedulerConfig, FaultToleranceConfig, NetworkEffectsConfig,
+        NetworkLoadBalancing, OSLayerConfig, RecursiveHostingConfig, ResourceSharingConfig,
+        SchedulingAlgorithm, UniversalSchedulerConfig,
+    };
+
+    #[test]
+    fn universal_scheduler_config_default() {
+        let c = UniversalSchedulerConfig::default();
+        assert_eq!(c.scheduling_algorithms.len(), 2);
+        match c.scheduling_algorithms.as_slice() {
+            [
+                SchedulingAlgorithm::Priority,
+                SchedulingAlgorithm::ResourceAware,
+            ] => {}
+            other => panic!("expected Priority + ResourceAware, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn network_effects_config_default() {
+        let c = NetworkEffectsConfig::default();
+        assert!(c.enabled);
+    }
+
+    #[test]
+    fn coordination_scheduler_config_default() {
+        let c = CoordinationSchedulerConfig::default();
+        assert!(!c.enabled);
+        assert!(c.auth_token.is_none());
+        assert_eq!(
+            c.endpoint,
+            format!(
+                "http://{}:{}",
+                network::LOCALHOST,
+                capability_fallback::COORDINATION
+            )
+        );
+    }
+
+    #[test]
+    fn recursive_hosting_config_default() {
+        let c = RecursiveHostingConfig::default();
+        assert!(!c.enabled);
+        assert_eq!(c.current_depth, 0);
+        assert_eq!(c.max_depth, 3);
+        assert!(c.parent_toadstool.is_none());
+        assert!(c.child_toadstools.is_empty());
+        assert!(matches!(
+            c.child_resource_allocation,
+            ResourceAllocationStrategy::Fair
+        ));
+    }
+
+    #[test]
+    fn network_load_balancing_default() {
+        let c = NetworkLoadBalancing::default();
+        assert!(matches!(c.strategy, LoadBalancingStrategy::RoundRobin));
+        assert_eq!(c.health_check_interval_ms, 5000);
+        assert_eq!(c.failover_threshold, 3);
+    }
+
+    #[test]
+    fn resource_sharing_config_default() {
+        let c = ResourceSharingConfig::default();
+        assert!(c.enabled);
+        assert!((c.sharing_ratio - 0.8).abs() < f64::EPSILON);
+        assert!((c.priority_boost - 1.2).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn fault_tolerance_config_default() {
+        let c = FaultToleranceConfig::default();
+        assert!(c.enabled);
+        assert_eq!(c.max_retries, 3);
+        assert_eq!(c.circuit_breaker_threshold, 5);
+    }
+
+    #[test]
+    fn os_layer_config_default() {
+        let c = OSLayerConfig::default();
+        assert!(!c.virtual_filesystem_enabled);
+        assert!(!c.process_virtualization_enabled);
+        assert!(!c.network_virtualization_enabled);
+        assert!(c.compatibility_modes.is_empty());
+        let expected_limits = ResourceLimits::default();
+        assert!(
+            (c.os_layer_resource_limits.max_cpu_cores - expected_limits.max_cpu_cores).abs()
+                < f64::EPSILON
+        );
+        assert_eq!(
+            c.os_layer_resource_limits.max_memory_bytes,
+            expected_limits.max_memory_bytes
+        );
+        assert_eq!(
+            c.os_layer_resource_limits.max_storage_bytes,
+            expected_limits.max_storage_bytes
+        );
+        assert_eq!(
+            c.os_layer_resource_limits.max_network_bandwidth_mbps,
+            expected_limits.max_network_bandwidth_mbps
+        );
+    }
+}

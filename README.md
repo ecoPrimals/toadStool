@@ -30,7 +30,7 @@ Nest    = Tower  + Storage            <- storage
 
 **biomeOS grade**: Node Atomic READY -- ToadStool A++ socket-standardized. **Wire Standard L3** (partial): `cost_estimates` + `operation_dependencies` on `capabilities.list`.
 
-**Deployment**: Tower starts first (security service → coordination service), then ToadStool. Socket: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock`. ToadStool discovers other primals at runtime by capability, not by name.
+**Deployment**: Tower starts first (security service → coordination service), then ToadStool. Sockets: `$XDG_RUNTIME_DIR/biomeos/compute.sock` (JSON-RPC) + `compute-tarpc.sock` (tarpc). ToadStool discovers other primals at runtime by capability, not by name.
 
 ---
 
@@ -132,12 +132,14 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 
 ### IPC Architecture
 
-- **Unix sockets** for all primal-to-primal communication
+- **Dual-socket pattern** (separate sockets, separate protocols):
+  - `compute.sock` — JSON-RPC 2.0 primary (biomeOS routes here; universal entry point)
+  - `compute-tarpc.sock` — tarpc hot-path (Rust-to-Rust peers; optional performance channel)
+  - Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET` env vars
+  - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock` via `--family-id`
 - **JSON-RPC 2.0** protocol with semantic method naming (`{domain}.{operation}[.{variant}]`)
-- **tarpc** (0.37) for high-performance typed RPC
+- **tarpc** (0.37) for high-performance typed RPC between Rust peers
 - **Capability-based discovery** -- `get_socket_path_for_capability()` replaces all name-based lookup
-- **biomeOS socket standard**: `/run/user/$UID/biomeos/{primal}.sock`
-- **Multi-family support**: `--family-id` flag for `toadstool-{family_id}.sock`
 - **Self-knowledge principle**: ToadStool only knows its own identity (`PRIMAL_NAME`); external primals are discovered via capability, not name
 - **Storage service integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/coordination service for event streaming

@@ -194,3 +194,7 @@ impl ToadStoolCoordinationIntegration {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "messaging_tests.rs"]
+mod messaging_tests;

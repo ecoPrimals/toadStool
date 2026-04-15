@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 15, 2026 — S203k
+**Date**: April 15, 2026 — S203l
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -60,6 +60,10 @@ Line coverage at 83.6% (target: 90%). Gap concentrated in integration crates,
 runtime backends (GPU/container/WASM), and distributed coordination paths.
 `cudarc` blocker resolved S197 (removed). `--all-features` should now work on
 machines without CUDA toolkit.
+**S203l**: +29 tests across 4 previously-untested production modules:
+coordination messaging (complexity analysis, subtask estimation), coordination transport
+(HTTP/gRPC deprecated, MQ success), scheduler config defaults, container engine
+(resource validation, workload support, capabilities).
 Files: `scripts/run-coverage.sh`, `.github/workflows/ci.yml`.
 
 ### D-FUZZ-TARGETS-UNSAFE
@@ -82,18 +86,23 @@ Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
 
 ## Known Limitations (not actionable debt)
 
-### D-ASYNC-DYN-MARKERS — Partially resolved, ongoing
-**Scope**: Workspace (~148 remaining `#[async_trait]` annotations, down from 183)
-**Wave 1-2**: Migrated 7 traits (zero-dyn + dead-code + concrete-type). Freed 3 crates.
-**Wave 3** (S203j): Migrated 6 more zero-dyn traits: `HealthMonitor`, `SwapExecutor`,
-`DeviceDiscovery`, `HealthProbe`, `CrossCompilationToolchain` (+ 3 impls), `GpuDiscovery`.
-10 more annotations removed. 5 more crates freed from `async-trait` dependency:
-`toadstool-glowplug`, `toadstool-management-monitoring`, `toadstool-runtime-native`,
-`toadstool-integration-security`, `toadstool-runtime-container` (moved to dev-dep).
-Total: 13 traits migrated, 8 crates freed across all waves.
-**Remaining ~148**: On traits with production `dyn` dispatch (`AuthBackend`, `AgentBackend`,
-`CryptoProvider`, `UnifiedMemoryBackend`, `EdgeDevice`, `WorkloadExecutor`, etc.).
-Migration requires Send-aware generics or enum dispatch (Squirrel Wave 2/3 pattern).
+### D-ASYNC-DYN-MARKERS — Dyn-ceiling reached
+**Scope**: Workspace (158 remaining `#[async_trait]` annotations: 113 production, 45 test)
+**Waves 1-3**: Migrated all 13 zero-dyn traits to native AFIT. Freed 8 crates.
+**Dyn-ceiling audit (S203l)**: All 32 remaining production trait definitions verified as
+genuinely `dyn`-dispatched (`Box<dyn T>` or `Arc<dyn T>` in APIs). All 45 test annotations
+are on `impl` blocks for those same dyn traits — they cannot be removed independently.
+**32 dyn-constrained traits**: `AuthBackend`, `AgentBackend`, `CryptoProvider`,
+`UnifiedMemoryBackend`, `EdgeDevice`, `WorkloadExecutor`, `CloudProvider`,
+`CloudProviderInterface`, `ComputeSubstrate`, `ComputeUnit`, `PrimalIntegration`,
+`SecurityProvider`, `MemoryPressureCallback`, `ByobExecutor`, `UniversalPrimalProvider`,
+`DiscoveryClient`, `DiscoverySource`, `DiscoveryMethod`, `ParallelComputeFramework`,
+`UniversalComputeResource`, `ComputeContext`, `CommunicationProtocol`,
+`Terminal3270Session`, `VAXTerminalSession`, `Terminal5250Session`,
+`EmbeddedToolchain`, `ProgrammerInterface`, `EmbeddedEmulator`, `PeripheralInterface`,
+`LegacyEmulator`, `LegacyAdapter`, `LegacyCommunicationSession`.
+Further reduction requires trait splitting (separate static-dispatch from dyn-dispatch
+surfaces) or enum dispatch — architectural changes beyond debt cleanup.
 
 ## S203k Resolved Debt (Deep Debt Execution: Comprehensive Evolution Pass)
 

@@ -20,10 +20,14 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 
 - **License**: AGPL-3.0-or-later
 - **Language**: Rust (edition 2024, MSRV 1.85)
-- **IPC**: JSON-RPC 2.0 (primary) + tarpc (optional high-perf), newline-delimited over Unix sockets / TCP
+- **IPC**: JSON-RPC 2.0 (primary) + tarpc (optional hot-path), newline-delimited over Unix sockets / TCP
 - **Binary**: `toadstool` (UniBin standard — single binary, subcommands)
 - **ecoBin grade**: v3.0 (zero application-level C dependencies)
-- **Socket**: `$XDG_RUNTIME_DIR/biomeos/toadstool.sock` (+ `compute.sock` capability symlink)
+- **Sockets** (dual-socket pattern):
+  - `$XDG_RUNTIME_DIR/biomeos/compute.sock` — JSON-RPC 2.0 primary (biomeOS routes here)
+  - `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` — tarpc hot-path (Rust-to-Rust peers)
+  - Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET` env vars
+  - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock`
 - **Peer primals**: Resolved at runtime via capability IDs and Unix-socket discovery (e.g. `capability.discover`, `resolve_capability_socket_fallback`) — not hardcoded URLs or legacy per-primal env manifests.
 
 ## Not Included
