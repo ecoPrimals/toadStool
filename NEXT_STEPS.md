@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 16, 2026 — S203n (primalSpring Audit Closure + Coverage Push)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,700+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` CLOSED (dyn-ceiling: 158, 32 dyn-dispatched)** | **`deny.toml` ring ban active** | **dual-socket documented** | **edge discovery: real USB/BT/IPv6 sysfs** | **unsafe SAFETY docs complete**
-**Latest**: S203n — primalSpring April 16 audit closure: D-ASYNC-DYN-MARKERS formally closed (dyn-ceiling, no further migration). +129 tests across 15 previously-untested production modules (server dispatch/routing, distributed discovery/crypto, CLI config validation, integration primals/storage, WASM component model). S203m: stub evolution, hardcoding sweep (see below).
+**Updated**: April 16, 2026 — S203o (Testability Refactors + Stub Evolution Wave 2)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,700+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` CLOSED (dyn-ceiling: 158, 32 dyn-dispatched)** | **`deny.toml` ring ban active** | **dual-socket documented** | **I/O-logic separated (pure parsers testable)** | **real system monitoring (CPU/mem/disk)**
+**Latest**: S203o — Testability refactors: 5 modules evolved to separate I/O from pure logic (detection, GPU, DNS, storage, OS). +38 tests for pure parsers. Monitoring evolved from hardcoded to real host queries (sysmon/statvfs). StorageStatus::LocalOnly replaces fake success. Constants wave 4 (4 sysfs + 11 env). S203n: +129 tests, async-trait closed (see below).
 
 ---
 

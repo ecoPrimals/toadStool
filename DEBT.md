@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 16, 2026 — S203n
+**Date**: April 16, 2026 — S203o
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -109,6 +109,37 @@ are genuinely `dyn`-dispatched (`Box<dyn T>` or `Arc<dyn T>` in APIs) and carry
 `LegacyEmulator`, `LegacyAdapter`, `LegacyCommunicationSession`.
 Further reduction would require trait splitting or enum dispatch — architectural
 changes outside the scope of debt cleanup. Item closed per primalSpring April 16 audit.
+
+## S203o Resolved Debt (Testability Refactors + Stub Evolution Wave 2)
+
+### D-MIXED-IO-LOGIC — RESOLVED S203o
+**Scope**: 5 production modules with mixed I/O + computation
+Extracted pure parsers from I/O-coupled functions to enable unit testing:
+- `detection.rs`: `parse_meminfo_kb`, `estimate_storage_bandwidth`, `parse_net_speed_mbps`, `mbps_to_bytes_per_sec`
+- `gpu.rs`: `parse_nvidia_information`, `parse_drm_uevent`, `infer_gpu_model_from_ids`
+- `defaults.rs`: `parse_resolv_conf`
+- `storage.rs`: `parse_df_available`, `classify_rotational`
+- `linux.rs`: `parse_kernel_version`
++38 tests for pure helpers.
+
+### D-MONITORING-SYNTHETIC — RESOLVED S203o
+**Scope**: `management/monitoring/reporting.rs`
+`get_system_resources` evolved from hardcoded values (10 GiB storage, 0% CPU)
+to real host queries: `toadstool_sysmon` for CPU/memory, `rustix::statvfs`
+for root FS, `load_average` fallback chain. `start_monitoring` now registers
+workload IDs in a real `HashSet`.
+
+### D-STORAGE-FAKE-SUCCESS — RESOLVED S203o
+**Scope**: `integration/storage/artifacts.rs`
+`store_artifact` RPC failure path changed from `StorageStatus::Success`
+(misleading) to new `StorageStatus::LocalOnly` variant.
+
+### D-SYSFS-HARDCODING-WAVE4 — RESOLVED S203o
+**Scope**: 5 files
+New sysfs constants: `CLASS_DRM`, `CLASS_AKIDA`, `CLASS_GPIO`, `FS_SELINUX_ENFORCE`.
+New env constants: `TOADSTOOL_PORT`, `REQUEST_TIMEOUT`, `DNS_RESOLVERS`,
+`BASE_DOMAIN`, `ENV`, `DEBUG`, `LOG_LEVEL`, `DATA_DIR`, `CACHE_DIR`,
+`ENABLE_PRIMAL_CAPABILITIES`, `PRIMAL_HEARTBEAT_INTERVAL`.
 
 ## S203m Resolved Debt (Deep Debt Execution: Stub Evolution + Hardcoding Sweep)
 
