@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 15, 2026 — S203k
+**Last Updated**: April 16, 2026 — S203m
 
 ---
 
@@ -30,7 +30,7 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S203l — April 15, 2026)
+## Current State (S203m — April 16, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
@@ -44,7 +44,10 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **BTSP Phase 2 + Auto-Detect** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully.
 - **async-trait dyn-ceiling** — 158 annotations remain (113 production, 45 test), all on 32 dyn-dispatched traits. 13 zero-dyn traits migrated to native AFIT, 8 crates freed.
 - **`deny.toml` ring ban active** — ecoBin v3 compliant. `ring` absent from lockfile.
-- **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented. 41 crates forbid, 6 deny `unsafe_code`.
+- **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented with `debug_assert!` pre-conditions. 40 crates forbid, 6 deny `unsafe_code` (**46/46**).
+- **Edge discovery evolved (S203m)** — USB via `/sys/bus/usb/devices/`, Bluetooth via sysfs adapter enumeration, IPv6 via `/proc/net/if_inet6`. All gracefully degrade on non-Linux.
+- **Scheduler queuing (S203m)** — `schedule_job` → `UniversalJobQueue::add_job` inserts into per-priority queues (was metadata-only). `schedule_local_job` logs post-enqueue telemetry.
+- **Hardcoding sweep (S203m)** — 8 sysfs/procfs path files + 5 env var modules centralized to `platform_paths`/`socket_env` constants.
 - **ecoBin v3.0** — Zero C FFI deps. `serialport` feature-gated in specialty crate. Crypto delegated to security service. HTTP delegated to coordination service.
 - **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + async timeout (S203g: evolved from blocking poll).
 - **Fully concurrent tests** — All tests run with unlimited parallelism. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.

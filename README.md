@@ -45,15 +45,15 @@ Nest    = Tower  + Storage            <- storage
 | `cargo test --workspace` | **21,600+ tests, 0 failures**, 121 ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
+| `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**) |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
-| Production stubs / test mocks | Stubs evolved or typed errors; **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`** |
+| Production stubs / test mocks | Stubs evolved to real implementations (edge USB/BT/IPv6, scheduler queuing); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
 | Hardcoded primal names | **0** user-visible; **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
-| `async-trait` migration | 5 crates migrated to native AFIT; remaining ~102 uses justified by `dyn Trait` dispatch; stale import removed (S163) |
+| `async-trait` migration | 13 traits migrated to native AFIT, 8 crates freed; **158 remaining** (dyn-ceiling: 32 dyn-dispatched traits, all justified); stale import removed (S163) |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
@@ -207,7 +207,7 @@ toadStool/
 |   |   +-- universal/             Universal compute substrate (CPU backends, GpuAdapterInfo)
 |   |   +-- adaptive/              Adaptive optimization, GPU fingerprinting
 |   |   +-- display/               DRM/KMS backend + Hardware Transport (HDMI/capture/serial)
-|   |   +-- edge/                  Edge device discovery (mDNS, filesystem), serial/TCP comms
+|   |   +-- edge/                  Edge device discovery (sysfs USB/BT, IPv6 procfs, mDNS), serial/TCP comms
 |   |   +-- wasm/                  WebAssembly runtime (wasmi)
 |   |   +-- container/             BYOB container runtime
 |   +-- neuromorphic/              NPU drivers (Akida VFIO/kernel/mmap backends)
@@ -248,8 +248,8 @@ toadStool/
 | Build warnings | 0 |
 | Workspace tests | **21,600+**, 0 failures |
 | Lib-only line coverage | ~83.6% |
-| Full workspace test time | ~2m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented; **41 crates forbid, 6 deny** `unsafe_code` |
+| Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
+| `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**) |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
@@ -273,6 +273,9 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S203m (Apr 16, 2026)**: Deep debt stub evolution — real edge discovery (USB sysfs, BT sysfs, IPv6 procfs), scheduler `schedule_job` → priority queues via `add_job`, 8 sysfs/procfs paths centralized, 5 server/CLI env var modules interned, unsafe SAFETY docs hardened with `debug_assert!` pre-conditions.
+- **S203l (Apr 15, 2026)**: primalSpring audit closure — `async-trait` dyn-ceiling verified (32 traits), `deny.toml` ring ban uncommented, dual-socket naming documented across 4 root docs, +29 tests.
+- **S203j–k (Apr 15, 2026)**: Comprehensive evolution — 13 traits migrated to native AFIT, 8 crates freed from `async-trait`, tarpc socket fix, workspace deps unified, V4L2 ioctl safe wrappers, BTSP UDS auto-detect.
 - **S203i (Apr 14, 2026)**: Deep debt — 52 production files refactored via test extraction (~10K+ lines moved to companion files). Hardcoding evolution: `CORALREEF_URL`/`CORALREEF_SOCKET` references replaced with capability-neutral guidance; literal `localhost` in `FallbackEndpoints` replaced with `DEFAULT_HOSTNAME` constant. Production files >500L reduced from 38→25.
 - **S203h (Apr 14, 2026)**: TCP idle timeout — `TCP_IDLE_TIMEOUT_SECS` (300s configurable), `tokio::time::timeout` wraps on all TCP read loops (JSON-RPC + tarpc), `TCP_NODELAY` on all accepted streams. Resolves primalSpring benchScale exp082.
 - **S203g (Apr 13, 2026)**: Deep debt — 12 production files >540 LOC refactored via test extraction. 6 deprecated zero-caller items removed (`localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` module, `get_primal_default_port` wrappers, `TarpcClient::address()`). Blocking `thread::sleep` in async GPU discovery evolved to `tokio::oneshot` + `tokio::time::timeout`. Forward dispatch clone optimization.
@@ -368,7 +371,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 14, 2026 — S203i. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~69 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); **41 crates forbid, 6 deny** `unsafe_code`. IPC-first JSON-RPC (Unix sockets). Capability symlinks (`compute.sock`). Rust 1.85+ (edition 2024, MSRV). **S203i**: 52 production-file test extractions (>500L files 38→25), hardcoding evolution (CORALREEF refs → capability-neutral). **S203h**: TCP idle timeout (300s), TCP_NODELAY. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 16, 2026 — S203m. **21,600+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~69 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**). IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait** dyn-ceiling: 158 (32 dyn-dispatched traits). **S203m**: edge discovery evolved (USB/BT/IPv6 sysfs), scheduler queuing, hardcoding sweep. **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

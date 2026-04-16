@@ -131,9 +131,9 @@ All gracefully degrade to empty Vec on non-Linux/permission errors.
 
 ### D-SCHEDULER-SILENT-OK — RESOLVED S203m
 **Scope**: `distributed/universal/scheduler.rs`
-`schedule_local_job` evolved from log-only `Ok(())` to actually pushing jobs into
-`UniversalJobQueue` via `add_job`. `UniversalJobQueue::add_job` now inserts into
-priority queues (not just metadata).
+`schedule_job` now calls `UniversalJobQueue::add_job`, which inserts into
+per-priority queues (was metadata-only). `schedule_local_job` logs post-enqueue
+local scheduling telemetry instead of silently returning `Ok(())`.
 
 ### D-UNSAFE-SAFETY-DOCS — RESOLVED S203m
 **Scope**: `hw-safe`, `runtime/gpu`
