@@ -226,9 +226,22 @@ impl UniversalScheduler {
     }
 
     async fn schedule_local_job(&self, job: UniversalJob) -> ToadStoolResult<()> {
-        // This would implement local job scheduling
-        // For now, just log it
-        tracing::info!("Scheduling local job: {:?}", job.job_id);
+        // The job is already registered and enqueued on `local_queue` by `schedule_job` via
+        // `UniversalJobQueue::add_job`. Record structured scheduling telemetry for local execution.
+        let job_id = job.job_id;
+        let priority = job.priority;
+        let target = job.target.clone();
+        let job_type = job.job_type.clone();
+        let local_queue_depth = self.local_queue.read().await.total_jobs();
+
+        tracing::info!(
+            job_id = %job_id,
+            ?priority,
+            ?target,
+            ?job_type,
+            local_queue_depth,
+            "local job scheduled (enqueued on universal job queue)"
+        );
         Ok(())
     }
 

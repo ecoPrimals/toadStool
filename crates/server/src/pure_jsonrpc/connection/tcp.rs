@@ -10,11 +10,12 @@ use tracing::{debug, error, info};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::JsonRpcHandler;
+use toadstool_common::interned_strings::socket_env;
 
 use super::process_request;
 
 pub(crate) fn tcp_idle_timeout() -> Duration {
-    let secs = std::env::var("TOADSTOOL_TCP_IDLE_TIMEOUT_SECS")
+    let secs = std::env::var(socket_env::TOADSTOOL_TCP_IDLE_TIMEOUT_SECS)
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(toadstool_config::defaults::network::TCP_IDLE_TIMEOUT_SECS);

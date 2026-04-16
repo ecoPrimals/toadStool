@@ -11,14 +11,27 @@
 
 use super::UnifiedBuffer;
 
-// SAFETY: All fields other than raw addresses are `Send`/`Sync` (`Arc`, `RwLock`, `AtomicU64`,
-// `HashMap` metadata). `cpu_ptr`/`device_ptr` refer to backend-owned unified memory valid for
-// the buffer’s lifetime; they are only produced/consumed through this module’s safe methods.
-// Moving or sharing `UnifiedBuffer` across threads does not introduce data races beyond what
-// the backend and `sync_state` already synchronize.
+// SAFETY (`Send`):
+// - `UnifiedBuffer` may be moved to another thread if all its fields are safe to move together.
+// - Non-raw fields (`Arc`, `RwLock`, atomics, maps, etc.) are `Send` by construction.
+// - `cpu_ptr` / `device_ptr` are backend-issued addresses for one unified allocation; they must
+//   denote memory that remains valid for this buffer until drop/free regardless of which thread
+//   owns the `UnifiedBuffer`. Constructors and backend code must only store pointers allowed by
+//   the GPU/CPU API for cross-thread moves of the owning handle.
+// - Moving the struct does not duplicate Rust-level ownership of the allocation; the buffer’s
+//   RAII (`allocation`, drop path) remains responsible for freeing exactly once.
+// - Aliasing: other threads or GPUs may hold related handles; cross-device access rules are
+//   enforced by backend sync methods and buffer API, not by `Send` alone.
 unsafe impl Send for UnifiedBuffer {}
 
-// SAFETY: Concurrent `&UnifiedBuffer` access uses `RwLock`/`Arc` for shared state; exclusive
-// mutation uses `&mut self`. Raw pointers follow the same backend lifetime and API contracts
-// as `Send`.
+// SAFETY (`Sync`):
+// - Shared `&UnifiedBuffer` access must not allow unsynchronized data races on any field.
+// - Interior mutability (`RwLock`, atomics) serializes concurrent access to shared metadata;
+//   raw pointers are only dereferenced through methods that enforce validation and locking
+//   discipline (e.g. CPU slice helpers after `validate_cpu_ptr`).
+// - Callers must still respect GPU/CPU coherence: `Sync` does not make concurrent GPU writes
+//   safe for CPU readers without explicit synchronization (`sync_device_to_cpu`, etc.).
+// - Same pointer validity and backend-lifetime guarantees as `Send`: `&UnifiedBuffer` may be
+//   shared across threads only if reading address fields and using the public API is allowed
+//   concurrently under the backend contract.
 unsafe impl Sync for UnifiedBuffer {}

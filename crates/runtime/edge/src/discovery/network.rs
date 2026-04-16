@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! TCP port scanning over configured subnets.
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV6};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use toadstool::error::ToadStoolResult;
+use toadstool_common::constants::platform_paths::procfs;
 
 use crate::platforms::*;
 
@@ -78,12 +80,85 @@ impl NetworkDiscovery {
                 }
             }
             IpAddr::V6(_) => {
-                // IPv6 scanning not implemented yet
-                debug!("IPv6 scanning not yet implemented");
+                if !cfg!(target_os = "linux") {
+                    debug!("IPv6 discovery skipped (not Linux)");
+                } else {
+                    devices.extend(self.scan_ipv6_link_local_sysfs().await);
+                }
             }
         }
 
         Ok(devices)
+    }
+
+    /// Enumerates IPv6 link-local addresses from [`procfs::NET_IF_INET6`] and probes configured ports
+    /// using [`SocketAddrV6`] interface scope (required for link-local TCP on Linux).
+    async fn scan_ipv6_link_local_sysfs(&self) -> Vec<Arc<dyn EdgeDevice>> {
+        let mut found = Vec::new();
+        let path = Path::new(procfs::NET_IF_INET6);
+        let contents = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(e) => {
+                warn!(path = %path.display(), error = %e, "cannot read IPv6 interface table");
+                return found;
+            }
+        };
+
+        let mut seen_iface: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        for line in contents.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 2 {
+                continue;
+            }
+            let addr_hex = parts[0];
+            if !addr_hex.starts_with("fe80") {
+                continue;
+            }
+            let ifname = match parts.last() {
+                Some(n) => (*n).to_string(),
+                None => continue,
+            };
+            if ifname == "lo" {
+                continue;
+            }
+            if !seen_iface.insert(ifname.clone()) {
+                continue;
+            }
+
+            let Some(scope_id) = read_net_ifindex(&ifname) else {
+                warn!(interface = %ifname, "skipping IPv6 probe: no ifindex in sysfs");
+                continue;
+            };
+
+            let Some(ip) = ipv6_from_proc_hex32(addr_hex) else {
+                warn!(addr_hex, "skipping IPv6 line: parse error");
+                continue;
+            };
+
+            debug!(
+                interface = %ifname,
+                %ip,
+                scope_id,
+                "IPv6 link-local candidate from /proc/net/if_inet6"
+            );
+
+            for &port in &self.ports {
+                let sa = SocketAddr::V6(SocketAddrV6::new(ip, port, 0, scope_id));
+                let connect_ok = matches!(
+                    tokio::time::timeout(self.timeout, tokio::net::TcpStream::connect(sa)).await,
+                    Ok(Ok(_))
+                );
+                if connect_ok {
+                    if let Some(device) = self.identify_network_device(IpAddr::V6(ip), port).await {
+                        found.push(device);
+                        break;
+                    }
+                }
+            }
+        }
+
+        found
     }
 
     async fn probe_network_device(&self, ip: IpAddr) -> Option<Arc<dyn EdgeDevice>> {
@@ -126,4 +201,24 @@ impl NetworkDiscovery {
             _ => None,
         }
     }
+}
+
+fn read_net_ifindex(ifname: &str) -> Option<u32> {
+    let path = format!("/sys/class/net/{ifname}/ifindex");
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| s.trim().parse().ok())
+}
+
+fn ipv6_from_proc_hex32(s: &str) -> Option<Ipv6Addr> {
+    if s.len() != 32 {
+        return None;
+    }
+    let mut segs = [0u16; 8];
+    for i in 0..8 {
+        segs[i] = u16::from_str_radix(&s[i * 4..(i + 1) * 4], 16).ok()?;
+    }
+    Some(Ipv6Addr::new(
+        segs[0], segs[1], segs[2], segs[3], segs[4], segs[5], segs[6], segs[7],
+    ))
 }

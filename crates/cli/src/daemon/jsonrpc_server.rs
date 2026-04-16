@@ -60,6 +60,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tracing::{error, info, warn};
 
 use super::workload_manager::WorkloadManager;
+use toadstool_common::interned_strings::socket_env;
 
 /// Shared server state
 #[derive(Clone)]
@@ -217,7 +218,7 @@ pub async fn start_tcp_jsonrpc_server(
         workload_manager,
     };
 
-    let bind_host = std::env::var("TOADSTOOL_BIND_ADDRESS")
+    let bind_host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
         .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
     let addr = format!("{bind_host}:{port}");
     let listener = TcpListener::bind(&addr).await?;
@@ -346,7 +347,7 @@ async fn handle_btsp_daemon_connection(
 /// Resolve family seed for BTSP (`FAMILY_SEED` or `.family.seed` in biomeOS dir).
 #[cfg(feature = "btsp")]
 fn resolve_daemon_family_seed() -> crate::Result<Vec<u8>> {
-    if let Ok(seed) = std::env::var("FAMILY_SEED") {
+    if let Ok(seed) = std::env::var(socket_env::FAMILY_SEED) {
         return Ok(seed.into_bytes());
     }
     let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();

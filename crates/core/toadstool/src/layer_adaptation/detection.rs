@@ -8,13 +8,15 @@
 
 #[cfg(target_os = "linux")]
 use std::fs;
+#[cfg(target_os = "linux")]
+use toadstool_common::constants::platform_paths::{procfs, sysfs};
 
 /// Get total system memory (bytes)
 pub fn get_total_memory() -> Option<u64> {
     // Platform-specific memory detection
     #[cfg(target_os = "linux")]
     {
-        if let Ok(meminfo) = fs::read_to_string("/proc/meminfo") {
+        if let Ok(meminfo) = fs::read_to_string(procfs::MEMINFO) {
             for line in meminfo.lines() {
                 if line.starts_with("MemTotal:") {
                     if let Some(kb) = line.split_whitespace().nth(1) {
@@ -67,7 +69,7 @@ pub fn detect_storage_read_bandwidth() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {
         // Check /sys/block for rotational devices (0 = SSD, 1 = HDD)
-        if let Ok(entries) = fs::read_dir("/sys/block") {
+        if let Ok(entries) = fs::read_dir(sysfs::BLOCK) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 let rotational_path = path.join("queue/rotational");
@@ -112,7 +114,7 @@ pub fn detect_network_bandwidth() -> Option<u64> {
         use std::fs;
 
         // Check /sys/class/net for interface speeds
-        if let Ok(entries) = fs::read_dir("/sys/class/net") {
+        if let Ok(entries) = fs::read_dir(sysfs::CLASS_NET) {
             let mut max_speed = 0u64;
 
             for entry in entries.flatten() {

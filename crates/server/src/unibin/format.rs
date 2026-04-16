@@ -10,6 +10,7 @@ use tracing::info;
 
 use crate::errors::{ServerError, ServerResult};
 use toadstool_common::constants::platform_paths::{etc_paths, procfs};
+use toadstool_common::interned_strings::socket_env;
 
 /// Ensure biomeos directory exists with proper permissions
 ///
@@ -92,12 +93,12 @@ pub fn legacy_socket_filename_for_family(family_id: &str) -> String {
 /// 4. XDG runtime directory
 /// 5. /tmp fallback
 pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf> {
-    if let Ok(socket) = std::env::var("TOADSTOOL_SOCKET") {
+    if let Ok(socket) = std::env::var(socket_env::TOADSTOOL_SOCKET) {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);
         return Ok(PathBuf::from(socket));
     }
 
-    if let Ok(socket) = std::env::var("PRIMAL_SOCKET") {
+    if let Ok(socket) = std::env::var(socket_env::PRIMAL_SOCKET) {
         let socket_with_family = format!("{socket}-{family_id}");
         info!(
             "✅ Using socket path from PRIMAL_SOCKET: {}",
@@ -106,18 +107,18 @@ pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf>
         return Ok(PathBuf::from(socket_with_family));
     }
 
-    if let Ok(socket) = std::env::var("BIOMEOS_SOCKET_PATH") {
+    if let Ok(socket) = std::env::var(socket_env::BIOMEOS_SOCKET_PATH) {
         info!("✅ Using socket path from BIOMEOS_SOCKET_PATH: {}", socket);
         return Ok(PathBuf::from(socket));
     }
 
-    let runtime_dir = if let Ok(xdg_runtime) = std::env::var("XDG_RUNTIME_DIR") {
+    let runtime_dir = if let Ok(xdg_runtime) = std::env::var(socket_env::XDG_RUNTIME_DIR) {
         PathBuf::from(xdg_runtime)
     } else if let Ok(uid_str) = std::fs::read_to_string(procfs::PROC_SELF_LOGINUID) {
         if let Ok(uid) = uid_str.trim().parse::<u32>() {
             PathBuf::from(format!("/run/user/{uid}"))
         } else {
-            std::env::var("USER")
+            std::env::var(socket_env::USER)
                 .ok()
                 .and_then(|user| {
                     std::fs::read_to_string(etc_paths::PASSWD)

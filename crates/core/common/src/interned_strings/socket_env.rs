@@ -11,10 +11,14 @@
 
 pub const XDG_RUNTIME_DIR: &str = "XDG_RUNTIME_DIR";
 pub const USER: &str = "USER";
+/// Standard home directory path (shell / POSIX).
+pub const HOME: &str = "HOME";
 
 pub const TOADSTOOL_FAMILY_ID: &str = "TOADSTOOL_FAMILY_ID";
 pub const TOADSTOOL_FAMILY: &str = "TOADSTOOL_FAMILY";
 pub const BIOMEOS_FAMILY_ID: &str = "BIOMEOS_FAMILY_ID";
+/// Node identity for multi-instance deployments (orchestration / logging).
+pub const TOADSTOOL_NODE_ID: &str = "TOADSTOOL_NODE_ID";
 
 /// Preferred: explicit crypto / security socket path (capability-based).
 pub const BIOMEOS_CRYPTO_SOCKET: &str = "BIOMEOS_CRYPTO_SOCKET";
@@ -44,6 +48,8 @@ pub const LEGACY_NESTGATE_SOCKET_ENV: &str = "NESTGATE_SOCKET";
 pub const LEGACY_SQUIRREL_SOCKET_ENV: &str = "SQUIRREL_SOCKET";
 
 pub const TOADSTOOL_SOCKET: &str = "TOADSTOOL_SOCKET";
+/// **Deprecated** (identity-based). Prefer `TOADSTOOL_SOCKET` or capability discovery.
+pub const PRIMAL_SOCKET: &str = "PRIMAL_SOCKET";
 pub const TOADSTOOL_TARPC_SOCKET: &str = "TOADSTOOL_TARPC_SOCKET";
 pub const BIOMEOS_SOCKET_PATH: &str = "BIOMEOS_SOCKET_PATH";
 pub const NUCLEUS_SOCKET: &str = "NUCLEUS_SOCKET";
@@ -109,7 +115,12 @@ pub const TOADSTOOL_BIND_HOST: &str = "TOADSTOOL_BIND_HOST";
 pub const BIND_HOST: &str = "BIND_HOST";
 pub const TOADSTOOL_BIND_ADDRESS: &str = "TOADSTOOL_BIND_ADDRESS";
 pub const TOADSTOOL_TCP_BIND_ADDRESS: &str = "TOADSTOOL_TCP_BIND_ADDRESS";
+/// Idle timeout (seconds) for Pure JSON-RPC TCP connections.
+pub const TOADSTOOL_TCP_IDLE_TIMEOUT_SECS: &str = "TOADSTOOL_TCP_IDLE_TIMEOUT_SECS";
 pub const TOADSTOOL_STANDALONE: &str = "TOADSTOOL_STANDALONE";
+
+// BTSP family seed (handshake key material).
+pub const FAMILY_SEED: &str = "FAMILY_SEED";
 
 // Auth tokens (coordination plane registration).
 pub const COORDINATION_AUTH_TOKEN: &str = "COORDINATION_AUTH_TOKEN";
@@ -120,3 +131,26 @@ pub const LEGACY_SONGBIRD_AUTH_TOKEN: &str = "SONGBIRD_AUTH_TOKEN";
 pub const AUTHENTICATION_URL: &str = "AUTHENTICATION_URL";
 pub const NLP_URL: &str = "NLP_URL";
 pub const TOADSTOOL_ENTROPY_SERVICE_URL: &str = "TOADSTOOL_ENTROPY_SERVICE_URL";
+
+// Cloud / deployment layer hints (AWS, GCP, Azure — used by environment detection).
+pub const AWS_EXECUTION_ENV: &str = "AWS_EXECUTION_ENV";
+pub const AWS_LAMBDA_FUNCTION_NAME: &str = "AWS_LAMBDA_FUNCTION_NAME";
+pub const ECS_CONTAINER_METADATA_URI: &str = "ECS_CONTAINER_METADATA_URI";
+pub const AWS_INSTANCE_TYPE: &str = "AWS_INSTANCE_TYPE";
+pub const EC2_INSTANCE_TYPE: &str = "EC2_INSTANCE_TYPE";
+pub const AWS_REGION: &str = "AWS_REGION";
+pub const AWS_DEFAULT_REGION: &str = "AWS_DEFAULT_REGION";
+
+pub const GCP_PROJECT: &str = "GCP_PROJECT";
+pub const GOOGLE_CLOUD_PROJECT: &str = "GOOGLE_CLOUD_PROJECT";
+pub const GCLOUD_PROJECT: &str = "GCLOUD_PROJECT";
+pub const GCE_MACHINE_TYPE: &str = "GCE_MACHINE_TYPE";
+pub const GCE_ZONE: &str = "GCE_ZONE";
+pub const GOOGLE_CLOUD_ZONE: &str = "GOOGLE_CLOUD_ZONE";
+
+pub const AZURE_SUBSCRIPTION_ID: &str = "AZURE_SUBSCRIPTION_ID";
+pub const WEBSITE_INSTANCE_ID: &str = "WEBSITE_INSTANCE_ID";
+pub const FUNCTIONS_WORKER_RUNTIME: &str = "FUNCTIONS_WORKER_RUNTIME";
+pub const AZURE_VM_SIZE: &str = "AZURE_VM_SIZE";
+pub const AZURE_LOCATION: &str = "AZURE_LOCATION";
+pub const AZURE_REGION: &str = "AZURE_REGION";

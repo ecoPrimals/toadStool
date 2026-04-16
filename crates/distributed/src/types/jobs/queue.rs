@@ -76,14 +76,20 @@ impl UniversalJobQueue {
     pub async fn add_job(&mut self, job: UniversalJob) -> ToadStoolResult<()> {
         let job_id = job.job_id;
         let dependencies = job.dependencies.clone();
+        let priority = job.priority;
+        let resource_requirements = job.resource_requirements.clone();
 
         self.dependency_graph.add_job(job_id, dependencies)?;
 
         let metadata = JobMetadata::from_job(&job);
         self.job_metadata.insert(job_id, metadata);
 
-        self.resource_index
-            .add_job(job_id, job.resource_requirements)?;
+        self.resource_index.add_job(job_id, resource_requirements)?;
+
+        self.priority_queues
+            .entry(priority)
+            .or_default()
+            .push_back(job);
 
         Ok(())
     }

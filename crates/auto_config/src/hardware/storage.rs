@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use crate::ToadStoolResult;
+use toadstool_common::constants::platform_paths::sysfs;
 
 use super::HardwareDetector;
 
@@ -84,7 +85,7 @@ pub async fn detect_storage(_detector: &HardwareDetector) -> ToadStoolResult<Sto
 async fn detect_storage_type() -> ToadStoolResult<StorageType> {
     // Linux: check rotational attribute
     if cfg!(target_os = "linux")
-        && let Ok(rotational) = tokio::fs::read_to_string("/sys/block/sda/queue/rotational").await
+        && let Ok(rotational) = tokio::fs::read_to_string(sysfs::BLOCK_SDA_QUEUE_ROTATIONAL).await
     {
         if rotational.trim() == "0" {
             return Ok(StorageType::SSD);

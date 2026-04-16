@@ -9,6 +9,8 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
+#[cfg(target_os = "linux")]
+use toadstool_common::constants::platform_paths::procfs;
 use toadstool_common::error::SystemError;
 
 use super::CompatibilityLayer;
@@ -93,7 +95,7 @@ impl LinuxCompatibilityLayer {
                 })
                 .map(|s| s.trim().to_string())
                 .unwrap_or_else(|| {
-                    std::fs::read_to_string("/proc/version")
+                    std::fs::read_to_string(procfs::VERSION)
                         .ok()
                         .map(|s| s.trim().to_string())
                         .unwrap_or_else(|| "unknown".to_string())

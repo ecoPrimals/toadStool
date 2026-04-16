@@ -24,14 +24,28 @@ use toadstool::error::ToadStoolResult;
 #[repr(transparent)]
 pub struct GpuPtr(*mut u8);
 
-// SAFETY: `GpuPtr` is an opaque address/handle produced by GPU APIs (Vulkan, wgpu, etc.).
-// Moving or sharing the *value* across threads is allowed when the backend documents
-// thread-safe use of those APIs; the pointer does not refer to Rust stack data or TLS.
+// SAFETY (`Send`):
+// - `GpuPtr` is a `repr(transparent)` newtype around `*mut u8` used only as an opaque
+//   device/CPU address token for backend-owned unified memory (see type docs).
+// - `Send` is sound if copying/moving the handle to another thread does not violate the GPU
+//   API’s rules for that allocation. The value itself is a plain address; it does not carry
+//   `&mut` or Rust borrow semantics.
+// - Callers/constructors ([`GpuPtr::from_raw`], backend mapping routines) must only store
+//   addresses that the active backend considers valid to pass across threads for that allocation
+//   (per Vulkan/wgpu/OpenCL threading rules). The pointer must not denote Rust stack memory or TLS.
+// - Aliasing: multiple `GpuPtr` values may refer to the same allocation only if the backend
+//   contract allows it; coherence and queue synchronization are enforced by
+//   [`UnifiedMemoryBackend`], not by this type.
 unsafe impl Send for GpuPtr {}
 
-// SAFETY: Shared references to values containing `GpuPtr` (e.g. `&BackendAllocation` in
-// async trait objects) require `Sync` on the handle type. Same invariant as `Send`: the
-// address is backend-owned unified memory, not Rust-managed aliased `&mut` data.
+// SAFETY (`Sync`):
+// - `Sync` allows `&GpuPtr` to be shared across threads (e.g. in `&BackendAllocation` behind
+//   trait objects). Sharing is read-only at the Rust type level: only the bit pattern of the
+//   address is observed unless code dereferences the raw pointer elsewhere.
+// - Same constructor/backend guarantees as `Send`: the address must remain valid and
+//   legal to reference from any thread that may read `&GpuPtr`, per the graphics/compute API.
+// - Concurrent use of the *memory* still requires backend synchronization; `GpuPtr` does not
+//   implement any locking.
 unsafe impl Sync for GpuPtr {}
 
 impl GpuPtr {

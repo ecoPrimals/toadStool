@@ -39,6 +39,7 @@ pub mod exit_codes {
 use crate::errors::ServerError;
 use crate::pure_jsonrpc::JsonRpcHandler;
 use crate::tarpc_server::ToadStoolTarpcServer;
+use toadstool_common::interned_strings::socket_env;
 
 /// Resolve family ID from CLI override or environment (testable helper)
 #[must_use]
@@ -59,7 +60,7 @@ pub fn resolve_family_id(family_id_override: Option<String>) -> String {
 /// Resolve node ID from environment (testable helper)
 #[must_use]
 pub fn resolve_node_id() -> String {
-    std::env::var("TOADSTOOL_NODE_ID").unwrap_or_else(|_| {
+    std::env::var(socket_env::TOADSTOOL_NODE_ID).unwrap_or_else(|_| {
         info!("TOADSTOOL_NODE_ID not set, using 'default'");
         "default".to_string()
     })
@@ -117,15 +118,15 @@ pub async fn run_server_main(
     info!("🔍 Socket Path Discovery:");
     info!(
         "  Checking TOADSTOOL_SOCKET: {:?}",
-        std::env::var("TOADSTOOL_SOCKET").ok()
+        std::env::var(socket_env::TOADSTOOL_SOCKET).ok()
     );
     info!(
         "  Checking BIOMEOS_SOCKET_PATH: {:?}",
-        std::env::var("BIOMEOS_SOCKET_PATH").ok()
+        std::env::var(socket_env::BIOMEOS_SOCKET_PATH).ok()
     );
     info!(
         "  Checking XDG_RUNTIME_DIR: {:?}",
-        std::env::var("XDG_RUNTIME_DIR").ok()
+        std::env::var(socket_env::XDG_RUNTIME_DIR).ok()
     );
 
     let socket_path = format::get_socket_path(&family_id, &node_id)?;

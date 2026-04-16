@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 15, 2026 — S203l
+**Date**: April 16, 2026 — S203m
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -103,6 +103,44 @@ are on `impl` blocks for those same dyn traits — they cannot be removed indepe
 `LegacyEmulator`, `LegacyAdapter`, `LegacyCommunicationSession`.
 Further reduction requires trait splitting (separate static-dispatch from dyn-dispatch
 surfaces) or enum dispatch — architectural changes beyond debt cleanup.
+
+## S203m Resolved Debt (Deep Debt Execution: Stub Evolution + Hardcoding Sweep)
+
+### D-SYSFS-HARDCODING-WAVE3 — RESOLVED S203m
+**Scope**: 8 production files
+Raw `/proc/`, `/sys/` path literals centralized to `platform_paths::{procfs,sysfs}` constants.
+Added `procfs::VERSION`, `sysfs::CLASS_BLUETOOTH`, `sysfs::BLOCK`, `sysfs::CLASS_NET`,
+`sysfs::CLASS_DMI_ID_PRODUCT_NAME`, `sysfs::BLOCK_SDA_QUEUE_ROTATIONAL`,
+`sysfs::BUS_USB_DEVICES`, `sysfs::BUS_BLUETOOTH_DEVICES`, `procfs::NET_IF_INET6`.
+Files: `bluetooth.rs`, `layer_adaptation/detection.rs`, `linux.rs`, `detector.rs`,
+`memory.rs`, `storage.rs`, `reporting.rs`, `discovery.rs`.
+
+### D-ENV-INTERN-WAVE3 — RESOLVED S203m
+**Scope**: 5 server/CLI/core modules
+Raw env var string literals centralized to `socket_env::*` constants. Added `HOME`,
+`TOADSTOOL_NODE_ID`, `PRIMAL_SOCKET`, `TOADSTOOL_TCP_IDLE_TIMEOUT_SECS`, `FAMILY_SEED`,
+plus ~15 cloud detection env vars (AWS/GCP/Azure).
+Files: `unibin/format.rs`, `unibin/mod.rs`, `tcp.rs`, `jsonrpc_server.rs`, `detector.rs`.
+
+### D-EDGE-DISCOVERY-STUBS — RESOLVED S203m
+**Scope**: `runtime/edge` (3 modules)
+USB discovery: real sysfs enumeration (`/sys/bus/usb/devices/`) with vendor/product/manufacturer.
+Bluetooth discovery: real sysfs enumeration of BT devices via adapter scan.
+Network IPv6: reads `/proc/net/if_inet6` for link-local addresses.
+All gracefully degrade to empty Vec on non-Linux/permission errors.
+
+### D-SCHEDULER-SILENT-OK — RESOLVED S203m
+**Scope**: `distributed/universal/scheduler.rs`
+`schedule_local_job` evolved from log-only `Ok(())` to actually pushing jobs into
+`UniversalJobQueue` via `add_job`. `UniversalJobQueue::add_job` now inserts into
+priority queues (not just metadata).
+
+### D-UNSAFE-SAFETY-DOCS — RESOLVED S203m
+**Scope**: `hw-safe`, `runtime/gpu`
+Improved SAFETY documentation on all `unsafe` blocks in `contiguous.rs` (2 sites),
+`access.rs` (2 sites). Added `debug_assert!` pre-conditions for alignment and size.
+Documented all `unsafe impl Send/Sync` in `exclusive_ptr.rs`, `backend.rs` (GpuPtr),
+`threading.rs` (UnifiedBuffer) with structured invariant reasoning.
 
 ## S203k Resolved Debt (Deep Debt Execution: Comprehensive Evolution Pass)
 

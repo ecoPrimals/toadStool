@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! CPU pointer validation and safe slice views for [`super::UnifiedBuffer`].
 
+use std::mem::align_of;
 use std::ptr::NonNull;
 
 use super::UnifiedBuffer;
@@ -86,10 +87,27 @@ impl UnifiedBuffer {
     ) -> ToadStoolResult<&mut [u8]> {
         self.validate_cpu_ptr()?;
 
+        // `cpu_ptr` is `NonNull<u8>` — non-null is a type invariant (no runtime null check).
+        debug_assert!(self.size > 0, "validate_cpu_ptr ensures non-zero size");
+        debug_assert!(
+            isize::try_from(self.size).is_ok(),
+            "validate_cpu_ptr ensures slice extent"
+        );
+        debug_assert!(
+            self.cpu_ptr.as_ptr().align_offset(align_of::<u8>()) == 0,
+            "cpu_ptr must be aligned for u8"
+        );
+
         let mut slice_ptr = NonNull::slice_from_raw_parts(self.cpu_ptr, self.size);
-        // SAFETY: `slice_ptr` is the fat pointer for this allocation; see safety contract
-        // above and `validate_cpu_ptr` for extent checks. `as_mut` requires valid memory
-        // for `size` bytes and exclusive mutability for the returned lifetime.
+        // SAFETY (`NonNull::as_mut`):
+        // - `validate_cpu_ptr` + debug asserts: non-null `cpu_ptr`, `size` in `(0, isize::MAX]`,
+        //   `ptr + size` does not wrap, and pointer is suitably aligned for `u8`.
+        // - Memory validity for `size` bytes for reads/writes through this slice for the returned
+        //   lifetime is guaranteed by the backend: allocation stays live until `free_unified`, and
+        //   `size` matches the mapped extent (see module-level safety contract table).
+        // - `&mut self` ensures no other reference to this buffer’s bytes aliases this `&mut [u8]`.
+        // - Cross-device coherence (GPU vs CPU) remains the caller’s responsibility (`sync_to_cpu`
+        //   before CPU write, etc.); this block only forms the Rust slice.
         Ok(unsafe { slice_ptr.as_mut() })
     }
 
@@ -111,9 +129,24 @@ impl UnifiedBuffer {
     pub(in crate::unified_memory::buffer) fn as_cpu_slice(&self) -> ToadStoolResult<&[u8]> {
         self.validate_cpu_ptr()?;
 
+        // `cpu_ptr` is `NonNull<u8>` — non-null is a type invariant (no runtime null check).
+        debug_assert!(self.size > 0, "validate_cpu_ptr ensures non-zero size");
+        debug_assert!(
+            isize::try_from(self.size).is_ok(),
+            "validate_cpu_ptr ensures slice extent"
+        );
+        debug_assert!(
+            self.cpu_ptr.as_ptr().align_offset(align_of::<u8>()) == 0,
+            "cpu_ptr must be aligned for u8"
+        );
+
         let slice_ptr = NonNull::slice_from_raw_parts(self.cpu_ptr, self.size);
-        // SAFETY: same allocation contract as `as_cpu_slice_mut`; `&self` forbids concurrent
-        // `&mut` to this buffer. Valid for reads for `size` bytes for the returned lifetime.
+        // SAFETY (`NonNull::as_ref`):
+        // - Same preconditions as `as_cpu_slice_mut` (see that block): validated pointer, size,
+        //   alignment, and backend lifetime/extent contract.
+        // - `&self` only guarantees shared immutability in Rust; concurrent GPU writes are still
+        //   unsound for CPU reads unless the caller has synchronized (`sync_to_cpu`). The slice is
+        //   otherwise valid for immutable reads of `size` bytes for the returned lifetime.
         Ok(unsafe { slice_ptr.as_ref() })
     }
 }

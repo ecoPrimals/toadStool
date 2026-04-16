@@ -6,7 +6,8 @@
 
 use super::{CloudProvider, ContainerRuntime, DeploymentLayer, DetectionError};
 use std::path::Path;
-use toadstool_common::constants::platform_paths::{devfs, etc_paths, procfs};
+use toadstool_common::constants::platform_paths::{devfs, etc_paths, procfs, sysfs};
+use toadstool_common::interned_strings::socket_env;
 
 /// Layer detector for identifying deployment environment
 ///
@@ -114,7 +115,7 @@ impl LayerDetector {
     }
 
     async fn detect_vm(&self) -> Result<Option<DeploymentLayer>, DetectionError> {
-        if let Ok(product) = tokio::fs::read_to_string("/sys/class/dmi/id/product_name").await {
+        if let Ok(product) = tokio::fs::read_to_string(sysfs::CLASS_DMI_ID_PRODUCT_NAME).await {
             let product = product.trim().to_lowercase();
             if product.contains("virtualbox") {
                 return Ok(Some(DeploymentLayer::VMLayer {
@@ -229,52 +230,52 @@ impl LayerDetector {
     }
 
     fn check_aws_metadata(&self) -> bool {
-        std::env::var("AWS_EXECUTION_ENV").is_ok()
-            || std::env::var("AWS_LAMBDA_FUNCTION_NAME").is_ok()
-            || std::env::var("ECS_CONTAINER_METADATA_URI").is_ok()
+        std::env::var(socket_env::AWS_EXECUTION_ENV).is_ok()
+            || std::env::var(socket_env::AWS_LAMBDA_FUNCTION_NAME).is_ok()
+            || std::env::var(socket_env::ECS_CONTAINER_METADATA_URI).is_ok()
     }
 
     fn get_aws_instance_type(&self) -> Result<String, DetectionError> {
-        std::env::var("AWS_INSTANCE_TYPE")
-            .or_else(|_| std::env::var("EC2_INSTANCE_TYPE"))
+        std::env::var(socket_env::AWS_INSTANCE_TYPE)
+            .or_else(|_| std::env::var(socket_env::EC2_INSTANCE_TYPE))
             .or_else(|_| Ok("unknown".to_string()))
     }
 
     fn get_aws_region(&self) -> Result<String, DetectionError> {
-        std::env::var("AWS_REGION")
-            .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
+        std::env::var(socket_env::AWS_REGION)
+            .or_else(|_| std::env::var(socket_env::AWS_DEFAULT_REGION))
             .or_else(|_| Ok("us-east-1".to_string()))
     }
 
     fn check_gcp_metadata(&self) -> bool {
-        std::env::var("GCP_PROJECT").is_ok()
-            || std::env::var("GOOGLE_CLOUD_PROJECT").is_ok()
-            || std::env::var("GCLOUD_PROJECT").is_ok()
+        std::env::var(socket_env::GCP_PROJECT).is_ok()
+            || std::env::var(socket_env::GOOGLE_CLOUD_PROJECT).is_ok()
+            || std::env::var(socket_env::GCLOUD_PROJECT).is_ok()
     }
 
     fn get_gcp_instance_type(&self) -> Result<String, DetectionError> {
-        std::env::var("GCE_MACHINE_TYPE").or_else(|_| Ok("unknown".to_string()))
+        std::env::var(socket_env::GCE_MACHINE_TYPE).or_else(|_| Ok("unknown".to_string()))
     }
 
     fn get_gcp_region(&self) -> Result<String, DetectionError> {
-        std::env::var("GCE_ZONE")
-            .or_else(|_| std::env::var("GOOGLE_CLOUD_ZONE"))
+        std::env::var(socket_env::GCE_ZONE)
+            .or_else(|_| std::env::var(socket_env::GOOGLE_CLOUD_ZONE))
             .or_else(|_| Ok("unknown".to_string()))
     }
 
     fn check_azure_metadata(&self) -> bool {
-        std::env::var("AZURE_SUBSCRIPTION_ID").is_ok()
-            || std::env::var("WEBSITE_INSTANCE_ID").is_ok()
-            || std::env::var("FUNCTIONS_WORKER_RUNTIME").is_ok()
+        std::env::var(socket_env::AZURE_SUBSCRIPTION_ID).is_ok()
+            || std::env::var(socket_env::WEBSITE_INSTANCE_ID).is_ok()
+            || std::env::var(socket_env::FUNCTIONS_WORKER_RUNTIME).is_ok()
     }
 
     fn get_azure_instance_type(&self) -> Result<String, DetectionError> {
-        std::env::var("AZURE_VM_SIZE").or_else(|_| Ok("unknown".to_string()))
+        std::env::var(socket_env::AZURE_VM_SIZE).or_else(|_| Ok("unknown".to_string()))
     }
 
     fn get_azure_region(&self) -> Result<String, DetectionError> {
-        std::env::var("AZURE_LOCATION")
-            .or_else(|_| std::env::var("AZURE_REGION"))
+        std::env::var(socket_env::AZURE_LOCATION)
+            .or_else(|_| std::env::var(socket_env::AZURE_REGION))
             .or_else(|_| Ok("unknown".to_string()))
     }
 

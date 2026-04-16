@@ -25,15 +25,28 @@ use std::ptr::NonNull;
 #[repr(transparent)]
 pub(crate) struct ExclusivePtr(NonNull<u8>);
 
-// SAFETY: The owning type guarantees exclusive ownership of memory that is valid
-// for use from any thread (heap via global alloc, or mmap). The pointer does
-// not refer to thread-local storage. This matches the intended semantics of
-// `Send` for owned byte buffers despite `NonNull<u8>` not being `Send`.
+// SAFETY (`Send`):
+// - `Send` requires that moving the value to another thread cannot violate memory safety.
+// - `ExclusivePtr` is `repr(transparent)` over `NonNull<u8>` and is only constructed via
+//   `ExclusivePtr::new` in this crate; callers must pass a pointer to memory that is safe to
+//   own and access from any thread the owning type may move to (e.g. heap via the global
+//   allocator, `mmap`, or other process-wide storage).
+// - The pointer must not reference thread-local storage or stack memory tied to another thread.
+// - Aliasing: the “exclusive” contract means the owning abstraction must not expose aliasing
+//   `&mut` or raw pointers that break `Send` when the wrapper crosses threads; `ExclusivePtr`
+//   itself does not synchronize—parent types must enforce that.
 unsafe impl Send for ExclusivePtr {}
 
-// SAFETY: Shared immutable access (`&ExclusivePtr`) is safe across threads when
-// the underlying allocation is process-wide and the owning type serializes
-// mutation via `&mut` (same reasoning as `Send`).
+// SAFETY (`Sync`):
+// - `Sync` requires that sharing `&ExclusivePtr` across threads is sound if the only operations
+//   are those allowed on shared references (here: copying the pointer value, `ExclusivePtr::as_ptr`,
+//   `ExclusivePtr::as_non_null`, formatting).
+// - Those operations only read the address; they do not dereference through `&ExclusivePtr`
+//   in a way that races with mutation, as long as the owning type uses interior mutability or
+//   `&mut` consistently with Rust's aliasing rules for the underlying allocation.
+// - Same storage and “no TLS / no stack from another frame” requirements as `Send`; concurrent
+//   mutation of the pointed-to bytes must still be serialized by the owner (e.g. mutex or
+//   single-writer discipline), since `ExclusivePtr` does not add locking.
 unsafe impl Sync for ExclusivePtr {}
 
 impl ExclusivePtr {

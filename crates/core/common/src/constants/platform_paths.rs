@@ -19,6 +19,10 @@ pub mod procfs {
     pub const PROC_SELF_LOGINUID: &str = "/proc/self/loginuid";
     /// `/proc/net/dev` (aggregate network stats)
     pub const PROC_NET_DEV: &str = "/proc/net/dev";
+    /// `/proc/version` (kernel release string)
+    pub const VERSION: &str = "/proc/version";
+    /// `/proc/net/if_inet6` (IPv6 addresses per interface)
+    pub const NET_IF_INET6: &str = "/proc/net/if_inet6";
 
     /// `/proc/{pid}/stat`
     #[must_use]
@@ -59,6 +63,20 @@ pub mod devfs {
 pub mod sysfs {
     /// PCI devices under sysfs (`/sys/bus/pci/devices`)
     pub const BUS_PCI_DEVICES: &str = "/sys/bus/pci/devices";
+    /// `/sys/class/bluetooth`
+    pub const CLASS_BLUETOOTH: &str = "/sys/class/bluetooth";
+    /// `/sys/block` (block device symlinks)
+    pub const BLOCK: &str = "/sys/block";
+    /// `/sys/class/net` (network interface sysfs)
+    pub const CLASS_NET: &str = "/sys/class/net";
+    /// USB devices on the USB bus (`/sys/bus/usb/devices`)
+    pub const BUS_USB_DEVICES: &str = "/sys/bus/usb/devices";
+    /// Bluetooth devices enumerated by the kernel (`/sys/bus/bluetooth/devices`)
+    pub const BUS_BLUETOOTH_DEVICES: &str = "/sys/bus/bluetooth/devices";
+    /// DMI product name (`/sys/class/dmi/id/product_name`)
+    pub const CLASS_DMI_ID_PRODUCT_NAME: &str = "/sys/class/dmi/id/product_name";
+    /// First SATA disk rotational flag (`/sys/block/sda/queue/rotational`)
+    pub const BLOCK_SDA_QUEUE_ROTATIONAL: &str = "/sys/block/sda/queue/rotational";
 }
 
 /// Common files under `/etc`.

@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 15, 2026 — S203l (primalSpring Downstream Audit Closure)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` dyn-ceiling: 158 (32 dyn-constrained traits)** | **`deny.toml` ring ban active** | **dual-socket documented**
-**Latest**: S203l — primalSpring downstream audit closure: async-trait dyn-ceiling verified (32 traits, all genuinely dyn-dispatched). `deny.toml` ring ban uncommented (ecoBin v3 compliant, ring absent from lockfile). Dual-socket naming canonically documented across README, CONTEXT, DOCUMENTATION, SERVER_METHODS (compute.sock + compute-tarpc.sock). S203k: comprehensive evolution pass (see below).
+**Updated**: April 16, 2026 — S203m (Deep Debt: Stub Evolution + Hardcoding Sweep)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,600+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **43/43 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` dyn-ceiling: 158 (32 dyn-constrained traits)** | **`deny.toml` ring ban active** | **dual-socket documented** | **edge discovery: real USB/BT/IPv6 sysfs** | **unsafe SAFETY docs complete**
+**Latest**: S203m — Deep debt stub evolution: USB/BT/IPv6 edge discovery evolved from empty stubs to real sysfs enumeration. Scheduler `schedule_local_job` now queues to priority queues. 8 sysfs/procfs raw paths → constants. 5 server/CLI modules env vars interned. All `unsafe` SAFETY docs hardened with debug_assert pre-conditions. `serde_yaml_ng` confirmed pure Rust (c2rust transpile, no C FFI). S203l: primalSpring audit closure (see below).
 
 ---
 

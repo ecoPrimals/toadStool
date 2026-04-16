@@ -4,6 +4,7 @@
 use crate::{CliContextExt, Result};
 use std::future::Future;
 use toadstool_common::constants::network::LOCALHOST_IPV4;
+use toadstool_common::constants::platform_paths::procfs;
 use tokio::process::Command;
 use tracing::{debug, info};
 
@@ -106,7 +107,7 @@ impl ZeroConfigDeployment {
     /// Get CPU model information
     async fn get_cpu_model(&self) -> Result<String> {
         let output = Command::new("cat")
-            .arg("/proc/cpuinfo")
+            .arg(procfs::CPUINFO)
             .output()
             .await
             .context("Failed to read /proc/cpuinfo")?;
@@ -129,7 +130,7 @@ impl ZeroConfigDeployment {
         debug!("Discovering memory information");
 
         let output = Command::new("cat")
-            .arg("/proc/meminfo")
+            .arg(procfs::MEMINFO)
             .output()
             .await
             .context("Failed to read /proc/meminfo")?;

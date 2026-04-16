@@ -8,6 +8,7 @@ use tracing::debug;
 
 use toadstool::error::ToadStoolResult;
 use toadstool::resources::{ResourceMonitor, RuntimeMetrics, SystemResources};
+use toadstool_common::constants::platform_paths::procfs;
 
 use crate::metric_types::SystemResourceMonitor;
 use crate::types::ResourceMonitorError;
@@ -110,7 +111,7 @@ pub(crate) fn read_system_info() -> (usize, u64, u64) {
 
     #[cfg(target_os = "linux")]
     {
-        if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+        if let Ok(cpuinfo) = std::fs::read_to_string(procfs::CPUINFO) {
             total_cpu_cores = cpuinfo
                 .lines()
                 .filter(|line| line.starts_with("processor"))
@@ -118,7 +119,7 @@ pub(crate) fn read_system_info() -> (usize, u64, u64) {
                 .max(1);
         }
 
-        if let Ok(meminfo) = std::fs::read_to_string("/proc/meminfo") {
+        if let Ok(meminfo) = std::fs::read_to_string(procfs::MEMINFO) {
             for line in meminfo.lines() {
                 if line.starts_with("MemTotal:") {
                     if let Some(value) = line.split_whitespace().nth(1)

@@ -9,6 +9,7 @@
 //! Each implementing type proves the pointer/length invariant once via
 //! `unsafe impl`; all slice access is then safe.
 
+use std::mem::align_of;
 use std::ptr::NonNull;
 
 /// Types that own a contiguous, valid byte region.
@@ -39,10 +40,28 @@ pub unsafe trait ContiguousBytes {
             "ContiguousBytes: raw_len {} exceeds isize::MAX (slice precondition)",
             len
         );
-        // SAFETY: trait invariant guarantees `ptr` valid for `len` bytes; `len` is checked
-        // above; `&self` ensures no concurrent mutation.
+        let ptr = self.raw_ptr();
+        // `NonNull::slice_from_raw_parts` + `as_ref` need a dereferenceable region for `len`
+        // bytes (or an empty slice with a suitably non-null/dangling pointer per layout rules).
+        // Non-null: guaranteed by `NonNull<u8>` (`raw_ptr()`).
+        debug_assert!(
+            ptr.as_ptr().align_offset(align_of::<u8>()) == 0,
+            "ContiguousBytes: raw_ptr must meet alignment for u8"
+        );
+        // Slice extent: `assert!` above; duplicated here for debug-only redundancy.
+        debug_assert!(
+            isize::try_from(len).is_ok(),
+            "ContiguousBytes: raw_len must fit in isize (slice metadata)"
+        );
+        // SAFETY (`NonNull::as_ref`):
+        // - Implementor’s `unsafe trait ContiguousBytes` contract: `raw_ptr()` points to memory
+        //   valid for reads for `raw_len()` bytes for the lifetime of `&self`.
+        // - `len` equals `raw_len()` and is checked above to be `<= isize::MAX` (slice invariant).
+        // - `raw_ptr()` is `NonNull<u8>` (non-null); debug assertion catches misaligned pointers.
+        // - `&self` ensures no `&mut` to this region exists, so shared slice reads do not alias
+        //   with exclusive mutation through the same implementing type for this lifetime.
         unsafe {
-            let nn = NonNull::slice_from_raw_parts(self.raw_ptr(), len);
+            let nn = NonNull::slice_from_raw_parts(ptr, len);
             nn.as_ref()
         }
     }
@@ -55,10 +74,22 @@ pub unsafe trait ContiguousBytes {
             "ContiguousBytes: raw_len {} exceeds isize::MAX (slice precondition)",
             len
         );
-        // SAFETY: trait invariant guarantees `ptr` valid for `len` bytes; `len` is checked
-        // above; `&mut self` ensures exclusive access.
+        let ptr = self.raw_ptr();
+        debug_assert!(
+            ptr.as_ptr().align_offset(align_of::<u8>()) == 0,
+            "ContiguousBytes: raw_ptr must meet alignment for u8"
+        );
+        debug_assert!(
+            isize::try_from(len).is_ok(),
+            "ContiguousBytes: raw_len must fit in isize (slice metadata)"
+        );
+        // SAFETY (`NonNull::as_mut`):
+        // - Same memory validity and `len` bounds as `as_bytes` (see that block).
+        // - `&mut self` is the exclusive proof: no other `&`/`&mut` to this region may exist for
+        //   the returned lifetime, matching the trait requirement for exclusive access to the
+        //   whole region.
         unsafe {
-            let mut nn = NonNull::slice_from_raw_parts(self.raw_ptr(), len);
+            let mut nn = NonNull::slice_from_raw_parts(ptr, len);
             nn.as_mut()
         }
     }

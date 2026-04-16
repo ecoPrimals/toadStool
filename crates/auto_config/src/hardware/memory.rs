@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use crate::ToadStoolResult;
+use toadstool_common::constants::platform_paths::procfs;
 
 use super::HardwareDetector;
 
@@ -35,7 +36,7 @@ impl Default for MemoryInfo {
 /// Detect memory configuration
 pub async fn detect_memory(_detector: &HardwareDetector) -> ToadStoolResult<MemoryInfo> {
     let memory_info = if cfg!(target_os = "linux")
-        && let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await
+        && let Ok(meminfo) = tokio::fs::read_to_string(procfs::MEMINFO).await
     {
         parse_linux_meminfo(&meminfo)
     } else {
