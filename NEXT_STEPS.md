@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **21,600+ tests** (0 failures). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **21,700+ tests** (0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -129,7 +129,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 21,600+ tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 21,700+ tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -168,7 +168,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ### Session S203i: Deep Debt — Massive Test Extraction + Hardcoding Evolution (Apr 14, 2026)
 - **52 production files** refactored via test extraction (~10K lines moved to companion files). Production files >500L reduced from 38→25 (remaining are pure production code — hardware drivers, type defs; no extractable test blocks, all <700L).
 - **Hardcoding evolution**: `CORALREEF_URL`/`CORALREEF_SOCKET` dispatch notes → capability-neutral guidance. `FallbackEndpoints` literal `"localhost"` → `DEFAULT_HOSTNAME` constant.
-- All quality gates green. Clippy 0 warnings. 21,600+ tests, 0 failures.
+- All quality gates green. Clippy 0 warnings. 21,700+ tests, 0 failures.
 
 ### Session S203h: benchScale — TCP Idle Timeout (Apr 14, 2026)
 - **TCP idle timeout**: `TCP_IDLE_TIMEOUT_SECS` (300s default, env configurable). `tokio::time::timeout` wraps on all TCP read loops (JSON-RPC + tarpc). `TCP_NODELAY` on all accepted streams.
@@ -179,7 +179,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **6 deprecated zero-caller items removed**: `localhost_endpoint`, `METRICS_PORT`, `capability_typical_provider` module, `get_primal_default_port` wrappers, `TarpcClient::address()`.
 - **Async GPU discovery evolved**: blocking `std::thread::sleep` poll loop → `tokio::sync::oneshot` + `tokio::time::timeout` (async-native, no executor blocking).
 - **Forward dispatch clone optimization**: full JSON object clone → empty Map fallback.
-- All quality gates green. Clippy 0 warnings. 21,600+ tests, 0 failures.
+- All quality gates green. Clippy 0 warnings. 21,700+ tests, 0 failures.
 
 ### Session S203f: wetSpring V143 Validation — Capability Surface (Apr 13, 2026)
 - **`compute.execute` promoted** to direct JSON-RPC route (closes wetSpring PG-05 gap).
@@ -216,7 +216,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **Embedded**: `thiserror` platform-specific errors (stubs still placeholder behavior).
 - **Unsafe hardening**: nvpmu `VfioIrqSetPayload`, V4L2 fd validation, hw-safe debug asserts, secure_enclave `madvise` checks.
 - **musl-static**: ~11MB x86_64 PIE stripped binary built and validated.
-- **Workspace**: 228 files changed, net −5,157 lines; 0 clippy warnings, 0 fmt diffs, 0 test failures; **21,600+** tests.
+- **Workspace**: 228 files changed, net −5,157 lines; 0 clippy warnings, 0 fmt diffs, 0 test failures; **21,700+** tests.
 
 ### Session S194: Deep Debt — Capability-Based Field/Type/Doc Evolution (Apr 8, 2026)
 - **S194 (Apr 8, 2026)**: Renamed `nestgate_integration` → `storage_integration` (with `#[serde(alias)]`), `NestGateMount` → `StorageMount` in production return types. Updated doc comments across tarpc_client, CLI banner, auth types, storage types, orchestration discovery, visualization client. Renamed primal-named test functions to capability-based. Updated test data. ~400 intentional legacy-compat refs remain. 21,526+ tests, 0 failures.

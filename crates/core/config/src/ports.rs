@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Centralized Port Configuration
 //!
-//! **Phase 1 of Capability-Based Discovery Evolution**
+//! **Capability-Based Discovery Evolution**
 //!
-//! This module centralizes all hardcoded ports as the first step toward
-//! runtime discovery. Future evolution:
+//! Centralized port constants with environment override support.
 //! - Phase 1: Centralize (this file) ✅
-//! - Phase 2: Environment variable overrides
+//! - Phase 2: Environment variable overrides ✅ (S203p — `socket_env` constants)
 //! - Phase 3: Runtime discovery via coordination service
 //! - Phase 4: Full mDNS + capability-based discovery
 

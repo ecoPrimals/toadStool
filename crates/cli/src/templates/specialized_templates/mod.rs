@@ -16,7 +16,7 @@
 //! Extracted from `generator_impl.rs` (Nov 7, 2025) as part of the refactoring
 //! to keep files under 1000 lines.
 //!
-//! ⚠️ **MIGRATION NOTICE**: Uses deprecated hardcoded ports during transition to capability-based discovery.
+//! Ports sourced from `EnvironmentConfig` at runtime; only well-known service defaults (Redis 6379, Postgres 5432, TensorBoard 6006) are literal.
 
 mod custom_templates;
 mod infrastructure_templates;

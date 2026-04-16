@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 16, 2026 — S203m
+**Last Updated**: April 16, 2026 — S203p
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S203m — April 16, 2026)
+## Current State (S203p — April 16, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **21,600+ tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **21,700+ tests**, 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **~69 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`).
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
@@ -42,12 +42,14 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **52 production files refactored (S203c/e/g/i)** via test extraction. 6 deprecated zero-caller items removed (S203g). 25 production files remain >500 lines (pure production code — hardware drivers, type defs, crypto managers; no extractable test blocks, all <700L).
 - **TCP idle timeout (S203h)** — `TCP_IDLE_TIMEOUT_SECS` (300s configurable), `TCP_NODELAY` on all accepted streams. Resolves primalSpring benchScale exp082.
 - **BTSP Phase 2 + Auto-Detect** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully.
-- **async-trait dyn-ceiling** — 158 annotations remain (113 production, 45 test), all on 32 dyn-dispatched traits. 13 zero-dyn traits migrated to native AFIT, 8 crates freed.
+- **async-trait CLOSED** (dyn-ceiling) — 158 annotations (113 production, 45 test), all on 32 dyn-dispatched traits. 13 zero-dyn traits migrated to native AFIT, 8 crates freed. No further migration planned.
 - **`deny.toml` ring ban active** — ecoBin v3 compliant. `ring` absent from lockfile.
 - **~66 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented with `debug_assert!` pre-conditions. 40 crates forbid, 6 deny `unsafe_code` (**46/46**).
 - **Edge discovery evolved (S203m)** — USB via `/sys/bus/usb/devices/`, Bluetooth via sysfs adapter enumeration, IPv6 via `/proc/net/if_inet6`. All gracefully degrade on non-Linux.
 - **Scheduler queuing (S203m)** — `schedule_job` → `UniversalJobQueue::add_job` inserts into per-priority queues (was metadata-only). `schedule_local_job` logs post-enqueue telemetry.
-- **Hardcoding sweep (S203m)** — 8 sysfs/procfs path files + 5 env var modules centralized to `platform_paths`/`socket_env` constants.
+- **Hardcoding sweep (S203m–p)** — sysfs/procfs paths centralized to `platform_paths`; all `TOADSTOOL_*` env var literals interned to `socket_env` constants (~55 new in S203p). `env_overrides` subsystem fully converted.
+- **I/O-logic separation (S203o)** — 5 modules refactored to extract pure parsers from I/O wrappers (detection, GPU, DNS, storage, OS). +38 tests for pure logic. Real monitoring via `toadstool_sysmon` + `rustix::fs::statvfs` replaces hardcoded metrics. `StorageStatus::LocalOnly` replaces fake success on RPC failure.
+- **Coverage push (S203n–p)** — +188 tests across 20+ modules (server, distributed, CLI, integration, WASM, resource optimizer/estimator, semantic methods, workload routing).
 - **ecoBin v3.0** — Zero C FFI deps. `serialport` feature-gated in specialty crate. Crypto delegated to security service. HTTP delegated to coordination service.
 - **Headless GPU** — `TOADSTOOL_HEADLESS=1` env var for pure headless operation. wgpu crash isolation via `catch_unwind` + async timeout (S203g: evolved from blocking poll).
 - **Fully concurrent tests** — All tests run with unlimited parallelism. Zero `#[serial]`. Zero fixed sleeps in non-chaos tests.

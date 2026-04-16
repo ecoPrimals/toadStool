@@ -29,6 +29,12 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
   - Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET` env vars
   - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock`
 - **Peer primals**: Resolved at runtime via capability IDs and Unix-socket discovery (e.g. `capability.discover`, `resolve_capability_socket_fallback`) — not hardcoded URLs or legacy per-primal env manifests.
+- **Tests**: 21,700+ (0 failures, unlimited parallelism)
+- **Unsafe**: ~66 blocks (all in hw-safe/GPU/VFIO/display containment); 40 crates `forbid`, 6 `deny` unsafe_code (46/46)
+- **async-trait**: CLOSED at dyn-ceiling (158 annotations, 32 dyn-dispatched traits)
+- **deny.toml**: `ring` ban active (ecoBin v3 compliant)
+- **Monitoring**: Real host queries via `toadstool_sysmon` + `rustix::fs::statvfs`
+- **Config**: All `TOADSTOOL_*` env vars interned to `socket_env` constants
 
 ## Not Included
 
