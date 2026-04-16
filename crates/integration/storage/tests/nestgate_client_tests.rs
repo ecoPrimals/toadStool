@@ -235,11 +235,13 @@ fn test_storage_status_variants() {
     let failed = StorageStatus::Failed;
     let in_progress = StorageStatus::InProgress;
     let cancelled = StorageStatus::Cancelled;
+    let local_only = StorageStatus::LocalOnly;
 
     assert!(matches!(success, StorageStatus::Success));
     assert!(matches!(failed, StorageStatus::Failed));
     assert!(matches!(in_progress, StorageStatus::InProgress));
     assert!(matches!(cancelled, StorageStatus::Cancelled));
+    assert!(matches!(local_only, StorageStatus::LocalOnly));
 }
 
 // ============================================================================

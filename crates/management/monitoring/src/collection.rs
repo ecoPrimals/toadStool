@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 
 use tokio::sync::RwLock;
@@ -32,6 +33,7 @@ impl SystemResourceMonitor {
             threshold_data: Arc::new(RwLock::new(HashMap::new())),
             config,
             is_monitoring: Arc::new(RwLock::new(false)),
+            monitored_workloads: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 

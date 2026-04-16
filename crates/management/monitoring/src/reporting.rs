@@ -3,7 +3,9 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 
+use toadstool_sysmon::{DiskInfo, cpu_count, cpu_usage, disk_usage, load_average, memory_info};
 use tracing::debug;
 
 use toadstool::error::ToadStoolResult;
@@ -15,19 +17,25 @@ use crate::types::ResourceMonitorError;
 
 impl ResourceMonitor for SystemResourceMonitor {
     fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
+        self.monitored_workloads
+            .lock()
+            .expect("monitored_workloads mutex poisoned")
+            .insert(workload_id.to_string());
         debug!("Starting monitoring for workload: {}", workload_id);
-        // Individual workload monitoring is handled by the background loop
-        // This could be extended to enable per-workload monitoring configuration
         Ok(())
     }
 
     fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
         debug!("Stopping monitoring for workload: {}", workload_id);
-        // Remove from tracking maps
+        let workload_id = workload_id.to_string();
+        self.monitored_workloads
+            .lock()
+            .expect("monitored_workloads mutex poisoned")
+            .remove(&workload_id);
+
         let process_map = Arc::clone(&self.process_map);
         let usage_data = Arc::clone(&self.usage_data);
         let threshold_data = Arc::clone(&self.threshold_data);
-        let workload_id = workload_id.to_string();
 
         tokio::spawn(async move {
             process_map.write().await.remove(&workload_id);
@@ -56,23 +64,34 @@ impl ResourceMonitor for SystemResourceMonitor {
         &self,
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
         Box::pin(async move {
-            // /proc and sysctl reads are blocking I/O — run on the blocking
+            // /proc, sysctl, and statvfs are blocking I/O — run on the blocking
             // pool so we don't stall the async runtime under load.
-            let (total_cpu_cores, total_memory_bytes, available_memory_bytes) =
-                tokio::task::spawn_blocking(read_system_info)
-                    .await
-                    .unwrap_or((1, 1024 * 1024 * 1024, 1024 * 1024 * 1024));
+            let snapshot =
+                if let Ok(tuple) = tokio::task::spawn_blocking(collect_host_resource_snapshot).await
+                {
+                    tuple
+                } else {
+                    let (cores, total, avail) = read_system_info();
+                    (cores, total, avail, 0u64, 0.0f64)
+                };
 
-            let available_storage_bytes = 10 * 1024 * 1024 * 1024u64; // 10GB default
+            let (
+                total_cpu_cores,
+                total_memory_bytes,
+                available_memory_bytes,
+                available_storage_bytes,
+                cpu_usage_percent,
+            ) = snapshot;
 
-            // Calculate usage percentages
             let memory_usage_percent =
                 memory_usage_percent(total_memory_bytes, available_memory_bytes);
 
-            // CPU usage requires sampling over time - use 0% as snapshot
-            // Real usage tracking would need historical data
-            let cpu_usage_percent = 0.0;
             let available_cpu_cores = total_cpu_cores as f64;
+
+            tracing::debug!(
+                available_gpu_units = 0u32,
+                "available_gpu_units is discovery-dependent until GPU enumeration is integrated"
+            );
 
             Ok(SystemResources {
                 available_cpu_cores,
@@ -87,6 +106,77 @@ impl ResourceMonitor for SystemResourceMonitor {
             })
         })
     }
+}
+
+/// Prefer the root mount (`/`), otherwise the first reported real disk.
+#[must_use]
+pub(crate) fn root_filesystem_available_bytes(disks: &[DiskInfo]) -> Option<u64> {
+    disks
+        .iter()
+        .find(|d| d.mount_point == "/")
+        .or_else(|| disks.first())
+        .map(|d| d.available_space)
+}
+
+/// Map load average (1-minute) to a rough CPU pressure percentage in `[0, 100]`.
+#[must_use]
+pub(crate) fn load_to_cpu_usage_percent(load_one: f64, cpu_cores: usize) -> f64 {
+    let cores = cpu_cores.max(1) as f64;
+    ((load_one / cores) * 100.0).clamp(0.0, 100.0)
+}
+
+/// Bytes available to unprivileged users on `/` via `statvfs`, or `0` on failure.
+#[cfg(unix)]
+fn statvfs_root_available_bytes() -> u64 {
+    match rustix::fs::statvfs("/") {
+        Ok(s) => s.f_bavail.saturating_mul(s.f_frsize),
+        Err(_) => 0,
+    }
+}
+
+#[cfg(not(unix))]
+fn statvfs_root_available_bytes() -> u64 {
+    0
+}
+
+/// Snapshot host CPU, memory, and root filesystem availability using `toadstool_sysmon`
+/// (and `statvfs` on `/` when disk enumeration does not yield a root entry).
+///
+/// Returns `(total_cpu_cores, total_memory_bytes, available_memory_bytes, available_storage_bytes, cpu_usage_percent)`.
+/// Designed to run on a blocking thread pool via `spawn_blocking`.
+pub(crate) fn collect_host_resource_snapshot() -> (usize, u64, u64, u64, f64) {
+    let total_cpu_cores = cpu_count().max(1);
+
+    let (total_memory_bytes, available_memory_bytes) = if let Ok(m) = memory_info() {
+        (m.total, m.available)
+    } else {
+        let (_, t, a) = read_system_info();
+        (t, a)
+    };
+
+    let sample = Duration::from_millis(100);
+    let cpu_usage_percent = match cpu_usage(sample) {
+        Ok(p) => f64::from(p),
+        Err(_) => match load_average() {
+            Ok(la) => load_to_cpu_usage_percent(la.one, total_cpu_cores),
+            Err(_) => memory_usage_percent(total_memory_bytes, available_memory_bytes),
+        },
+    };
+
+    let available_storage_bytes = match disk_usage() {
+        Ok(disks) => {
+            root_filesystem_available_bytes(&disks).unwrap_or_else(statvfs_root_available_bytes)
+        }
+        Err(_) => statvfs_root_available_bytes(),
+    };
+
+    (
+        total_cpu_cores,
+        total_memory_bytes,
+        available_memory_bytes,
+        available_storage_bytes,
+        cpu_usage_percent,
+    )
 }
 
 /// Used memory percentage from total and available byte counts (`0.0` when total is zero).
@@ -171,6 +261,7 @@ mod tests {
     use super::*;
     use crate::metric_types::SystemResourceMonitor;
     use toadstool::resources::ResourceMonitor;
+    use toadstool_sysmon::DiskInfo;
 
     #[test]
     fn memory_usage_percent_zero_total_returns_zero() {
@@ -210,6 +301,43 @@ mod tests {
         assert!(avail > 0);
     }
 
+    #[test]
+    fn root_filesystem_prefers_slash_mount() {
+        let disks = vec![
+            DiskInfo {
+                mount_point: "/boot".to_string(),
+                filesystem: "ext4".to_string(),
+                total_space: 100,
+                available_space: 10,
+            },
+            DiskInfo {
+                mount_point: "/".to_string(),
+                filesystem: "ext4".to_string(),
+                total_space: 1000,
+                available_space: 500,
+            },
+        ];
+        assert_eq!(root_filesystem_available_bytes(&disks), Some(500));
+    }
+
+    #[test]
+    fn root_filesystem_falls_back_to_first_disk() {
+        let disks = vec![DiskInfo {
+            mount_point: "/home".to_string(),
+            filesystem: "ext4".to_string(),
+            total_space: 200,
+            available_space: 20,
+        }];
+        assert_eq!(root_filesystem_available_bytes(&disks), Some(20));
+    }
+
+    #[test]
+    fn load_to_cpu_usage_percent_clamps() {
+        assert!((load_to_cpu_usage_percent(0.0, 4) - 0.0).abs() < f64::EPSILON);
+        assert!((load_to_cpu_usage_percent(4.0, 4) - 100.0).abs() < 1e-9);
+        assert!((load_to_cpu_usage_percent(40.0, 4) - 100.0).abs() < 1e-9);
+    }
+
     #[tokio::test]
     async fn get_metrics_missing_workload_returns_err() {
         let monitor = SystemResourceMonitor::new();
@@ -218,15 +346,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn start_and_stop_monitoring_trait_ok() {
+    async fn start_and_stop_monitoring_registers_workload_ids() {
         let monitor = SystemResourceMonitor::new();
         assert!(monitor.start_monitoring("w-1").is_ok());
+        assert!(
+            monitor
+                .monitored_workloads
+                .lock()
+                .expect("lock")
+                .contains("w-1")
+        );
         assert!(monitor.stop_monitoring("w-1").is_ok());
+        assert!(
+            !monitor
+                .monitored_workloads
+                .lock()
+                .expect("lock")
+                .contains("w-1")
+        );
         tokio::task::yield_now().await;
     }
 
     #[tokio::test]
-    async fn get_system_resources_sets_cpu_snapshot_to_zero_and_valid_percentages() {
+    async fn get_system_resources_reports_live_host_snapshot() {
         let monitor = SystemResourceMonitor::new();
         let res = monitor
             .get_system_resources()
@@ -235,7 +377,7 @@ mod tests {
         assert!(res.total_cpu_cores >= 1);
         assert!(res.total_memory_bytes > 0);
         assert!(res.memory_usage_percent >= 0.0 && res.memory_usage_percent <= 100.0);
-        assert!(res.cpu_usage_percent.abs() < f64::EPSILON);
+        assert!(res.cpu_usage_percent >= 0.0 && res.cpu_usage_percent <= 100.0);
         assert!(res.available_storage_bytes > 0);
     }
 }

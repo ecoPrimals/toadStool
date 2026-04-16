@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use toadstool::resources::{ResourceRequirements, RuntimeMetrics};
 use tokio::sync::RwLock;
@@ -18,4 +19,6 @@ pub struct SystemResourceMonitor {
     pub(crate) threshold_data: Arc<RwLock<HashMap<String, ResourceRequirements>>>,
     pub(crate) config: MonitoringConfig,
     pub(crate) is_monitoring: Arc<RwLock<bool>>,
+    /// Workload IDs registered via `ResourceMonitor::start_monitoring`.
+    pub(crate) monitored_workloads: Arc<Mutex<HashSet<String>>>,
 }

@@ -57,9 +57,9 @@ impl StorageClient {
                 debug!("Storage service unavailable ({e}), falling back to local metadata");
                 Ok(StorageResult {
                     id,
-                    status: StorageStatus::Success,
+                    status: StorageStatus::LocalOnly,
                     message: format!(
-                        "Artifact stored locally: {name} (storage service unavailable)"
+                        "Artifact not persisted remotely (local-only/deferred): {name} (storage service unavailable)"
                     ),
                 })
             }
@@ -188,15 +188,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn store_artifact_when_rpc_unavailable_returns_success_fallback() {
+    async fn store_artifact_when_rpc_unavailable_returns_local_only_fallback() {
         let client = client_without_live_socket();
         let result = client.store_artifact("unit.bin", b"payload").await.unwrap();
         assert!(matches!(
             result.status,
-            crate::types::StorageStatus::Success
+            crate::types::StorageStatus::LocalOnly
         ));
         assert!(
-            result.message.contains("locally") || result.message.contains("unavailable"),
+            result.message.contains("local-only")
+                || result.message.contains("deferred")
+                || result.message.contains("unavailable"),
             "unexpected message: {}",
             result.message
         );

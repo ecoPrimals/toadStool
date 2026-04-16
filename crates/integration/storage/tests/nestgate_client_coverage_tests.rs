@@ -28,6 +28,13 @@ fn test_client() -> StorageClient {
     StorageClient::new_for_testing(config, "test-storage-coverage".to_string())
 }
 
+fn assert_store_completed(status: &StorageStatus) {
+    assert!(
+        matches!(status, StorageStatus::Success | StorageStatus::LocalOnly),
+        "unexpected status: {status:?}"
+    );
+}
+
 // ============================================================================
 // store_artifact tests
 // ============================================================================
@@ -40,7 +47,7 @@ async fn store_artifact_returns_success_with_uuid() {
         .store_artifact("coverage-test.bin", data)
         .await
         .unwrap();
-    assert!(matches!(result.status, StorageStatus::Success));
+    assert_store_completed(&result.status);
     assert!(!result.id.is_nil());
     assert!(result.message.contains("coverage-test.bin"));
 }
@@ -52,9 +59,11 @@ async fn store_artifact_fallback_message_when_no_server() {
         .store_artifact("fallback.bin", b"data")
         .await
         .unwrap();
-    assert!(matches!(result.status, StorageStatus::Success));
+    assert_store_completed(&result.status);
     assert!(
-        result.message.contains("locally") || result.message.contains("fallback.bin"),
+        result.message.contains("local-only")
+            || result.message.contains("deferred")
+            || result.message.contains("fallback.bin"),
         "message: {}",
         result.message
     );
@@ -68,7 +77,7 @@ async fn store_artifact_content_type_zip() {
         .store_artifact("archive.zip", &zip_magic)
         .await
         .unwrap();
-    assert!(matches!(result.status, StorageStatus::Success));
+    assert_store_completed(&result.status);
 }
 
 #[tokio::test]
@@ -79,7 +88,7 @@ async fn store_artifact_content_type_png() {
         .store_artifact("image.png", &png_magic)
         .await
         .unwrap();
-    assert!(matches!(result.status, StorageStatus::Success));
+    assert_store_completed(&result.status);
 }
 
 #[tokio::test]
@@ -90,7 +99,7 @@ async fn store_artifact_content_type_jpeg() {
         .store_artifact("photo.jpg", &jpeg_magic)
         .await
         .unwrap();
-    assert!(matches!(result.status, StorageStatus::Success));
+    assert_store_completed(&result.status);
 }
 
 #[tokio::test]
@@ -100,7 +109,7 @@ async fn store_artifact_content_type_octet_stream() {
         .store_artifact("binary.bin", b"raw bytes")
         .await
         .unwrap();
-    assert!(matches!(result.status, StorageStatus::Success));
+    assert_store_completed(&result.status);
 }
 
 // ============================================================================

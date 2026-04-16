@@ -251,6 +251,8 @@ pub enum StorageStatus {
     InProgress,
     /// Operation cancelled
     Cancelled,
+    /// Accepted locally only; not persisted to the remote storage service (e.g. RPC unavailable).
+    LocalOnly,
 }
 
 /// Cache entry for artifacts
