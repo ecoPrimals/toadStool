@@ -283,3 +283,101 @@ pub enum PrimalBootstrapResult {
     /// Failed with error
     Failed(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::time::Duration;
+
+    use crate::mock_primal::MockPrimal;
+    use crate::primal_types::{PrimalConfig, PrimalType};
+    use crate::{BiomeManifest, BiomeMetadata, PrimalIntegrationConfig, PrimalIntegrationManager};
+
+    fn empty_manifest(primals: HashMap<String, PrimalConfig>) -> BiomeManifest {
+        BiomeManifest {
+            api_version: "biomeOS/v1".to_string(),
+            kind: "Biome".to_string(),
+            metadata: BiomeMetadata {
+                name: "test-biome".to_string(),
+                version: "1.0.0".to_string(),
+                environment: None,
+                labels: HashMap::new(),
+            },
+            primals,
+        }
+    }
+
+    fn primal_config(name: &str, dependencies: Vec<String>) -> PrimalConfig {
+        PrimalConfig {
+            name: name.to_string(),
+            primal_type: PrimalType::Compute,
+            enabled: true,
+            resources: None,
+            dependencies,
+            config: HashMap::new(),
+            environment: HashMap::new(),
+            labels: HashMap::new(),
+            annotations: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn primal_integration_config_default_values() {
+        let c = PrimalIntegrationConfig::default();
+        assert!(c.auto_discovery);
+        assert_eq!(c.discovery_timeout, Duration::from_secs(30));
+        assert_eq!(c.health_check_interval, Duration::from_secs(30));
+        assert_eq!(c.max_retry_attempts, 3);
+        assert_eq!(c.retry_delay, Duration::from_secs(5));
+    }
+
+    #[test]
+    fn calculate_startup_order_topological_dependencies() {
+        let manager = PrimalIntegrationManager::new(PrimalIntegrationConfig::default());
+        let mut primals = HashMap::new();
+        primals.insert(
+            "worker".to_string(),
+            primal_config("worker", vec!["base".to_string()]),
+        );
+        primals.insert("base".to_string(), primal_config("base", vec![]));
+        let manifest = empty_manifest(primals);
+        let order = manager.calculate_startup_order(&manifest).unwrap();
+        let base_pos = order.iter().position(|n| n == "base").unwrap();
+        let worker_pos = order.iter().position(|n| n == "worker").unwrap();
+        assert!(
+            base_pos < worker_pos,
+            "expected base before worker, got {order:?}"
+        );
+    }
+
+    #[test]
+    fn calculate_startup_order_rejects_cycle() {
+        let manager = PrimalIntegrationManager::new(PrimalIntegrationConfig::default());
+        let mut primals = HashMap::new();
+        primals.insert("a".to_string(), primal_config("a", vec!["b".to_string()]));
+        primals.insert("b".to_string(), primal_config("b", vec!["a".to_string()]));
+        let manifest = empty_manifest(primals);
+        let err = manager.calculate_startup_order(&manifest).unwrap_err();
+        assert!(err.to_string().contains("Circular dependency"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn register_primal_and_bootstrap_tracks_totals() {
+        let mut manager = PrimalIntegrationManager::new(PrimalIntegrationConfig::default());
+        manager.register_primal(
+            "alpha".to_string(),
+            Box::new(MockPrimal {
+                name: "alpha".to_string(),
+                should_fail: false,
+            }),
+        );
+
+        let mut primals = HashMap::new();
+        primals.insert("alpha".to_string(), primal_config("alpha", vec![]));
+        let manifest = empty_manifest(primals);
+
+        let result = manager.bootstrap_from_manifest(&manifest).await.unwrap();
+        assert_eq!(result.total_primals, 1);
+        assert_eq!(result.successful_primals, 1);
+    }
+}

@@ -136,3 +136,166 @@ impl TrafficExt for super::OrchestrationNetworkConfigurator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TrafficExt;
+    use crate::network_config::{OrchestrationNetworkConfigurator, RateLimit};
+    use std::time::Duration;
+
+    #[test]
+    fn validate_traffic_management_default_succeeds() {
+        let c = OrchestrationNetworkConfigurator::new();
+        assert!(c.validate_traffic_management_config().is_ok());
+    }
+
+    #[test]
+    fn validate_traffic_management_skips_when_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = false;
+        c.config.traffic_management.canary.percentage = 200;
+        assert!(c.validate_traffic_management_config().is_ok());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_canary_percentage_over_100() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.canary.percentage = 101;
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_mirroring_percentage_over_100() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.traffic_mirroring.enabled = true;
+        c.config.traffic_management.traffic_mirroring.percentage = 150;
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_splitting_enabled_with_empty_strategy() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.traffic_splitting.enabled = true;
+        c.config.traffic_management.traffic_splitting.strategy = "   ".to_string();
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_global_rate_limit_zero_rps() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.rate_limiting.enabled = true;
+        c.config.traffic_management.rate_limiting.global_limit = Some(RateLimit {
+            requests_per_second: 0,
+            burst_size: 100,
+            window_size: Duration::from_secs(60),
+        });
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_global_rate_limit_zero_burst() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.rate_limiting.enabled = true;
+        c.config.traffic_management.rate_limiting.global_limit = Some(RateLimit {
+            requests_per_second: 10,
+            burst_size: 0,
+            window_size: Duration::from_secs(60),
+        });
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_global_rate_limit_zero_window() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.rate_limiting.enabled = true;
+        c.config.traffic_management.rate_limiting.global_limit = Some(RateLimit {
+            requests_per_second: 10,
+            burst_size: 10,
+            window_size: Duration::ZERO,
+        });
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_traffic_management_rejects_blue_green_enabled_with_empty_switch_strategy() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.traffic_management.enabled = true;
+        c.config.traffic_management.blue_green.enabled = true;
+        c.config.traffic_management.blue_green.switch_strategy = "".to_string();
+        assert!(c.validate_traffic_management_config().is_err());
+    }
+
+    #[test]
+    fn validate_load_balancing_default_succeeds() {
+        let c = OrchestrationNetworkConfigurator::new();
+        assert!(c.validate_load_balancing_config().is_ok());
+    }
+
+    #[test]
+    fn validate_load_balancing_allows_invalid_algorithm_when_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.load_balancing.enabled = false;
+        c.config.load_balancing.algorithm = "not_a_real_algorithm".to_string();
+        assert!(c.validate_load_balancing_config().is_ok());
+    }
+
+    #[test]
+    fn validate_load_balancing_rejects_unknown_algorithm_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.load_balancing.enabled = true;
+        c.config.load_balancing.algorithm = "unknown".to_string();
+        assert!(c.validate_load_balancing_config().is_err());
+    }
+
+    #[test]
+    fn validate_load_balancing_accepts_known_algorithms() {
+        for algo in ["round_robin", "least_conn", "random", "ip_hash"] {
+            let mut c = OrchestrationNetworkConfigurator::new();
+            c.config.load_balancing.enabled = true;
+            c.config.load_balancing.algorithm = algo.to_string();
+            assert!(
+                c.validate_load_balancing_config().is_ok(),
+                "algorithm {algo} should validate"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_load_balancing_rejects_zero_health_thresholds_when_base_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.load_balancing.enabled = true;
+        c.config.load_balancing.health_check.base.enabled = true;
+        c.config.load_balancing.health_check.base.healthy_threshold = 0;
+        assert!(c.validate_load_balancing_config().is_err());
+
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.load_balancing.enabled = true;
+        c.config.load_balancing.health_check.base.enabled = true;
+        c.config
+            .load_balancing
+            .health_check
+            .base
+            .unhealthy_threshold = 0;
+        assert!(c.validate_load_balancing_config().is_err());
+    }
+
+    #[test]
+    fn validate_load_balancing_allows_zero_thresholds_when_health_check_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.load_balancing.enabled = true;
+        c.config.load_balancing.health_check.base.enabled = false;
+        c.config.load_balancing.health_check.base.healthy_threshold = 0;
+        c.config
+            .load_balancing
+            .health_check
+            .base
+            .unhealthy_threshold = 0;
+        assert!(c.validate_load_balancing_config().is_ok());
+    }
+}

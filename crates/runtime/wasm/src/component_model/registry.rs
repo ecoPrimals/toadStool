@@ -206,3 +206,110 @@ pub struct ComponentStats {
     /// Total function invocations across instances
     pub total_function_calls: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::core::{ComponentInterface, ComponentModelConfig};
+    use super::*;
+
+    fn sample_interface(name: &str, version: &str) -> ComponentInterface {
+        ComponentInterface {
+            name: name.to_string(),
+            version: version.to_string(),
+            exports: vec![],
+            imports: vec![],
+            types: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn register_interface_then_create_instance() {
+        let reg = ComponentRegistry::new(ComponentModelConfig {
+            max_instances: 10,
+            ..Default::default()
+        });
+        reg.register_interface(sample_interface("api", "1"))
+            .await
+            .unwrap();
+        let id = reg.create_instance("api").await.unwrap();
+        let inst = reg.get_instance(&id).await.unwrap();
+        assert_eq!(inst.interfaces.get("api").unwrap().version, "1");
+    }
+
+    #[tokio::test]
+    async fn register_interface_overwrites_same_name() {
+        let reg = ComponentRegistry::new(ComponentModelConfig {
+            max_instances: 5,
+            ..Default::default()
+        });
+        reg.register_interface(sample_interface("api", "1"))
+            .await
+            .unwrap();
+        reg.register_interface(sample_interface("api", "2"))
+            .await
+            .unwrap();
+        let id = reg.create_instance("api").await.unwrap();
+        let inst = reg.get_instance(&id).await.unwrap();
+        assert_eq!(inst.interfaces["api"].version, "2");
+    }
+
+    #[tokio::test]
+    async fn create_instance_unknown_interface_errors() {
+        let reg = ComponentRegistry::new(ComponentModelConfig::default());
+        let err = reg.create_instance("missing").await.unwrap_err();
+        assert!(err.to_string().contains("Interface not found"));
+    }
+
+    #[tokio::test]
+    async fn create_instance_respects_max_instances() {
+        let reg = ComponentRegistry::new(ComponentModelConfig {
+            max_instances: 1,
+            ..Default::default()
+        });
+        reg.register_interface(sample_interface("api", "1"))
+            .await
+            .unwrap();
+        reg.create_instance("api").await.unwrap();
+        let err = reg.create_instance("api").await.unwrap_err();
+        assert!(err.to_string().contains("Maximum component instances"));
+    }
+
+    #[tokio::test]
+    async fn remove_instance_deregistration() {
+        let reg = ComponentRegistry::new(ComponentModelConfig {
+            max_instances: 5,
+            ..Default::default()
+        });
+        reg.register_interface(sample_interface("api", "1"))
+            .await
+            .unwrap();
+        let id = reg.create_instance("api").await.unwrap();
+        reg.remove_instance(&id).await.unwrap();
+        assert!(reg.get_instance(&id).await.is_err());
+        let err = reg.remove_instance(&id).await.unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn get_stats_counts_states_and_interfaces() {
+        let reg = ComponentRegistry::new(ComponentModelConfig {
+            max_instances: 20,
+            ..Default::default()
+        });
+        reg.register_interface(sample_interface("a", "1"))
+            .await
+            .unwrap();
+        reg.register_interface(sample_interface("b", "1"))
+            .await
+            .unwrap();
+        let id = reg.create_instance("a").await.unwrap();
+        reg.update_state(&id, ComponentState::Running)
+            .await
+            .unwrap();
+        let stats = reg.get_stats().await;
+        assert_eq!(stats.total_interfaces, 2);
+        assert_eq!(stats.total_instances, 1);
+        assert_eq!(stats.running_instances, 1);
+        assert_eq!(stats.initializing_instances, 0);
+    }
+}

@@ -20,9 +20,6 @@ struct GpuInfo {
 pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, ValidationError> {
     const CPU_FALLBACK_CORES: u32 = 4;
     const CPU_AVAILABLE_PERCENT: u32 = 80;
-    const NETWORK_FALLBACK_MBPS: u64 = 100;
-    const NETWORK_HIGH_TRAFFIC_THRESHOLD: u64 = 1_000_000_000;
-    const NETWORK_HIGH_MBPS: u64 = 1000;
 
     debug!("Querying system capabilities");
 
@@ -56,16 +53,7 @@ pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, Va
 
     let interfaces = toadstool_sysmon::network_stats().unwrap_or_default();
 
-    let network_bandwidth_mbps = if interfaces.is_empty() {
-        NETWORK_FALLBACK_MBPS
-    } else {
-        let total_received: u64 = interfaces.iter().map(|i| i.received).sum();
-        if total_received > NETWORK_HIGH_TRAFFIC_THRESHOLD {
-            NETWORK_HIGH_MBPS
-        } else {
-            NETWORK_FALLBACK_MBPS
-        }
-    };
+    let network_bandwidth_mbps = estimate_network_bandwidth_mbps(&interfaces);
 
     Ok(SystemCapabilities {
         total_cpu_cores,
@@ -80,6 +68,25 @@ pub(crate) async fn query_system_capabilities() -> Result<SystemCapabilities, Va
         gpu_count,
         gpu_types,
     })
+}
+
+/// Heuristic Mbps estimate from cumulative receive counters (see `query_system_capabilities`).
+pub(crate) fn estimate_network_bandwidth_mbps(
+    interfaces: &[toadstool_sysmon::NetworkInterface],
+) -> u64 {
+    const NETWORK_FALLBACK_MBPS: u64 = 100;
+    const NETWORK_HIGH_TRAFFIC_THRESHOLD: u64 = 1_000_000_000;
+    const NETWORK_HIGH_MBPS: u64 = 1000;
+
+    if interfaces.is_empty() {
+        return NETWORK_FALLBACK_MBPS;
+    }
+    let total_received: u64 = interfaces.iter().map(|i| i.received).sum();
+    if total_received > NETWORK_HIGH_TRAFFIC_THRESHOLD {
+        NETWORK_HIGH_MBPS
+    } else {
+        NETWORK_FALLBACK_MBPS
+    }
 }
 
 /// Query GPU capabilities via wgpu (vendor-agnostic)
@@ -191,12 +198,85 @@ async fn discover_gpus_via_wgpu() -> Result<Vec<GpuInfo>, ValidationError> {
 }
 
 #[cfg(feature = "gpu-discovery")]
-fn vendor_from_backend(backend: wgpu::Backend) -> String {
+pub(crate) fn vendor_from_backend(backend: wgpu::Backend) -> String {
     match backend {
         wgpu::Backend::Vulkan => "Vulkan".to_string(),
         wgpu::Backend::Metal => "Metal".to_string(),
         wgpu::Backend::Dx12 => "DirectX12".to_string(),
         wgpu::Backend::Gl => "OpenGL".to_string(),
         _ => "Unknown".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::estimate_network_bandwidth_mbps;
+    use crate::resource_validator::ValidationError;
+    use toadstool_sysmon::NetworkInterface;
+
+    #[test]
+    fn estimate_network_bandwidth_empty_interfaces_uses_fallback_mbps() {
+        assert_eq!(estimate_network_bandwidth_mbps(&[]), 100);
+    }
+
+    #[test]
+    fn estimate_network_bandwidth_low_traffic_uses_fallback_mbps() {
+        let iface = NetworkInterface {
+            name: "eth0".into(),
+            received: 500_000_000,
+            transmitted: 0,
+            packets_received: 0,
+            packets_transmitted: 0,
+        };
+        assert_eq!(estimate_network_bandwidth_mbps(&[iface]), 100);
+    }
+
+    #[test]
+    fn estimate_network_bandwidth_high_traffic_uses_high_mbps() {
+        let iface = NetworkInterface {
+            name: "eth0".into(),
+            received: 1_000_000_001,
+            transmitted: 0,
+            packets_received: 0,
+            packets_transmitted: 0,
+        };
+        assert_eq!(estimate_network_bandwidth_mbps(&[iface]), 1000);
+    }
+
+    #[test]
+    fn estimate_network_bandwidth_sums_across_interfaces() {
+        let a = NetworkInterface {
+            name: "eth0".into(),
+            received: 600_000_000,
+            transmitted: 0,
+            packets_received: 0,
+            packets_transmitted: 0,
+        };
+        let b = NetworkInterface {
+            name: "eth1".into(),
+            received: 500_000_000,
+            transmitted: 0,
+            packets_received: 0,
+            packets_transmitted: 0,
+        };
+        assert_eq!(estimate_network_bandwidth_mbps(&[a, b]), 1000);
+    }
+
+    #[test]
+    fn validation_error_system_query_failed_maps_to_message() {
+        let err = ValidationError::SystemQueryFailed("disk offline".into());
+        let s = err.to_string();
+        assert!(s.contains("System query failed"), "{s}");
+        assert!(s.contains("disk offline"), "{s}");
+    }
+
+    #[cfg(feature = "gpu-discovery")]
+    #[test]
+    fn vendor_from_backend_maps_known_wgpu_backends() {
+        use super::vendor_from_backend;
+        assert_eq!(vendor_from_backend(wgpu::Backend::Vulkan), "Vulkan");
+        assert_eq!(vendor_from_backend(wgpu::Backend::Metal), "Metal");
+        assert_eq!(vendor_from_backend(wgpu::Backend::Dx12), "DirectX12");
+        assert_eq!(vendor_from_backend(wgpu::Backend::Gl), "OpenGL");
     }
 }

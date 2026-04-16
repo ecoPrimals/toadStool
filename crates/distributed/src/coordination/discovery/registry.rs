@@ -122,3 +122,125 @@ impl Clone for CapabilityTracker {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::coordination::types::{NodeCapabilities, NodeMetadata, NodeRegistration, NodeType};
+
+    fn sample_registration(node_id: &str, node_type: NodeType) -> NodeRegistration {
+        let caps = NodeCapabilities {
+            cpu_cores: 4.0,
+            memory_gb: 8.0,
+            storage_gb: 100.0,
+            gpu_count: 0,
+            specialized_hardware: vec![],
+            software_capabilities: vec![],
+        };
+        NodeRegistration {
+            node_id: node_id.to_string(),
+            node_type,
+            capabilities: caps.clone(),
+            endpoints: vec!["http://127.0.0.1:1".to_string()],
+            protocols: vec!["http".to_string()],
+            metadata: NodeMetadata {
+                version: "1".to_string(),
+                build_info: "test".to_string(),
+                capabilities: caps,
+            },
+        }
+    }
+
+    #[test]
+    fn node_registry_new_matches_default() {
+        let a = NodeRegistry::new();
+        let b = NodeRegistry::default();
+        assert_eq!(a.nodes.len(), b.nodes.len());
+    }
+
+    #[test]
+    fn register_node_inserts_and_lists_node() {
+        let mut reg = NodeRegistry::new();
+        let node = sample_registration("n1", NodeType::ToadStool);
+        reg.register_node(node.clone()).unwrap();
+        assert_eq!(reg.get_all_nodes().len(), 1);
+        assert_eq!(reg.get_active_nodes().len(), 1);
+        assert!(reg.get_node(&"n1".to_string()).is_some());
+    }
+
+    #[test]
+    fn get_nodes_by_types_filters_matching_kinds_only() {
+        let mut reg = NodeRegistry::new();
+        reg.register_node(sample_registration("t", NodeType::ToadStool));
+        reg.register_node(sample_registration("s", NodeType::Storage));
+        let ts = reg.get_nodes_by_types(&[NodeType::ToadStool]);
+        assert_eq!(ts.len(), 1);
+        assert_eq!(ts[0].node_id, "t");
+    }
+
+    #[test]
+    fn update_node_health_false_removes_node() {
+        let mut reg = NodeRegistry::new();
+        reg.register_node(sample_registration("gone", NodeType::ToadStool));
+        reg.update_node_health(&"gone".to_string(), false);
+        assert!(reg.get_node(&"gone".to_string()).is_none());
+        assert!(reg.health_timestamps.get("gone").is_none());
+    }
+
+    #[test]
+    fn update_node_health_true_unknown_id_is_ignored() {
+        let mut reg = NodeRegistry::new();
+        reg.update_node_health(&"missing".to_string(), true);
+        assert!(reg.nodes.is_empty());
+    }
+
+    #[test]
+    fn get_healthy_nodes_respects_max_age() {
+        let mut reg = NodeRegistry::new();
+        reg.register_node(sample_registration("fresh", NodeType::ToadStool));
+        assert_eq!(reg.get_healthy_nodes(Duration::from_secs(3600)).len(), 1);
+
+        std::thread::sleep(Duration::from_millis(150));
+        assert_eq!(reg.get_healthy_nodes(Duration::from_secs(3600)).len(), 1);
+        assert!(reg.get_healthy_nodes(Duration::from_millis(50)).is_empty());
+    }
+
+    #[test]
+    fn network_health_monitor_new_sets_check_interval() {
+        let interval = Duration::from_secs(42);
+        let m = NetworkHealthMonitor::new(interval);
+        assert_eq!(m.check_interval, interval);
+        assert!(m.health_checks.is_empty());
+    }
+
+    #[test]
+    fn network_health_monitor_clone_clears_ephemeral_state() {
+        let mut m = NetworkHealthMonitor::new(Duration::from_secs(1));
+        m.last_check = Some(std::time::SystemTime::UNIX_EPOCH);
+        let c = m.clone();
+        assert!(c.health_checks.is_empty());
+        assert_eq!(c.check_interval, m.check_interval);
+    }
+
+    #[test]
+    fn capability_tracker_new_is_empty() {
+        let t = CapabilityTracker::new();
+        assert!(t.capabilities.is_empty());
+    }
+
+    #[test]
+    fn capability_tracker_clone_clears_map() {
+        let mut t = CapabilityTracker::new();
+        let caps = NodeCapabilities {
+            cpu_cores: 1.0,
+            memory_gb: 1.0,
+            storage_gb: 1.0,
+            gpu_count: 0,
+            specialized_hardware: vec![],
+            software_capabilities: vec![],
+        };
+        t.capabilities.insert("k".to_string(), caps);
+        let c = t.clone();
+        assert!(c.capabilities.is_empty());
+    }
+}

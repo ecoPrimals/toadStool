@@ -145,3 +145,182 @@ impl ReliabilityExt for super::OrchestrationNetworkConfigurator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ReliabilityExt;
+    use crate::network_config::{HealthEndpoint, OrchestrationNetworkConfigurator};
+    use std::time::Duration;
+    use toadstool_common::config_bases::{HealthCheckConfig, HttpHealthCheckConfig};
+
+    #[test]
+    fn validate_circuit_breaker_default_succeeds() {
+        let c = OrchestrationNetworkConfigurator::new();
+        assert!(c.validate_circuit_breaker_config().is_ok());
+    }
+
+    #[test]
+    fn validate_circuit_breaker_skips_thresholds_when_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.circuit_breaker.enabled = false;
+        c.config.circuit_breaker.failure_threshold = 0;
+        c.config.circuit_breaker.success_threshold = 0;
+        assert!(c.validate_circuit_breaker_config().is_ok());
+    }
+
+    #[test]
+    fn validate_circuit_breaker_rejects_zero_failure_threshold_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.circuit_breaker.enabled = true;
+        c.config.circuit_breaker.failure_threshold = 0;
+        assert!(c.validate_circuit_breaker_config().is_err());
+    }
+
+    #[test]
+    fn validate_circuit_breaker_rejects_zero_success_threshold_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.circuit_breaker.enabled = true;
+        c.config.circuit_breaker.success_threshold = 0;
+        assert!(c.validate_circuit_breaker_config().is_err());
+    }
+
+    #[test]
+    fn validate_circuit_breaker_rejects_zero_timeout_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.circuit_breaker.enabled = true;
+        c.config.circuit_breaker.timeout = Duration::ZERO;
+        assert!(c.validate_circuit_breaker_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_default_succeeds() {
+        let c = OrchestrationNetworkConfigurator::new();
+        assert!(c.validate_health_monitoring_config().is_ok());
+    }
+
+    #[test]
+    fn validate_health_monitoring_skips_when_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = false;
+        c.config.health_monitoring.endpoints.clear();
+        c.config.health_monitoring.interval = Duration::ZERO;
+        assert!(c.validate_health_monitoring_config().is_ok());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_no_endpoints_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        c.config.health_monitoring.endpoints.clear();
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_zero_interval_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        c.config.health_monitoring.interval = Duration::ZERO;
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_empty_endpoint_name() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        c.config.health_monitoring.endpoints = vec![HealthEndpoint {
+            name: "  ".to_string(),
+            url: "http://localhost/health".to_string(),
+            health_check: HttpHealthCheckConfig::default(),
+        }];
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_empty_endpoint_url() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        c.config.health_monitoring.endpoints = vec![HealthEndpoint {
+            name: "a".to_string(),
+            url: "".to_string(),
+            health_check: HttpHealthCheckConfig::default(),
+        }];
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_empty_health_check_path() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        let mut hc = HttpHealthCheckConfig::default();
+        hc.path = "".to_string();
+        c.config.health_monitoring.endpoints = vec![HealthEndpoint {
+            name: "svc".to_string(),
+            url: "http://localhost/health".to_string(),
+            health_check: hc,
+        }];
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_invalid_expected_http_status() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        let mut hc = HttpHealthCheckConfig::default();
+        hc.expected_status = 99;
+        c.config.health_monitoring.endpoints = vec![HealthEndpoint {
+            name: "svc".to_string(),
+            url: "http://localhost/health".to_string(),
+            health_check: hc,
+        }];
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_metrics_enabled_with_empty_endpoint() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.metrics.enabled = true;
+        c.config.health_monitoring.metrics.endpoint = "  ".to_string();
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_rejects_metrics_enabled_with_zero_interval() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.metrics.enabled = true;
+        c.config.health_monitoring.metrics.interval = Duration::ZERO;
+        assert!(c.validate_health_monitoring_config().is_err());
+    }
+
+    #[test]
+    fn validate_health_monitoring_accepts_expected_status_in_range() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.health_monitoring.enabled = true;
+        let mut hc = HttpHealthCheckConfig {
+            base: HealthCheckConfig {
+                enabled: true,
+                interval: Duration::from_secs(30),
+                timeout: Duration::from_secs(5),
+                healthy_threshold: 2,
+                unhealthy_threshold: 3,
+                retry_count: 3,
+            },
+            path: "/health".to_string(),
+            expected_status: 599,
+            method: "GET".to_string(),
+        };
+        c.config.health_monitoring.endpoints = vec![HealthEndpoint {
+            name: "edge".to_string(),
+            url: "http://localhost/health".to_string(),
+            health_check: hc.clone(),
+        }];
+        assert!(c.validate_health_monitoring_config().is_ok());
+
+        hc.expected_status = 100;
+        c.config.health_monitoring.endpoints = vec![HealthEndpoint {
+            name: "edge".to_string(),
+            url: "http://localhost/health".to_string(),
+            health_check: hc,
+        }];
+        assert!(c.validate_health_monitoring_config().is_ok());
+    }
+}

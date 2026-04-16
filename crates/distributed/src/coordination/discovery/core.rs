@@ -321,3 +321,299 @@ impl Clone for CoordinationNetworkDiscovery {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use bytes::Bytes;
+    use uuid::Uuid;
+
+    use crate::ResourceRequirements;
+    use crate::coordination::types::{
+        ConnectionHealth, CoordinationConnection, CoordinationDiscoveryConfig,
+        CoordinationTransport, GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig,
+        NodeCapabilities, NodeMetadata, NodeRegistration, NodeType, ProtocolConfig, SubTask,
+    };
+    use crate::types::resources::{
+        CpuRequirements, MemoryRequirements, NetworkRequirements as NetReq, StorageRequirements,
+    };
+
+    fn make_protocol_config() -> ProtocolConfig {
+        ProtocolConfig {
+            protocol: CoordinationTransport::HTTP,
+            http: HttpProtocolConfig {
+                timeout_ms: 5000,
+                max_retries: 3,
+                headers: HashMap::new(),
+            },
+            grpc: GrpcProtocolConfig {
+                timeout_ms: 5000,
+                max_message_size: 1024 * 1024,
+                compression: false,
+            },
+            message_queue: MessageQueueProtocolConfig {
+                queue_name: "test".to_string(),
+                exchange: "test".to_string(),
+                routing_key: "test".to_string(),
+            },
+        }
+    }
+
+    fn test_connection() -> Arc<CoordinationConnection> {
+        Arc::new(CoordinationConnection {
+            endpoints: vec!["unix:///tmp/test-coordination.sock".to_string()],
+            active_endpoint: "unix:///tmp/test-coordination.sock".to_string(),
+            auth_token: None,
+            health_status: ConnectionHealth::Healthy,
+            protocol_config: make_protocol_config(),
+            #[cfg(feature = "channels")]
+            reply_channel: None,
+        })
+    }
+
+    fn make_discovery() -> CoordinationNetworkDiscovery {
+        let config = CoordinationDiscoveryConfig {
+            discovery_interval: Duration::from_secs(3600),
+            node_timeout: Duration::from_secs(30),
+        };
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = temp_dir.path().join("coordination.sock");
+        CoordinationNetworkDiscovery::for_test(config, test_connection(), socket_path)
+    }
+
+    fn make_registration(
+        node_id: &str,
+        node_type: NodeType,
+        cpu: f64,
+        memory_gb: f64,
+        storage_gb: f64,
+        hw: Vec<String>,
+    ) -> NodeRegistration {
+        let caps = NodeCapabilities {
+            cpu_cores: cpu,
+            memory_gb,
+            storage_gb,
+            gpu_count: 0,
+            specialized_hardware: hw,
+            software_capabilities: vec![],
+        };
+        NodeRegistration {
+            node_id: node_id.to_string(),
+            node_type,
+            capabilities: caps.clone(),
+            endpoints: vec!["http://127.0.0.1:8080".to_string()],
+            protocols: vec!["http".to_string()],
+            metadata: NodeMetadata {
+                version: "1.0".to_string(),
+                build_info: "test".to_string(),
+                capabilities: caps,
+            },
+        }
+    }
+
+    fn sample_subtask(
+        min_cores: f64,
+        memory_bytes: u64,
+        storage_bytes: u64,
+        constraints: Vec<String>,
+    ) -> SubTask {
+        SubTask {
+            id: Uuid::new_v4(),
+            payload: Bytes::new(),
+            resource_requirements: ResourceRequirements {
+                cpu: CpuRequirements {
+                    min_cores,
+                    max_cores: None,
+                },
+                memory: MemoryRequirements {
+                    min_bytes: memory_bytes,
+                    max_bytes: None,
+                },
+                storage: StorageRequirements {
+                    min_bytes: storage_bytes,
+                    max_bytes: None,
+                },
+                network: NetReq {
+                    bandwidth_mbps: None,
+                    latency_ms: None,
+                },
+                gpu: None,
+            },
+            priority: 1,
+            constraints,
+        }
+    }
+
+    #[tokio::test]
+    async fn register_node_rejects_empty_node_id() {
+        let discovery = make_discovery();
+        let mut reg = make_registration("", NodeType::ToadStool, 4.0, 8.0, 100.0, vec![]);
+        reg.node_id = String::new();
+        match discovery.register_node(reg).await {
+            Err(e) => assert!(e.to_string().contains("Node ID cannot be empty"), "{e}"),
+            Ok(_) => panic!("expected empty node id error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn register_node_rejects_empty_endpoints() {
+        let discovery = make_discovery();
+        let mut reg = make_registration("n1", NodeType::ToadStool, 4.0, 8.0, 100.0, vec![]);
+        reg.endpoints.clear();
+        match discovery.register_node(reg).await {
+            Err(e) => assert!(e.to_string().contains("At least one endpoint"), "{e}"),
+            Ok(_) => panic!("expected empty endpoints error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn get_network_capacity_sums_active_nodes() {
+        let discovery = make_discovery();
+        discovery
+            .register_node(make_registration(
+                "a",
+                NodeType::ToadStool,
+                2.0,
+                4.0,
+                50.0,
+                vec![],
+            ))
+            .await
+            .unwrap();
+        discovery
+            .register_node(make_registration(
+                "b",
+                NodeType::ToadStool,
+                3.0,
+                8.0,
+                100.0,
+                vec![],
+            ))
+            .await
+            .unwrap();
+
+        let cap = discovery.get_network_capacity().await.unwrap();
+        assert_eq!(cap.total_nodes, 2);
+        assert!((cap.total_cpu_cores - 5.0).abs() < f64::EPSILON);
+        assert!((cap.total_memory_gb - 12.0).abs() < f64::EPSILON);
+        assert!((cap.total_storage_gb - 150.0).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn get_optimal_distribution_assigns_best_scoring_node() {
+        let discovery = make_discovery();
+        discovery
+            .register_node(make_registration(
+                "weak",
+                NodeType::ToadStool,
+                2.0,
+                4.0,
+                50.0,
+                vec![],
+            ))
+            .await
+            .unwrap();
+        discovery
+            .register_node(make_registration(
+                "strong",
+                NodeType::ToadStool,
+                16.0,
+                64.0,
+                500.0,
+                vec!["gpu-a100".to_string()],
+            ))
+            .await
+            .unwrap();
+
+        let sub = sample_subtask(
+            4.0,
+            8 * 1024 * 1024 * 1024,
+            100 * 1024 * 1024 * 1024,
+            vec!["gpu-a100".to_string()],
+        );
+        let plan = discovery
+            .get_optimal_distribution(&[sub], &[NodeType::ToadStool])
+            .await
+            .unwrap();
+        assert_eq!(plan.subtasks.len(), 1);
+        assert_eq!(plan.subtasks[0].target_nodes, vec!["strong".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn get_optimal_distribution_errors_when_no_nodes_for_preferred_types() {
+        let discovery = make_discovery();
+        discovery
+            .register_node(make_registration(
+                "store",
+                NodeType::Storage,
+                8.0,
+                32.0,
+                1000.0,
+                vec![],
+            ))
+            .await
+            .unwrap();
+
+        let sub = sample_subtask(1.0, 1024, 1024, vec![]);
+        let err = discovery
+            .get_optimal_distribution(&[sub], &[NodeType::ToadStool])
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("No suitable nodes found"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn get_optimal_distribution_errors_when_no_node_meets_requirements() {
+        let discovery = make_discovery();
+        discovery
+            .register_node(make_registration(
+                "tiny",
+                NodeType::ToadStool,
+                1.0,
+                0.5,
+                0.5,
+                vec![],
+            ))
+            .await
+            .unwrap();
+
+        let sub = sample_subtask(
+            64.0,
+            1024 * 1024 * 1024 * 1024,
+            1024 * 1024 * 1024 * 1024,
+            vec![],
+        );
+        let err = discovery
+            .get_optimal_distribution(&[sub], &[NodeType::ToadStool])
+            .await
+            .unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("No suitable node found for subtask"),
+            "{err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn clone_creates_fresh_empty_node_registry() {
+        let discovery = make_discovery();
+        discovery
+            .register_node(make_registration(
+                "only",
+                NodeType::ToadStool,
+                4.0,
+                8.0,
+                100.0,
+                vec![],
+            ))
+            .await
+            .unwrap();
+        let cloned = discovery.clone();
+        let cap = cloned.get_network_capacity().await.unwrap();
+        assert_eq!(cap.total_nodes, 0);
+    }
+}

@@ -173,3 +173,39 @@ impl StorageClient {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use crate::client::StorageClient;
+    use crate::config::StorageConfig;
+    fn client_without_live_socket() -> StorageClient {
+        StorageClient::new_for_testing(
+            StorageConfig::default(),
+            "toadstool-artifacts-unit-test-service".to_string(),
+        )
+    }
+
+    #[tokio::test]
+    async fn store_artifact_when_rpc_unavailable_returns_success_fallback() {
+        let client = client_without_live_socket();
+        let result = client.store_artifact("unit.bin", b"payload").await.unwrap();
+        assert!(matches!(
+            result.status,
+            crate::types::StorageStatus::Success
+        ));
+        assert!(
+            result.message.contains("locally") || result.message.contains("unavailable"),
+            "unexpected message: {}",
+            result.message
+        );
+    }
+
+    #[tokio::test]
+    async fn retrieve_artifact_when_rpc_unavailable_returns_none() {
+        let client = client_without_live_socket();
+        let out = client.retrieve_artifact(Uuid::nil()).await.unwrap();
+        assert!(out.is_none());
+    }
+}

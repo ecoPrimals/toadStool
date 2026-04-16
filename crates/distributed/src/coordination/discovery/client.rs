@@ -170,3 +170,145 @@ impl DiscoveryClient {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use serde_json::json;
+    use toadstool_common::constants::ecosystem::node_type;
+
+    use crate::coordination::types::{
+        ConnectionHealth, CoordinationConnection, CoordinationTransport, GrpcProtocolConfig,
+        HttpProtocolConfig, MessageQueueProtocolConfig, NodeType, ProtocolConfig,
+    };
+
+    fn test_client() -> super::DiscoveryClient {
+        let protocol = ProtocolConfig {
+            protocol: CoordinationTransport::HTTP,
+            http: HttpProtocolConfig {
+                timeout_ms: 5000,
+                max_retries: 3,
+                headers: Default::default(),
+            },
+            grpc: GrpcProtocolConfig {
+                timeout_ms: 5000,
+                max_message_size: 1024 * 1024,
+                compression: false,
+            },
+            message_queue: MessageQueueProtocolConfig {
+                queue_name: "q".to_string(),
+                exchange: "ex".to_string(),
+                routing_key: "rk".to_string(),
+            },
+        };
+        let conn = Arc::new(CoordinationConnection {
+            endpoints: vec![],
+            active_endpoint: "unix:///tmp/x.sock".to_string(),
+            auth_token: None,
+            health_status: ConnectionHealth::Healthy,
+            protocol_config: protocol,
+            #[cfg(feature = "channels")]
+            reply_channel: None,
+        });
+        super::DiscoveryClient::for_test(
+            conn,
+            std::path::PathBuf::from("/tmp/parse-node-test.sock"),
+        )
+    }
+
+    #[test]
+    fn parse_node_data_errors_when_node_id_missing() {
+        let client = test_client();
+        let err = client
+            .parse_node_data(&json!({ "type": node_type::TOADSTOOL }))
+            .unwrap_err();
+        assert!(err.to_string().contains("node_id"), "{err}");
+    }
+
+    #[test]
+    fn parse_node_data_maps_legacy_toadstool_label() {
+        let client = test_client();
+        let reg = client
+            .parse_node_data(&json!({
+                "node_id": "n1",
+                "type": node_type::TOADSTOOL,
+                "capabilities": { "cpu_cores": 2.5, "memory_gb": 8.0, "storage_gb": 100.0 },
+            }))
+            .unwrap();
+        assert_eq!(reg.node_id, "n1");
+        assert!(matches!(reg.node_type, NodeType::ToadStool));
+        assert!((reg.capabilities.cpu_cores - 2.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn parse_node_data_maps_nestgate_to_storage() {
+        let client = test_client();
+        let reg = client
+            .parse_node_data(&json!({
+                "node_id": "s1",
+                "type": node_type::NESTGATE,
+            }))
+            .unwrap();
+        assert!(matches!(reg.node_type, NodeType::Storage));
+    }
+
+    #[test]
+    fn parse_node_data_maps_security_alias() {
+        let client = test_client();
+        let reg = client
+            .parse_node_data(&json!({
+                "node_id": "sec",
+                "type": "security",
+            }))
+            .unwrap();
+        assert!(matches!(reg.node_type, NodeType::Security));
+    }
+
+    #[test]
+    fn parse_node_data_defaults_type_to_toadstool_when_absent() {
+        let client = test_client();
+        let reg = client.parse_node_data(&json!({ "node_id": "n2" })).unwrap();
+        assert!(matches!(reg.node_type, NodeType::ToadStool));
+    }
+
+    #[test]
+    fn parse_node_data_unknown_type_becomes_custom() {
+        let client = test_client();
+        let reg = client
+            .parse_node_data(&json!({
+                "node_id": "c1",
+                "type": "MyCustomWorker",
+            }))
+            .unwrap();
+        assert!(matches!(
+            reg.node_type,
+            NodeType::Custom(ref s) if s == "MyCustomWorker"
+        ));
+    }
+
+    #[test]
+    fn parse_node_data_defaults_endpoints_and_protocols_when_missing() {
+        let client = test_client();
+        let reg = client.parse_node_data(&json!({ "node_id": "e1" })).unwrap();
+        assert_eq!(reg.endpoints, vec!["unknown".to_string()]);
+        assert_eq!(reg.protocols, vec!["http".to_string()]);
+    }
+
+    #[test]
+    fn parse_node_data_collects_specialized_hardware_array() {
+        let client = test_client();
+        let reg = client
+            .parse_node_data(&json!({
+                "node_id": "hw",
+                "capabilities": {
+                    "specialized_hardware": ["fpga-x", "nvlink"],
+                },
+            }))
+            .unwrap();
+        assert_eq!(
+            reg.capabilities.specialized_hardware,
+            vec!["fpga-x".to_string(), "nvlink".to_string()]
+        );
+    }
+}

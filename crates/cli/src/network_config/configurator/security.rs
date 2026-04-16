@@ -194,3 +194,233 @@ impl SecurityExt for super::OrchestrationNetworkConfigurator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SecurityExt;
+    use crate::network_config::{
+        EgressRule, IngressRule, NetworkPoliciesConfig, NetworkPort, NetworkSelector,
+        OrchestrationNetworkConfigurator, ServiceMeshPolicy,
+    };
+    use std::collections::HashMap;
+
+    fn configurator_with_network_policies(
+        cfg: NetworkPoliciesConfig,
+    ) -> OrchestrationNetworkConfigurator {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.network_policies = cfg;
+        c
+    }
+
+    #[test]
+    fn validate_cross_primal_security_default_succeeds() {
+        let c = OrchestrationNetworkConfigurator::new();
+        assert!(c.validate_cross_primal_security_config().is_ok());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_skips_when_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = false;
+        c.config.cross_primal_security.authentication.method = String::new();
+        c.config.cross_primal_security.authorization.model = String::new();
+        assert!(c.validate_cross_primal_security_config().is_ok());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_rejects_empty_auth_method_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = true;
+        c.config.cross_primal_security.authentication.method = "  \t  ".to_string();
+        assert!(c.validate_cross_primal_security_config().is_err());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_rejects_empty_authorization_model_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = true;
+        c.config.cross_primal_security.authorization.model = "".to_string();
+        assert!(c.validate_cross_primal_security_config().is_err());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_rejects_empty_policy_engine_type_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = true;
+        c.config
+            .cross_primal_security
+            .authorization
+            .policy_engine
+            .engine_type = " ".to_string();
+        assert!(c.validate_cross_primal_security_config().is_err());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_rejects_pki_enabled_without_endpoint() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = true;
+        c.config
+            .cross_primal_security
+            .authentication
+            .security
+            .enabled = true;
+        c.config
+            .cross_primal_security
+            .authentication
+            .security
+            .endpoint = "".to_string();
+        assert!(c.validate_cross_primal_security_config().is_err());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_rejects_isolation_enabled_without_level() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = true;
+        c.config.cross_primal_security.network_isolation.enabled = true;
+        c.config
+            .cross_primal_security
+            .network_isolation
+            .isolation_level = "  ".to_string();
+        assert!(c.validate_cross_primal_security_config().is_err());
+    }
+
+    #[test]
+    fn validate_cross_primal_security_rejects_audit_enabled_without_destinations() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.cross_primal_security.enabled = true;
+        c.config.cross_primal_security.audit_logging.enabled = true;
+        c.config
+            .cross_primal_security
+            .audit_logging
+            .destinations
+            .clear();
+        assert!(c.validate_cross_primal_security_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_default_succeeds() {
+        let c = OrchestrationNetworkConfigurator::new();
+        assert!(c.validate_network_policies_config().is_ok());
+    }
+
+    #[test]
+    fn validate_network_policies_skips_when_disabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.network_policies.enabled = false;
+        c.config.network_policies.default_policy = String::new();
+        assert!(c.validate_network_policies_config().is_ok());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_empty_default_policy_when_enabled() {
+        let mut c = OrchestrationNetworkConfigurator::new();
+        c.config.network_policies.enabled = true;
+        c.config.network_policies.default_policy = "".to_string();
+        assert!(c.validate_network_policies_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_ingress_empty_name() {
+        let mut base = OrchestrationNetworkConfigurator::new()
+            .config
+            .network_policies;
+        base.ingress_rules.push(IngressRule {
+            name: "".to_string(),
+            from: vec![],
+            ports: vec![],
+            action: "allow".to_string(),
+            priority: 1,
+        });
+        let c = configurator_with_network_policies(base);
+        assert!(c.validate_network_policies_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_ingress_empty_action() {
+        let mut base = OrchestrationNetworkConfigurator::new()
+            .config
+            .network_policies;
+        base.ingress_rules.push(IngressRule {
+            name: "r1".to_string(),
+            from: vec![],
+            ports: vec![],
+            action: "  ".to_string(),
+            priority: 1,
+        });
+        let c = configurator_with_network_policies(base);
+        assert!(c.validate_network_policies_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_ingress_invalid_port_range() {
+        let mut base = OrchestrationNetworkConfigurator::new()
+            .config
+            .network_policies;
+        base.ingress_rules.push(IngressRule {
+            name: "ports".to_string(),
+            from: vec![],
+            ports: vec![NetworkPort {
+                port: 200,
+                protocol: "tcp".to_string(),
+                end_port: Some(100),
+            }],
+            action: "allow".to_string(),
+            priority: 1,
+        });
+        let c = configurator_with_network_policies(base);
+        assert!(c.validate_network_policies_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_egress_invalid_port_range() {
+        let mut base = OrchestrationNetworkConfigurator::new()
+            .config
+            .network_policies;
+        base.egress_rules.push(EgressRule {
+            name: "eg".to_string(),
+            to: vec![NetworkSelector {
+                selector_type: "cidr".to_string(),
+                value: "0.0.0.0/0".to_string(),
+            }],
+            ports: vec![NetworkPort {
+                port: 50,
+                protocol: "udp".to_string(),
+                end_port: Some(40),
+            }],
+            action: "allow".to_string(),
+            priority: 1,
+        });
+        let c = configurator_with_network_policies(base);
+        assert!(c.validate_network_policies_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_service_mesh_policy_empty_name() {
+        let mut base = OrchestrationNetworkConfigurator::new()
+            .config
+            .network_policies;
+        base.service_mesh_policies.push(ServiceMeshPolicy {
+            name: "".to_string(),
+            policy_type: "traffic".to_string(),
+            selector: HashMap::new(),
+            config: HashMap::new(),
+        });
+        let c = configurator_with_network_policies(base);
+        assert!(c.validate_network_policies_config().is_err());
+    }
+
+    #[test]
+    fn validate_network_policies_rejects_service_mesh_policy_empty_type() {
+        let mut base = OrchestrationNetworkConfigurator::new()
+            .config
+            .network_policies;
+        base.service_mesh_policies.push(ServiceMeshPolicy {
+            name: "p".to_string(),
+            policy_type: "  ".to_string(),
+            selector: HashMap::new(),
+            config: HashMap::new(),
+        });
+        let c = configurator_with_network_policies(base);
+        assert!(c.validate_network_policies_config().is_err());
+    }
+}

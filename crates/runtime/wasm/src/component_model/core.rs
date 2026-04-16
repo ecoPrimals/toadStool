@@ -165,3 +165,69 @@ impl ComponentValue {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn component_model_config_default() {
+        let c = ComponentModelConfig::default();
+        assert!(c.enabled);
+        assert_eq!(c.max_instances, 1000);
+        assert_eq!(c.linking_timeout_ms, 5000);
+        assert!(c.composition_enabled);
+        assert!(c.wit_support);
+    }
+
+    #[test]
+    fn component_value_matches_scalar_and_mismatch() {
+        assert!(ComponentValue::Bool(true).matches_type(&InterfaceType::Bool));
+        assert!(!ComponentValue::Bool(true).matches_type(&InterfaceType::U32));
+        assert!(ComponentValue::U32(42).matches_type(&InterfaceType::U32));
+        assert!(ComponentValue::String("x".into()).matches_type(&InterfaceType::String));
+    }
+
+    #[test]
+    fn component_value_matches_list_all_elements() {
+        let list_ty = InterfaceType::List(Box::new(InterfaceType::S32));
+        let ok = ComponentValue::List(vec![ComponentValue::S32(-1), ComponentValue::S32(2)]);
+        assert!(ok.matches_type(&list_ty));
+        let bad = ComponentValue::List(vec![ComponentValue::S32(0), ComponentValue::Bool(false)]);
+        assert!(!bad.matches_type(&list_ty));
+    }
+
+    #[test]
+    fn component_value_matches_option_none_and_some() {
+        let opt_ty = InterfaceType::Option(Box::new(InterfaceType::F64));
+        assert!(ComponentValue::Option(None).matches_type(&opt_ty));
+        assert!(
+            ComponentValue::Option(Some(Box::new(ComponentValue::F64(1.5)))).matches_type(&opt_ty)
+        );
+        assert!(!ComponentValue::F32(1.0).matches_type(&opt_ty));
+    }
+
+    #[test]
+    fn component_value_record_and_variant_do_not_match_via_matches_type() {
+        let rec_val = ComponentValue::Record(HashMap::from([(
+            "k".to_string(),
+            ComponentValue::Bool(true),
+        )]));
+        assert!(!rec_val.matches_type(&InterfaceType::Bool));
+
+        let var_val = ComponentValue::Variant("v".to_string(), None);
+        assert!(!var_val.matches_type(&InterfaceType::String));
+    }
+
+    #[test]
+    fn serde_roundtrip_component_model_config() {
+        let c = ComponentModelConfig::default();
+        let json = serde_json::to_string(&c).unwrap();
+        let back: ComponentModelConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.enabled, c.enabled);
+        assert_eq!(back.max_instances, c.max_instances);
+        assert_eq!(back.linking_timeout_ms, c.linking_timeout_ms);
+        assert_eq!(back.composition_enabled, c.composition_enabled);
+        assert_eq!(back.wit_support, c.wit_support);
+    }
+}

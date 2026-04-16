@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 16, 2026 — S203m
+**Date**: April 16, 2026 — S203n
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -64,6 +64,12 @@ machines without CUDA toolkit.
 coordination messaging (complexity analysis, subtask estimation), coordination transport
 (HTTP/gRPC deprecated, MQ success), scheduler config defaults, container engine
 (resource validation, workload support, capabilities).
+**S203n**: +129 tests across 15 previously-untested production modules:
+server (shader dispatch param parsing, system query helpers, cross-gate routing),
+distributed (coordination discovery core/registry/client, crypto validators),
+CLI (network config security/reliability/traffic validation),
+integration (primal manager lifecycle, storage artifacts),
+WASM (component model registry/core).
 Files: `scripts/run-coverage.sh`, `.github/workflows/ci.yml`.
 
 ### D-FUZZ-TARGETS-UNSAFE
@@ -86,12 +92,12 @@ Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
 
 ## Known Limitations (not actionable debt)
 
-### D-ASYNC-DYN-MARKERS — Dyn-ceiling reached
+### D-ASYNC-DYN-MARKERS — CLOSED (dyn-ceiling reached, S203n)
 **Scope**: Workspace (158 remaining `#[async_trait]` annotations: 113 production, 45 test)
-**Waves 1-3**: Migrated all 13 zero-dyn traits to native AFIT. Freed 8 crates.
-**Dyn-ceiling audit (S203l)**: All 32 remaining production trait definitions verified as
-genuinely `dyn`-dispatched (`Box<dyn T>` or `Arc<dyn T>` in APIs). All 45 test annotations
-are on `impl` blocks for those same dyn traits — they cannot be removed independently.
+**Resolution**: No further migration planned. All 32 remaining production trait definitions
+are genuinely `dyn`-dispatched (`Box<dyn T>` or `Arc<dyn T>` in APIs) and carry
+`NOTE(async-dyn)` markers. The 45 test annotations mirror production dyn traits.
+**Waves 1-3**: Migrated 13 zero-dyn traits to native AFIT. Freed 8 crates from dependency.
 **32 dyn-constrained traits**: `AuthBackend`, `AgentBackend`, `CryptoProvider`,
 `UnifiedMemoryBackend`, `EdgeDevice`, `WorkloadExecutor`, `CloudProvider`,
 `CloudProviderInterface`, `ComputeSubstrate`, `ComputeUnit`, `PrimalIntegration`,
@@ -101,8 +107,8 @@ are on `impl` blocks for those same dyn traits — they cannot be removed indepe
 `Terminal3270Session`, `VAXTerminalSession`, `Terminal5250Session`,
 `EmbeddedToolchain`, `ProgrammerInterface`, `EmbeddedEmulator`, `PeripheralInterface`,
 `LegacyEmulator`, `LegacyAdapter`, `LegacyCommunicationSession`.
-Further reduction requires trait splitting (separate static-dispatch from dyn-dispatch
-surfaces) or enum dispatch — architectural changes beyond debt cleanup.
+Further reduction would require trait splitting or enum dispatch — architectural
+changes outside the scope of debt cleanup. Item closed per primalSpring April 16 audit.
 
 ## S203m Resolved Debt (Deep Debt Execution: Stub Evolution + Hardcoding Sweep)
 
