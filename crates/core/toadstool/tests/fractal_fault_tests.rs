@@ -174,11 +174,11 @@ async fn test_negative_constraint_values() {
 }
 
 /// Test: Layer adaptation for all layer types
-#[test]
-fn test_all_layer_adaptations() {
+#[tokio::test]
+async fn test_all_layer_adaptations() {
     // BareMetalOS
     let adapter = LayerCapabilityAdapter::new(DeploymentLayer::BareMetalOS);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 
     // MiddlewareLayer
@@ -186,14 +186,14 @@ fn test_all_layer_adaptations() {
         host_os: "Linux".to_string(),
         host_version: Some("5.0".to_string()),
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 
     // ServiceLayer
     let adapter = LayerCapabilityAdapter::new(DeploymentLayer::ServiceLayer {
         guest_os: vec!["Alpine".to_string()],
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 
     // ContainerLayer
@@ -201,7 +201,7 @@ fn test_all_layer_adaptations() {
         runtime: toadstool::deployment_layer::ContainerRuntime::Docker,
         container_id: Some("abc123".to_string()),
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 
     // VMLayer
@@ -209,7 +209,7 @@ fn test_all_layer_adaptations() {
         hypervisor: "KVM".to_string(),
         gpu_passthrough: true,
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 
     // CloudLayer
@@ -218,7 +218,7 @@ fn test_all_layer_adaptations() {
         instance_type: Some("t3.micro".to_string()),
         region: Some("us-west-1".to_string()),
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 }
 

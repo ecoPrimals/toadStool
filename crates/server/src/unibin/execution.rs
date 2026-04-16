@@ -11,6 +11,7 @@ use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
 
 use super::capabilities;
+use toadstool_common::constants::platform_paths::sysfs;
 use toadstool_common::interned_strings::socket_env;
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 
@@ -253,7 +254,7 @@ pub fn is_platform_constraint_str(error_str: &str) -> bool {
 
 /// Returns true if SELinux is in enforcing mode.
 pub fn is_selinux_enforcing() -> bool {
-    std::fs::read_to_string("/sys/fs/selinux/enforce")
+    std::fs::read_to_string(sysfs::FS_SELINUX_ENFORCE)
         .ok()
         .and_then(|s| s.trim().parse::<u8>().ok())
         .is_some_and(|enforce| enforce == 1)

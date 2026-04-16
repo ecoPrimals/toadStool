@@ -34,21 +34,23 @@ impl LayerCapabilityAdapter {
     }
 
     /// Get adapted capabilities for this layer
-    pub fn get_adapted_capabilities(&self) -> AdaptedCapabilities {
+    pub async fn get_adapted_capabilities(&self) -> AdaptedCapabilities {
         match &self.layer {
-            DeploymentLayer::BareMetalOS => self.adapt_bare_metal(),
-            DeploymentLayer::MiddlewareLayer { host_os, .. } => self.adapt_middleware(host_os),
-            DeploymentLayer::ServiceLayer { .. } => self.adapt_service_layer(),
-            DeploymentLayer::ContainerLayer { .. } => self.adapt_container(),
+            DeploymentLayer::BareMetalOS => self.adapt_bare_metal().await,
+            DeploymentLayer::MiddlewareLayer { host_os, .. } => {
+                self.adapt_middleware(host_os).await
+            }
+            DeploymentLayer::ServiceLayer { .. } => self.adapt_service_layer().await,
+            DeploymentLayer::ContainerLayer { .. } => self.adapt_container().await,
             DeploymentLayer::VMLayer {
                 gpu_passthrough, ..
-            } => self.adapt_vm(*gpu_passthrough),
-            DeploymentLayer::CloudLayer { provider, .. } => self.adapt_cloud(provider),
+            } => self.adapt_vm(*gpu_passthrough).await,
+            DeploymentLayer::CloudLayer { provider, .. } => self.adapt_cloud(provider).await,
         }
     }
 
     /// Adapt capabilities for bare metal
-    fn adapt_bare_metal(&self) -> AdaptedCapabilities {
+    async fn adapt_bare_metal(&self) -> AdaptedCapabilities {
         AdaptedCapabilities {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::Direct,
@@ -58,7 +60,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory(),
+                memory_bytes: get_total_memory().await,
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -85,7 +87,7 @@ impl LayerCapabilityAdapter {
     }
 
     /// Adapt capabilities for middleware layer
-    fn adapt_middleware(&self, host_os: &str) -> AdaptedCapabilities {
+    async fn adapt_middleware(&self, host_os: &str) -> AdaptedCapabilities {
         AdaptedCapabilities {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::ViaHost,
@@ -95,7 +97,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory(),
+                memory_bytes: get_total_memory().await,
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -122,7 +124,7 @@ impl LayerCapabilityAdapter {
     }
 
     /// Adapt capabilities for service layer
-    fn adapt_service_layer(&self) -> AdaptedCapabilities {
+    async fn adapt_service_layer(&self) -> AdaptedCapabilities {
         // Service layer exposes capabilities to guest OS
         // Similar to bare metal but may have resource limits
         AdaptedCapabilities {
@@ -134,7 +136,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory(),
+                memory_bytes: get_total_memory().await,
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -161,7 +163,7 @@ impl LayerCapabilityAdapter {
     }
 
     /// Adapt capabilities for container
-    fn adapt_container(&self) -> AdaptedCapabilities {
+    async fn adapt_container(&self) -> AdaptedCapabilities {
         AdaptedCapabilities {
             compute: ComputeCapabilities {
                 gpu_access: GpuAccess::ViaHost, // Can be Direct with nvidia-container-runtime
@@ -171,7 +173,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ), // May be limited by cgroups
-                memory_bytes: get_total_memory(), // May be limited by cgroups
+                memory_bytes: get_total_memory().await, // May be limited by cgroups
                 supports_tensor_ops: true,
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -198,7 +200,7 @@ impl LayerCapabilityAdapter {
     }
 
     /// Adapt capabilities for VM
-    fn adapt_vm(&self, gpu_passthrough: bool) -> AdaptedCapabilities {
+    async fn adapt_vm(&self, gpu_passthrough: bool) -> AdaptedCapabilities {
         AdaptedCapabilities {
             compute: ComputeCapabilities {
                 gpu_access: if gpu_passthrough {
@@ -212,7 +214,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory(),
+                memory_bytes: get_total_memory().await,
                 supports_tensor_ops: gpu_passthrough,
                 supports_nn_training: gpu_passthrough,
                 supports_nn_inference: true, // CPU fallback available
@@ -243,7 +245,7 @@ impl LayerCapabilityAdapter {
     }
 
     /// Adapt capabilities for cloud
-    fn adapt_cloud(
+    async fn adapt_cloud(
         &self,
         provider: &crate::deployment_layer::CloudProvider,
     ) -> AdaptedCapabilities {
@@ -265,7 +267,7 @@ impl LayerCapabilityAdapter {
                         .map(|n| n.get())
                         .unwrap_or(4),
                 ),
-                memory_bytes: get_total_memory(),
+                memory_bytes: get_total_memory().await,
                 supports_tensor_ops: true, // Cloud GPUs support this
                 supports_nn_training: true,
                 supports_nn_inference: true,
@@ -301,11 +303,11 @@ mod tests {
         storage_capabilities,
     };
 
-    #[test]
-    fn test_bare_metal_adaptation() {
+    #[tokio::test]
+    async fn test_bare_metal_adaptation() {
         let layer = DeploymentLayer::BareMetalOS;
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert_eq!(caps.compute.gpu_access, GpuAccess::Direct);
         assert!(caps.compute.has_cpu);
@@ -316,14 +318,14 @@ mod tests {
         assert!(caps.has_gpu_access());
     }
 
-    #[test]
-    fn test_middleware_adaptation() {
+    #[tokio::test]
+    async fn test_middleware_adaptation() {
         let layer = DeploymentLayer::MiddlewareLayer {
             host_os: "Pop!_OS".to_string(),
             host_version: Some("22.04".to_string()),
         };
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert_eq!(caps.compute.gpu_access, GpuAccess::ViaHost);
         assert_eq!(caps.storage.storage_type, StorageType::HostFilesystem);
@@ -332,28 +334,28 @@ mod tests {
         assert!(caps.has_gpu_access());
     }
 
-    #[test]
-    fn test_vm_adaptation_with_passthrough() {
+    #[tokio::test]
+    async fn test_vm_adaptation_with_passthrough() {
         let layer = DeploymentLayer::VMLayer {
             hypervisor: "QEMU/KVM".to_string(),
             gpu_passthrough: true,
         };
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert_eq!(caps.compute.gpu_access, GpuAccess::Direct);
         assert!(caps.compute.supports_tensor_ops);
         assert!(caps.has_direct_gpu_access());
     }
 
-    #[test]
-    fn test_vm_adaptation_without_passthrough() {
+    #[tokio::test]
+    async fn test_vm_adaptation_without_passthrough() {
         let layer = DeploymentLayer::VMLayer {
             hypervisor: "VirtualBox".to_string(),
             gpu_passthrough: false,
         };
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert_eq!(caps.compute.gpu_access, GpuAccess::None);
         assert!(!caps.compute.supports_tensor_ops);
@@ -361,15 +363,15 @@ mod tests {
         assert!(!caps.has_gpu_access());
     }
 
-    #[test]
-    fn test_cloud_adaptation() {
+    #[tokio::test]
+    async fn test_cloud_adaptation() {
         let layer = DeploymentLayer::CloudLayer {
             provider: CloudProvider::AWS,
             instance_type: Some("g5.4xlarge".to_string()),
             region: Some("us-east-1".to_string()),
         };
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert_eq!(caps.compute.gpu_access, GpuAccess::ViaCloud);
         assert_eq!(caps.storage.storage_type, StorageType::CloudObject);
@@ -379,11 +381,11 @@ mod tests {
         assert!(caps.has_gpu_access());
     }
 
-    #[test]
-    fn test_capability_list_generation() {
+    #[tokio::test]
+    async fn test_capability_list_generation() {
         let layer = DeploymentLayer::BareMetalOS;
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
         let cap_list = caps.to_capability_list();
 
         assert!(cap_list.contains(&compute_capabilities::GPU_COMPUTE_DIRECT.to_string()));
@@ -393,14 +395,14 @@ mod tests {
         assert!(cap_list.contains(&network_capabilities::NETWORK_DIRECT.to_string()));
     }
 
-    #[test]
-    fn test_container_adaptation() {
+    #[tokio::test]
+    async fn test_container_adaptation() {
         let layer = DeploymentLayer::ContainerLayer {
             runtime: ContainerRuntime::Docker,
             container_id: Some("abc123".to_string()),
         };
         let adapter = LayerCapabilityAdapter::new(layer);
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert_eq!(caps.compute.gpu_access, GpuAccess::ViaHost);
         assert_eq!(caps.storage.storage_type, StorageType::PersistentVolume);

@@ -7,12 +7,12 @@
 use toadstool::deployment_layer::{DeploymentLayer, LayerDetector};
 use toadstool::layer_adaptation::{LayerCapabilityAdapter, NetworkAccess, StorageType};
 
-#[test]
-fn test_layer_adapter_provides_bandwidth_info() {
+#[tokio::test]
+async fn test_layer_adapter_provides_bandwidth_info() {
     // Test that layer adapter provides bandwidth information (not None)
     let layer = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // Storage bandwidth should be detected (not None)
     assert!(
@@ -31,11 +31,11 @@ fn test_layer_adapter_provides_bandwidth_info() {
     );
 }
 
-#[test]
-fn test_bare_metal_has_storage_bandwidth() {
+#[tokio::test]
+async fn test_bare_metal_has_storage_bandwidth() {
     let layer = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // Bare metal should report storage bandwidth
     if let Some(read_bw) = caps.storage.read_bandwidth {
@@ -56,14 +56,14 @@ fn test_bare_metal_has_storage_bandwidth() {
     }
 }
 
-#[test]
-fn test_middleware_layer_has_bandwidth() {
+#[tokio::test]
+async fn test_middleware_layer_has_bandwidth() {
     let layer = DeploymentLayer::MiddlewareLayer {
         host_os: "Ubuntu".to_string(),
         host_version: Some("22.04".to_string()),
     };
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // Middleware should also report bandwidth (same detection)
     assert!(caps.storage.read_bandwidth.is_some());
@@ -71,39 +71,39 @@ fn test_middleware_layer_has_bandwidth() {
     assert!(caps.network.bandwidth.is_some());
 }
 
-#[test]
-fn test_vm_layer_has_bandwidth() {
+#[tokio::test]
+async fn test_vm_layer_has_bandwidth() {
     let layer = DeploymentLayer::VMLayer {
         hypervisor: "QEMU/KVM".to_string(),
         gpu_passthrough: false,
     };
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // VM should report bandwidth
     assert!(caps.storage.read_bandwidth.is_some());
     assert!(caps.network.bandwidth.is_some());
 }
 
-#[test]
-fn test_container_layer_has_bandwidth() {
+#[tokio::test]
+async fn test_container_layer_has_bandwidth() {
     let layer = DeploymentLayer::ContainerLayer {
         runtime: toadstool::deployment_layer::ContainerRuntime::Docker,
         container_id: Some("test123".to_string()),
     };
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // Container should report bandwidth (inherits from host)
     assert!(caps.storage.read_bandwidth.is_some());
     assert!(caps.network.bandwidth.is_some());
 }
 
-#[test]
-fn test_network_bandwidth_is_reasonable() {
+#[tokio::test]
+async fn test_network_bandwidth_is_reasonable() {
     let layer = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     if let Some(bandwidth) = caps.network.bandwidth {
         assert!(bandwidth > 0, "Network bandwidth should be positive");
@@ -137,7 +137,7 @@ async fn test_detected_layer_has_capabilities() {
         Ok(layer) => {
             // Whatever layer we detect, it should provide capabilities
             let adapter = LayerCapabilityAdapter::new(layer);
-            let caps = adapter.get_adapted_capabilities();
+            let caps = adapter.get_adapted_capabilities().await;
 
             // Basic sanity checks
             assert!(caps.compute.cpu_cores.is_some() || !caps.compute.has_cpu);
@@ -150,12 +150,12 @@ async fn test_detected_layer_has_capabilities() {
     }
 }
 
-#[test]
-fn test_bandwidth_fallback_is_conservative() {
+#[tokio::test]
+async fn test_bandwidth_fallback_is_conservative() {
     // Even if detection fails, we should get conservative fallback values
     let layer = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // Fallback values should be conservative (not overpromising)
     if let Some(read_bw) = caps.storage.read_bandwidth {
@@ -172,13 +172,17 @@ fn test_bandwidth_fallback_is_conservative() {
     }
 }
 
-#[test]
-fn test_storage_types_correspond_to_layers() {
+#[tokio::test]
+async fn test_storage_types_correspond_to_layers() {
     // Bare metal uses direct block storage
     let bare_metal = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(bare_metal);
     assert_eq!(
-        adapter.get_adapted_capabilities().storage.storage_type,
+        adapter
+            .get_adapted_capabilities()
+            .await
+            .storage
+            .storage_type,
         StorageType::DirectBlock
     );
 
@@ -189,7 +193,11 @@ fn test_storage_types_correspond_to_layers() {
     };
     let adapter = LayerCapabilityAdapter::new(middleware);
     assert_eq!(
-        adapter.get_adapted_capabilities().storage.storage_type,
+        adapter
+            .get_adapted_capabilities()
+            .await
+            .storage
+            .storage_type,
         StorageType::HostFilesystem
     );
 
@@ -200,18 +208,26 @@ fn test_storage_types_correspond_to_layers() {
     };
     let adapter = LayerCapabilityAdapter::new(container);
     assert_eq!(
-        adapter.get_adapted_capabilities().storage.storage_type,
+        adapter
+            .get_adapted_capabilities()
+            .await
+            .storage
+            .storage_type,
         StorageType::PersistentVolume
     );
 }
 
-#[test]
-fn test_network_access_types_correspond_to_layers() {
+#[tokio::test]
+async fn test_network_access_types_correspond_to_layers() {
     // Bare metal has direct network access
     let bare_metal = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(bare_metal);
     assert_eq!(
-        adapter.get_adapted_capabilities().network.network_access,
+        adapter
+            .get_adapted_capabilities()
+            .await
+            .network
+            .network_access,
         NetworkAccess::Direct
     );
 
@@ -222,13 +238,17 @@ fn test_network_access_types_correspond_to_layers() {
     };
     let adapter = LayerCapabilityAdapter::new(container);
     assert_eq!(
-        adapter.get_adapted_capabilities().network.network_access,
+        adapter
+            .get_adapted_capabilities()
+            .await
+            .network
+            .network_access,
         NetworkAccess::HostNamespace
     );
 }
 
-#[test]
-fn test_all_deployment_layers_provide_bandwidth() {
+#[tokio::test]
+async fn test_all_deployment_layers_provide_bandwidth() {
     // Test that every deployment layer provides bandwidth info
     let layers = vec![
         DeploymentLayer::BareMetalOS,
@@ -248,7 +268,7 @@ fn test_all_deployment_layers_provide_bandwidth() {
 
     for layer in layers {
         let adapter = LayerCapabilityAdapter::new(layer.clone());
-        let caps = adapter.get_adapted_capabilities();
+        let caps = adapter.get_adapted_capabilities().await;
 
         assert!(
             caps.storage.read_bandwidth.is_some(),
@@ -265,12 +285,12 @@ fn test_all_deployment_layers_provide_bandwidth() {
     }
 }
 
-#[test]
-fn test_write_bandwidth_is_less_than_read() {
+#[tokio::test]
+async fn test_write_bandwidth_is_less_than_read() {
     // Write bandwidth should typically be <= read bandwidth
     let layer = DeploymentLayer::BareMetalOS;
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     if let (Some(read), Some(write)) = (caps.storage.read_bandwidth, caps.storage.write_bandwidth) {
         assert!(

@@ -14,6 +14,7 @@ use super::types::{
     SpecializedArchitecture, TraditionalPlatform, UniversalSubstrateCapabilities,
 };
 use toadstool::ToadStoolResult;
+use toadstool_common::constants::platform_paths::sysfs;
 
 impl UniversalSubstrateCapabilities {
     /// Detect all available substrate capabilities
@@ -114,7 +115,7 @@ impl UniversalSubstrateCapabilities {
                 }
             }
 
-            if platforms.is_empty() && std::path::Path::new("/sys/class/akida").is_dir() {
+            if platforms.is_empty() && std::path::Path::new(sysfs::CLASS_AKIDA).is_dir() {
                 platforms.push(make_akida());
             }
         }
@@ -133,7 +134,7 @@ impl UniversalSubstrateCapabilities {
 
         #[cfg(target_os = "linux")]
         {
-            let has_gpio = std::path::Path::new("/sys/class/gpio").exists();
+            let has_gpio = std::path::Path::new(sysfs::CLASS_GPIO).exists();
 
             let mut serial_count = 0u32;
             if let Ok(mut entries) = tokio::fs::read_dir("/dev").await {

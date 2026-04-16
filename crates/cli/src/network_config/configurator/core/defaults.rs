@@ -22,6 +22,19 @@ const DEFAULT_PROXY_CONCURRENCY: u32 = 2;
 const DEFAULT_SIDECAR_IMAGE: &str = "toadstool/service-mesh-proxy:latest";
 const RFC1918_RANGES: &[&str] = &["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
 
+/// Parse `/etc/resolv.conf` text and return `nameserver` IP (or hostname) entries in order.
+fn parse_resolv_conf(contents: &str) -> Vec<String> {
+    contents
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            line.strip_prefix("nameserver")
+                .map(|rest| rest.trim().to_string())
+        })
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 fn default_audit_log_path() -> String {
     std::env::var("TOADSTOOL_AUDIT_LOG_PATH")
         .unwrap_or_else(|_| install_paths::VAR_LOG_TOADSTOOL_AUDIT.into())
@@ -48,15 +61,7 @@ pub(super) fn system_dns_resolvers() -> Vec<String> {
 
     // Parse /etc/resolv.conf on POSIX systems
     if let Ok(contents) = std::fs::read_to_string(etc_paths::RESOLV_CONF) {
-        let servers: Vec<String> = contents
-            .lines()
-            .filter_map(|line| {
-                let line = line.trim();
-                line.strip_prefix("nameserver")
-                    .map(|rest| rest.trim().to_string())
-            })
-            .filter(|s| !s.is_empty())
-            .collect();
+        let servers = parse_resolv_conf(&contents);
         if !servers.is_empty() {
             return servers;
         }
@@ -510,5 +515,41 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                 }],
             },
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_resolv_conf;
+
+    #[test]
+    fn parse_resolv_conf_valid_multiple_nameservers() {
+        let text = "# Managed by test\nnameserver 8.8.8.8\nnameserver 2001:4860:4860::8888\n";
+        assert_eq!(
+            parse_resolv_conf(text),
+            vec!["8.8.8.8".to_string(), "2001:4860:4860::8888".to_string()]
+        );
+    }
+
+    #[test]
+    fn parse_resolv_conf_no_nameserver_lines() {
+        let text = "search example.com\noptions ndots:5\n";
+        assert!(parse_resolv_conf(text).is_empty());
+    }
+
+    #[test]
+    fn parse_resolv_conf_comments_and_ignored_lines() {
+        let text = r"# resolv.conf
+# nameserver 1.1.1.1
+; nameserver 9.9.9.9
+nameserver 10.0.0.1
+";
+        assert_eq!(parse_resolv_conf(text), vec!["10.0.0.1".to_string()]);
+    }
+
+    #[test]
+    fn parse_resolv_conf_empty() {
+        assert!(parse_resolv_conf("").is_empty());
+        assert!(parse_resolv_conf("   \n\t\n").is_empty());
     }
 }

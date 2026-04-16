@@ -8,6 +8,66 @@
 use super::GpuDevice;
 use tracing::info;
 
+/// Parse `/proc/driver/nvidia/gpus/.../information` and return the model name.
+#[cfg(any(test, target_os = "linux"))]
+fn parse_nvidia_information(contents: &str) -> Option<String> {
+    let mut model = None;
+    for line in contents.lines() {
+        if line.starts_with("Model:") {
+            let name = line.trim_start_matches("Model:").trim();
+            if !name.is_empty() {
+                model = Some(name.to_string());
+            }
+        }
+    }
+    model
+}
+
+#[cfg(any(test, target_os = "linux"))]
+fn parse_pci_hex_field(s: &str) -> Option<u32> {
+    let s = s.trim();
+    let s = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
+    u32::from_str_radix(s, 16).ok()
+}
+
+/// Parse DRM `uevent` text and return PCI vendor and device IDs from `PCI_ID=`.
+#[cfg(any(test, target_os = "linux"))]
+fn parse_drm_uevent(contents: &str) -> Option<(u32, u32)> {
+    let mut out = None;
+    for line in contents.lines() {
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("PCI_ID=") else {
+            continue;
+        };
+        let rest = rest.trim();
+        let fields: Vec<&str> = rest.split(':').collect();
+        if fields.len() != 2 {
+            continue;
+        }
+        if let (Some(vid), Some(did)) = (
+            parse_pci_hex_field(fields[0]),
+            parse_pci_hex_field(fields[1]),
+        ) {
+            out = Some((vid, did));
+        }
+    }
+    out
+}
+
+/// Best-effort human-readable label from PCI vendor/device IDs (no PCI ID database).
+#[cfg(any(test, target_os = "linux"))]
+fn infer_gpu_model_from_ids(vendor_id: u32, device_id: u32) -> String {
+    match vendor_id {
+        0x10de => format!("NVIDIA GPU (0x{device_id:04X})"),
+        0x1002 => format!("AMD GPU (0x{device_id:04X})"),
+        0x8086 => format!("Intel GPU (0x{device_id:04X})"),
+        _ => format!("Unknown GPU (0x{vendor_id:04X}:0x{device_id:04X})"),
+    }
+}
+
 /// Query GPU devices (self-knowledge)
 ///
 /// Vendor-agnostic, graceful degradation if no GPUs found.
@@ -52,12 +112,10 @@ fn detect_nvidia_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
             let mut name = format!("NVIDIA GPU {device_id}");
             let mut memory_bytes = 0u64;
 
-            if let Ok(info) = std::fs::read_to_string(&info_path) {
-                for line in info.lines() {
-                    if line.starts_with("Model:") {
-                        name = line.trim_start_matches("Model:").trim().to_string();
-                    }
-                }
+            if let Ok(info) = std::fs::read_to_string(&info_path)
+                && let Some(parsed) = parse_nvidia_information(&info)
+            {
+                name = parsed;
             }
 
             if let Ok(output) = std::process::Command::new("nvidia-smi")
@@ -122,13 +180,10 @@ fn detect_drm_gpus(devices: &mut Vec<GpuDevice>, device_id: &mut usize) {
                 let mut gpu_name = format!("{} GPU {}", vendor.to_uppercase(), device_id);
 
                 let uevent_path = device_path.join("uevent");
-                if let Ok(uevent) = std::fs::read_to_string(&uevent_path) {
-                    for line in uevent.lines() {
-                        if line.starts_with("PCI_ID=") {
-                            let pci_id = line.trim_start_matches("PCI_ID=");
-                            gpu_name = format!("{} GPU ({})", vendor.to_uppercase(), pci_id);
-                        }
-                    }
+                if let Ok(uevent) = std::fs::read_to_string(&uevent_path)
+                    && let Some((vid, did)) = parse_drm_uevent(&uevent)
+                {
+                    gpu_name = infer_gpu_model_from_ids(vid, did);
                 }
 
                 let mut memory_bytes = 0u64;
@@ -298,16 +353,8 @@ fn infer_gpu_arch(vendor: &str, device_path: &std::path::Path) -> Option<String>
     match vendor {
         "amd" => {
             let uevent = std::fs::read_to_string(device_path.join("uevent")).ok()?;
-            for line in uevent.lines() {
-                if line.starts_with("PCI_ID=") {
-                    let pci_id = line.trim_start_matches("PCI_ID=");
-                    if let Some(device_id) = pci_id.split(':').nth(1) {
-                        let id = u32::from_str_radix(device_id, 16).ok()?;
-                        return Some(amd_arch_from_device_id(id).to_string());
-                    }
-                }
-            }
-            None
+            let (_, device_id) = parse_drm_uevent(&uevent)?;
+            Some(amd_arch_from_device_id(device_id).to_string())
         }
         _ => None,
     }
@@ -322,5 +369,74 @@ fn amd_arch_from_device_id(device_id: u32) -> &'static str {
         0x6900..=0x69FF => "rdna1",
         0x6860..=0x68FF => "vega",
         _ => "unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{infer_gpu_model_from_ids, parse_drm_uevent, parse_nvidia_information};
+
+    #[test]
+    fn parse_nvidia_information_real_format() {
+        let text = "Model: GeForce RTX 4090\nBus Type: PCIe\n";
+        assert_eq!(
+            parse_nvidia_information(text).as_deref(),
+            Some("GeForce RTX 4090")
+        );
+    }
+
+    #[test]
+    fn parse_nvidia_information_missing_model_line() {
+        let text = "Bus: PCI 0000:01:00.0\n";
+        assert!(parse_nvidia_information(text).is_none());
+    }
+
+    #[test]
+    fn parse_nvidia_information_empty() {
+        assert!(parse_nvidia_information("").is_none());
+    }
+
+    #[test]
+    fn parse_drm_uevent_valid_pci_id() {
+        let text = "DRIVER=amdgpu\nPCI_ID=1002:73FF\n";
+        assert_eq!(parse_drm_uevent(text), Some((0x1002, 0x73FF)));
+    }
+
+    #[test]
+    fn parse_drm_uevent_valid_pci_id_with_0x_prefix() {
+        let text = "PCI_ID=0x8086:0x9A49\n";
+        assert_eq!(parse_drm_uevent(text), Some((0x8086, 0x9A49)));
+    }
+
+    #[test]
+    fn parse_drm_uevent_missing_pci_id() {
+        let text = "DRIVER=i915\nMODALIAS=pci:v00008086d00009A49...\n";
+        assert!(parse_drm_uevent(text).is_none());
+    }
+
+    #[test]
+    fn parse_drm_uevent_malformed() {
+        assert!(parse_drm_uevent("PCI_ID=1002\n").is_none());
+        assert!(parse_drm_uevent("PCI_ID=1002:ZZ:01\n").is_none());
+        assert!(parse_drm_uevent("PCI_ID=nothex:nothex\n").is_none());
+    }
+
+    #[test]
+    fn infer_gpu_model_from_ids_nvidia() {
+        let s = infer_gpu_model_from_ids(0x10de, 0x2204);
+        assert!(s.contains("NVIDIA"));
+        assert!(s.contains("2204"));
+    }
+
+    #[test]
+    fn infer_gpu_model_from_ids_amd() {
+        let s = infer_gpu_model_from_ids(0x1002, 0x73FF);
+        assert!(s.contains("AMD"));
+    }
+
+    #[test]
+    fn infer_gpu_model_from_ids_intel() {
+        let s = infer_gpu_model_from_ids(0x8086, 0x9A49);
+        assert!(s.contains("Intel"));
     }
 }

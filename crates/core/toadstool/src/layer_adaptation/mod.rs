@@ -24,7 +24,7 @@
 //! let layer = detector.detect().await?;
 //!
 //! let adapter = LayerCapabilityAdapter::new(layer);
-//! let capabilities = adapter.get_adapted_capabilities();
+//! let capabilities = adapter.get_adapted_capabilities().await;
 //!
 //! // Capabilities are now appropriate for the layer
 //! if capabilities.has_direct_gpu_access() {

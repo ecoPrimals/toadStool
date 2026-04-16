@@ -77,6 +77,14 @@ pub mod sysfs {
     pub const CLASS_DMI_ID_PRODUCT_NAME: &str = "/sys/class/dmi/id/product_name";
     /// First SATA disk rotational flag (`/sys/block/sda/queue/rotational`)
     pub const BLOCK_SDA_QUEUE_ROTATIONAL: &str = "/sys/block/sda/queue/rotational";
+    /// `/sys/class/drm` (DRM device nodes; GPU discovery via sysfs)
+    pub const CLASS_DRM: &str = "/sys/class/drm";
+    /// `/sys/class/akida` (Akida NPU class device when present)
+    pub const CLASS_AKIDA: &str = "/sys/class/akida";
+    /// `/sys/class/gpio` (GPIO sysfs interface)
+    pub const CLASS_GPIO: &str = "/sys/class/gpio";
+    /// SELinux enforce state (`1` = enforcing)
+    pub const FS_SELINUX_ENFORCE: &str = "/sys/fs/selinux/enforce";
 }
 
 /// Common files under `/etc`.

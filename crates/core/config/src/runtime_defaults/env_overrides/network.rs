@@ -20,6 +20,7 @@ use super::super::{ConfigError, ConfigResult};
 use super::parse;
 use crate::ToadStoolConfig;
 use std::time::Duration;
+use toadstool_common::interned_strings::socket_env;
 
 pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     // TOADSTOOL_BIND_ADDRESS: full "host:port" (e.g. 0.0.0.0:9000, 127.0.0.1:3000)
@@ -63,7 +64,7 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
         }
     }
 
-    if let Ok(request_timeout) = std::env::var("TOADSTOOL_REQUEST_TIMEOUT") {
+    if let Ok(request_timeout) = std::env::var(socket_env::TOADSTOOL_REQUEST_TIMEOUT) {
         let timeout_secs = parse::parse_u64(&request_timeout, "request timeout")?;
         config.network.connection.request_timeout = Duration::from_secs(timeout_secs);
     }

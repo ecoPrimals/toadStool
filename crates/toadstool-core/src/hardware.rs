@@ -7,6 +7,7 @@
 
 use std::fs;
 use std::path::Path;
+use toadstool_common::constants::platform_paths::sysfs;
 use tracing::{info, warn};
 
 /// Typed errors for hardware operations
@@ -104,7 +105,7 @@ impl HardwareManager {
 
         // Scan /sys/class/drm for GPU devices
         // wgpu handles actual GPU access
-        if let Ok(entries) = fs::read_dir("/sys/class/drm") {
+        if let Ok(entries) = fs::read_dir(sysfs::CLASS_DRM) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.join("device").exists() {
@@ -138,7 +139,7 @@ impl HardwareManager {
         let mut npus = Vec::new();
 
         // Scan PCIe bus for Akida devices (vendor 0x1e7c)
-        if let Ok(entries) = fs::read_dir("/sys/bus/pci/devices") {
+        if let Ok(entries) = fs::read_dir(sysfs::BUS_PCI_DEVICES) {
             for entry in entries.flatten() {
                 let device_path = entry.path();
 
@@ -253,7 +254,7 @@ impl HardwareManager {
     /// # Errors
     /// Returns error if device not found or cannot enable `PCIe` device
     pub fn enable_npu_userspace(&self, pcie_address: &str) -> Result<(), HardwareError> {
-        let device_path = Path::new("/sys/bus/pci/devices").join(pcie_address);
+        let device_path = Path::new(sysfs::BUS_PCI_DEVICES).join(pcie_address);
 
         if !device_path.exists() {
             return Err(HardwareError::NpuNotFound {

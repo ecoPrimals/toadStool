@@ -71,7 +71,7 @@ async fn test_capability_adaptation_validity() {
     let layer = detector.detect().await.unwrap();
 
     let adapter = LayerCapabilityAdapter::new(layer);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // All layers should have some compute capability
     assert!(
@@ -270,7 +270,7 @@ async fn test_layer_detection_edge_cases() {
 async fn test_all_layer_adaptations() {
     // Test bare metal
     let adapter = LayerCapabilityAdapter::new(DeploymentLayer::BareMetalOS);
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(matches!(caps.compute.gpu_access, GpuAccess::Direct));
 
     // Test middleware
@@ -278,14 +278,14 @@ async fn test_all_layer_adaptations() {
         host_os: "Linux".to_string(),
         host_version: Some("6.0".to_string()),
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 
     // Test service layer
     let adapter = LayerCapabilityAdapter::new(DeploymentLayer::ServiceLayer {
         guest_os: vec!["Alpine".to_string()],
     });
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
     assert!(!caps.to_capability_list().is_empty());
 }
 
@@ -407,7 +407,7 @@ async fn test_deep_debt_no_mocks() {
 
     // Capability adaptation uses real memory/disk detection
     let adapter = LayerCapabilityAdapter::new(layer.unwrap());
-    let caps = adapter.get_adapted_capabilities();
+    let caps = adapter.get_adapted_capabilities().await;
 
     // Should have real values (not 0 or mock values)
     if let Some(memory) = caps.compute.memory_bytes {

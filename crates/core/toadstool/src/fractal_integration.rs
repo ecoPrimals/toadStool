@@ -87,7 +87,7 @@ impl FractalRuntime {
 
         // Step 2: Adapt capabilities for this layer
         let adapter = LayerCapabilityAdapter::new(layer.clone());
-        let capabilities = adapter.get_adapted_capabilities();
+        let capabilities = adapter.get_adapted_capabilities().await;
 
         debug!(
             "✅ Capabilities adapted for layer: {:?}",

@@ -4,9 +4,10 @@
 use super::super::ConfigResult;
 use super::parse;
 use crate::ToadStoolConfig;
+use toadstool_common::interned_strings::socket_env;
 
 pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
-    if let Ok(env_name) = std::env::var("TOADSTOOL_ENV") {
+    if let Ok(env_name) = std::env::var(socket_env::TOADSTOOL_ENV) {
         config.app.environment = env_name;
     }
 

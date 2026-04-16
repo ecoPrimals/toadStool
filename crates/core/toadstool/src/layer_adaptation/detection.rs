@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2024-2025 ToadStool Project
-// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Platform detection helpers for capability adaptation
 //!
@@ -11,25 +10,47 @@ use std::fs;
 #[cfg(target_os = "linux")]
 use toadstool_common::constants::platform_paths::{procfs, sysfs};
 
-/// Get total system memory (bytes)
-pub fn get_total_memory() -> Option<u64> {
-    // Platform-specific memory detection
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(meminfo) = fs::read_to_string(procfs::MEMINFO) {
-            for line in meminfo.lines() {
-                if line.starts_with("MemTotal:") {
-                    if let Some(kb) = line.split_whitespace().nth(1) {
-                        if let Ok(kb_val) = kb.parse::<u64>() {
-                            return Some(kb_val * 1024); // Convert KB to bytes
-                        }
-                    }
-                }
-            }
+/// Parses `MemTotal` from `/proc/meminfo`-style text; returns kB.
+pub(crate) fn parse_meminfo_kb(contents: &str) -> Option<u64> {
+    for line in contents.lines() {
+        if line.starts_with("MemTotal:") {
+            let kb = line.split_whitespace().nth(1)?;
+            return kb.parse::<u64>().ok();
         }
     }
-
     None
+}
+
+/// Returns read-bandwidth estimate in bytes/sec (`is_rotational`: `true` = HDD).
+pub(crate) fn estimate_storage_bandwidth(is_rotational: bool) -> u64 {
+    if is_rotational {
+        150_000_000 // 150 MB/s for HDD
+    } else {
+        500_000_000 // 500 MB/s for SSD
+    }
+}
+
+/// Parses sysfs `speed` file contents (Mbps as decimal text).
+pub(crate) fn parse_net_speed_mbps(speed_str: &str) -> Option<u64> {
+    speed_str.trim().parse::<u64>().ok()
+}
+
+/// Converts megabits per second to bytes per second (decimal M = 1_000_000 bits).
+pub(crate) fn mbps_to_bytes_per_sec(mbps: u64) -> u64 {
+    (mbps * 1_000_000) / 8
+}
+
+/// Get total system memory (bytes)
+pub async fn get_total_memory() -> Option<u64> {
+    #[cfg(target_os = "linux")]
+    {
+        let meminfo = tokio::fs::read_to_string(procfs::MEMINFO).await.ok()?;
+        parse_meminfo_kb(&meminfo).map(|kb| kb * 1024)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
 }
 
 /// Get available disk space (bytes)
@@ -65,23 +86,16 @@ pub fn get_available_disk() -> Option<u64> {
 ///
 /// **Deep Debt**: Runtime detection, no hardcoding
 pub fn detect_storage_read_bandwidth() -> Option<u64> {
-    // Strategy: Check for SSD vs HDD indicators
     #[cfg(target_os = "linux")]
     {
-        // Check /sys/block for rotational devices (0 = SSD, 1 = HDD)
         if let Ok(entries) = fs::read_dir(sysfs::BLOCK) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 let rotational_path = path.join("queue/rotational");
 
                 if let Ok(content) = fs::read_to_string(&rotational_path) {
-                    if let Ok(is_rotational) = content.trim().parse::<u8>() {
-                        // SSD: ~500 MB/s typical, HDD: ~150 MB/s typical
-                        return Some(if is_rotational == 0 {
-                            500_000_000 // 500 MB/s for SSD
-                        } else {
-                            150_000_000 // 150 MB/s for HDD
-                        });
+                    if let Ok(flag) = content.trim().parse::<u8>() {
+                        return Some(estimate_storage_bandwidth(flag != 0));
                     }
                 }
             }
@@ -89,6 +103,10 @@ pub fn detect_storage_read_bandwidth() -> Option<u64> {
 
         // Fallback: Conservative estimate for unknown storage
         Some(100_000_000) // 100 MB/s conservative
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
     }
 }
 
@@ -111,9 +129,6 @@ pub fn detect_storage_write_bandwidth() -> Option<u64> {
 pub fn detect_network_bandwidth() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {
-        use std::fs;
-
-        // Check /sys/class/net for interface speeds
         if let Ok(entries) = fs::read_dir(sysfs::CLASS_NET) {
             let mut max_speed = 0u64;
 
@@ -129,9 +144,8 @@ pub fn detect_network_bandwidth() -> Option<u64> {
                 }
 
                 if let Ok(content) = fs::read_to_string(&speed_path) {
-                    // Speed is in Mbps, convert to bytes/sec
-                    if let Ok(mbps) = content.trim().parse::<u64>() {
-                        let bytes_per_sec = (mbps * 1_000_000) / 8;
+                    if let Some(mbps) = parse_net_speed_mbps(&content) {
+                        let bytes_per_sec = mbps_to_bytes_per_sec(mbps);
                         max_speed = max_speed.max(bytes_per_sec);
                     }
                 }
@@ -145,4 +159,54 @@ pub fn detect_network_bandwidth() -> Option<u64> {
 
     // Fallback: Assume gigabit ethernet (125 MB/s)
     Some(125_000_000)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        estimate_storage_bandwidth, mbps_to_bytes_per_sec, parse_meminfo_kb, parse_net_speed_mbps,
+    };
+
+    #[test]
+    fn parse_meminfo_kb_real_format() {
+        let sample = "MemTotal:       16304928 kB\n\
+MemFree:         1234567 kB\n\
+MemAvailable:    8901234 kB\n";
+        assert_eq!(parse_meminfo_kb(sample), Some(16_304_928));
+    }
+
+    #[test]
+    fn parse_meminfo_kb_missing_memtotal() {
+        assert_eq!(parse_meminfo_kb("MemFree: 100 kB\n"), None);
+        assert_eq!(parse_meminfo_kb(""), None);
+    }
+
+    #[test]
+    fn parse_meminfo_kb_garbage() {
+        assert_eq!(parse_meminfo_kb("hello world\nnot meminfo"), None);
+        assert_eq!(parse_meminfo_kb("MemTotal:        not_a_number kB\n"), None);
+    }
+
+    #[test]
+    fn estimate_storage_bandwidth_ssd_vs_hdd() {
+        assert_eq!(estimate_storage_bandwidth(false), 500_000_000);
+        assert_eq!(estimate_storage_bandwidth(true), 150_000_000);
+    }
+
+    #[test]
+    fn parse_net_speed_mbps_valid_invalid_empty() {
+        assert_eq!(parse_net_speed_mbps("1000"), Some(1000));
+        assert_eq!(parse_net_speed_mbps("  100  \n"), Some(100));
+        assert_eq!(parse_net_speed_mbps(""), None);
+        assert_eq!(parse_net_speed_mbps("   "), None);
+        assert_eq!(parse_net_speed_mbps("not-a-number"), None);
+    }
+
+    #[test]
+    fn mbps_to_bytes_per_sec_common_values() {
+        assert_eq!(mbps_to_bytes_per_sec(1000), 125_000_000);
+        assert_eq!(mbps_to_bytes_per_sec(100), 12_500_000);
+        assert_eq!(mbps_to_bytes_per_sec(10), 1_250_000);
+        assert_eq!(mbps_to_bytes_per_sec(0), 0);
+    }
 }

@@ -6,6 +6,7 @@ use std::time::Duration;
 
 // Centralized timeout constants (Deep Debt evolution)
 use toadstool_common::constants::timeouts::{HEALTH_CHECK_INTERVAL, WORKLOAD_EXECUTION_TIMEOUT};
+use toadstool_common::interned_strings::socket_env;
 
 /// `ToadStool` server configuration
 #[derive(Debug, Clone)]
@@ -238,12 +239,13 @@ pub struct PrimalCapabilitiesConfig {
 
 impl Default for PrimalCapabilitiesConfig {
     fn default() -> Self {
-        let socket_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
+        let path_env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
         Self {
-            enabled: std::env::var("ENABLE_PRIMAL_CAPABILITIES").is_ok_and(|v| v == "true"),
-            coordination_endpoint: socket_env.coordination_connection_hint,
-            ai_processing_endpoint: socket_env.routing_connection_hint,
-            heartbeat_interval_secs: std::env::var("PRIMAL_HEARTBEAT_INTERVAL")
+            enabled: std::env::var(socket_env::ENABLE_PRIMAL_CAPABILITIES)
+                .is_ok_and(|v| v == "true"),
+            coordination_endpoint: path_env.coordination_connection_hint,
+            ai_processing_endpoint: path_env.routing_connection_hint,
+            heartbeat_interval_secs: std::env::var(socket_env::PRIMAL_HEARTBEAT_INTERVAL)
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(30),
