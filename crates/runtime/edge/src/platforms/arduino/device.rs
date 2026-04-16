@@ -17,9 +17,11 @@ use super::super::*;
 pub struct ArduinoDevice {
     pub(in crate::platforms::arduino) id: Uuid,
     pub(in crate::platforms::arduino) info: EdgeDeviceInfo,
-    pub(in crate::platforms::arduino) serial_port: Arc<RwLock<Option<Box<dyn serialport::SerialPort>>>>,
+    pub(in crate::platforms::arduino) serial_port:
+        Arc<RwLock<Option<Box<dyn serialport::SerialPort + Send + Sync>>>>,
     pub(in crate::platforms::arduino) compilation_cache: Arc<RwLock<HashMap<String, Vec<u8>>>>,
-    pub(in crate::platforms::arduino) active_executions: Arc<RwLock<HashMap<Uuid, ArduinoExecution>>>,
+    pub(in crate::platforms::arduino) active_executions:
+        Arc<RwLock<HashMap<Uuid, ArduinoExecution>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +33,17 @@ pub(super) struct ArduinoExecution {
 }
 
 impl ArduinoDevice {
+    /// Cheap clone of shared handles for async blocks that must be `Send` (`dyn Future + Send`).
+    pub(super) fn clone_handles(&self) -> Self {
+        Self {
+            id: self.id,
+            info: self.info.clone(),
+            serial_port: Arc::clone(&self.serial_port),
+            compilation_cache: Arc::clone(&self.compilation_cache),
+            active_executions: Arc::clone(&self.active_executions),
+        }
+    }
+
     /// Create a new Arduino device
     pub fn new(
         board: ArduinoBoard,
@@ -39,7 +52,10 @@ impl ArduinoDevice {
         _baud_rate: u32,
     ) -> ToadStoolResult<Self> {
         let id = Uuid::new_v4();
-        let platform = EdgePlatform::Arduino { board: board.clone(), version };
+        let platform = EdgePlatform::Arduino {
+            board: board.clone(),
+            version,
+        };
 
         let resources = Self::get_board_resources(&board);
         let capabilities = Self::get_board_capabilities(&board);
@@ -213,12 +229,8 @@ impl ArduinoDevice {
                 // Check for Arduino vendor IDs
                 if Self::is_arduino_device(usb_info.vid, usb_info.pid) {
                     let board = Self::detect_board_type(usb_info.vid, usb_info.pid);
-                    let device = ArduinoDevice::new(
-                        board,
-                        "1.0".to_string(),
-                        port.port_name.clone(),
-                        9600,
-                    )?;
+                    let device =
+                        ArduinoDevice::new(board, "1.0".to_string(), port.port_name.clone(), 9600)?;
                     devices.push(device);
                 }
             }

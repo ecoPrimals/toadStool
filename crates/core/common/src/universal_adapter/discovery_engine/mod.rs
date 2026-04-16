@@ -9,11 +9,12 @@
 //!
 //! NO hardcoded primal names or endpoints!
 
-use async_trait::async_trait;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
@@ -117,13 +118,11 @@ impl DiscoveryEngine {
 /// Trait for capability provider discovery sources.
 ///
 /// Implement this to add custom discovery backends (e.g., custom registries).
-///
-/// NOTE(async-dyn): [`DiscoveryEngine`] stores `Vec<Box<dyn DiscoverySource>>`. Native `async fn` in
-/// traits is not object-safe; `#[async_trait]` is required.
-#[async_trait]
 pub trait DiscoverySource: Send + Sync {
     /// Discover capability providers from this source.
-    async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>>;
+    fn discover<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>;
     /// Human-readable source name for logging.
     fn name(&self) -> &str;
 }
@@ -199,72 +198,75 @@ impl MDnsSource {
 }
 
 #[cfg(feature = "mdns")]
-#[async_trait]
 impl DiscoverySource for MDnsSource {
-    async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        use mdns_sd::{ServiceDaemon, ServiceEvent};
-        use std::time::Instant;
+    fn discover<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>> {
+        Box::pin(async move {
+            use mdns_sd::{ServiceDaemon, ServiceEvent};
+            use std::time::Instant;
 
-        let mut providers = Vec::new();
+            let mut providers = Vec::new();
 
-        let mdns = match ServiceDaemon::new() {
-            Ok(daemon) => daemon,
-            Err(e) => {
-                tracing::debug!("mDNS daemon unavailable: {} (continuing without mDNS)", e);
-                return Ok(vec![]);
-            }
-        };
-
-        let service_type = "_toadstool._tcp.local.";
-        let receiver = match mdns.browse(service_type) {
-            Ok(rx) => rx,
-            Err(e) => {
-                tracing::debug!("mDNS browse failed for {}: {}", service_type, e);
-                let _ = mdns.shutdown();
-                return Ok(vec![]);
-            }
-        };
-
-        let timeout = Duration::from_secs(self.browse_timeout_secs);
-        let start = Instant::now();
-
-        while start.elapsed() < timeout {
-            match receiver.recv_timeout(Duration::from_millis(100)) {
-                Ok(event) => {
-                    if let ServiceEvent::ServiceResolved(info) = event {
-                        let txt: HashMap<String, String> = info
-                            .get_properties()
-                            .iter()
-                            .map(|p| (p.key().to_string(), p.val_str().to_string()))
-                            .collect();
-
-                        let host = info.get_hostname().trim_end_matches('.').to_string();
-                        let port = info.get_port();
-
-                        let cap_info =
-                            Self::parse_txt_records(info.get_fullname(), &host, port, &txt);
-                        tracing::debug!(
-                            "mDNS discovered: {} at {}:{}",
-                            cap_info.provider_id,
-                            host,
-                            port
-                        );
-                        providers.push(cap_info);
-                    }
-                }
+            let mdns = match ServiceDaemon::new() {
+                Ok(daemon) => daemon,
                 Err(e) => {
-                    if format!("{e:?}").contains("Disconnected") {
-                        break;
+                    tracing::debug!("mDNS daemon unavailable: {} (continuing without mDNS)", e);
+                    return Ok(vec![]);
+                }
+            };
+
+            let service_type = "_toadstool._tcp.local.";
+            let receiver = match mdns.browse(service_type) {
+                Ok(rx) => rx,
+                Err(e) => {
+                    tracing::debug!("mDNS browse failed for {}: {}", service_type, e);
+                    let _ = mdns.shutdown();
+                    return Ok(vec![]);
+                }
+            };
+
+            let timeout = Duration::from_secs(self.browse_timeout_secs);
+            let start = Instant::now();
+
+            while start.elapsed() < timeout {
+                match receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(event) => {
+                        if let ServiceEvent::ServiceResolved(info) = event {
+                            let txt: HashMap<String, String> = info
+                                .get_properties()
+                                .iter()
+                                .map(|p| (p.key().to_string(), p.val_str().to_string()))
+                                .collect();
+
+                            let host = info.get_hostname().trim_end_matches('.').to_string();
+                            let port = info.get_port();
+
+                            let cap_info =
+                                Self::parse_txt_records(info.get_fullname(), &host, port, &txt);
+                            tracing::debug!(
+                                "mDNS discovered: {} at {}:{}",
+                                cap_info.provider_id,
+                                host,
+                                port
+                            );
+                            providers.push(cap_info);
+                        }
+                    }
+                    Err(e) => {
+                        if format!("{e:?}").contains("Disconnected") {
+                            break;
+                        }
                     }
                 }
             }
-        }
 
-        let _ = mdns.stop_browse(service_type);
-        let _ = mdns.shutdown();
+            let _ = mdns.stop_browse(service_type);
+            let _ = mdns.shutdown();
 
-        tracing::debug!("mDNS discovery found {} providers", providers.len());
-        Ok(providers)
+            tracing::debug!("mDNS discovery found {} providers", providers.len());
+            Ok(providers)
+        })
     }
 
     fn name(&self) -> &'static str {
@@ -317,73 +319,76 @@ impl EnvironmentSource {
     }
 }
 
-#[async_trait]
 impl DiscoverySource for EnvironmentSource {
-    async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        let mut providers = Vec::new();
+    fn discover<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>> {
+        Box::pin(async move {
+            let mut providers = Vec::new();
 
-        if let Ok(url) = std::env::var("TOADSTOOL_SECURITY_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Security {
-                        features: vec![],
-                        min_trust_level: crate::universal_adapter::TrustLevel::Medium,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
+            if let Ok(url) = std::env::var("TOADSTOOL_SECURITY_PROVIDER") {
+                if let Ok(endpoint) = Self::parse_endpoint(&url) {
+                    providers.push(CapabilityInfo {
+                        provider_id: uuid::Uuid::new_v4().to_string(),
+                        capability: crate::universal_adapter::CapabilityType::Security {
+                            features: vec![],
+                            min_trust_level: crate::universal_adapter::TrustLevel::Medium,
+                        },
+                        metadata: std::collections::HashMap::new(),
+                        endpoint,
+                        health: HealthStatus::Unknown,
+                    });
+                }
             }
-        }
 
-        if let Ok(url) = std::env::var("TOADSTOOL_STORAGE_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Storage {
-                        features: vec![],
-                        min_throughput_mbps: None,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
+            if let Ok(url) = std::env::var("TOADSTOOL_STORAGE_PROVIDER") {
+                if let Ok(endpoint) = Self::parse_endpoint(&url) {
+                    providers.push(CapabilityInfo {
+                        provider_id: uuid::Uuid::new_v4().to_string(),
+                        capability: crate::universal_adapter::CapabilityType::Storage {
+                            features: vec![],
+                            min_throughput_mbps: None,
+                        },
+                        metadata: std::collections::HashMap::new(),
+                        endpoint,
+                        health: HealthStatus::Unknown,
+                    });
+                }
             }
-        }
 
-        if let Ok(url) = std::env::var("TOADSTOOL_COORDINATION_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Coordination {
-                        features: vec![],
-                        max_latency_ms: None,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
+            if let Ok(url) = std::env::var("TOADSTOOL_COORDINATION_PROVIDER") {
+                if let Ok(endpoint) = Self::parse_endpoint(&url) {
+                    providers.push(CapabilityInfo {
+                        provider_id: uuid::Uuid::new_v4().to_string(),
+                        capability: crate::universal_adapter::CapabilityType::Coordination {
+                            features: vec![],
+                            max_latency_ms: None,
+                        },
+                        metadata: std::collections::HashMap::new(),
+                        endpoint,
+                        health: HealthStatus::Unknown,
+                    });
+                }
             }
-        }
 
-        if let Ok(url) = std::env::var("TOADSTOOL_INTELLIGENCE_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
-                providers.push(CapabilityInfo {
-                    provider_id: uuid::Uuid::new_v4().to_string(),
-                    capability: crate::universal_adapter::CapabilityType::Intelligence {
-                        features: vec![],
-                        model_types: vec![],
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint,
-                    health: HealthStatus::Unknown,
-                });
+            if let Ok(url) = std::env::var("TOADSTOOL_INTELLIGENCE_PROVIDER") {
+                if let Ok(endpoint) = Self::parse_endpoint(&url) {
+                    providers.push(CapabilityInfo {
+                        provider_id: uuid::Uuid::new_v4().to_string(),
+                        capability: crate::universal_adapter::CapabilityType::Intelligence {
+                            features: vec![],
+                            model_types: vec![],
+                        },
+                        metadata: std::collections::HashMap::new(),
+                        endpoint,
+                        health: HealthStatus::Unknown,
+                    });
+                }
             }
-        }
 
-        tracing::debug!("Environment discovery found {} providers", providers.len());
-        Ok(providers)
+            tracing::debug!("Environment discovery found {} providers", providers.len());
+            Ok(providers)
+        })
     }
 
     fn name(&self) -> &'static str {
@@ -469,68 +474,71 @@ impl LocalRegistrySource {
     }
 }
 
-#[async_trait]
 impl DiscoverySource for LocalRegistrySource {
     #[expect(deprecated)] // BIOMEOS used for platform path convention
-    async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        let config_dir = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
-            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-            format!("{home}/.config")
-        });
-        let registry_path = Path::new(&config_dir).join(BIOMEOS).join("registry.json");
+    fn discover<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>> {
+        Box::pin(async move {
+            let config_dir = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
+                let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+                format!("{home}/.config")
+            });
+            let registry_path = Path::new(&config_dir).join(BIOMEOS).join("registry.json");
 
-        if !registry_path.exists() {
-            return Ok(vec![]);
-        }
+            if !registry_path.exists() {
+                return Ok(vec![]);
+            }
 
-        match std::fs::read_to_string(&registry_path) {
-            Ok(content) => match serde_json::from_str::<Vec<RegistryServiceEntry>>(&content) {
-                Ok(entries) => {
-                    let mut providers = Vec::with_capacity(entries.len());
-                    for entry in entries {
-                        match Self::parse_endpoint(&entry.endpoint) {
-                            Ok(endpoint) => {
-                                let capability = entry.capability.as_deref().map_or(
-                                    CapabilityType::Coordination {
-                                        features: vec![],
-                                        max_latency_ms: None,
-                                    },
-                                    Self::capability_from_str,
-                                );
-                                providers.push(CapabilityInfo {
-                                    provider_id: entry.provider_id,
-                                    capability,
-                                    metadata: entry.metadata,
-                                    endpoint,
-                                    health: HealthStatus::Unknown,
-                                });
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Skipping registry entry {:?}: invalid endpoint - {}",
-                                    entry.provider_id,
-                                    e
-                                );
+            match std::fs::read_to_string(&registry_path) {
+                Ok(content) => match serde_json::from_str::<Vec<RegistryServiceEntry>>(&content) {
+                    Ok(entries) => {
+                        let mut providers = Vec::with_capacity(entries.len());
+                        for entry in entries {
+                            match Self::parse_endpoint(&entry.endpoint) {
+                                Ok(endpoint) => {
+                                    let capability = entry.capability.as_deref().map_or(
+                                        CapabilityType::Coordination {
+                                            features: vec![],
+                                            max_latency_ms: None,
+                                        },
+                                        Self::capability_from_str,
+                                    );
+                                    providers.push(CapabilityInfo {
+                                        provider_id: entry.provider_id,
+                                        capability,
+                                        metadata: entry.metadata,
+                                        endpoint,
+                                        health: HealthStatus::Unknown,
+                                    });
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Skipping registry entry {:?}: invalid endpoint - {}",
+                                        entry.provider_id,
+                                        e
+                                    );
+                                }
                             }
                         }
+                        tracing::debug!(
+                            "Local registry discovered {} providers from {:?}",
+                            providers.len(),
+                            registry_path
+                        );
+                        Ok(providers)
                     }
-                    tracing::debug!(
-                        "Local registry discovered {} providers from {:?}",
-                        providers.len(),
-                        registry_path
-                    );
-                    Ok(providers)
-                }
+                    Err(e) => {
+                        tracing::warn!("Failed to parse registry at {:?}: {}", registry_path, e);
+                        Ok(vec![])
+                    }
+                },
                 Err(e) => {
-                    tracing::warn!("Failed to parse registry at {:?}: {}", registry_path, e);
+                    tracing::warn!("Failed to read registry at {:?}: {}", registry_path, e);
                     Ok(vec![])
                 }
-            },
-            Err(e) => {
-                tracing::warn!("Failed to read registry at {:?}: {}", registry_path, e);
-                Ok(vec![])
             }
-        }
+        })
     }
 
     fn name(&self) -> &'static str {

@@ -22,7 +22,9 @@
 //! - **Intelligence**: AI Agents and Model Control Protocol
 //! - **biomeOS**: Universal Operating System
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
+
 use toadstool::ToadStoolResult;
 
 mod health;
@@ -49,44 +51,59 @@ pub mod mock_primal;
 ///
 /// This is the canonical definition of the `PrimalIntegration` trait.
 /// All Primals in the ecoPrimals ecosystem should implement this trait.
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 pub trait PrimalIntegration: Send + Sync {
     /// Initialize the Primal from manifest configuration
-    async fn initialize_from_manifest(&self, config: &PrimalConfig) -> ToadStoolResult<()>;
+    fn initialize_from_manifest(
+        &self,
+        config: &PrimalConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Register with orchestrator via capability discovery
-    async fn register_with_orchestrator(
+    fn register_with_orchestrator(
         &self,
         discovery: &dyn toadstool_common::infant_discovery::CapabilityDiscovery,
-    ) -> ToadStoolResult<ServiceRegistration>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ServiceRegistration>> + Send + '_>>;
 
     /// Validate dependencies before startup
-    async fn validate_dependencies(&self, manifest: &BiomeManifest) -> ToadStoolResult<()>;
+    fn validate_dependencies(
+        &self,
+        manifest: &BiomeManifest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Start Primal services
-    async fn start_services(&self) -> ToadStoolResult<StartupResult>;
+    fn start_services(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<StartupResult>> + Send + '_>>;
 
     /// Shutdown Primal services gracefully
-    async fn shutdown(&self) -> ToadStoolResult<()>;
+    fn shutdown(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get current health status
-    async fn get_health_status(&self) -> ToadStoolResult<HealthStatus>;
+    fn get_health_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HealthStatus>> + Send + '_>>;
 
     /// Get Primal capabilities
-    async fn get_capabilities(&self) -> ToadStoolResult<Vec<String>>;
+    fn get_capabilities(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<String>>> + Send + '_>>;
 
     /// Handle configuration updates
-    async fn update_configuration(&self, config: &PrimalConfig) -> ToadStoolResult<()>;
+    fn update_configuration(
+        &self,
+        config: &PrimalConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get metrics and monitoring data
-    async fn get_metrics(&self) -> ToadStoolResult<PrimalMetrics>;
+    fn get_metrics(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalMetrics>> + Send + '_>>;
 
     /// Handle inter-Primal communication
-    async fn handle_primal_message(
+    fn handle_primal_message(
         &self,
         message: &PrimalMessage,
-    ) -> ToadStoolResult<PrimalMessage>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalMessage>> + Send + '_>>;
 }
 
 #[cfg(test)]

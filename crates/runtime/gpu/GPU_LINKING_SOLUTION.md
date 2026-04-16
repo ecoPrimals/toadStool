@@ -212,10 +212,11 @@ pub fn select_gpu(requirements: &GpuRequirements) -> GpuBackend {
 
 ### 3. Trait-Based Abstraction (No Framework Leakage)
 ```rust
-#[async_trait]
 pub trait GpuBackend: Send + Sync {
-    async fn compile_kernel(&self, code: &str, lang: KernelLanguage) -> Result<CompiledKernel>;
-    async fn execute_kernel(&self, kernel: &CompiledKernel, args: &[GpuBuffer]) -> Result<GpuBuffer>;
+    fn compile_kernel(&self, code: &str, lang: KernelLanguage)
+        -> Pin<Box<dyn Future<Output = Result<CompiledKernel>> + Send + '_>>;
+    fn execute_kernel(&self, kernel: &CompiledKernel, args: &[GpuBuffer])
+        -> Pin<Box<dyn Future<Output = Result<GpuBuffer>> + Send + '_>>;
     fn capabilities(&self) -> &GpuCapabilities;
     fn compute_score(&self, requirements: &GpuRequirements) -> u32;
 }

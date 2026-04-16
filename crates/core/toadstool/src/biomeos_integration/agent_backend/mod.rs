@@ -11,7 +11,8 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use super::types::{AgentConfig, ModelConfig};
 use crate::ToadStoolResult;
@@ -27,15 +28,14 @@ pub use types::{
 /// This allows dependency injection of different agent deployment implementations
 /// (production intelligence-service backend, in-memory test backend, etc.) without relying
 /// on feature flags or conditional compilation.
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+// NOTE(async-dyn): async methods return `Pin<Box<dyn Future>>` — native async fn in trait is not dyn-compatible
 pub trait AgentBackend: Send + Sync {
     /// Initialize/test connection to agent backend
     ///
     /// For network backends (intelligence service), this tests connectivity.
     /// For local backends (in-memory), this is typically a no-op.
-    async fn initialize(&self) -> ToadStoolResult<()> {
-        Ok(()) // Default implementation is no-op
+    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
     /// Deploy an AI agent from configuration
@@ -47,7 +47,10 @@ pub trait AgentBackend: Send + Sync {
     /// - Backend service is unavailable
     /// - Resource allocation fails
     /// - Agent name conflicts with existing agent
-    async fn deploy_agent(&self, config: &AgentConfig) -> ToadStoolResult<AgentInfo>;
+    fn deploy_agent<'a>(
+        &'a self,
+        config: &'a AgentConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a>>;
 
     /// Load a model for agent use
     ///
@@ -58,16 +61,29 @@ pub trait AgentBackend: Send + Sync {
     /// - Model file cannot be accessed or downloaded
     /// - Insufficient memory for model
     /// - Model format is unsupported
-    async fn load_model(&self, config: &ModelConfig) -> ToadStoolResult<ModelInfo>;
+    fn load_model<'a>(
+        &'a self,
+        config: &'a ModelConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a>>;
 
     /// Scale an agent to specified replica count
-    async fn scale_agent(&self, agent_name: &str, replicas: u32) -> ToadStoolResult<()>;
+    fn scale_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+        replicas: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Stop an agent
-    async fn stop_agent(&self, agent_name: &str) -> ToadStoolResult<()>;
+    fn stop_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Remove an agent
-    async fn remove_agent(&self, agent_name: &str) -> ToadStoolResult<()>;
+    fn remove_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Get agent status
     ///
@@ -77,22 +93,35 @@ pub trait AgentBackend: Send + Sync {
     /// - Agent does not exist
     /// - Backend service is unavailable
     /// - Network communication fails
-    async fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus>;
+    fn get_agent_status<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a>>;
 
     /// List all deployed agents
-    async fn list_agents(&self) -> ToadStoolResult<Vec<AgentInfo>>;
+    fn list_agents(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_>>;
 
     /// List all loaded models
-    async fn list_models(&self) -> ToadStoolResult<Vec<ModelInfo>>;
+    fn list_models(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_>>;
 
     /// Get agent resource usage
-    async fn get_agent_resources(&self, agent_name: &str) -> ToadStoolResult<AgentResourceUsage>;
+    fn get_agent_resources<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a>>;
 
     /// Unload a model
-    async fn unload_model(&self, model_name: &str) -> ToadStoolResult<()>;
+    fn unload_model<'a>(
+        &'a self,
+        model_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Health check for agent backend
-    async fn health_check(&self) -> ToadStoolResult<()> {
-        Ok(()) // Default implementation
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 }

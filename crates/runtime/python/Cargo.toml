@@ -27,7 +27,6 @@ serde_json = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 tracing = { workspace = true }
 thiserror = { workspace = true }
-async-trait = { workspace = true }
 futures = { workspace = true }
 
 # Python integration (optional — ecoBin builds use subprocess-only path)

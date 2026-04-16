@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 struct MockSubstrate {
     name: String,
     substrate_type: SubstrateType,
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl ComputeSubstrate for MockSubstrate {
     fn name(&self) -> &str {
         &self.name
@@ -19,17 +18,26 @@ impl ComputeSubstrate for MockSubstrate {
         self.substrate_type
     }
 
-    async fn execute_buffer_op(
+    fn execute_buffer_op(
         &self,
         _op: BufferOperation,
-    ) -> Result<BufferOutput, toadstool_runtime_universal::SubstrateError> {
-        Ok(BufferOutput {
-            data: vec![0; 100],
-            metadata: BufferMetadata {
-                duration: Duration::from_millis(10),
-                substrate_name: self.name.clone(),
-                power_consumed_mw: Some(50000.0),
-            },
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<BufferOutput, toadstool_runtime_universal::SubstrateError>>
+                + Send
+                + '_,
+        >,
+    > {
+        let substrate_name = self.name.clone();
+        Box::pin(async move {
+            Ok(BufferOutput {
+                data: vec![0; 100],
+                metadata: BufferMetadata {
+                    duration: Duration::from_millis(10),
+                    substrate_name,
+                    power_consumed_mw: Some(50000.0),
+                },
+            })
         })
     }
 }

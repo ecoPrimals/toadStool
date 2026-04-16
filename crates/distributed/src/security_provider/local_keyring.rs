@@ -9,9 +9,10 @@
 //! Suitable for single-node deployments or developer machines where Security
 //! is not running.
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -91,88 +92,99 @@ impl Default for LocalKeyringProvider {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl SecurityProvider for LocalKeyringProvider {
-    async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {
-        self.inner.capabilities().await
-    }
-
-    async fn metadata(&self) -> ToadStoolResult<ProviderMetadata> {
-        let mut m = self.inner.metadata().await?;
-        m.provider_type = "LocalKeyring".to_string();
-        m.metadata
-            .insert("backend".to_string(), format!("{:?}", self.backend));
-        Ok(m)
-    }
-
-    async fn encrypt(
+    fn capabilities(
         &self,
-        data: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
+        Box::pin(async { self.inner.capabilities().await })
+    }
+
+    fn metadata(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
+        Box::pin(async {
+            let mut m = self.inner.metadata().await?;
+            m.provider_type = "LocalKeyring".to_string();
+            m.metadata
+                .insert("backend".to_string(), format!("{:?}", self.backend));
+            Ok(m)
+        })
+    }
+
+    fn encrypt<'a>(
+        &'a self,
+        data: &'a [u8],
         options: Option<EncryptionOptions>,
-    ) -> ToadStoolResult<EncryptionResult> {
-        if let Some(ref o) = options
-            && let Some(ref id) = o.key_id
-        {
-            self.track_key(id).await;
-        }
-        self.inner.encrypt(data, options).await
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
+        Box::pin(async move {
+            if let Some(ref o) = options
+                && let Some(ref id) = o.key_id
+            {
+                self.track_key(id).await;
+            }
+            self.inner.encrypt(data, options).await
+        })
     }
 
-    async fn decrypt(
-        &self,
-        ciphertext: &[u8],
-        metadata: &EncryptionMetadata,
-    ) -> ToadStoolResult<DecryptionResult> {
-        self.inner.decrypt(ciphertext, metadata).await
+    fn decrypt<'a>(
+        &'a self,
+        ciphertext: &'a [u8],
+        metadata: &'a EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
+        Box::pin(async move { self.inner.decrypt(ciphertext, metadata).await })
     }
 
-    async fn sign(
-        &self,
-        data: &[u8],
+    fn sign<'a>(
+        &'a self,
+        data: &'a [u8],
         options: Option<SigningOptions>,
-    ) -> ToadStoolResult<SignatureResult> {
-        if let Some(ref o) = options
-            && let Some(ref id) = o.key_id
-        {
-            self.track_key(id).await;
-        }
-        self.inner.sign(data, options).await
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
+        Box::pin(async move {
+            if let Some(ref o) = options
+                && let Some(ref id) = o.key_id
+            {
+                self.track_key(id).await;
+            }
+            self.inner.sign(data, options).await
+        })
     }
 
-    async fn verify(
-        &self,
-        data: &[u8],
-        signature: &[u8],
-        public_key_id: &str,
-    ) -> ToadStoolResult<VerificationResult> {
-        self.inner.verify(data, signature, public_key_id).await
+    fn verify<'a>(
+        &'a self,
+        data: &'a [u8],
+        signature: &'a [u8],
+        public_key_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
+        Box::pin(async move { self.inner.verify(data, signature, public_key_id).await })
     }
 
-    async fn create_permission(
+    fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> ToadStoolResult<SecurityPermission> {
-        self.inner.create_permission(request).await
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
+        Box::pin(async move { self.inner.create_permission(request).await })
     }
 
-    async fn validate_permission(
+    fn validate_permission<'a>(
+        &'a self,
+        permission: &'a SecurityPermission,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
+    {
+        Box::pin(async move { self.inner.validate_permission(permission).await })
+    }
+
+    fn revoke_permission<'a>(
+        &'a self,
+        permission_id: &'a uuid::Uuid,
+        reason: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { self.inner.revoke_permission(permission_id, reason).await })
+    }
+
+    fn health_check(
         &self,
-        permission: &SecurityPermission,
-    ) -> ToadStoolResult<PermissionValidationResult> {
-        self.inner.validate_permission(permission).await
-    }
-
-    async fn revoke_permission(
-        &self,
-        permission_id: &uuid::Uuid,
-        reason: &str,
-    ) -> ToadStoolResult<()> {
-        self.inner.revoke_permission(permission_id, reason).await
-    }
-
-    async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {
-        self.inner.health_check().await
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
+        Box::pin(async { self.inner.health_check().await })
     }
 }
 

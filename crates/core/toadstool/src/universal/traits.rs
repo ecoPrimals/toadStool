@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Universal Primal Provider trait
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::ToadStoolResult;
 
@@ -9,8 +10,6 @@ use super::requests::{PrimalEndpoints, PrimalRequest, PrimalResponse};
 use super::types::{PrimalCapability, PrimalContext, PrimalHealth, PrimalType};
 
 /// Universal primal provider trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 pub trait UniversalPrimalProvider: Send + Sync {
     /// Unique primal identifier
     fn primal_id(&self) -> &str;
@@ -28,22 +27,25 @@ pub trait UniversalPrimalProvider: Send + Sync {
     fn capabilities(&self) -> Vec<PrimalCapability>;
 
     /// Health check
-    async fn health_check(&self) -> PrimalHealth;
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>>;
 
     /// API endpoints
     fn endpoints(&self) -> PrimalEndpoints;
 
     /// Handle inter-primal requests
-    async fn handle_primal_request(
+    fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> ToadStoolResult<PrimalResponse>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>>;
 
     /// Initialize with configuration
-    async fn initialize(&mut self, config: serde_json::Value) -> ToadStoolResult<()>;
+    fn initialize(
+        &mut self,
+        config: serde_json::Value,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Shutdown gracefully
-    async fn shutdown(&mut self) -> ToadStoolResult<()>;
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Check if can serve context
     fn can_serve_context(&self, context: &PrimalContext) -> bool;

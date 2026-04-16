@@ -29,17 +29,18 @@
 //!     device: WgpuDevice,
 //! }
 //!
-//! #[async_trait::async_trait]
 //! impl ComputeSubstrate for MyGpuSubstrate {
 //!     fn name(&self) -> &str { "My GPU" }
 //!     fn substrate_type(&self) -> SubstrateType { SubstrateType::Gpu }
 //!     
-//!     async fn execute_buffer_op(
+//!     fn execute_buffer_op(
 //!         &self,
 //!         operation: BufferOperation,
-//!     ) -> Result<BufferOutput> {
-//!         // Implement GPU-specific operation
-//!         Ok(BufferOutput::default())
+//!     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>> {
+//!         Box::pin(async move {
+//!             // Implement GPU-specific operation
+//!             Ok(BufferOutput::default())
+//!         })
 //!     }
 //! }
 //! ```

@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 use toadstool::error::ToadStoolResult;
 
-use crate::platforms::*;
 use crate::EdgeRuntimeConfig;
+use crate::platforms::*;
 
 mod bluetooth;
 mod mdns;
@@ -38,17 +38,25 @@ pub struct DeviceDiscoveryService {
 
 /// Discovery method for [`DeviceDiscoveryService`].
 ///
-/// Stored as `Vec<Box<dyn DiscoveryMethod>>`; async methods use `#[async_trait]` for object safety.
-#[async_trait::async_trait]
+/// Stored as `Vec<Box<dyn DiscoveryMethod>>`. Uses manual `Pin<Box<dyn Future>>`
+/// for dyn-compatibility (no `async-trait` macro).
 pub trait DiscoveryMethod: Send + Sync {
     /// Get discovery method name
     fn get_name(&self) -> &str;
 
     /// Discover devices using this method
-    async fn discover(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>;
+    fn discover(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
+        >,
+    >;
 
     /// Check if method is available
-    async fn is_available(&self) -> bool;
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>>;
 
     /// Get supported device types
     fn get_supported_types(&self) -> Vec<String>;

@@ -9,12 +9,10 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use toadstool::{
-    error::{ToadStoolError, ToadStoolResult},
-};
+use toadstool::error::{ToadStoolError, ToadStoolResult};
 
-use crate::platforms::EdgeDevice;
 use crate::EdgeRuntimeConfig;
+use crate::platforms::EdgeDevice;
 
 /// Deployment Coordinator
 pub struct DeploymentCoordinator {
@@ -58,13 +56,13 @@ impl DeploymentCoordinator {
     /// Create a new deployment coordinator
     pub async fn new(config: &EdgeRuntimeConfig) -> ToadStoolResult<Self> {
         info!("Initializing deployment coordinator");
-        
+
         Ok(Self {
             config: config.clone(),
             active_deployments: Arc::new(RwLock::new(HashMap::new())),
         })
     }
-    
+
     /// Deploy code to device
     pub async fn deploy_to_device(
         &self,
@@ -73,9 +71,12 @@ impl DeploymentCoordinator {
     ) -> ToadStoolResult<String> {
         let deployment_id = Uuid::new_v4();
         let device_id = device.get_id();
-        
-        info!("Starting deployment {} to device {}", deployment_id, device_id);
-        
+
+        info!(
+            "Starting deployment {} to device {}",
+            deployment_id, device_id
+        );
+
         // Create deployment info
         let deployment_info = DeploymentInfo {
             id: deployment_id,
@@ -87,16 +88,16 @@ impl DeploymentCoordinator {
             completed_at: None,
             error: None,
         };
-        
+
         // Store deployment info
         {
             let mut deployments = self.active_deployments.write().await;
             deployments.insert(deployment_id, deployment_info);
         }
-        
+
         // Perform deployment
         let result = device.deploy(code).await;
-        
+
         // Update deployment status
         {
             let mut deployments = self.active_deployments.write().await;
@@ -113,19 +114,19 @@ impl DeploymentCoordinator {
                 }
             }
         }
-        
+
         result
     }
-    
+
     /// Get deployment status
     pub async fn get_deployment_status(&self, deployment_id: Uuid) -> Option<DeploymentInfo> {
         let deployments = self.active_deployments.read().await;
         deployments.get(&deployment_id).cloned()
     }
-    
+
     /// Get active deployments
     pub async fn get_active_deployments(&self) -> Vec<DeploymentInfo> {
         let deployments = self.active_deployments.read().await;
         deployments.values().cloned().collect()
     }
-} 
+}

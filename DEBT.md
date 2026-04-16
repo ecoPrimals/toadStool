@@ -92,23 +92,15 @@ Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
 
 ## Known Limitations (not actionable debt)
 
-### D-ASYNC-DYN-MARKERS — CLOSED (dyn-ceiling reached, S203n)
-**Scope**: Workspace (158 remaining `#[async_trait]` annotations: 113 production, 45 test)
-**Resolution**: No further migration planned. All 32 remaining production trait definitions
-are genuinely `dyn`-dispatched (`Box<dyn T>` or `Arc<dyn T>` in APIs) and carry
-`NOTE(async-dyn)` markers. The 45 test annotations mirror production dyn traits.
-**Waves 1-3**: Migrated 13 zero-dyn traits to native AFIT. Freed 8 crates from dependency.
-**32 dyn-constrained traits**: `AuthBackend`, `AgentBackend`, `CryptoProvider`,
-`UnifiedMemoryBackend`, `EdgeDevice`, `WorkloadExecutor`, `CloudProvider`,
-`CloudProviderInterface`, `ComputeSubstrate`, `ComputeUnit`, `PrimalIntegration`,
-`SecurityProvider`, `MemoryPressureCallback`, `ByobExecutor`, `UniversalPrimalProvider`,
-`DiscoveryClient`, `DiscoverySource`, `DiscoveryMethod`, `ParallelComputeFramework`,
-`UniversalComputeResource`, `ComputeContext`, `CommunicationProtocol`,
-`Terminal3270Session`, `VAXTerminalSession`, `Terminal5250Session`,
-`EmbeddedToolchain`, `ProgrammerInterface`, `EmbeddedEmulator`, `PeripheralInterface`,
-`LegacyEmulator`, `LegacyAdapter`, `LegacyCommunicationSession`.
-Further reduction would require trait splitting or enum dispatch — architectural
-changes outside the scope of debt cleanup. Item closed per primalSpring April 16 audit.
+### D-ASYNC-DYN-MARKERS — RESOLVED S203r (fully deprecated)
+**Scope**: Workspace — `async-trait` crate fully removed and banned in `deny.toml`.
+**Resolution**: All ~91 `#[async_trait]` annotations (55 production, 36 test) evolved to
+manual `Pin<Box<dyn Future>>` for dyn-dispatched traits or native AFIT for non-dyn traits.
+Zero runtime behavior change. `async-trait` removed from workspace `[dependencies]` and
+all 13 crate `Cargo.toml` files. Banned in `deny.toml` alongside `ring`.
+**Evolution history**: S203j migrated 13 zero-dyn traits to native AFIT (freed 8 crates).
+S203n closed at dyn-ceiling (158 annotations). S203r completed full deprecation across
+all remaining 32 dyn-constrained traits using manual future boxing.
 
 ## S203p Resolved Debt (Env Interning Complete + Coverage Wave 3)
 
@@ -890,7 +882,7 @@ Cross-primal doc comments and error strings cleaned across 61 files in all crate
 Production mocks (`MockResourceMonitor`, `MockSecurityProvider`, `MockPrimal`) isolated behind `#[cfg(any(test, feature = "test-mocks"))]` in server, distributed, integration crates.
 
 ### D-TEST-BLOCKON — RESOLVED S187
-56 test `Runtime::block_on()` patterns converted to `#[tokio::test] async fn` with `temp_env::async_with_vars`. 25 production sync bridges remain (require `#[async_trait]` migration).
+56 test `Runtime::block_on()` patterns converted to `#[tokio::test] async fn` with `temp_env::async_with_vars`. 25 production sync bridges evolved (S203r: `async-trait` fully deprecated).
 
 ### D-CROSS-PRIMAL-NAMES — RESOLVED S187
 Cross-primal name references reduced from 5,104 to 550 in production code (89% reduction). All remaining are intentional legacy compatibility: env var fallbacks, serde aliases, parse_type match arms. New types/APIs are capability-first. Major renames: `SongbirdProtocol` → `CoordinationTransport`, `BearDogSecurityProvider` → `DistributedSecurityProvider`, `NestGateResult` → `StorageServiceResult`, etc.

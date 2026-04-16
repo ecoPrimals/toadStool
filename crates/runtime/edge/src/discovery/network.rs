@@ -21,27 +21,35 @@ pub struct NetworkDiscovery {
     pub(super) timeout: Duration,
 }
 
-#[async_trait::async_trait]
 impl DiscoveryMethod for NetworkDiscovery {
     fn get_name(&self) -> &str {
         "Network Discovery"
     }
 
-    async fn discover(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
-        let mut devices = Vec::new();
+    fn discover(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
+        >,
+    > {
+        Box::pin(async move {
+            let mut devices = Vec::new();
 
-        // Scan network ranges
-        for ip in &self.scan_range {
-            let scan_devices = self.scan_network_range(*ip).await?;
-            devices.extend(scan_devices);
-        }
+            // Scan network ranges
+            for ip in &self.scan_range {
+                let scan_devices = self.scan_network_range(*ip).await?;
+                devices.extend(scan_devices);
+            }
 
-        Ok(devices)
+            Ok(devices)
+        })
     }
 
-    async fn is_available(&self) -> bool {
-        // Check if network interface is available
-        true
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async { true })
     }
 
     fn get_supported_types(&self) -> Vec<String> {
@@ -55,7 +63,10 @@ impl DiscoveryMethod for NetworkDiscovery {
 }
 
 impl NetworkDiscovery {
-    async fn scan_network_range(&self, base_ip: IpAddr) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
+    async fn scan_network_range(
+        &self,
+        base_ip: IpAddr,
+    ) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
         let mut devices = Vec::new();
 
         // For now, implement a simple ping-based scan
@@ -67,12 +78,8 @@ impl NetworkDiscovery {
 
                 // Scan /24 network
                 for host in 1..255 {
-                    let target_ip = Ipv4Addr::new(
-                        base_octets[0],
-                        base_octets[1],
-                        base_octets[2],
-                        host,
-                    );
+                    let target_ip =
+                        Ipv4Addr::new(base_octets[0], base_octets[1], base_octets[2], host);
 
                     if let Some(device) = self.probe_network_device(IpAddr::V4(target_ip)).await {
                         devices.push(device);
@@ -167,11 +174,9 @@ impl NetworkDiscovery {
             let socket_addr = SocketAddr::new(ip, port);
 
             // Try to connect
-            if let Ok(_stream) = tokio::time::timeout(
-                self.timeout,
-                tokio::net::TcpStream::connect(socket_addr),
-            )
-            .await
+            if let Ok(_stream) =
+                tokio::time::timeout(self.timeout, tokio::net::TcpStream::connect(socket_addr))
+                    .await
             {
                 // Device is reachable, try to identify it
                 if let Some(device) = self.identify_network_device(ip, port).await {

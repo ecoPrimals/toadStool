@@ -255,7 +255,6 @@ async fn test_runtime_stats_display_neuromorphic_custom() {
     };
 
     struct NpuMock;
-    #[async_trait::async_trait]
     impl ComputeSubstrate for NpuMock {
         fn name(&self) -> &'static str {
             "Test NPU"
@@ -263,18 +262,22 @@ async fn test_runtime_stats_display_neuromorphic_custom() {
         fn substrate_type(&self) -> SubstrateType {
             SubstrateType::Npu
         }
-        async fn execute_buffer_op(
+        fn execute_buffer_op(
             &self,
             op: BufferOperation,
-        ) -> Result<BufferOutput, SubstrateError> {
-            Ok(BufferOutput {
-                data: vec![0; op.buffer_size()],
-                metadata: crate::substrate::BufferMetadata::default(),
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>,
+        > {
+            let len = op.buffer_size();
+            Box::pin(async move {
+                Ok(BufferOutput {
+                    data: vec![0; len],
+                    metadata: crate::substrate::BufferMetadata::default(),
+                })
             })
         }
     }
     struct FpgaMock;
-    #[async_trait::async_trait]
     impl ComputeSubstrate for FpgaMock {
         fn name(&self) -> &'static str {
             "Test FPGA"
@@ -282,13 +285,18 @@ async fn test_runtime_stats_display_neuromorphic_custom() {
         fn substrate_type(&self) -> SubstrateType {
             SubstrateType::Fpga
         }
-        async fn execute_buffer_op(
+        fn execute_buffer_op(
             &self,
             op: BufferOperation,
-        ) -> Result<BufferOutput, SubstrateError> {
-            Ok(BufferOutput {
-                data: vec![0; op.buffer_size()],
-                metadata: crate::substrate::BufferMetadata::default(),
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>,
+        > {
+            let len = op.buffer_size();
+            Box::pin(async move {
+                Ok(BufferOutput {
+                    data: vec![0; len],
+                    metadata: crate::substrate::BufferMetadata::default(),
+                })
             })
         }
     }

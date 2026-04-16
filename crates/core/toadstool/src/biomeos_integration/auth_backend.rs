@@ -14,9 +14,10 @@
     reason = "IPC addressing requires well-known legacy names during migration"
 )]
 
-use async_trait::async_trait;
 #[cfg(any(test, feature = "test-mocks"))]
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 #[cfg(any(test, feature = "test-mocks"))]
 use std::sync::Arc;
 #[cfg(any(test, feature = "test-mocks"))]
@@ -38,25 +39,27 @@ pub use super::auth::{AuthenticationToken, TokenRefreshRequest, TokenRequest};
 /// This allows dependency injection of different authentication implementations
 /// (production security-service backend, in-memory test backend when `cfg(test)` or the
 /// `test-mocks` crate feature is enabled).
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+// NOTE(async-dyn): async methods return `Pin<Box<dyn Future>>` — native async fn in trait is not dyn-compatible
 pub trait AuthBackend: Send + Sync {
     /// Initialize/test connection to authentication backend
     ///
     /// For network backends (security service), this tests connectivity.
     /// For local backends (in-memory), this is typically a no-op.
-    async fn initialize(&self) -> ToadStoolResult<()> {
-        Ok(()) // Default implementation is no-op
+    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
     /// Request a new authentication token
-    async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken>;
+    fn request_token<'a>(
+        &'a self,
+        request: &'a TokenRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>>;
 
     /// Refresh an authentication token
-    async fn refresh_token(
-        &self,
-        request: &TokenRefreshRequest,
-    ) -> ToadStoolResult<AuthenticationToken>;
+    fn refresh_token<'a>(
+        &'a self,
+        request: &'a TokenRefreshRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>>;
 
     /// Sign a payload and return a signature string.
     ///
@@ -66,18 +69,23 @@ pub trait AuthBackend: Send + Sync {
     /// # Errors
     ///
     /// Returns an error if no signing capability is available.
-    async fn sign_payload(&self, _payload: &str) -> ToadStoolResult<String> {
-        Err(ToadStoolError::configuration(
-            "Signing not available. Ensure a crypto / security provider is running.",
-        ))
+    fn sign_payload<'a>(
+        &'a self,
+        _payload: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
+        Box::pin(async move {
+            Err(ToadStoolError::configuration(
+                "Signing not available. Ensure a crypto / security provider is running.",
+            ))
+        })
     }
 
     /// Export the public key for signature verification, if available.
     ///
     /// Returns `None` when no signing key is configured or the backend
     /// does not support local key export.
-    async fn public_key(&self) -> Option<String> {
-        None
+    fn public_key(&self) -> Pin<Box<dyn Future<Output = Option<String>> + Send + '_>> {
+        Box::pin(async { None })
     }
 
     /// Validate a token (optional, default implementation)
@@ -183,80 +191,97 @@ impl SecurityBackend {
     }
 }
 
-#[async_trait]
 impl AuthBackend for SecurityBackend {
-    async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
-        let params = serde_json::json!({ "payload": payload });
-        self.rpc_client
-            .call_typed::<String>("crypto.sign", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("security/crypto service sign failed: {e}"))
-            })
+    fn sign_payload<'a>(
+        &'a self,
+        payload: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({ "payload": payload });
+            self.rpc_client
+                .call_typed::<String>("crypto.sign", params)
+                .await
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("security/crypto service sign failed: {e}"))
+                })
+        })
     }
 
-    async fn public_key(&self) -> Option<String> {
-        let value: serde_json::Value = self
-            .rpc_client
-            .call("crypto.public_key", serde_json::json!({}))
-            .await
-            .ok()?;
-        value
-            .get("public_key")
-            .and_then(|v| v.as_str())
-            .map(String::from)
+    fn public_key(&self) -> Pin<Box<dyn Future<Output = Option<String>> + Send + '_>> {
+        Box::pin(async move {
+            let value: serde_json::Value = self
+                .rpc_client
+                .call("crypto.public_key", serde_json::json!({}))
+                .await
+                .ok()?;
+            value
+                .get("public_key")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+        })
     }
 
-    async fn initialize(&self) -> ToadStoolResult<()> {
-        // Health check via JSON-RPC over unix socket
-        let _health: serde_json::Value = self
-            .rpc_client
-            .call("crypto.health", serde_json::json!({}))
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!(
-                    "Failed to connect to security/crypto service: {e}"
-                ))
+    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            // Health check via JSON-RPC over unix socket
+            let _health: serde_json::Value = self
+                .rpc_client
+                .call("crypto.health", serde_json::json!({}))
+                .await
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!(
+                        "Failed to connect to security/crypto service: {e}"
+                    ))
+                })?;
+
+            tracing::info!("Successfully connected to security/crypto service via unix socket");
+            Ok(())
+        })
+    }
+
+    fn request_token<'a>(
+        &'a self,
+        request: &'a TokenRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::to_value(request).map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
             })?;
 
-        tracing::info!("Successfully connected to security/crypto service via unix socket");
-        Ok(())
+            let token: AuthenticationToken = self
+                .rpc_client
+                .call_typed("crypto.request_token", params)
+                .await
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!(
+                        "Failed to request token from security/crypto service: {e}"
+                    ))
+                })?;
+
+            // Validate token
+            self.validate_token(&token)?;
+
+            Ok(token)
+        })
     }
 
-    async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {
-        let params = serde_json::to_value(request)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize request: {e}")))?;
-
-        let token: AuthenticationToken = self
-            .rpc_client
-            .call_typed("crypto.request_token", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!(
-                    "Failed to request token from security/crypto service: {e}"
-                ))
+    fn refresh_token<'a>(
+        &'a self,
+        request: &'a TokenRefreshRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::to_value(request).map_err(|e| {
+                ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
             })?;
 
-        // Validate token
-        self.validate_token(&token)?;
+            let token: AuthenticationToken = self
+                .rpc_client
+                .call_typed("crypto.refresh_token", params)
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to refresh token: {e}")))?;
 
-        Ok(token)
-    }
-
-    async fn refresh_token(
-        &self,
-        request: &TokenRefreshRequest,
-    ) -> ToadStoolResult<AuthenticationToken> {
-        let params = serde_json::to_value(request)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize request: {e}")))?;
-
-        let token: AuthenticationToken = self
-            .rpc_client
-            .call_typed("crypto.refresh_token", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to refresh token: {e}")))?;
-
-        Ok(token)
+            Ok(token)
+        })
     }
 }
 
@@ -308,63 +333,74 @@ impl Default for InMemoryAuthBackend {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-#[async_trait]
 impl AuthBackend for InMemoryAuthBackend {
-    async fn sign_payload(&self, payload: &str) -> ToadStoolResult<String> {
-        use base64::{Engine as _, engine::general_purpose};
-        tracing::warn!("INSECURE: In-memory mock signature. Acceptable ONLY in tests.");
-        Ok(format!(
-            "ed25519:mock:{}",
-            general_purpose::STANDARD.encode(payload.as_bytes())
-        ))
+    fn sign_payload<'a>(
+        &'a self,
+        payload: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
+        Box::pin(async move {
+            use base64::{Engine as _, engine::general_purpose};
+            tracing::warn!("INSECURE: In-memory mock signature. Acceptable ONLY in tests.");
+            Ok(format!(
+                "ed25519:mock:{}",
+                general_purpose::STANDARD.encode(payload.as_bytes())
+            ))
+        })
     }
 
-    async fn public_key(&self) -> Option<String> {
-        Some("test-public-key".to_string())
+    fn public_key(&self) -> Pin<Box<dyn Future<Output = Option<String>> + Send + '_>> {
+        Box::pin(async move { Some("test-public-key".to_string()) })
     }
 
-    async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {
-        let token = Self::generate_test_token(&request.requesting_primal);
+    fn request_token<'a>(
+        &'a self,
+        request: &'a TokenRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
+        Box::pin(async move {
+            let token = Self::generate_test_token(&request.requesting_primal);
 
-        // Store token for potential refresh
-        self.tokens
-            .lock()
-            .await
-            .insert(token.id.clone(), token.clone());
+            // Store token for potential refresh
+            self.tokens
+                .lock()
+                .await
+                .insert(token.id.clone(), token.clone());
 
-        tracing::debug!("Generated test token for {}", request.requesting_primal);
-        Ok(token)
+            tracing::debug!("Generated test token for {}", request.requesting_primal);
+            Ok(token)
+        })
     }
 
-    async fn refresh_token(
-        &self,
-        request: &TokenRefreshRequest,
-    ) -> ToadStoolResult<AuthenticationToken> {
-        // Generate a refreshed token
-        let token = AuthenticationToken {
-            id: format!("test-refreshed-token-{}", request.requesting_primal),
-            token_type: "Bearer".to_string(),
-            token: format!("test-refreshed-value-{}", request.requesting_primal),
-            public_key: "test-public-key".to_string(),
-            expires_at: SystemTime::now() + Duration::from_secs(3600),
-            issued_at: SystemTime::now(),
-            issuer: well_known::BEARDOG.to_string(),
-            audience: vec![
-                PRIMAL_NAME.to_string(),
-                audience::PLATFORM_AUDIENCE.to_string(),
-            ],
-            scope: vec!["cross-primal".to_string()],
-            claims: HashMap::new(),
-        };
+    fn refresh_token<'a>(
+        &'a self,
+        request: &'a TokenRefreshRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
+        Box::pin(async move {
+            // Generate a refreshed token
+            let token = AuthenticationToken {
+                id: format!("test-refreshed-token-{}", request.requesting_primal),
+                token_type: "Bearer".to_string(),
+                token: format!("test-refreshed-value-{}", request.requesting_primal),
+                public_key: "test-public-key".to_string(),
+                expires_at: SystemTime::now() + Duration::from_secs(3600),
+                issued_at: SystemTime::now(),
+                issuer: well_known::BEARDOG.to_string(),
+                audience: vec![
+                    PRIMAL_NAME.to_string(),
+                    audience::PLATFORM_AUDIENCE.to_string(),
+                ],
+                scope: vec!["cross-primal".to_string()],
+                claims: HashMap::new(),
+            };
 
-        // Store refreshed token
-        self.tokens
-            .lock()
-            .await
-            .insert(token.id.clone(), token.clone());
+            // Store refreshed token
+            self.tokens
+                .lock()
+                .await
+                .insert(token.id.clone(), token.clone());
 
-        tracing::debug!("Refreshed test token for {}", request.requesting_primal);
-        Ok(token)
+            tracing::debug!("Refreshed test token for {}", request.requesting_primal);
+            Ok(token)
+        })
     }
 }
 

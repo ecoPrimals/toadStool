@@ -17,36 +17,44 @@ pub struct MDNSDiscovery {
     pub(super) timeout: Duration,
 }
 
-#[async_trait::async_trait]
 impl DiscoveryMethod for MDNSDiscovery {
     fn get_name(&self) -> &str {
         "mDNS Discovery"
     }
 
-    async fn discover(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
-        // Primary: filesystem-based discovery for edge devices registering via biomeOS runtime
-        // Edge devices on the same host (e.g. Raspberry Pi running ToadStool) register sockets
-        if let Some(devices) = self.discover_via_filesystem().await? {
-            if !devices.is_empty() {
-                return Ok(devices);
+    fn discover(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
+        >,
+    > {
+        Box::pin(async move {
+            // Primary: filesystem-based discovery for edge devices registering via biomeOS runtime
+            // Edge devices on the same host (e.g. Raspberry Pi running ToadStool) register sockets
+            if let Some(devices) = self.discover_via_filesystem().await? {
+                if !devices.is_empty() {
+                    return Ok(devices);
+                }
             }
-        }
 
-        // Fallback: scan for _toadstool-edge._tcp service type via filesystem polling
-        // Devices can register by creating JSON descriptor in $XDG_RUNTIME_DIR/edge-devices/
-        if let Some(devices) = self.discover_via_edge_registry().await? {
-            if !devices.is_empty() {
-                return Ok(devices);
+            // Fallback: scan for _toadstool-edge._tcp service type via filesystem polling
+            // Devices can register by creating JSON descriptor in $XDG_RUNTIME_DIR/edge-devices/
+            if let Some(devices) = self.discover_via_edge_registry().await? {
+                if !devices.is_empty() {
+                    return Ok(devices);
+                }
             }
-        }
 
-        debug!("mDNS/filesystem discovery: no edge devices found");
-        Ok(Vec::new())
+            debug!("mDNS/filesystem discovery: no edge devices found");
+            Ok(Vec::new())
+        })
     }
 
-    async fn is_available(&self) -> bool {
-        // Always available: filesystem-based discovery works without mDNS libraries
-        true
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async { true })
     }
 
     fn get_supported_types(&self) -> Vec<String> {
@@ -76,10 +84,7 @@ impl MDNSDiscovery {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "sock") {
-                let stem = path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("");
+                let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
                 if stem == "toadstool-edge" || stem.ends_with("-edge") {
                     debug!("Found edge device socket: {}", path.display());
                     if let Some(device) = self.create_edge_device_from_socket(&path).await {
@@ -97,7 +102,9 @@ impl MDNSDiscovery {
     }
 
     /// Discover via edge device registry ($XDG_RUNTIME_DIR/edge-devices/*.json)
-    async fn discover_via_edge_registry(&self) -> ToadStoolResult<Option<Vec<Arc<dyn EdgeDevice>>>> {
+    async fn discover_via_edge_registry(
+        &self,
+    ) -> ToadStoolResult<Option<Vec<Arc<dyn EdgeDevice>>>> {
         let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
             .ok()
             .or_else(|| std::env::var("BIOMEOS_RUNTIME_DIR").ok())

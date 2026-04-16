@@ -3,8 +3,9 @@
 //!
 //! Implements the generic SecurityProvider trait using Security primal.
 
-use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -125,205 +126,228 @@ impl DistributedSecurityProvider {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl SecurityProvider for DistributedSecurityProvider {
-    async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {
-        Ok(self.capabilities.clone())
-    }
-
-    async fn metadata(&self) -> ToadStoolResult<ProviderMetadata> {
-        Ok(self.metadata.clone())
-    }
-
-    async fn encrypt(
+    fn capabilities(
         &self,
-        data: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
+        let caps = self.capabilities.clone();
+        Box::pin(async move { Ok(caps) })
+    }
+
+    fn metadata(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
+        let meta = self.metadata.clone();
+        Box::pin(async move { Ok(meta) })
+    }
+
+    fn encrypt<'a>(
+        &'a self,
+        data: &'a [u8],
         _options: Option<EncryptionOptions>,
-    ) -> ToadStoolResult<EncryptionResult> {
-        let client = self.get_client().await?;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to encrypt
-        use crate::security::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
+            // Use Security client to encrypt
+            use crate::security::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
 
-        let request = EncryptionRequest {
-            request_id: uuid::Uuid::new_v4(),
-            operation: EncryptionOperation::Encrypt,
-            data: data.to_vec(),
-            key_id: None,
-            algorithm: Some("AES-256-GCM".to_string()),
-            security_level: SecurityLevel::Standard,
-        };
+            let request = EncryptionRequest {
+                request_id: uuid::Uuid::new_v4(),
+                operation: EncryptionOperation::Encrypt,
+                data: data.to_vec(),
+                key_id: None,
+                algorithm: Some("AES-256-GCM".to_string()),
+                security_level: SecurityLevel::Standard,
+            };
 
-        let response = client.encrypt(request).await?;
+            let response = client.encrypt(request).await?;
 
-        // Extract IV and auth tag from metadata
-        let metadata_obj = response.metadata.as_object();
-        let iv = metadata_obj
-            .and_then(|m| m.get("iv"))
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_u64().map(|n| n as u8))
-                    .collect()
-            });
+            // Extract IV and auth tag from metadata
+            let metadata_obj = response.metadata.as_object();
+            let iv = metadata_obj
+                .and_then(|m| m.get("iv"))
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_u64().map(|n| n as u8))
+                        .collect()
+                });
 
-        let auth_tag = metadata_obj
-            .and_then(|m| m.get("auth_tag"))
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_u64().map(|n| n as u8))
-                    .collect()
-            });
+            let auth_tag = metadata_obj
+                .and_then(|m| m.get("auth_tag"))
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_u64().map(|n| n as u8))
+                        .collect()
+                });
 
-        Ok(EncryptionResult {
-            ciphertext: response.data,
-            iv,
-            auth_tag,
-            metadata: EncryptionMetadata {
-                algorithm: response.algorithm,
-                key_id: response.key_id,
-                encrypted_at: std::time::SystemTime::now(),
-            },
+            Ok(EncryptionResult {
+                ciphertext: response.data,
+                iv,
+                auth_tag,
+                metadata: EncryptionMetadata {
+                    algorithm: response.algorithm,
+                    key_id: response.key_id,
+                    encrypted_at: std::time::SystemTime::now(),
+                },
+            })
         })
     }
 
-    async fn decrypt(
-        &self,
-        ciphertext: &[u8],
-        metadata: &EncryptionMetadata,
-    ) -> ToadStoolResult<DecryptionResult> {
-        let client = self.get_client().await?;
+    fn decrypt<'a>(
+        &'a self,
+        ciphertext: &'a [u8],
+        metadata: &'a EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to decrypt
-        use crate::security::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
+            // Use Security client to decrypt
+            use crate::security::types::{EncryptionOperation, EncryptionRequest, SecurityLevel};
 
-        let request = EncryptionRequest {
-            request_id: uuid::Uuid::new_v4(),
-            operation: EncryptionOperation::Decrypt,
-            data: ciphertext.to_vec(),
-            key_id: Some(metadata.key_id.clone()),
-            algorithm: Some(metadata.algorithm.clone()),
-            security_level: SecurityLevel::Standard,
-        };
+            let request = EncryptionRequest {
+                request_id: uuid::Uuid::new_v4(),
+                operation: EncryptionOperation::Decrypt,
+                data: ciphertext.to_vec(),
+                key_id: Some(metadata.key_id.clone()),
+                algorithm: Some(metadata.algorithm.clone()),
+                security_level: SecurityLevel::Standard,
+            };
 
-        let response = client.decrypt(request).await?;
+            let response = client.decrypt(request).await?;
 
-        Ok(DecryptionResult {
-            plaintext: response.data,
-            metadata: DecryptionMetadata {
-                key_id: metadata.key_id.clone(),
-                decrypted_at: std::time::SystemTime::now(),
-            },
+            Ok(DecryptionResult {
+                plaintext: response.data,
+                metadata: DecryptionMetadata {
+                    key_id: metadata.key_id.clone(),
+                    decrypted_at: std::time::SystemTime::now(),
+                },
+            })
         })
     }
 
-    async fn sign(
-        &self,
-        data: &[u8],
+    fn sign<'a>(
+        &'a self,
+        data: &'a [u8],
         _options: Option<SigningOptions>,
-    ) -> ToadStoolResult<SignatureResult> {
-        let client = self.get_client().await?;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to sign
-        let response = client.sign(data).await?;
+            // Use Security client to sign
+            let response = client.sign(data).await?;
 
-        Ok(SignatureResult {
-            signature: response.signature,
-            algorithm: SignatureAlgorithm::EcdsaP256, // Security default
-            key_id: response.key_id,
-            signed_at: std::time::SystemTime::now(),
+            Ok(SignatureResult {
+                signature: response.signature,
+                algorithm: SignatureAlgorithm::EcdsaP256, // Security default
+                key_id: response.key_id,
+                signed_at: std::time::SystemTime::now(),
+            })
         })
     }
 
-    async fn verify(
-        &self,
-        data: &[u8],
-        signature: &[u8],
-        public_key_id: &str,
-    ) -> ToadStoolResult<VerificationResult> {
-        let client = self.get_client().await?;
+    fn verify<'a>(
+        &'a self,
+        data: &'a [u8],
+        signature: &'a [u8],
+        public_key_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to verify
-        let is_valid = client.verify(data, signature, public_key_id).await?;
+            // Use Security client to verify
+            let is_valid = client.verify(data, signature, public_key_id).await?;
 
-        Ok(if is_valid {
-            VerificationResult::Valid
-        } else {
-            VerificationResult::Invalid
+            Ok(if is_valid {
+                VerificationResult::Valid
+            } else {
+                VerificationResult::Invalid
+            })
         })
     }
 
-    async fn create_permission(
+    fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> ToadStoolResult<SecurityPermission> {
-        let client = self.get_client().await?;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to create permission
-        let response = client.create_permission(&request).await?;
+            // Use Security client to create permission
+            let response = client.create_permission(&request).await?;
 
-        let now = std::time::SystemTime::now();
+            let now = std::time::SystemTime::now();
 
-        Ok(SecurityPermission {
-            permission_id: response.permission_id,
-            holder_id: request.requester_id,
-            target: request.target,
-            scope: request.scope,
-            valid_from: now,
-            valid_until: now + request.validity_duration,
-            proof: SecurityProof {
-                signature: response.proof,
-                algorithm: SignatureAlgorithm::EcdsaP256,
-                public_key_id: "security-permission-key".to_string(),
-                signed_at: now,
-            },
-            provider_metadata: self.metadata.clone(),
+            Ok(SecurityPermission {
+                permission_id: response.permission_id,
+                holder_id: request.requester_id,
+                target: request.target,
+                scope: request.scope,
+                valid_from: now,
+                valid_until: now + request.validity_duration,
+                proof: SecurityProof {
+                    signature: response.proof,
+                    algorithm: SignatureAlgorithm::EcdsaP256,
+                    public_key_id: "security-permission-key".to_string(),
+                    signed_at: now,
+                },
+                provider_metadata: self.metadata.clone(),
+            })
         })
     }
 
-    async fn validate_permission(
-        &self,
-        permission: &SecurityPermission,
-    ) -> ToadStoolResult<PermissionValidationResult> {
-        let client = self.get_client().await?;
+    fn validate_permission<'a>(
+        &'a self,
+        permission: &'a SecurityPermission,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to validate
-        let is_valid = client.validate_permission(permission).await?;
+            // Use Security client to validate
+            let is_valid = client.validate_permission(permission).await?;
 
-        Ok(if is_valid {
-            PermissionValidationResult::Valid
-        } else {
-            PermissionValidationResult::InvalidSignature
+            Ok(if is_valid {
+                PermissionValidationResult::Valid
+            } else {
+                PermissionValidationResult::InvalidSignature
+            })
         })
     }
 
-    async fn revoke_permission(
-        &self,
-        permission_id: &uuid::Uuid,
-        reason: &str,
-    ) -> ToadStoolResult<()> {
-        let client = self.get_client().await?;
+    fn revoke_permission<'a>(
+        &'a self,
+        permission_id: &'a uuid::Uuid,
+        reason: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let client = self.get_client().await?;
 
-        // Use Security client to revoke
-        client.revoke_permission(permission_id, reason).await
+            // Use Security client to revoke
+            client.revoke_permission(permission_id, reason).await
+        })
     }
 
-    async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {
-        let client_opt = self.client.read().await;
-        let client = match client_opt.as_ref() {
-            Some(c) => Arc::clone(c),
-            None => return Ok(ProviderHealth::Unhealthy),
-        };
-        drop(client_opt);
+    fn health_check(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
+        Box::pin(async {
+            let client_opt = self.client.read().await;
+            let client = match client_opt.as_ref() {
+                Some(c) => Arc::clone(c),
+                None => return Ok(ProviderHealth::Unhealthy),
+            };
+            drop(client_opt);
 
-        // Call Security health_check to verify client is responsive
-        match client.health_check().await {
-            Ok(endpoints) if !endpoints.is_empty() => Ok(ProviderHealth::Healthy),
-            Ok(_) => Ok(ProviderHealth::Degraded),
-            Err(_) => Ok(ProviderHealth::Unhealthy),
-        }
+            // Call Security health_check to verify client is responsive
+            match client.health_check().await {
+                Ok(endpoints) if !endpoints.is_empty() => Ok(ProviderHealth::Healthy),
+                Ok(_) => Ok(ProviderHealth::Degraded),
+                Err(_) => Ok(ProviderHealth::Unhealthy),
+            }
+        })
     }
 }
 

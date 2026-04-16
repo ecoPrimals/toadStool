@@ -3,7 +3,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -81,33 +83,43 @@ pub struct Terminal3270 {
 }
 
 /// 3270 Terminal Session trait
-// Native async trait - no macro needed
-#[async_trait::async_trait]
 pub trait Terminal3270Session: Send + Sync + std::fmt::Debug {
     /// Connect to mainframe
-    async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()>;
+    fn connect(
+        &mut self,
+        settings: &ConnectionSettings,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Disconnect from mainframe
-    async fn disconnect(&mut self) -> ToadStoolResult<()>;
+    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Send data to mainframe
-    async fn send_data(&mut self, data: &[u8]) -> ToadStoolResult<()>;
+    fn send_data(
+        &mut self,
+        data: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Receive data from mainframe
-    async fn receive_data(&mut self, timeout: Duration) -> ToadStoolResult<Vec<u8>>;
+    fn receive_data(
+        &mut self,
+        timeout: Duration,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>>;
 
     /// Send key sequence
-    async fn send_key(&mut self, key: Terminal3270Key) -> ToadStoolResult<()>;
+    fn send_key(
+        &mut self,
+        key: Terminal3270Key,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get screen contents
-    async fn get_screen(&self) -> ToadStoolResult<String>;
+    fn get_screen(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
 
     /// Wait for field
-    async fn wait_for_field(
+    fn wait_for_field(
         &mut self,
         field_name: &str,
         timeout: Duration,
-    ) -> ToadStoolResult<String>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
 }
 
 /// 3270 Terminal Attributes
@@ -227,20 +239,26 @@ pub struct VAXTerminalAttributes {
 }
 
 /// VAX Terminal Session trait
-// Native async trait - no macro needed
-#[async_trait::async_trait]
 pub trait VAXTerminalSession: Send + Sync + std::fmt::Debug {
     /// Connect to VAX system
-    async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()>;
+    fn connect(
+        &mut self,
+        settings: &ConnectionSettings,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Disconnect from VAX system
-    async fn disconnect(&mut self) -> ToadStoolResult<()>;
+    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Execute DCL command
-    async fn execute_dcl(&mut self, command: &str) -> ToadStoolResult<String>;
+    fn execute_dcl(
+        &mut self,
+        command: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
 
     /// Get system information
-    async fn get_system_info(&self) -> ToadStoolResult<SystemInfo>;
+    fn get_system_info(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>>;
 }
 
 /// VMS File System Manager
@@ -294,23 +312,32 @@ pub struct Terminal5250 {
 }
 
 /// 5250 Terminal Session trait
-// Native async trait - no macro needed
-#[async_trait::async_trait]
 pub trait Terminal5250Session: Send + Sync + std::fmt::Debug {
     /// Connect to AS/400
-    async fn connect(&mut self, settings: &ConnectionSettings) -> ToadStoolResult<()>;
+    fn connect(
+        &mut self,
+        settings: &ConnectionSettings,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Disconnect from AS/400
-    async fn disconnect(&mut self) -> ToadStoolResult<()>;
+    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Execute command
-    async fn execute_command(&mut self, command: &str) -> ToadStoolResult<String>;
+    fn execute_command(
+        &mut self,
+        command: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
 
     /// Navigate to menu
-    async fn navigate_menu(&mut self, menu_option: &str) -> ToadStoolResult<()>;
+    fn navigate_menu(
+        &mut self,
+        menu_option: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get screen fields
-    async fn get_screen_fields(&self) -> ToadStoolResult<Vec<Field5250>>;
+    fn get_screen_fields(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<Field5250>>> + Send + '_>>;
 }
 
 /// 5250 Field Definition

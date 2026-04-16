@@ -2,7 +2,7 @@
 //! Per-variant resource maps and capability lists for ESP32 chips.
 
 use super::super::{
-    EdgeDeviceResources, ESP32Framework, ESP32Variant, NetworkInterface, NetworkInterfaceType,
+    ESP32Framework, ESP32Variant, EdgeDeviceResources, NetworkInterface, NetworkInterfaceType,
 };
 
 /// Get chip-specific resources
@@ -11,7 +11,7 @@ pub(crate) fn get_chip_resources(chip: &ESP32Variant) -> EdgeDeviceResources {
         ESP32Variant::ESP32 => EdgeDeviceResources {
             cpu_cores: 2,
             cpu_frequency_mhz: 240,
-            memory_bytes: 520192, // 520KB SRAM
+            memory_bytes: 520192,   // 520KB SRAM
             storage_bytes: 4194304, // 4MB Flash (typical)
             network_interfaces: vec![
                 NetworkInterface {
@@ -61,7 +61,7 @@ pub(crate) fn get_chip_resources(chip: &ESP32Variant) -> EdgeDeviceResources {
         ESP32Variant::ESP32S3 => EdgeDeviceResources {
             cpu_cores: 2,
             cpu_frequency_mhz: 240,
-            memory_bytes: 524288, // 512KB SRAM
+            memory_bytes: 524288,   // 512KB SRAM
             storage_bytes: 8388608, // 8MB Flash (typical)
             network_interfaces: vec![
                 NetworkInterface {
@@ -135,7 +135,10 @@ pub(crate) fn get_chip_resources(chip: &ESP32Variant) -> EdgeDeviceResources {
 }
 
 /// Get chip and framework specific capabilities
-pub(crate) fn get_chip_capabilities(chip: &ESP32Variant, framework: &ESP32Framework) -> Vec<String> {
+pub(crate) fn get_chip_capabilities(
+    chip: &ESP32Variant,
+    framework: &ESP32Framework,
+) -> Vec<String> {
     let mut capabilities = vec![
         "gpio_control".to_string(),
         "analog_input".to_string(),

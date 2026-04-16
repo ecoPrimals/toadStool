@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for Edge runtime configuration and connection types
 
-use toadstool_runtime_edge::*;
 use std::collections::HashMap;
+use toadstool_runtime_edge::*;
 
 // ============================================================================
 // EdgeRuntimeConfig Tests
@@ -11,7 +11,7 @@ use std::collections::HashMap;
 #[test]
 fn test_edge_runtime_config_default() {
     let config = EdgeRuntimeConfig::default();
-    
+
     assert!(config.discovery_enabled);
     assert_eq!(config.discovery_timeout_secs, 30);
     assert_eq!(config.max_devices, 100);
@@ -23,7 +23,7 @@ fn test_edge_runtime_config_default() {
 #[test]
 fn test_edge_runtime_config_discovery_settings() {
     let config = EdgeRuntimeConfig::default();
-    
+
     assert!(config.discovery_enabled);
     assert_eq!(config.discovery_timeout_secs, 30);
 }
@@ -31,45 +31,51 @@ fn test_edge_runtime_config_discovery_settings() {
 #[test]
 fn test_edge_runtime_config_device_limits() {
     let config = EdgeRuntimeConfig::default();
-    
+
     assert_eq!(config.max_devices, 100);
 }
 
 #[test]
 fn test_edge_runtime_config_communication_timeout() {
     let config = EdgeRuntimeConfig::default();
-    
+
     assert_eq!(config.communication_timeout_ms, 5000);
 }
 
 #[test]
 fn test_edge_runtime_config_auto_provisioning() {
     let config = EdgeRuntimeConfig::default();
-    
+
     assert!(config.auto_provisioning);
 }
 
 #[test]
 fn test_edge_runtime_config_security_level_default() {
     let config = EdgeRuntimeConfig::default();
-    
+
     assert!(matches!(config.security_level, EdgeSecurityLevel::Standard));
 }
 
 #[test]
 fn test_edge_runtime_config_resource_strategy_default() {
     let config = EdgeRuntimeConfig::default();
-    
-    assert!(matches!(config.resource_strategy, ResourceAllocationStrategy::Adaptive));
+
+    assert!(matches!(
+        config.resource_strategy,
+        ResourceAllocationStrategy::Adaptive
+    ));
 }
 
 #[test]
 fn test_edge_runtime_config_clone() {
     let config1 = EdgeRuntimeConfig::default();
     let config2 = config1.clone();
-    
+
     assert_eq!(config1.max_devices, config2.max_devices);
-    assert_eq!(config1.discovery_timeout_secs, config2.discovery_timeout_secs);
+    assert_eq!(
+        config1.discovery_timeout_secs,
+        config2.discovery_timeout_secs
+    );
 }
 
 // ============================================================================
@@ -104,9 +110,9 @@ fn test_edge_security_level_maximum() {
 fn test_edge_security_level_clone() {
     let level1 = EdgeSecurityLevel::High;
     let level2 = level1.clone();
-    
+
     match (level1, level2) {
-        (EdgeSecurityLevel::High, EdgeSecurityLevel::High) => {},
+        (EdgeSecurityLevel::High, EdgeSecurityLevel::High) => {}
         _ => panic!("Clone failed"),
     }
 }
@@ -138,9 +144,9 @@ fn test_resource_allocation_custom() {
     let mut rules = HashMap::new();
     rules.insert("memory".to_string(), 0.8);
     rules.insert("cpu".to_string(), 0.6);
-    
+
     let strategy = ResourceAllocationStrategy::Custom(rules.clone());
-    
+
     match strategy {
         ResourceAllocationStrategy::Custom(r) => {
             assert_eq!(r.len(), 2);
@@ -154,9 +160,9 @@ fn test_resource_allocation_custom() {
 fn test_resource_allocation_clone() {
     let strategy1 = ResourceAllocationStrategy::Adaptive;
     let strategy2 = strategy1.clone();
-    
+
     match (strategy1, strategy2) {
-        (ResourceAllocationStrategy::Adaptive, ResourceAllocationStrategy::Adaptive) => {},
+        (ResourceAllocationStrategy::Adaptive, ResourceAllocationStrategy::Adaptive) => {}
         _ => panic!("Clone failed"),
     }
 }
@@ -421,7 +427,7 @@ fn test_resource_usage_creation() {
         network_bytes_sent: 5000,
         network_bytes_received: 10000,
     };
-    
+
     assert_eq!(usage.cpu_percent, 45.5);
     assert_eq!(usage.memory_bytes, 1024 * 1024);
     assert_eq!(usage.storage_bytes, 1024 * 1024 * 10);
@@ -438,10 +444,9 @@ fn test_resource_usage_clone() {
         network_bytes_sent: 1000,
         network_bytes_received: 2000,
     };
-    
+
     let usage2 = usage1.clone();
-    
+
     assert_eq!(usage1.cpu_percent, usage2.cpu_percent);
     assert_eq!(usage1.memory_bytes, usage2.memory_bytes);
 }
-

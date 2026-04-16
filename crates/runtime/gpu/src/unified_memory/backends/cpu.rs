@@ -12,7 +12,8 @@ use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, CpuAllocation, UnifiedMemoryBackend},
     types::{BackendType, MemoryFlags, UnifiedMemoryCapabilities},
 };
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_hw_safe::AlignedAlloc;
 
@@ -62,8 +63,6 @@ impl BackendInitializer for CpuBackend {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl UnifiedMemoryBackend for CpuBackend {
     fn name(&self) -> &'static str {
         "CPU"
@@ -77,42 +76,54 @@ impl UnifiedMemoryBackend for CpuBackend {
         &self.capabilities
     }
 
-    async fn allocate_unified(
+    fn allocate_unified(
         &self,
         size: usize,
         _flags: MemoryFlags,
-    ) -> ToadStoolResult<BackendAllocation> {
-        let alloc = AlignedAlloc::new(size, self.capabilities.alignment_requirement)
-            .map_err(|e| ToadStoolError::runtime(format!("CPU alloc: {e}")))?;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<BackendAllocation>> + Send + '_>> {
+        Box::pin(async move {
+            let alloc = AlignedAlloc::new(size, self.capabilities.alignment_requirement)
+                .map_err(|e| ToadStoolError::runtime(format!("CPU alloc: {e}")))?;
 
-        tracing::debug!(
-            "CPU backend allocated {} bytes (alignment {}, zeroed)",
-            alloc.size(),
-            self.capabilities.alignment_requirement
-        );
+            tracing::debug!(
+                "CPU backend allocated {} bytes (alignment {}, zeroed)",
+                alloc.size(),
+                self.capabilities.alignment_requirement
+            );
 
-        Ok(BackendAllocation::Cpu(CpuAllocation { alloc }))
+            Ok(BackendAllocation::Cpu(CpuAllocation { alloc }))
+        })
     }
 
-    async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {
-        match allocation {
-            BackendAllocation::Cpu(_alloc) => {
-                // AlignedAlloc handles dealloc in Drop — just let it drop
-                Ok(())
+    fn free_unified(
+        &self,
+        allocation: BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            match allocation {
+                BackendAllocation::Cpu(_alloc) => {
+                    // AlignedAlloc handles dealloc in Drop — just let it drop
+                    Ok(())
+                }
+                _ => Err(ToadStoolError::runtime(
+                    "Invalid allocation type for CPU backend",
+                )),
             }
-            _ => Err(ToadStoolError::runtime(
-                "Invalid allocation type for CPU backend",
-            )),
-        }
+        })
     }
 
-    async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
-        match allocation {
-            BackendAllocation::Cpu(alloc) => Ok(alloc.ptr()),
-            _ => Err(ToadStoolError::runtime(
-                "Invalid allocation type for CPU backend",
-            )),
-        }
+    fn map_cpu_ptr<'a>(
+        &'a self,
+        allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<*mut u8>> + Send + 'a>> {
+        Box::pin(async {
+            match allocation {
+                BackendAllocation::Cpu(alloc) => Ok(alloc.ptr()),
+                _ => Err(ToadStoolError::runtime(
+                    "Invalid allocation type for CPU backend",
+                )),
+            }
+        })
     }
 
     fn get_device_ptr(&self, allocation: &BackendAllocation) -> *const u8 {
@@ -122,12 +133,18 @@ impl UnifiedMemoryBackend for CpuBackend {
         }
     }
 
-    async fn sync_cpu_to_device(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
-        Ok(())
+    fn sync_cpu_to_device<'a>(
+        &'a self,
+        _allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn sync_device_to_cpu(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
-        Ok(())
+    fn sync_device_to_cpu<'a>(
+        &'a self,
+        _allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
     }
 
     fn is_valid(&self, allocation: &BackendAllocation) -> bool {

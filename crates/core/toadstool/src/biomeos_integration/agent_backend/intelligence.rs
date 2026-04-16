@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use super::super::types::{AgentConfig, ModelConfig};
 use super::AgentBackend;
@@ -91,151 +92,205 @@ impl IntelligenceBackend {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl AgentBackend for IntelligenceBackend {
-    async fn initialize(&self) -> ToadStoolResult<()> {
-        // Health check via JSON-RPC over unix socket
-        let _health: serde_json::Value = self
-            .rpc_client
-            .call("ai.health", serde_json::json!({}))
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to connect to AI/routing service: {e}"))
-            })?;
+    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            // Health check via JSON-RPC over unix socket
+            let _health: serde_json::Value = self
+                .rpc_client
+                .call("ai.health", serde_json::json!({}))
+                .await
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to connect to AI/routing service: {e}"))
+                })?;
 
-        tracing::info!("Successfully connected to AI/routing service via unix socket");
-        Ok(())
+            tracing::info!("Successfully connected to AI/routing service via unix socket");
+            Ok(())
+        })
     }
 
-    async fn deploy_agent(&self, config: &AgentConfig) -> ToadStoolResult<AgentInfo> {
-        let params = serde_json::to_value(config)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
+    fn deploy_agent<'a>(
+        &'a self,
+        config: &'a AgentConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::to_value(config)
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
 
-        let agent_info: AgentInfo = self
-            .rpc_client
-            .call_typed("ai.deploy_agent", params)
-            .await
-            .map_err(|e| {
-                ToadStoolError::runtime(format!("Failed to deploy agent {}: {}", config.name, e))
-            })?;
+            let agent_info: AgentInfo = self
+                .rpc_client
+                .call_typed("ai.deploy_agent", params)
+                .await
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!(
+                        "Failed to deploy agent {}: {}",
+                        config.name, e
+                    ))
+                })?;
 
-        tracing::info!("Deployed agent: {}", config.name);
-        Ok(agent_info)
+            tracing::info!("Deployed agent: {}", config.name);
+            Ok(agent_info)
+        })
     }
 
-    async fn load_model(&self, config: &ModelConfig) -> ToadStoolResult<ModelInfo> {
-        let params = serde_json::to_value(config)
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
+    fn load_model<'a>(
+        &'a self,
+        config: &'a ModelConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::to_value(config)
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
 
-        let model_info: ModelInfo = self
-            .rpc_client
-            .call_typed("ai.load_model", params)
-            .await
-            .map_err(|e| {
+            let model_info: ModelInfo = self
+                .rpc_client
+                .call_typed("ai.load_model", params)
+                .await
+                .map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to load model {}: {}", config.name, e))
             })?;
 
-        tracing::info!("Loaded model: {}", config.name);
-        Ok(model_info)
+            tracing::info!("Loaded model: {}", config.name);
+            Ok(model_info)
+        })
     }
 
-    async fn scale_agent(&self, agent_name: &str, replicas: u32) -> ToadStoolResult<()> {
-        let params = serde_json::json!({
-            "agent_name": agent_name,
-            "replicas": replicas
-        });
+    fn scale_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+        replicas: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({
+                "agent_name": agent_name,
+                "replicas": replicas
+            });
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("ai.scale_agent", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to scale agent: {e}")))?;
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("ai.scale_agent", params)
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to scale agent: {e}")))?;
 
-        tracing::info!("Scaled agent {} to {} replicas", agent_name, replicas);
-        Ok(())
+            tracing::info!("Scaled agent {} to {} replicas", agent_name, replicas);
+            Ok(())
+        })
     }
 
-    async fn stop_agent(&self, agent_name: &str) -> ToadStoolResult<()> {
-        let params = serde_json::json!({"agent_name": agent_name});
+    fn stop_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({"agent_name": agent_name});
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("ai.stop_agent", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to stop agent: {e}")))?;
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("ai.stop_agent", params)
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to stop agent: {e}")))?;
 
-        tracing::info!("Stopped agent {}", agent_name);
-        Ok(())
+            tracing::info!("Stopped agent {}", agent_name);
+            Ok(())
+        })
     }
 
-    async fn remove_agent(&self, agent_name: &str) -> ToadStoolResult<()> {
-        let params = serde_json::json!({"agent_name": agent_name});
+    fn remove_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({"agent_name": agent_name});
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("ai.remove_agent", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to remove agent: {e}")))?;
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("ai.remove_agent", params)
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to remove agent: {e}")))?;
 
-        tracing::info!("Removed agent {}", agent_name);
-        Ok(())
+            tracing::info!("Removed agent {}", agent_name);
+            Ok(())
+        })
     }
 
-    async fn get_agent_status(&self, agent_name: &str) -> ToadStoolResult<AgentStatus> {
-        let params = serde_json::json!({"agent_name": agent_name});
+    fn get_agent_status<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({"agent_name": agent_name});
 
-        let status: AgentStatus = self
-            .rpc_client
-            .call_typed("ai.get_agent_status", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent status: {e}")))?;
+            let status: AgentStatus = self
+                .rpc_client
+                .call_typed("ai.get_agent_status", params)
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent status: {e}")))?;
 
-        Ok(status)
+            Ok(status)
+        })
     }
 
-    async fn list_agents(&self) -> ToadStoolResult<Vec<AgentInfo>> {
-        let agents: Vec<AgentInfo> = self
-            .rpc_client
-            .call_typed("ai.list_agents", serde_json::json!({}))
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to list agents: {e}")))?;
+    fn list_agents(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_>> {
+        Box::pin(async move {
+            let agents: Vec<AgentInfo> = self
+                .rpc_client
+                .call_typed("ai.list_agents", serde_json::json!({}))
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to list agents: {e}")))?;
 
-        Ok(agents)
+            Ok(agents)
+        })
     }
 
-    async fn list_models(&self) -> ToadStoolResult<Vec<ModelInfo>> {
-        let models: Vec<ModelInfo> = self
-            .rpc_client
-            .call_typed("ai.list_models", serde_json::json!({}))
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to list models: {e}")))?;
+    fn list_models(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_>> {
+        Box::pin(async move {
+            let models: Vec<ModelInfo> = self
+                .rpc_client
+                .call_typed("ai.list_models", serde_json::json!({}))
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to list models: {e}")))?;
 
-        Ok(models)
+            Ok(models)
+        })
     }
 
-    async fn get_agent_resources(&self, agent_name: &str) -> ToadStoolResult<AgentResourceUsage> {
-        let params = serde_json::json!({"agent_name": agent_name});
+    fn get_agent_resources<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({"agent_name": agent_name});
 
-        let resources: AgentResourceUsage = self
-            .rpc_client
-            .call_typed("ai.get_agent_resources", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent resources: {e}")))?;
+            let resources: AgentResourceUsage = self
+                .rpc_client
+                .call_typed("ai.get_agent_resources", params)
+                .await
+                .map_err(|e| {
+                    ToadStoolError::runtime(format!("Failed to get agent resources: {e}"))
+                })?;
 
-        Ok(resources)
+            Ok(resources)
+        })
     }
 
-    async fn unload_model(&self, model_name: &str) -> ToadStoolResult<()> {
-        let params = serde_json::json!({"model_name": model_name});
+    fn unload_model<'a>(
+        &'a self,
+        model_name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let params = serde_json::json!({"model_name": model_name});
 
-        let _: serde_json::Value = self
-            .rpc_client
-            .call("ai.unload_model", params)
-            .await
-            .map_err(|e| ToadStoolError::runtime(format!("Failed to unload model: {e}")))?;
+            let _: serde_json::Value = self
+                .rpc_client
+                .call("ai.unload_model", params)
+                .await
+                .map_err(|e| ToadStoolError::runtime(format!("Failed to unload model: {e}")))?;
 
-        tracing::info!("Unloaded model {}", model_name);
-        Ok(())
+            tracing::info!("Unloaded model {}", model_name);
+            Ok(())
+        })
     }
 }

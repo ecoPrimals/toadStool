@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::future::Future;
+use std::pin::Pin;
+
 use super::*;
-use async_trait::async_trait;
 use toadstool_common::primal_identity::{CoordinationCapability, ServiceEndpoint};
 use toadstool_common::runtime_discovery::{DiscoveryClient, LocalhostDiscoveryClient};
 
@@ -20,38 +22,49 @@ struct TestDiscoveryClient {
     fail: bool,
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl DiscoveryClient for TestDiscoveryClient {
-    async fn discover_by_capability(
-        &self,
-        _capability: &Capability,
-    ) -> ToadStoolResult<Vec<DiscoveredService>> {
-        if self.fail {
-            return Err(toadstool_common::ToadStoolError::Integration(
-                toadstool_common::error::IntegrationError::ServiceUnavailable {
-                    service: "test".to_string(),
-                    reason: "forced failure".to_string(),
-                },
-            ));
-        }
-        Ok(self.services.clone())
+    fn discover_by_capability<'a>(
+        &'a self,
+        _capability: &'a Capability,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
+        Box::pin(async move {
+            if self.fail {
+                return Err(toadstool_common::ToadStoolError::Integration(
+                    toadstool_common::error::IntegrationError::ServiceUnavailable {
+                        service: "test".to_string(),
+                        reason: "forced failure".to_string(),
+                    },
+                ));
+            }
+            Ok(self.services.clone())
+        })
     }
 
-    async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
-        Ok(self.services.clone())
+    fn discover_all<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
+        Box::pin(async move { Ok(self.services.clone()) })
     }
 
-    async fn register_service(&self, _service: &DiscoveredService) -> ToadStoolResult<()> {
-        Ok(())
+    fn register_service<'a>(
+        &'a self,
+        _service: &'a DiscoveredService,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn deregister_service(&self, _service_id: &str) -> ToadStoolResult<()> {
-        Ok(())
+    fn deregister_service<'a>(
+        &'a self,
+        _service_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn health_check(&self, _service_id: &str) -> ToadStoolResult<bool> {
-        Ok(true)
+    fn health_check<'a>(
+        &'a self,
+        _service_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>> {
+        Box::pin(async move { Ok(true) })
     }
 }
 

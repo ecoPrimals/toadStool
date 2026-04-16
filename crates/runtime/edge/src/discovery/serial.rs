@@ -17,32 +17,41 @@ pub struct SerialPortDiscovery {
     pub(super) timeout: Duration,
 }
 
-#[async_trait::async_trait]
 impl DiscoveryMethod for SerialPortDiscovery {
     fn get_name(&self) -> &str {
         "Serial Port Discovery"
     }
 
-    async fn discover(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
-        let mut devices = Vec::new();
+    fn discover(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
+        >,
+    > {
+        Box::pin(async move {
+            let mut devices = Vec::new();
 
-        // Get available serial ports
-        let ports = serialport::available_ports().map_err(|e| {
-            ToadStoolError::discovery_error(format!("Failed to enumerate serial ports: {}", e))
-        })?;
+            // Get available serial ports
+            let ports = serialport::available_ports().map_err(|e| {
+                ToadStoolError::discovery_error(format!("Failed to enumerate serial ports: {}", e))
+            })?;
 
-        for port in ports {
-            // Try to identify device type
-            if let Some(device) = self.identify_serial_device(&port).await {
-                devices.push(device);
+            for port in ports {
+                // Try to identify device type
+                if let Some(device) = self.identify_serial_device(&port).await {
+                    devices.push(device);
+                }
             }
-        }
 
-        Ok(devices)
+            Ok(devices)
+        })
     }
 
-    async fn is_available(&self) -> bool {
-        serialport::available_ports().is_ok()
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async { serialport::available_ports().is_ok() })
     }
 
     fn get_supported_types(&self) -> Vec<String> {
@@ -63,12 +72,9 @@ impl SerialPortDiscovery {
             // Check for Arduino devices
             if ArduinoDevice::is_arduino_device(usb_info.vid, usb_info.pid) {
                 let board = ArduinoDevice::detect_board_type(usb_info.vid, usb_info.pid);
-                if let Ok(device) = ArduinoDevice::new(
-                    board,
-                    "1.0".to_string(),
-                    port.port_name.clone(),
-                    9600,
-                ) {
+                if let Ok(device) =
+                    ArduinoDevice::new(board, "1.0".to_string(), port.port_name.clone(), 9600)
+                {
                     return Some(Arc::new(device));
                 }
             }

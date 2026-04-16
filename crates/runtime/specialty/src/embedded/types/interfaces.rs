@@ -3,12 +3,13 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::types::configs::embedded::{PeripheralConfig, PeripheralType};
 use crate::{LegacyArchitecture, ProgrammingInterface, ProgrammingInterfaceType, ToadStoolResult};
 
 /// Programmer interface trait
-#[async_trait::async_trait]
 pub trait ProgrammerInterface: Send + Sync + std::fmt::Debug {
     /// Get programmer name
     fn name(&self) -> &'static str;
@@ -17,28 +18,49 @@ pub trait ProgrammerInterface: Send + Sync + std::fmt::Debug {
     fn supported_interfaces(&self) -> Vec<ProgrammingInterfaceType>;
 
     /// Initialize programmer
-    async fn initialize(&mut self, config: &ProgrammingInterface) -> ToadStoolResult<()>;
+    fn initialize<'a>(
+        &'a mut self,
+        config: &'a ProgrammingInterface,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Connect to target
-    async fn connect(&mut self) -> ToadStoolResult<()>;
+    fn connect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Disconnect from target
-    async fn disconnect(&mut self) -> ToadStoolResult<()>;
+    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Read memory
-    async fn read_memory(&mut self, address: u32, length: u32) -> ToadStoolResult<Vec<u8>>;
+    fn read_memory(
+        &mut self,
+        address: u32,
+        length: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>>;
 
     /// Write memory
-    async fn write_memory(&mut self, address: u32, data: &[u8]) -> ToadStoolResult<()>;
+    fn write_memory<'a>(
+        &'a mut self,
+        address: u32,
+        data: &'a [u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Erase memory
-    async fn erase_memory(&mut self, address: u32, length: u32) -> ToadStoolResult<()>;
+    fn erase_memory(
+        &mut self,
+        address: u32,
+        length: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Verify memory
-    async fn verify_memory(&mut self, address: u32, expected_data: &[u8]) -> ToadStoolResult<bool>;
+    fn verify_memory<'a>(
+        &'a mut self,
+        address: u32,
+        expected_data: &'a [u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>>;
 
     /// Get target information
-    async fn get_target_info(&self) -> ToadStoolResult<TargetInfo>;
+    fn get_target_info(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<TargetInfo>> + Send + '_>>;
 }
 
 /// Target information
@@ -61,7 +83,6 @@ pub struct TargetInfo {
 }
 
 /// Embedded emulator trait
-#[async_trait::async_trait]
 pub trait EmbeddedEmulator: Send + Sync + std::fmt::Debug {
     /// Get emulator name
     fn name(&self) -> &'static str;
@@ -70,40 +91,68 @@ pub trait EmbeddedEmulator: Send + Sync + std::fmt::Debug {
     fn supported_architectures(&self) -> Vec<LegacyArchitecture>;
 
     /// Initialize emulator
-    async fn initialize(&mut self, config: &crate::EmbeddedConfig) -> ToadStoolResult<()>;
+    fn initialize<'a>(
+        &'a mut self,
+        config: &'a crate::EmbeddedConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Load ROM image
-    async fn load_rom(&mut self, rom_data: &[u8], load_address: u32) -> ToadStoolResult<()>;
+    fn load_rom<'a>(
+        &'a mut self,
+        rom_data: &'a [u8],
+        load_address: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Start emulation
-    async fn start(&mut self) -> ToadStoolResult<()>;
+    fn start(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Stop emulation
-    async fn stop(&mut self) -> ToadStoolResult<()>;
+    fn stop(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Step instruction
-    async fn step(&mut self) -> ToadStoolResult<()>;
+    fn step(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Set breakpoint
-    async fn set_breakpoint(&mut self, address: u32) -> ToadStoolResult<()>;
+    fn set_breakpoint(
+        &mut self,
+        address: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Clear breakpoint
-    async fn clear_breakpoint(&mut self, address: u32) -> ToadStoolResult<()>;
+    fn clear_breakpoint(
+        &mut self,
+        address: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Read CPU registers
-    async fn read_registers(&self) -> ToadStoolResult<CpuRegisters>;
+    fn read_registers(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CpuRegisters>> + Send + '_>>;
 
     /// Write CPU registers
-    async fn write_registers(&mut self, registers: &CpuRegisters) -> ToadStoolResult<()>;
+    fn write_registers<'a>(
+        &'a mut self,
+        registers: &'a CpuRegisters,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Read memory
-    async fn read_memory(&self, address: u32, length: u32) -> ToadStoolResult<Vec<u8>>;
+    fn read_memory(
+        &self,
+        address: u32,
+        length: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>>;
 
     /// Write memory
-    async fn write_memory(&mut self, address: u32, data: &[u8]) -> ToadStoolResult<()>;
+    fn write_memory<'a>(
+        &'a mut self,
+        address: u32,
+        data: &'a [u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Get emulation status
-    async fn get_status(&self) -> ToadStoolResult<EmulationStatus>;
+    fn get_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EmulationStatus>> + Send + '_>>;
 }
 
 /// CPU registers
@@ -141,7 +190,6 @@ pub enum EmulationStatus {
 }
 
 /// Peripheral interface trait
-#[async_trait::async_trait]
 pub trait PeripheralInterface: Send + Sync + std::fmt::Debug {
     /// Get peripheral name
     fn name(&self) -> &'static str;
@@ -150,19 +198,29 @@ pub trait PeripheralInterface: Send + Sync + std::fmt::Debug {
     fn peripheral_type(&self) -> PeripheralType;
 
     /// Initialize peripheral
-    async fn initialize(&mut self, config: &PeripheralConfig) -> ToadStoolResult<()>;
+    fn initialize<'a>(
+        &'a mut self,
+        config: &'a PeripheralConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Read from peripheral
-    async fn read(&self, address: u32) -> ToadStoolResult<u32>;
+    fn read(&self, address: u32)
+    -> Pin<Box<dyn Future<Output = ToadStoolResult<u32>> + Send + '_>>;
 
     /// Write to peripheral
-    async fn write(&mut self, address: u32, value: u32) -> ToadStoolResult<()>;
+    fn write(
+        &mut self,
+        address: u32,
+        value: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Reset peripheral
-    async fn reset(&mut self) -> ToadStoolResult<()>;
+    fn reset(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get peripheral status
-    async fn get_status(&self) -> ToadStoolResult<PeripheralStatus>;
+    fn get_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PeripheralStatus>> + Send + '_>>;
 }
 
 /// Peripheral status

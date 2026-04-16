@@ -3,14 +3,15 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 
 use super::LegacySystemType;
 
 use crate::ToadStoolResult;
 
 /// Legacy system emulator trait
-#[async_trait::async_trait]
 pub trait LegacyEmulator: Send + Sync {
     /// Get emulator name
     fn name(&self) -> &'static str;
@@ -19,28 +20,42 @@ pub trait LegacyEmulator: Send + Sync {
     fn supported_systems(&self) -> Vec<LegacySystemType>;
 
     /// Initialize the emulator
-    async fn initialize(&mut self, config: &EmulationConfig) -> ToadStoolResult<()>;
+    fn initialize<'a>(
+        &'a mut self,
+        config: &'a EmulationConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Start the emulator
-    async fn start(&mut self) -> ToadStoolResult<()>;
+    fn start<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Stop the emulator
-    async fn stop(&mut self) -> ToadStoolResult<()>;
+    fn stop<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Reset the emulator
-    async fn reset(&mut self) -> ToadStoolResult<()>;
+    fn reset<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Load disk/ROM image
-    async fn load_image(&mut self, image: &Path) -> ToadStoolResult<()>;
+    fn load_image<'a>(
+        &'a mut self,
+        image: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Save emulator state
-    async fn save_state(&mut self, path: &Path) -> ToadStoolResult<()>;
+    fn save_state<'a>(
+        &'a mut self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Load emulator state
-    async fn load_state(&mut self, path: &Path) -> ToadStoolResult<()>;
+    fn load_state<'a>(
+        &'a mut self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Get emulator status
-    async fn get_status(&self) -> ToadStoolResult<EmulationStatus>;
+    fn get_status<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EmulationStatus>> + Send + 'a>>;
 }
 
 /// Emulation configuration

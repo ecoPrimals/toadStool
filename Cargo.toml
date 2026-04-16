@@ -31,7 +31,7 @@ members = [
     "crates/runtime/display",         # Display backend for petalTongue (drm/evdev use kernel FFI)
     "crates/runtime/gpu",
     "crates/runtime/specialty",
-    # "crates/runtime/edge",          # Excluded: serialport→libudev (C dep). Add to members + install libudev-dev to build.
+    "crates/runtime/edge",
     "crates/runtime/native",
     "crates/runtime/orchestration",   # NEW: Workload orchestration (Jan 31, 2026) 🎯
     # "crates/runtime/python",        # Excluded: pyo3 FFI violates ecoBin v3.0. Use Squirrel IPC for Python.
@@ -114,7 +114,6 @@ uuid = { version = "1.7", features = ["v4", "serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 thiserror = "2.0"
-async-trait = "0.1"
 regex = "1.10"
 
 # Configuration

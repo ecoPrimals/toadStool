@@ -205,7 +205,8 @@ impl SelectionPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
+    use std::future::Future;
+    use std::pin::Pin;
     use std::sync::Arc;
     use toadstool_runtime_universal::SubstrateError;
     use toadstool_runtime_universal::substrate::*;
@@ -216,8 +217,6 @@ mod tests {
         power: f64,
     }
 
-    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-    #[async_trait]
     impl ComputeSubstrate for MockSubstrate {
         fn name(&self) -> &str {
             &self.name
@@ -233,11 +232,12 @@ mod tests {
             caps
         }
 
-        async fn execute_buffer_op(
+        fn execute_buffer_op(
             &self,
             _op: BufferOperation,
-        ) -> Result<BufferOutput, SubstrateError> {
-            Ok(BufferOutput::default())
+        ) -> Pin<Box<dyn Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>>
+        {
+            Box::pin(async { Ok(BufferOutput::default()) })
         }
     }
 

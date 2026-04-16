@@ -159,65 +159,86 @@ mod tests {
         WorkloadLocation, WorkloadSpec,
     };
     use crate::composition_constraints::Constraint;
-    use async_trait::async_trait;
     use std::collections::HashMap;
+    use std::future::Future;
+    use std::pin::Pin;
 
     struct MockProvider;
-    // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-    #[async_trait]
     impl CloudProvider for MockProvider {
         fn name(&self) -> &'static str {
             "MockProvider"
         }
-        async fn capabilities(&self) -> Result<CloudCapabilities, CloudError> {
-            Ok(CloudCapabilities {
-                name: "MockProvider".to_string(),
-                available_regions: vec!["us-west-1".to_string()],
-                supports_gpu: true,
-                gpu_types: vec!["V100".to_string()],
-                max_memory_gb: 64.0,
-                max_cpu_cores: 16,
-                supports_spot_instances: false,
-                supports_autoscaling: false,
-                custom: HashMap::new(),
+        fn capabilities(
+            &self,
+        ) -> Pin<Box<dyn Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_>>
+        {
+            Box::pin(async move {
+                Ok(CloudCapabilities {
+                    name: "MockProvider".to_string(),
+                    available_regions: vec!["us-west-1".to_string()],
+                    supports_gpu: true,
+                    gpu_types: vec!["V100".to_string()],
+                    max_memory_gb: 64.0,
+                    max_cpu_cores: 16,
+                    supports_spot_instances: false,
+                    supports_autoscaling: false,
+                    custom: HashMap::new(),
+                })
             })
         }
-        async fn deploy_workload(&self, id: &str, _: &str) -> Result<String, CloudError> {
-            Ok(format!("inst-{id}"))
+        fn deploy_workload<'a>(
+            &'a self,
+            id: &'a str,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
+            Box::pin(async move { Ok(format!("inst-{id}")) })
         }
-        async fn migrate_workload(
-            &self,
-            id: &str,
+        fn migrate_workload<'a>(
+            &'a self,
+            id: &'a str,
             _: WorkloadLocation,
-            _: &str,
-        ) -> Result<String, CloudError> {
-            Ok(format!("migrated-{id}"))
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
+            Box::pin(async move { Ok(format!("migrated-{id}")) })
         }
-        async fn check_health(&self, _: &str) -> Result<WorkloadHealth, CloudError> {
-            Ok(WorkloadHealth::Healthy)
+        fn check_health<'a>(
+            &'a self,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a>> {
+            Box::pin(async move { Ok(WorkloadHealth::Healthy) })
         }
-        async fn terminate_workload(&self, _: &str) -> Result<(), CloudError> {
-            Ok(())
+        fn terminate_workload<'a>(
+            &'a self,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<(), CloudError>> + Send + 'a>> {
+            Box::pin(async move { Ok(()) })
         }
-        async fn estimate_cost(
-            &self,
-            _: &WorkloadSpec,
-            _: &str,
-        ) -> Result<CostEstimate, CloudError> {
-            Ok(CostEstimate {
-                cost_per_hour: 5.0,
-                estimated_total_cost: Some(10.0),
-                breakdown: HashMap::new(),
+        fn estimate_cost<'a>(
+            &'a self,
+            _: &'a WorkloadSpec,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<CostEstimate, CloudError>> + Send + 'a>> {
+            Box::pin(async move {
+                Ok(CostEstimate {
+                    cost_per_hour: 5.0,
+                    estimated_total_cost: Some(10.0),
+                    breakdown: HashMap::new(),
+                })
             })
         }
-        async fn available_gpu_types(&self, _: &str) -> Result<Vec<GpuType>, CloudError> {
-            Ok(vec![GpuType {
-                name: "V100".to_string(),
-                memory_gb: 16.0,
-                compute_capability: Some("7.0".to_string()),
-                cost_per_hour: 3.0,
-                available_regions: vec!["us-west-1".to_string()],
-            }])
+        fn available_gpu_types<'a>(
+            &'a self,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a>> {
+            Box::pin(async move {
+                Ok(vec![GpuType {
+                    name: "V100".to_string(),
+                    memory_gb: 16.0,
+                    compute_capability: Some("7.0".to_string()),
+                    cost_per_hour: 3.0,
+                    available_regions: vec!["us-west-1".to_string()],
+                }])
+            })
         }
     }
 

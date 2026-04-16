@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Memory pressure handling and optimization.
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tracing::{error, warn};
@@ -48,12 +49,15 @@ pub enum MemoryPressureLevel {
 
 /// Memory pressure callback trait
 ///
-/// NOTE(async-dyn): [`MemoryPressureHandler`] stores `Arc<dyn MemoryPressureCallback>`. Native
-/// `async fn` in traits is not object-safe; `#[async_trait]` is required.
-#[async_trait]
+/// Stored as `Arc<dyn MemoryPressureCallback>` in [`MemoryPressureHandler`].
+/// Uses manual `Pin<Box<dyn Future>>` for dyn-compatibility (no `async-trait` macro).
 pub trait MemoryPressureCallback: Send + Sync {
     /// Invoked when memory pressure exceeds a threshold.
-    async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64);
+    fn handle_pressure(
+        &self,
+        level: MemoryPressureLevel,
+        usage_percent: f64,
+    ) -> Pin<Box<dyn Future<Output = ()> + Send + '_>>;
 }
 
 /// Memory pressure handler
@@ -131,21 +135,26 @@ impl MemoryPressureHandler {
 /// Default memory pressure callback
 pub struct DefaultMemoryPressureCallback;
 
-#[async_trait]
 impl MemoryPressureCallback for DefaultMemoryPressureCallback {
-    async fn handle_pressure(&self, level: MemoryPressureLevel, usage_percent: f64) {
-        match level {
-            MemoryPressureLevel::Normal => {}
-            MemoryPressureLevel::Warning => {
-                warn!("Memory pressure warning: {:.1}% usage", usage_percent);
+    fn handle_pressure(
+        &self,
+        level: MemoryPressureLevel,
+        usage_percent: f64,
+    ) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
+        Box::pin(async move {
+            match level {
+                MemoryPressureLevel::Normal => {}
+                MemoryPressureLevel::Warning => {
+                    warn!("Memory pressure warning: {:.1}% usage", usage_percent);
+                }
+                MemoryPressureLevel::Critical => {
+                    error!("Memory pressure critical: {:.1}% usage", usage_percent);
+                }
+                MemoryPressureLevel::Emergency => {
+                    error!("Memory pressure emergency: {:.1}% usage", usage_percent);
+                }
             }
-            MemoryPressureLevel::Critical => {
-                error!("Memory pressure critical: {:.1}% usage", usage_percent);
-            }
-            MemoryPressureLevel::Emergency => {
-                error!("Memory pressure emergency: {:.1}% usage", usage_percent);
-            }
-        }
+        })
     }
 }
 
@@ -209,18 +218,23 @@ mod tests {
         LEVEL_SEEN.store(0, Ordering::SeqCst);
 
         struct CallbackTracker;
-        #[async_trait::async_trait]
         impl MemoryPressureCallback for CallbackTracker {
-            async fn handle_pressure(&self, level: MemoryPressureLevel, _usage_percent: f64) {
-                LEVEL_SEEN.store(
-                    match level {
-                        MemoryPressureLevel::Normal => 0,
-                        MemoryPressureLevel::Warning => 1,
-                        MemoryPressureLevel::Critical => 2,
-                        MemoryPressureLevel::Emergency => 3,
-                    },
-                    Ordering::SeqCst,
-                );
+            fn handle_pressure(
+                &self,
+                level: MemoryPressureLevel,
+                _usage_percent: f64,
+            ) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
+                Box::pin(async move {
+                    LEVEL_SEEN.store(
+                        match level {
+                            MemoryPressureLevel::Normal => 0,
+                            MemoryPressureLevel::Warning => 1,
+                            MemoryPressureLevel::Critical => 2,
+                            MemoryPressureLevel::Emergency => 3,
+                        },
+                        Ordering::SeqCst,
+                    );
+                })
             }
         }
 

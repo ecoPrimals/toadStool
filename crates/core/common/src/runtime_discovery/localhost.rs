@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::collections::HashMap;
-
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::error::ToadStoolResult;
 use crate::primal_identity::{Capability, DiscoveredService, ServiceEndpoint};
@@ -65,40 +65,57 @@ impl Default for LocalhostDiscoveryClient {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl DiscoveryClient for LocalhostDiscoveryClient {
-    async fn discover_by_capability(
-        &self,
-        capability: &Capability,
-    ) -> ToadStoolResult<Vec<DiscoveredService>> {
-        Ok(self
-            .services
-            .iter()
-            .filter(|s| s.has_capability(capability))
-            .cloned()
-            .collect())
+    fn discover_by_capability<'a>(
+        &'a self,
+        capability: &'a Capability,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
+        Box::pin(async move {
+            Ok(self
+                .services
+                .iter()
+                .filter(|s| s.has_capability(capability))
+                .cloned()
+                .collect())
+        })
     }
 
-    async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
-        Ok(self.services.clone())
+    fn discover_all<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
+        Box::pin(async move { Ok(self.services.clone()) })
     }
 
-    async fn register_service(&self, _service: &DiscoveredService) -> ToadStoolResult<()> {
-        // Localhost client is read-only
-        Ok(())
+    fn register_service<'a>(
+        &'a self,
+        _service: &'a DiscoveredService,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            // Localhost client is read-only
+            Ok(())
+        })
     }
 
-    async fn deregister_service(&self, _service_id: &str) -> ToadStoolResult<()> {
-        // Localhost client is read-only
-        Ok(())
+    fn deregister_service<'a>(
+        &'a self,
+        _service_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            // Localhost client is read-only
+            Ok(())
+        })
     }
 
-    async fn health_check(&self, service_id: &str) -> ToadStoolResult<bool> {
-        Ok(self
-            .services
-            .iter()
-            .any(|s| s.id.as_deref() == Some(service_id)))
+    fn health_check<'a>(
+        &'a self,
+        service_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>> {
+        Box::pin(async move {
+            Ok(self
+                .services
+                .iter()
+                .any(|s| s.id.as_deref() == Some(service_id)))
+        })
     }
 }
 

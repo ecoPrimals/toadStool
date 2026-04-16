@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// async_trait is no longer needed since we re-export the trait from compat module
+// Trait re-exported from compat module; async methods use manual Pin<Box<dyn Future>>
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;

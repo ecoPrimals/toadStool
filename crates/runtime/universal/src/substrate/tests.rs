@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
-
-use async_trait::async_trait;
 
 use crate::error::SubstrateError;
 use crate::types::{ComputeUnit, ComputeUnitType};
@@ -14,8 +14,6 @@ use super::{
 
 struct MockSubstrate;
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl ComputeSubstrate for MockSubstrate {
     fn name(&self) -> &'static str {
         "Mock Substrate"
@@ -25,17 +23,20 @@ impl ComputeSubstrate for MockSubstrate {
         SubstrateType::Cpu
     }
 
-    async fn execute_buffer_op(
+    fn execute_buffer_op(
         &self,
         operation: BufferOperation,
-    ) -> Result<BufferOutput, SubstrateError> {
-        Ok(BufferOutput {
-            data: vec![0; operation.buffer_size()],
-            metadata: BufferMetadata {
-                duration: Duration::from_millis(10),
-                substrate_name: self.name().to_string(),
-                power_consumed_mw: Some(65000.0),
-            },
+    ) -> Pin<Box<dyn Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>> {
+        let substrate_name = self.name().to_string();
+        Box::pin(async move {
+            Ok(BufferOutput {
+                data: vec![0; operation.buffer_size()],
+                metadata: BufferMetadata {
+                    duration: Duration::from_millis(10),
+                    substrate_name,
+                    power_consumed_mw: Some(65000.0),
+                },
+            })
         })
     }
 }

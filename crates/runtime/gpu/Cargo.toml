@@ -20,7 +20,6 @@ nvpmu = { path = "../../core/nvpmu" }
 
 # Async runtime
 tokio = { workspace = true }
-async-trait = { workspace = true }
 futures = { workspace = true }
 
 # Serialization

@@ -29,7 +29,6 @@ tracing = { workspace = true }
 # needed, use rustix::fs::inotify directly (pure Rust, zero C FFI).
 # ring = "0.17"  # REMOVED: Unused, violates pure Rust principle (C dependency)
 base64 = "0.22"
-async-trait = { workspace = true }
 semver = "1.0"
 url = { workspace = true }
 

@@ -80,6 +80,10 @@ deny = [
     # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives
     # License clarified in [[licenses.clarify]]; verified absent from Cargo.lock (S203l).
     { name = "ring" },
+    # async-trait — proc macro for dyn-safe async traits; fully evolved to manual
+    # Pin<Box<dyn Future>> and native AFIT (S203r). No workspace crate depends on it directly.
+    # Transitive via axum, config, wiggle — allowed via wrappers until upstream drops it.
+    { name = "async-trait", wrappers = ["axum", "axum-core", "config", "wiggle"] },
     # zstd-sys — C FFI for zstd; banned in production paths
     # toadstool-runtime-secure-enclave uses ruzstd (pure Rust); no member-specific exemption needed.
     #{ name = "zstd-sys" },

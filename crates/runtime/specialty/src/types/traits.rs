@@ -2,7 +2,9 @@
 //! Trait definitions for legacy runtime adapters and interfaces
 
 use serde::{Deserialize, Serialize};
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -41,11 +43,7 @@ pub struct SpecialtyRuntimeMetrics {
 
 /// Legacy adapter trait for different legacy systems
 ///
-/// **Uses `async_trait` for trait object compatibility**
-/// - Required for `Box<dyn LegacyAdapter>` and `Arc<dyn LegacyAdapter>`
-/// - Enables plugin-style architecture
-/// - Necessary for polymorphic legacy system support
-#[async_trait::async_trait]
+/// Async methods return `Pin<Box<dyn Future>>` for `dyn LegacyAdapter` compatibility.
 pub trait LegacyAdapter: Send + Sync {
     /// Get the adapter name
     fn name(&self) -> &'static str;
@@ -54,28 +52,47 @@ pub trait LegacyAdapter: Send + Sync {
     fn supported_systems(&self) -> Vec<LegacySystemType>;
 
     /// Initialize the adapter
-    async fn initialize(&mut self, config: &SpecialtyRuntimeConfig) -> ToadStoolResult<()>;
+    fn initialize<'a>(
+        &'a mut self,
+        config: &'a SpecialtyRuntimeConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Shutdown the adapter
-    async fn shutdown(&mut self) -> ToadStoolResult<()>;
+    fn shutdown<'a>(&'a mut self)
+    -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Submit a legacy job
-    async fn submit_job(&self, job: LegacyJob) -> ToadStoolResult<Uuid>;
+    fn submit_job(
+        &self,
+        job: LegacyJob,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>>;
 
     /// Get job status
-    async fn get_job_status(&self, job_id: Uuid) -> ToadStoolResult<JobStatus>;
+    fn get_job_status(
+        &self,
+        job_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>>;
 
     /// Cancel a job
-    async fn cancel_job(&self, job_id: Uuid) -> ToadStoolResult<()>;
+    fn cancel_job(
+        &self,
+        job_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get job output
-    async fn get_job_output(&self, job_id: Uuid) -> ToadStoolResult<JobOutput>;
+    fn get_job_output(
+        &self,
+        job_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>>;
 
     /// Get system information
-    async fn get_system_info(&self) -> ToadStoolResult<SystemInfo>;
+    fn get_system_info(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>>;
 
     /// Test connectivity
-    async fn test_connectivity(&self) -> ToadStoolResult<bool>;
+    fn test_connectivity(&self)
+    -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>>;
 }
 
 /// Job status for legacy systems
@@ -244,17 +261,17 @@ pub enum NetworkStatus {
 
 /// Communication session trait for legacy systems
 ///
-/// **Uses `async_trait` for trait object compatibility**
-/// - Required for `Box<dyn LegacyCommunicationSession>`
-/// - Enables polymorphic session management
-#[async_trait::async_trait]
+/// Async methods return `Pin<Box<dyn Future>>` for `dyn LegacyCommunicationSession` compatibility.
 pub trait LegacyCommunicationSession: Send + Sync {
     /// Send a command to the legacy system
-    async fn send_command(&mut self, command: &str) -> ToadStoolResult<String>;
+    fn send_command<'a>(
+        &'a mut self,
+        command: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>>;
 
     /// Check if session is connected
     fn is_connected(&self) -> bool;
 
     /// Close the session
-    async fn close(&mut self) -> ToadStoolResult<()>;
+    fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 }

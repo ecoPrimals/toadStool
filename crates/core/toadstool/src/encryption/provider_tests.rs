@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+use std::future::Future;
+use std::pin::Pin;
+
 use super::*;
 
 // Mock provider for testing
@@ -7,8 +10,6 @@ struct MockProvider {
     capability: CryptoCapability,
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl CryptoProvider for MockProvider {
     fn provider_id(&self) -> &str {
         &self.id
@@ -18,33 +19,47 @@ impl CryptoProvider for MockProvider {
         &self.capability
     }
 
-    async fn encrypt(
+    fn encrypt<'a>(
+        &'a self,
+        _data: &'a [u8],
+        _key: &'a EncryptionKey,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>>
+                + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move { Ok((EncryptedPayload::default(), EncryptionMetadata::default())) })
+    }
+
+    fn decrypt<'a>(
+        &'a self,
+        _encrypted: &'a EncryptedPayload,
+        _key: &'a EncryptionKey,
+        _metadata: &'a EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
+        Box::pin(async move { Ok(vec![]) })
+    }
+
+    fn generate_key(
         &self,
-        _data: &[u8],
-        _key: &EncryptionKey,
-    ) -> ToadStoolResult<(EncryptedPayload, EncryptionMetadata)> {
-        Ok((EncryptedPayload::default(), EncryptionMetadata::default()))
+        _security_level: SecurityLevel,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_>> {
+        Box::pin(async move { Ok(EncryptionKey::default()) })
     }
 
-    async fn decrypt(
+    fn get_key<'a>(
+        &'a self,
+        _key_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a>> {
+        Box::pin(async move { Ok(EncryptionKey::default()) })
+    }
+
+    fn health_check(
         &self,
-        _encrypted: &EncryptedPayload,
-        _key: &EncryptionKey,
-        _metadata: &EncryptionMetadata,
-    ) -> ToadStoolResult<Vec<u8>> {
-        Ok(vec![])
-    }
-
-    async fn generate_key(&self, _security_level: SecurityLevel) -> ToadStoolResult<EncryptionKey> {
-        Ok(EncryptionKey::default())
-    }
-
-    async fn get_key(&self, _key_id: &str) -> ToadStoolResult<EncryptionKey> {
-        Ok(EncryptionKey::default())
-    }
-
-    async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {
-        Ok(ProviderHealth::healthy(10))
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
+        Box::pin(async move { Ok(ProviderHealth::healthy(10)) })
     }
 }
 

@@ -27,7 +27,8 @@
 //! Each programmer will require: transport layer (USB, parallel, serial), protocol
 //! implementation (SPI, JTAG, proprietary), and device-specific algorithms.
 
-use async_trait::async_trait;
+use std::future::{Future, ready};
+use std::pin::Pin;
 
 use crate::{
     ProgrammingInterface, ProgrammingInterfaceType, SpecialtyRuntimeError, ToadStoolResult,
@@ -54,8 +55,6 @@ fn programmer_placeholder_err(platform: &'static str, operation: &'static str) -
 /// See DEBT.md `D-EMBEDDED-PROGRAMMER` and module-level docs for evolution plan.
 macro_rules! impl_programmer_stub {
     ($programmer:ty, $name:expr, $interface:expr, $platform:expr) => {
-        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-        #[async_trait]
         impl ProgrammerTrait for $programmer {
             fn name(&self) -> &'static str {
                 $name
@@ -65,47 +64,82 @@ macro_rules! impl_programmer_stub {
                 vec![$interface]
             }
 
-            async fn initialize(&mut self, _config: &ProgrammingInterface) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err(
+            fn initialize<'a>(
+                &'a mut self,
+                _config: &'a ProgrammingInterface,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+                Box::pin(ready(Err(programmer_placeholder_err(
                     $platform,
                     "Programmer initialization",
-                ))
+                ))))
             }
 
-            async fn connect(&mut self) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err($platform, "Programmer connect"))
+            fn connect(
+                &mut self,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+                Box::pin(ready(Err(programmer_placeholder_err(
+                    $platform,
+                    "Programmer connect",
+                ))))
             }
 
-            async fn disconnect(&mut self) -> ToadStoolResult<()> {
-                Ok(())
+            fn disconnect(
+                &mut self,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+                Box::pin(ready(Ok(())))
             }
 
-            async fn read_memory(
+            fn read_memory(
                 &mut self,
                 _address: u32,
                 _length: u32,
-            ) -> ToadStoolResult<Vec<u8>> {
-                Err(programmer_placeholder_err($platform, "Memory read"))
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>> {
+                Box::pin(ready(Err(programmer_placeholder_err(
+                    $platform,
+                    "Memory read",
+                ))))
             }
 
-            async fn write_memory(&mut self, _address: u32, _data: &[u8]) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err($platform, "Memory write"))
+            fn write_memory<'a>(
+                &'a mut self,
+                _address: u32,
+                data: &'a [u8],
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+                Box::pin(async move {
+                    let _ = data;
+                    Err(programmer_placeholder_err($platform, "Memory write"))
+                })
             }
 
-            async fn erase_memory(&mut self, _address: u32, _length: u32) -> ToadStoolResult<()> {
-                Err(programmer_placeholder_err($platform, "Memory erase"))
-            }
-
-            async fn verify_memory(
+            fn erase_memory(
                 &mut self,
                 _address: u32,
-                _data: &[u8],
-            ) -> ToadStoolResult<bool> {
-                Err(programmer_placeholder_err($platform, "Memory verify"))
+                _length: u32,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+                Box::pin(ready(Err(programmer_placeholder_err(
+                    $platform,
+                    "Memory erase",
+                ))))
             }
 
-            async fn get_target_info(&self) -> ToadStoolResult<TargetInfo> {
-                Err(programmer_placeholder_err($platform, "Target info"))
+            fn verify_memory<'a>(
+                &'a mut self,
+                _address: u32,
+                expected_data: &'a [u8],
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>> {
+                Box::pin(async move {
+                    let _ = expected_data;
+                    Err(programmer_placeholder_err($platform, "Memory verify"))
+                })
+            }
+
+            fn get_target_info(
+                &self,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<TargetInfo>> + Send + '_>> {
+                Box::pin(ready(Err(programmer_placeholder_err(
+                    $platform,
+                    "Target info",
+                ))))
             }
         }
     };

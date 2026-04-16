@@ -4,9 +4,10 @@
 //! Generic Linux-based edge device discovered via biomeOS runtime sockets
 //! or registry entries. Communicates over Unix sockets for IPC.
 
-use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, warn};
@@ -14,6 +15,7 @@ use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool::execution::{ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus};
+use toadstool::{RuntimeMetrics, RuntimeType};
 
 use super::*;
 
@@ -33,30 +35,40 @@ impl LinuxEdgeDevice {
         let kernel_version = Self::read_kernel_version();
 
         let info = EdgeDeviceInfo {
+            id,
             name,
             platform: EdgePlatform::LinuxEdge {
                 architecture,
                 kernel_version,
             },
-            firmware_version: "native".to_string(),
-            hardware_version: "linux".to_string(),
-            serial_number: id.to_string(),
             capabilities: vec![
                 "compute".to_string(),
                 "file_transfer".to_string(),
                 "shell".to_string(),
             ],
-            memory_bytes: 0,
-            storage_bytes: 0,
-            processor_info: "linux-generic".to_string(),
-            supported_protocols: vec!["unix".to_string()],
-            security: DeviceSecurity {
-                secure_boot: false,
-                encrypted_storage: false,
-                secure_element: false,
-                tls_version: Some("1.3".to_string()),
-                encryption_algorithm: EncryptionAlgorithm::None,
+            resources: EdgeDeviceResources {
+                cpu_cores: 0,
+                cpu_frequency_mhz: 0,
+                memory_bytes: 0,
+                storage_bytes: 0,
+                network_interfaces: vec![],
+                gpio_pins: 0,
+                analog_pins: 0,
+                pwm_pins: 0,
+                i2c_buses: 0,
+                spi_buses: 0,
+                uart_ports: 0,
             },
+            connection_info: ConnectionInfo {
+                connection_type: ConnectionType::Network,
+                address: socket_path.display().to_string(),
+                port: None,
+                protocol: "unix".to_string(),
+                authentication: None,
+                encryption: None,
+            },
+            status: DeviceStatus::Unknown,
+            last_seen: std::time::SystemTime::now(),
         };
 
         Self {
@@ -72,7 +84,7 @@ impl LinuxEdgeDevice {
     /// Expected format: `{ "id": "uuid", "name": "...", "socket": "/path/to/sock" }`
     pub fn from_registry_json(json: &str) -> ToadStoolResult<Self> {
         let parsed: serde_json::Value =
-            serde_json::from_str(json).map_err(|e| ToadStoolError::config_error(e.to_string()))?;
+            serde_json::from_str(json).map_err(|e| ToadStoolError::configuration(e.to_string()))?;
 
         let id_str = parsed
             .get("id")
@@ -91,7 +103,7 @@ impl LinuxEdgeDevice {
             .get("socket")
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                ToadStoolError::config_error("Edge registry entry missing 'socket' field")
+                ToadStoolError::configuration("Edge registry entry missing 'socket' field")
             })?;
 
         Ok(Self::new(id, name, PathBuf::from(socket)))
@@ -114,10 +126,17 @@ impl LinuxEdgeDevice {
             .and_then(|v| v.split_whitespace().nth(2).map(String::from))
             .unwrap_or_else(|| "unknown".to_string())
     }
+
+    fn clone_handles(&self) -> Self {
+        Self {
+            id: self.id,
+            info: self.info.clone(),
+            socket_path: self.socket_path.clone(),
+            connected: Arc::clone(&self.connected),
+        }
+    }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl EdgeDevice for LinuxEdgeDevice {
     fn get_id(&self) -> Uuid {
         self.id
@@ -135,105 +154,175 @@ impl EdgeDevice for LinuxEdgeDevice {
         self.info.capabilities.clone()
     }
 
-    async fn is_connected(&self) -> bool {
-        *self.connected.read().await
+    fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
+        let dev = self.clone_handles();
+        Box::pin(async move { *dev.connected.read().await })
     }
 
-    async fn connect(&self) -> ToadStoolResult<()> {
-        if !self.socket_path.exists() {
-            return Err(ToadStoolError::connection_error(format!(
-                "Socket not found: {:?}",
-                self.socket_path
-            )));
-        }
-        *self.connected.write().await = true;
-        debug!("Connected to LinuxEdge device via {:?}", self.socket_path);
-        Ok(())
-    }
-
-    async fn disconnect(&self) -> ToadStoolResult<()> {
-        *self.connected.write().await = false;
-        debug!("Disconnected from LinuxEdge device {}", self.id);
-        Ok(())
-    }
-
-    async fn execute(&self, request: &ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        if !*self.connected.read().await {
-            return Err(ToadStoolError::connection_error("Not connected"));
-        }
-        let id = Uuid::new_v4();
-        Ok(ExecutionResponse {
-            execution_id: id,
-            status: ExecutionStatus::Completed,
-            output: Some(ExecutionOutput {
-                stdout: format!("Executed {} on Linux edge device", request.name),
-                stderr: String::new(),
-                exit_code: 0,
-                artifacts: HashMap::new(),
-            }),
-            error: None,
-            duration: Some(std::time::Duration::from_millis(1)),
-            resource_usage: Some(HashMap::new()),
+    fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let dev = self.clone_handles();
+        Box::pin(async move {
+            if !dev.socket_path.exists() {
+                return Err(ToadStoolError::network(format!(
+                    "Socket not found: {:?}",
+                    dev.socket_path
+                )));
+            }
+            *dev.connected.write().await = true;
+            debug!("Connected to LinuxEdge device via {:?}", dev.socket_path);
+            Ok(())
         })
     }
 
-    async fn deploy(&self, _code: &[u8]) -> ToadStoolResult<String> {
-        Ok(format!("deployed-{}", Uuid::new_v4()))
+    fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let dev = self.clone_handles();
+        Box::pin(async move {
+            *dev.connected.write().await = false;
+            debug!("Disconnected from LinuxEdge device {}", dev.id);
+            Ok(())
+        })
     }
 
-    async fn stop_execution(&self, execution_id: Uuid) -> ToadStoolResult<()> {
-        debug!("Stop execution {} on LinuxEdge {}", execution_id, self.id);
-        Ok(())
+    fn execute(
+        &self,
+        request: &ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        let dev = self.clone_handles();
+        let _ = request;
+        Box::pin(async move {
+            if !*dev.connected.read().await {
+                return Err(ToadStoolError::network("Not connected"));
+            }
+            let id = Uuid::new_v4();
+            Ok(ExecutionResponse {
+                execution_id: id,
+                status: ExecutionStatus::Success,
+                output: ExecutionOutput {
+                    stdout: Some("Executed workload on Linux edge device".to_string()),
+                    stderr: Some(String::new()),
+                    exit_code: Some(0),
+                    ..ExecutionOutput::default()
+                },
+                metrics: RuntimeMetrics::default(),
+                duration: std::time::Duration::from_millis(1),
+                runtime_used: RuntimeType::Native,
+                warnings: Vec::new(),
+            })
+        })
     }
 
-    async fn get_status(&self) -> ToadStoolResult<DeviceStatus> {
-        if *self.connected.read().await && self.socket_path.exists() {
-            Ok(DeviceStatus::Online)
-        } else {
-            Ok(DeviceStatus::Offline)
-        }
+    fn deploy(
+        &self,
+        _code: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(format!("deployed-{}", Uuid::new_v4())) })
     }
 
-    async fn get_resource_usage(&self) -> ToadStoolResult<HashMap<String, f64>> {
-        Ok(HashMap::new())
+    fn stop_execution(
+        &self,
+        execution_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let dev = self.clone_handles();
+        Box::pin(async move {
+            debug!("Stop execution {} on LinuxEdge {}", execution_id, dev.id);
+            Ok(())
+        })
     }
 
-    async fn upload_file(&self, path: &str, _content: &[u8]) -> ToadStoolResult<()> {
-        debug!("Upload to {} on LinuxEdge {}", path, self.id);
-        Ok(())
+    fn get_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>> {
+        let dev = self.clone_handles();
+        Box::pin(async move {
+            if *dev.connected.read().await && dev.socket_path.exists() {
+                Ok(DeviceStatus::Online)
+            } else {
+                Ok(DeviceStatus::Offline)
+            }
+        })
     }
 
-    async fn download_file(&self, path: &str) -> ToadStoolResult<Vec<u8>> {
-        warn!("Download {} from LinuxEdge {} - delegating to host fs", path, self.id);
-        tokio::fs::read(path)
-            .await
-            .map_err(|e| ToadStoolError::io_error(e.to_string()))
+    fn get_resource_usage(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>> {
+        Box::pin(async move { Ok(HashMap::new()) })
     }
 
-    async fn execute_command(&self, command: &str) -> ToadStoolResult<String> {
-        debug!("Execute command on LinuxEdge {}: {}", self.id, command);
-        Ok(String::new())
+    fn upload_file(
+        &self,
+        path: &str,
+        _content: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let dev = self.clone_handles();
+        let path = path.to_string();
+        Box::pin(async move {
+            debug!("Upload to {} on LinuxEdge {}", path, dev.id);
+            Ok(())
+        })
     }
 
-    async fn get_logs(&self, _lines: Option<usize>) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn download_file(
+        &self,
+        path: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>> {
+        let dev = self.clone_handles();
+        let path = path.to_string();
+        Box::pin(async move {
+            warn!(
+                "Download {} from LinuxEdge {} - delegating to host fs",
+                path, dev.id
+            );
+            tokio::fs::read(path)
+                .await
+                .map_err(|e| ToadStoolError::io(e.to_string()))
+        })
     }
 
-    async fn restart(&self) -> ToadStoolResult<()> {
-        warn!("Restart requested for LinuxEdge {} - no-op", self.id);
-        Ok(())
+    fn execute_command(
+        &self,
+        command: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        let dev = self.clone_handles();
+        let command = command.to_string();
+        Box::pin(async move {
+            debug!("Execute command on LinuxEdge {}: {}", dev.id, command);
+            Ok(String::new())
+        })
     }
 
-    async fn update_firmware(&self, _firmware: &[u8]) -> ToadStoolResult<()> {
-        Ok(())
+    fn get_logs(
+        &self,
+        _lines: Option<usize>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn get_sensors(&self) -> ToadStoolResult<HashMap<String, f64>> {
-        Ok(HashMap::new())
+    fn restart(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        let dev = self.clone_handles();
+        Box::pin(async move {
+            warn!("Restart requested for LinuxEdge {} - no-op", dev.id);
+            Ok(())
+        })
     }
 
-    async fn control_actuators(&self, _commands: HashMap<String, f64>) -> ToadStoolResult<()> {
-        Ok(())
+    fn update_firmware(
+        &self,
+        _firmware: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
+    }
+
+    fn get_sensors(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>> {
+        Box::pin(async move { Ok(HashMap::new()) })
+    }
+
+    fn control_actuators(
+        &self,
+        _commands: HashMap<String, f64>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 }
 
@@ -245,7 +334,10 @@ mod tests {
     fn test_linux_edge_from_socket() {
         let device = LinuxEdgeDevice::from_socket_path(PathBuf::from("/tmp/test.sock"));
         assert_eq!(device.get_info().name, "test");
-        assert!(matches!(device.get_info().platform, EdgePlatform::LinuxEdge { .. }));
+        assert!(matches!(
+            device.get_info().platform,
+            EdgePlatform::LinuxEdge { .. }
+        ));
         assert!(!device.get_capabilities().is_empty());
     }
 

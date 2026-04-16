@@ -40,10 +40,7 @@ fn probe_industrial_capabilities() -> Option<Vec<String>> {
         return None;
     }
 
-    let mut capabilities = vec![
-        "industrial_io".to_string(),
-        "sysfs".to_string(),
-    ];
+    let mut capabilities = vec!["industrial_io".to_string(), "sysfs".to_string()];
 
     if Path::new("/sys/class/net").exists() {
         capabilities.push("industrial_ethernet".to_string());
@@ -72,12 +69,11 @@ fn probe_industrial_capabilities() -> Option<Vec<String>> {
 /// - `Ok(devices)` when industrial hardware capabilities are detected
 /// - `Err(PlatformNotAvailable)` when the target hardware is not detected
 pub fn discover_industrial_devices() -> ToadStoolResult<Vec<IndustrialDevice>> {
-    let capabilities = probe_industrial_capabilities()
-        .ok_or_else(|| {
-            platform_not_available(
-                "Industrial platform not detected (no /sys/class or insufficient subsystems)",
-            )
-        })?;
+    let capabilities = probe_industrial_capabilities().ok_or_else(|| {
+        platform_not_available(
+            "Industrial platform not detected (no /sys/class or insufficient subsystems)",
+        )
+    })?;
 
     if capabilities.len() <= 2 {
         return Err(platform_not_available(
@@ -169,7 +165,10 @@ impl IndustrialDevice {
 
     /// Create a device from connection parameters.
     /// Returns `Err` when the platform cannot create a device.
-    #[expect(dead_code, reason = "industrial platform constructor; requires target hardware discovery")]
+    #[expect(
+        dead_code,
+        reason = "industrial platform constructor; requires target hardware discovery"
+    )]
     pub fn new(
         _system_type: IndustrialSystemType,
         _protocol: IndustrialProtocol,

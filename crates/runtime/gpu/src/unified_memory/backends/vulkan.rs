@@ -49,7 +49,8 @@ use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, UnifiedMemoryBackend, WebGpuAllocation},
     types::*,
 };
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -233,8 +234,6 @@ impl BackendInitializer for VulkanBackend {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl UnifiedMemoryBackend for VulkanBackend {
     fn name(&self) -> &'static str {
         "Vulkan"
@@ -248,102 +247,114 @@ impl UnifiedMemoryBackend for VulkanBackend {
         &self.capabilities
     }
 
-    async fn allocate_unified(
+    fn allocate_unified(
         &self,
         size: usize,
         flags: MemoryFlags,
-    ) -> ToadStoolResult<BackendAllocation> {
-        if !self.available {
-            return Err(ToadStoolError::runtime(
-                "Vulkan backend not initialized (use with_device() or try_init())",
-            ));
-        }
-
-        // Use wgpu path if available (pure Rust, recommended)
-        if let Some(device) = &self.wgpu_device {
-            // Validate size
-            if size == 0 {
-                return Err(ToadStoolError::runtime("Cannot allocate 0 bytes"));
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<BackendAllocation>> + Send + '_>> {
+        Box::pin(async move {
+            if !self.available {
+                return Err(ToadStoolError::runtime(
+                    "Vulkan backend not initialized (use with_device() or try_init())",
+                ));
             }
 
-            let limits = device.limits();
-            if size > limits.max_buffer_size as usize {
-                return Err(ToadStoolError::runtime(format!(
-                    "Allocation size {} exceeds device maximum {}",
-                    size, limits.max_buffer_size
-                )));
+            // Use wgpu path if available (pure Rust, recommended)
+            if let Some(device) = &self.wgpu_device {
+                // Validate size
+                if size == 0 {
+                    return Err(ToadStoolError::runtime("Cannot allocate 0 bytes"));
+                }
+
+                let limits = device.limits();
+                if size > limits.max_buffer_size as usize {
+                    return Err(ToadStoolError::runtime(format!(
+                        "Allocation size {} exceeds device maximum {}",
+                        size, limits.max_buffer_size
+                    )));
+                }
+
+                // Determine usage flags based on MemoryFlags
+                let usage = if flags.prefer_gpu {
+                    wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::MAP_READ
+                        | wgpu::BufferUsages::MAP_WRITE
+                        | wgpu::BufferUsages::COPY_SRC
+                        | wgpu::BufferUsages::COPY_DST
+                } else {
+                    wgpu::BufferUsages::MAP_READ
+                        | wgpu::BufferUsages::MAP_WRITE
+                        | wgpu::BufferUsages::COPY_SRC
+                        | wgpu::BufferUsages::COPY_DST
+                };
+
+                // Create buffer
+                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("ToadStool Vulkan Unified Buffer"),
+                    size: size as u64,
+                    usage,
+                    mapped_at_creation: false,
+                });
+
+                // Return as WebGpu allocation (same underlying mechanism via wgpu)
+                let allocation = WebGpuAllocation {
+                    buffer: Some(buffer),
+                    size,
+                    mapped_ptr: None,
+                };
+
+                // Wrap in Vulkan variant for type consistency
+                return Ok(BackendAllocation::WebGpu(allocation));
             }
 
-            // Determine usage flags based on MemoryFlags
-            let usage = if flags.prefer_gpu {
-                wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::MAP_READ
-                    | wgpu::BufferUsages::MAP_WRITE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST
-            } else {
-                wgpu::BufferUsages::MAP_READ
-                    | wgpu::BufferUsages::MAP_WRITE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST
-            };
-
-            // Create buffer
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ToadStool Vulkan Unified Buffer"),
-                size: size as u64,
-                usage,
-                mapped_at_creation: false,
-            });
-
-            // Return as WebGpu allocation (same underlying mechanism via wgpu)
-            let allocation = WebGpuAllocation {
-                buffer: Some(buffer),
-                size,
-                mapped_ptr: None,
-            };
-
-            // Wrap in Vulkan variant for type consistency
-            return Ok(BackendAllocation::WebGpu(allocation));
-        }
-
-        // Direct Vulkan path (requires manual initialization via with_device())
-        Err(ToadStoolError::runtime(
-            "Direct Vulkan allocation requires manual initialization via with_device()",
-        ))
+            // Direct Vulkan path (requires manual initialization via with_device())
+            Err(ToadStoolError::runtime(
+                "Direct Vulkan allocation requires manual initialization via with_device()",
+            ))
+        })
     }
 
-    async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {
-        match allocation {
-            // Handle wgpu-based allocations
-            BackendAllocation::WebGpu(_alloc) => {
-                // Buffer dropped automatically via wgpu's Drop trait
-                Ok(())
+    fn free_unified(
+        &self,
+        allocation: BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            match allocation {
+                // Handle wgpu-based allocations
+                BackendAllocation::WebGpu(_alloc) => {
+                    // Buffer dropped automatically via wgpu's Drop trait
+                    Ok(())
+                }
+                // Handle direct Vulkan allocations
+                BackendAllocation::Vulkan(_alloc) => {
+                    // Direct Vulkan cleanup would go here
+                    Ok(())
+                }
+                _ => Err(ToadStoolError::runtime(
+                    "Invalid allocation type for Vulkan backend",
+                )),
             }
-            // Handle direct Vulkan allocations
-            BackendAllocation::Vulkan(_alloc) => {
-                // Direct Vulkan cleanup would go here
-                Ok(())
-            }
-            _ => Err(ToadStoolError::runtime(
-                "Invalid allocation type for Vulkan backend",
-            )),
-        }
+        })
     }
 
-    async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
-        match allocation {
-            // Handle wgpu-based allocations
-            BackendAllocation::WebGpu(alloc) => alloc.buffer.as_ref().map_or_else(
-                || Err(ToadStoolError::runtime("Buffer has been freed")),
-                |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
-            ),
-            // Handle direct Vulkan allocations
-            BackendAllocation::Vulkan(alloc) => Ok(alloc.cpu_ptr.as_ptr()),
-            _ => Err(ToadStoolError::runtime(
-                "Invalid allocation type for Vulkan backend",
-            )),
-        }
+    fn map_cpu_ptr<'a>(
+        &'a self,
+        allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<*mut u8>> + Send + 'a>> {
+        Box::pin(async {
+            match allocation {
+                // Handle wgpu-based allocations
+                BackendAllocation::WebGpu(alloc) => alloc.buffer.as_ref().map_or_else(
+                    || Err(ToadStoolError::runtime("Buffer has been freed")),
+                    |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
+                ),
+                // Handle direct Vulkan allocations
+                BackendAllocation::Vulkan(alloc) => Ok(alloc.cpu_ptr.as_ptr()),
+                _ => Err(ToadStoolError::runtime(
+                    "Invalid allocation type for Vulkan backend",
+                )),
+            }
+        })
     }
 
     fn get_device_ptr(&self, allocation: &BackendAllocation) -> *const u8 {
@@ -361,16 +372,26 @@ impl UnifiedMemoryBackend for VulkanBackend {
         }
     }
 
-    async fn sync_cpu_to_device(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
-        // For HOST_COHERENT memory, this is a no-op
-        // For non-coherent memory, would need vkFlushMappedMemoryRanges
-        Ok(())
+    fn sync_cpu_to_device<'a>(
+        &'a self,
+        _allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async {
+            // For HOST_COHERENT memory, this is a no-op
+            // For non-coherent memory, would need vkFlushMappedMemoryRanges
+            Ok(())
+        })
     }
 
-    async fn sync_device_to_cpu(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
-        // For HOST_COHERENT memory, this is a no-op
-        // For non-coherent memory, would need vkInvalidateMappedMemoryRanges
-        Ok(())
+    fn sync_device_to_cpu<'a>(
+        &'a self,
+        _allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async {
+            // For HOST_COHERENT memory, this is a no-op
+            // For non-coherent memory, would need vkInvalidateMappedMemoryRanges
+            Ok(())
+        })
     }
 
     fn is_valid(&self, allocation: &BackendAllocation) -> bool {

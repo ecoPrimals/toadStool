@@ -473,4 +473,3 @@ fn test_microcontroller_powerpc() {
     let arch = MicrocontrollerArch::PowerPC;
     assert_eq!(arch, MicrocontrollerArch::PowerPC);
 }
-

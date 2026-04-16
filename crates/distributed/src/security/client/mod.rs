@@ -14,7 +14,8 @@
 //! Security = Security services (local)
 //! Communication = JSON-RPC over unix sockets (pure Rust!)
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use toadstool_common::interned_strings::capabilities;
@@ -319,8 +320,6 @@ impl SecurityClient {
 }
 
 /// Implement CryptoProvider trait for Security client
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl toadstool::encryption::CryptoProvider for SecurityClient {
     fn provider_id(&self) -> &str {
         capabilities::CRYPTO
@@ -337,174 +336,208 @@ impl toadstool::encryption::CryptoProvider for SecurityClient {
         })
     }
 
-    async fn encrypt(
-        &self,
-        data: &[u8],
-        key: &toadstool::encryption::EncryptionKey,
-    ) -> ToadStoolResult<(
-        toadstool::encryption::EncryptedPayload,
-        toadstool::encryption::EncryptionMetadata,
-    )> {
-        let request = EncryptionRequest {
-            request_id: uuid::Uuid::new_v4(),
-            operation: super::types::EncryptionOperation::Encrypt,
-            data: data.to_vec(),
-            key_id: Some(key.id.clone()),
-            algorithm: Some(key.algorithm.clone()),
-            security_level: match key.security_level {
-                toadstool::encryption::SecurityLevel::Standard => {
-                    super::types::SecurityLevel::Standard
-                }
-                toadstool::encryption::SecurityLevel::Enhanced => {
-                    super::types::SecurityLevel::Enhanced
-                }
-                toadstool::encryption::SecurityLevel::HardwareSecured => {
-                    super::types::SecurityLevel::HardwareSecured
-                }
-            },
-        };
+    fn encrypt<'a>(
+        &'a self,
+        data: &'a [u8],
+        key: &'a toadstool::encryption::EncryptionKey,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = ToadStoolResult<(
+                        toadstool::encryption::EncryptedPayload,
+                        toadstool::encryption::EncryptionMetadata,
+                    )>,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            let request = EncryptionRequest {
+                request_id: uuid::Uuid::new_v4(),
+                operation: super::types::EncryptionOperation::Encrypt,
+                data: data.to_vec(),
+                key_id: Some(key.id.clone()),
+                algorithm: Some(key.algorithm.clone()),
+                security_level: match key.security_level {
+                    toadstool::encryption::SecurityLevel::Standard => {
+                        super::types::SecurityLevel::Standard
+                    }
+                    toadstool::encryption::SecurityLevel::Enhanced => {
+                        super::types::SecurityLevel::Enhanced
+                    }
+                    toadstool::encryption::SecurityLevel::HardwareSecured => {
+                        super::types::SecurityLevel::HardwareSecured
+                    }
+                },
+            };
 
-        let response = self.encrypt(request).await?;
+            let response = self.encrypt(request).await?;
 
-        let payload = toadstool::encryption::EncryptedPayload::new(response.data);
-        let metadata = toadstool::encryption::EncryptionMetadata {
-            algorithm: response.algorithm,
-            nonce: Vec::new(),
-            aad: None,
-            kdf_info: None,
-            encrypted_at: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64,
-        };
+            let payload = toadstool::encryption::EncryptedPayload::new(response.data);
+            let metadata = toadstool::encryption::EncryptionMetadata {
+                algorithm: response.algorithm,
+                nonce: Vec::new(),
+                aad: None,
+                kdf_info: None,
+                encrypted_at: std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs() as i64,
+            };
 
-        Ok((payload, metadata))
+            Ok((payload, metadata))
+        })
     }
 
-    async fn decrypt(
-        &self,
-        encrypted: &toadstool::encryption::EncryptedPayload,
-        key: &toadstool::encryption::EncryptionKey,
-        _metadata: &toadstool::encryption::EncryptionMetadata,
-    ) -> ToadStoolResult<Vec<u8>> {
-        let request = EncryptionRequest {
-            request_id: uuid::Uuid::new_v4(),
-            operation: super::types::EncryptionOperation::Decrypt,
-            data: encrypted.ciphertext.clone(),
-            key_id: Some(key.id.clone()),
-            algorithm: Some(key.algorithm.clone()),
-            security_level: match key.security_level {
-                toadstool::encryption::SecurityLevel::Standard => {
-                    super::types::SecurityLevel::Standard
-                }
-                toadstool::encryption::SecurityLevel::Enhanced => {
-                    super::types::SecurityLevel::Enhanced
-                }
-                toadstool::encryption::SecurityLevel::HardwareSecured => {
-                    super::types::SecurityLevel::HardwareSecured
-                }
-            },
-        };
+    fn decrypt<'a>(
+        &'a self,
+        encrypted: &'a toadstool::encryption::EncryptedPayload,
+        key: &'a toadstool::encryption::EncryptionKey,
+        _metadata: &'a toadstool::encryption::EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
+        Box::pin(async move {
+            let request = EncryptionRequest {
+                request_id: uuid::Uuid::new_v4(),
+                operation: super::types::EncryptionOperation::Decrypt,
+                data: encrypted.ciphertext.clone(),
+                key_id: Some(key.id.clone()),
+                algorithm: Some(key.algorithm.clone()),
+                security_level: match key.security_level {
+                    toadstool::encryption::SecurityLevel::Standard => {
+                        super::types::SecurityLevel::Standard
+                    }
+                    toadstool::encryption::SecurityLevel::Enhanced => {
+                        super::types::SecurityLevel::Enhanced
+                    }
+                    toadstool::encryption::SecurityLevel::HardwareSecured => {
+                        super::types::SecurityLevel::HardwareSecured
+                    }
+                },
+            };
 
-        let response = self.decrypt(request).await?;
-        Ok(response.data)
+            let response = self.decrypt(request).await?;
+            Ok(response.data)
+        })
     }
 
-    async fn generate_key(
+    fn generate_key(
         &self,
         security_level: toadstool::encryption::SecurityLevel,
-    ) -> ToadStoolResult<toadstool::encryption::EncryptionKey> {
-        let request = KeyManagementRequest {
-            request_id: uuid::Uuid::new_v4(),
-            operation: super::types::KeyOperation::Generate,
-            key_id: None,
-            security_level: Some(match security_level {
-                toadstool::encryption::SecurityLevel::Standard => {
-                    super::types::SecurityLevel::Standard
-                }
-                toadstool::encryption::SecurityLevel::Enhanced => {
-                    super::types::SecurityLevel::Enhanced
-                }
-                toadstool::encryption::SecurityLevel::HardwareSecured => {
-                    super::types::SecurityLevel::HardwareSecured
-                }
-            }),
-        };
+    ) -> Pin<
+        Box<dyn Future<Output = ToadStoolResult<toadstool::encryption::EncryptionKey>> + Send + '_>,
+    > {
+        Box::pin(async move {
+            let request = KeyManagementRequest {
+                request_id: uuid::Uuid::new_v4(),
+                operation: super::types::KeyOperation::Generate,
+                key_id: None,
+                security_level: Some(match security_level {
+                    toadstool::encryption::SecurityLevel::Standard => {
+                        super::types::SecurityLevel::Standard
+                    }
+                    toadstool::encryption::SecurityLevel::Enhanced => {
+                        super::types::SecurityLevel::Enhanced
+                    }
+                    toadstool::encryption::SecurityLevel::HardwareSecured => {
+                        super::types::SecurityLevel::HardwareSecured
+                    }
+                }),
+            };
 
-        let response = self.key_management(request).await?;
+            let response = self.key_management(request).await?;
 
-        match response.result {
-            super::types::KeyOperationResult::Generated { key_id, algorithm } => {
-                Ok(toadstool::encryption::EncryptionKey::new(
-                    key_id,
-                    Vec::new(),
-                    algorithm,
-                    security_level,
-                ))
+            match response.result {
+                super::types::KeyOperationResult::Generated { key_id, algorithm } => {
+                    Ok(toadstool::encryption::EncryptionKey::new(
+                        key_id,
+                        Vec::new(),
+                        algorithm,
+                        security_level,
+                    ))
+                }
+                super::types::KeyOperationResult::Error { message } => {
+                    Err(ToadStoolError::runtime(format!(
+                        "security/crypto service key generation failed: {message}"
+                    )))
+                }
+                _ => Err(ToadStoolError::runtime(
+                    "Unexpected response from security/crypto service",
+                )),
             }
-            super::types::KeyOperationResult::Error { message } => Err(ToadStoolError::runtime(
-                format!("security/crypto service key generation failed: {message}"),
-            )),
-            _ => Err(ToadStoolError::runtime(
-                "Unexpected response from security/crypto service",
-            )),
-        }
+        })
     }
 
-    async fn get_key(&self, key_id: &str) -> ToadStoolResult<toadstool::encryption::EncryptionKey> {
-        let request = KeyManagementRequest {
-            request_id: uuid::Uuid::new_v4(),
-            operation: super::types::KeyOperation::Get,
-            key_id: Some(key_id.to_string()),
-            security_level: None,
-        };
+    fn get_key<'a>(
+        &'a self,
+        key_id: &'a str,
+    ) -> Pin<
+        Box<dyn Future<Output = ToadStoolResult<toadstool::encryption::EncryptionKey>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            let request = KeyManagementRequest {
+                request_id: uuid::Uuid::new_v4(),
+                operation: super::types::KeyOperation::Get,
+                key_id: Some(key_id.to_string()),
+                security_level: None,
+            };
 
-        let response = self.key_management(request).await?;
+            let response = self.key_management(request).await?;
 
-        match response.result {
-            super::types::KeyOperationResult::Retrieved {
-                key_id,
-                key_material,
-                algorithm,
-            } => Ok(toadstool::encryption::EncryptionKey::new(
-                key_id,
-                key_material,
-                algorithm,
-                toadstool::encryption::SecurityLevel::Standard,
-            )),
-            super::types::KeyOperationResult::Error { message } => Err(ToadStoolError::not_found(
-                format!("security/crypto service key not found: {message}"),
-            )),
-            _ => Err(ToadStoolError::runtime(
-                "Unexpected response from security/crypto service",
-            )),
-        }
+            match response.result {
+                super::types::KeyOperationResult::Retrieved {
+                    key_id,
+                    key_material,
+                    algorithm,
+                } => Ok(toadstool::encryption::EncryptionKey::new(
+                    key_id,
+                    key_material,
+                    algorithm,
+                    toadstool::encryption::SecurityLevel::Standard,
+                )),
+                super::types::KeyOperationResult::Error { message } => {
+                    Err(ToadStoolError::not_found(format!(
+                        "security/crypto service key not found: {message}"
+                    )))
+                }
+                _ => Err(ToadStoolError::runtime(
+                    "Unexpected response from security/crypto service",
+                )),
+            }
+        })
     }
 
-    async fn health_check(
+    fn health_check(
         &self,
-    ) -> ToadStoolResult<toadstool::encryption::provider::ProviderHealth> {
-        let endpoints = self.health_check().await?;
+    ) -> Pin<
+        Box<
+            dyn Future<Output = ToadStoolResult<toadstool::encryption::provider::ProviderHealth>>
+                + Send
+                + '_,
+        >,
+    > {
+        Box::pin(async move {
+            let endpoints = self.health_check().await?;
 
-        if endpoints.is_empty() {
-            return Ok(toadstool::encryption::provider::ProviderHealth::unhealthy(
-                "No security/crypto endpoints available",
-            ));
-        }
+            if endpoints.is_empty() {
+                return Ok(toadstool::encryption::provider::ProviderHealth::unhealthy(
+                    "No security/crypto endpoints available",
+                ));
+            }
 
-        let healthy_count = endpoints.iter().filter(|e| e.healthy).count();
-        if healthy_count == 0 {
-            return Ok(toadstool::encryption::provider::ProviderHealth::unhealthy(
-                "All security/crypto service endpoints unhealthy",
-            ));
-        }
+            let healthy_count = endpoints.iter().filter(|e| e.healthy).count();
+            if healthy_count == 0 {
+                return Ok(toadstool::encryption::provider::ProviderHealth::unhealthy(
+                    "All security/crypto service endpoints unhealthy",
+                ));
+            }
 
-        let avg_latency =
-            endpoints.iter().filter_map(|e| e.latency_ms).sum::<u64>() / healthy_count as u64;
+            let avg_latency =
+                endpoints.iter().filter_map(|e| e.latency_ms).sum::<u64>() / healthy_count as u64;
 
-        Ok(toadstool::encryption::provider::ProviderHealth::healthy(
-            avg_latency,
-        ))
+            Ok(toadstool::encryption::provider::ProviderHealth::healthy(
+                avg_latency,
+            ))
+        })
     }
 }
 

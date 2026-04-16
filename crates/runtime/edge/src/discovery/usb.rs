@@ -2,7 +2,9 @@
 //! USB discovery via Linux sysfs (`/sys/bus/usb/devices`).
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 
 use tracing::warn;
@@ -24,73 +26,82 @@ pub struct USBDiscovery {
     pub(super) product_filters: Vec<u16>,
 }
 
-#[async_trait::async_trait]
 impl DiscoveryMethod for USBDiscovery {
     fn get_name(&self) -> &str {
         "USB Discovery"
     }
 
-    async fn discover(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
-        if !cfg!(target_os = "linux") {
-            return Ok(Vec::new());
-        }
-
-        let base = Path::new(sysfs::BUS_USB_DEVICES);
-        let entries = match std::fs::read_dir(base) {
-            Ok(e) => e,
-            Err(e) => {
-                warn!(path = %base.display(), error = %e, "USB sysfs not readable; skipping USB discovery");
+    fn discover(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
+        >,
+    > {
+        Box::pin(async move {
+            if !cfg!(target_os = "linux") {
                 return Ok(Vec::new());
             }
-        };
 
-        let mut out: Vec<Arc<dyn EdgeDevice>> = Vec::new();
-
-        for entry in entries.filter_map(|e| e.ok()) {
-            let path = entry.path();
-            let id_vendor = path.join("idVendor");
-            let id_product = path.join("idProduct");
-            if !id_vendor.is_file() || !id_product.is_file() {
-                // Interface subdirectories (e.g. `1-2:1.0`) do not expose idVendor at this level.
-                continue;
-            }
-
-            let vid = match parse_hex16_sysfs(&id_vendor) {
-                Some(v) => v,
-                None => {
-                    warn!(path = %id_vendor.display(), "skipping USB device: invalid idVendor");
-                    continue;
-                }
-            };
-            let pid = match parse_hex16_sysfs(&id_product) {
-                Some(p) => p,
-                None => {
-                    warn!(path = %id_product.display(), "skipping USB device: invalid idProduct");
-                    continue;
+            let base = Path::new(sysfs::BUS_USB_DEVICES);
+            let entries = match std::fs::read_dir(base) {
+                Ok(e) => e,
+                Err(e) => {
+                    warn!(path = %base.display(), error = %e, "USB sysfs not readable; skipping USB discovery");
+                    return Ok(Vec::new());
                 }
             };
 
-            if !self.passes_filters(vid, pid) {
-                continue;
+            let mut out: Vec<Arc<dyn EdgeDevice>> = Vec::new();
+
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                let id_vendor = path.join("idVendor");
+                let id_product = path.join("idProduct");
+                if !id_vendor.is_file() || !id_product.is_file() {
+                    // Interface subdirectories (e.g. `1-2:1.0`) do not expose idVendor at this level.
+                    continue;
+                }
+
+                let vid = match parse_hex16_sysfs(&id_vendor) {
+                    Some(v) => v,
+                    None => {
+                        warn!(path = %id_vendor.display(), "skipping USB device: invalid idVendor");
+                        continue;
+                    }
+                };
+                let pid = match parse_hex16_sysfs(&id_product) {
+                    Some(p) => p,
+                    None => {
+                        warn!(path = %id_product.display(), "skipping USB device: invalid idProduct");
+                        continue;
+                    }
+                };
+
+                if !self.passes_filters(vid, pid) {
+                    continue;
+                }
+
+                let manufacturer = read_sysfs_optional_line(&path.join("manufacturer"));
+                let product = read_sysfs_optional_line(&path.join("product"));
+
+                out.push(Arc::new(UsbSysfsEdgeDevice::new(
+                    path,
+                    vid,
+                    pid,
+                    manufacturer,
+                    product,
+                )));
             }
 
-            let manufacturer = read_sysfs_optional_line(&path.join("manufacturer"));
-            let product = read_sysfs_optional_line(&path.join("product"));
-
-            out.push(Arc::new(UsbSysfsEdgeDevice::new(
-                path,
-                vid,
-                pid,
-                manufacturer,
-                product,
-            )));
-        }
-
-        Ok(out)
+            Ok(out)
+        })
     }
 
-    async fn is_available(&self) -> bool {
-        cfg!(target_os = "linux") && Path::new(sysfs::BUS_USB_DEVICES).is_dir()
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async { cfg!(target_os = "linux") && Path::new(sysfs::BUS_USB_DEVICES).is_dir() })
     }
 
     fn get_supported_types(&self) -> Vec<String> {
@@ -184,7 +195,6 @@ impl UsbSysfsEdgeDevice {
     }
 }
 
-#[async_trait::async_trait]
 impl EdgeDevice for UsbSysfsEdgeDevice {
     fn get_id(&self) -> Uuid {
         self.id
@@ -202,82 +212,122 @@ impl EdgeDevice for UsbSysfsEdgeDevice {
         self.info.capabilities.clone()
     }
 
-    async fn is_connected(&self) -> bool {
-        Path::new(&self.info.connection_info.address).exists()
+    fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
+        let addr = self.info.connection_info.address.clone();
+        Box::pin(async move { Path::new(&addr).exists() })
     }
 
-    async fn connect(&self) -> ToadStoolResult<()> {
-        Ok(())
+    fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn disconnect(&self) -> ToadStoolResult<()> {
-        Ok(())
+    fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn execute(&self, request: &ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        Ok(ExecutionResponse {
-            execution_id: request.execution_id,
-            status: ExecutionStatus::Success,
-            output: ExecutionOutput {
-                stdout: Some("usb-sysfs discovery device (no workload execution)".to_string()),
-                ..ExecutionOutput::default()
-            },
-            metrics: toadstool::RuntimeMetrics::default(),
-            duration: std::time::Duration::ZERO,
-            runtime_used: RuntimeType::Native,
-            warnings: Vec::new(),
+    fn execute(
+        &self,
+        request: &ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        let request = request.clone();
+        Box::pin(async move {
+            Ok(ExecutionResponse {
+                execution_id: request.execution_id,
+                status: ExecutionStatus::Success,
+                output: ExecutionOutput {
+                    stdout: Some("usb-sysfs discovery device (no workload execution)".to_string()),
+                    ..ExecutionOutput::default()
+                },
+                metrics: toadstool::RuntimeMetrics::default(),
+                duration: std::time::Duration::ZERO,
+                runtime_used: RuntimeType::Native,
+                warnings: Vec::new(),
+            })
         })
     }
 
-    async fn deploy(&self, _code: &[u8]) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn deploy(
+        &self,
+        _code: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn stop_execution(&self, _execution_id: Uuid) -> ToadStoolResult<()> {
-        Ok(())
+    fn stop_execution(
+        &self,
+        _execution_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_status(&self) -> ToadStoolResult<DeviceStatus> {
-        if self.is_connected().await {
-            Ok(DeviceStatus::Online)
-        } else {
-            Ok(DeviceStatus::Offline)
-        }
+    fn get_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>> {
+        Box::pin(async move {
+            if self.is_connected().await {
+                Ok(DeviceStatus::Online)
+            } else {
+                Ok(DeviceStatus::Offline)
+            }
+        })
     }
 
-    async fn get_resource_usage(&self) -> ToadStoolResult<HashMap<String, f64>> {
-        Ok(HashMap::new())
+    fn get_resource_usage(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>> {
+        Box::pin(async move { Ok(HashMap::new()) })
     }
 
-    async fn upload_file(&self, _path: &str, _content: &[u8]) -> ToadStoolResult<()> {
-        Ok(())
+    fn upload_file(
+        &self,
+        _path: &str,
+        _content: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn download_file(&self, _path: &str) -> ToadStoolResult<Vec<u8>> {
-        Ok(Vec::new())
+    fn download_file(
+        &self,
+        _path: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>> {
+        Box::pin(async move { Ok(Vec::new()) })
     }
 
-    async fn execute_command(&self, _command: &str) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn execute_command(
+        &self,
+        _command: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn get_logs(&self, _lines: Option<usize>) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn get_logs(
+        &self,
+        _lines: Option<usize>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn restart(&self) -> ToadStoolResult<()> {
-        Ok(())
+    fn restart(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn update_firmware(&self, _firmware: &[u8]) -> ToadStoolResult<()> {
-        Ok(())
+    fn update_firmware(
+        &self,
+        _firmware: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_sensors(&self) -> ToadStoolResult<HashMap<String, f64>> {
-        Ok(HashMap::new())
+    fn get_sensors(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>> {
+        Box::pin(async move { Ok(HashMap::new()) })
     }
 
-    async fn control_actuators(&self, _commands: HashMap<String, f64>) -> ToadStoolResult<()> {
-        Ok(())
+    fn control_actuators(
+        &self,
+        _commands: HashMap<String, f64>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 }

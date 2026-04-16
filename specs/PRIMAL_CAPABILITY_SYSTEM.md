@@ -104,27 +104,21 @@ The **Primal-Agnostic Capability System** allows ToadStool to register its compu
 ### **Trait Definition**
 
 ```rust
-#[async_trait]
+use std::future::Future;
+use std::pin::Pin;
+
 pub trait PrimalAdapter: Send + Sync {
-    /// Get primal name
     fn primal_name(&self) -> &str;
-    
-    /// Get primal endpoint
     fn endpoint(&self) -> &str;
-    
-    /// Register capabilities with primal
-    async fn register_capabilities(&self, capabilities: Vec<Capability>) 
-        -> ToadStoolResult<()>;
-    
-    /// Send heartbeat
-    async fn send_heartbeat(&self) -> ToadStoolResult<()>;
-    
-    /// Notify capability change
-    async fn notify_capability_change(&self, capability: &Capability, available: bool) 
-        -> ToadStoolResult<()>;
-    
-    /// Deregister from primal
-    async fn deregister(&self) -> ToadStoolResult<()>;
+
+    fn register_capabilities(&self, capabilities: Vec<Capability>)
+        -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn send_heartbeat(&self)
+        -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn notify_capability_change(&self, capability: &Capability, available: bool)
+        -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn deregister(&self)
+        -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 }
 ```
 
@@ -137,20 +131,21 @@ pub struct SquirrelAdapter {
     client: reqwest::Client,
 }
 
-#[async_trait]
 impl PrimalAdapter for SquirrelAdapter {
     fn primal_name(&self) -> &str {
         "squirrel"
     }
-    
-    async fn register_capabilities(&self, capabilities: Vec<Capability>) 
-        -> ToadStoolResult<()> {
-        // Implement Squirrel's registration protocol
-        let url = format!("{}/ml/register_compute_provider", self.endpoint);
-        // ... Squirrel-specific logic
-        Ok(())
+
+    fn register_capabilities(&self, capabilities: Vec<Capability>)
+        -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            let url = format!("{}/ml/register_compute_provider", self.endpoint);
+            // ... Squirrel-specific logic
+            let _ = (url, capabilities);
+            Ok(())
+        })
     }
-    
+
     // ... implement other methods
 }
 ```

@@ -47,7 +47,9 @@ impl ArduinoDevice {
                 sketch_path_str,
             ])
             .output()
-            .map_err(|e| ToadStoolError::execution_error(format!("Failed to run Arduino CLI: {}", e)))?;
+            .map_err(|e| {
+                ToadStoolError::execution_error(format!("Failed to run Arduino CLI: {}", e))
+            })?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);

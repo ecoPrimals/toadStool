@@ -23,7 +23,6 @@ akida-driver = { path = "../../neuromorphic/akida-driver" }
 
 # Async runtime
 tokio = { workspace = true }
-async-trait = { workspace = true }
 futures = { workspace = true }
 
 # Serialization (rc for Arc<str> zero-copy in storage types)

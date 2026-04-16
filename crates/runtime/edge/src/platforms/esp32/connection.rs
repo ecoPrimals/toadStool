@@ -74,9 +74,9 @@ impl ESP32Device {
     pub(crate) async fn send_command(&self, command: &str) -> ToadStoolResult<String> {
         let connection = self.connection.read().await;
 
-        let conn = connection.as_ref().ok_or_else(|| {
-            ToadStoolError::network("ESP32 not connected".to_string())
-        })?;
+        let conn = connection
+            .as_ref()
+            .ok_or_else(|| ToadStoolError::network("ESP32 not connected".to_string()))?;
 
         match conn.connection_type {
             ESP32ConnectionType::Serial => {

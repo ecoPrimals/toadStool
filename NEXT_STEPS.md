@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 16, 2026 — S203p (Env Interning Complete + Coverage Wave 3)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,700+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` CLOSED** | **`deny.toml` ring ban active** | **env_overrides fully interned** | **I/O-logic separated** | **real system monitoring**
-**Latest**: S203p — Env interning complete: all ~55 TOADSTOOL_* env var strings across 6 env_overrides files + defaults.rs now use socket_env constants. +21 tests across 6 pure-logic modules (path resolution, semantic methods, resource optimizer/estimator, workload routing). S203o: testability refactors, monitoring evolution (see below).
+**Updated**: April 16, 2026 — S203r (async-trait Full Deprecation)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 22,000+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env_overrides fully interned** | **I/O-logic separated** | **real system monitoring**
+**Latest**: S203r — `async-trait` fully deprecated: all ~91 annotations evolved to manual `Pin<Box<dyn Future>>` across 55+ files/13 crates. Removed from all Cargo.toml. Banned in `deny.toml`. 22,061 tests, 0 failures, clippy clean.
 
 ---
 
@@ -33,7 +33,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **21,700+ tests** (0 failures). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **22,000+ tests** (0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -118,7 +118,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Real mDNS parser** -- replaces placeholder `Ok(None)` in zero_config service discovery
 - [x] **pollster eliminated** -- removed from barracuda, toadstool, universal (→ tokio_block_on)
 - [x] **serde_yaml → serde_yaml_ng** -- across workspace
-- [x] **async-trait → AFIT** -- 5 crates migrated (performance, analytics, wasm, gpu, security/sandbox)
+- [x] **async-trait → DEPRECATED** -- fully removed and banned in `deny.toml` (S203r); all annotations evolved to manual `Pin<Box<dyn Future>>` or native AFIT
 - [x] **Capability-based naming** -- CLI/JSON-RPC/error messages use capability language, type aliases added
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
@@ -129,7 +129,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 21,700+ tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 22,000+ tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -164,6 +164,19 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ---
 
 ## Completed This Session (S90-203)
+
+### Session S203r: async-trait Full Deprecation (Apr 16, 2026)
+- **`async-trait` fully deprecated** — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn) across 55+ files in 13 crates. Zero runtime behavior change.
+- **Banned in `deny.toml`** — `async-trait` added to `[bans.deny]` with `wrappers = ["axum", "axum-core", "config", "wiggle"]` for transitive deps.
+- **Removed from all Cargo.toml** — workspace dependency + 12 individual crate dependencies eliminated.
+- **DEBT.md D-ASYNC-DYN-MARKERS → RESOLVED** S203r.
+- **Clippy clean** — `type_complexity` resolved via `BoxFuture` type aliases; `used_underscore_binding` fixed in conditional branches.
+- **22,061 tests, 0 failures**, clippy 0 warnings, fmt 0 diffs.
+
+### Session S203q: Root Doc Cleanup + Debris Audit (Apr 16, 2026)
+- Root docs (README, CONTEXT, DOCUMENTATION, NEXT_STEPS) aligned to S203p state.
+- Stale migration banner removed from `cli/templates/specialized_templates/mod.rs`.
+- Config port evolution comment updated. Build artifacts cleaned (25GB).
 
 ### Session S203i: Deep Debt — Massive Test Extraction + Hardcoding Evolution (Apr 14, 2026)
 - **52 production files** refactored via test extraction (~10K lines moved to companion files). Production files >500L reduced from 38→25 (remaining are pure production code — hardware drivers, type defs; no extractable test blocks, all <700L).

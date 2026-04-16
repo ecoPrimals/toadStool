@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for discovery engine module
+use std::future::Future;
+use std::pin::Pin;
+
 use super::*;
 
 #[tokio::test]
@@ -34,31 +37,35 @@ async fn test_add_source() {
 #[tokio::test]
 async fn test_discover_all_deduplication() {
     struct MockSource;
-    #[async_trait::async_trait]
     impl DiscoverySource for MockSource {
-        async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-            Ok(vec![
-                CapabilityInfo {
-                    provider_id: "dup-1".to_string(),
-                    capability: CapabilityType::Storage {
-                        features: vec![],
-                        min_throughput_mbps: None,
+        fn discover<'a>(
+            &'a self,
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
+        {
+            Box::pin(async move {
+                Ok(vec![
+                    CapabilityInfo {
+                        provider_id: "dup-1".to_string(),
+                        capability: CapabilityType::Storage {
+                            features: vec![],
+                            min_throughput_mbps: None,
+                        },
+                        metadata: std::collections::HashMap::new(),
+                        endpoint: ServiceEndpoint::Http("http://a".to_string()),
+                        health: HealthStatus::Unknown,
                     },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint: ServiceEndpoint::Http("http://a".to_string()),
-                    health: HealthStatus::Unknown,
-                },
-                CapabilityInfo {
-                    provider_id: "dup-1".to_string(),
-                    capability: CapabilityType::Storage {
-                        features: vec![],
-                        min_throughput_mbps: None,
+                    CapabilityInfo {
+                        provider_id: "dup-1".to_string(),
+                        capability: CapabilityType::Storage {
+                            features: vec![],
+                            min_throughput_mbps: None,
+                        },
+                        metadata: std::collections::HashMap::new(),
+                        endpoint: ServiceEndpoint::Http("http://b".to_string()),
+                        health: HealthStatus::Unknown,
                     },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint: ServiceEndpoint::Http("http://b".to_string()),
-                    health: HealthStatus::Unknown,
-                },
-            ])
+                ])
+            })
         }
         fn name(&self) -> &'static str {
             "mock"
@@ -73,10 +80,12 @@ async fn test_discover_all_deduplication() {
 #[tokio::test]
 async fn test_discover_all_source_error() {
     struct FailingSource;
-    #[async_trait::async_trait]
     impl DiscoverySource for FailingSource {
-        async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-            Err(ToadStoolError::configuration("config error".to_string()))
+        fn discover<'a>(
+            &'a self,
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
+        {
+            Box::pin(async move { Err(ToadStoolError::configuration("config error".to_string())) })
         }
         fn name(&self) -> &'static str {
             "failing"
@@ -88,10 +97,13 @@ async fn test_discover_all_source_error() {
 }
 
 struct SlowSource;
-#[async_trait::async_trait]
 impl DiscoverySource for SlowSource {
-    async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        std::future::pending::<ToadStoolResult<Vec<CapabilityInfo>>>().await
+    fn discover<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>> {
+        Box::pin(
+            async move { std::future::pending::<ToadStoolResult<Vec<CapabilityInfo>>>().await },
+        )
     }
     fn name(&self) -> &'static str {
         "slow"
@@ -378,29 +390,35 @@ async fn test_local_registry_capability_from_str_all() {
 #[tokio::test]
 async fn test_discover_all_mixed_sources() {
     struct OkSource;
-    #[async_trait::async_trait]
     impl DiscoverySource for OkSource {
-        async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-            Ok(vec![CapabilityInfo {
-                provider_id: "ok-1".to_string(),
-                capability: CapabilityType::Compute {
-                    features: vec![],
-                    min_memory_gb: None,
-                },
-                metadata: std::collections::HashMap::new(),
-                endpoint: ServiceEndpoint::Http("http://ok:0".to_string()),
-                health: HealthStatus::Unknown,
-            }])
+        fn discover<'a>(
+            &'a self,
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
+        {
+            Box::pin(async move {
+                Ok(vec![CapabilityInfo {
+                    provider_id: "ok-1".to_string(),
+                    capability: CapabilityType::Compute {
+                        features: vec![],
+                        min_memory_gb: None,
+                    },
+                    metadata: std::collections::HashMap::new(),
+                    endpoint: ServiceEndpoint::Http("http://ok:0".to_string()),
+                    health: HealthStatus::Unknown,
+                }])
+            })
         }
         fn name(&self) -> &'static str {
             "ok"
         }
     }
     struct FailingSource;
-    #[async_trait::async_trait]
     impl DiscoverySource for FailingSource {
-        async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-            Err(ToadStoolError::configuration("fail".to_string()))
+        fn discover<'a>(
+            &'a self,
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
+        {
+            Box::pin(async move { Err(ToadStoolError::configuration("fail".to_string())) })
         }
         fn name(&self) -> &'static str {
             "fail"
@@ -529,19 +547,23 @@ async fn test_discovery_engine_empty_timeout() {
 #[tokio::test]
 async fn test_discover_all_partial_timeout_and_success() {
     struct FastOkSource;
-    #[async_trait::async_trait]
     impl DiscoverySource for FastOkSource {
-        async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-            Ok(vec![CapabilityInfo {
-                provider_id: "fast".to_string(),
-                capability: CapabilityType::Compute {
-                    features: vec![],
-                    min_memory_gb: None,
-                },
-                metadata: std::collections::HashMap::new(),
-                endpoint: ServiceEndpoint::Http("http://fast:0".to_string()),
-                health: HealthStatus::Unknown,
-            }])
+        fn discover<'a>(
+            &'a self,
+        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
+        {
+            Box::pin(async move {
+                Ok(vec![CapabilityInfo {
+                    provider_id: "fast".to_string(),
+                    capability: CapabilityType::Compute {
+                        features: vec![],
+                        min_memory_gb: None,
+                    },
+                    metadata: std::collections::HashMap::new(),
+                    endpoint: ServiceEndpoint::Http("http://fast:0".to_string()),
+                    health: HealthStatus::Unknown,
+                }])
+            })
         }
         fn name(&self) -> &'static str {
             "fast"

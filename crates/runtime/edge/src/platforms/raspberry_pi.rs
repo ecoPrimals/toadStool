@@ -55,11 +55,13 @@ pub fn discover_raspberry_pi_devices() -> ToadStoolResult<Vec<RaspberryPiDevice>
         .to_string();
 
     if !model_str.contains("Raspberry Pi") {
-        return Err(platform_not_available(format!(
-            "Raspberry Pi hardware not detected (model: '{}')",
-            model_str
-        )
-        .as_str()));
+        return Err(platform_not_available(
+            format!(
+                "Raspberry Pi hardware not detected (model: '{}')",
+                model_str
+            )
+            .as_str(),
+        ));
     }
 
     let (model, capabilities) = parse_model_and_capabilities(&model_str);
@@ -198,7 +200,10 @@ impl RaspberryPiDevice {
 
     /// Create a device from connection parameters (for remote Pi).
     /// Returns `Err` when the platform cannot create a device.
-    #[expect(dead_code, reason = "Raspberry Pi constructor; requires discovery on target hardware")]
+    #[expect(
+        dead_code,
+        reason = "Raspberry Pi constructor; requires discovery on target hardware"
+    )]
     pub fn new(_model: PiModel, _os: PiOS, _address: String) -> ToadStoolResult<Self> {
         Err(platform_not_available(
             "Raspberry Pi device creation requires discovery on target hardware first",
@@ -217,14 +222,20 @@ mod tests {
         if result.is_err() {
             let err = result.unwrap_err();
             assert!(
-                err.to_string().contains("Raspberry Pi") || err.to_string().contains("raspberry_pi"),
+                err.to_string().contains("Raspberry Pi")
+                    || err.to_string().contains("raspberry_pi"),
                 "Error should mention Raspberry Pi: {}",
                 err
             );
         } else {
             let devices = result.unwrap();
             assert!(!devices.is_empty());
-            assert!(devices[0].get_info().capabilities.contains(&"gpio".to_string()));
+            assert!(
+                devices[0]
+                    .get_info()
+                    .capabilities
+                    .contains(&"gpio".to_string())
+            );
         }
     }
 

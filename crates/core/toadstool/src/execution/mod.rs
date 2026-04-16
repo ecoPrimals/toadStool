@@ -293,14 +293,12 @@ pub struct LoggingConfig {
 /// ```ignore
 /// use toadstool::execution::{RuntimeEngine, ExecutionRequest, ExecutionResponse};
 /// use toadstool::{ToadStoolResult, RuntimeMetrics};
-/// use async_trait::async_trait;
 ///
 /// pub struct MyCustomRuntime {
 ///     initialized: bool,
 ///     workload_count: u64,
 /// }
 ///
-/// #[async_trait]
 /// impl RuntimeEngine for MyCustomRuntime {
 ///     async fn initialize(&mut self, config: RuntimeConfig) -> ToadStoolResult<()> {
 ///         // Setup runtime environment (one-time initialization)

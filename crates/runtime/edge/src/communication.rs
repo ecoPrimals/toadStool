@@ -13,9 +13,7 @@ use tokio::sync::RwLock;
 use tokio::time::timeout;
 use tracing::{debug, error, info, warn};
 
-use toadstool::{
-    error::{ToadStoolError, ToadStoolResult},
-};
+use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 use crate::EdgeRuntimeConfig;
 
@@ -26,25 +24,42 @@ pub struct CommunicationManager {
 }
 
 /// Communication Protocol Trait
-#[async_trait::async_trait]
+///
+/// Stored as `Box<dyn CommunicationProtocol>`. Uses manual `Pin<Box<dyn Future>>`
+/// for dyn-compatibility (no `async-trait` macro).
 pub trait CommunicationProtocol: Send + Sync {
     /// Get protocol name
     fn get_name(&self) -> &str;
 
     /// Check if protocol is available
-    async fn is_available(&self) -> bool;
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>>;
 
     /// Send message
-    async fn send_message(&self, address: &str, message: &[u8]) -> ToadStoolResult<()>;
+    fn send_message<'a>(
+        &'a self,
+        address: &'a str,
+        message: &'a [u8],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Receive message
-    async fn receive_message(&self, address: &str) -> ToadStoolResult<Vec<u8>>;
+    fn receive_message<'a>(
+        &'a self,
+        address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>;
 
     /// Establish connection
-    async fn connect(&self, address: &str) -> ToadStoolResult<()>;
+    fn connect<'a>(
+        &'a self,
+        address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Close connection
-    async fn disconnect(&self, address: &str) -> ToadStoolResult<()>;
+    fn disconnect<'a>(
+        &'a self,
+        address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 }
 
 impl CommunicationManager {
@@ -95,11 +110,12 @@ impl CommunicationManager {
 
     /// Send message via appropriate protocol (auto-detect from address format)
     pub async fn send(&self, address: &str, message: &[u8]) -> ToadStoolResult<()> {
-        let protocol = if address.starts_with('/') || address.contains("tty") || address.contains("COM") {
-            self.protocols.read().await.get("serial").cloned()
-        } else {
-            self.protocols.read().await.get("tcp").cloned()
-        };
+        let protocol =
+            if address.starts_with('/') || address.contains("tty") || address.contains("COM") {
+                self.protocols.read().await.get("serial").cloned()
+            } else {
+                self.protocols.read().await.get("tcp").cloned()
+            };
 
         match protocol {
             Some(p) => p.send_message(address, message).await,
@@ -112,11 +128,12 @@ impl CommunicationManager {
 
     /// Receive message via appropriate protocol
     pub async fn receive(&self, address: &str) -> ToadStoolResult<Vec<u8>> {
-        let protocol = if address.starts_with('/') || address.contains("tty") || address.contains("COM") {
-            self.protocols.read().await.get("serial").cloned()
-        } else {
-            self.protocols.read().await.get("tcp").cloned()
-        };
+        let protocol =
+            if address.starts_with('/') || address.contains("tty") || address.contains("COM") {
+                self.protocols.read().await.get("serial").cloned()
+            } else {
+                self.protocols.read().await.get("tcp").cloned()
+            };
 
         match protocol {
             Some(p) => p.receive_message(address).await,
@@ -134,69 +151,92 @@ struct SerialProtocol {
     baud_rates: Vec<u32>,
 }
 
-#[async_trait::async_trait]
 impl CommunicationProtocol for SerialProtocol {
     fn get_name(&self) -> &str {
         "Serial"
     }
 
-    async fn is_available(&self) -> bool {
-        serialport::available_ports().is_ok()
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async { serialport::available_ports().is_ok() })
     }
 
-    async fn send_message(&self, address: &str, message: &[u8]) -> ToadStoolResult<()> {
-        let baud = self.baud_rates.first().copied().unwrap_or(9600);
-        let timeout = self.timeout;
-        let address = address.to_string();
-        let message = message.to_vec();
+    fn send_message<'a>(
+        &'a self,
+        address: &'a str,
+        message: &'a [u8],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let baud = self.baud_rates.first().copied().unwrap_or(9600);
+            let timeout = self.timeout;
+            let address = address.to_string();
+            let message = message.to_vec();
 
-        tokio::task::spawn_blocking(move || {
-            let mut port = serialport::new(&address, baud)
-                .timeout(timeout)
-                .open()
-                .map_err(|e| ToadStoolError::discovery_error(format!("Serial open failed: {}", e)))?;
+            tokio::task::spawn_blocking(move || {
+                let mut port = serialport::new(&address, baud)
+                    .timeout(timeout)
+                    .open()
+                    .map_err(|e| {
+                        ToadStoolError::discovery_error(format!("Serial open failed: {}", e))
+                    })?;
 
-            port.write_all(&message)
-                .map_err(|e| ToadStoolError::discovery_error(format!("Serial write failed: {}", e)))?;
+                port.write_all(&message).map_err(|e| {
+                    ToadStoolError::discovery_error(format!("Serial write failed: {}", e))
+                })?;
 
-            Ok::<(), ToadStoolError>(())
+                Ok::<(), ToadStoolError>(())
+            })
+            .await
+            .map_err(|e| ToadStoolError::discovery_error(format!("Serial task join: {}", e)))?
         })
-        .await
-        .map_err(|e| ToadStoolError::discovery_error(format!("Serial task join: {}", e)))?
     }
 
-    async fn receive_message(&self, address: &str) -> ToadStoolResult<Vec<u8>> {
-        let baud = self.baud_rates.first().copied().unwrap_or(9600);
-        let timeout = self.timeout;
-        let address = address.to_string();
+    fn receive_message<'a>(
+        &'a self,
+        address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            let baud = self.baud_rates.first().copied().unwrap_or(9600);
+            let timeout = self.timeout;
+            let address = address.to_string();
 
-        let buf = tokio::task::spawn_blocking(move || {
-            let mut port = serialport::new(&address, baud)
-                .timeout(timeout)
-                .open()
-                .map_err(|e| ToadStoolError::discovery_error(format!("Serial open failed: {}", e)))?;
+            let buf = tokio::task::spawn_blocking(move || {
+                let mut port = serialport::new(&address, baud)
+                    .timeout(timeout)
+                    .open()
+                    .map_err(|e| {
+                        ToadStoolError::discovery_error(format!("Serial open failed: {}", e))
+                    })?;
 
-            let mut buf = vec![0u8; 4096];
-            let n = port
-                .read(&mut buf)
-                .map_err(|e| ToadStoolError::discovery_error(format!("Serial read failed: {}", e)))?;
+                let mut buf = vec![0u8; 4096];
+                let n = port.read(&mut buf).map_err(|e| {
+                    ToadStoolError::discovery_error(format!("Serial read failed: {}", e))
+                })?;
 
-            buf.truncate(n);
-            Ok::<Vec<u8>, ToadStoolError>(buf)
+                buf.truncate(n);
+                Ok::<Vec<u8>, ToadStoolError>(buf)
+            })
+            .await
+            .map_err(|e| ToadStoolError::discovery_error(format!("Serial task join: {}", e)))??;
+
+            Ok(buf)
         })
-        .await
-        .map_err(|e| ToadStoolError::discovery_error(format!("Serial task join: {}", e)))??;
-
-        Ok(buf)
     }
 
-    async fn connect(&self, _address: &str) -> ToadStoolResult<()> {
-        // Serial is connectionless per message - no persistent connection
-        Ok(())
+    fn connect<'a>(
+        &'a self,
+        _address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn disconnect(&self, _address: &str) -> ToadStoolResult<()> {
-        Ok(())
+    fn disconnect<'a>(
+        &'a self,
+        _address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
     }
 }
 
@@ -205,58 +245,75 @@ struct NetworkProtocol {
     timeout: Duration,
 }
 
-#[async_trait::async_trait]
 impl CommunicationProtocol for NetworkProtocol {
     fn get_name(&self) -> &str {
         "TCP"
     }
 
-    async fn is_available(&self) -> bool {
-        true
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async { true })
     }
 
-    async fn send_message(&self, address: &str, message: &[u8]) -> ToadStoolResult<()> {
-        let mut stream = timeout(
-            self.timeout,
-            TcpStream::connect(address),
-        )
-        .await
-        .map_err(|_| ToadStoolError::discovery_error("TCP connect timeout".to_string()))?
-        .map_err(|e| ToadStoolError::discovery_error(format!("TCP connect failed: {}", e)))?;
+    fn send_message<'a>(
+        &'a self,
+        address: &'a str,
+        message: &'a [u8],
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let mut stream = timeout(self.timeout, TcpStream::connect(address))
+                .await
+                .map_err(|_| ToadStoolError::discovery_error("TCP connect timeout".to_string()))?
+                .map_err(|e| {
+                    ToadStoolError::discovery_error(format!("TCP connect failed: {}", e))
+                })?;
 
-        use tokio::io::AsyncWriteExt;
-        stream
-            .write_all(message)
-            .await
-            .map_err(|e| ToadStoolError::discovery_error(format!("TCP write failed: {}", e)))?;
+            use tokio::io::AsyncWriteExt;
+            stream
+                .write_all(message)
+                .await
+                .map_err(|e| ToadStoolError::discovery_error(format!("TCP write failed: {}", e)))?;
 
-        Ok(())
+            Ok(())
+        })
     }
 
-    async fn receive_message(&self, address: &str) -> ToadStoolResult<Vec<u8>> {
-        let mut stream = timeout(
-            self.timeout,
-            TcpStream::connect(address),
-        )
-        .await
-        .map_err(|_| ToadStoolError::discovery_error("TCP connect timeout".to_string()))?
-        .map_err(|e| ToadStoolError::discovery_error(format!("TCP connect failed: {}", e)))?;
+    fn receive_message<'a>(
+        &'a self,
+        address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            let mut stream = timeout(self.timeout, TcpStream::connect(address))
+                .await
+                .map_err(|_| ToadStoolError::discovery_error("TCP connect timeout".to_string()))?
+                .map_err(|e| {
+                    ToadStoolError::discovery_error(format!("TCP connect failed: {}", e))
+                })?;
 
-        let mut buf = vec![0u8; 4096];
-        let n = timeout(self.timeout, stream.read(&mut buf))
-            .await
-            .map_err(|_| ToadStoolError::discovery_error("TCP read timeout".to_string()))?
-            .map_err(|e| ToadStoolError::discovery_error(format!("TCP read failed: {}", e)))?;
+            let mut buf = vec![0u8; 4096];
+            let n = timeout(self.timeout, stream.read(&mut buf))
+                .await
+                .map_err(|_| ToadStoolError::discovery_error("TCP read timeout".to_string()))?
+                .map_err(|e| ToadStoolError::discovery_error(format!("TCP read failed: {}", e)))?;
 
-        buf.truncate(n);
-        Ok(buf)
+            buf.truncate(n);
+            Ok(buf)
+        })
     }
 
-    async fn connect(&self, _address: &str) -> ToadStoolResult<()> {
-        Ok(())
+    fn connect<'a>(
+        &'a self,
+        _address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn disconnect(&self, _address: &str) -> ToadStoolResult<()> {
-        Ok(())
+    fn disconnect<'a>(
+        &'a self,
+        _address: &'a str,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
     }
-} 
+}

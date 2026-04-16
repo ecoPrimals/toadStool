@@ -44,7 +44,7 @@ impl UdevParser {
     /// Vector of discovered devices
     pub fn discover_subsystem(subsystem: &str) -> ToadStoolResult<Vec<UdevDevice>> {
         let sys_class_path = Path::new("/sys/class").join(subsystem);
-        
+
         if !sys_class_path.exists() {
             debug!("Subsystem {} does not exist", subsystem);
             return Ok(Vec::new());
@@ -52,10 +52,12 @@ impl UdevParser {
 
         let mut devices = Vec::new();
 
-        let entries = fs::read_dir(&sys_class_path)
-            .map_err(|e| ToadStoolError::discovery_error(
-                format!("Failed to read /sys/class/{}: {}", subsystem, e)
-            ))?;
+        let entries = fs::read_dir(&sys_class_path).map_err(|e| {
+            ToadStoolError::discovery_error(format!(
+                "Failed to read /sys/class/{}: {}",
+                subsystem, e
+            ))
+        })?;
 
         for entry in entries.flatten() {
             let device_path = entry.path();
@@ -96,14 +98,14 @@ impl UdevParser {
         // For USB devices, these are often in /sys/class/tty/ttyUSB0/device/../idVendor
         if let Ok(device_link) = fs::read_link(device_path.join("device")) {
             let device_real_path = device_path.join(&device_link);
-            
+
             // Try to find vendor and product IDs
             if let Ok(vendor_str) = fs::read_to_string(device_real_path.join("idVendor")) {
                 if let Ok(vid) = u16::from_str_radix(vendor_str.trim(), 16) {
                     vendor_id = Some(vid);
                 }
             }
-            
+
             if let Ok(product_str) = fs::read_to_string(device_real_path.join("idProduct")) {
                 if let Ok(pid) = u16::from_str_radix(product_str.trim(), 16) {
                     product_id = Some(pid);
@@ -128,14 +130,14 @@ impl UdevParser {
         // Check common USB serial device classes
         for subsystem in &["tty"] {
             let mut subsystem_devices = Self::discover_subsystem(subsystem)?;
-            
+
             // Filter for USB serial devices
             subsystem_devices.retain(|d| {
-                d.name.starts_with("ttyUSB") || 
-                d.name.starts_with("ttyACM") ||
-                d.name.starts_with("ttyS")
+                d.name.starts_with("ttyUSB")
+                    || d.name.starts_with("ttyACM")
+                    || d.name.starts_with("ttyS")
             });
-            
+
             devices.extend(subsystem_devices);
         }
 
@@ -154,10 +156,10 @@ impl UdevParser {
         // USB devices can be in multiple subsystems
         for subsystem in &["usb", "tty", "input"] {
             let mut subsystem_devices = Self::discover_subsystem(subsystem)?;
-            
+
             // Filter for devices with USB vendor/product IDs
             subsystem_devices.retain(|d| d.vendor_id.is_some() || d.product_id.is_some());
-            
+
             devices.extend(subsystem_devices);
         }
 
@@ -172,9 +174,7 @@ impl UdevParser {
     /// Check if device matches vendor/product IDs
     pub fn matches_vid_pid(device: &UdevDevice, vid: Option<u16>, pid: Option<u16>) -> bool {
         match (vid, pid) {
-            (Some(v), Some(p)) => {
-                device.vendor_id == Some(v) && device.product_id == Some(p)
-            }
+            (Some(v), Some(p)) => device.vendor_id == Some(v) && device.product_id == Some(p),
             (Some(v), None) => device.vendor_id == Some(v),
             (None, Some(p)) => device.product_id == Some(p),
             (None, None) => true,
@@ -211,8 +211,16 @@ mod tests {
             product_id: Some(0x5678),
         };
 
-        assert!(UdevParser::matches_vid_pid(&device, Some(0x1234), Some(0x5678)));
-        assert!(!UdevParser::matches_vid_pid(&device, Some(0x1234), Some(0x9999)));
+        assert!(UdevParser::matches_vid_pid(
+            &device,
+            Some(0x1234),
+            Some(0x5678)
+        ));
+        assert!(!UdevParser::matches_vid_pid(
+            &device,
+            Some(0x1234),
+            Some(0x9999)
+        ));
         assert!(UdevParser::matches_vid_pid(&device, Some(0x1234), None));
         assert!(UdevParser::matches_vid_pid(&device, None, Some(0x5678)));
     }

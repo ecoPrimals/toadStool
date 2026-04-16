@@ -4,8 +4,9 @@
 //! This trait defines what ANY security provider must be able to do.
 //! Security, HSM, KMS, local keyring - all implement this same trait.
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::future::Future;
+use std::pin::Pin;
 use toadstool::error::ToadStoolResult;
 
 use super::types::{
@@ -36,20 +37,23 @@ use super::types::{DecryptionMetadata, SecurityProof};
 /// - ✅ Runtime discovery: Universal Adapter finds best provider
 /// - ✅ Self-knowledge: Each provider knows only itself
 /// - ✅ Testable: Easy to mock for testing
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+// Object-safe async trait via explicit `Pin<Box<dyn Future<...>>>` (dyn-compatible).
 pub trait SecurityProvider: Send + Sync {
     /// Get provider capabilities
     ///
     /// Returns what security features this provider supports.
     /// Used by Universal Adapter for best-match selection.
-    async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>>;
+    fn capabilities(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>>;
 
     /// Get provider metadata
     ///
     /// Returns information about this provider (type, version, etc.).
     /// Note: Does NOT return primal name! Returns generic metadata.
-    async fn metadata(&self) -> ToadStoolResult<ProviderMetadata>;
+    fn metadata(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>>;
 
     /// Encrypt data
     ///
@@ -63,11 +67,11 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Encrypted data with metadata
-    async fn encrypt(
-        &self,
-        data: &[u8],
+    fn encrypt<'a>(
+        &'a self,
+        data: &'a [u8],
         options: Option<EncryptionOptions>,
-    ) -> ToadStoolResult<EncryptionResult>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>>;
 
     /// Decrypt data
     ///
@@ -81,11 +85,11 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Decrypted plaintext
-    async fn decrypt(
-        &self,
-        ciphertext: &[u8],
-        metadata: &EncryptionMetadata,
-    ) -> ToadStoolResult<DecryptionResult>;
+    fn decrypt<'a>(
+        &'a self,
+        ciphertext: &'a [u8],
+        metadata: &'a EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>>;
 
     /// Sign data
     ///
@@ -99,11 +103,11 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Signature with metadata
-    async fn sign(
-        &self,
-        data: &[u8],
+    fn sign<'a>(
+        &'a self,
+        data: &'a [u8],
         options: Option<SigningOptions>,
-    ) -> ToadStoolResult<SignatureResult>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>>;
 
     /// Verify signature
     ///
@@ -118,12 +122,12 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Verification result
-    async fn verify(
-        &self,
-        data: &[u8],
-        signature: &[u8],
-        public_key_id: &str,
-    ) -> ToadStoolResult<VerificationResult>;
+    fn verify<'a>(
+        &'a self,
+        data: &'a [u8],
+        signature: &'a [u8],
+        public_key_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>>;
 
     /// Create a permission
     ///
@@ -136,10 +140,10 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Signed permission with cryptographic proof
-    async fn create_permission(
+    fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> ToadStoolResult<SecurityPermission>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>>;
 
     /// Validate a permission
     ///
@@ -152,10 +156,10 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Validation result
-    async fn validate_permission(
-        &self,
-        permission: &SecurityPermission,
-    ) -> ToadStoolResult<PermissionValidationResult>;
+    fn validate_permission<'a>(
+        &'a self,
+        permission: &'a SecurityPermission,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>;
 
     /// Revoke a permission
     ///
@@ -169,11 +173,11 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Revocation confirmation
-    async fn revoke_permission(
-        &self,
-        permission_id: &uuid::Uuid,
-        reason: &str,
-    ) -> ToadStoolResult<()>;
+    fn revoke_permission<'a>(
+        &'a self,
+        permission_id: &'a uuid::Uuid,
+        reason: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Health check
     ///
@@ -182,7 +186,9 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Provider health status
-    async fn health_check(&self) -> ToadStoolResult<ProviderHealth>;
+    fn health_check(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>>;
 }
 
 /// Security capabilities a provider can offer
@@ -298,128 +304,144 @@ impl MockSecurityProvider {
 }
 
 #[cfg(any(test, feature = "test-mocks"))]
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl SecurityProvider for MockSecurityProvider {
-    async fn capabilities(&self) -> ToadStoolResult<Vec<SecurityCapability>> {
-        Ok(self.capabilities.clone())
-    }
-
-    async fn metadata(&self) -> ToadStoolResult<ProviderMetadata> {
-        Ok(ProviderMetadata {
-            provider_id: uuid::Uuid::new_v4().to_string(),
-            provider_type: "mock".to_string(),
-            provider_version: "1.0.0".to_string(),
-            metadata: std::collections::HashMap::new(),
-        })
-    }
-
-    async fn encrypt(
+    fn capabilities(
         &self,
-        data: &[u8],
-        _options: Option<EncryptionOptions>,
-    ) -> ToadStoolResult<EncryptionResult> {
-        // Mock encryption: just reverse bytes
-        let mut ciphertext = data.to_vec();
-        ciphertext.reverse();
-
-        Ok(EncryptionResult {
-            ciphertext,
-            iv: None,
-            auth_tag: None,
-            metadata: EncryptionMetadata {
-                algorithm: "mock".to_string(),
-                key_id: "mock-key".to_string(),
-                encrypted_at: std::time::SystemTime::now(),
-            },
-        })
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
+        let caps = self.capabilities.clone();
+        Box::pin(async move { Ok(caps) })
     }
 
-    async fn decrypt(
+    fn metadata(
         &self,
-        ciphertext: &[u8],
-        _metadata: &EncryptionMetadata,
-    ) -> ToadStoolResult<DecryptionResult> {
-        // Mock decryption: reverse bytes back
-        let mut plaintext = ciphertext.to_vec();
-        plaintext.reverse();
-
-        Ok(DecryptionResult {
-            plaintext,
-            metadata: DecryptionMetadata {
-                key_id: "mock-key".to_string(),
-                decrypted_at: std::time::SystemTime::now(),
-            },
-        })
-    }
-
-    async fn sign(
-        &self,
-        _data: &[u8],
-        _options: Option<SigningOptions>,
-    ) -> ToadStoolResult<SignatureResult> {
-        Ok(SignatureResult {
-            signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
-            algorithm: SignatureAlgorithm::Ed25519,
-            key_id: "mock-key".to_string(),
-            signed_at: std::time::SystemTime::now(),
-        })
-    }
-
-    async fn verify(
-        &self,
-        _data: &[u8],
-        _signature: &[u8],
-        _public_key_id: &str,
-    ) -> ToadStoolResult<VerificationResult> {
-        Ok(VerificationResult::Valid)
-    }
-
-    async fn create_permission(
-        &self,
-        request: PermissionRequest,
-    ) -> ToadStoolResult<SecurityPermission> {
-        let now = std::time::SystemTime::now();
-
-        Ok(SecurityPermission {
-            permission_id: uuid::Uuid::new_v4(),
-            holder_id: request.requester_id,
-            target: request.target,
-            scope: request.scope,
-            valid_from: now,
-            valid_until: now + request.validity_duration,
-            proof: SecurityProof {
-                signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
-                algorithm: SignatureAlgorithm::Ed25519,
-                public_key_id: "mock-key".to_string(),
-                signed_at: now,
-            },
-            provider_metadata: ProviderMetadata {
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
+        Box::pin(async {
+            Ok(ProviderMetadata {
                 provider_id: uuid::Uuid::new_v4().to_string(),
                 provider_type: "mock".to_string(),
                 provider_version: "1.0.0".to_string(),
                 metadata: std::collections::HashMap::new(),
-            },
+            })
         })
     }
 
-    async fn validate_permission(
-        &self,
-        _permission: &SecurityPermission,
-    ) -> ToadStoolResult<PermissionValidationResult> {
-        Ok(PermissionValidationResult::Valid)
+    fn encrypt<'a>(
+        &'a self,
+        data: &'a [u8],
+        _options: Option<EncryptionOptions>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
+        Box::pin(async move {
+            // Mock encryption: just reverse bytes
+            let mut ciphertext = data.to_vec();
+            ciphertext.reverse();
+
+            Ok(EncryptionResult {
+                ciphertext,
+                iv: None,
+                auth_tag: None,
+                metadata: EncryptionMetadata {
+                    algorithm: "mock".to_string(),
+                    key_id: "mock-key".to_string(),
+                    encrypted_at: std::time::SystemTime::now(),
+                },
+            })
+        })
     }
 
-    async fn revoke_permission(
-        &self,
-        _permission_id: &uuid::Uuid,
-        _reason: &str,
-    ) -> ToadStoolResult<()> {
-        Ok(())
+    fn decrypt<'a>(
+        &'a self,
+        ciphertext: &'a [u8],
+        _metadata: &'a EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
+        Box::pin(async move {
+            // Mock decryption: reverse bytes back
+            let mut plaintext = ciphertext.to_vec();
+            plaintext.reverse();
+
+            Ok(DecryptionResult {
+                plaintext,
+                metadata: DecryptionMetadata {
+                    key_id: "mock-key".to_string(),
+                    decrypted_at: std::time::SystemTime::now(),
+                },
+            })
+        })
     }
 
-    async fn health_check(&self) -> ToadStoolResult<ProviderHealth> {
-        Ok(ProviderHealth::Healthy)
+    fn sign<'a>(
+        &'a self,
+        _data: &'a [u8],
+        _options: Option<SigningOptions>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
+        Box::pin(async {
+            Ok(SignatureResult {
+                signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
+                algorithm: SignatureAlgorithm::Ed25519,
+                key_id: "mock-key".to_string(),
+                signed_at: std::time::SystemTime::now(),
+            })
+        })
+    }
+
+    fn verify<'a>(
+        &'a self,
+        _data: &'a [u8],
+        _signature: &'a [u8],
+        _public_key_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
+        Box::pin(async { Ok(VerificationResult::Valid) })
+    }
+
+    fn create_permission(
+        &self,
+        request: PermissionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
+        Box::pin(async move {
+            let now = std::time::SystemTime::now();
+
+            Ok(SecurityPermission {
+                permission_id: uuid::Uuid::new_v4(),
+                holder_id: request.requester_id,
+                target: request.target,
+                scope: request.scope,
+                valid_from: now,
+                valid_until: now + request.validity_duration,
+                proof: SecurityProof {
+                    signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
+                    algorithm: SignatureAlgorithm::Ed25519,
+                    public_key_id: "mock-key".to_string(),
+                    signed_at: now,
+                },
+                provider_metadata: ProviderMetadata {
+                    provider_id: uuid::Uuid::new_v4().to_string(),
+                    provider_type: "mock".to_string(),
+                    provider_version: "1.0.0".to_string(),
+                    metadata: std::collections::HashMap::new(),
+                },
+            })
+        })
+    }
+
+    fn validate_permission<'a>(
+        &'a self,
+        _permission: &'a SecurityPermission,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
+    {
+        Box::pin(async { Ok(PermissionValidationResult::Valid) })
+    }
+
+    fn revoke_permission<'a>(
+        &'a self,
+        _permission_id: &'a uuid::Uuid,
+        _reason: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async { Ok(()) })
+    }
+
+    fn health_check(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
+        Box::pin(async { Ok(ProviderHealth::Healthy) })
     }
 }
 

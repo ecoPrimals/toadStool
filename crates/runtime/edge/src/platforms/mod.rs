@@ -5,27 +5,28 @@
 
 pub mod arduino;
 pub mod esp32;
-pub mod linux_edge;
-pub mod raspberry_pi;
 pub mod industrial;
+pub mod linux_edge;
 pub mod microcontroller;
+pub mod raspberry_pi;
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use uuid::Uuid;
 
 use toadstool::{
-    error::{ToadStoolError, ToadStoolResult},
+    error::ToadStoolResult,
     execution::{ExecutionRequest, ExecutionResponse},
 };
 
 pub use arduino::*;
 pub use esp32::*;
-pub use linux_edge::*;
-pub use raspberry_pi::*;
 pub use industrial::*;
+pub use linux_edge::*;
 pub use microcontroller::*;
+pub use raspberry_pi::*;
 
 /// Edge Platform Types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -41,14 +42,9 @@ pub enum EdgePlatform {
         framework: ESP32Framework,
     },
     /// Raspberry Pi models
-    RaspberryPi {
-        model: PiModel,
-        os: PiOS,
-    },
+    RaspberryPi { model: PiModel, os: PiOS },
     /// BeagleBone variants
-    BeagleBone {
-        variant: BeagleBoneVariant,
-    },
+    BeagleBone { variant: BeagleBoneVariant },
     /// Industrial control systems
     Industrial {
         system_type: IndustrialSystemType,
@@ -317,66 +313,100 @@ pub enum DeviceStatus {
 }
 
 /// Edge Device Trait
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
+///
+/// Async methods use `Pin<Box<dyn Future<...>>>` so the trait remains object-safe for `dyn EdgeDevice`.
 pub trait EdgeDevice: Send + Sync {
     /// Get device ID
     fn get_id(&self) -> Uuid;
-    
+
     /// Get device information
     fn get_info(&self) -> EdgeDeviceInfo;
-    
+
     /// Get device platform
     fn get_platform(&self) -> &EdgePlatform;
-    
+
     /// Get device capabilities
     fn get_capabilities(&self) -> Vec<String>;
-    
+
     /// Check if device is connected
-    async fn is_connected(&self) -> bool;
-    
+    fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>>;
+
     /// Connect to device
-    async fn connect(&self) -> ToadStoolResult<()>;
-    
+    fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+
     /// Disconnect from device
-    async fn disconnect(&self) -> ToadStoolResult<()>;
-    
+    fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+
     /// Execute code on device
-    async fn execute(&self, request: &ExecutionRequest) -> ToadStoolResult<ExecutionResponse>;
-    
+    fn execute(
+        &self,
+        request: &ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>>;
+
     /// Deploy code to device
-    async fn deploy(&self, code: &[u8]) -> ToadStoolResult<String>;
-    
+    fn deploy(
+        &self,
+        code: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+
     /// Stop execution on device
-    async fn stop_execution(&self, execution_id: Uuid) -> ToadStoolResult<()>;
-    
+    fn stop_execution(
+        &self,
+        execution_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+
     /// Get device status
-    async fn get_status(&self) -> ToadStoolResult<DeviceStatus>;
-    
+    fn get_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>>;
+
     /// Get resource usage
-    async fn get_resource_usage(&self) -> ToadStoolResult<HashMap<String, f64>>;
-    
+    fn get_resource_usage(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>>;
+
     /// Upload file to device
-    async fn upload_file(&self, path: &str, content: &[u8]) -> ToadStoolResult<()>;
-    
+    fn upload_file(
+        &self,
+        path: &str,
+        content: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+
     /// Download file from device
-    async fn download_file(&self, path: &str) -> ToadStoolResult<Vec<u8>>;
-    
+    fn download_file(
+        &self,
+        path: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>>;
+
     /// Execute shell command on device
-    async fn execute_command(&self, command: &str) -> ToadStoolResult<String>;
-    
+    fn execute_command(
+        &self,
+        command: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+
     /// Get device logs
-    async fn get_logs(&self, lines: Option<usize>) -> ToadStoolResult<String>;
-    
+    fn get_logs(
+        &self,
+        lines: Option<usize>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+
     /// Restart device
-    async fn restart(&self) -> ToadStoolResult<()>;
-    
+    fn restart(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+
     /// Update device firmware
-    async fn update_firmware(&self, firmware: &[u8]) -> ToadStoolResult<()>;
-    
+    fn update_firmware(
+        &self,
+        firmware: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+
     /// Get device sensors data
-    async fn get_sensors(&self) -> ToadStoolResult<HashMap<String, f64>>;
-    
+    fn get_sensors(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>>;
+
     /// Control device actuators
-    async fn control_actuators(&self, commands: HashMap<String, f64>) -> ToadStoolResult<()>;
-} 
+    fn control_actuators(
+        &self,
+        commands: HashMap<String, f64>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+}

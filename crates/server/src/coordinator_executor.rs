@@ -13,8 +13,9 @@
 //! - **Capability-Based**: No hardcoded knowledge of other instances
 //! - **Graceful Degradation**: Falls back to standalone if no coordinator available
 
-use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::info;
@@ -80,111 +81,125 @@ impl CoordinatorExecutor {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl WorkloadExecutor for CoordinatorExecutor {
-    async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        info!(
-            "Executing workload via coordinator: {}",
-            submission.workload_id.as_ref()
-        );
+    fn execute(
+        &self,
+        submission: WorkloadSubmission,
+    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
+        let coordinator = Arc::clone(&self.coordinator);
+        Box::pin(async move {
+            info!(
+                "Executing workload via coordinator: {}",
+                submission.workload_id.as_ref()
+            );
 
-        // Convert WorkloadSubmission to ExecutionRequest (pass by ref to avoid full clone)
-        let request = convert_submission_to_request(&submission);
+            // Convert WorkloadSubmission to ExecutionRequest (pass by ref to avoid full clone)
+            let request = convert_submission_to_request(&submission);
 
-        // Submit to coordinator (isomorphic/fractal routing)
-        let execution_id = self
-            .coordinator
-            .submit_execution(request)
-            .await
-            .map_err(|e| format!("Coordinator execution failed: {e}"))?;
+            // Submit to coordinator (isomorphic/fractal routing)
+            let execution_id = coordinator
+                .submit_execution(request)
+                .await
+                .map_err(|e| format!("Coordinator execution failed: {e}"))?;
 
-        info!("Workload submitted to coordinator: {}", execution_id);
+            info!("Workload submitted to coordinator: {}", execution_id);
 
-        // Return immediate result (async execution)
-        Ok(WorkloadResult {
-            workload_id: submission.workload_id,
-            status: WorkloadStatus::Queued,
-            data: None,
-            error: None,
-            metrics: ExecutionMetrics {
-                queued_duration_secs: 0.0,
-                execution_duration_secs: 0.0,
-                cpu_cores_used: 0,
-                memory_used_bytes: 0,
-                gpu_memory_used_bytes: None,
-            },
+            // Return immediate result (async execution)
+            Ok(WorkloadResult {
+                workload_id: submission.workload_id,
+                status: WorkloadStatus::Queued,
+                data: None,
+                error: None,
+                metrics: ExecutionMetrics {
+                    queued_duration_secs: 0.0,
+                    execution_duration_secs: 0.0,
+                    cpu_cores_used: 0,
+                    memory_used_bytes: 0,
+                    gpu_memory_used_bytes: None,
+                },
+            })
         })
     }
 
-    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
-        info!("Querying coordinator capabilities (self-knowledge only)");
+    fn query_capabilities(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
+        let service_id = Arc::clone(&self.service_id);
+        Box::pin(async move {
+            info!("Querying coordinator capabilities (self-knowledge only)");
 
-        // Query local capabilities only (not other instances)
-        // The coordinator will report what THIS instance can do
+            // Query local capabilities only (not other instances)
+            // The coordinator will report what THIS instance can do
 
-        let cpu_cores = std::thread::available_parallelism()
-            .map(|n| u32::try_from(n.get()).unwrap_or(4))
-            .unwrap_or(4);
+            let cpu_cores = std::thread::available_parallelism()
+                .map(|n| u32::try_from(n.get()).unwrap_or(4))
+                .unwrap_or(4);
 
-        let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
-            total: 0,
-            available: 0,
-            used: 0,
-            swap_total: 0,
-            swap_free: 0,
-        });
-        let total_memory = mem.total;
-        let available_memory = mem.available;
+            let mem = toadstool_sysmon::memory_info().unwrap_or(toadstool_sysmon::MemoryInfo {
+                total: 0,
+                available: 0,
+                used: 0,
+                swap_total: 0,
+                swap_free: 0,
+            });
+            let total_memory = mem.total;
+            let available_memory = mem.available;
 
-        Ok(ComputeCapabilities {
-            service_id: self.service_id.as_ref().to_string(),
-            compute_units: vec![ComputeUnit {
-                id: "coordinator-local".to_string(),
-                unit_type: "distributed".to_string(),
-                name: "Distributed Coordinator".to_string(),
-                cores: cpu_cores,
-                memory_bytes: total_memory,
-                tflops: Some(f64::from(cpu_cores) * 0.1),
-                utilization: 0.0,
-            }],
-            supported_workload_types: vec![
-                "cpu_compute".to_string(),
-                "gpu_compute".to_string(),
-                "neural_compute".to_string(),
-                "distributed".to_string(),
-            ],
-            available_resources: AvailableResources {
-                total_cpu_cores: cpu_cores,
-                available_cpu_cores: cpu_cores,
-                total_memory_bytes: total_memory,
-                available_memory_bytes: available_memory,
-                total_gpu_memory_bytes: None,
-                available_gpu_memory_bytes: None,
-                cpu_utilization: 0.0,
-                memory_utilization: 0.0,
-                gpu_utilization: None,
-            },
-            metadata: std::collections::HashMap::from([
-                ("mode".to_string(), "distributed".to_string()),
-                ("coordinator".to_string(), "active".to_string()),
-            ]),
+            Ok(ComputeCapabilities {
+                service_id: service_id.as_ref().to_string(),
+                compute_units: vec![ComputeUnit {
+                    id: "coordinator-local".to_string(),
+                    unit_type: "distributed".to_string(),
+                    name: "Distributed Coordinator".to_string(),
+                    cores: cpu_cores,
+                    memory_bytes: total_memory,
+                    tflops: Some(f64::from(cpu_cores) * 0.1),
+                    utilization: 0.0,
+                }],
+                supported_workload_types: vec![
+                    "cpu_compute".to_string(),
+                    "gpu_compute".to_string(),
+                    "neural_compute".to_string(),
+                    "distributed".to_string(),
+                ],
+                available_resources: AvailableResources {
+                    total_cpu_cores: cpu_cores,
+                    available_cpu_cores: cpu_cores,
+                    total_memory_bytes: total_memory,
+                    available_memory_bytes: available_memory,
+                    total_gpu_memory_bytes: None,
+                    available_gpu_memory_bytes: None,
+                    cpu_utilization: 0.0,
+                    memory_utilization: 0.0,
+                    gpu_utilization: None,
+                },
+                metadata: std::collections::HashMap::from([
+                    ("mode".to_string(), "distributed".to_string()),
+                    ("coordinator".to_string(), "active".to_string()),
+                ]),
+            })
         })
     }
 
-    async fn cancel(&self, workload_id: &str) -> Result<(), String> {
-        info!(
-            "Coordinator cancellation requested for workload: {}",
-            workload_id
-        );
+    fn cancel<'a>(
+        &'a self,
+        workload_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
+        let coordinator = Arc::clone(&self.coordinator);
+        Box::pin(async move {
+            info!(
+                "Coordinator cancellation requested for workload: {}",
+                workload_id
+            );
 
-        let execution_id = uuid::Uuid::parse_str(workload_id)
-            .map_err(|e| format!("Invalid workload ID (expected UUID): {workload_id} - {e}"))?;
+            let execution_id = uuid::Uuid::parse_str(workload_id)
+                .map_err(|e| format!("Invalid workload ID (expected UUID): {workload_id} - {e}"))?;
 
-        self.coordinator
-            .cancel_execution(execution_id)
-            .await
-            .map_err(|e| format!("Failed to cancel workload: {e}"))
+            coordinator
+                .cancel_execution(execution_id)
+                .await
+                .map_err(|e| format!("Failed to cancel workload: {e}"))
+        })
     }
 }
 

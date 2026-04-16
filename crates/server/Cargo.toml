@@ -33,9 +33,6 @@ base64 = "0.22"
 # Async runtime and channels
 tokio = { workspace = true }
 
-# Async utilities
-async-trait = { workspace = true }
-
 # HTTP client - REMOVED: Legacy artifact from old Songbird HTTP registration
 # ARCHITECTURAL EVOLUTION (Jan 17, 2026):
 #   OLD: ToadStool used HTTP to register with Songbird (violated concentrated gap)

@@ -163,7 +163,10 @@ impl MicrocontrollerDevice {
 
     /// Create a device from connection parameters.
     /// Returns `Err` when the platform cannot create a device.
-    #[expect(dead_code, reason = "microcontroller platform constructor; requires target hardware")]
+    #[expect(
+        dead_code,
+        reason = "microcontroller platform constructor; requires target hardware"
+    )]
     pub fn new(
         _arch: MicrocontrollerArch,
         _vendor: String,
@@ -195,7 +198,12 @@ mod tests {
         } else {
             let devices = result.unwrap();
             assert!(!devices.is_empty());
-            assert!(devices[0].get_info().capabilities.contains(&"serial".to_string()));
+            assert!(
+                devices[0]
+                    .get_info()
+                    .capabilities
+                    .contains(&"serial".to_string())
+            );
         }
     }
 

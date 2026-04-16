@@ -6,7 +6,8 @@
 
 use crate::unified_memory::backend::{BackendAllocation, BackendInitializer, UnifiedMemoryBackend};
 use crate::unified_memory::types::{BackendType, MemoryFlags, UnifiedMemoryCapabilities};
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
 /// Documentary alias: stub [`UnifiedMemoryCapabilities`] values for the removed OpenCL backend (S198).
@@ -64,7 +65,6 @@ impl BackendInitializer for OpenClBackend {
 }
 
 #[expect(deprecated)]
-#[async_trait]
 impl UnifiedMemoryBackend for OpenClBackend {
     fn name(&self) -> &'static str {
         "OpenCL (deprecated)"
@@ -82,26 +82,38 @@ impl UnifiedMemoryBackend for OpenClBackend {
         }
     }
 
-    async fn allocate_unified(
+    fn allocate_unified(
         &self,
         _size: usize,
         _flags: MemoryFlags,
-    ) -> ToadStoolResult<BackendAllocation> {
-        Err(ToadStoolError::runtime(
-            "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
-        ))
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<BackendAllocation>> + Send + '_>> {
+        Box::pin(async move {
+            Err(ToadStoolError::runtime(
+                "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
+            ))
+        })
     }
 
-    async fn free_unified(&self, _allocation: BackendAllocation) -> ToadStoolResult<()> {
-        Err(ToadStoolError::runtime(
-            "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
-        ))
+    fn free_unified(
+        &self,
+        _allocation: BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            Err(ToadStoolError::runtime(
+                "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
+            ))
+        })
     }
 
-    async fn map_cpu_ptr(&self, _allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
-        Err(ToadStoolError::runtime(
-            "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
-        ))
+    fn map_cpu_ptr<'a>(
+        &'a self,
+        _allocation: &'a BackendAllocation,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<*mut u8>> + Send + 'a>> {
+        Box::pin(async {
+            Err(ToadStoolError::runtime(
+                "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
+            ))
+        })
     }
 
     fn get_device_ptr(&self, _allocation: &BackendAllocation) -> *const u8 {

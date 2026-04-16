@@ -3,9 +3,7 @@
 
 use toadstool::error::ToadStoolResult;
 
-use super::super::{
-    ConnectionInfo, ConnectionType, ESP32Framework, ESP32Variant,
-};
+use super::super::{ConnectionInfo, ConnectionType, ESP32Framework, ESP32Variant};
 use super::ESP32Device;
 
 impl ESP32Device {
@@ -13,9 +11,9 @@ impl ESP32Device {
     pub fn discover_devices() -> ToadStoolResult<Vec<ESP32Device>> {
         let mut devices = Vec::new();
 
-        for port in serialport::available_ports().map_err(|e| {
-            toadstool::error::ToadStoolError::io(e.to_string())
-        })? {
+        for port in serialport::available_ports()
+            .map_err(|e| toadstool::error::ToadStoolError::io(e.to_string()))?
+        {
             if let serialport::SerialPortType::UsbPort(usb_info) = &port.port_type {
                 if Self::is_esp32_device(usb_info.vid, usb_info.pid) {
                     let chip = Self::detect_chip_variant(usb_info.vid, usb_info.pid);
@@ -45,7 +43,7 @@ impl ESP32Device {
             0x10C4 => matches!(pid, 0xEA60), // Silicon Labs CP210x
             0x1A86 => matches!(pid, 0x7523), // CH340
             0x0403 => matches!(pid, 0x6001 | 0x6010 | 0x6011), // FTDI
-            0x303A => true, // Espressif
+            0x303A => true,                  // Espressif
             _ => false,
         }
     }

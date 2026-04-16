@@ -32,8 +32,8 @@
 //!
 //! # Dependencies
 //!
-//! This module depends on `tokio` for async locks, `async_trait` for the discovery trait, and
-//! `toadstool-common` for capability and service types. Parsing logic is isolated so a future
+//! This module depends on `tokio` for async locks and `toadstool-common` for capability and
+//! service types. Async traits use manual `Pin<Box<dyn Future>>`. Parsing logic is isolated so a future
 //! network backend can reuse it without duplicating string conventions.
 //!
 //! The service type constant `MDNS_SERVICE_TYPE` is shared by registration paths once real

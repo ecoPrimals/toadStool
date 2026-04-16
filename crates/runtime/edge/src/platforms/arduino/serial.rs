@@ -63,18 +63,19 @@ impl ArduinoDevice {
 
         // Send command
         let command_bytes = format!("{}\n", command).into_bytes();
-        port
-            .write_all(&command_bytes)
-            .map_err(|e| ToadStoolError::execution_error(format!("Failed to send command: {}", e)))?;
+        port.write_all(&command_bytes).map_err(|e| {
+            ToadStoolError::execution_error(format!("Failed to send command: {}", e))
+        })?;
 
-        port.flush()
-            .map_err(|e| ToadStoolError::execution_error(format!("Failed to flush serial port: {}", e)))?;
+        port.flush().map_err(|e| {
+            ToadStoolError::execution_error(format!("Failed to flush serial port: {}", e))
+        })?;
 
         // Read response
         let mut buffer = vec![0; 1024];
-        let bytes_read = port
-            .read(&mut buffer)
-            .map_err(|e| ToadStoolError::execution_error(format!("Failed to read response: {}", e)))?;
+        let bytes_read = port.read(&mut buffer).map_err(|e| {
+            ToadStoolError::execution_error(format!("Failed to read response: {}", e))
+        })?;
 
         let response = String::from_utf8_lossy(&buffer[..bytes_read]).to_string();
         debug!("Arduino response: {}", response);

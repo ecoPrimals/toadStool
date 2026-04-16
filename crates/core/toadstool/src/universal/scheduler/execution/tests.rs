@@ -7,8 +7,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
-
 use crate::execution::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeConfig,
     RuntimeEngine, RuntimeType,
@@ -104,7 +102,6 @@ struct NativePrimalTemplate {
     metadata: HashMap<String, String>,
 }
 
-#[async_trait]
 impl UniversalPrimalProvider for NativePrimalTemplate {
     fn primal_id(&self) -> &str {
         &self.instance_id
@@ -128,8 +125,8 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
         }]
     }
 
-    async fn health_check(&self) -> PrimalHealth {
-        PrimalHealth::Healthy
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
+        Box::pin(async { PrimalHealth::Healthy })
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -143,25 +140,33 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
         }
     }
 
-    async fn handle_primal_request(
+    fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> ToadStoolResult<PrimalResponse> {
-        Ok(PrimalResponse {
-            request_id: request.id,
-            status: self.status.clone(),
-            payload: self.payload.clone(),
-            metadata: self.metadata.clone(),
-            timestamp: std::time::SystemTime::now(),
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+        let status = self.status.clone();
+        let payload = self.payload.clone();
+        let metadata = self.metadata.clone();
+        Box::pin(async move {
+            Ok(PrimalResponse {
+                request_id: request.id,
+                status,
+                payload,
+                metadata,
+                timestamp: std::time::SystemTime::now(),
+            })
         })
     }
 
-    async fn initialize(&mut self, _config: serde_json::Value) -> ToadStoolResult<()> {
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -175,7 +180,6 @@ struct FailingNativePrimal {
     context: PrimalContext,
 }
 
-#[async_trait]
 impl UniversalPrimalProvider for FailingNativePrimal {
     fn primal_id(&self) -> &str {
         &self.instance_id
@@ -199,8 +203,8 @@ impl UniversalPrimalProvider for FailingNativePrimal {
         }]
     }
 
-    async fn health_check(&self) -> PrimalHealth {
-        PrimalHealth::Healthy
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
+        Box::pin(async { PrimalHealth::Healthy })
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -214,19 +218,22 @@ impl UniversalPrimalProvider for FailingNativePrimal {
         }
     }
 
-    async fn handle_primal_request(
+    fn handle_primal_request(
         &self,
         _request: PrimalRequest,
-    ) -> ToadStoolResult<PrimalResponse> {
-        Err(ToadStoolError::execution("mock native primal failure"))
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+        Box::pin(async { Err(ToadStoolError::execution("mock native primal failure")) })
     }
 
-    async fn initialize(&mut self, _config: serde_json::Value) -> ToadStoolResult<()> {
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -243,7 +250,6 @@ struct TypedRoutePrimal {
     fail_route: bool,
 }
 
-#[async_trait]
 impl UniversalPrimalProvider for TypedRoutePrimal {
     fn primal_id(&self) -> &str {
         &self.instance_id
@@ -267,8 +273,8 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
         }]
     }
 
-    async fn health_check(&self) -> PrimalHealth {
-        PrimalHealth::Healthy
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
+        Box::pin(async { PrimalHealth::Healthy })
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -282,28 +288,35 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
         }
     }
 
-    async fn handle_primal_request(
+    fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> ToadStoolResult<PrimalResponse> {
-        if self.fail_route {
-            return Err(ToadStoolError::execution("route handler failure"));
-        }
-        Ok(PrimalResponse {
-            request_id: request.id,
-            status: self.status.clone(),
-            payload: serde_json::json!({"ok": true}),
-            metadata: HashMap::new(),
-            timestamp: std::time::SystemTime::now(),
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+        let fail_route = self.fail_route;
+        let status = self.status.clone();
+        Box::pin(async move {
+            if fail_route {
+                return Err(ToadStoolError::execution("route handler failure"));
+            }
+            Ok(PrimalResponse {
+                request_id: request.id,
+                status,
+                payload: serde_json::json!({"ok": true}),
+                metadata: HashMap::new(),
+                timestamp: std::time::SystemTime::now(),
+            })
         })
     }
 
-    async fn initialize(&mut self, _config: serde_json::Value) -> ToadStoolResult<()> {
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -440,7 +453,6 @@ struct OnlyWasmPrimal {
     context: PrimalContext,
 }
 
-#[async_trait]
 impl UniversalPrimalProvider for OnlyWasmPrimal {
     fn primal_id(&self) -> &str {
         &self.instance_id
@@ -462,8 +474,8 @@ impl UniversalPrimalProvider for OnlyWasmPrimal {
         vec![PrimalCapability::WasmExecution { wasi_support: true }]
     }
 
-    async fn health_check(&self) -> PrimalHealth {
-        PrimalHealth::Healthy
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
+        Box::pin(async { PrimalHealth::Healthy })
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -477,19 +489,26 @@ impl UniversalPrimalProvider for OnlyWasmPrimal {
         }
     }
 
-    async fn handle_primal_request(
+    fn handle_primal_request(
         &self,
         _request: PrimalRequest,
-    ) -> ToadStoolResult<PrimalResponse> {
-        unreachable!("no native capability — scheduler should not route here for execute_native")
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+        Box::pin(async {
+            unreachable!(
+                "no native capability — scheduler should not route here for execute_native"
+            )
+        })
     }
 
-    async fn initialize(&mut self, _config: serde_json::Value) -> ToadStoolResult<()> {
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {

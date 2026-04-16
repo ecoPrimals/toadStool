@@ -1,29 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::error::ToadStoolResult;
 use crate::primal_identity::{Capability, DiscoveredService};
 
 /// Discovery client trait - implement for different discovery mechanisms
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 pub trait DiscoveryClient: Send + Sync {
     /// Discover services by capability
-    async fn discover_by_capability(
-        &self,
-        capability: &Capability,
-    ) -> ToadStoolResult<Vec<DiscoveredService>>;
+    fn discover_by_capability<'a>(
+        &'a self,
+        capability: &'a Capability,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>>;
 
     /// Discover all available services
-    async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>>;
+    fn discover_all<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>>;
 
     /// Register a service (for service registration)
-    async fn register_service(&self, service: &DiscoveredService) -> ToadStoolResult<()>;
+    fn register_service<'a>(
+        &'a self,
+        service: &'a DiscoveredService,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Deregister a service
-    async fn deregister_service(&self, service_id: &str) -> ToadStoolResult<()>;
+    fn deregister_service<'a>(
+        &'a self,
+        service_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Health check a service
-    async fn health_check(&self, service_id: &str) -> ToadStoolResult<bool>;
+    fn health_check<'a>(
+        &'a self,
+        service_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>>;
 }

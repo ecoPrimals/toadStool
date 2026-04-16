@@ -2,7 +2,9 @@
 //! Toolchain trait, compile/link results, diagnostics, and memory map metadata.
 
 use serde::{Deserialize, Serialize};
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::time::Duration;
 
 use crate::{
@@ -12,7 +14,6 @@ use crate::{
 use super::job::{OutputFile, OutputFileType, SourceFile};
 
 /// Embedded toolchain trait
-#[async_trait::async_trait]
 pub trait EmbeddedToolchain: Send + Sync + std::fmt::Debug {
     /// Get toolchain name
     fn name(&self) -> &'static str;
@@ -21,35 +22,45 @@ pub trait EmbeddedToolchain: Send + Sync + std::fmt::Debug {
     fn supported_architectures(&self) -> Vec<LegacyArchitecture>;
 
     /// Initialize toolchain
-    async fn initialize(&mut self, config: &crate::EmbeddedConfig) -> ToadStoolResult<()>;
+    fn initialize<'a>(
+        &'a mut self,
+        config: &'a crate::EmbeddedConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Compile source code
-    async fn compile(
-        &self,
-        sources: &[SourceFile],
-        output_path: &Path,
-    ) -> ToadStoolResult<CompilationResult>;
+    fn compile<'a>(
+        &'a self,
+        sources: &'a [SourceFile],
+        output_path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a>>;
 
     /// Link object files
-    async fn link(
-        &self,
-        objects: &[PathBuf],
-        output_path: &Path,
-        memory_layout: &MemoryLayout,
-    ) -> ToadStoolResult<LinkResult>;
+    fn link<'a>(
+        &'a self,
+        objects: &'a [PathBuf],
+        output_path: &'a Path,
+        memory_layout: &'a MemoryLayout,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<LinkResult>> + Send + 'a>>;
 
     /// Generate ROM image
-    async fn generate_rom_image(
-        &self,
-        executable: &Path,
+    fn generate_rom_image<'a>(
+        &'a self,
+        executable: &'a Path,
         format: OutputFileType,
-    ) -> ToadStoolResult<Vec<u8>>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>;
 
     /// Disassemble binary
-    async fn disassemble(&self, binary: &[u8], start_address: u32) -> ToadStoolResult<String>;
+    fn disassemble<'a>(
+        &'a self,
+        binary: &'a [u8],
+        start_address: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>>;
 
     /// Create memory map
-    async fn create_memory_map(&self, executable: &Path) -> ToadStoolResult<MemoryMap>;
+    fn create_memory_map<'a>(
+        &'a self,
+        executable: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a>>;
 }
 
 /// Compilation result

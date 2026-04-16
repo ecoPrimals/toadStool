@@ -240,11 +240,11 @@ async fn test_discover_provider_empty_registry_sets_none() {
 async fn test_discover_provider_with_registered_provider() {
     use super::capability::CryptoCapability;
     use super::provider::{CryptoProvider, CryptoProviderRegistry, ProviderHealth};
-    use async_trait::async_trait;
+    use std::future::Future;
+    use std::pin::Pin;
     use std::sync::Arc;
 
     struct TestProvider;
-    #[async_trait]
     impl CryptoProvider for TestProvider {
         fn provider_id(&self) -> &'static str {
             "test-crypto"
@@ -257,51 +257,79 @@ async fn test_discover_provider_with_registered_provider() {
                 hardware_backed: false,
             })
         }
-        async fn encrypt(
-            &self,
-            data: &[u8],
-            _key: &super::types::EncryptionKey,
-        ) -> crate::ToadStoolResult<(
-            super::types::EncryptedPayload,
-            super::types::EncryptionMetadata,
-        )> {
-            Ok((
-                super::types::EncryptedPayload::new(data.to_vec()),
-                super::types::EncryptionMetadata::default(),
-            ))
+        fn encrypt<'a>(
+            &'a self,
+            data: &'a [u8],
+            _key: &'a super::types::EncryptionKey,
+        ) -> Pin<
+            Box<
+                dyn Future<
+                        Output = crate::ToadStoolResult<(
+                            super::types::EncryptedPayload,
+                            super::types::EncryptionMetadata,
+                        )>,
+                    > + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async move {
+                Ok((
+                    super::types::EncryptedPayload::new(data.to_vec()),
+                    super::types::EncryptionMetadata::default(),
+                ))
+            })
         }
-        async fn decrypt(
-            &self,
-            encrypted: &super::types::EncryptedPayload,
-            _key: &super::types::EncryptionKey,
-            _metadata: &super::types::EncryptionMetadata,
-        ) -> crate::ToadStoolResult<Vec<u8>> {
-            Ok(encrypted.ciphertext.clone())
+        fn decrypt<'a>(
+            &'a self,
+            encrypted: &'a super::types::EncryptedPayload,
+            _key: &'a super::types::EncryptionKey,
+            _metadata: &'a super::types::EncryptionMetadata,
+        ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<Vec<u8>>> + Send + 'a>> {
+            Box::pin(async move { Ok(encrypted.ciphertext.clone()) })
         }
-        async fn generate_key(
+        fn generate_key(
             &self,
             level: SecurityLevel,
-        ) -> crate::ToadStoolResult<super::types::EncryptionKey> {
-            Ok(super::types::EncryptionKey::new(
-                "gen-key".to_string(),
-                vec![1u8; 32],
-                "chacha20poly1305".to_string(),
-                level,
-            ))
+        ) -> Pin<
+            Box<
+                dyn Future<Output = crate::ToadStoolResult<super::types::EncryptionKey>>
+                    + Send
+                    + '_,
+            >,
+        > {
+            Box::pin(async move {
+                Ok(super::types::EncryptionKey::new(
+                    "gen-key".to_string(),
+                    vec![1u8; 32],
+                    "chacha20poly1305".to_string(),
+                    level,
+                ))
+            })
         }
-        async fn get_key(
+        fn get_key<'a>(
+            &'a self,
+            key_id: &'a str,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = crate::ToadStoolResult<super::types::EncryptionKey>>
+                    + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async move {
+                Ok(super::types::EncryptionKey::new(
+                    key_id.to_string(),
+                    vec![1u8; 32],
+                    "chacha20poly1305".to_string(),
+                    SecurityLevel::Standard,
+                ))
+            })
+        }
+        fn health_check(
             &self,
-            key_id: &str,
-        ) -> crate::ToadStoolResult<super::types::EncryptionKey> {
-            Ok(super::types::EncryptionKey::new(
-                key_id.to_string(),
-                vec![1u8; 32],
-                "chacha20poly1305".to_string(),
-                SecurityLevel::Standard,
-            ))
-        }
-        async fn health_check(&self) -> crate::ToadStoolResult<ProviderHealth> {
-            Ok(ProviderHealth::healthy(1))
+        ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<ProviderHealth>> + Send + '_>>
+        {
+            Box::pin(async move { Ok(ProviderHealth::healthy(1)) })
         }
     }
 

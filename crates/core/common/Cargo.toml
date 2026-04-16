@@ -28,7 +28,6 @@ zeroize = { version = "1.7", features = ["derive"] }
 # libc = "0.2"  # NO LONGER NEEDED - using pure Rust uid_detector!
 
 # Infant discovery dependencies
-async-trait = { workspace = true }
 tokio = { workspace = true }
 toml = "0.8"
 base64 = "0.22"

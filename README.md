@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **21,700+ tests, 0 failures**, 121 ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **22,000+ tests, 0 failures**, 121 ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**) |
@@ -53,7 +53,7 @@ Nest    = Tower  + Storage            <- storage
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
 | Hardcoded primal names | **0** user-visible; **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
-| `async-trait` migration | **CLOSED** (dyn-ceiling): 13 traits migrated to native AFIT, 8 crates freed; **158 annotations** on 32 dyn-dispatched traits (all `NOTE(async-dyn)` marked, no further migration planned) |
+| `async-trait` migration | **DEPRECATED** — fully removed and banned in `deny.toml` (S203r). All ~91 annotations evolved to manual `Pin<Box<dyn Future>>` or native AFIT. Zero runtime behavior change. Transitive only (axum, config, wiggle). |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
@@ -246,7 +246,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **21,700+**, 0 failures |
+| Workspace tests | **22,000+**, 0 failures |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **~66 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**) |
@@ -268,11 +268,13 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 21,700+ tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 22,000+ tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S203r (Apr 16, 2026)**: `async-trait` fully deprecated — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` across 55+ files in 13 crates. Crate removed from all Cargo.toml. Banned in `deny.toml` (transitive via axum/config/wiggle allowed). `DEBT.md` D-ASYNC-DYN-MARKERS → RESOLVED. 22,061 tests, 0 failures, clippy clean.
+- **S203q (Apr 16, 2026)**: Root doc cleanup + debris audit — aligned README/CONTEXT/DOCUMENTATION/NEXT_STEPS to S203p state, stale comment cleanup, 25GB build artifacts cleaned.
 - **S203p (Apr 16, 2026)**: Env interning complete — all `TOADSTOOL_*` env vars in config `env_overrides` now use `socket_env` constants (~55 new). +21 tests for pure-logic modules (path resolution, semantic methods, resource optimizer/estimator, workload routing).
 - **S203o (Apr 16, 2026)**: Testability refactors — 5 modules evolved to separate I/O from pure logic (detection, GPU, DNS, storage, OS). +38 tests for pure parsers. Monitoring evolved from hardcoded to real host queries (sysmon + statvfs). `StorageStatus::LocalOnly` replaces fake success. Constants wave 4 (4 sysfs + 11 env).
 - **S203n (Apr 16, 2026)**: primalSpring audit closure — `async-trait` formally CLOSED (dyn-ceiling). +129 tests across 15 previously-untested modules (server, distributed, CLI, integration, WASM).
@@ -329,7 +331,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 21,600+ tests (S203g); ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
+| D-COV | Test coverage → 90% | Active -- 22,000+ tests (S203r); ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
 | D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
 | D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
 | D-BTSP-PHASE2 | ~~BTSP on all UDS accept paths~~ | **RESOLVED** -- S198: handshake wired in `tarpc_server.rs` and `daemon/jsonrpc_server.rs` (pure JSON-RPC already had it) |
@@ -374,7 +376,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 16, 2026 — S203p. **21,700+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~69 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**). IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait CLOSED** (dyn-ceiling: 158, 32 dyn-dispatched). **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 16, 2026 — S203r. **22,000+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **~69 JSON-RPC methods** with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **~66 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; **40 crates forbid, 6 deny** `unsafe_code` (**46/46**). IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

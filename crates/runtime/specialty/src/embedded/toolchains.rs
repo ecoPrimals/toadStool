@@ -19,8 +19,9 @@
 //! Each toolchain will require: cross-compiler binary discovery, platform-specific
 //! linker scripts, and ROM image format generation (e.g., .nes, .sms, raw binary).
 
-use async_trait::async_trait;
+use std::future::{Future, ready};
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 
 use toadstool::ToadStoolError;
 
@@ -80,8 +81,6 @@ impl Toolchain6502 {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl EmbeddedToolchain for Toolchain6502 {
     fn name(&self) -> &'static str {
         "6502 Toolchain"
@@ -91,41 +90,55 @@ impl EmbeddedToolchain for Toolchain6502 {
         vec![LegacyArchitecture::MOS6502]
     }
 
-    async fn initialize(&mut self, _config: &EmbeddedConfig) -> ToadStoolResult<()> {
-        Err(toolchain_unavailable("6502 initialization"))
+    fn initialize<'a>(
+        &'a mut self,
+        _config: &'a EmbeddedConfig,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(ready(Err(toolchain_unavailable("6502 initialization"))))
     }
 
-    async fn compile(
-        &self,
-        _sources: &[SourceFile],
-        _output_path: &Path,
-    ) -> ToadStoolResult<CompilationResult> {
-        Err(toolchain_unavailable("6502 compilation"))
+    fn compile<'a>(
+        &'a self,
+        _sources: &'a [SourceFile],
+        _output_path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a>> {
+        Box::pin(ready(Err(toolchain_unavailable("6502 compilation"))))
     }
 
-    async fn link(
-        &self,
-        _objects: &[PathBuf],
-        _output_path: &Path,
-        _memory_layout: &MemoryLayout,
-    ) -> ToadStoolResult<LinkResult> {
-        Err(toolchain_unavailable("6502 linking"))
+    fn link<'a>(
+        &'a self,
+        _objects: &'a [PathBuf],
+        _output_path: &'a Path,
+        _memory_layout: &'a MemoryLayout,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<LinkResult>> + Send + 'a>> {
+        Box::pin(ready(Err(toolchain_unavailable("6502 linking"))))
     }
 
-    async fn generate_rom_image(
-        &self,
-        _executable: &Path,
+    fn generate_rom_image<'a>(
+        &'a self,
+        _executable: &'a Path,
         _format: OutputFileType,
-    ) -> ToadStoolResult<Vec<u8>> {
-        Err(toolchain_unavailable("6502 ROM image generation"))
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
+        Box::pin(ready(Err(toolchain_unavailable(
+            "6502 ROM image generation",
+        ))))
     }
 
-    async fn disassemble(&self, _binary: &[u8], _start_address: u32) -> ToadStoolResult<String> {
-        Err(toolchain_unavailable("6502 disassembly"))
+    fn disassemble<'a>(
+        &'a self,
+        _binary: &'a [u8],
+        _start_address: u32,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
+        Box::pin(ready(Err(toolchain_unavailable("6502 disassembly"))))
     }
 
-    async fn create_memory_map(&self, _executable: &Path) -> ToadStoolResult<MemoryMap> {
-        Err(toolchain_unavailable("6502 memory map creation"))
+    fn create_memory_map<'a>(
+        &'a self,
+        _executable: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a>> {
+        Box::pin(ready(Err(toolchain_unavailable(
+            "6502 memory map creation",
+        ))))
     }
 }
 
@@ -166,8 +179,6 @@ impl Toolchain68000 {
 
 macro_rules! impl_pending_toolchain {
     ($toolchain:ty, $name:expr, $arch:expr) => {
-        // NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-        #[async_trait]
         impl EmbeddedToolchain for $toolchain {
             fn name(&self) -> &'static str {
                 $name
@@ -177,51 +188,69 @@ macro_rules! impl_pending_toolchain {
                 vec![$arch]
             }
 
-            async fn initialize(&mut self, _config: &EmbeddedConfig) -> ToadStoolResult<()> {
-                Err(toolchain_unavailable(format!("{} initialization", $name)))
+            fn initialize<'a>(
+                &'a mut self,
+                _config: &'a EmbeddedConfig,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
+                Box::pin(ready(Err(toolchain_unavailable(format!(
+                    "{} initialization",
+                    $name
+                )))))
             }
 
-            async fn compile(
-                &self,
-                _sources: &[SourceFile],
-                _output_path: &Path,
-            ) -> ToadStoolResult<CompilationResult> {
-                Err(toolchain_unavailable(format!("{} compilation", $name)))
+            fn compile<'a>(
+                &'a self,
+                _sources: &'a [SourceFile],
+                _output_path: &'a Path,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a>> {
+                Box::pin(ready(Err(toolchain_unavailable(format!(
+                    "{} compilation",
+                    $name
+                )))))
             }
 
-            async fn link(
-                &self,
-                _objects: &[PathBuf],
-                _output_path: &Path,
-                _memory_layout: &MemoryLayout,
-            ) -> ToadStoolResult<LinkResult> {
-                Err(toolchain_unavailable(format!("{} linking", $name)))
+            fn link<'a>(
+                &'a self,
+                _objects: &'a [PathBuf],
+                _output_path: &'a Path,
+                _memory_layout: &'a MemoryLayout,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<LinkResult>> + Send + 'a>> {
+                Box::pin(ready(Err(toolchain_unavailable(format!(
+                    "{} linking",
+                    $name
+                )))))
             }
 
-            async fn generate_rom_image(
-                &self,
-                _executable: &Path,
+            fn generate_rom_image<'a>(
+                &'a self,
+                _executable: &'a Path,
                 _format: OutputFileType,
-            ) -> ToadStoolResult<Vec<u8>> {
-                Err(toolchain_unavailable(format!(
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
+                Box::pin(ready(Err(toolchain_unavailable(format!(
                     "{} ROM image generation",
                     $name
-                )))
+                )))))
             }
 
-            async fn disassemble(
-                &self,
-                _binary: &[u8],
+            fn disassemble<'a>(
+                &'a self,
+                _binary: &'a [u8],
                 _start_address: u32,
-            ) -> ToadStoolResult<String> {
-                Err(toolchain_unavailable(format!("{} disassembly", $name)))
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
+                Box::pin(ready(Err(toolchain_unavailable(format!(
+                    "{} disassembly",
+                    $name
+                )))))
             }
 
-            async fn create_memory_map(&self, _executable: &Path) -> ToadStoolResult<MemoryMap> {
-                Err(toolchain_unavailable(format!(
+            fn create_memory_map<'a>(
+                &'a self,
+                _executable: &'a Path,
+            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a>> {
+                Box::pin(ready(Err(toolchain_unavailable(format!(
                     "{} memory map creation",
                     $name
-                )))
+                )))))
             }
         }
     };

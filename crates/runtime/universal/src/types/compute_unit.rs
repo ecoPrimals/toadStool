@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`ComputeUnit`] trait — unified interface for parallel compute resources.
 
+use std::future::Future;
+use std::pin::Pin;
+
 use super::capabilities::Capabilities;
 use super::error::ComputeError;
 use super::output::Output;
@@ -14,7 +17,6 @@ use super::workload::Workload;
 /// - Neuromorphic: Event-driven (spike-based)
 ///
 /// Key insight: They're all parallel compute with different profiles!
-#[async_trait::async_trait]
 pub trait ComputeUnit: Send + Sync {
     /// Get capabilities of this compute unit
     fn capabilities(&self) -> &Capabilities;
@@ -23,7 +25,10 @@ pub trait ComputeUnit: Send + Sync {
     fn name(&self) -> &str;
 
     /// Execute a workload on this compute unit
-    async fn execute(&self, workload: Workload) -> Result<Output, ComputeError>;
+    fn execute<'a>(
+        &'a self,
+        workload: Workload,
+    ) -> Pin<Box<dyn Future<Output = Result<Output, ComputeError>> + Send + 'a>>;
 
     /// Check if this unit can execute the given workload
     fn can_execute(&self, workload: &Workload) -> bool {

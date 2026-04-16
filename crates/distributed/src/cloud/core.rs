@@ -4,9 +4,10 @@
 //! This module contains the fundamental cloud provider abstractions, including
 //! the CloudProvider enum, CloudProviderInterface trait, and UniversalCloudOrchestrator.
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use toadstool::error::ToadStoolResult;
 use tokio::sync::RwLock;
 
@@ -162,36 +163,49 @@ impl Default for CloudProvider {
 // ============================================================================
 
 /// Cloud provider interface - every cloud must implement this
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 pub trait CloudProviderInterface: Send + Sync {
     /// Deploy a job to this cloud provider
-    async fn deploy_job(&self, job: &UniversalJob) -> ToadStoolResult<CloudJobHandle>;
+    fn deploy_job<'a>(
+        &'a self,
+        job: &'a UniversalJob,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CloudJobHandle>> + Send + 'a>>;
 
     /// Get job status from this provider
-    async fn get_job_status(&self, handle: &CloudJobHandle) -> ToadStoolResult<CloudJobStatus>;
+    fn get_job_status<'a>(
+        &'a self,
+        handle: &'a CloudJobHandle,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CloudJobStatus>> + Send + 'a>>;
 
     /// Scale resources for a job
-    async fn scale_job(
-        &self,
-        handle: &CloudJobHandle,
+    fn scale_job<'a>(
+        &'a self,
+        handle: &'a CloudJobHandle,
         scale_config: ScaleConfig,
-    ) -> ToadStoolResult<()>;
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Terminate a job
-    async fn terminate_job(&self, handle: &CloudJobHandle) -> ToadStoolResult<()>;
+    fn terminate_job<'a>(
+        &'a self,
+        handle: &'a CloudJobHandle,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
 
     /// Get current pricing for resources
-    async fn get_pricing(&self, resource_spec: &ResourceSpec) -> ToadStoolResult<PricingInfo>;
+    fn get_pricing<'a>(
+        &'a self,
+        resource_spec: &'a ResourceSpec,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PricingInfo>> + Send + 'a>>;
 
     /// Get current resource availability
-    async fn get_availability(&self, region: Option<String>) -> ToadStoolResult<AvailabilityInfo>;
+    fn get_availability<'a>(
+        &'a self,
+        region: Option<String>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AvailabilityInfo>> + Send + 'a>>;
 
     /// Validate compliance requirements
-    async fn validate_compliance(
-        &self,
-        requirements: &ResourceRequirements,
-    ) -> ToadStoolResult<bool>;
+    fn validate_compliance<'a>(
+        &'a self,
+        requirements: &'a ResourceRequirements,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>>;
 
     /// Get provider capabilities
     fn get_capabilities(&self) -> CloudCapabilities;

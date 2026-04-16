@@ -2,7 +2,9 @@
 //! Bluetooth discovery: adapter presence via sysfs, remote devices via `/sys/bus/bluetooth/devices`.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 
 use tracing::{debug, warn};
@@ -24,81 +26,92 @@ pub struct BluetoothDiscovery {
     pub(super) device_types: Vec<String>,
 }
 
-#[async_trait::async_trait]
 impl DiscoveryMethod for BluetoothDiscovery {
     fn get_name(&self) -> &str {
         "Bluetooth Discovery"
     }
 
-    async fn discover(&self) -> ToadStoolResult<Vec<Arc<dyn EdgeDevice>>> {
-        if !cfg!(target_os = "linux") {
-            return Ok(Vec::new());
-        }
-
-        if !self.is_available().await {
-            debug!("No Bluetooth adapters found via sysfs");
-            return Ok(Vec::new());
-        }
-
-        let bus = Path::new(sysfs::BUS_BLUETOOTH_DEVICES);
-        let entries = match std::fs::read_dir(bus) {
-            Ok(e) => e,
-            Err(e) => {
-                warn!(
-                    path = %bus.display(),
-                    error = %e,
-                    "Bluetooth bus sysfs not readable; skipping remote device enumeration"
-                );
+    fn discover(
+        &self,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
+        >,
+    > {
+        Box::pin(async move {
+            if !cfg!(target_os = "linux") {
                 return Ok(Vec::new());
             }
-        };
 
-        let mut out: Vec<Arc<dyn EdgeDevice>> = Vec::new();
-
-        for entry in entries.filter_map(|e| e.ok()) {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            // Adapters are `hciN`; remote devices are typically `hciN:AA_BB_CC_DD_EE_FF` (or `hciN:AA:BB:...` on some kernels).
-            if !name_str.contains(':') {
-                continue;
+            if !self.is_available().await {
+                debug!("No Bluetooth adapters found via sysfs");
+                return Ok(Vec::new());
             }
 
-            let path = entry.path();
-            let address = match read_sysfs_trimmed(&path.join("address")) {
-                Some(a) => a,
-                None => {
-                    warn!(path = %path.display(), "bluetooth device entry missing address");
-                    continue;
+            let bus = Path::new(sysfs::BUS_BLUETOOTH_DEVICES);
+            let entries = match std::fs::read_dir(bus) {
+                Ok(e) => e,
+                Err(e) => {
+                    warn!(
+                        path = %bus.display(),
+                        error = %e,
+                        "Bluetooth bus sysfs not readable; skipping remote device enumeration"
+                    );
+                    return Ok(Vec::new());
                 }
             };
 
-            let friendly = read_sysfs_trimmed(&path.join("name"))
-                .filter(|n| !n.is_empty())
-                .unwrap_or_else(|| address.clone());
+            let mut out: Vec<Arc<dyn EdgeDevice>> = Vec::new();
 
-            out.push(Arc::new(BluetoothSysfsEdgeDevice::new(
-                path, address, friendly,
-            )));
-        }
+            for entry in entries.filter_map(|e| e.ok()) {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+                // Adapters are `hciN`; remote devices are typically `hciN:AA_BB_CC_DD_EE_FF` (or `hciN:AA:BB:...` on some kernels).
+                if !name_str.contains(':') {
+                    continue;
+                }
 
-        let _ = self.scan_duration;
-        let _ = &self.device_types;
+                let path = entry.path();
+                let address = match read_sysfs_trimmed(&path.join("address")) {
+                    Some(a) => a,
+                    None => {
+                        warn!(path = %path.display(), "bluetooth device entry missing address");
+                        continue;
+                    }
+                };
 
-        Ok(out)
+                let friendly = read_sysfs_trimmed(&path.join("name"))
+                    .filter(|n| !n.is_empty())
+                    .unwrap_or_else(|| address.clone());
+
+                out.push(Arc::new(BluetoothSysfsEdgeDevice::new(
+                    path, address, friendly,
+                )));
+            }
+
+            let _ = self.scan_duration;
+            let _ = &self.device_types;
+
+            Ok(out)
+        })
     }
 
-    async fn is_available(&self) -> bool {
-        if !cfg!(target_os = "linux") {
-            return false;
-        }
-        let bt_class = Path::new(sysfs::CLASS_BLUETOOTH);
-        if !bt_class.exists() {
-            return false;
-        }
-        match std::fs::read_dir(bt_class) {
-            Ok(entries) => entries.filter_map(|e| e.ok()).next().is_some(),
-            Err(_) => false,
-        }
+    fn is_available(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + '_>> {
+        Box::pin(async {
+            if !cfg!(target_os = "linux") {
+                return false;
+            }
+            let bt_class = Path::new(sysfs::CLASS_BLUETOOTH);
+            if !bt_class.exists() {
+                return false;
+            }
+            match std::fs::read_dir(bt_class) {
+                Ok(entries) => entries.filter_map(|e| e.ok()).next().is_some(),
+                Err(_) => false,
+            }
+        })
     }
 
     fn get_supported_types(&self) -> Vec<String> {
@@ -173,7 +186,6 @@ impl BluetoothSysfsEdgeDevice {
     }
 }
 
-#[async_trait::async_trait]
 impl EdgeDevice for BluetoothSysfsEdgeDevice {
     fn get_id(&self) -> Uuid {
         self.id
@@ -191,82 +203,124 @@ impl EdgeDevice for BluetoothSysfsEdgeDevice {
         self.info.capabilities.clone()
     }
 
-    async fn is_connected(&self) -> bool {
-        self.sysfs_path.exists()
+    fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
+        let path = self.sysfs_path.clone();
+        Box::pin(async move { path.exists() })
     }
 
-    async fn connect(&self) -> ToadStoolResult<()> {
-        Ok(())
+    fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn disconnect(&self) -> ToadStoolResult<()> {
-        Ok(())
+    fn disconnect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn execute(&self, request: &ExecutionRequest) -> ToadStoolResult<ExecutionResponse> {
-        Ok(ExecutionResponse {
-            execution_id: request.execution_id,
-            status: ExecutionStatus::Success,
-            output: ExecutionOutput {
-                stdout: Some("bluetooth-sysfs discovery device (no workload execution)".to_string()),
-                ..ExecutionOutput::default()
-            },
-            metrics: toadstool::RuntimeMetrics::default(),
-            duration: std::time::Duration::ZERO,
-            runtime_used: RuntimeType::Native,
-            warnings: Vec::new(),
+    fn execute(
+        &self,
+        request: &ExecutionRequest,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+        let request = request.clone();
+        Box::pin(async move {
+            Ok(ExecutionResponse {
+                execution_id: request.execution_id,
+                status: ExecutionStatus::Success,
+                output: ExecutionOutput {
+                    stdout: Some(
+                        "bluetooth-sysfs discovery device (no workload execution)".to_string(),
+                    ),
+                    ..ExecutionOutput::default()
+                },
+                metrics: toadstool::RuntimeMetrics::default(),
+                duration: std::time::Duration::ZERO,
+                runtime_used: RuntimeType::Native,
+                warnings: Vec::new(),
+            })
         })
     }
 
-    async fn deploy(&self, _code: &[u8]) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn deploy(
+        &self,
+        _code: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn stop_execution(&self, _execution_id: Uuid) -> ToadStoolResult<()> {
-        Ok(())
+    fn stop_execution(
+        &self,
+        _execution_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_status(&self) -> ToadStoolResult<DeviceStatus> {
-        if self.is_connected().await {
-            Ok(DeviceStatus::Online)
-        } else {
-            Ok(DeviceStatus::Offline)
-        }
+    fn get_status(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>> {
+        Box::pin(async move {
+            if self.is_connected().await {
+                Ok(DeviceStatus::Online)
+            } else {
+                Ok(DeviceStatus::Offline)
+            }
+        })
     }
 
-    async fn get_resource_usage(&self) -> ToadStoolResult<HashMap<String, f64>> {
-        Ok(HashMap::new())
+    fn get_resource_usage(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>> {
+        Box::pin(async move { Ok(HashMap::new()) })
     }
 
-    async fn upload_file(&self, _path: &str, _content: &[u8]) -> ToadStoolResult<()> {
-        Ok(())
+    fn upload_file(
+        &self,
+        _path: &str,
+        _content: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn download_file(&self, _path: &str) -> ToadStoolResult<Vec<u8>> {
-        Ok(Vec::new())
+    fn download_file(
+        &self,
+        _path: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>> {
+        Box::pin(async move { Ok(Vec::new()) })
     }
 
-    async fn execute_command(&self, _command: &str) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn execute_command(
+        &self,
+        _command: &str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn get_logs(&self, _lines: Option<usize>) -> ToadStoolResult<String> {
-        Ok(String::new())
+    fn get_logs(
+        &self,
+        _lines: Option<usize>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>> {
+        Box::pin(async move { Ok(String::new()) })
     }
 
-    async fn restart(&self) -> ToadStoolResult<()> {
-        Ok(())
+    fn restart(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn update_firmware(&self, _firmware: &[u8]) -> ToadStoolResult<()> {
-        Ok(())
+    fn update_firmware(
+        &self,
+        _firmware: &[u8],
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_sensors(&self) -> ToadStoolResult<HashMap<String, f64>> {
-        Ok(HashMap::new())
+    fn get_sensors(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>> {
+        Box::pin(async move { Ok(HashMap::new()) })
     }
 
-    async fn control_actuators(&self, _commands: HashMap<String, f64>) -> ToadStoolResult<()> {
-        Ok(())
+    fn control_actuators(
+        &self,
+        _commands: HashMap<String, f64>,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
     }
 }

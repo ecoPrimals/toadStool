@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Comprehensive tests for edge platform types
 
-use toadstool_runtime_edge::platforms::*;
 use toadstool::IsolationLevel;
+use toadstool_runtime_edge::platforms::*;
 
 // ============================================================================
 // ArduinoBoard Tests
@@ -130,7 +130,7 @@ fn test_edge_platform_arduino() {
         board: ArduinoBoard::Uno,
         version: "1.8.19".to_string(),
     };
-    
+
     if let EdgePlatform::Arduino { board, version } = platform {
         assert_eq!(board, ArduinoBoard::Uno);
         assert_eq!(version, "1.8.19");
@@ -145,7 +145,7 @@ fn test_edge_platform_esp32() {
         chip: ESP32Variant::ESP32S3,
         framework: ESP32Framework::ESPIDF,
     };
-    
+
     if let EdgePlatform::ESP32 { chip, framework } = platform {
         assert_eq!(chip, ESP32Variant::ESP32S3);
         assert_eq!(framework, ESP32Framework::ESPIDF);
@@ -160,7 +160,7 @@ fn test_edge_platform_raspberry_pi() {
         model: PiModel::Pi4,
         os: PiOS::RaspberryPiOS,
     };
-    
+
     if let EdgePlatform::RaspberryPi { model, .. } = platform {
         assert_eq!(model, PiModel::Pi4);
     } else {
@@ -173,7 +173,7 @@ fn test_edge_platform_beaglebone() {
     let platform = EdgePlatform::BeagleBone {
         variant: BeagleBoneVariant::Black,
     };
-    
+
     if let EdgePlatform::BeagleBone { variant } = platform {
         assert_eq!(variant, BeagleBoneVariant::Black);
     } else {
@@ -187,8 +187,12 @@ fn test_edge_platform_industrial() {
         system_type: IndustrialSystemType::PLC,
         protocol: IndustrialProtocol::Modbus,
     };
-    
-    if let EdgePlatform::Industrial { system_type, protocol } = platform {
+
+    if let EdgePlatform::Industrial {
+        system_type,
+        protocol,
+    } = platform
+    {
         assert_eq!(system_type, IndustrialSystemType::PLC);
         assert_eq!(protocol, IndustrialProtocol::Modbus);
     } else {
@@ -203,8 +207,13 @@ fn test_edge_platform_microcontroller() {
         vendor: "STMicroelectronics".to_string(),
         model: "STM32F4".to_string(),
     };
-    
-    if let EdgePlatform::Microcontroller { architecture, vendor, model } = platform {
+
+    if let EdgePlatform::Microcontroller {
+        architecture,
+        vendor,
+        model,
+    } = platform
+    {
         assert_eq!(architecture, MicrocontrollerArch::ARM);
         assert_eq!(vendor, "STMicroelectronics");
         assert_eq!(model, "STM32F4");
@@ -219,8 +228,12 @@ fn test_edge_platform_linux_edge() {
         architecture: "aarch64".to_string(),
         kernel_version: "5.15.0".to_string(),
     };
-    
-    if let EdgePlatform::LinuxEdge { architecture, kernel_version } = platform {
+
+    if let EdgePlatform::LinuxEdge {
+        architecture,
+        kernel_version,
+    } = platform
+    {
         assert_eq!(architecture, "aarch64");
         assert_eq!(kernel_version, "5.15.0");
     } else {
@@ -234,7 +247,7 @@ fn test_edge_platform_clone() {
         board: ArduinoBoard::Nano,
         version: "1.8.0".to_string(),
     };
-    
+
     let cloned = platform.clone();
     assert_eq!(platform, cloned);
 }
@@ -259,7 +272,7 @@ fn test_all_arduino_boards() {
         ArduinoBoard::Nano33BLE,
         ArduinoBoard::MKRWiFi1010,
     ];
-    
+
     assert_eq!(boards.len(), 12);
 }
 
@@ -274,7 +287,7 @@ fn test_all_esp32_variants() {
         ESP32Variant::ESP32H2,
         ESP32Variant::ESP32P4,
     ];
-    
+
     assert_eq!(variants.len(), 7);
 }
 
@@ -286,7 +299,7 @@ fn test_all_esp32_frameworks() {
         ESP32Framework::PlatformIO,
         ESP32Framework::MicroPython,
     ];
-    
+
     assert_eq!(frameworks.len(), 4);
 }
 
@@ -296,10 +309,10 @@ fn test_edge_platform_serialization() {
         chip: ESP32Variant::ESP32C3,
         framework: ESP32Framework::Arduino,
     };
-    
+
     let json = serde_json::to_string(&platform).expect("Failed to serialize");
     let deserialized: EdgePlatform = serde_json::from_str(&json).expect("Failed to deserialize");
-    
+
     assert_eq!(platform, deserialized);
 }
 
@@ -311,7 +324,6 @@ fn test_arduino_advanced_boards() {
         ArduinoBoard::Nano33BLE,
         ArduinoBoard::MKRWiFi1010,
     ];
-    
+
     assert_eq!(advanced.len(), 4);
 }
-

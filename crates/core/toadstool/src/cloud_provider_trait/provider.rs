@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! [`CloudProvider`] trait — vendor-agnostic cloud compute.
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use super::types::{
     CloudCapabilities, CloudError, CostEstimate, GpuType, WorkloadHealth, WorkloadLocation,
@@ -11,41 +12,54 @@ use super::types::{
 /// Cloud provider trait
 ///
 /// All cloud providers (AWS, GCP, Azure, etc.) implement this trait.
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 pub trait CloudProvider: Send + Sync {
     /// Get provider name (e.g., "AWS", "GCP", "Azure")
     fn name(&self) -> &str;
 
     /// Get provider capabilities
-    async fn capabilities(&self) -> Result<CloudCapabilities, CloudError>;
+    fn capabilities(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_>>;
 
     /// Deploy a workload to this provider
     ///
     /// Returns instance/deployment ID
-    async fn deploy_workload(&self, workload_id: &str, region: &str) -> Result<String, CloudError>;
+    fn deploy_workload<'a>(
+        &'a self,
+        workload_id: &'a str,
+        region: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>>;
 
     /// Migrate workload from another location
-    async fn migrate_workload(
-        &self,
-        workload_id: &str,
+    fn migrate_workload<'a>(
+        &'a self,
+        workload_id: &'a str,
         source: WorkloadLocation,
-        target_region: &str,
-    ) -> Result<String, CloudError>;
+        target_region: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>>;
 
     /// Check workload health
-    async fn check_health(&self, instance_id: &str) -> Result<WorkloadHealth, CloudError>;
+    fn check_health<'a>(
+        &'a self,
+        instance_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a>>;
 
     /// Terminate workload
-    async fn terminate_workload(&self, instance_id: &str) -> Result<(), CloudError>;
+    fn terminate_workload<'a>(
+        &'a self,
+        instance_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), CloudError>> + Send + 'a>>;
 
     /// Estimate cost for workload
-    async fn estimate_cost(
-        &self,
-        workload_spec: &WorkloadSpec,
-        region: &str,
-    ) -> Result<CostEstimate, CloudError>;
+    fn estimate_cost<'a>(
+        &'a self,
+        workload_spec: &'a WorkloadSpec,
+        region: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<CostEstimate, CloudError>> + Send + 'a>>;
 
     /// Get available GPU types
-    async fn available_gpu_types(&self, region: &str) -> Result<Vec<GpuType>, CloudError>;
+    fn available_gpu_types<'a>(
+        &'a self,
+        region: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a>>;
 }

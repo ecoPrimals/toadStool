@@ -2,9 +2,10 @@
 //! ToadStool Primal Provider implementation
 
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
@@ -36,8 +37,6 @@ impl ToadStoolPrimalProvider {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     fn primal_id(&self) -> &'static str {
         PRIMAL_NAME
@@ -84,8 +83,9 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
         ]
     }
 
-    async fn health_check(&self) -> PrimalHealth {
-        self.health_status.read().await.clone()
+    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
+        let health_status = self.health_status.clone();
+        Box::pin(async move { health_status.read().await.clone() })
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -103,32 +103,41 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
         }
     }
 
-    async fn handle_primal_request(
+    fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> ToadStoolResult<PrimalResponse> {
-        debug!("Handling primal request: {:?}", request.request_type);
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+        Box::pin(async move {
+            debug!("Handling primal request: {:?}", request.request_type);
 
-        Ok(PrimalResponse {
-            request_id: request.id,
-            status: ResponseStatus::Success,
-            payload: serde_json::json!({
-                "message": "Request processed successfully",
-                "request_type": request.request_type
-            }),
-            metadata: HashMap::new(),
-            timestamp: std::time::SystemTime::now(),
+            Ok(PrimalResponse {
+                request_id: request.id,
+                status: ResponseStatus::Success,
+                payload: serde_json::json!({
+                    "message": "Request processed successfully",
+                    "request_type": request.request_type
+                }),
+                metadata: HashMap::new(),
+                timestamp: std::time::SystemTime::now(),
+            })
         })
     }
 
-    async fn initialize(&mut self, _config: serde_json::Value) -> ToadStoolResult<()> {
-        info!("ToadStool primal provider initialized");
-        Ok(())
+    fn initialize(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            info!("ToadStool primal provider initialized");
+            Ok(())
+        })
     }
 
-    async fn shutdown(&mut self) -> ToadStoolResult<()> {
-        info!("ToadStool primal provider shutting down");
-        Ok(())
+    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move {
+            info!("ToadStool primal provider shutting down");
+            Ok(())
+        })
     }
 
     fn can_serve_context(&self, context: &PrimalContext) -> bool {

@@ -6,7 +6,8 @@
 //! Tests `deploy_universal_job`, `register_provider`, deployment strategies,
 //! burst distribution, and multi-cloud paths.
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 use std::time::SystemTime;
 use toadstool::ExecutionRequest;
 use uuid::Uuid;
@@ -129,69 +130,100 @@ struct MockCloudProvider {
     availability: AvailabilityInfo,
 }
 
-#[async_trait]
 impl CloudProviderInterface for MockCloudProvider {
-    async fn deploy_job(
-        &self,
-        job: &UniversalJob,
-    ) -> toadstool::error::ToadStoolResult<toadstool_distributed::cloud::types::CloudJobHandle>
-    {
-        Ok(toadstool_distributed::cloud::types::CloudJobHandle {
-            job_id: job.job_id,
-            provider_job_id: format!("mock-{}", Uuid::new_v4()),
-            provider_name: self.name.clone(),
-            created_at: SystemTime::now(),
+    fn deploy_job<'a>(
+        &'a self,
+        job: &'a UniversalJob,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<
+                        toadstool_distributed::cloud::types::CloudJobHandle,
+                    >,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            Ok(toadstool_distributed::cloud::types::CloudJobHandle {
+                job_id: job.job_id,
+                provider_job_id: format!("mock-{}", Uuid::new_v4()),
+                provider_name: self.name.clone(),
+                created_at: SystemTime::now(),
+            })
         })
     }
 
-    async fn get_job_status(
-        &self,
-        _handle: &toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> toadstool::error::ToadStoolResult<toadstool_distributed::cloud::types::CloudJobStatus>
-    {
-        Ok(toadstool_distributed::cloud::types::CloudJobStatus::Running)
+    fn get_job_status<'a>(
+        &'a self,
+        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<
+                        toadstool_distributed::cloud::types::CloudJobStatus,
+                    >,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move { Ok(toadstool_distributed::cloud::types::CloudJobStatus::Running) })
     }
 
-    async fn scale_job(
-        &self,
-        _handle: &toadstool_distributed::cloud::types::CloudJobHandle,
+    fn scale_job<'a>(
+        &'a self,
+        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
         _scale_config: toadstool_distributed::cloud::types::ScaleConfig,
-    ) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn terminate_job(
-        &self,
-        _handle: &toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
+    fn terminate_job<'a>(
+        &'a self,
+        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_pricing(
-        &self,
-        _resource_spec: &toadstool_distributed::cloud::types::ResourceSpec,
-    ) -> toadstool::error::ToadStoolResult<toadstool_distributed::cloud::types::PricingInfo> {
-        Ok(toadstool_distributed::cloud::types::PricingInfo {
-            cpu_cost_per_hour: 0.1,
-            memory_cost_per_gb_hour: 0.05,
-            storage_cost_per_gb_month: 0.01,
-            network_cost_per_gb: 0.02,
-            total_estimated_cost: 10.0,
+    fn get_pricing<'a>(
+        &'a self,
+        _resource_spec: &'a toadstool_distributed::cloud::types::ResourceSpec,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<
+                        toadstool_distributed::cloud::types::PricingInfo,
+                    >,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            Ok(toadstool_distributed::cloud::types::PricingInfo {
+                cpu_cost_per_hour: 0.1,
+                memory_cost_per_gb_hour: 0.05,
+                storage_cost_per_gb_month: 0.01,
+                network_cost_per_gb: 0.02,
+                total_estimated_cost: 10.0,
+            })
         })
     }
 
-    async fn get_availability(
-        &self,
+    fn get_availability<'a>(
+        &'a self,
         _region: Option<String>,
-    ) -> toadstool::error::ToadStoolResult<AvailabilityInfo> {
-        Ok(self.availability.clone())
+    ) -> Pin<
+        Box<dyn Future<Output = toadstool::error::ToadStoolResult<AvailabilityInfo>> + Send + 'a>,
+    > {
+        let availability = self.availability.clone();
+        Box::pin(async move { Ok(availability) })
     }
 
-    async fn validate_compliance(
-        &self,
-        _requirements: &ResourceRequirements,
-    ) -> toadstool::error::ToadStoolResult<bool> {
-        Ok(true)
+    fn validate_compliance<'a>(
+        &'a self,
+        _requirements: &'a ResourceRequirements,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<bool>> + Send + 'a>> {
+        Box::pin(async move { Ok(true) })
     }
 
     fn get_capabilities(&self) -> toadstool_distributed::cloud::types::CloudCapabilities {
@@ -327,71 +359,103 @@ struct FailingAvailabilityProvider {
     name: String,
 }
 
-#[async_trait]
 impl CloudProviderInterface for FailingAvailabilityProvider {
-    async fn deploy_job(
-        &self,
-        job: &UniversalJob,
-    ) -> toadstool::error::ToadStoolResult<toadstool_distributed::cloud::types::CloudJobHandle>
-    {
-        Ok(toadstool_distributed::cloud::types::CloudJobHandle {
-            job_id: job.job_id,
-            provider_job_id: "fail-1".to_string(),
-            provider_name: self.name.clone(),
-            created_at: SystemTime::now(),
+    fn deploy_job<'a>(
+        &'a self,
+        job: &'a UniversalJob,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<
+                        toadstool_distributed::cloud::types::CloudJobHandle,
+                    >,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            Ok(toadstool_distributed::cloud::types::CloudJobHandle {
+                job_id: job.job_id,
+                provider_job_id: "fail-1".to_string(),
+                provider_name: self.name.clone(),
+                created_at: SystemTime::now(),
+            })
         })
     }
 
-    async fn get_job_status(
-        &self,
-        _handle: &toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> toadstool::error::ToadStoolResult<toadstool_distributed::cloud::types::CloudJobStatus>
-    {
-        Ok(toadstool_distributed::cloud::types::CloudJobStatus::Completed)
+    fn get_job_status<'a>(
+        &'a self,
+        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<
+                        toadstool_distributed::cloud::types::CloudJobStatus,
+                    >,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move { Ok(toadstool_distributed::cloud::types::CloudJobStatus::Completed) })
     }
 
-    async fn scale_job(
-        &self,
-        _handle: &toadstool_distributed::cloud::types::CloudJobHandle,
+    fn scale_job<'a>(
+        &'a self,
+        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
         _scale_config: toadstool_distributed::cloud::types::ScaleConfig,
-    ) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn terminate_job(
-        &self,
-        _handle: &toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
+    fn terminate_job<'a>(
+        &'a self,
+        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_pricing(
-        &self,
-        _resource_spec: &toadstool_distributed::cloud::types::ResourceSpec,
-    ) -> toadstool::error::ToadStoolResult<toadstool_distributed::cloud::types::PricingInfo> {
-        Ok(toadstool_distributed::cloud::types::PricingInfo {
-            cpu_cost_per_hour: 0.0,
-            memory_cost_per_gb_hour: 0.0,
-            storage_cost_per_gb_month: 0.0,
-            network_cost_per_gb: 0.0,
-            total_estimated_cost: 0.0,
+    fn get_pricing<'a>(
+        &'a self,
+        _resource_spec: &'a toadstool_distributed::cloud::types::ResourceSpec,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<
+                        toadstool_distributed::cloud::types::PricingInfo,
+                    >,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            Ok(toadstool_distributed::cloud::types::PricingInfo {
+                cpu_cost_per_hour: 0.0,
+                memory_cost_per_gb_hour: 0.0,
+                storage_cost_per_gb_month: 0.0,
+                network_cost_per_gb: 0.0,
+                total_estimated_cost: 0.0,
+            })
         })
     }
 
-    async fn get_availability(
-        &self,
+    fn get_availability<'a>(
+        &'a self,
         _region: Option<String>,
-    ) -> toadstool::error::ToadStoolResult<AvailabilityInfo> {
-        Err(toadstool::ToadStoolError::runtime(
-            "availability check failed",
-        ))
+    ) -> Pin<
+        Box<dyn Future<Output = toadstool::error::ToadStoolResult<AvailabilityInfo>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            Err(toadstool::ToadStoolError::runtime(
+                "availability check failed",
+            ))
+        })
     }
 
-    async fn validate_compliance(
-        &self,
-        _requirements: &ResourceRequirements,
-    ) -> toadstool::error::ToadStoolResult<bool> {
-        Ok(true)
+    fn validate_compliance<'a>(
+        &'a self,
+        _requirements: &'a ResourceRequirements,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<bool>> + Send + 'a>> {
+        Box::pin(async move { Ok(true) })
     }
 
     fn get_capabilities(&self) -> toadstool_distributed::cloud::types::CloudCapabilities {

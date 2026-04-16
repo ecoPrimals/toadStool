@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for `byob_routes.rs` — route handlers with a mock executor.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::SystemTime;
-
-use async_trait::async_trait;
 use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::SystemTime;
 use toadstool::byob::{
     ByobDeploymentRequest, ByobDeploymentResponse, ByobExecutor, DeploymentStatus, NetworkInfo,
     NetworkUsage, ResourceUsage,
@@ -44,55 +44,80 @@ fn mock_network_info() -> NetworkInfo {
     }
 }
 
-#[async_trait]
 impl ByobExecutor for MockByobExecutor {
-    async fn deploy_biome(
+    fn deploy_biome(
         &self,
         _request: ByobDeploymentRequest,
-    ) -> toadstool::error::ToadStoolResult<ByobDeploymentResponse> {
-        let now = SystemTime::now();
-        Ok(ByobDeploymentResponse {
-            deployment_id: Uuid::new_v4(),
-            status: DeploymentStatus::Running,
-            service_statuses: HashMap::new(),
-            resource_usage: mock_resource_usage(),
-            network_info: mock_network_info(),
-            created_at: now,
-            updated_at: now,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = toadstool::error::ToadStoolResult<ByobDeploymentResponse>>
+                + Send
+                + '_,
+        >,
+    > {
+        Box::pin(async move {
+            let now = SystemTime::now();
+            Ok(ByobDeploymentResponse {
+                deployment_id: Uuid::new_v4(),
+                status: DeploymentStatus::Running,
+                service_statuses: HashMap::new(),
+                resource_usage: mock_resource_usage(),
+                network_info: mock_network_info(),
+                created_at: now,
+                updated_at: now,
+            })
         })
     }
 
-    async fn list_deployments(
+    fn list_deployments(
         &self,
-    ) -> toadstool::error::ToadStoolResult<Vec<ByobDeploymentResponse>> {
-        Ok(vec![])
+    ) -> Pin<
+        Box<
+            dyn Future<Output = toadstool::error::ToadStoolResult<Vec<ByobDeploymentResponse>>>
+                + Send
+                + '_,
+        >,
+    > {
+        Box::pin(async move { Ok(vec![]) })
     }
 
-    async fn get_deployment_status(
+    fn get_deployment_status(
         &self,
         deployment_id: Uuid,
-    ) -> toadstool::error::ToadStoolResult<ByobDeploymentResponse> {
-        let now = SystemTime::now();
-        Ok(ByobDeploymentResponse {
-            deployment_id,
-            status: DeploymentStatus::Running,
-            service_statuses: HashMap::new(),
-            resource_usage: mock_resource_usage(),
-            network_info: mock_network_info(),
-            created_at: now,
-            updated_at: now,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = toadstool::error::ToadStoolResult<ByobDeploymentResponse>>
+                + Send
+                + '_,
+        >,
+    > {
+        Box::pin(async move {
+            let now = SystemTime::now();
+            Ok(ByobDeploymentResponse {
+                deployment_id,
+                status: DeploymentStatus::Running,
+                service_statuses: HashMap::new(),
+                resource_usage: mock_resource_usage(),
+                network_info: mock_network_info(),
+                created_at: now,
+                updated_at: now,
+            })
         })
     }
 
-    async fn stop_deployment(&self, _deployment_id: Uuid) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
-    }
-
-    async fn get_resource_usage(
+    fn stop_deployment(
         &self,
         _deployment_id: Uuid,
-    ) -> toadstool::error::ToadStoolResult<ResourceUsage> {
-        Ok(mock_resource_usage())
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + '_>> {
+        Box::pin(async move { Ok(()) })
+    }
+
+    fn get_resource_usage(
+        &self,
+        _deployment_id: Uuid,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<ResourceUsage>> + Send + '_>>
+    {
+        Box::pin(async move { Ok(mock_resource_usage()) })
     }
 }
 

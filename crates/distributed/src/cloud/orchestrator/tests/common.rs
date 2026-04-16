@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Shared test helpers and mocks for cloud orchestrator tests
 
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 use std::time::SystemTime;
 use uuid::Uuid;
 
@@ -124,67 +125,93 @@ pub struct MockCloudProvider {
     pub capabilities_override: Option<crate::cloud::types::CloudCapabilities>,
 }
 
-#[async_trait]
 impl CloudProviderInterface for MockCloudProvider {
-    async fn deploy_job(
-        &self,
-        job: &UniversalJob,
-    ) -> toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobHandle> {
-        Ok(crate::cloud::types::CloudJobHandle {
-            job_id: job.job_id,
-            provider_job_id: format!("mock-{}", Uuid::new_v4()),
-            provider_name: self.name.clone(),
-            created_at: SystemTime::now(),
+    fn deploy_job<'a>(
+        &'a self,
+        job: &'a UniversalJob,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobHandle>,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            Ok(crate::cloud::types::CloudJobHandle {
+                job_id: job.job_id,
+                provider_job_id: format!("mock-{}", Uuid::new_v4()),
+                provider_name: self.name.clone(),
+                created_at: SystemTime::now(),
+            })
         })
     }
 
-    async fn get_job_status(
-        &self,
-        _handle: &crate::cloud::types::CloudJobHandle,
-    ) -> toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobStatus> {
-        Ok(crate::cloud::types::CloudJobStatus::Running)
+    fn get_job_status<'a>(
+        &'a self,
+        _handle: &'a crate::cloud::types::CloudJobHandle,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobStatus>,
+                > + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move { Ok(crate::cloud::types::CloudJobStatus::Running) })
     }
 
-    async fn scale_job(
-        &self,
-        _handle: &crate::cloud::types::CloudJobHandle,
+    fn scale_job<'a>(
+        &'a self,
+        _handle: &'a crate::cloud::types::CloudJobHandle,
         _scale_config: crate::cloud::types::ScaleConfig,
-    ) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn terminate_job(
-        &self,
-        _handle: &crate::cloud::types::CloudJobHandle,
-    ) -> toadstool::error::ToadStoolResult<()> {
-        Ok(())
+    fn terminate_job<'a>(
+        &'a self,
+        _handle: &'a crate::cloud::types::CloudJobHandle,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn get_pricing(
-        &self,
-        _resource_spec: &crate::cloud::types::ResourceSpec,
-    ) -> toadstool::error::ToadStoolResult<crate::cloud::types::PricingInfo> {
-        Ok(crate::cloud::types::PricingInfo {
-            cpu_cost_per_hour: 0.1,
-            memory_cost_per_gb_hour: 0.05,
-            storage_cost_per_gb_month: 0.01,
-            network_cost_per_gb: 0.02,
-            total_estimated_cost: 10.0,
+    fn get_pricing<'a>(
+        &'a self,
+        _resource_spec: &'a crate::cloud::types::ResourceSpec,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = toadstool::error::ToadStoolResult<crate::cloud::types::PricingInfo>>
+                + Send
+                + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            Ok(crate::cloud::types::PricingInfo {
+                cpu_cost_per_hour: 0.1,
+                memory_cost_per_gb_hour: 0.05,
+                storage_cost_per_gb_month: 0.01,
+                network_cost_per_gb: 0.02,
+                total_estimated_cost: 10.0,
+            })
         })
     }
 
-    async fn get_availability(
-        &self,
+    fn get_availability<'a>(
+        &'a self,
         _region: Option<String>,
-    ) -> toadstool::error::ToadStoolResult<AvailabilityInfo> {
-        Ok(self.availability.clone())
+    ) -> Pin<
+        Box<dyn Future<Output = toadstool::error::ToadStoolResult<AvailabilityInfo>> + Send + 'a>,
+    > {
+        let availability = self.availability.clone();
+        Box::pin(async move { Ok(availability) })
     }
 
-    async fn validate_compliance(
-        &self,
-        _requirements: &crate::ResourceRequirements,
-    ) -> toadstool::error::ToadStoolResult<bool> {
-        Ok(true)
+    fn validate_compliance<'a>(
+        &'a self,
+        _requirements: &'a crate::ResourceRequirements,
+    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<bool>> + Send + 'a>> {
+        Box::pin(async move { Ok(true) })
     }
 
     fn get_capabilities(&self) -> crate::cloud::types::CloudCapabilities {

@@ -7,7 +7,8 @@ use crate::types::{
     LatencyProfile, OperationType, Output, OutputMetadata, Parallelism, PowerProfile, Workload,
     WorkloadData,
 };
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use super::buffer::BufferOperation;
 use super::capabilities::SubstrateCapabilities;
@@ -89,8 +90,6 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
     }
 }
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
     fn capabilities(&self) -> &Capabilities {
         &self.capabilities
@@ -100,28 +99,33 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
         self.substrate.name()
     }
 
-    async fn execute(&self, workload: Workload) -> Result<Output, ComputeError> {
-        // Convert Workload → BufferOperation (consumes workload for zero-copy)
-        let buffer_op = self.convert_workload(workload)?;
+    fn execute<'a>(
+        &'a self,
+        workload: Workload,
+    ) -> Pin<Box<dyn Future<Output = Result<Output, ComputeError>> + Send + 'a>> {
+        Box::pin(async move {
+            // Convert Workload → BufferOperation (consumes workload for zero-copy)
+            let buffer_op = self.convert_workload(workload)?;
 
-        // Execute on substrate
-        let start = std::time::Instant::now();
-        let output = self
-            .substrate
-            .execute_buffer_op(buffer_op)
-            .await
-            .map_err(|e: SubstrateError| ComputeError::ExecutionFailed(e.to_string()))?;
-        let duration = start.elapsed();
+            // Execute on substrate
+            let start = std::time::Instant::now();
+            let output = self
+                .substrate
+                .execute_buffer_op(buffer_op)
+                .await
+                .map_err(|e: SubstrateError| ComputeError::ExecutionFailed(e.to_string()))?;
+            let duration = start.elapsed();
 
-        // Convert BufferOutput → Output
-        Ok(Output {
-            data: WorkloadData::Custom(output.data),
-            metadata: OutputMetadata {
-                unit_name: self.substrate.name().to_string(),
-                unit_type: self.capabilities.unit_type,
-                duration,
-                power_consumed_mw: output.metadata.power_consumed_mw,
-            },
+            // Convert BufferOutput → Output
+            Ok(Output {
+                data: WorkloadData::Custom(output.data),
+                metadata: OutputMetadata {
+                    unit_name: self.substrate.name().to_string(),
+                    unit_type: self.capabilities.unit_type,
+                    duration,
+                    power_consumed_mw: output.metadata.power_consumed_mw,
+                },
+            })
         })
     }
 }

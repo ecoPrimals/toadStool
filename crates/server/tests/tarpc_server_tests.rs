@@ -7,10 +7,11 @@
 )]
 //! Integration tests for ToadStool tarpc server
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use async_trait::async_trait;
 use tarpc::context::Context;
 
 use toadstool_server::rpc_types::{
@@ -22,19 +23,25 @@ use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, W
 /// Mock executor that fails on execute for testing error paths
 struct FailingExecutor;
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl WorkloadExecutor for FailingExecutor {
-    async fn execute(&self, _submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        Err("executor failed".to_string())
+    fn execute(
+        &self,
+        _submission: WorkloadSubmission,
+    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
+        Box::pin(async move { Err("executor failed".to_string()) })
     }
 
-    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
-        Err("capabilities unavailable".to_string())
+    fn query_capabilities(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
+        Box::pin(async move { Err("capabilities unavailable".to_string()) })
     }
 
-    async fn cancel(&self, _workload_id: &str) -> Result<(), String> {
-        Err("cancel failed".to_string())
+    fn cancel<'a>(
+        &'a self,
+        _workload_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
+        Box::pin(async move { Err("cancel failed".to_string()) })
     }
 }
 
@@ -319,47 +326,57 @@ async fn test_health_check_resource_utilization() {
 /// Executor that returns Queued status for testing active/queued workload counts
 struct QueuedExecutor;
 
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 impl WorkloadExecutor for QueuedExecutor {
-    async fn execute(&self, submission: WorkloadSubmission) -> Result<WorkloadResult, String> {
-        Ok(WorkloadResult {
-            workload_id: submission.workload_id,
-            status: WorkloadStatus::Queued,
-            data: None,
-            error: None,
-            metrics: ExecutionMetrics {
-                queued_duration_secs: 0.0,
-                execution_duration_secs: 0.0,
-                cpu_cores_used: 0,
-                memory_used_bytes: 0,
-                gpu_memory_used_bytes: None,
-            },
+    fn execute(
+        &self,
+        submission: WorkloadSubmission,
+    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(WorkloadResult {
+                workload_id: submission.workload_id,
+                status: WorkloadStatus::Queued,
+                data: None,
+                error: None,
+                metrics: ExecutionMetrics {
+                    queued_duration_secs: 0.0,
+                    execution_duration_secs: 0.0,
+                    cpu_cores_used: 0,
+                    memory_used_bytes: 0,
+                    gpu_memory_used_bytes: None,
+                },
+            })
         })
     }
 
-    async fn query_capabilities(&self) -> Result<ComputeCapabilities, String> {
-        Ok(ComputeCapabilities {
-            service_id: "queued-test".to_string(),
-            compute_units: vec![],
-            supported_workload_types: vec![],
-            available_resources: AvailableResources {
-                total_cpu_cores: 1,
-                available_cpu_cores: 1,
-                total_memory_bytes: 1024,
-                available_memory_bytes: 1024,
-                total_gpu_memory_bytes: None,
-                available_gpu_memory_bytes: None,
-                cpu_utilization: 0.0,
-                memory_utilization: 0.0,
-                gpu_utilization: None,
-            },
-            metadata: std::collections::HashMap::new(),
+    fn query_capabilities(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
+        Box::pin(async move {
+            Ok(ComputeCapabilities {
+                service_id: "queued-test".to_string(),
+                compute_units: vec![],
+                supported_workload_types: vec![],
+                available_resources: AvailableResources {
+                    total_cpu_cores: 1,
+                    available_cpu_cores: 1,
+                    total_memory_bytes: 1024,
+                    available_memory_bytes: 1024,
+                    total_gpu_memory_bytes: None,
+                    available_gpu_memory_bytes: None,
+                    cpu_utilization: 0.0,
+                    memory_utilization: 0.0,
+                    gpu_utilization: None,
+                },
+                metadata: std::collections::HashMap::new(),
+            })
         })
     }
 
-    async fn cancel(&self, _workload_id: &str) -> Result<(), String> {
-        Ok(())
+    fn cancel<'a>(
+        &'a self,
+        _workload_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
+        Box::pin(async move { Ok(()) })
     }
 }
 

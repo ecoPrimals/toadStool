@@ -6,8 +6,9 @@
 //! - Discovery: Runtime registration and lookup
 //! - No hardcoding: Providers announce capabilities, consumers discover
 
-use async_trait::async_trait;
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -15,12 +16,13 @@ use crate::{ToadStoolError, ToadStoolResult};
 
 use super::{CryptoCapability, EncryptedPayload, EncryptionKey, EncryptionMetadata, SecurityLevel};
 
+/// Boxed Send future (avoids clippy::type_complexity on nested generics).
+type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 /// Trait for crypto service providers
 ///
 /// **Design**: Any primal implementing this can provide crypto
 /// (security service, external HSM, cloud KMS, etc.)
-// NOTE(async-dyn): #[async_trait] required — native async fn in trait is not dyn-compatible
-#[async_trait]
 pub trait CryptoProvider: Send + Sync {
     /// Get provider identifier (discovered at runtime)
     fn provider_id(&self) -> &str;
@@ -29,28 +31,36 @@ pub trait CryptoProvider: Send + Sync {
     fn capabilities(&self) -> &CryptoCapability;
 
     /// Encrypt data
-    async fn encrypt(
-        &self,
-        data: &[u8],
-        key: &EncryptionKey,
-    ) -> ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>;
+    fn encrypt<'a>(
+        &'a self,
+        data: &'a [u8],
+        key: &'a EncryptionKey,
+    ) -> BoxFuture<'a, ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>>;
 
     /// Decrypt data
-    async fn decrypt(
-        &self,
-        encrypted: &EncryptedPayload,
-        key: &EncryptionKey,
-        metadata: &EncryptionMetadata,
-    ) -> ToadStoolResult<Vec<u8>>;
+    fn decrypt<'a>(
+        &'a self,
+        encrypted: &'a EncryptedPayload,
+        key: &'a EncryptionKey,
+        metadata: &'a EncryptionMetadata,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>;
 
     /// Generate new encryption key
-    async fn generate_key(&self, security_level: SecurityLevel) -> ToadStoolResult<EncryptionKey>;
+    fn generate_key(
+        &self,
+        security_level: SecurityLevel,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_>>;
 
     /// Get existing key by ID
-    async fn get_key(&self, key_id: &str) -> ToadStoolResult<EncryptionKey>;
+    fn get_key<'a>(
+        &'a self,
+        key_id: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a>>;
 
     /// Check if provider is healthy and reachable
-    async fn health_check(&self) -> ToadStoolResult<ProviderHealth>;
+    fn health_check(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>>;
 }
 
 /// Provider health status

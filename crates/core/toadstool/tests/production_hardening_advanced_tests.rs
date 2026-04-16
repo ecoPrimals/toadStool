@@ -412,10 +412,13 @@ async fn test_memory_pressure_update() {
 async fn test_memory_pressure_callback_registration() {
     struct TestCallback;
 
-    #[async_trait::async_trait]
     impl MemoryPressureCallback for TestCallback {
-        async fn handle_pressure(&self, _level: MemoryPressureLevel, _usage_percent: f64) {
-            // Test callback
+        fn handle_pressure(
+            &self,
+            _level: MemoryPressureLevel,
+            _usage_percent: f64,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + '_>> {
+            Box::pin(async {})
         }
     }
 

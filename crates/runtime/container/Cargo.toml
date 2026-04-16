@@ -63,7 +63,6 @@ docker = ["bollard"]
 # registry-auth = ["reqwest"]
 
 [dev-dependencies]
-async-trait = { workspace = true }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 tower = { version = "0.5", features = ["util"] }
