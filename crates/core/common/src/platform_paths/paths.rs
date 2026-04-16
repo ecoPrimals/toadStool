@@ -235,3 +235,70 @@ impl<'a> PlatformPaths<'a> {
         self.runtime_dir().join("ecoPrimals/discovery")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::constants::PRIMAL_NAME;
+
+    use super::super::env::{PathEnv, Platform};
+    use super::PlatformPaths;
+
+    #[test]
+    fn path_resolution_prefers_xdg_when_all_set() {
+        let env = PathEnv {
+            xdg_runtime_dir: Some("/run/xdg".into()),
+            xdg_data_home: Some("/data/xdg".into()),
+            xdg_cache_home: Some("/cache/xdg".into()),
+            xdg_config_home: Some("/config/xdg".into()),
+            tmpdir: Some("/tmp/override".into()),
+            platform: Platform::Linux,
+            ..Default::default()
+        };
+        let paths = PlatformPaths::new(&env);
+        assert_eq!(paths.runtime_dir(), PathBuf::from("/run/xdg"));
+        assert_eq!(paths.data_dir(), PathBuf::from("/data/xdg"));
+        assert_eq!(paths.cache_dir(), PathBuf::from("/cache/xdg"));
+        assert_eq!(paths.config_dir(), PathBuf::from("/config/xdg"));
+        assert_eq!(paths.temp_dir(), PathBuf::from("/tmp/override"));
+    }
+
+    #[test]
+    fn missing_xdg_uses_home_for_linux_data_cache_config() {
+        let env = PathEnv {
+            home: Some("/home/u".into()),
+            platform: Platform::Linux,
+            tmpdir: Some("/var/tmp".into()),
+            ..Default::default()
+        };
+        let paths = PlatformPaths::new(&env);
+        assert_eq!(paths.data_dir(), PathBuf::from("/home/u/.local/share"));
+        assert_eq!(paths.cache_dir(), PathBuf::from("/home/u/.cache"));
+        assert_eq!(paths.config_dir(), PathBuf::from("/home/u/.config"));
+    }
+
+    #[test]
+    fn empty_home_and_no_xdg_falls_back_to_temp_subdirs() {
+        let env = PathEnv {
+            home: None,
+            xdg_data_home: None,
+            xdg_cache_home: None,
+            xdg_config_home: None,
+            xdg_runtime_dir: None,
+            tmpdir: Some("/fixed/tmp".into()),
+            user: Some("nobody".into()),
+            platform: Platform::Linux,
+        };
+        let paths = PlatformPaths::new(&env);
+        let base = PathBuf::from("/fixed/tmp");
+        assert_eq!(paths.temp_dir(), base);
+        assert_eq!(paths.data_dir(), base.join("toadstool-data"));
+        assert_eq!(paths.cache_dir(), base.join("toadstool-cache"));
+        assert_eq!(paths.config_dir(), base.join("toadstool-config"));
+        assert_eq!(
+            paths.toadstool_data_dir(),
+            base.join("toadstool-data").join(PRIMAL_NAME)
+        );
+    }
+}

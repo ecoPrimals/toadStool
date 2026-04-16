@@ -66,14 +66,14 @@ impl ResourceMonitor for SystemResourceMonitor {
         Box::pin(async move {
             // /proc, sysctl, and statvfs are blocking I/O — run on the blocking
             // pool so we don't stall the async runtime under load.
-            let snapshot =
-                if let Ok(tuple) = tokio::task::spawn_blocking(collect_host_resource_snapshot).await
-                {
-                    tuple
-                } else {
-                    let (cores, total, avail) = read_system_info();
-                    (cores, total, avail, 0u64, 0.0f64)
-                };
+            let snapshot = if let Ok(tuple) =
+                tokio::task::spawn_blocking(collect_host_resource_snapshot).await
+            {
+                tuple
+            } else {
+                let (cores, total, avail) = read_system_info();
+                (cores, total, avail, 0u64, 0.0f64)
+            };
 
             let (
                 total_cpu_cores,

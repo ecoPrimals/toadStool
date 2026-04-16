@@ -235,3 +235,101 @@ fn find_caching_opportunities(graph: &ExecutionGraph) -> Vec<Opportunity> {
     }
     opportunities
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::time::Duration;
+
+    use crate::graph_types::{ExecutionGraph, GraphNode};
+    use crate::resource_estimator::{ResourceEstimate, ResourceEstimator};
+    use crate::resource_validator::SystemCapabilities;
+
+    use super::{discover_opportunities, identify_bottlenecks};
+    use crate::resource_optimizer::types::{BottleneckType, OpportunityType};
+
+    fn caps(gpu_count: usize) -> SystemCapabilities {
+        SystemCapabilities {
+            total_cpu_cores: 16,
+            available_cpu_cores: 8,
+            total_memory_bytes: 64 * 1024 * 1024 * 1024,
+            available_memory_bytes: 32 * 1024 * 1024 * 1024,
+            total_gpu_memory_bytes: 8 * 1024 * 1024 * 1024,
+            available_gpu_memory_bytes: 6 * 1024 * 1024 * 1024,
+            total_storage_bytes: 256 * 1024 * 1024 * 1024,
+            available_storage_bytes: 128 * 1024 * 1024 * 1024,
+            network_bandwidth_mbps: 1000,
+            gpu_count,
+            gpu_types: if gpu_count > 0 {
+                vec!["TestGPU".into()]
+            } else {
+                vec![]
+            },
+        }
+    }
+
+    #[test]
+    fn empty_graph_yields_no_opportunities() {
+        let graph = ExecutionGraph::simple("empty");
+        let estimate = ResourceEstimate {
+            graph_id: graph.id.clone(),
+            cpu_cores: 0,
+            memory_bytes: 0,
+            gpu_memory_bytes: 0,
+            storage_bytes: 0,
+            network_bandwidth_mbps: 0,
+            estimated_duration: Duration::ZERO,
+            max_parallelism: 0,
+            critical_path_length: 0,
+            node_estimates: HashMap::new(),
+            warnings: vec![],
+        };
+        let opps = discover_opportunities(&graph, &estimate, &caps(0));
+        assert!(opps.is_empty());
+    }
+
+    #[test]
+    fn sequential_two_node_graph_triggers_sequential_execution_bottleneck() {
+        let graph = ExecutionGraph::builder("seq")
+            .nodes([
+                GraphNode::simple("a", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+            ])
+            .connect("a", "b")
+            .build();
+        let estimator = ResourceEstimator::new();
+        let estimate = estimator.estimate(&graph).unwrap();
+        let bottlenecks = identify_bottlenecks(&graph, &estimate, &caps(0));
+        assert!(
+            bottlenecks
+                .iter()
+                .any(|b| b.bottleneck_type == BottleneckType::SequentialExecution)
+        );
+    }
+
+    #[test]
+    fn diamond_graph_has_parallel_fan_and_caching_on_shared_predecessor() {
+        let graph = ExecutionGraph::builder("diamond")
+            .nodes([
+                GraphNode::simple("root", "cpu_compute"),
+                GraphNode::simple("left", "cpu_compute"),
+                GraphNode::simple("right", "cpu_compute"),
+                GraphNode::simple("join", "cpu_compute"),
+            ])
+            .connect("root", "left")
+            .connect("root", "right")
+            .connect("left", "join")
+            .connect("right", "join")
+            .build();
+        let estimator = ResourceEstimator::new();
+        let estimate = estimator.estimate(&graph).unwrap();
+        assert_eq!(estimate.max_parallelism, 2);
+        assert_eq!(estimate.critical_path_length, 3);
+
+        let opps = discover_opportunities(&graph, &estimate, &caps(0));
+        assert!(opps.iter().any(|o| {
+            o.opportunity_type == OpportunityType::Caching
+                && o.affected_nodes == vec!["root".to_string()]
+        }));
+    }
+}

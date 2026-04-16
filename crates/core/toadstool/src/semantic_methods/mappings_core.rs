@@ -93,3 +93,49 @@ where
     add_mapping("security.sandbox.destroy", "destroy_sandbox");
     add_mapping("security.sandbox.status", "get_sandbox_status");
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::register;
+
+    #[test]
+    fn register_maps_known_semantic_names_to_implementations() {
+        let mut aliases = HashMap::new();
+        register(&mut |semantic, implementation| {
+            aliases.insert(semantic.to_string(), implementation.to_string());
+        });
+        assert_eq!(
+            aliases.get("compute.execute").map(String::as_str),
+            Some("execute_workload")
+        );
+        assert_eq!(
+            aliases.get("storage.artifact.store").map(String::as_str),
+            Some("store_artifact")
+        );
+    }
+
+    #[test]
+    fn lookup_returns_none_for_unregistered_semantic_name() {
+        let mut aliases = HashMap::new();
+        register(&mut |semantic, implementation| {
+            aliases.insert(semantic.to_string(), implementation.to_string());
+        });
+        assert!(aliases.get("not.a.registered.method").is_none());
+    }
+
+    #[test]
+    fn duplicate_semantic_key_last_registration_wins() {
+        let mut aliases = HashMap::new();
+        let mut add = |semantic: &str, implementation: &str| {
+            aliases.insert(semantic.to_string(), implementation.to_string());
+        };
+        register(&mut add);
+        add("compute.execute", "custom_override");
+        assert_eq!(
+            aliases.get("compute.execute").map(String::as_str),
+            Some("custom_override")
+        );
+    }
+}

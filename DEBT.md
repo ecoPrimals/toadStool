@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 16, 2026 — S203o
+**Date**: April 16, 2026 — S203p
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -109,6 +109,23 @@ are genuinely `dyn`-dispatched (`Box<dyn T>` or `Arc<dyn T>` in APIs) and carry
 `LegacyEmulator`, `LegacyAdapter`, `LegacyCommunicationSession`.
 Further reduction would require trait splitting or enum dispatch — architectural
 changes outside the scope of debt cleanup. Item closed per primalSpring April 16 audit.
+
+## S203p Resolved Debt (Env Interning Complete + Coverage Wave 3)
+
+### D-ENV-INTERN-COMPLETE — RESOLVED S203p
+**Scope**: 7 files (6 env_overrides + defaults.rs), ~55 new constants
+All `TOADSTOOL_*` env var string literals across config env_overrides now use
+`socket_env::*` constants. Added constants for resources (4), logging (10),
+runtime (10), security (13), features (14), and app (2). Plus remaining call
+sites in `defaults.rs`.
+
+### D-COVERAGE-PURE-LOGIC — RESOLVED S203p
+**Scope**: 6 production modules, +21 tests
+Tests for: platform path resolution (PathEnv construction, XDG/HOME fallbacks),
+semantic method registration (lookup, duplicates), resource optimizer cost/allocation
+(bottleneck detection, parallelization, benefit ranking), resource estimator
+(topological sort, diamond DAG, cycle detection), workload routing defaults
+(crossover thresholds, pattern matching).
 
 ## S203o Resolved Debt (Testability Refactors + Stub Evolution Wave 2)
 

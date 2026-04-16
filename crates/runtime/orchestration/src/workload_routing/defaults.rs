@@ -97,3 +97,57 @@ pub(crate) fn default_thresholds() -> Vec<RoutingThreshold> {
         },
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::workload_routing::{RoutingThreshold, WorkloadPattern};
+
+    use super::default_thresholds;
+
+    #[test]
+    fn default_thresholds_table_has_entry_per_pattern_variant() {
+        let thresholds = default_thresholds();
+        assert_eq!(thresholds.len(), 18);
+        let patterns: Vec<WorkloadPattern> = thresholds.iter().map(|t| t.pattern).collect();
+        let unique: std::collections::HashSet<_> = patterns.iter().copied().collect();
+        assert_eq!(
+            unique.len(),
+            patterns.len(),
+            "duplicate pattern rows in default_thresholds"
+        );
+    }
+
+    #[test]
+    fn default_matmul_and_reduction_crossovers_match_benchmark_table() {
+        let thresholds: Vec<RoutingThreshold> = default_thresholds();
+        let matmul = thresholds
+            .iter()
+            .find(|t| t.pattern == WorkloadPattern::MatMul)
+            .expect("MatMul");
+        let reduction = thresholds
+            .iter()
+            .find(|t| t.pattern == WorkloadPattern::Reduction)
+            .expect("Reduction");
+        assert_eq!(matmul.gpu_crossover_n, 256);
+        assert_eq!(reduction.gpu_crossover_n, 10_000);
+        for t in &thresholds {
+            assert!(!t.provenance.is_empty());
+        }
+    }
+
+    #[test]
+    fn workload_router_default_uses_same_threshold_source() {
+        let from_fn = default_thresholds();
+        let router = crate::workload_routing::WorkloadRouter::default();
+        for t in &from_fn {
+            assert_eq!(
+                router.route(t.pattern, t.gpu_crossover_n),
+                crate::workload_routing::SubstrateTarget::Cpu
+            );
+            assert_eq!(
+                router.route(t.pattern, t.gpu_crossover_n.saturating_add(1)),
+                crate::workload_routing::SubstrateTarget::Gpu
+            );
+        }
+    }
+}

@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 16, 2026 — S203o (Testability Refactors + Stub Evolution Wave 2)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,700+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` CLOSED (dyn-ceiling: 158, 32 dyn-dispatched)** | **`deny.toml` ring ban active** | **dual-socket documented** | **I/O-logic separated (pure parsers testable)** | **real system monitoring (CPU/mem/disk)**
-**Latest**: S203o — Testability refactors: 5 modules evolved to separate I/O from pure logic (detection, GPU, DNS, storage, OS). +38 tests for pure parsers. Monitoring evolved from hardcoded to real host queries (sysmon/statvfs). StorageStatus::LocalOnly replaces fake success. Constants wave 4 (4 sysfs + 11 env). S203n: +129 tests, async-trait closed (see below).
+**Updated**: April 16, 2026 — S203p (Env Interning Complete + Coverage Wave 3)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 21,700+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` CLOSED** | **`deny.toml` ring ban active** | **env_overrides fully interned** | **I/O-logic separated** | **real system monitoring**
+**Latest**: S203p — Env interning complete: all ~55 TOADSTOOL_* env var strings across 6 env_overrides files + defaults.rs now use socket_env constants. +21 tests across 6 pure-logic modules (path resolution, semantic methods, resource optimizer/estimator, workload routing). S203o: testability refactors, monitoring evolution (see below).
 
 ---
 

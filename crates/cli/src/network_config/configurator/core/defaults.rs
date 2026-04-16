@@ -10,6 +10,7 @@ use toadstool_common::config_bases::{
 };
 use toadstool_common::constants::platform_paths::{etc_paths, install_paths};
 use toadstool_common::interned_strings::capabilities;
+use toadstool_common::interned_strings::socket_env;
 use toadstool_common::primal_sockets::SocketPathEnv;
 
 // --- Network configurator defaults (overridable via env) ---
@@ -47,7 +48,7 @@ fn default_audit_log_path() -> String {
 /// 2. Host system `/etc/resolv.conf` nameserver entries (Linux/macOS)
 /// 3. Empty list — fall back to the OS-level resolver
 pub(super) fn system_dns_resolvers() -> Vec<String> {
-    if let Ok(val) = std::env::var("TOADSTOOL_DNS_RESOLVERS") {
+    if let Ok(val) = std::env::var(socket_env::TOADSTOOL_DNS_RESOLVERS) {
         let servers: Vec<String> = val
             .split(',')
             .map(str::trim)
@@ -164,7 +165,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             search_domains: vec![
                 "toadstool.local".to_string(),
                 "ecosystem.local".to_string(),
-                std::env::var("TOADSTOOL_BASE_DOMAIN")
+                std::env::var(socket_env::TOADSTOOL_BASE_DOMAIN)
                     .unwrap_or_else(|_| "primal.local".to_string()),
             ],
             // Use environment-aware service domains instead of hardcoded values
@@ -202,7 +203,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         let env = SocketPathEnv::from_env();
                         env.security_connection_hint.unwrap_or_else(|| {
                             let domains = ServiceDomainsConfig::from_env();
-                            let port = std::env::var("TOADSTOOL_SECURITY_PORT")
+                            let port = std::env::var(socket_env::TOADSTOOL_SECURITY_PORT)
                                 .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_PORT"))
                                 .unwrap_or_else(|_| "8000".to_string());
                             format!("http://{}:{}", domains.security, port)

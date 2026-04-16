@@ -312,3 +312,93 @@ impl ResourceEstimator {
         warnings
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::time::Duration;
+
+    use crate::graph_types::{ExecutionGraph, GraphEdge, GraphNode};
+
+    use super::super::EstimationError;
+    use super::ResourceEstimator;
+
+    #[test]
+    fn linear_chain_aggregates_duration_across_levels() {
+        let graph = ExecutionGraph {
+            id: "linear".into(),
+            nodes: vec![
+                GraphNode::simple("n0", "cpu_compute"),
+                GraphNode::simple("n1", "cpu_compute"),
+                GraphNode::simple("n2", "cpu_compute"),
+            ],
+            edges: vec![GraphEdge::new("n0", "n1"), GraphEdge::new("n1", "n2")],
+            metadata: HashMap::new(),
+        };
+        let est = ResourceEstimator::new().estimate(&graph).unwrap();
+        assert_eq!(est.estimated_duration, Duration::from_secs(90));
+        assert_eq!(est.critical_path_length, 3);
+        assert_eq!(est.max_parallelism, 1);
+    }
+
+    #[test]
+    fn diamond_dag_has_parallel_middle_level() {
+        let graph = ExecutionGraph {
+            id: "diamond".into(),
+            nodes: vec![
+                GraphNode::simple("a", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+                GraphNode::simple("c", "cpu_compute"),
+                GraphNode::simple("d", "cpu_compute"),
+            ],
+            edges: vec![
+                GraphEdge::new("a", "b"),
+                GraphEdge::new("a", "c"),
+                GraphEdge::new("b", "d"),
+                GraphEdge::new("c", "d"),
+            ],
+            metadata: HashMap::new(),
+        };
+        let est = ResourceEstimator::new().estimate(&graph).unwrap();
+        assert_eq!(est.max_parallelism, 2);
+        assert_eq!(est.critical_path_length, 3);
+    }
+
+    #[test]
+    fn cycle_detection_returns_cyclic_graph_error() {
+        let graph = ExecutionGraph {
+            id: "cycle".into(),
+            nodes: vec![
+                GraphNode::simple("a", "cpu_compute"),
+                GraphNode::simple("b", "cpu_compute"),
+            ],
+            edges: vec![GraphEdge::new("a", "b"), GraphEdge::new("b", "a")],
+            metadata: HashMap::new(),
+        };
+        let err = ResourceEstimator::new().estimate(&graph).unwrap_err();
+        // `validate()` rejects cycles before topological sort; only some invalid
+        // graphs reach `EstimationError::CyclicGraph` from the sorter.
+        let is_cycle = matches!(
+            err,
+            EstimationError::CyclicGraph | EstimationError::InvalidGraph(_)
+        );
+        assert!(is_cycle, "expected cycle rejection, got: {err}");
+    }
+
+    #[test]
+    fn single_node_estimate_matches_defaults() {
+        let graph = ExecutionGraph {
+            id: "one".into(),
+            nodes: vec![GraphNode::simple("only", "cpu_compute")],
+            edges: vec![],
+            metadata: HashMap::new(),
+        };
+        let est = ResourceEstimator::new().estimate(&graph).unwrap();
+        assert_eq!(est.graph_id, "one");
+        assert_eq!(est.max_parallelism, 1);
+        assert_eq!(est.critical_path_length, 1);
+        assert_eq!(est.cpu_cores, 2);
+        let node = est.node_estimates.get("only").expect("node estimate");
+        assert_eq!(node.parallelism_level, 0);
+    }
+}
