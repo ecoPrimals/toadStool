@@ -10,7 +10,7 @@
 //! are just different orders of the same parallel compute architecture.
 
 use toadstool_runtime_universal::{
-    ComputeError, OperationType, ParamValue, UniversalRuntime, WorkloadBuilder,
+    ComputeError, ComputeUnit, OperationType, ParamValue, UniversalRuntime, WorkloadBuilder,
 };
 
 #[tokio::main]

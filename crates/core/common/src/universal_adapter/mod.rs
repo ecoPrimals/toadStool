@@ -52,7 +52,8 @@ pub use capability_types::{
 #[cfg(feature = "mdns")]
 pub use discovery_engine::MDnsSource;
 pub use discovery_engine::{
-    DiscoveryEngine, DiscoverySource, EnvironmentSource, LocalRegistrySource,
+    DiscoveryEngine, DiscoverySource, DiscoverySourceDispatch, EnvironmentSource,
+    LocalRegistrySource,
 };
 pub use graceful_degradation::{DegradationStrategy, GracefulDegradation};
 pub use provider_registry::ProviderRegistry;
@@ -111,7 +112,7 @@ impl UniversalAdapter {
     /// # Errors
     ///
     /// Returns `Err` if initial discovery scan fails.
-    pub async fn with_sources(sources: Vec<Box<dyn DiscoverySource>>) -> ToadStoolResult<Self> {
+    pub async fn with_sources(sources: Vec<DiscoverySourceDispatch>) -> ToadStoolResult<Self> {
         let discovery = Arc::new(DiscoveryEngine::new(sources)?);
         let registry = Arc::new(RwLock::new(ProviderRegistry::new()));
         let degradation = Arc::new(GracefulDegradation::new());

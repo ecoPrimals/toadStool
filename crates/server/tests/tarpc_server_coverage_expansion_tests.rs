@@ -12,19 +12,20 @@
 //! `tests/tarpc_server_tests.rs` without duplicating their scenarios.
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::AtomicU8;
 
 use tarpc::context::Context;
 
 use toadstool_server::rpc_types::{
-    AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, HealthStatus,
-    ResourceRequirements, TarpcWorkloadSubmission, ToadStoolComputeRpc, WorkloadPriority,
-    WorkloadResult, WorkloadStatus, WorkloadSubmission, semantic_methods,
+    AvailableResources, ComputeUnit, ExecutionMetrics, HealthStatus, ResourceRequirements,
+    TarpcWorkloadSubmission, ToadStoolComputeRpc, WorkloadPriority, WorkloadResult, WorkloadStatus,
+    WorkloadSubmission, semantic_methods,
 };
-use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
+use toadstool_server::tarpc_server::{
+    StandaloneExecutor, TestWorkloadDouble, ToadStoolTarpcServer, WorkloadExecutor,
+    WorkloadExecutorDispatch,
+};
 
 fn round_trip_json<T>(value: &T) -> T
 where
@@ -235,49 +236,11 @@ async fn standalone_executor_new_and_default_equivalent_service_id() {
     assert_eq!(ca.service_id, cb.service_id);
 }
 
-struct SeqTagExecutor(AtomicU8);
-
-impl WorkloadExecutor for SeqTagExecutor {
-    fn execute(
-        &self,
-        submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
-        let counter = &self.0;
-        Box::pin(async move {
-            let tag = counter.fetch_add(1, Ordering::SeqCst);
-            Ok(WorkloadResult {
-                workload_id: submission.workload_id,
-                status: WorkloadStatus::Completed,
-                data: Some(vec![tag].into()),
-                error: None,
-                metrics: ExecutionMetrics {
-                    queued_duration_secs: 0.0,
-                    execution_duration_secs: 0.01,
-                    cpu_cores_used: 1,
-                    memory_used_bytes: 1,
-                    gpu_memory_used_bytes: None,
-                },
-            })
-        })
-    }
-
-    fn query_capabilities(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
-        Box::pin(async move { Err("unused".to_string()) })
-    }
-
-    fn cancel<'a>(
-        &'a self,
-        _workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-}
-
 #[tokio::test]
 async fn duplicate_workload_id_keeps_first_map_entry() {
-    let executor = Arc::new(SeqTagExecutor(AtomicU8::new(0)));
+    let executor = Arc::new(WorkloadExecutorDispatch::TestDouble(
+        TestWorkloadDouble::SeqTag(Arc::new(AtomicU8::new(0))),
+    ));
     let server = ToadStoolTarpcServer::new("v", executor, None);
     let sub = |id: &str| WorkloadSubmission {
         workload_id: Arc::from(id),
@@ -318,65 +281,15 @@ async fn duplicate_workload_id_keeps_first_map_entry() {
     );
 }
 
-struct RunningExecutor;
-
-impl WorkloadExecutor for RunningExecutor {
-    fn execute(
-        &self,
-        submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(WorkloadResult {
-                workload_id: submission.workload_id,
-                status: WorkloadStatus::Running,
-                data: None,
-                error: None,
-                metrics: ExecutionMetrics {
-                    queued_duration_secs: 0.0,
-                    execution_duration_secs: 0.0,
-                    cpu_cores_used: 2,
-                    memory_used_bytes: 0,
-                    gpu_memory_used_bytes: None,
-                },
-            })
-        })
-    }
-
-    fn query_capabilities(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(ComputeCapabilities {
-                service_id: "running-test".to_string(),
-                compute_units: vec![],
-                supported_workload_types: vec![],
-                available_resources: AvailableResources {
-                    total_cpu_cores: 1,
-                    available_cpu_cores: 1,
-                    total_memory_bytes: 1024,
-                    available_memory_bytes: 1024,
-                    total_gpu_memory_bytes: None,
-                    available_gpu_memory_bytes: None,
-                    cpu_utilization: 0.0,
-                    memory_utilization: 0.0,
-                    gpu_utilization: None,
-                },
-                metadata: HashMap::new(),
-            })
-        })
-    }
-
-    fn cancel<'a>(
-        &'a self,
-        _workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-}
-
 #[tokio::test]
 async fn health_check_counts_running_without_queued() {
-    let server = ToadStoolTarpcServer::new("v", Arc::new(RunningExecutor), None);
+    let server = ToadStoolTarpcServer::new(
+        "v",
+        Arc::new(WorkloadExecutorDispatch::TestDouble(
+            TestWorkloadDouble::Running,
+        )),
+        None,
+    );
     server
         .clone()
         .submit_workload(

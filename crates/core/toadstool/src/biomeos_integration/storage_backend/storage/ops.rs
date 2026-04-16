@@ -2,7 +2,6 @@
 //! `StorageBackend` trait — lifecycle, provisioning, volume ops, metadata.
 
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::biomeos_integration::storage_backend::{StorageBackend, VolumeStatus};
@@ -14,8 +13,8 @@ use crate::{ToadStoolError, ToadStoolResult};
 use super::construct::SocketStorageBackend;
 
 impl StorageBackend for SocketStorageBackend {
-    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let _health: serde_json::Value = self
                 .rpc_client
                 .call("storage.health", serde_json::json!({}))
@@ -26,13 +25,13 @@ impl StorageBackend for SocketStorageBackend {
 
             tracing::info!("Successfully connected to storage service via unix socket");
             Ok(())
-        })
+        }
     }
 
-    fn provision_volume(
-        &self,
-        config: &VolumeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
+    fn provision_volume<'a>(
+        &'a self,
+        config: &'a VolumeConfig,
+    ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
         let config_name: Arc<str> = Arc::from(config.name.as_str());
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
@@ -58,7 +57,7 @@ impl StorageBackend for SocketStorageBackend {
             },
         };
 
-        Box::pin(async move {
+        async move {
             let params = serde_json::to_value(&request).map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
             })?;
@@ -74,13 +73,13 @@ impl StorageBackend for SocketStorageBackend {
                 })?;
 
             Ok(volume_info)
-        })
+        }
     }
 
-    fn provision_persistent_volume(
-        &self,
-        config: &PersistentVolume,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
+    fn provision_persistent_volume<'a>(
+        &'a self,
+        config: &'a PersistentVolume,
+    ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
         let config_name: Arc<str> = Arc::from(config.name.as_str());
         let replication_enabled = self.replication_enabled;
         let replication_factor = self.replication_factor;
@@ -106,7 +105,7 @@ impl StorageBackend for SocketStorageBackend {
             },
         };
 
-        Box::pin(async move {
+        async move {
             let params = serde_json::to_value(&request).map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
             })?;
@@ -122,20 +121,20 @@ impl StorageBackend for SocketStorageBackend {
                 })?;
 
             Ok(volume_info)
-        })
+        }
     }
 
-    fn mount_volume(
-        &self,
-        volume_name: &str,
-        service_name: &str,
-        mount_path: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn mount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+        mount_path: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         let volume_name = volume_name.to_owned();
         let service_name = service_name.to_owned();
         let mount_path = mount_path.to_owned();
 
-        Box::pin(async move {
+        async move {
             let params = serde_json::json!({
                 "volume_name": volume_name,
                 "service_name": service_name,
@@ -154,18 +153,18 @@ impl StorageBackend for SocketStorageBackend {
                 service_name
             );
             Ok(())
-        })
+        }
     }
 
-    fn unmount_volume(
-        &self,
-        volume_name: &str,
-        service_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn unmount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         let volume_name = volume_name.to_owned();
         let service_name = service_name.to_owned();
 
-        Box::pin(async move {
+        async move {
             let params = serde_json::json!({
                 "volume_name": volume_name,
                 "service_name": service_name,
@@ -183,16 +182,16 @@ impl StorageBackend for SocketStorageBackend {
                 service_name
             );
             Ok(())
-        })
+        }
     }
 
-    fn delete_volume(
-        &self,
-        volume_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn delete_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         let volume_name = volume_name.to_owned();
 
-        Box::pin(async move {
+        async move {
             let params = serde_json::json!({"volume_name": volume_name});
 
             let _: serde_json::Value = self
@@ -203,16 +202,16 @@ impl StorageBackend for SocketStorageBackend {
 
             tracing::info!("Successfully deleted volume {}", volume_name);
             Ok(())
-        })
+        }
     }
 
-    fn get_volume_status(
-        &self,
-        volume_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
+    fn get_volume_status<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<VolumeStatus>> + Send + 'a {
         let volume_name = volume_name.to_owned();
 
-        Box::pin(async move {
+        async move {
             let params = serde_json::json!({"volume_name": volume_name});
 
             let status = self
@@ -224,13 +223,11 @@ impl StorageBackend for SocketStorageBackend {
                 })?;
 
             Ok(status)
-        })
+        }
     }
 
-    fn list_volumes(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
-        Box::pin(async move {
+    fn list_volumes(&self) -> impl Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_ {
+        async move {
             let volumes = self
                 .rpc_client
                 .call_typed::<Vec<VolumeInfo>>("storage.list_volumes", serde_json::json!({}))
@@ -238,6 +235,6 @@ impl StorageBackend for SocketStorageBackend {
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to list volumes: {e}")))?;
 
             Ok(volumes)
-        })
+        }
     }
 }

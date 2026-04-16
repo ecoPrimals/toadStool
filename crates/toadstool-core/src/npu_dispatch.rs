@@ -24,6 +24,8 @@
 use std::borrow::Cow;
 use std::fmt::Debug;
 
+use akida_driver::NpuBackend;
+
 /// Capability flags that an NPU may advertise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -202,13 +204,13 @@ impl NpuModelHandle {
 #[derive(Debug)]
 pub struct AkidaNpuDispatch {
     info: NpuInfo,
-    backend: Box<dyn akida_driver::NpuBackend>,
+    backend: akida_driver::NpuBackendDispatch,
 }
 
 impl AkidaNpuDispatch {
     /// Create from an already-initialized Akida backend.
     #[must_use]
-    pub fn from_backend(backend: Box<dyn akida_driver::NpuBackend>) -> Self {
+    pub fn from_backend(backend: akida_driver::NpuBackendDispatch) -> Self {
         let caps = backend.capabilities();
         let mut capabilities = vec![NpuCapability::Inference, NpuCapability::PowerMonitoring];
 

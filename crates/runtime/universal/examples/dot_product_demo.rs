@@ -13,6 +13,7 @@
 //! These operations are building blocks for linear algebra and ML.
 
 use toadstool_runtime_universal::ComputeError;
+use toadstool_runtime_universal::ComputeUnit;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     DataType, OperationType, Workload, WorkloadData, WorkloadParams,

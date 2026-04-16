@@ -3,12 +3,15 @@
 
 use super::super::*;
 use crate::primal_identity::{ComputeCapability, CoordinationCapability};
+use crate::runtime_discovery::LocalhostDiscoveryClient;
 use std::collections::HashMap;
 use std::time::Duration;
 
+type TestEngine = PrimalDiscoveryEngine<LocalhostDiscoveryClient>;
+
 #[tokio::test]
 async fn test_cache_freshness() {
-    let engine = PrimalDiscoveryEngine::new(None).expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::new_without_client().expect("Failed to create engine");
 
     let service = DiscoveredService {
         id: Some("test-service".to_string()),
@@ -38,7 +41,7 @@ async fn test_cache_freshness() {
 
 #[tokio::test]
 async fn test_cache_stats() {
-    let engine = PrimalDiscoveryEngine::new(None).expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::new_without_client().expect("Failed to create engine");
 
     let stats = engine.cache_stats().await;
     assert_eq!(stats.total_entries, 0, "Cache should be empty initially");
@@ -68,7 +71,7 @@ async fn test_clear_cache() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("Failed to create engine");
 
     let capability = Capability::Coordination(CoordinationCapability::ServiceDiscovery);
     let _ = engine.discover_by_capability(&capability).await.unwrap();
@@ -114,7 +117,7 @@ async fn test_cache_stats_stale_entries() {
     };
 
     let engine_with_short_ttl =
-        PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
+        PrimalDiscoveryEngine::without_client(config).expect("Failed to create engine");
     engine_with_short_ttl
         .cache_service("stale_key", service.clone())
         .await;
@@ -128,19 +131,17 @@ async fn test_cache_stats_stale_entries() {
 #[tokio::test]
 async fn test_capability_to_string_variants() {
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Coordination(
+        TestEngine::capability_to_string(&Capability::Coordination(
             CoordinationCapability::ServiceDiscovery
         )),
         "orchestration"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Compute(
-            ComputeCapability::NativeExecution
-        )),
+        TestEngine::capability_to_string(&Capability::Compute(ComputeCapability::NativeExecution)),
         "compute"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Storage(
+        TestEngine::capability_to_string(&Capability::Storage(
             crate::primal_identity::StorageCapability::ObjectStorage
         )),
         "storage"
@@ -152,25 +153,21 @@ async fn test_capability_to_string_crypto_auth_discovery_custom() {
     use crate::primal_identity::{AuthCapability, CryptoCapability, DiscoveryCapability};
 
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Crypto(
-            CryptoCapability::Encryption
-        )),
+        TestEngine::capability_to_string(&Capability::Crypto(CryptoCapability::Encryption)),
         "crypto"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Authentication(
-            AuthCapability::UserAuth
-        )),
+        TestEngine::capability_to_string(&Capability::Authentication(AuthCapability::UserAuth)),
         "authentication"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Discovery(
+        TestEngine::capability_to_string(&Capability::Discovery(
             DiscoveryCapability::MdnsDiscovery
         )),
         "discovery"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Custom {
+        TestEngine::capability_to_string(&Capability::Custom {
             name: "custom-cap".to_string(),
             version: "1.0".to_string(),
         }),
@@ -185,7 +182,7 @@ async fn test_cache_stats_empty() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("Failed to create engine");
 
     let stats = engine.cache_stats().await;
     assert_eq!(stats.total_entries, 0);
@@ -216,7 +213,7 @@ async fn test_cached_endpoint_is_fresh() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("Failed to create engine");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("Failed to create engine");
 
     engine.cache_service("fresh_key", service).await;
     let cached = engine.get_from_cache("fresh_key").await;
@@ -232,7 +229,7 @@ async fn test_cache_stats_multiple_entries() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create engine");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("create engine");
 
     for i in 0..3 {
         let service = DiscoveredService {
@@ -260,7 +257,7 @@ async fn test_cached_endpoint_stale_after_ttl() {
     // which tokio virtual time cannot advance)
     config.cache_ttl = Duration::ZERO;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("create");
 
     let service = DiscoveredService {
         id: Some("stale".to_string()),
@@ -289,43 +286,37 @@ async fn test_capability_to_string_all_variants() {
     use crate::primal_identity::{AuthCapability, CryptoCapability, DiscoveryCapability};
 
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Coordination(
+        TestEngine::capability_to_string(&Capability::Coordination(
             CoordinationCapability::ServiceDiscovery
         )),
         "orchestration"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Compute(
-            ComputeCapability::NativeExecution
-        )),
+        TestEngine::capability_to_string(&Capability::Compute(ComputeCapability::NativeExecution)),
         "compute"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Storage(
+        TestEngine::capability_to_string(&Capability::Storage(
             crate::primal_identity::StorageCapability::ObjectStorage
         )),
         "storage"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Crypto(
-            CryptoCapability::Encryption
-        )),
+        TestEngine::capability_to_string(&Capability::Crypto(CryptoCapability::Encryption)),
         "crypto"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Authentication(
-            AuthCapability::UserAuth
-        )),
+        TestEngine::capability_to_string(&Capability::Authentication(AuthCapability::UserAuth)),
         "authentication"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Discovery(
+        TestEngine::capability_to_string(&Capability::Discovery(
             DiscoveryCapability::MdnsDiscovery
         )),
         "discovery"
     );
     assert_eq!(
-        PrimalDiscoveryEngine::capability_to_string(&Capability::Custom {
+        TestEngine::capability_to_string(&Capability::Custom {
             name: "my-cap".to_string(),
             version: "2.0".to_string(),
         }),
@@ -342,7 +333,7 @@ async fn test_cache_stats_after_clear() {
     config.enable_mdns = false;
     config.require_mdns = false;
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("create");
 
     let _ = engine
         .discover_by_capability(&Capability::Custom {
@@ -410,7 +401,7 @@ async fn test_cached_endpoint_is_fresh_with_nonzero_ttl() {
     config.require_mdns = false;
     config.cache_ttl = std::time::Duration::from_secs(600);
 
-    let engine = PrimalDiscoveryEngine::with_config(None, config).expect("create");
+    let engine = PrimalDiscoveryEngine::without_client(config).expect("create");
 
     engine.cache_service("fresh_key", service).await;
     let cached = engine.get_from_cache("fresh_key").await;

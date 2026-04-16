@@ -15,11 +15,12 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use toadstool::workload_migration::MigrationCoordinator;
+//! use toadstool::cloud_provider_trait::NoopCloudProvider;
 //! use toadstool::composition_constraints::Constraint;
+//! use toadstool::workload_migration::MigrationCoordinator;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! let coordinator = MigrationCoordinator::new().await?;
+//! let coordinator = MigrationCoordinator::<NoopCloudProvider>::new().await?;
 //!
 //! let should_migrate = coordinator.should_migrate(
 //!     "my-workload",
@@ -45,7 +46,9 @@ pub use validation::{
 };
 
 use crate::ToadStoolResult;
-use crate::cloud_provider_trait::{CloudProvider, CloudProviderRegistry, WorkloadLocation};
+use crate::cloud_provider_trait::{
+    CloudProvider, CloudProviderRegistry, NoopCloudProvider, WorkloadLocation,
+};
 use crate::composition_engine::CompositionEngine;
 use crate::fractal_integration::FractalRuntime;
 use std::collections::HashMap;
@@ -56,7 +59,7 @@ use tracing::info;
 /// Migration coordinator
 ///
 /// Manages workload migrations between local and cloud environments.
-pub struct MigrationCoordinator {
+pub struct MigrationCoordinator<P: CloudProvider = NoopCloudProvider> {
     /// Current runtime
     pub(super) runtime: Arc<FractalRuntime>,
 
@@ -64,7 +67,7 @@ pub struct MigrationCoordinator {
     pub(super) engine: Arc<CompositionEngine>,
 
     /// Cloud provider registry
-    pub(super) providers: Arc<RwLock<CloudProviderRegistry>>,
+    pub(super) providers: Arc<RwLock<CloudProviderRegistry<P>>>,
 
     /// Active workload locations
     pub(super) workload_locations: Arc<RwLock<HashMap<String, WorkloadLocation>>>,
@@ -159,7 +162,7 @@ pub struct CostImpact {
     pub migration_cost: f64,
 }
 
-impl MigrationCoordinator {
+impl<P: CloudProvider> MigrationCoordinator<P> {
     /// Create a new migration coordinator
     ///
     /// # Errors
@@ -179,7 +182,7 @@ impl MigrationCoordinator {
     }
 
     /// Register a cloud provider
-    pub async fn register_provider(&self, provider: Box<dyn CloudProvider>) {
+    pub async fn register_provider(&self, provider: Box<P>) {
         let name = provider.name().to_string();
         self.providers.write().await.register(provider);
         info!("📦 Registered cloud provider: {}", name);

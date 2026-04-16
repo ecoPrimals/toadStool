@@ -5,17 +5,11 @@ use super::detection::*;
 use super::policy::*;
 use crate::types::DataType;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 use toadstool::error::ToadStoolResult;
 use uuid::Uuid;
 
-/// Boxed Send future (avoids clippy::type_complexity on nested generics).
-type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-
 /// Universal compute resource trait - GPU, CPU, TPU, anything!
-// NOTE(async-dyn): `Pin<Box<dyn Future>>` for object-safe async methods on trait objects.
 pub trait UniversalComputeResource: Send + Sync {
     /// Get capabilities of this resource
     fn capabilities(&self) -> &ComputeCapabilities;
@@ -37,17 +31,16 @@ pub trait UniversalComputeResource: Send + Sync {
     }
 
     /// Create execution context for this resource
-    fn create_context(&self) -> BoxFuture<'_, ToadStoolResult<Box<dyn ComputeContext>>>;
+    async fn create_context(&self) -> ToadStoolResult<crate::cpu_resource::ComputeContextDispatch>;
 
     /// Get current utilization (0.0 = idle, 1.0 = fully utilized)
-    fn utilization(&self) -> Pin<Box<dyn Future<Output = f32> + Send + '_>>;
+    async fn utilization(&self) -> f32;
 
     /// Estimate execution time for workload
     fn estimate_execution_time(&self, requirements: &ComputeRequirements) -> Duration;
 }
 
 /// Compute execution context (session on a specific resource)
-// NOTE(async-dyn): `Pin<Box<dyn Future>>` for object-safe async methods on trait objects.
 pub trait ComputeContext: Send + Sync {
     /// Get context ID
     fn context_id(&self) -> Uuid;
@@ -56,13 +49,10 @@ pub trait ComputeContext: Send + Sync {
     fn resource_id(&self) -> &str;
 
     /// Execute workload in this context
-    fn execute<'a>(
-        &'a mut self,
-        workload: &'a UniversalWorkload,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<WorkloadResult>> + Send + 'a>>;
+    async fn execute(&mut self, workload: &UniversalWorkload) -> ToadStoolResult<WorkloadResult>;
 
     /// Close context and cleanup resources
-    fn close(self: Box<Self>) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send>>;
+    async fn close(self: Box<Self>) -> ToadStoolResult<()>;
 }
 
 /// Universal workload description (hardware-agnostic)

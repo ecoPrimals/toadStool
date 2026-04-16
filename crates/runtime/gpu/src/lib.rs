@@ -2,7 +2,7 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
-    async_fn_in_trait,
+    async_fn_in_trait, // `ParallelComputeFramework`, `UnifiedMemoryBackend`, universal execution traits
     clippy::must_use_candidate,
     clippy::cast_lossless,
     // Trait impls require async for API consistency even when body is sync
@@ -45,6 +45,7 @@ pub mod distributed; // Refactored from distributed_scheduler
 pub mod engine;
 pub mod frameworks;
 pub mod memory_pool;
+pub mod parallel_framework_dispatch;
 pub mod scheduler;
 pub mod strategy;
 pub mod traits;
@@ -70,8 +71,12 @@ pub use config::{
     UniversalIrConfig, UniversalIrFormat,
 };
 pub use coordinator::ComputeResourceCoordinator;
+pub use cpu_resource::{
+    ComputeContextDispatch, CpuComputeResource, UniversalComputeResourceDispatch,
+};
 pub use engine::UniversalGpuEngine;
 pub use frameworks::{FallbackFramework, WebGPUAdapter, WebGpuFramework};
+pub use parallel_framework_dispatch::ParallelComputeFrameworkDispatch;
 pub use strategy::{BackendSelectionStrategy, EvolutionMetrics};
 pub use traits::{KernelOptimizer, LoadBalancer, ParallelComputeFramework};
 // types has 25+ public items; explicit re-export would be unwieldy

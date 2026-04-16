@@ -8,14 +8,18 @@ use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::ToadStoolResult;
-use crate::execution::ExecutionResponse;
+use crate::execution::{ExecutionResponse, RuntimeEngine};
 
 use super::super::UniversalScheduler;
 use super::discover::discover_self_ip_address;
 use crate::universal::requests::{PrimalRequest, ResponseStatus};
+use crate::universal::traits::UniversalPrimalProvider;
 use crate::universal::types::{NetworkLocation, PrimalContext, SecurityLevel};
 
-impl UniversalScheduler {
+impl<P, E: RuntimeEngine> UniversalScheduler<P, E>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
     /// Execute a primal job (remote capability)
     pub(in crate::universal::scheduler) async fn execute_primal(
         &self,

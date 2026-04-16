@@ -5,90 +5,13 @@
 //! with `encode_frame/decode_frame`.
 
 use toadstool_core::{
-    FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, TransportFilter,
-    TransportInfo, TransportMedium, TransportRouter, decode_frame, encode_frame,
+    FRAME_HEADER_SIZE, HardwareTransport, TransportDirection, TransportError, decode_frame,
+    encode_frame,
 };
-
-/// Loopback transport with proper framing support for testing.
-/// Stores raw bytes; caller uses `encode_frame/decode_frame` for protocol.
-struct LoopbackTransport {
-    info: TransportInfo,
-    buf: Vec<u8>,
-}
-
-impl LoopbackTransport {
-    fn new(id: &str, direction: TransportDirection) -> Self {
-        Self {
-            info: TransportInfo {
-                id: id.to_string(),
-                label: id.to_string(),
-                medium: TransportMedium::Serial,
-                direction,
-            },
-            buf: Vec::new(),
-        }
-    }
-}
-
-impl HardwareTransport for LoopbackTransport {
-    fn info(&self) -> &TransportInfo {
-        &self.info
-    }
-    fn bandwidth_bps(&self) -> u64 {
-        1_000_000
-    }
-    fn is_available(&self) -> bool {
-        true
-    }
-    fn send(&mut self, data: &[u8]) -> Result<usize, TransportError> {
-        self.buf.extend_from_slice(data);
-        Ok(data.len())
-    }
-    fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-        let n = buf.len().min(self.buf.len());
-        buf[..n].copy_from_slice(&self.buf[..n]);
-        self.buf.drain(..n);
-        Ok(n)
-    }
-}
-
-/// High-bandwidth mock transport for filter tests.
-struct HighBandwidthTransport {
-    info: TransportInfo,
-    bandwidth_bps: u64,
-}
-
-impl HighBandwidthTransport {
-    fn new(id: &str, direction: TransportDirection, bandwidth_bps: u64) -> Self {
-        Self {
-            info: TransportInfo {
-                id: id.to_string(),
-                label: id.to_string(),
-                medium: TransportMedium::Display,
-                direction,
-            },
-            bandwidth_bps,
-        }
-    }
-}
-
-impl HardwareTransport for HighBandwidthTransport {
-    fn info(&self) -> &TransportInfo {
-        &self.info
-    }
-    fn bandwidth_bps(&self) -> u64 {
-        self.bandwidth_bps
-    }
-    fn is_available(&self) -> bool {
-        true
-    }
-    fn send(&mut self, data: &[u8]) -> Result<usize, TransportError> {
-        Ok(data.len())
-    }
-    fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-        Ok(buf.len().min(0))
-    }
-}
+use toadstool_display::{
+    HardwareTransportDispatch, TestHighBandwidthTransport, TestLoopbackTransport, TransportFilter,
+    TransportRouter,
+};
 
 #[test]
 fn framed_loopback_encode_send_recv_decode() {
@@ -99,7 +22,8 @@ fn framed_loopback_encode_send_recv_decode() {
     assert_eq!(written, FRAME_HEADER_SIZE + payload.len());
 
     // Tx sends framed data; we use a bidi transport for loopback
-    let mut loopback = LoopbackTransport::new("loop", TransportDirection::Bidirectional);
+    let mut loopback =
+        TestLoopbackTransport::with_default_bandwidth("loop", TransportDirection::Bidirectional);
     loopback.send(&frame_buf[..written]).expect("send framed");
 
     let mut recv_buf = vec![0u8; written];
@@ -114,18 +38,15 @@ fn framed_loopback_encode_send_recv_decode() {
 #[test]
 fn transport_router_register_three_filter_by_direction() {
     let mut router = TransportRouter::new();
-    router.register(Box::new(LoopbackTransport::new(
-        "rx1",
-        TransportDirection::Rx,
-    )));
-    router.register(Box::new(LoopbackTransport::new(
-        "tx1",
-        TransportDirection::Tx,
-    )));
-    router.register(Box::new(LoopbackTransport::new(
-        "bidi1",
-        TransportDirection::Bidirectional,
-    )));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("rx1", TransportDirection::Rx),
+    ));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("tx1", TransportDirection::Tx),
+    ));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("bidi1", TransportDirection::Bidirectional),
+    ));
 
     assert_eq!(router.list().len(), 3);
 
@@ -144,14 +65,14 @@ fn transport_router_register_three_filter_by_direction() {
 fn transport_router_route_once_rx_to_tx() {
     let mut router = TransportRouter::new();
 
-    let mut rx = LoopbackTransport::new("rx", TransportDirection::Bidirectional);
+    let mut rx =
+        TestLoopbackTransport::with_default_bandwidth("rx", TransportDirection::Bidirectional);
     rx.send(b"hello transport").unwrap();
-    router.register(Box::new(rx));
+    router.register(HardwareTransportDispatch::TestLoopback(rx));
 
-    router.register(Box::new(LoopbackTransport::new(
-        "tx",
-        TransportDirection::Bidirectional,
-    )));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("tx", TransportDirection::Bidirectional),
+    ));
 
     let n = router.route_once("rx", "tx", 1024).unwrap();
     assert_eq!(n, 15);
@@ -160,23 +81,18 @@ fn transport_router_route_once_rx_to_tx() {
 #[test]
 fn transport_filter_medium_and_bandwidth() {
     let mut router = TransportRouter::new();
-    router.register(Box::new(HighBandwidthTransport::new(
-        "fast_tx",
-        TransportDirection::Tx,
-        10_000_000_000,
-    )));
-    router.register(Box::new(HighBandwidthTransport::new(
-        "slow_tx",
-        TransportDirection::Tx,
-        100_000,
-    )));
-    router.register(Box::new(LoopbackTransport::new(
-        "serial_tx",
-        TransportDirection::Tx,
-    )));
+    router.register(HardwareTransportDispatch::TestHighBandwidth(
+        TestHighBandwidthTransport::new("fast_tx", TransportDirection::Tx, 10_000_000_000),
+    ));
+    router.register(HardwareTransportDispatch::TestHighBandwidth(
+        TestHighBandwidthTransport::new("slow_tx", TransportDirection::Tx, 100_000),
+    ));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("serial_tx", TransportDirection::Tx),
+    ));
 
     let high_bw = TransportFilter::tx()
-        .with_medium(TransportMedium::Display)
+        .with_medium(toadstool_core::TransportMedium::Display)
         .with_min_bandwidth(1_000_000_000);
     let matches = router.find(&high_bw);
     assert_eq!(matches.len(), 1);
@@ -189,16 +105,12 @@ fn transport_filter_medium_and_bandwidth() {
 #[test]
 fn transport_filter_medium_and_bandwidth_fixed() {
     let mut router = TransportRouter::new();
-    router.register(Box::new(HighBandwidthTransport::new(
-        "fast",
-        TransportDirection::Tx,
-        10_000_000_000,
-    )));
-    router.register(Box::new(HighBandwidthTransport::new(
-        "slow",
-        TransportDirection::Tx,
-        100_000,
-    )));
+    router.register(HardwareTransportDispatch::TestHighBandwidth(
+        TestHighBandwidthTransport::new("fast", TransportDirection::Tx, 10_000_000_000),
+    ));
+    router.register(HardwareTransportDispatch::TestHighBandwidth(
+        TestHighBandwidthTransport::new("slow", TransportDirection::Tx, 100_000),
+    ));
 
     let high_bw = TransportFilter::tx().with_min_bandwidth(10_000_000_000);
     let matches = router.find(&high_bw);
@@ -213,10 +125,9 @@ fn transport_filter_medium_and_bandwidth_fixed() {
 #[test]
 fn route_to_nonexistent_transport_errors() {
     let mut router = TransportRouter::new();
-    router.register(Box::new(LoopbackTransport::new(
-        "rx",
-        TransportDirection::Rx,
-    )));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("rx", TransportDirection::Rx),
+    ));
 
     let err = router.route_once("rx", "nonexistent", 64).unwrap_err();
     assert!(matches!(err, TransportError::Unavailable(_)));
@@ -230,10 +141,9 @@ fn route_to_nonexistent_transport_errors() {
 #[test]
 fn route_same_id_rejected() {
     let mut router = TransportRouter::new();
-    router.register(Box::new(LoopbackTransport::new(
-        "self",
-        TransportDirection::Bidirectional,
-    )));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("self", TransportDirection::Bidirectional),
+    ));
     let err = router.route_once("self", "self", 64).unwrap_err();
     assert!(matches!(err, TransportError::Unavailable(_)));
     assert!(err.to_string().contains("same transport"));

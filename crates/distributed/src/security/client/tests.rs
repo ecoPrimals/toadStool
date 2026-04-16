@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+use std::sync::Arc;
+
 use super::*;
+use crate::security::DistributedCryptoProvider;
 use toadstool::encryption::CryptoProvider;
+use toadstool_common::interned_strings::capabilities;
 
 #[test]
 #[expect(deprecated)]
@@ -13,15 +17,17 @@ fn test_security_client_new_creates_client() {
 #[test]
 fn test_provider_id_returns_security() {
     #[expect(deprecated)]
-    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
-    assert_eq!(client.provider_id(), capabilities::CRYPTO);
+    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    assert_eq!(crypto.provider_id(), capabilities::CRYPTO);
 }
 
 #[test]
 fn test_capabilities_returns_default() {
     #[expect(deprecated)]
-    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
-    let caps = client.capabilities();
+    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    let caps = crypto.capabilities();
     assert!(!caps.algorithms.is_empty());
     assert!(
         caps.algorithms.contains(&"chacha20poly1305".to_string())

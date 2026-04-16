@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 use crate::CoordinatorExecutor;
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix};
-use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
+use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch};
 
 use super::capabilities;
 use toadstool_common::constants::platform_paths::sysfs;
@@ -32,7 +32,7 @@ fn bind_any() -> String {
 /// cannot be created.
 pub async fn create_executor(
     family_id: &str,
-) -> Result<std::sync::Arc<dyn WorkloadExecutor + Send + Sync>, ServerError> {
+) -> Result<std::sync::Arc<WorkloadExecutorDispatch>, ServerError> {
     info!("Creating executor with distributed coordinator (isomorphic/fractal)");
 
     let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
@@ -78,12 +78,16 @@ pub async fn create_executor(
             })?;
 
         info!("✅ Distributed coordinator executor ready");
-        Ok(std::sync::Arc::new(executor))
+        Ok(std::sync::Arc::new(WorkloadExecutorDispatch::Coordinator(
+            executor,
+        )))
     } else {
         info!("Using standalone executor (TOADSTOOL_STANDALONE=1)");
         let capabilities = capabilities::query_local_capabilities().await;
         info!("Local capabilities: {:?}", capabilities);
-        Ok(std::sync::Arc::new(StandaloneExecutor::new()))
+        Ok(std::sync::Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )))
     }
 }
 

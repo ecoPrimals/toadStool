@@ -82,8 +82,8 @@ pub mod workload_routing;
 pub use error::OrchestrationError;
 pub use load_balancer::{BalancingStrategy, LoadBalancer, Substrate};
 pub use orchestrator::{
-    OrchestratorStats, PerformanceHistory, PerformanceTarget, SubstrateHandle,
-    WorkloadOrchestrator, WorkloadRequest, WorkloadRequestBuilder, WorkloadResult,
+    OrchestratorStats, PerformanceHistory, PerformanceTarget, WorkloadOrchestrator,
+    WorkloadRequest, WorkloadRequestBuilder, WorkloadResult,
 };
 pub use policy::SelectionPolicy;
 pub use resource_orchestrator::{

@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 
 use super::LegacySystemType;
 
@@ -23,39 +22,39 @@ pub trait LegacyEmulator: Send + Sync {
     fn initialize<'a>(
         &'a mut self,
         config: &'a EmulationConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Start the emulator
-    fn start<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    fn start<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Stop the emulator
-    fn stop<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    fn stop<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Reset the emulator
-    fn reset<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    fn reset<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Load disk/ROM image
     fn load_image<'a>(
         &'a mut self,
         image: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Save emulator state
     fn save_state<'a>(
         &'a mut self,
         path: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Load emulator state
     fn load_state<'a>(
         &'a mut self,
         path: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Get emulator status
     fn get_status<'a>(
         &'a self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EmulationStatus>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<EmulationStatus>> + Send + 'a;
 }
 
 /// Emulation configuration

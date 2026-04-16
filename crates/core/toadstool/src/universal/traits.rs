@@ -2,7 +2,6 @@
 //! Universal Primal Provider trait
 
 use std::future::Future;
-use std::pin::Pin;
 
 use crate::ToadStoolResult;
 
@@ -27,7 +26,7 @@ pub trait UniversalPrimalProvider: Send + Sync {
     fn capabilities(&self) -> Vec<PrimalCapability>;
 
     /// Health check
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>>;
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_;
 
     /// API endpoints
     fn endpoints(&self) -> PrimalEndpoints;
@@ -36,16 +35,16 @@ pub trait UniversalPrimalProvider: Send + Sync {
     fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_;
 
     /// Initialize with configuration
     fn initialize(
         &mut self,
         config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Shutdown gracefully
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Check if can serve context
     fn can_serve_context(&self, context: &PrimalContext) -> bool;

@@ -51,6 +51,9 @@ pub mod mock_primal;
 ///
 /// This is the canonical definition of the `PrimalIntegration` trait.
 /// All Primals in the ecoPrimals ecosystem should implement this trait.
+///
+/// Async methods return `Pin<Box<dyn Future<…>>>` (not RPITIT) so the trait stays
+/// object-safe for `PrimalIntegrationManager`'s `Box<dyn PrimalIntegration>`.
 pub trait PrimalIntegration: Send + Sync {
     /// Initialize the Primal from manifest configuration
     fn initialize_from_manifest(

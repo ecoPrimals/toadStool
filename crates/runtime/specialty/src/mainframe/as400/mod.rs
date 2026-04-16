@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tracing::info;
@@ -71,8 +70,8 @@ impl LegacyAdapter for AS400Adapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing AS/400 adapter");
 
             // Find AS/400 configuration
@@ -92,20 +91,18 @@ impl LegacyAdapter for AS400Adapter {
 
             info!("AS/400 adapter initialized successfully");
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down AS/400 adapter");
 
             *self.connected.lock().await = false;
 
             info!("AS/400 adapter shutdown complete");
             Ok(())
-        })
+        }
     }
 
     #[expect(
@@ -115,8 +112,8 @@ impl LegacyAdapter for AS400Adapter {
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             info!("Submitting job to AS/400: {:?}", job.job_id);
 
             // Create mainframe job
@@ -141,14 +138,14 @@ impl LegacyAdapter for AS400Adapter {
 
             info!("Job submitted to AS/400: {}", job.job_id);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -159,14 +156,11 @@ impl LegacyAdapter for AS400Adapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
@@ -178,14 +172,14 @@ impl LegacyAdapter for AS400Adapter {
                     job_id
                 )))
             }
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -204,13 +198,11 @@ impl LegacyAdapter for AS400Adapter {
                     })
                 },
             )
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             // In a real implementation, this would query the AS/400 system
             Ok(SystemInfo {
                 system_name: "IBM AS/400".to_string(),
@@ -243,16 +235,14 @@ impl LegacyAdapter for AS400Adapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async {
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async {
             let connected = self.connected.lock().await;
             Ok(*connected)
-        })
+        }
     }
 }
 

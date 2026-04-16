@@ -3,6 +3,7 @@
 //!
 //! Matches workloads to compute resources based on capabilities
 
+use crate::cpu_resource::UniversalComputeResourceDispatch;
 use crate::universal::{ComputeRequirements, UniversalComputeResource};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -42,7 +43,7 @@ struct PerformanceRecord {
 /// Universal compute scheduler
 pub struct UniversalComputeScheduler {
     /// Available compute resources (GPU, CPU, TPU, etc.)
-    resources: Arc<RwLock<Vec<Arc<dyn UniversalComputeResource>>>>,
+    resources: Arc<RwLock<Vec<Arc<UniversalComputeResourceDispatch>>>>,
 
     /// Scheduling policy
     policy: SchedulingPolicy,
@@ -66,7 +67,7 @@ impl UniversalComputeScheduler {
     }
 
     /// Register a compute resource (GPU, CPU, TPU, etc.)
-    pub async fn register_resource(&self, resource: Arc<dyn UniversalComputeResource>) {
+    pub async fn register_resource(&self, resource: Arc<UniversalComputeResourceDispatch>) {
         let mut resources = self.resources.write().await;
         tracing::info!(
             "Registered compute resource: {} ({})",
@@ -86,7 +87,7 @@ impl UniversalComputeScheduler {
     }
 
     /// Get all registered compute resource objects
-    pub async fn get_resources(&self) -> Vec<Arc<dyn UniversalComputeResource>> {
+    pub async fn get_resources(&self) -> Vec<Arc<UniversalComputeResourceDispatch>> {
         let resources = self.resources.read().await;
         resources.clone()
     }
@@ -99,9 +100,9 @@ impl UniversalComputeScheduler {
     pub async fn select_resource(
         &self,
         requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<Arc<dyn UniversalComputeResource>> {
+    ) -> ToadStoolResult<Arc<UniversalComputeResourceDispatch>> {
         // Clone capable resources before await to avoid holding lock across .await
-        let capable: Vec<Arc<dyn UniversalComputeResource>> = {
+        let capable: Vec<Arc<UniversalComputeResourceDispatch>> = {
             let resources = self.resources.read().await;
             if resources.is_empty() {
                 return Err(ToadStoolError::runtime("No compute resources registered"));
@@ -134,10 +135,10 @@ impl UniversalComputeScheduler {
     /// Rank resources according to scheduling policy (owned Vec to avoid lock across await)
     async fn rank_resources_owned(
         &self,
-        resources: &[Arc<dyn UniversalComputeResource>],
+        resources: &[Arc<UniversalComputeResourceDispatch>],
         requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<Arc<dyn UniversalComputeResource>> {
-        let refs: Vec<&Arc<dyn UniversalComputeResource>> = resources.iter().collect();
+    ) -> ToadStoolResult<Arc<UniversalComputeResourceDispatch>> {
+        let refs: Vec<&Arc<UniversalComputeResourceDispatch>> = resources.iter().collect();
         match self.policy {
             SchedulingPolicy::Performance => self
                 .select_by_performance(&refs, requirements)
@@ -162,9 +163,9 @@ impl UniversalComputeScheduler {
     /// Select resource with best estimated performance
     async fn select_by_performance<'a>(
         &self,
-        resources: &'a [&'a Arc<dyn UniversalComputeResource>],
+        resources: &'a [&'a Arc<UniversalComputeResourceDispatch>],
         requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<&'a Arc<dyn UniversalComputeResource>> {
+    ) -> ToadStoolResult<&'a Arc<UniversalComputeResourceDispatch>> {
         // Check history first
         let workload_sig = self.workload_signature(requirements);
         let history = self.history.read().await;
@@ -201,9 +202,9 @@ impl UniversalComputeScheduler {
     /// Select resource with best energy efficiency
     async fn select_by_efficiency<'a>(
         &self,
-        resources: &'a [&'a Arc<dyn UniversalComputeResource>],
+        resources: &'a [&'a Arc<UniversalComputeResourceDispatch>],
         requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<&'a Arc<dyn UniversalComputeResource>> {
+    ) -> ToadStoolResult<&'a Arc<UniversalComputeResourceDispatch>> {
         let mut scored: Vec<_> = resources
             .iter()
             .map(|r| {
@@ -222,8 +223,8 @@ impl UniversalComputeScheduler {
     /// Select least utilized resource
     async fn select_by_load_balance<'a>(
         &self,
-        resources: &'a [&'a Arc<dyn UniversalComputeResource>],
-    ) -> ToadStoolResult<&'a Arc<dyn UniversalComputeResource>> {
+        resources: &'a [&'a Arc<UniversalComputeResourceDispatch>],
+    ) -> ToadStoolResult<&'a Arc<UniversalComputeResourceDispatch>> {
         // Get utilization for each resource
         let mut utilizations = Vec::new();
         for resource in resources {
@@ -241,9 +242,9 @@ impl UniversalComputeScheduler {
     /// Select resource with best capability match score
     fn select_by_capability_match<'a>(
         &self,
-        resources: &'a [&'a Arc<dyn UniversalComputeResource>],
+        resources: &'a [&'a Arc<UniversalComputeResourceDispatch>],
         requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<&'a Arc<dyn UniversalComputeResource>> {
+    ) -> ToadStoolResult<&'a Arc<UniversalComputeResourceDispatch>> {
         let mut scored: Vec<_> = resources
             .iter()
             .map(|r| {
@@ -260,9 +261,9 @@ impl UniversalComputeScheduler {
     /// Select resource with lowest startup latency
     fn select_by_latency<'a>(
         &self,
-        resources: &'a [&'a Arc<dyn UniversalComputeResource>],
+        resources: &'a [&'a Arc<UniversalComputeResourceDispatch>],
         _requirements: &ComputeRequirements,
-    ) -> ToadStoolResult<&'a Arc<dyn UniversalComputeResource>> {
+    ) -> ToadStoolResult<&'a Arc<UniversalComputeResourceDispatch>> {
         let mut scored: Vec<_> = resources
             .iter()
             .map(|r| {
@@ -277,7 +278,10 @@ impl UniversalComputeScheduler {
     }
 
     /// Get cached utilization or query resource
-    async fn get_cached_utilization(&self, resource: &Arc<dyn UniversalComputeResource>) -> f32 {
+    async fn get_cached_utilization(
+        &self,
+        resource: &Arc<UniversalComputeResourceDispatch>,
+    ) -> f32 {
         let resource_id = resource.resource_id().to_string();
         // Check cache first, release lock before await
         {
@@ -370,7 +374,9 @@ mod tests {
     async fn test_scheduler_register_and_list() {
         let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
         let cpu = CpuComputeResource::new().expect("CPU resource");
-        scheduler.register_resource(Arc::new(cpu)).await;
+        scheduler
+            .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+            .await;
 
         let list = scheduler.list_resources().await;
         assert!(!list.is_empty());
@@ -381,7 +387,9 @@ mod tests {
     async fn test_scheduler_select_with_cpu() {
         let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
         let cpu = CpuComputeResource::new().expect("CPU resource");
-        scheduler.register_resource(Arc::new(cpu)).await;
+        scheduler
+            .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+            .await;
 
         let requirements = ComputeRequirements::default();
         let resource = scheduler.select_resource(&requirements).await;
@@ -399,7 +407,9 @@ mod tests {
         ] {
             let scheduler = UniversalComputeScheduler::new(policy);
             let cpu = CpuComputeResource::new().expect("CPU resource");
-            scheduler.register_resource(Arc::new(cpu)).await;
+            scheduler
+                .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+                .await;
 
             let requirements = ComputeRequirements::default();
             let result = scheduler.select_resource(&requirements).await;
@@ -412,7 +422,9 @@ mod tests {
         let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::Performance);
         let cpu = CpuComputeResource::new().expect("CPU resource");
         let resource_id = cpu.resource_id().to_string();
-        scheduler.register_resource(Arc::new(cpu)).await;
+        scheduler
+            .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+            .await;
 
         scheduler
             .record_performance(
@@ -430,7 +442,9 @@ mod tests {
     async fn test_scheduler_get_resources() {
         let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
         let cpu = CpuComputeResource::new().expect("CPU resource");
-        scheduler.register_resource(Arc::new(cpu)).await;
+        scheduler
+            .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+            .await;
 
         let resources = scheduler.get_resources().await;
         assert_eq!(resources.len(), 1);

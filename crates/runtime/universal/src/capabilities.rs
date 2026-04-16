@@ -4,7 +4,7 @@
 //! This module implements runtime discovery of compute capabilities,
 //! following the principle: "Discover, don't hardcode"
 
-use crate::types::*;
+use crate::types::{ComputeUnitDispatch, *};
 
 /// Capability discovery engine
 pub struct CapabilityDiscovery;
@@ -18,8 +18,8 @@ impl CapabilityDiscovery {
     /// - Neuromorphic processors (future)
     ///
     /// No hardcoded assumptions - everything is discovered!
-    pub async fn discover_all() -> Vec<Box<dyn ComputeUnit>> {
-        let mut units: Vec<Box<dyn ComputeUnit>> = Vec::new();
+    pub async fn discover_all() -> Vec<ComputeUnitDispatch> {
+        let mut units: Vec<ComputeUnitDispatch> = Vec::new();
 
         // Discover CPU
         if let Some(cpu) = Self::discover_cpu() {
@@ -48,10 +48,12 @@ impl CapabilityDiscovery {
     }
 
     /// Discover CPU capabilities
-    fn discover_cpu() -> Option<Box<dyn ComputeUnit>> {
+    fn discover_cpu() -> Option<ComputeUnitDispatch> {
         #[cfg(feature = "cpu")]
         {
-            Some(Box::new(crate::backends::CpuComputeUnit::discover()))
+            Some(ComputeUnitDispatch::Cpu(
+                crate::backends::CpuComputeUnit::discover(),
+            ))
         }
 
         #[cfg(not(feature = "cpu"))]
@@ -69,7 +71,7 @@ impl CapabilityDiscovery {
     /// override. Set `TOADSTOOL_GPU_ADAPTER` to a comma-separated fallback
     /// list: index (`"0"`), name substring (`"3090,titan"`), or `"auto"`.
     #[cfg(feature = "wgpu-backend")]
-    async fn discover_wgpu() -> Vec<Box<dyn ComputeUnit>> {
+    async fn discover_wgpu() -> Vec<ComputeUnitDispatch> {
         use crate::backends::WgpuComputeUnit;
 
         let adapters = match std::panic::catch_unwind(|| {
@@ -88,7 +90,7 @@ impl CapabilityDiscovery {
             }
         };
 
-        let mut units: Vec<Box<dyn ComputeUnit>> = Vec::new();
+        let mut units: Vec<ComputeUnitDispatch> = Vec::new();
         let mut infos: Vec<(usize, String, bool)> = Vec::new();
         for (idx, adapter) in adapters.into_iter().enumerate() {
             let info = adapter.get_info();
@@ -96,7 +98,7 @@ impl CapabilityDiscovery {
             let name = info.name.clone();
             if let Ok(unit) = WgpuComputeUnit::from_adapter(adapter).await {
                 infos.push((idx, name, has_f64));
-                units.push(Box::new(unit));
+                units.push(ComputeUnitDispatch::Wgpu(unit));
             }
         }
 
@@ -115,8 +117,8 @@ impl CapabilityDiscovery {
     fn select_adapters(
         selector: &str,
         infos: &[(usize, String, bool)],
-        mut units: Vec<Box<dyn ComputeUnit>>,
-    ) -> Vec<Box<dyn ComputeUnit>> {
+        mut units: Vec<ComputeUnitDispatch>,
+    ) -> Vec<ComputeUnitDispatch> {
         for token in selector.split(',').map(str::trim) {
             if token.eq_ignore_ascii_case("auto") {
                 let best = infos
@@ -247,10 +249,10 @@ impl WorkloadProfile {
     /// Select best compute unit for this profile
     pub fn select_best_unit<'a>(
         &self,
-        units: &'a [Box<dyn ComputeUnit>],
+        units: &'a [ComputeUnitDispatch],
         workload: &Workload,
-    ) -> Option<&'a dyn ComputeUnit> {
-        let mut best_unit: Option<&dyn ComputeUnit> = None;
+    ) -> Option<&'a ComputeUnitDispatch> {
+        let mut best_unit: Option<&ComputeUnitDispatch> = None;
         let mut best_score = 0.0;
 
         for unit in units {
@@ -263,7 +265,7 @@ impl WorkloadProfile {
 
             if score > best_score {
                 best_score = score;
-                best_unit = Some(unit.as_ref());
+                best_unit = Some(unit);
             }
         }
 
@@ -311,14 +313,14 @@ mod tests {
     fn test_select_best_unit_empty_returns_none() {
         let w = make_workload(10);
         let profile = WorkloadProfile::from_workload(&w);
-        let units: Vec<Box<dyn ComputeUnit>> = vec![];
+        let units: Vec<ComputeUnitDispatch> = vec![];
         assert!(profile.select_best_unit(&units, &w).is_none());
     }
 
     #[test]
     fn test_select_best_unit_with_cpu() {
         let cpu = crate::backends::CpuComputeUnit::discover();
-        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+        let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
         let w = make_workload(100);
         let profile = WorkloadProfile::from_workload(&w);
         let best = profile.select_best_unit(&units, &w);
@@ -405,7 +407,7 @@ mod tests {
         };
         let profile = WorkloadProfile::from_workload(&w);
         let cpu = crate::backends::CpuComputeUnit::discover();
-        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+        let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
         let best = profile.select_best_unit(&units, &w);
         // CPU may or may not support MatMul
         let _ = best;
@@ -417,7 +419,10 @@ mod tests {
         let profile = WorkloadProfile::from_workload(&w);
         let cpu1 = crate::backends::CpuComputeUnit::discover();
         let cpu2 = crate::backends::CpuComputeUnit::discover();
-        let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu1), Box::new(cpu2)];
+        let units: Vec<ComputeUnitDispatch> = vec![
+            ComputeUnitDispatch::Cpu(cpu1),
+            ComputeUnitDispatch::Cpu(cpu2),
+        ];
         let best = profile.select_best_unit(&units, &w);
         assert!(best.is_some());
     }

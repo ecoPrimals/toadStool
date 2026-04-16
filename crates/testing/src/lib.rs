@@ -17,6 +17,7 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
+#![allow(refining_impl_trait)] // mockall `RuntimeEngine` mock uses concrete `Pin<Box<...>>` futures
 #![allow(
     clippy::pedantic, // Dev/test helper crate: keep `toadstool` pedantic-clean without duplicating policy here
     clippy::unused_async, // Test helpers/placeholders; async for trait/API consistency

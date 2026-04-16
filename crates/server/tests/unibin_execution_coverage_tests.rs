@@ -15,7 +15,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use toadstool_server::pure_jsonrpc::JsonRpcHandler;
-use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer};
+use toadstool_server::tarpc_server::{
+    StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch,
+};
 use toadstool_server::unibin::exit_codes;
 use toadstool_server::unibin::{
     create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
@@ -214,14 +216,18 @@ async fn start_servers_with_fallback_fails_on_non_platform_error() {
     let socket_path = PathBuf::from("/dev/null/tarpc-socket");
     let jsonrpc_socket = PathBuf::from("/dev/null/jsonrpc-socket");
 
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new(
         "1.0.0",
         executor,
         Some(Arc::new(std::sync::atomic::AtomicU64::new(0))),
     );
     let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     ));
@@ -459,14 +465,18 @@ async fn start_servers_platform_constraint_triggers_tcp_fallback() {
     // Instead: test that when try_unix fails with non-platform error we get Err
     let socket_path = PathBuf::from("/nonexistent-dir-xyz/tarpc.sock");
     let jsonrpc_socket = PathBuf::from("/nonexistent-dir-xyz/jsonrpc.sock");
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new(
         "1.0.0",
         executor,
         Some(Arc::new(std::sync::atomic::AtomicU64::new(0))),
     );
     let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     ));

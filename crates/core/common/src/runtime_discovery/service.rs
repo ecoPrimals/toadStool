@@ -12,12 +12,12 @@ use super::cache::ServiceCache;
 use super::client::DiscoveryClient;
 
 /// Runtime discovery service - manages service discovery
-pub struct RuntimeDiscovery {
+pub struct RuntimeDiscovery<C: DiscoveryClient> {
     /// Primary discovery client
-    primary_client: Arc<dyn DiscoveryClient>,
+    primary_client: Arc<C>,
 
     /// Fallback discovery clients
-    fallback_clients: Vec<Arc<dyn DiscoveryClient>>,
+    fallback_clients: Vec<Arc<C>>,
 
     /// Local service cache
     cache: Arc<RwLock<ServiceCache>>,
@@ -26,9 +26,9 @@ pub struct RuntimeDiscovery {
     cache_ttl: Duration,
 }
 
-impl RuntimeDiscovery {
+impl<C: DiscoveryClient> RuntimeDiscovery<C> {
     /// Create a new runtime discovery service
-    pub fn new(primary_client: Arc<dyn DiscoveryClient>) -> Self {
+    pub fn new(primary_client: Arc<C>) -> Self {
         Self {
             primary_client,
             fallback_clients: Vec::new(),
@@ -39,7 +39,7 @@ impl RuntimeDiscovery {
 
     /// Add a fallback discovery client
     #[must_use]
-    pub fn with_fallback(mut self, client: Arc<dyn DiscoveryClient>) -> Self {
+    pub fn with_fallback(mut self, client: Arc<C>) -> Self {
         self.fallback_clients.push(client);
         self
     }

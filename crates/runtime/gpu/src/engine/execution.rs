@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
+use crate::traits::ParallelComputeFramework;
 use crate::types::{
     ComputeResult, ComputeSession, ComputeWorkload, DeviceId, DeviceRequirements, SessionStatus,
 };

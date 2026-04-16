@@ -3,15 +3,19 @@
 
 use std::sync::Arc;
 
-use toadstool::universal::{JobPriority, UniversalPrimalRegistry, UniversalScheduler};
+use toadstool::universal::{
+    JobPriority, UniversalPrimalProviderDispatch, UniversalPrimalRegistry, UniversalScheduler,
+};
 
 use super::helpers::create_test_native_job;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_emergency_priority_job() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     assert!(
         scheduler
             .schedule_job(create_test_native_job(JobPriority::Emergency))
@@ -22,9 +26,11 @@ async fn test_scheduler_emergency_priority_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_critical_priority_job() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     assert!(
         scheduler
             .schedule_job(create_test_native_job(JobPriority::Critical))
@@ -35,9 +41,11 @@ async fn test_scheduler_critical_priority_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_high_priority_job() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     assert!(
         scheduler
             .schedule_job(create_test_native_job(JobPriority::High))
@@ -48,9 +56,11 @@ async fn test_scheduler_high_priority_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_low_priority_job() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     assert!(
         scheduler
             .schedule_job(create_test_native_job(JobPriority::Low))
@@ -61,9 +71,11 @@ async fn test_scheduler_low_priority_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_background_priority_job() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     assert!(
         scheduler
             .schedule_job(create_test_native_job(JobPriority::Background))

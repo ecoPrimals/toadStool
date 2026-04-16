@@ -53,7 +53,7 @@ Nest    = Tower  + Storage            <- storage
 | Dead code | ~400+ lines removed (REST, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
 | External deps eliminated | `chrono` (28 crates) + `log` (2) + `instant` + `anyhow` (core) + `pollster` + `serde_yaml` + `libc` (akida-driver→rustix) + `sysinfo` (15 crates→toadstool-sysmon) + `caps` + `console` + `indicatif` + `figment` + `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `ed25519-dalek` (→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3` (FFI), `gbm`, `linfa`, `hmac`, `indicatif` removed |
 | Hardcoded primal names | **0** user-visible; **~400** intentional legacy-compat refs remain (env fallbacks, serde aliases, parse_type); all new code is capability-first per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 |
-| `async-trait` migration | **DEPRECATED** — fully removed and banned in `deny.toml` (S203r). All ~91 annotations evolved to manual `Pin<Box<dyn Future>>` or native AFIT. Zero runtime behavior change. Transitive only (axum, config, wiggle). |
+| `async-trait` migration | **DEPRECATED** — fully removed and banned in `deny.toml` (S203r). **Stadial parity gate cleared (S203s)**: ~32 traits converted from `dyn` dispatch to **enum dispatch + RPITIT**. Zero finite-implementor `dyn` remaining. |
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
@@ -273,6 +273,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S203s (Apr 16, 2026)**: **Stadial parity gate cleared** — ~32 finite-implementor traits converted from `dyn Trait` dispatch to **enum dispatch + RPITIT**. ~864 `Pin<Box<dyn Future>>` cascaded away. `RuntimeEngine` genericized across 7 runtime crates. Zero finite-implementor `dyn` remaining. `cargo deny check bans` passes, clippy clean, 5,200+ tests verified.
 - **S203r (Apr 16, 2026)**: `async-trait` fully deprecated — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` across 55+ files in 13 crates. Crate removed from all Cargo.toml. Banned in `deny.toml` (transitive via axum/config/wiggle allowed). `DEBT.md` D-ASYNC-DYN-MARKERS → RESOLVED. 22,061 tests, 0 failures, clippy clean.
 - **S203q (Apr 16, 2026)**: Root doc cleanup + debris audit — aligned README/CONTEXT/DOCUMENTATION/NEXT_STEPS to S203p state, stale comment cleanup, 25GB build artifacts cleaned.
 - **S203p (Apr 16, 2026)**: Env interning complete — all `TOADSTOOL_*` env vars in config `env_overrides` now use `socket_env` constants (~55 new). +21 tests for pure-logic modules (path resolution, semantic methods, resource optimizer/estimator, workload routing).

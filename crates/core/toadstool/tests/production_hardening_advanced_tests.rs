@@ -410,23 +410,15 @@ async fn test_memory_pressure_update() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_memory_pressure_callback_registration() {
-    struct TestCallback;
-
-    impl MemoryPressureCallback for TestCallback {
-        fn handle_pressure(
-            &self,
-            _level: MemoryPressureLevel,
-            _usage_percent: f64,
-        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + '_>> {
-            Box::pin(async {})
-        }
-    }
-
     let config = MemoryPressureConfig::default();
     let handler = MemoryPressureHandler::new(config);
 
     // Should be able to register callback without error
-    handler.register_callback(Arc::new(TestCallback)).await;
+    handler
+        .register_callback(Arc::new(MemoryPressureDispatch::Default(
+            DefaultMemoryPressureCallback,
+        )))
+        .await;
 }
 
 // ============================================================================

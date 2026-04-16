@@ -4,6 +4,7 @@
 use super::UnifiedBuffer;
 use crate::unified_memory::{
     backend::{BackendAllocation, UnifiedMemoryBackend},
+    backend_dispatch::UnifiedMemoryBackendDispatch,
     types::{BufferId, SyncState, UnifiedBufferMetadata, UnifiedMemoryStats},
 };
 use std::collections::HashMap;
@@ -25,7 +26,7 @@ impl UnifiedBuffer {
         cpu_ptr: *mut u8,
         device_ptr: *const u8,
         allocation: BackendAllocation,
-        backend: Arc<dyn UnifiedMemoryBackend>,
+        backend: Arc<UnifiedMemoryBackendDispatch>,
         allocations: Arc<RwLock<HashMap<BufferId, UnifiedBufferMetadata>>>,
         total_allocated: Arc<AtomicU64>,
         metrics: Arc<RwLock<UnifiedMemoryStats>>,

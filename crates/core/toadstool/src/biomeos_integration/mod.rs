@@ -59,7 +59,9 @@ pub mod storage_backend_evolved;
 pub mod types;
 
 // Re-export legacy backends for backward compatibility
-pub use agent_backend::{AgentBackend, InMemoryAgentBackend, IntelligenceBackend};
+pub use agent_backend::{
+    AgentBackend, AgentBackendDispatch, InMemoryAgentBackend, IntelligenceBackend,
+};
 pub use agents::*;
 pub use auth::*;
 #[cfg(any(test, feature = "test-mocks"))]
@@ -70,7 +72,9 @@ pub use auth_backend::InMemoryAuthBackend;
 )]
 pub use auth_backend::{AuthBackend, BearDogBackend, SecurityBackend};
 pub use storage::*;
-pub use storage_backend::{InMemoryBackend, SocketStorageBackend, StorageBackend, VolumeStatus};
+pub use storage_backend::{
+    InMemoryBackend, SocketStorageBackend, StorageBackend, StorageBackendDispatch, VolumeStatus,
+};
 pub use types::*;
 
 // Re-export evolved backends (RECOMMENDED for new code)

@@ -13,8 +13,8 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use toadstool::{
-    RuntimeEngine, ToadStoolError, ToadStoolResult,
-    byob::{ByobExecutor, ByobExecutorConfig, create_byob_executor},
+    ToadStoolError, ToadStoolResult,
+    byob::{ByobExecutorConfig, ByobExecutorDispatch, create_byob_executor},
 };
 
 use crate::byob_routes::ByobApi;
@@ -74,7 +74,7 @@ pub async fn run_byob_server(config: ByobServerConfig) -> ToadStoolResult<()> {
     let app = Router::new()
         .route("/", get(root_handler))
         .route("/health", get(health_handler))
-        .merge(ByobApi::routes())
+        .merge(ByobApi::<ByobExecutorDispatch<ContainerRuntimeEngine>>::routes())
         .with_state(byob_executor);
 
     let addr: SocketAddr = format!("{bind_address}:{port}")
@@ -123,7 +123,7 @@ async fn load_config_inner(config_path: Option<&str>) -> ToadStoolResult<LoadedC
     clippy::unused_async,
     reason = "kept for API consistency with async runtime creation"
 )]
-async fn create_runtime_engine() -> ToadStoolResult<Arc<dyn RuntimeEngine>> {
+async fn create_runtime_engine() -> ToadStoolResult<Arc<ContainerRuntimeEngine>> {
     info!("Initializing container runtime engine");
 
     let engine = ContainerRuntimeEngine::new()?;
@@ -131,12 +131,14 @@ async fn create_runtime_engine() -> ToadStoolResult<Arc<dyn RuntimeEngine>> {
     Ok(Arc::new(engine))
 }
 
-async fn root_handler(State(_executor): State<Arc<dyn ByobExecutor>>) -> &'static str {
+async fn root_handler(
+    State(_executor): State<Arc<ByobExecutorDispatch<ContainerRuntimeEngine>>>,
+) -> &'static str {
     "🍄 Toadstool BYOB Server - Ready for team biome deployments!"
 }
 
 async fn health_handler(
-    State(_executor): State<Arc<dyn ByobExecutor>>,
+    State(_executor): State<Arc<ByobExecutorDispatch<ContainerRuntimeEngine>>>,
 ) -> axum::Json<serde_json::Value> {
     axum::Json(serde_json::json!({
         "status": "healthy",

@@ -10,7 +10,6 @@ use crate::byob::{
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -22,17 +21,16 @@ impl RuntimeEngine for NonSuccessRuntimeEngine {
     fn initialize(
         &mut self,
         _config: crate::execution::RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<
-        Box<dyn Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_>,
-    > {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_
+    {
+        async move {
             Ok(crate::execution::ExecutionResponse {
                 execution_id: request.execution_id,
                 status: ExecutionStatus::Failed {
@@ -44,7 +42,7 @@ impl RuntimeEngine for NonSuccessRuntimeEngine {
                 runtime_used: crate::execution::RuntimeType::Native,
                 warnings: vec![],
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> crate::execution::RuntimeCapabilities {
@@ -63,13 +61,12 @@ impl RuntimeEngine for NonSuccessRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_>>
-    {
-        Box::pin(async { Ok(crate::resources::RuntimeMetrics::default()) })
+    ) -> impl Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_ {
+        async { Ok(crate::resources::RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 
@@ -79,21 +76,20 @@ impl RuntimeEngine for ErringRuntimeEngine {
     fn initialize(
         &mut self,
         _config: crate::execution::RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<
-        Box<dyn Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_>,
-    > {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_
+    {
+        async move {
             Err(ToadStoolError::runtime(
                 "engine refused execute".to_string(),
             ))
-        })
+        }
     }
 
     fn get_capabilities(&self) -> crate::execution::RuntimeCapabilities {
@@ -112,13 +108,12 @@ impl RuntimeEngine for ErringRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_>>
-    {
-        Box::pin(async { Ok(crate::resources::RuntimeMetrics::default()) })
+    ) -> impl Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_ {
+        async { Ok(crate::resources::RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 
@@ -177,7 +172,7 @@ fn minimal_valid_request() -> ByobDeploymentRequest {
 #[tokio::test]
 async fn test_deploy_biome_execute_returns_non_success_status() {
     let executor = ByobComputeExecutor::new(
-        Arc::new(NonSuccessRuntimeEngine) as Arc<dyn RuntimeEngine>,
+        Arc::new(NonSuccessRuntimeEngine),
         create_test_config(8080, vec![80]),
     );
     let err = executor
@@ -194,7 +189,7 @@ async fn test_deploy_biome_execute_returns_non_success_status() {
 #[tokio::test]
 async fn test_deploy_biome_execute_returns_error() {
     let executor = ByobComputeExecutor::new(
-        Arc::new(ErringRuntimeEngine) as Arc<dyn RuntimeEngine>,
+        Arc::new(ErringRuntimeEngine),
         create_test_config(8080, vec![80]),
     );
     let err = executor

@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use super::super::agent_backend::AgentBackend;
+use super::super::agent_backend::{AgentBackend, AgentBackendDispatch};
 use super::super::types::{AgentConfig, ModelConfig};
 use super::config::AgentDeploymentConfig;
 use crate::ToadStoolResult;
@@ -17,13 +17,13 @@ pub struct AgentDeploymentManager {
     /// Configuration
     _config: AgentDeploymentConfig,
     /// Pluggable agent backend (intelligence service, in-memory, etc.)
-    backend: Arc<dyn AgentBackend>,
+    backend: Arc<AgentBackendDispatch>,
 }
 
 impl AgentDeploymentManager {
     /// Create a new agent deployment manager with custom backend
     #[must_use]
-    pub fn new(config: AgentDeploymentConfig, backend: Arc<dyn AgentBackend>) -> Self {
+    pub fn new(config: AgentDeploymentConfig, backend: Arc<AgentBackendDispatch>) -> Self {
         Self {
             _config: config,
             backend,
@@ -117,7 +117,7 @@ impl AgentDeploymentManager {
         .await?;
         Ok(Self {
             _config: config,
-            backend: Arc::new(backend),
+            backend: Arc::new(AgentBackendDispatch::Intelligence(backend)),
         })
     }
 
@@ -135,7 +135,7 @@ impl AgentDeploymentManager {
         );
         Self {
             _config: config,
-            backend: Arc::new(backend),
+            backend: Arc::new(AgentBackendDispatch::Intelligence(backend)),
         }
     }
 
@@ -157,7 +157,7 @@ impl AgentDeploymentManager {
         let backend = super::super::agent_backend::InMemoryAgentBackend::new();
         Self {
             _config: config,
-            backend: Arc::new(backend),
+            backend: Arc::new(AgentBackendDispatch::InMemory(backend)),
         }
     }
 

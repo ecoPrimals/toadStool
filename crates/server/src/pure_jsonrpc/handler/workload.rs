@@ -6,16 +6,15 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::pure_jsonrpc::types::{JsonRpcError, JsonWorkloadSubmission};
+use crate::tarpc_server::WorkloadExecutor;
 
 /// Handles high-level workload execution (toadstool.* namespace).
 pub(super) struct WorkloadHandler {
-    pub(super) executor: Arc<dyn crate::tarpc_server::WorkloadExecutor + Send + Sync>,
+    pub(super) executor: Arc<crate::tarpc_server::WorkloadExecutorDispatch>,
 }
 
 impl WorkloadHandler {
-    pub(super) fn new(
-        executor: Arc<dyn crate::tarpc_server::WorkloadExecutor + Send + Sync>,
-    ) -> Self {
+    pub(super) fn new(executor: Arc<crate::tarpc_server::WorkloadExecutorDispatch>) -> Self {
         Self { executor }
     }
 

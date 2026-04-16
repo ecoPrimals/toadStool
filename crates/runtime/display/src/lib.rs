@@ -85,11 +85,13 @@
 pub mod capabilities;
 pub mod capture_transport;
 pub mod drm;
+pub mod hardware_transport_dispatch;
 pub mod input;
 pub mod ipc;
 pub mod pcie_transport;
 pub mod serial_transport;
 pub mod transport;
+pub mod transport_router;
 pub mod v4l2;
 pub mod window;
 
@@ -97,10 +99,14 @@ pub mod window;
 pub use capabilities::DisplayCapabilities;
 pub use capture_transport::{CaptureTransport, discover_capture_transports};
 pub use drm::DrmBackend;
+pub use hardware_transport_dispatch::HardwareTransportDispatch;
+#[doc(hidden)]
+pub use hardware_transport_dispatch::{TestHighBandwidthTransport, TestLoopbackTransport};
 pub use input::{InputEvent, InputManager};
 pub use ipc::{DisplayClient, DisplayServer};
 pub use pcie_transport::{PcieTransport, discover_pcie_transports};
 pub use transport::{DisplayTransport, discover_display_transports};
+pub use transport_router::{TransportFilter, TransportRouter};
 pub use window::{Window, WindowId, WindowManager};
 
 /// Display backend errors

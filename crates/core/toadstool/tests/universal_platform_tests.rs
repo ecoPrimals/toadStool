@@ -10,6 +10,7 @@
 
 use std::collections::HashMap;
 use std::time::Duration;
+use toadstool::StubRuntimeEngine;
 use toadstool::resources::ResourceRequirements;
 use toadstool::universal::{
     JobPriority, NetworkLocation, PrimalCapability, PrimalContext, PrimalType, SecurityLevel,
@@ -30,7 +31,7 @@ async fn test_platform_creation() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_platform_creation_with_default_config() {
     let config = UniversalPlatformConfig::default();
-    let result = UniversalComputePlatform::new_with_config(config).await;
+    let result = UniversalComputePlatform::<StubRuntimeEngine>::new_with_config(config).await;
     assert!(
         result.is_ok(),
         "Platform creation with config should succeed"

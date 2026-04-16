@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 
 use crate::error::ToadStoolResult;
 use crate::primal_identity::{Capability, DiscoveredService, ServiceEndpoint};
@@ -66,56 +64,38 @@ impl Default for LocalhostDiscoveryClient {
 }
 
 impl DiscoveryClient for LocalhostDiscoveryClient {
-    fn discover_by_capability<'a>(
+    async fn discover_by_capability<'a>(
         &'a self,
         capability: &'a Capability,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
-        Box::pin(async move {
-            Ok(self
-                .services
-                .iter()
-                .filter(|s| s.has_capability(capability))
-                .cloned()
-                .collect())
-        })
+    ) -> ToadStoolResult<Vec<DiscoveredService>> {
+        Ok(self
+            .services
+            .iter()
+            .filter(|s| s.has_capability(capability))
+            .cloned()
+            .collect())
     }
 
-    fn discover_all<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
-        Box::pin(async move { Ok(self.services.clone()) })
+    async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
+        Ok(self.services.clone())
     }
 
-    fn register_service<'a>(
+    async fn register_service<'a>(
         &'a self,
         _service: &'a DiscoveredService,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            // Localhost client is read-only
-            Ok(())
-        })
+    ) -> ToadStoolResult<()> {
+        Ok(())
     }
 
-    fn deregister_service<'a>(
-        &'a self,
-        _service_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            // Localhost client is read-only
-            Ok(())
-        })
+    async fn deregister_service<'a>(&'a self, _service_id: &'a str) -> ToadStoolResult<()> {
+        Ok(())
     }
 
-    fn health_check<'a>(
-        &'a self,
-        service_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>> {
-        Box::pin(async move {
-            Ok(self
-                .services
-                .iter()
-                .any(|s| s.id.as_deref() == Some(service_id)))
-        })
+    async fn health_check<'a>(&'a self, service_id: &'a str) -> ToadStoolResult<bool> {
+        Ok(self
+            .services
+            .iter()
+            .any(|s| s.id.as_deref() == Some(service_id)))
     }
 }
 

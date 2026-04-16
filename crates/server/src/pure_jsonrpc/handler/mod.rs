@@ -58,7 +58,7 @@ impl JsonRpcHandler {
     ///
     /// Pass `error_count` to share the counter with other servers for unified monitoring.
     pub fn new(
-        executor: Arc<dyn crate::tarpc_server::WorkloadExecutor + Send + Sync>,
+        executor: Arc<crate::tarpc_server::WorkloadExecutorDispatch>,
         version: impl Into<Arc<str>>,
         error_count: Option<Arc<AtomicU64>>,
     ) -> Self {

@@ -15,7 +15,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::info;
@@ -85,9 +84,9 @@ impl WorkloadExecutor for CoordinatorExecutor {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
+    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_ {
         let coordinator = Arc::clone(&self.coordinator);
-        Box::pin(async move {
+        async move {
             info!(
                 "Executing workload via coordinator: {}",
                 submission.workload_id.as_ref()
@@ -118,14 +117,14 @@ impl WorkloadExecutor for CoordinatorExecutor {
                     gpu_memory_used_bytes: None,
                 },
             })
-        })
+        }
     }
 
     fn query_capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
+    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_ {
         let service_id = Arc::clone(&self.service_id);
-        Box::pin(async move {
+        async move {
             info!("Querying coordinator capabilities (self-knowledge only)");
 
             // Query local capabilities only (not other instances)
@@ -178,15 +177,15 @@ impl WorkloadExecutor for CoordinatorExecutor {
                     ("coordinator".to_string(), "active".to_string()),
                 ]),
             })
-        })
+        }
     }
 
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
+    ) -> impl Future<Output = Result<(), String>> + Send + 'a {
         let coordinator = Arc::clone(&self.coordinator);
-        Box::pin(async move {
+        async move {
             info!(
                 "Coordinator cancellation requested for workload: {}",
                 workload_id
@@ -199,7 +198,7 @@ impl WorkloadExecutor for CoordinatorExecutor {
                 .cancel_execution(execution_id)
                 .await
                 .map_err(|e| format!("Failed to cancel workload: {e}"))
-        })
+        }
     }
 }
 

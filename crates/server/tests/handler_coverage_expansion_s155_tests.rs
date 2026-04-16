@@ -12,10 +12,12 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use toadstool_server::pure_jsonrpc::{JsonRpcError, JsonRpcHandler, JsonRpcRequest};
-use toadstool_server::tarpc_server::StandaloneExecutor;
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 fn test_handler() -> JsonRpcHandler {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 

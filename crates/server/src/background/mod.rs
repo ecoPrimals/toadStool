@@ -22,6 +22,8 @@ mod statistics;
 
 use tracing::info;
 
+use toadstool::RuntimeEngine;
+
 use crate::state::ServerState;
 
 // Re-export for unit tests (only used in #[cfg(test)] mod tests)
@@ -29,7 +31,7 @@ use crate::state::ServerState;
 pub(crate) use health::perform_health_check;
 
 /// Start all background services
-pub async fn start_background_services(state: ServerState) {
+pub async fn start_background_services<E: RuntimeEngine + 'static>(state: ServerState<E>) {
     info!("Starting background services");
 
     // Start resource monitoring

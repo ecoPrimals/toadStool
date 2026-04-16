@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -16,6 +15,7 @@ use crate::workload::WorkloadType;
 use crate::{ToadStoolError, ToadStoolResult};
 
 use crate::universal::UniversalScheduler;
+use crate::universal::primal_provider_dispatch::UniversalPrimalProviderDispatch;
 use crate::universal::registry::UniversalPrimalRegistry;
 use crate::universal::requests::{PrimalEndpoints, PrimalRequest, PrimalResponse, ResponseStatus};
 use crate::universal::traits::UniversalPrimalProvider;
@@ -46,15 +46,15 @@ impl RuntimeEngine for MockRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             let runtime_used = request.runtime_hint.unwrap_or(RuntimeType::Native);
             Ok(ExecutionResponse {
                 execution_id: request.execution_id,
@@ -65,7 +65,7 @@ impl RuntimeEngine for MockRuntimeEngine {
                 runtime_used,
                 warnings: vec![],
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> crate::RuntimeCapabilities {
@@ -84,12 +84,12 @@ impl RuntimeEngine for MockRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async { Ok(RuntimeMetrics::default()) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async { Ok(RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 
@@ -125,8 +125,8 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
         }]
     }
 
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -143,11 +143,11 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
     fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
         let status = self.status.clone();
         let payload = self.payload.clone();
         let metadata = self.metadata.clone();
-        Box::pin(async move {
+        async move {
             Ok(PrimalResponse {
                 request_id: request.id,
                 status,
@@ -155,18 +155,18 @@ impl UniversalPrimalProvider for NativePrimalTemplate {
                 metadata,
                 timestamp: std::time::SystemTime::now(),
             })
-        })
+        }
     }
 
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -203,8 +203,8 @@ impl UniversalPrimalProvider for FailingNativePrimal {
         }]
     }
 
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -221,19 +221,19 @@ impl UniversalPrimalProvider for FailingNativePrimal {
     fn handle_primal_request(
         &self,
         _request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
-        Box::pin(async { Err(ToadStoolError::execution("mock native primal failure")) })
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
+        async { Err(ToadStoolError::execution("mock native primal failure")) }
     }
 
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -273,8 +273,8 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
         }]
     }
 
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -291,10 +291,10 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
     fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
         let fail_route = self.fail_route;
         let status = self.status.clone();
-        Box::pin(async move {
+        async move {
             if fail_route {
                 return Err(ToadStoolError::execution("route handler failure"));
             }
@@ -305,18 +305,18 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
                 metadata: HashMap::new(),
                 timestamp: std::time::SystemTime::now(),
             })
-        })
+        }
     }
 
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -326,7 +326,7 @@ impl UniversalPrimalProvider for TypedRoutePrimal {
 
 #[tokio::test]
 async fn execute_native_via_primal_success_with_stdout_stderr_exit() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<NativePrimalTemplate>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(NativePrimalTemplate {
         instance_id: "native-1".to_string(),
@@ -356,7 +356,7 @@ async fn execute_native_via_primal_success_with_stdout_stderr_exit() {
 
 #[tokio::test]
 async fn execute_native_via_primal_error_status() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<NativePrimalTemplate>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(NativePrimalTemplate {
         instance_id: "native-err".to_string(),
@@ -383,7 +383,7 @@ async fn execute_native_via_primal_error_status() {
 
 #[tokio::test]
 async fn execute_native_via_primal_timeout_status() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<NativePrimalTemplate>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(NativePrimalTemplate {
         instance_id: "native-to".to_string(),
@@ -404,7 +404,7 @@ async fn execute_native_via_primal_timeout_status() {
 
 #[tokio::test]
 async fn execute_native_via_primal_service_unavailable_status() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<NativePrimalTemplate>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(NativePrimalTemplate {
         instance_id: "native-su".to_string(),
@@ -428,7 +428,7 @@ async fn execute_native_via_primal_service_unavailable_status() {
 
 #[tokio::test]
 async fn execute_native_primal_handler_error_propagates() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<FailingNativePrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(FailingNativePrimal {
         instance_id: "fail-native".to_string(),
@@ -474,8 +474,8 @@ impl UniversalPrimalProvider for OnlyWasmPrimal {
         vec![PrimalCapability::WasmExecution { wasi_support: true }]
     }
 
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -492,23 +492,23 @@ impl UniversalPrimalProvider for OnlyWasmPrimal {
     fn handle_primal_request(
         &self,
         _request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
+        async {
             unreachable!(
                 "no native capability — scheduler should not route here for execute_native"
             )
-        })
+        }
     }
 
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
@@ -518,7 +518,7 @@ impl UniversalPrimalProvider for OnlyWasmPrimal {
 
 #[tokio::test]
 async fn execute_native_uses_local_engine_when_no_native_primal() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<OnlyWasmPrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(OnlyWasmPrimal {
         instance_id: "wasm-only".to_string(),
@@ -527,11 +527,11 @@ async fn execute_native_uses_local_engine_when_no_native_primal() {
     registry.register_primal(provider).await.unwrap();
 
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Native,
-        Box::new(MockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Native, Arc::new(MockRuntimeEngine));
+    let scheduler =
+        UniversalScheduler::<OnlyWasmPrimal, MockRuntimeEngine>::create_with_runtime_engines(
+            registry, engines,
+        )
         .await
         .unwrap();
 
@@ -545,7 +545,7 @@ async fn execute_native_uses_local_engine_when_no_native_primal() {
 
 #[tokio::test]
 async fn execute_wasm_no_engine_failed_response_and_warning() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
         .execute_wasm(&[0, 97, 115, 109], &[], &HashMap::new())
@@ -567,13 +567,13 @@ async fn execute_wasm_no_engine_failed_response_and_warning() {
 
 #[tokio::test]
 async fn execute_wasm_with_registered_engine() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Wasm,
-        Box::new(MockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Wasm, Arc::new(MockRuntimeEngine));
+    let scheduler = UniversalScheduler::<
+        UniversalPrimalProviderDispatch,
+        MockRuntimeEngine,
+    >::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
     let out = scheduler
@@ -586,7 +586,7 @@ async fn execute_wasm_with_registered_engine() {
 
 #[tokio::test]
 async fn execute_primal_success() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(TypedRoutePrimal {
         instance_id: "worker-1".to_string(),
@@ -626,7 +626,7 @@ async fn execute_primal_response_error_timeout_unavailable() {
         (ResponseStatus::Timeout, "timed out"),
         (ResponseStatus::ServiceUnavailable, "unavailable"),
     ] {
-        let registry = Arc::new(UniversalPrimalRegistry::new());
+        let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
         let ctx = sample_context();
         let provider = Arc::new(TypedRoutePrimal {
             instance_id: format!("inst-{needle}"),
@@ -659,7 +659,7 @@ async fn execute_primal_response_error_timeout_unavailable() {
 
 #[tokio::test]
 async fn execute_primal_route_handler_error_returns_failed_response() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(TypedRoutePrimal {
         instance_id: "bad-route".to_string(),
@@ -688,7 +688,7 @@ async fn execute_primal_route_handler_error_returns_failed_response() {
 
 #[tokio::test]
 async fn execute_primal_no_provider_lists_available_when_present() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(TypedRoutePrimal {
         instance_id: "only-compute".to_string(),
@@ -715,7 +715,7 @@ async fn execute_primal_no_provider_lists_available_when_present() {
 
 #[tokio::test]
 async fn execute_biome_os_success() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(TypedRoutePrimal {
         instance_id: "biome-1".to_string(),
@@ -752,7 +752,7 @@ async fn execute_biome_os_non_success_statuses() {
         ResponseStatus::Timeout,
         ResponseStatus::ServiceUnavailable,
     ] {
-        let registry = Arc::new(UniversalPrimalRegistry::new());
+        let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
         let ctx = sample_context();
         let provider = Arc::new(TypedRoutePrimal {
             instance_id: "biome-os-x".to_string(),
@@ -774,7 +774,7 @@ async fn execute_biome_os_non_success_statuses() {
 
 #[tokio::test]
 async fn execute_biome_os_route_error() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<TypedRoutePrimal>::new_typed());
     let ctx = sample_context();
     let provider = Arc::new(TypedRoutePrimal {
         instance_id: "biome-bad".to_string(),
@@ -800,7 +800,7 @@ async fn execute_biome_os_route_error() {
 
 #[tokio::test]
 async fn execute_biome_os_no_os_provider() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
         .execute_biome_os(&serde_json::json!({}), "solo")
@@ -816,7 +816,7 @@ async fn execute_biome_os_no_os_provider() {
 
 #[tokio::test]
 async fn execute_native_direct_process_stderr_none_when_empty() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let out = scheduler
         .execute_native("true", &[], &HashMap::new())

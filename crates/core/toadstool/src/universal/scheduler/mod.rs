@@ -27,32 +27,45 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::ToadStoolResult;
-use crate::execution::{ExecutionResponse, RuntimeEngine, RuntimeType};
+use crate::execution::{ExecutionResponse, RuntimeEngine, RuntimeType, StubRuntimeEngine};
 
 use super::jobs::{UniversalJob, UniversalJobType};
+use super::primal_provider_dispatch::UniversalPrimalProviderDispatch;
 use super::registry::UniversalPrimalRegistry;
 use super::resources::ResourceCoordinator;
+use super::traits::UniversalPrimalProvider;
 use super::types::PrimalCapability;
 
 /// Universal scheduler for any substrate
-pub struct UniversalScheduler {
+pub struct UniversalScheduler<
+    P = UniversalPrimalProviderDispatch,
+    E: RuntimeEngine = StubRuntimeEngine,
+> where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
     /// Primal registry
-    primal_registry: Arc<UniversalPrimalRegistry>,
+    primal_registry: Arc<UniversalPrimalRegistry<P>>,
     /// Resource coordinator
     resource_coordinator: Arc<ResourceCoordinator>,
     /// Active jobs
     active_jobs: Arc<RwLock<HashMap<Uuid, UniversalJob>>>,
     /// Runtime engines for local execution (optional)
-    runtime_engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
+    runtime_engines: Arc<RwLock<HashMap<RuntimeType, Arc<E>>>>,
 }
 
-impl UniversalScheduler {
-    /// Create new scheduler
+impl<P, E: RuntimeEngine> UniversalScheduler<P, E>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
+    /// Create new scheduler for engine type `E`.
+    ///
+    /// When `E` is [`StubRuntimeEngine`], prefer the inherent [`UniversalScheduler::new`]
+    /// constructor (no turbofish).
     ///
     /// # Errors
     /// Returns a `ToadStoolError` if resource coordinator initialization fails.
     #[must_use = "Scheduler creation should be checked"]
-    pub async fn new(primal_registry: Arc<UniversalPrimalRegistry>) -> ToadStoolResult<Self> {
+    pub async fn create(primal_registry: Arc<UniversalPrimalRegistry<P>>) -> ToadStoolResult<Self> {
         Ok(Self {
             primal_registry,
             resource_coordinator: Arc::new(ResourceCoordinator::new().await?),
@@ -69,9 +82,9 @@ impl UniversalScheduler {
     ///
     /// # Errors
     /// Returns a `ToadStoolError` if resource coordinator initialization fails.
-    pub async fn with_runtime_engines(
-        primal_registry: Arc<UniversalPrimalRegistry>,
-        runtime_engines: HashMap<RuntimeType, Box<dyn RuntimeEngine>>,
+    pub async fn create_with_runtime_engines(
+        primal_registry: Arc<UniversalPrimalRegistry<P>>,
+        runtime_engines: HashMap<RuntimeType, Arc<E>>,
     ) -> ToadStoolResult<Self> {
         info!(
             "Creating scheduler with {} runtime engines: {:?}",
@@ -89,11 +102,7 @@ impl UniversalScheduler {
     /// Register a runtime engine for local execution
     ///
     /// Allows adding runtime engines after scheduler creation.
-    pub async fn register_runtime_engine(
-        &self,
-        runtime_type: RuntimeType,
-        engine: Box<dyn RuntimeEngine>,
-    ) {
+    pub async fn register_runtime_engine(&self, runtime_type: RuntimeType, engine: Arc<E>) {
         info!("Registering runtime engine: {:?}", runtime_type);
         self.runtime_engines
             .write()
@@ -160,22 +169,31 @@ impl UniversalScheduler {
     }
 
     /// Find primals by capability using the registry
-    pub async fn find_primals_by_capability(
-        &self,
-        capability: &PrimalCapability,
-    ) -> Vec<Arc<dyn super::traits::UniversalPrimalProvider>> {
+    pub async fn find_primals_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
         self.primal_registry.find_by_capability(capability).await
     }
 
     /// Access primal registry (for execution submodule)
-    pub(crate) const fn primal_registry(&self) -> &Arc<UniversalPrimalRegistry> {
+    pub(crate) const fn primal_registry(&self) -> &Arc<UniversalPrimalRegistry<P>> {
         &self.primal_registry
     }
 
     /// Access runtime engines (for execution submodule)
-    pub(crate) fn runtime_engines(
-        &self,
-    ) -> &Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>> {
+    pub(crate) fn runtime_engines(&self) -> &Arc<RwLock<HashMap<RuntimeType, Arc<E>>>> {
         &self.runtime_engines
+    }
+}
+
+impl<P> UniversalScheduler<P, StubRuntimeEngine>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
+    /// Create new scheduler using [`StubRuntimeEngine`] until real engines are registered.
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if resource coordinator initialization fails.
+    #[must_use = "Scheduler creation should be checked"]
+    pub async fn new(primal_registry: Arc<UniversalPrimalRegistry<P>>) -> ToadStoolResult<Self> {
+        Self::create(primal_registry).await
     }
 }

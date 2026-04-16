@@ -288,7 +288,11 @@ async fn scheduler_select_resource_no_resources_fails() {
 async fn scheduler_with_cpu_resource() {
     let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
     let cpu = toadstool_runtime_gpu::cpu_resource::CpuComputeResource::new().expect("CPU");
-    scheduler.register_resource(Arc::new(cpu)).await;
+    scheduler
+        .register_resource(Arc::new(
+            toadstool_runtime_gpu::cpu_resource::UniversalComputeResourceDispatch::Cpu(cpu),
+        ))
+        .await;
 
     let list = scheduler.list_resources().await;
     assert!(!list.is_empty());
@@ -299,7 +303,11 @@ async fn scheduler_with_cpu_resource() {
 async fn scheduler_select_resource_with_cpu() {
     let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
     let cpu = toadstool_runtime_gpu::cpu_resource::CpuComputeResource::new().expect("CPU");
-    scheduler.register_resource(Arc::new(cpu)).await;
+    scheduler
+        .register_resource(Arc::new(
+            toadstool_runtime_gpu::cpu_resource::UniversalComputeResourceDispatch::Cpu(cpu),
+        ))
+        .await;
 
     let reqs = toadstool_runtime_gpu::universal::ComputeRequirements::default();
     let result = scheduler.select_resource(&reqs).await;
@@ -311,7 +319,11 @@ async fn scheduler_record_performance() {
     let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::Performance);
     let cpu = toadstool_runtime_gpu::cpu_resource::CpuComputeResource::new().expect("CPU");
     let id = cpu.resource_id().to_string();
-    scheduler.register_resource(Arc::new(cpu)).await;
+    scheduler
+        .register_resource(Arc::new(
+            toadstool_runtime_gpu::cpu_resource::UniversalComputeResourceDispatch::Cpu(cpu),
+        ))
+        .await;
 
     let reqs = toadstool_runtime_gpu::universal::ComputeRequirements::default();
     scheduler

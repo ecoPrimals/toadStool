@@ -16,60 +16,12 @@ use std::time::SystemTime;
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
-use std::future::Future;
-use std::pin::Pin;
-
-use toadstool::{
-    ExecutionStatus, ResourceMonitor, RuntimeMetrics, RuntimeType, SystemResources, ToadStoolResult,
-};
+use toadstool::{ExecutionStatus, RuntimeType, TestResourceMonitor};
+use toadstool_server::RuntimeEngineDispatch;
 use toadstool_server::config::ServerConfig;
 use toadstool_server::state::{
     ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerStatistics,
 };
-
-// Simple mock for testing
-struct MockResourceMonitor;
-
-impl MockResourceMonitor {
-    fn new() -> Self {
-        Self
-    }
-}
-
-impl ResourceMonitor for MockResourceMonitor {
-    fn start_monitoring(&self, _workload_id: &str) -> ToadStoolResult<()> {
-        Ok(())
-    }
-
-    fn stop_monitoring(&self, _workload_id: &str) -> ToadStoolResult<()> {
-        Ok(())
-    }
-
-    fn get_metrics(
-        &self,
-        _workload_id: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async move { Ok(RuntimeMetrics::default()) })
-    }
-
-    fn get_system_resources(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(SystemResources {
-                available_cpu_cores: 4.0,
-                available_memory_bytes: 8_000_000_000,
-                available_storage_bytes: 100_000_000_000,
-                available_network_bandwidth: Some(1_000_000_000),
-                available_gpu_units: 1,
-                cpu_usage_percent: 25.0,
-                memory_usage_percent: 50.0,
-                total_cpu_cores: 8,
-                total_memory_bytes: 16_000_000_000,
-            })
-        })
-    }
-}
 
 // =============================================================================
 // ServerEvent Tests
@@ -391,10 +343,10 @@ fn test_client_info_clone() {
 #[test]
 fn test_server_state_creation() {
     let config = ServerConfig::default();
-    let resource_monitor = Arc::new(MockResourceMonitor::new());
+    let resource_monitor = Arc::new(TestResourceMonitor::successful().into());
     let (event_tx, _event_rx) = broadcast::channel(100);
 
-    let state = ServerState {
+    let state = ServerState::<RuntimeEngineDispatch> {
         runtime_engines: Arc::new(RwLock::new(std::collections::HashMap::new())),
         active_executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
         event_broadcaster: event_tx,
@@ -411,10 +363,10 @@ fn test_server_state_creation() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_event_broadcasting() {
     let config = ServerConfig::default();
-    let resource_monitor = Arc::new(MockResourceMonitor::new());
+    let resource_monitor = Arc::new(TestResourceMonitor::successful().into());
     let (event_tx, mut event_rx) = broadcast::channel(100);
 
-    let state = ServerState {
+    let state = ServerState::<RuntimeEngineDispatch> {
         runtime_engines: Arc::new(RwLock::new(std::collections::HashMap::new())),
         active_executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
         event_broadcaster: event_tx.clone(),
@@ -451,10 +403,10 @@ async fn test_server_state_event_broadcasting() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_server_state_active_executions() {
     let config = ServerConfig::default();
-    let resource_monitor = Arc::new(MockResourceMonitor::new());
+    let resource_monitor = Arc::new(TestResourceMonitor::successful().into());
     let (event_tx, _event_rx) = broadcast::channel(100);
 
-    let state = ServerState {
+    let state = ServerState::<RuntimeEngineDispatch> {
         runtime_engines: Arc::new(RwLock::new(std::collections::HashMap::new())),
         active_executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
         event_broadcaster: event_tx,
@@ -494,10 +446,10 @@ async fn test_server_state_active_executions() {
 #[test]
 fn test_server_state_clone() {
     let config = ServerConfig::default();
-    let resource_monitor = Arc::new(MockResourceMonitor::new());
+    let resource_monitor = Arc::new(TestResourceMonitor::successful().into());
     let (event_tx, _event_rx) = broadcast::channel(100);
 
-    let state = ServerState {
+    let state = ServerState::<RuntimeEngineDispatch> {
         runtime_engines: Arc::new(RwLock::new(std::collections::HashMap::new())),
         active_executions: Arc::new(RwLock::new(std::collections::HashMap::new())),
         event_broadcaster: event_tx,

@@ -9,9 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use toadstool_common::config_bases::TimeoutConfig;
@@ -21,8 +19,8 @@ use uuid::Uuid;
 
 use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionRuntimeConfig, ExecutionStatus,
-    ResourceMonitor, RuntimeCapabilities, RuntimeEngine, RuntimeMetrics, RuntimeType,
-    ToadStoolResult, WorkloadType,
+    ResourceMonitor, ResourceMonitorDispatch, RuntimeCapabilities, RuntimeEngine, RuntimeMetrics,
+    RuntimeType, ToadStoolResult, WorkloadType,
     resources::{CpuMetrics, MemoryMetrics, NetworkMetrics, StorageMetrics, TimingMetrics},
 };
 
@@ -62,7 +60,7 @@ pub struct PythonRuntimeEngine {
     config: PythonRuntimeConfig,
     runtime_config: ExecutionRuntimeConfig,
     active_executions: Arc<RwLock<HashMap<Uuid, Instant>>>,
-    resource_monitor: Option<Arc<dyn ResourceMonitor>>,
+    resource_monitor: Option<Arc<ResourceMonitorDispatch>>,
     capabilities: RuntimeCapabilities,
 }
 
@@ -108,7 +106,7 @@ impl PythonRuntimeEngine {
 
     /// Configure resource monitoring
     #[must_use]
-    pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
+    pub fn with_resource_monitor(mut self, monitor: Arc<ResourceMonitorDispatch>) -> Self {
         self.resource_monitor = Some(monitor);
         self
     }
@@ -118,8 +116,8 @@ impl RuntimeEngine for PythonRuntimeEngine {
     fn initialize(
         &mut self,
         config: ExecutionRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("Initializing Python runtime engine");
             self.runtime_config = config;
 
@@ -139,14 +137,14 @@ impl RuntimeEngine for PythonRuntimeEngine {
             }
 
             Ok(())
-        })
+        }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             info!("Executing Python workload: {:?}", request.execution_id);
 
             // For now, return a simple success response
@@ -161,7 +159,7 @@ impl RuntimeEngine for PythonRuntimeEngine {
                 runtime_used: RuntimeType::Python,
                 warnings: vec![],
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -174,8 +172,8 @@ impl RuntimeEngine for PythonRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async {
             let _active_count = self.active_executions.read().await.len();
 
             Ok(RuntimeMetrics {
@@ -186,15 +184,15 @@ impl RuntimeEngine for PythonRuntimeEngine {
                 gpu: None,
                 timing: TimingMetrics::default(),
             })
-        })
+        }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async {
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
             info!("Shutting down Python runtime engine");
             self.active_executions.write().await.clear();
             Ok(())
-        })
+        }
     }
 }
 

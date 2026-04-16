@@ -18,7 +18,7 @@ use toadstool_distributed::cloud::{
     CloudOrchestratorConfig, ComplianceCheck, ComplianceConfig, ComputeType, CostConfig,
     FederationConfig, HybridSchedulingStrategy, LoadBalancerConfig as CloudLoadBalancerConfig,
     LoadBalancingAlgorithm, NetworkingFeature, Region, SecurityFeature, StorageType,
-    UniversalCloudOrchestrator,
+    TestUniversalOrchestrator,
 };
 use toadstool_distributed::coordination::{
     BroadcastConfig, ConnectionHealth, CoordinationBroadcaster, CoordinationConnection,
@@ -406,7 +406,7 @@ fn make_orchestrator_config() -> CloudOrchestratorConfig {
 #[tokio::test]
 async fn test_cloud_orchestrator_creation() {
     let config = make_orchestrator_config();
-    let orchestrator = UniversalCloudOrchestrator::new(config).await;
+    let orchestrator = TestUniversalOrchestrator::new(config).await;
     assert!(orchestrator.is_ok());
 }
 

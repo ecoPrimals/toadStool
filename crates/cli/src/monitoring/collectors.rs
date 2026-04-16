@@ -207,3 +207,39 @@ impl MetricsCollector for NetworkMetricsCollector {
         vec!["network".to_string(), "throughput".to_string()]
     }
 }
+
+/// Finite dispatch for built-in [`MetricsCollector`] implementations.
+pub enum MetricsCollectorDispatch {
+    /// Host CPU, memory, and storage.
+    System(SystemMetricsCollector),
+    /// Process counts and related stats.
+    Process(ProcessMetricsCollector),
+    /// Network interface counters.
+    Network(NetworkMetricsCollector),
+}
+
+impl MetricsCollector for MetricsCollectorDispatch {
+    fn name(&self) -> &str {
+        match self {
+            Self::System(c) => c.name(),
+            Self::Process(c) => c.name(),
+            Self::Network(c) => c.name(),
+        }
+    }
+
+    fn collect(&self) -> Result<MetricBatch> {
+        match self {
+            Self::System(c) => c.collect(),
+            Self::Process(c) => c.collect(),
+            Self::Network(c) => c.collect(),
+        }
+    }
+
+    fn capabilities(&self) -> Vec<String> {
+        match self {
+            Self::System(c) => c.capabilities(),
+            Self::Process(c) => c.capabilities(),
+            Self::Network(c) => c.capabilities(),
+        }
+    }
+}

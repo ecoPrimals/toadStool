@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
-use std::future::Future;
-use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -46,14 +45,14 @@ impl RuntimeEngine for MockRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
         let default_response = ExecutionResponse {
             execution_id: request.execution_id,
             status: crate::ExecutionStatus::Success,
@@ -70,7 +69,7 @@ impl RuntimeEngine for MockRuntimeEngine {
                 Ok(resp) => Ok(resp.clone()),
                 Err(e) => Err(ToadStoolError::execution(e.to_string())),
             });
-        Box::pin(async move { result })
+        async move { result }
     }
 
     fn get_capabilities(&self) -> crate::RuntimeCapabilities {
@@ -89,12 +88,12 @@ impl RuntimeEngine for MockRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async { Ok(crate::RuntimeMetrics::default()) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_ {
+        async { Ok(crate::RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 
@@ -160,10 +159,11 @@ async fn test_runtime_selection_strategy_variants() {
 
 #[tokio::test]
 async fn test_register_engine_and_lookup() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let engine = MockRuntimeEngine::new(vec![WorkloadType::Wasm]);
     orchestrator
-        .register_engine(RuntimeType::Wasm, Box::new(engine))
+        .register_engine(RuntimeType::Wasm, Arc::new(engine))
         .await
         .unwrap();
     let orch_no_engine = RuntimeOrchestrator::new(RuntimeSelectionStrategy::OptimalMatch);
@@ -188,12 +188,13 @@ async fn test_register_engine_and_lookup() {
 
 #[tokio::test]
 async fn test_execute_with_mock_engine_success() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let exec_id = Uuid::new_v4();
     let engine = MockRuntimeEngine::new(vec![WorkloadType::AiMl])
         .with_execute_success(exec_id, RuntimeType::Native);
     orchestrator
-        .register_engine(RuntimeType::Native, Box::new(engine))
+        .register_engine(RuntimeType::Native, Arc::new(engine))
         .await
         .unwrap();
 
@@ -212,11 +213,12 @@ async fn test_execute_with_mock_engine_success() {
 
 #[tokio::test]
 async fn test_execute_with_mock_engine_failure() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let engine =
         MockRuntimeEngine::new(vec![WorkloadType::AiMl]).with_execute_error("mock failure");
     orchestrator
-        .register_engine(RuntimeType::Native, Box::new(engine))
+        .register_engine(RuntimeType::Native, Arc::new(engine))
         .await
         .unwrap();
 
@@ -231,12 +233,13 @@ async fn test_execute_with_mock_engine_failure() {
 
 #[tokio::test]
 async fn test_selection_logic_ai_ml_prefers_gpu() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let exec_id = Uuid::new_v4();
     orchestrator
         .register_engine(
             RuntimeType::Gpu,
-            Box::new(
+            Arc::new(
                 MockRuntimeEngine::new(vec![WorkloadType::AiMl])
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
@@ -246,7 +249,7 @@ async fn test_selection_logic_ai_ml_prefers_gpu() {
     orchestrator
         .register_engine(
             RuntimeType::Native,
-            Box::new(
+            Arc::new(
                 MockRuntimeEngine::new(vec![WorkloadType::AiMl])
                     .with_execute_success(exec_id, RuntimeType::Native),
             ),
@@ -267,12 +270,13 @@ async fn test_selection_logic_ai_ml_prefers_gpu() {
 
 #[tokio::test]
 async fn test_selection_logic_cuda_with_gpu_available() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let exec_id = Uuid::new_v4();
     orchestrator
         .register_engine(
             RuntimeType::Gpu,
-            Box::new(
+            Arc::new(
                 MockRuntimeEngine::new(vec![WorkloadType::Cuda])
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
@@ -292,11 +296,12 @@ async fn test_selection_logic_cuda_with_gpu_available() {
 
 #[tokio::test]
 async fn test_selection_logic_cuda_fallback_to_native_when_no_gpu() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     orchestrator
         .register_engine(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new(vec![WorkloadType::Cuda])),
+            Arc::new(MockRuntimeEngine::new(vec![WorkloadType::Cuda])),
         )
         .await
         .unwrap();
@@ -312,12 +317,13 @@ async fn test_selection_logic_cuda_fallback_to_native_when_no_gpu() {
 
 #[tokio::test]
 async fn test_runtime_hint_respected_when_supported() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let exec_id = Uuid::new_v4();
     orchestrator
         .register_engine(
             RuntimeType::Python,
-            Box::new(
+            Arc::new(
                 MockRuntimeEngine::new(vec![WorkloadType::AiMl])
                     .with_execute_success(exec_id, RuntimeType::Python),
             ),
@@ -327,7 +333,7 @@ async fn test_runtime_hint_respected_when_supported() {
     orchestrator
         .register_engine(
             RuntimeType::Gpu,
-            Box::new(
+            Arc::new(
                 MockRuntimeEngine::new(vec![WorkloadType::AiMl])
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
@@ -348,12 +354,13 @@ async fn test_runtime_hint_respected_when_supported() {
 
 #[tokio::test]
 async fn test_runtime_hint_ignored_when_unsupported() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     let exec_id = Uuid::new_v4();
     orchestrator
         .register_engine(
             RuntimeType::Gpu,
-            Box::new(
+            Arc::new(
                 MockRuntimeEngine::new(vec![WorkloadType::AiMl])
                     .with_execute_success(exec_id, RuntimeType::Gpu),
             ),
@@ -374,11 +381,12 @@ async fn test_runtime_hint_ignored_when_unsupported() {
 
 #[tokio::test]
 async fn test_optimal_match_returns_error_when_no_engine_supports() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::OptimalMatch);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::OptimalMatch);
     orchestrator
         .register_engine(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new(vec![WorkloadType::Native])),
+            Arc::new(MockRuntimeEngine::new(vec![WorkloadType::Native])),
         )
         .await
         .unwrap();
@@ -398,11 +406,12 @@ async fn test_optimal_match_returns_error_when_no_engine_supports() {
 
 #[tokio::test]
 async fn test_execute_validates_workload() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     orchestrator
         .register_engine(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new(vec![WorkloadType::Native])),
+            Arc::new(MockRuntimeEngine::new(vec![WorkloadType::Native])),
         )
         .await
         .unwrap();
@@ -432,11 +441,12 @@ async fn test_execute_validates_workload() {
 
 #[tokio::test]
 async fn test_execute_validates_security_context() {
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator =
+        RuntimeOrchestrator::<MockRuntimeEngine>::create(RuntimeSelectionStrategy::FirstAvailable);
     orchestrator
         .register_engine(
             RuntimeType::Gpu,
-            Box::new(MockRuntimeEngine::new(vec![WorkloadType::AiMl])),
+            Arc::new(MockRuntimeEngine::new(vec![WorkloadType::AiMl])),
         )
         .await
         .unwrap();

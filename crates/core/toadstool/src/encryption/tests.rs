@@ -2,11 +2,13 @@
 
 use uuid::Uuid;
 
+use super::provider::NoopCryptoProvider;
+
 use super::*;
 
 #[test]
 fn test_encryption_context_builder() {
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .required(true)
         .encrypt_results(true)
         .security_level(SecurityLevel::Enhanced)
@@ -32,7 +34,7 @@ fn test_security_level_ordering() {
 
 #[test]
 fn test_builder_key_id() {
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .key_id("my-key-123")
         .build();
     assert!(!ctx.is_available());
@@ -41,7 +43,7 @@ fn test_builder_key_id() {
 #[test]
 fn test_builder_algorithms() {
     let algorithms = vec!["aes-256-gcm".to_string(), "xsalsa20".to_string()];
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .algorithms(algorithms)
         .build();
     assert!(!ctx.is_available());
@@ -49,7 +51,7 @@ fn test_builder_algorithms() {
 
 #[test]
 fn test_builder_all_options() {
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .required(true)
         .encrypt_results(true)
         .security_level(SecurityLevel::HardwareSecured)
@@ -69,23 +71,23 @@ fn test_encryption_context_new() {
         encrypt_results: true,
         min_security_level: SecurityLevel::Enhanced,
     };
-    let ctx = EncryptionContext::new(Uuid::new_v4(), config);
+    let ctx = EncryptionContext::<super::provider::NoopCryptoProvider>::new(Uuid::new_v4(), config);
     assert!(ctx.is_required());
     assert!(!ctx.is_available());
 }
 
 #[test]
 fn test_context_not_available_without_provider() {
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4()).build();
     assert!(!ctx.is_available());
 }
 
 #[test]
 fn test_context_required_reflects_config() {
-    let ctx_required = EncryptionContextBuilder::new(Uuid::new_v4())
+    let ctx_required = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .required(true)
         .build();
-    let ctx_optional = EncryptionContextBuilder::new(Uuid::new_v4())
+    let ctx_optional = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .required(false)
         .build();
     assert!(ctx_required.is_required());
@@ -148,7 +150,7 @@ fn test_default_config_key_id_is_none() {
 
 #[test]
 fn test_encryption_context_debug() {
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4()).build();
     let _ = format!("{ctx:?}");
 }
 
@@ -219,7 +221,7 @@ fn test_ecosystem_config_serialization() {
 
 #[test]
 fn test_builder_default_values() {
-    let ctx = EncryptionContextBuilder::new(Uuid::new_v4()).build();
+    let ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4()).build();
     assert!(!ctx.is_required());
     assert!(!ctx.is_available());
 }
@@ -228,8 +230,11 @@ fn test_builder_default_values() {
 async fn test_discover_provider_empty_registry_sets_none() {
     use super::provider::CryptoProviderRegistry;
 
-    let mut ctx = EncryptionContext::new(Uuid::new_v4(), EncryptionConfig::default());
-    let registry = CryptoProviderRegistry::new();
+    let mut ctx = EncryptionContext::<super::provider::NoopCryptoProvider>::new(
+        Uuid::new_v4(),
+        EncryptionConfig::default(),
+    );
+    let registry = CryptoProviderRegistry::<super::provider::NoopCryptoProvider>::new();
 
     let result = ctx.discover_provider(&registry).await;
     assert!(result.is_ok());
@@ -238,11 +243,10 @@ async fn test_discover_provider_empty_registry_sets_none() {
 
 #[tokio::test]
 async fn test_discover_provider_with_registered_provider() {
+    use std::sync::Arc;
+
     use super::capability::CryptoCapability;
     use super::provider::{CryptoProvider, CryptoProviderRegistry, ProviderHealth};
-    use std::future::Future;
-    use std::pin::Pin;
-    use std::sync::Arc;
 
     struct TestProvider;
     impl CryptoProvider for TestProvider {
@@ -261,82 +265,73 @@ async fn test_discover_provider_with_registered_provider() {
             &'a self,
             data: &'a [u8],
             _key: &'a super::types::EncryptionKey,
-        ) -> Pin<
-            Box<
-                dyn Future<
-                        Output = crate::ToadStoolResult<(
-                            super::types::EncryptedPayload,
-                            super::types::EncryptionMetadata,
-                        )>,
-                    > + Send
-                    + 'a,
-            >,
-        > {
-            Box::pin(async move {
+        ) -> impl std::future::Future<
+            Output = crate::ToadStoolResult<(
+                super::types::EncryptedPayload,
+                super::types::EncryptionMetadata,
+            )>,
+        > + Send
+        + 'a {
+            async move {
                 Ok((
                     super::types::EncryptedPayload::new(data.to_vec()),
                     super::types::EncryptionMetadata::default(),
                 ))
-            })
+            }
         }
         fn decrypt<'a>(
             &'a self,
             encrypted: &'a super::types::EncryptedPayload,
             _key: &'a super::types::EncryptionKey,
             _metadata: &'a super::types::EncryptionMetadata,
-        ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<Vec<u8>>> + Send + 'a>> {
-            Box::pin(async move { Ok(encrypted.ciphertext.clone()) })
+        ) -> impl std::future::Future<Output = crate::ToadStoolResult<Vec<u8>>> + Send + 'a
+        {
+            async move { Ok(encrypted.ciphertext.clone()) }
         }
         fn generate_key(
             &self,
             level: SecurityLevel,
-        ) -> Pin<
-            Box<
-                dyn Future<Output = crate::ToadStoolResult<super::types::EncryptionKey>>
-                    + Send
-                    + '_,
-            >,
-        > {
-            Box::pin(async move {
+        ) -> impl std::future::Future<
+            Output = crate::ToadStoolResult<super::types::EncryptionKey>,
+        > + Send
+        + '_ {
+            async move {
                 Ok(super::types::EncryptionKey::new(
                     "gen-key".to_string(),
                     vec![1u8; 32],
                     "chacha20poly1305".to_string(),
                     level,
                 ))
-            })
+            }
         }
         fn get_key<'a>(
             &'a self,
             key_id: &'a str,
-        ) -> Pin<
-            Box<
-                dyn Future<Output = crate::ToadStoolResult<super::types::EncryptionKey>>
-                    + Send
-                    + 'a,
-            >,
-        > {
-            Box::pin(async move {
+        ) -> impl std::future::Future<
+            Output = crate::ToadStoolResult<super::types::EncryptionKey>,
+        > + Send
+        + 'a {
+            async move {
                 Ok(super::types::EncryptionKey::new(
                     key_id.to_string(),
                     vec![1u8; 32],
                     "chacha20poly1305".to_string(),
                     SecurityLevel::Standard,
                 ))
-            })
+            }
         }
         fn health_check(
             &self,
-        ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<ProviderHealth>> + Send + '_>>
+        ) -> impl std::future::Future<Output = crate::ToadStoolResult<ProviderHealth>> + Send + '_
         {
-            Box::pin(async move { Ok(ProviderHealth::healthy(1)) })
+            async { Ok(ProviderHealth::healthy(1)) }
         }
     }
 
-    let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let mut ctx = EncryptionContextBuilder::<TestProvider>::new(Uuid::new_v4())
         .encrypt_results(true)
         .build();
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<TestProvider>::new();
     registry
         .register(Arc::new(TestProvider))
         .await
@@ -349,7 +344,10 @@ async fn test_discover_provider_with_registered_provider() {
 
 #[tokio::test]
 async fn test_decrypt_input_without_provider_returns_error() {
-    let mut ctx = EncryptionContext::new(Uuid::new_v4(), EncryptionConfig::default());
+    let mut ctx = EncryptionContext::<super::provider::NoopCryptoProvider>::new(
+        Uuid::new_v4(),
+        EncryptionConfig::default(),
+    );
     let encrypted = EncryptedInput {
         payload: EncryptedPayload::new(vec![1, 2, 3]),
         key_id: "key-1".to_string(),
@@ -369,7 +367,7 @@ async fn test_decrypt_input_without_provider_returns_error() {
 
 #[tokio::test]
 async fn test_decrypt_input_security_level_below_minimum_returns_error() {
-    let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let mut ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .security_level(SecurityLevel::HardwareSecured)
         .build();
     let encrypted = EncryptedInput {
@@ -386,7 +384,7 @@ async fn test_decrypt_input_security_level_below_minimum_returns_error() {
 
 #[tokio::test]
 async fn test_encrypt_output_without_encrypt_results_returns_error() {
-    let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let mut ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .encrypt_results(false)
         .build();
 
@@ -397,7 +395,7 @@ async fn test_encrypt_output_without_encrypt_results_returns_error() {
 
 #[tokio::test]
 async fn test_encrypt_output_without_provider_returns_error() {
-    let mut ctx = EncryptionContextBuilder::new(Uuid::new_v4())
+    let mut ctx = EncryptionContextBuilder::<NoopCryptoProvider>::new(Uuid::new_v4())
         .encrypt_results(true)
         .build();
 

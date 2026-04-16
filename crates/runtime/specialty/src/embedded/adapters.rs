@@ -5,7 +5,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tracing::info;
@@ -26,8 +25,8 @@ use super::toolchains::{
     Toolchain6502, Toolchain8051, Toolchain8080, Toolchain8086, Toolchain68000, ToolchainZ80,
 };
 use super::types::{
-    EmbeddedEmulator, EmbeddedJob, EmbeddedJobType, EmbeddedLanguage, EmbeddedToolchain,
-    OptimizationLevel, ProgrammerInterface,
+    EmbeddedEmulatorDispatch, EmbeddedJob, EmbeddedJobType, EmbeddedLanguage,
+    EmbeddedToolchainDispatch, OptimizationLevel, ProgrammerInterfaceDispatch,
 };
 
 /// 8-bit Microcontroller Adapter
@@ -38,11 +37,11 @@ pub struct Microcontroller8BitAdapter {
     /// Active jobs
     active_jobs: Arc<RwLock<HashMap<Uuid, EmbeddedJob>>>,
     /// Cross-compilation toolchains
-    toolchains: Arc<RwLock<HashMap<LegacyArchitecture, Box<dyn EmbeddedToolchain>>>>,
+    toolchains: Arc<RwLock<HashMap<LegacyArchitecture, EmbeddedToolchainDispatch>>>,
     /// Programming interfaces
-    programmers: Arc<RwLock<HashMap<String, Box<dyn ProgrammerInterface>>>>,
+    programmers: Arc<RwLock<HashMap<String, ProgrammerInterfaceDispatch>>>,
     /// Emulators
-    emulators: Arc<RwLock<HashMap<LegacyArchitecture, Box<dyn EmbeddedEmulator>>>>,
+    emulators: Arc<RwLock<HashMap<LegacyArchitecture, EmbeddedEmulatorDispatch>>>,
     /// Memory layout manager
     _memory_manager: Arc<MemoryLayoutManager>,
     /// Peripheral manager
@@ -57,9 +56,9 @@ pub struct System16BitAdapter {
     /// Active jobs
     active_jobs: Arc<RwLock<HashMap<Uuid, EmbeddedJob>>>,
     /// Cross-compilation toolchains
-    toolchains: Arc<RwLock<HashMap<LegacyArchitecture, Box<dyn EmbeddedToolchain>>>>,
+    toolchains: Arc<RwLock<HashMap<LegacyArchitecture, EmbeddedToolchainDispatch>>>,
     /// System emulators
-    emulators: Arc<RwLock<HashMap<LegacyArchitecture, Box<dyn EmbeddedEmulator>>>>,
+    emulators: Arc<RwLock<HashMap<LegacyArchitecture, EmbeddedEmulatorDispatch>>>,
     /// Memory layout manager
     _memory_manager: Arc<MemoryLayoutManager>,
     /// DOS interface (for 8086 systems)
@@ -92,19 +91,19 @@ impl Microcontroller8BitAdapter {
         let mut toolchains = self.toolchains.write().await;
 
         // Initialize 6502 toolchain
-        let toolchain_6502 = Box::new(Toolchain6502::new());
+        let toolchain_6502 = EmbeddedToolchainDispatch::Toolchain6502(Toolchain6502::new());
         toolchains.insert(LegacyArchitecture::MOS6502, toolchain_6502);
 
         // Initialize Z80 toolchain
-        let toolchain_z80 = Box::new(ToolchainZ80::new());
+        let toolchain_z80 = EmbeddedToolchainDispatch::ToolchainZ80(ToolchainZ80::new());
         toolchains.insert(LegacyArchitecture::ZilogZ80, toolchain_z80);
 
         // Initialize 8080 toolchain
-        let toolchain_8080 = Box::new(Toolchain8080::new());
+        let toolchain_8080 = EmbeddedToolchainDispatch::Toolchain8080(Toolchain8080::new());
         toolchains.insert(LegacyArchitecture::Intel8080, toolchain_8080);
 
         // Initialize 8051 toolchain
-        let toolchain_8051 = Box::new(Toolchain8051::new());
+        let toolchain_8051 = EmbeddedToolchainDispatch::Toolchain8051(Toolchain8051::new());
         toolchains.insert(LegacyArchitecture::Intel8051, toolchain_8051);
 
         drop(toolchains);
@@ -119,11 +118,11 @@ impl Microcontroller8BitAdapter {
             let mut programmers = self.programmers.write().await;
 
             // Initialize generic programmer
-            let generic_programmer = Box::new(GenericProgrammer::new());
+            let generic_programmer = ProgrammerInterfaceDispatch::Generic(GenericProgrammer::new());
             programmers.insert("generic".to_string(), generic_programmer);
 
             // Initialize EPROM programmer
-            let eprom_programmer = Box::new(EPROMProgrammer::new());
+            let eprom_programmer = ProgrammerInterfaceDispatch::Eprom(EPROMProgrammer::new());
             programmers.insert("eprom".to_string(), eprom_programmer);
 
             drop(programmers);
@@ -145,11 +144,11 @@ impl Microcontroller8BitAdapter {
             let mut emulators = self.emulators.write().await;
 
             // Initialize 6502 emulator
-            let emulator_6502 = Box::new(Emulator6502::new());
+            let emulator_6502 = EmbeddedEmulatorDispatch::Emulator6502(Emulator6502::new());
             emulators.insert(LegacyArchitecture::MOS6502, emulator_6502);
 
             // Initialize Z80 emulator
-            let emulator_z80 = Box::new(EmulatorZ80::new());
+            let emulator_z80 = EmbeddedEmulatorDispatch::EmulatorZ80(EmulatorZ80::new());
             emulators.insert(LegacyArchitecture::ZilogZ80, emulator_z80);
 
             drop(emulators);
@@ -182,8 +181,8 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing 8-bit microcontroller adapter");
 
             // Find embedded configuration
@@ -214,13 +213,11 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
 
             info!("8-bit microcontroller adapter initialized successfully");
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down 8-bit microcontroller adapter");
 
             // Shutdown all components
@@ -230,14 +227,14 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
 
             info!("8-bit microcontroller adapter shutdown complete");
             Ok(())
-        })
+        }
     }
 
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             info!("Submitting job to 8-bit microcontroller: {:?}", job.job_id);
 
             // Create embedded job - config must be initialized
@@ -273,14 +270,14 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
 
             info!("Job submitted to 8-bit microcontroller: {}", job.job_id);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -291,14 +288,11 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
@@ -310,14 +304,14 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
                     job_id
                 )))
             }
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -336,13 +330,11 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
                     })
                 },
             )
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             Ok(SystemInfo {
                 system_name: "8-bit Microcontroller".to_string(),
                 system_type: LegacySystemType::MOS6502,
@@ -374,13 +366,11 @@ impl LegacyAdapter for Microcontroller8BitAdapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async { Ok(true) })
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async { Ok(true) }
     }
 }
 
@@ -409,11 +399,11 @@ impl System16BitAdapter {
         let mut toolchains = self.toolchains.write().await;
 
         // Initialize 8086 toolchain
-        let toolchain_8086 = Box::new(Toolchain8086::new());
+        let toolchain_8086 = EmbeddedToolchainDispatch::Toolchain8086(Toolchain8086::new());
         toolchains.insert(LegacyArchitecture::Intel8086, toolchain_8086);
 
         // Initialize 68000 toolchain
-        let toolchain_68000 = Box::new(Toolchain68000::new());
+        let toolchain_68000 = EmbeddedToolchainDispatch::Toolchain68000(Toolchain68000::new());
         toolchains.insert(LegacyArchitecture::Motorola68000, toolchain_68000);
 
         drop(toolchains);
@@ -438,8 +428,8 @@ impl LegacyAdapter for System16BitAdapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing 16-bit system adapter");
 
             // Find embedded configuration
@@ -475,13 +465,11 @@ impl LegacyAdapter for System16BitAdapter {
 
             info!("16-bit system adapter initialized successfully");
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down 16-bit system adapter");
 
             // Shutdown all components
@@ -491,14 +479,14 @@ impl LegacyAdapter for System16BitAdapter {
 
             info!("16-bit system adapter shutdown complete");
             Ok(())
-        })
+        }
     }
 
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             info!("Submitting job to 16-bit system: {:?}", job.job_id);
 
             // Create embedded job - config must be initialized
@@ -532,14 +520,14 @@ impl LegacyAdapter for System16BitAdapter {
 
             info!("Job submitted to 16-bit system: {}", job.job_id);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -550,14 +538,11 @@ impl LegacyAdapter for System16BitAdapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             let result = if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
@@ -571,14 +556,14 @@ impl LegacyAdapter for System16BitAdapter {
             };
             drop(jobs);
             result
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -597,13 +582,11 @@ impl LegacyAdapter for System16BitAdapter {
                     })
                 },
             )
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             Ok(SystemInfo {
                 system_name: "16-bit System".to_string(),
                 system_type: LegacySystemType::Intel8086,
@@ -635,12 +618,10 @@ impl LegacyAdapter for System16BitAdapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async { Ok(true) })
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async { Ok(true) }
     }
 }

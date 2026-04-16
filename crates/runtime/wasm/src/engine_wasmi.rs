@@ -17,7 +17,6 @@
 //! **Perfect for ToadStool's short-lived WASM workloads!**
 
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tracing::{debug, info};
@@ -178,19 +177,19 @@ impl RuntimeEngine for WasmRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("Initializing wasmi runtime engine");
             self.initialized = true;
             Ok(())
-        })
+        }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             let start_time = std::time::Instant::now();
 
             // Extract WASM module source from request
@@ -244,7 +243,7 @@ impl RuntimeEngine for WasmRuntimeEngine {
                 runtime_used: RuntimeType::Wasm,
                 warnings: Vec::new(),
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -277,8 +276,8 @@ impl RuntimeEngine for WasmRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async move {
             use toadstool::resources::{CpuMetrics, MemoryMetrics, TimingMetrics};
 
             let _total = self.metrics.total_executions();
@@ -298,15 +297,15 @@ impl RuntimeEngine for WasmRuntimeEngine {
                     duration: Duration::from_millis(avg_time_us / 1000),
                 },
             })
-        })
+        }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("Shutting down wasmi runtime engine");
             self.initialized = false;
             Ok(())
-        })
+        }
     }
 }
 

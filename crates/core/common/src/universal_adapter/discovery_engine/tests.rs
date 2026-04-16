@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Tests for discovery engine module
-use std::future::Future;
-use std::pin::Pin;
 
 use super::*;
 
@@ -20,7 +18,9 @@ async fn test_empty_discovery() {
 
 #[tokio::test]
 async fn test_discovery_engine_new_with_custom_sources() {
-    let sources: Vec<Box<dyn DiscoverySource>> = vec![Box::new(MDnsSource::new())];
+    let sources: Vec<DiscoverySourceDispatch> = vec![DiscoverySourceDispatch::Environment(
+        EnvironmentSource::new(),
+    )];
     let engine = DiscoveryEngine::new(sources).unwrap();
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 0);
@@ -29,49 +29,19 @@ async fn test_discovery_engine_new_with_custom_sources() {
 #[tokio::test]
 async fn test_add_source() {
     let mut engine = DiscoveryEngine::empty();
-    engine.add_source(Box::new(MDnsSource::new()));
+    engine.add_source(DiscoverySourceDispatch::Environment(
+        EnvironmentSource::new(),
+    ));
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 0);
 }
 
 #[tokio::test]
 async fn test_discover_all_deduplication() {
-    struct MockSource;
-    impl DiscoverySource for MockSource {
-        fn discover<'a>(
-            &'a self,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
-        {
-            Box::pin(async move {
-                Ok(vec![
-                    CapabilityInfo {
-                        provider_id: "dup-1".to_string(),
-                        capability: CapabilityType::Storage {
-                            features: vec![],
-                            min_throughput_mbps: None,
-                        },
-                        metadata: std::collections::HashMap::new(),
-                        endpoint: ServiceEndpoint::Http("http://a".to_string()),
-                        health: HealthStatus::Unknown,
-                    },
-                    CapabilityInfo {
-                        provider_id: "dup-1".to_string(),
-                        capability: CapabilityType::Storage {
-                            features: vec![],
-                            min_throughput_mbps: None,
-                        },
-                        metadata: std::collections::HashMap::new(),
-                        endpoint: ServiceEndpoint::Http("http://b".to_string()),
-                        health: HealthStatus::Unknown,
-                    },
-                ])
-            })
-        }
-        fn name(&self) -> &'static str {
-            "mock"
-        }
-    }
-    let engine = DiscoveryEngine::new(vec![Box::new(MockSource)]).unwrap();
+    let engine = DiscoveryEngine::new(vec![DiscoverySourceDispatch::TestDedup(
+        super::test_mocks::DedupMockSource,
+    )])
+    .unwrap();
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 1, "Should deduplicate by provider_id");
     assert_eq!(providers[0].provider_id, "dup-1");
@@ -79,41 +49,20 @@ async fn test_discover_all_deduplication() {
 
 #[tokio::test]
 async fn test_discover_all_source_error() {
-    struct FailingSource;
-    impl DiscoverySource for FailingSource {
-        fn discover<'a>(
-            &'a self,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
-        {
-            Box::pin(async move { Err(ToadStoolError::configuration("config error".to_string())) })
-        }
-        fn name(&self) -> &'static str {
-            "failing"
-        }
-    }
-    let engine = DiscoveryEngine::new(vec![Box::new(FailingSource)]).unwrap();
+    let engine = DiscoveryEngine::new(vec![DiscoverySourceDispatch::TestFailing(
+        super::test_mocks::FailingMockSource,
+    )])
+    .unwrap();
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 0, "Should continue past failing source");
-}
-
-struct SlowSource;
-impl DiscoverySource for SlowSource {
-    fn discover<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>> {
-        Box::pin(
-            async move { std::future::pending::<ToadStoolResult<Vec<CapabilityInfo>>>().await },
-        )
-    }
-    fn name(&self) -> &'static str {
-        "slow"
-    }
 }
 
 #[tokio::test]
 async fn test_discover_all_timeout() {
     let mut engine = DiscoveryEngine::empty();
-    engine.add_source(Box::new(SlowSource));
+    engine.add_source(DiscoverySourceDispatch::TestSlow(
+        super::test_mocks::SlowMockSource,
+    ));
     // empty() has 1s timeout, slow source never completes - will timeout
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 0, "Should handle timeout gracefully");
@@ -389,45 +338,10 @@ async fn test_local_registry_capability_from_str_all() {
 
 #[tokio::test]
 async fn test_discover_all_mixed_sources() {
-    struct OkSource;
-    impl DiscoverySource for OkSource {
-        fn discover<'a>(
-            &'a self,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
-        {
-            Box::pin(async move {
-                Ok(vec![CapabilityInfo {
-                    provider_id: "ok-1".to_string(),
-                    capability: CapabilityType::Compute {
-                        features: vec![],
-                        min_memory_gb: None,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint: ServiceEndpoint::Http("http://ok:0".to_string()),
-                    health: HealthStatus::Unknown,
-                }])
-            })
-        }
-        fn name(&self) -> &'static str {
-            "ok"
-        }
-    }
-    struct FailingSource;
-    impl DiscoverySource for FailingSource {
-        fn discover<'a>(
-            &'a self,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
-        {
-            Box::pin(async move { Err(ToadStoolError::configuration("fail".to_string())) })
-        }
-        fn name(&self) -> &'static str {
-            "fail"
-        }
-    }
     let engine = DiscoveryEngine::new(vec![
-        Box::new(OkSource),
-        Box::new(FailingSource),
-        Box::new(OkSource),
+        DiscoverySourceDispatch::TestOk(super::test_mocks::OkMockSource),
+        DiscoverySourceDispatch::TestFailingMixed(super::test_mocks::FailingMixedMockSource),
+        DiscoverySourceDispatch::TestOk(super::test_mocks::OkMockSource),
     ])
     .unwrap();
     let providers = engine.discover_all().await.unwrap();
@@ -546,32 +460,13 @@ async fn test_discovery_engine_empty_timeout() {
 
 #[tokio::test]
 async fn test_discover_all_partial_timeout_and_success() {
-    struct FastOkSource;
-    impl DiscoverySource for FastOkSource {
-        fn discover<'a>(
-            &'a self,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<CapabilityInfo>>> + Send + 'a>>
-        {
-            Box::pin(async move {
-                Ok(vec![CapabilityInfo {
-                    provider_id: "fast".to_string(),
-                    capability: CapabilityType::Compute {
-                        features: vec![],
-                        min_memory_gb: None,
-                    },
-                    metadata: std::collections::HashMap::new(),
-                    endpoint: ServiceEndpoint::Http("http://fast:0".to_string()),
-                    health: HealthStatus::Unknown,
-                }])
-            })
-        }
-        fn name(&self) -> &'static str {
-            "fast"
-        }
-    }
     let mut engine = DiscoveryEngine::empty();
-    engine.add_source(Box::new(FastOkSource));
-    engine.add_source(Box::new(SlowSource));
+    engine.add_source(DiscoverySourceDispatch::TestFastOk(
+        super::test_mocks::FastOkMockSource,
+    ));
+    engine.add_source(DiscoverySourceDispatch::TestSlow(
+        super::test_mocks::SlowMockSource,
+    ));
     let providers = engine.discover_all().await.unwrap();
     assert_eq!(providers.len(), 1);
     assert_eq!(providers[0].provider_id, "fast");

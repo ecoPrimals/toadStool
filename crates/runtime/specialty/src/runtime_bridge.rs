@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 
 use toadstool::execution;
@@ -114,8 +113,8 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
     fn initialize(
         &mut self,
         config: execution::RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             tracing::info!("Initializing specialty hardware runtime engine");
             if let Some(resource_limits) = config.resource_limits {
                 tracing::debug!("Applying resource limits: {:?}", resource_limits);
@@ -125,14 +124,14 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
             }
             tracing::info!("Specialty hardware runtime engine initialized successfully");
             Ok(())
-        })
+        }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             const MAX_POLL_INTERVAL: Duration = Duration::from_millis(500);
 
             let execution_id = request.execution_id;
@@ -233,7 +232,7 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
                     }
                 }
             }
-        })
+        }
     }
 
     #[expect(
@@ -272,12 +271,12 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async { self.get_runtime_metrics().await })
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async { self.get_runtime_metrics().await }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             tracing::info!("Shutting down legacy runtime engine");
             let jobs: Vec<uuid::Uuid> = self.active_jobs.read().await.keys().copied().collect();
             for job_id in jobs {
@@ -287,6 +286,6 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
             }
             tracing::info!("Legacy runtime engine shutdown complete");
             Ok(())
-        })
+        }
     }
 }

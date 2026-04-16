@@ -19,7 +19,7 @@ use toadstool_server::graph_types::{
 };
 use toadstool_server::pure_jsonrpc::{JsonRpcError, JsonRpcHandler, JsonRpcRequest};
 use toadstool_server::resource_estimator::{EstimationError, ResourceEstimator};
-use toadstool_server::tarpc_server::StandaloneExecutor;
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 use uuid::Uuid;
 
 fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
@@ -36,7 +36,9 @@ fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonR
 #[tokio::test]
 async fn test_compute_submit_transform_job_type() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -57,7 +59,9 @@ async fn test_compute_submit_transform_job_type() {
 #[tokio::test]
 async fn test_compute_submit_custom_job_type() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -78,7 +82,9 @@ async fn test_compute_submit_custom_job_type() {
 #[tokio::test]
 async fn test_compute_submit_inference_with_params() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -106,7 +112,9 @@ async fn test_compute_submit_inference_with_params() {
 #[tokio::test]
 async fn test_compute_status_invalid_uuid_format() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -122,7 +130,9 @@ async fn test_compute_status_invalid_uuid_format() {
 #[tokio::test]
 async fn test_compute_result_invalid_uuid_format() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -138,7 +148,9 @@ async fn test_compute_result_invalid_uuid_format() {
 #[tokio::test]
 async fn test_compute_cancel_invalid_uuid_format() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -156,7 +168,9 @@ async fn test_compute_cancel_invalid_uuid_format() {
 #[tokio::test]
 async fn test_query_status_params_not_string() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );

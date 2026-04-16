@@ -78,7 +78,7 @@ pub struct RegisterSnapshot {
 
 impl RegisterSnapshot {
     /// Capture current values of all registers that the recipe will write.
-    pub fn capture(recipe: &InitRecipe, access: &dyn RegisterAccess) -> Self {
+    pub fn capture<R: RegisterAccess + ?Sized>(recipe: &InitRecipe, access: &R) -> Self {
         let mut entries = Vec::new();
         for step in &recipe.steps {
             if let InitStep::RegisterWrite { offset, .. } = step
@@ -94,7 +94,7 @@ impl RegisterSnapshot {
     /// Restore registers to their captured values (best-effort).
     ///
     /// Returns `true` if all writes succeeded, `false` if any failed.
-    pub fn rollback(&self, access: &mut dyn RegisterAccess) -> bool {
+    pub fn rollback<R: RegisterAccess + ?Sized>(&self, access: &mut R) -> bool {
         let mut all_ok = true;
         for &(offset, value) in self.entries.iter().rev() {
             if let Err(e) = access.write_u32(offset, value) {
@@ -233,9 +233,9 @@ fn tally_results(chip: String, result: &hw_learn::applicator::ApplyResult) -> In
 /// # Errors
 ///
 /// Returns error if JSON parsing fails or BAR0 read/write fails.
-pub fn apply_recipe(
+pub fn apply_recipe<R: RegisterAccess + ?Sized>(
     recipe_json: &str,
-    register_access: &mut dyn RegisterAccess,
+    register_access: &mut R,
 ) -> Result<InitResult> {
     let (chip, init_recipe) = if let Ok(legacy) = serde_json::from_str::<Recipe>(recipe_json) {
         let chip = legacy.chip.clone();
@@ -271,9 +271,9 @@ pub fn apply_recipe(
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-pub fn apply_recipe_safe(
+pub fn apply_recipe_safe<R: RegisterAccess + ?Sized>(
     recipe_json: &str,
-    register_access: &mut dyn RegisterAccess,
+    register_access: &mut R,
     sensors: &HwmonSensors,
     config: &MonitorConfig,
 ) -> Result<InitResult> {
@@ -305,9 +305,9 @@ pub fn apply_recipe_safe(
 ///
 /// Returns error if thermal safety is violated. On partial init failure,
 /// returns `NvPmuError::PartialInit` with rollback status.
-pub fn apply_with_recovery(
+pub fn apply_with_recovery<R: RegisterAccess + ?Sized>(
     recipe: &InitRecipe,
-    register_access: &mut dyn RegisterAccess,
+    register_access: &mut R,
     sensors: &HwmonSensors,
     config: &MonitorConfig,
 ) -> Result<InitResult> {
@@ -363,9 +363,9 @@ pub fn apply_with_recovery(
 /// # Errors
 ///
 /// Returns error if thermal safety is violated or recipe application fails.
-pub fn apply_init_recipe(
+pub fn apply_init_recipe<R: RegisterAccess + ?Sized>(
     recipe: &InitRecipe,
-    register_access: &mut dyn RegisterAccess,
+    register_access: &mut R,
     sensors: &HwmonSensors,
     config: &MonitorConfig,
 ) -> Result<InitResult> {

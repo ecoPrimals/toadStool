@@ -31,7 +31,7 @@ use uuid::Uuid;
 #[cfg(feature = "docker")]
 use bollard::Docker;
 
-use toadstool::resources::ResourceMonitor;
+use toadstool::resources::ResourceMonitorDispatch;
 use toadstool::{RuntimeCapabilities, ToadStoolResult, WorkloadType};
 
 // Re-export types for backward compatibility
@@ -58,7 +58,7 @@ pub struct ContainerRuntimeEngine {
     #[cfg(not(feature = "docker"))]
     docker: Option<()>,
     active_containers: Arc<RwLock<HashMap<Uuid, ContainerHandle>>>,
-    resource_monitor: Option<Arc<dyn ResourceMonitor>>,
+    resource_monitor: Option<Arc<ResourceMonitorDispatch>>,
     capabilities: RuntimeCapabilities,
 }
 
@@ -110,7 +110,7 @@ impl ContainerRuntimeEngine {
 
     /// Add a resource monitor to the engine
     #[must_use]
-    pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
+    pub fn with_resource_monitor(mut self, monitor: Arc<ResourceMonitorDispatch>) -> Self {
         self.resource_monitor = Some(monitor);
         self
     }

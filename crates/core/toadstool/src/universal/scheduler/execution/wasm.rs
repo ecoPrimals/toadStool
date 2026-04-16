@@ -7,14 +7,20 @@ use std::time::Duration;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use crate::execution::{ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeType};
+use crate::execution::{
+    ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType,
+};
 use crate::resources::ResourceRequirements;
 use crate::workload::{WasiConfig, WasmModuleSource};
 use crate::{SecurityContext, ToadStoolResult, WorkloadSpec};
 
 use super::super::UniversalScheduler;
+use crate::universal::traits::UniversalPrimalProvider;
 
-impl UniversalScheduler {
+impl<P, E: RuntimeEngine> UniversalScheduler<P, E>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
     /// Execute a WASM job
     #[expect(
         clippy::significant_drop_tightening,

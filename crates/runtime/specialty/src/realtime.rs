@@ -14,7 +14,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
@@ -96,8 +95,8 @@ impl LegacyAdapter for VxWorksAdapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing VxWorks adapter");
             for (name, realtime_config) in &config.realtime_configs {
                 if matches!(realtime_config.rtos, RealtimeOS::VxWorks) {
@@ -107,23 +106,21 @@ impl LegacyAdapter for VxWorksAdapter {
                 }
             }
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down VxWorks adapter");
             Ok(())
-        })
+        }
     }
 
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             let rt_job = RealtimeJob {
                 job_id: job.job_id,
                 task_name: "VxWorks Task".to_string(),
@@ -133,14 +130,14 @@ impl LegacyAdapter for VxWorksAdapter {
 
             self.active_jobs.write().await.insert(job.job_id, rt_job);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -151,28 +148,25 @@ impl LegacyAdapter for VxWorksAdapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }
             drop(jobs);
             Ok(())
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         _job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async {
             Ok(JobOutput {
                 stdout: "VxWorks execution output".to_string(),
                 stderr: String::new(),
@@ -180,13 +174,11 @@ impl LegacyAdapter for VxWorksAdapter {
                 output_files: vec![],
                 binary_output: None,
             })
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             Ok(SystemInfo {
                 system_name: "VxWorks".to_string(),
                 system_type: LegacySystemType::VxWorks,
@@ -218,13 +210,11 @@ impl LegacyAdapter for VxWorksAdapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async { Ok(true) })
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async { Ok(true) }
     }
 }
 
@@ -240,8 +230,8 @@ impl LegacyAdapter for QNXAdapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing QNX adapter");
             for (name, realtime_config) in &config.realtime_configs {
                 if matches!(realtime_config.rtos, RealtimeOS::QNX) {
@@ -251,23 +241,21 @@ impl LegacyAdapter for QNXAdapter {
                 }
             }
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down QNX adapter");
             Ok(())
-        })
+        }
     }
 
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             let rt_job = RealtimeJob {
                 job_id: job.job_id,
                 task_name: "QNX Process".to_string(),
@@ -277,14 +265,14 @@ impl LegacyAdapter for QNXAdapter {
 
             self.active_jobs.write().await.insert(job.job_id, rt_job);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -295,28 +283,25 @@ impl LegacyAdapter for QNXAdapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }
             drop(jobs);
             Ok(())
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         _job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async {
             Ok(JobOutput {
                 stdout: "QNX execution output".to_string(),
                 stderr: String::new(),
@@ -324,13 +309,11 @@ impl LegacyAdapter for QNXAdapter {
                 output_files: vec![],
                 binary_output: None,
             })
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             Ok(SystemInfo {
                 system_name: "QNX".to_string(),
                 system_type: LegacySystemType::QnxLegacy,
@@ -362,12 +345,10 @@ impl LegacyAdapter for QNXAdapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async { Ok(true) })
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async { Ok(true) }
     }
 }

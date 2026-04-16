@@ -32,7 +32,7 @@ fn create_test_state() -> ServerState {
         event_broadcaster,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         config,
-        resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+        resource_monitor: Arc::new(MockResourceMonitor::new_successful().into_dispatch()),
         capability_provider: None,
     }
 }

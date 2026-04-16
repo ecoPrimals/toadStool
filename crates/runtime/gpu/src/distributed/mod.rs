@@ -30,7 +30,9 @@ pub use types::{
 };
 
 use crate::scheduler::UniversalComputeScheduler;
-use crate::universal::{UniversalWorkload, WorkloadResult};
+use crate::universal::{
+    ComputeContext, UniversalComputeResource, UniversalWorkload, WorkloadResult,
+};
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use uuid::Uuid;

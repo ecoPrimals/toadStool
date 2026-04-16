@@ -7,7 +7,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use toadstool::error::ToadStoolResult;
 use tokio::sync::RwLock;
 
@@ -168,44 +167,44 @@ pub trait CloudProviderInterface: Send + Sync {
     fn deploy_job<'a>(
         &'a self,
         job: &'a UniversalJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CloudJobHandle>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<CloudJobHandle>> + Send + 'a;
 
     /// Get job status from this provider
     fn get_job_status<'a>(
         &'a self,
         handle: &'a CloudJobHandle,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CloudJobStatus>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<CloudJobStatus>> + Send + 'a;
 
     /// Scale resources for a job
     fn scale_job<'a>(
         &'a self,
         handle: &'a CloudJobHandle,
         scale_config: ScaleConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Terminate a job
     fn terminate_job<'a>(
         &'a self,
         handle: &'a CloudJobHandle,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Get current pricing for resources
     fn get_pricing<'a>(
         &'a self,
         resource_spec: &'a ResourceSpec,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PricingInfo>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<PricingInfo>> + Send + 'a;
 
     /// Get current resource availability
     fn get_availability<'a>(
         &'a self,
         region: Option<String>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AvailabilityInfo>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<AvailabilityInfo>> + Send + 'a;
 
     /// Validate compliance requirements
     fn validate_compliance<'a>(
         &'a self,
         requirements: &'a ResourceRequirements,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<bool>> + Send + 'a;
 
     /// Get provider capabilities
     fn get_capabilities(&self) -> CloudCapabilities;
@@ -219,9 +218,9 @@ pub trait CloudProviderInterface: Send + Sync {
 // ============================================================================
 
 /// Universal Cloud Orchestrator - the brain of cloud operations
-pub struct UniversalCloudOrchestrator {
+pub struct UniversalCloudOrchestrator<P: CloudProviderInterface> {
     /// Available cloud providers
-    pub(crate) providers: RwLock<HashMap<String, Box<dyn CloudProviderInterface>>>,
+    pub(crate) providers: RwLock<HashMap<String, P>>,
     /// Hybrid cloud scheduler
     pub(crate) hybrid_scheduler: HybridCloudScheduler,
     /// Cost optimizer across all clouds

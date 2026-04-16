@@ -11,6 +11,7 @@
 
 pub mod configs;
 pub mod cross_compilation;
+pub mod dispatch;
 pub mod emulation;
 pub mod jobs;
 pub mod requirements;
@@ -23,6 +24,7 @@ pub mod traits;
 // requirements::OptimizationLevel).
 pub use configs::*;
 pub use cross_compilation::*;
+pub use dispatch::*;
 pub use emulation::*;
 pub use jobs::*;
 pub use requirements::*;

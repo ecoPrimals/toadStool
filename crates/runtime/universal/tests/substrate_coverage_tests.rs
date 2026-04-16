@@ -5,7 +5,6 @@
 //! Focus: substrate detection, capability reporting, type construction
 
 use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 
 use toadstool_runtime_universal::ComputeSubstrate;
@@ -37,9 +36,9 @@ impl ComputeSubstrate for MockSubstrate {
     fn execute_buffer_op(
         &self,
         operation: BufferOperation,
-    ) -> Pin<Box<dyn Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>> {
+    ) -> impl Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_ {
         let substrate_name = self.name.to_string();
-        Box::pin(async move {
+        async move {
             Ok(BufferOutput {
                 data: vec![0; operation.buffer_size()],
                 metadata: BufferMetadata {
@@ -48,7 +47,7 @@ impl ComputeSubstrate for MockSubstrate {
                     power_consumed_mw: Some(100.0),
                 },
             })
-        })
+        }
     }
 }
 

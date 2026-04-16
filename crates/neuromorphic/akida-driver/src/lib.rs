@@ -52,6 +52,7 @@ mod inference;
 mod io;
 mod loading;
 pub mod mmio;
+mod synthetic;
 
 /// NPU hardware setup and initialization
 pub mod setup;
@@ -74,7 +75,9 @@ pub mod pcie_ids {
     }
 }
 
-pub use backend::{BackendSelection, BackendType, ModelHandle, NpuBackend, select_backend};
+pub use backend::{
+    BackendSelection, BackendType, ModelHandle, NpuBackend, NpuBackendDispatch, select_backend,
+};
 pub use backends::UserspaceBackend;
 pub use capabilities::{
     BatchCapabilities, Capabilities, ChipVersion, ClockMode, MeshTopology, PcieConfig,
@@ -85,6 +88,7 @@ pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
 pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
+pub use synthetic::SyntheticNpuBackend;
 
 /// Re-export commonly used types
 pub mod prelude {

@@ -7,19 +7,20 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use toadstool::resources::ResourceMonitor;
+use toadstool::resources::ResourceMonitorDispatch;
 
 use crate::compiler::UniversalKernelCompiler;
 use crate::config::UniversalGpuConfig;
 use crate::coordinator::ComputeResourceCoordinator;
+use crate::parallel_framework_dispatch::ParallelComputeFrameworkDispatch;
 use crate::strategy::{BackendSelectionStrategy, EvolutionMetrics};
-use crate::traits::ParallelComputeFramework;
 use crate::types::{ComputeSession, DeviceId, GpuFramework, UniversalComputeDevice};
 
 /// Universal GPU Compute Engine - the heart of parallel compute orchestration
 pub struct UniversalGpuEngine {
     /// Discovered compute frameworks and their capabilities
-    pub(super) frameworks: Arc<RwLock<HashMap<GpuFramework, Arc<dyn ParallelComputeFramework>>>>,
+    pub(super) frameworks:
+        Arc<RwLock<HashMap<GpuFramework, Arc<ParallelComputeFrameworkDispatch>>>>,
     /// Available compute devices across all frameworks
     pub(super) devices: Arc<RwLock<HashMap<DeviceId, UniversalComputeDevice>>>,
     /// Active compute sessions (supports recursive execution)
@@ -31,7 +32,7 @@ pub struct UniversalGpuEngine {
     /// Configuration
     pub(super) config: UniversalGpuConfig,
     /// Resource monitor
-    pub(super) resource_monitor: Option<Arc<dyn ResourceMonitor>>,
+    pub(super) resource_monitor: Option<Arc<ResourceMonitorDispatch>>,
     /// Backend selection strategy (sovereign vs pragmatic)
     pub(super) selection_strategy: BackendSelectionStrategy,
     /// Evolution metrics (ecosystem maturity tracking)

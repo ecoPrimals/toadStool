@@ -6,7 +6,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::byob::{
@@ -60,20 +59,20 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             tokio::task::yield_now().await; // ✅ FULLY MODERNIZED: Removed delay simulation
             Ok(())
-        })
+        }
     }
 
     fn execute(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
         let delay = self.delay_ms; // Still used in response duration
         let should_succeed = self.should_succeed;
-        Box::pin(async move {
+        async move {
             tokio::task::yield_now().await; // ✅ FULLY MODERNIZED: Removed delay sleep
 
             if should_succeed {
@@ -99,7 +98,7 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
                     "Service execution failed".to_string(),
                 ))
             }
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -116,17 +115,15 @@ impl RuntimeEngine for AsyncMockRuntimeEngine {
         true
     }
 
-    fn get_metrics(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async move { Ok(RuntimeMetrics::default()) })
+    fn get_metrics(&self) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async move { Ok(RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             tokio::task::yield_now().await; // ✅ FULLY MODERNIZED: Removed delay simulation
             Ok(())
-        })
+        }
     }
 }
 
@@ -297,7 +294,7 @@ fn create_complex_deployment_request() -> ByobDeploymentRequest {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_create_byob_executor_function() {
-    let runtime_engine = Arc::new(AsyncMockRuntimeEngine::new()) as Arc<dyn RuntimeEngine>;
+    let runtime_engine = Arc::new(AsyncMockRuntimeEngine::new());
     let executor = create_byob_executor(runtime_engine);
 
     // Executor should be created successfully
@@ -306,7 +303,7 @@ async fn test_create_byob_executor_function() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_byob_executor_with_custom_config() {
-    let runtime_engine = Arc::new(AsyncMockRuntimeEngine::new()) as Arc<dyn RuntimeEngine>;
+    let runtime_engine = Arc::new(AsyncMockRuntimeEngine::new());
     let config = ByobExecutorConfig {
         max_concurrent_deployments: 100,
         default_network_subnet: "192.168.0.0/16".to_string(),

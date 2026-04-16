@@ -28,7 +28,6 @@
 //! interface (breakpoints, register read/write, memory inspection).
 
 use std::future::{Future, ready};
-use std::pin::Pin;
 
 use crate::{EmbeddedConfig, LegacyArchitecture, SpecialtyRuntimeError, ToadStoolResult};
 use toadstool::ToadStoolError;
@@ -66,122 +65,122 @@ macro_rules! impl_emulator_stub {
             fn initialize<'a>(
                 &'a mut self,
                 _config: &'a EmbeddedConfig,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "initialize",
-                ))))
+                )))
             }
 
             fn load_rom<'a>(
                 &'a mut self,
                 rom_data: &'a [u8],
                 _load_address: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(async move {
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                async move {
                     let _ = rom_data;
                     Err(emulator_placeholder_err($platform, $feature_id, "load_rom"))
-                })
+                }
             }
 
-            fn start(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            fn start(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "start",
-                ))))
+                )))
             }
 
-            fn stop(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Ok(())))
+            fn stop(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Ok(()))
             }
 
-            fn step(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            fn step(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "step",
-                ))))
+                )))
             }
 
             fn set_breakpoint(
                 &mut self,
                 _address: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "set_breakpoint",
-                ))))
+                )))
             }
 
             fn clear_breakpoint(
                 &mut self,
                 _address: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Ok(())))
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Ok(()))
             }
 
             fn read_registers(
                 &self,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CpuRegisters>> + Send + '_>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            ) -> impl Future<Output = ToadStoolResult<CpuRegisters>> + Send + '_ {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "read_registers",
-                ))))
+                )))
             }
 
             fn write_registers<'a>(
                 &'a mut self,
                 registers: &'a CpuRegisters,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(async move {
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                async move {
                     let _ = registers;
                     Err(emulator_placeholder_err(
                         $platform,
                         $feature_id,
                         "write_registers",
                     ))
-                })
+                }
             }
 
             fn read_memory(
                 &self,
                 _address: u32,
                 _length: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_ {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "read_memory",
-                ))))
+                )))
             }
 
             fn write_memory<'a>(
                 &'a mut self,
                 _address: u32,
                 data: &'a [u8],
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(async move {
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                async move {
                     let _ = data;
                     Err(emulator_placeholder_err(
                         $platform,
                         $feature_id,
                         "write_memory",
                     ))
-                })
+                }
             }
 
             fn get_status(
                 &self,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EmulationStatus>> + Send + '_>> {
-                Box::pin(ready(Err(emulator_placeholder_err(
+            ) -> impl Future<Output = ToadStoolResult<EmulationStatus>> + Send + '_ {
+                ready(Err(emulator_placeholder_err(
                     $platform,
                     $feature_id,
                     "get_status",
-                ))))
+                )))
             }
         }
     };

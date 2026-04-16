@@ -4,7 +4,6 @@
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::time::Duration;
 
 use crate::{
@@ -25,14 +24,14 @@ pub trait EmbeddedToolchain: Send + Sync + std::fmt::Debug {
     fn initialize<'a>(
         &'a mut self,
         config: &'a crate::EmbeddedConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Compile source code
     fn compile<'a>(
         &'a self,
         sources: &'a [SourceFile],
         output_path: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a;
 
     /// Link object files
     fn link<'a>(
@@ -40,27 +39,27 @@ pub trait EmbeddedToolchain: Send + Sync + std::fmt::Debug {
         objects: &'a [PathBuf],
         output_path: &'a Path,
         memory_layout: &'a MemoryLayout,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<LinkResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<LinkResult>> + Send + 'a;
 
     /// Generate ROM image
     fn generate_rom_image<'a>(
         &'a self,
         executable: &'a Path,
         format: OutputFileType,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a;
 
     /// Disassemble binary
     fn disassemble<'a>(
         &'a self,
         binary: &'a [u8],
         start_address: u32,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a;
 
     /// Create memory map
     fn create_memory_map<'a>(
         &'a self,
         executable: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a;
 }
 
 /// Compilation result

@@ -17,7 +17,6 @@
 #[cfg(any(test, feature = "test-mocks"))]
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 #[cfg(any(test, feature = "test-mocks"))]
 use std::sync::Arc;
 #[cfg(any(test, feature = "test-mocks"))]
@@ -39,27 +38,26 @@ pub use super::auth::{AuthenticationToken, TokenRefreshRequest, TokenRequest};
 /// This allows dependency injection of different authentication implementations
 /// (production security-service backend, in-memory test backend when `cfg(test)` or the
 /// `test-mocks` crate feature is enabled).
-// NOTE(async-dyn): async methods return `Pin<Box<dyn Future>>` — native async fn in trait is not dyn-compatible
 pub trait AuthBackend: Send + Sync {
     /// Initialize/test connection to authentication backend
     ///
     /// For network backends (security service), this tests connectivity.
     /// For local backends (in-memory), this is typically a no-op.
-    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     /// Request a new authentication token
     fn request_token<'a>(
         &'a self,
         request: &'a TokenRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a;
 
     /// Refresh an authentication token
     fn refresh_token<'a>(
         &'a self,
         request: &'a TokenRefreshRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a;
 
     /// Sign a payload and return a signature string.
     ///
@@ -72,20 +70,20 @@ pub trait AuthBackend: Send + Sync {
     fn sign_payload<'a>(
         &'a self,
         _payload: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
+        async move {
             Err(ToadStoolError::configuration(
                 "Signing not available. Ensure a crypto / security provider is running.",
             ))
-        })
+        }
     }
 
     /// Export the public key for signature verification, if available.
     ///
     /// Returns `None` when no signing key is configured or the backend
     /// does not support local key export.
-    fn public_key(&self) -> Pin<Box<dyn Future<Output = Option<String>> + Send + '_>> {
-        Box::pin(async { None })
+    fn public_key(&self) -> impl Future<Output = Option<String>> + Send + '_ {
+        async { None }
     }
 
     /// Validate a token (optional, default implementation)
@@ -94,14 +92,12 @@ pub trait AuthBackend: Send + Sync {
     ///
     /// Returns an error if the token is expired, has invalid issuer/audience, or unsupported type.
     fn validate_token(&self, token: &AuthenticationToken) -> ToadStoolResult<()> {
-        // Check expiration
         if token.expires_at <= SystemTime::now() {
             return Err(ToadStoolError::runtime(
                 "Token is already expired".to_string(),
             ));
         }
 
-        // Check issuer (security / crypto service; well-known integration id)
         if token.issuer != well_known::BEARDOG {
             return Err(ToadStoolError::runtime(format!(
                 "Invalid token issuer: {}",
@@ -109,7 +105,6 @@ pub trait AuthBackend: Send + Sync {
             )));
         }
 
-        // Accept tokens with audience matching self or platform
         let acceptable = token
             .audience
             .iter()
@@ -123,7 +118,6 @@ pub trait AuthBackend: Send + Sync {
             )));
         }
 
-        // Check token type
         if token.token_type != "Bearer" && token.token_type != "Ed25519" {
             return Err(ToadStoolError::runtime(format!(
                 "Unsupported token type: {}",
@@ -132,6 +126,76 @@ pub trait AuthBackend: Send + Sync {
         }
 
         Ok(())
+    }
+}
+
+/// Dispatch enum for authentication backends (replaces `Arc<dyn AuthBackend>`).
+pub enum AuthBackendDispatch {
+    /// Production security-service backend (Unix socket JSON-RPC)
+    Security(SecurityBackend),
+    /// In-memory test backend (no external dependencies)
+    #[cfg(any(test, feature = "test-mocks"))]
+    InMemory(InMemoryAuthBackend),
+}
+
+impl AuthBackend for AuthBackendDispatch {
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
+            match self {
+                Self::Security(b) => b.initialize().await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.initialize().await,
+            }
+        }
+    }
+
+    fn request_token<'a>(
+        &'a self,
+        request: &'a TokenRequest,
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
+        async move {
+            match self {
+                Self::Security(b) => b.request_token(request).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.request_token(request).await,
+            }
+        }
+    }
+
+    fn refresh_token<'a>(
+        &'a self,
+        request: &'a TokenRefreshRequest,
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
+        async move {
+            match self {
+                Self::Security(b) => b.refresh_token(request).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.refresh_token(request).await,
+            }
+        }
+    }
+
+    fn sign_payload<'a>(
+        &'a self,
+        payload: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
+        async move {
+            match self {
+                Self::Security(b) => b.sign_payload(payload).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.sign_payload(payload).await,
+            }
+        }
+    }
+
+    fn public_key(&self) -> impl Future<Output = Option<String>> + Send + '_ {
+        async move {
+            match self {
+                Self::Security(b) => b.public_key().await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.public_key().await,
+            }
+        }
     }
 }
 
@@ -195,8 +259,8 @@ impl AuthBackend for SecurityBackend {
     fn sign_payload<'a>(
         &'a self,
         payload: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
+        async move {
             let params = serde_json::json!({ "payload": payload });
             self.rpc_client
                 .call_typed::<String>("crypto.sign", params)
@@ -204,11 +268,11 @@ impl AuthBackend for SecurityBackend {
                 .map_err(|e| {
                     ToadStoolError::runtime(format!("security/crypto service sign failed: {e}"))
                 })
-        })
+        }
     }
 
-    fn public_key(&self) -> Pin<Box<dyn Future<Output = Option<String>> + Send + '_>> {
-        Box::pin(async move {
+    fn public_key(&self) -> impl Future<Output = Option<String>> + Send + '_ {
+        async move {
             let value: serde_json::Value = self
                 .rpc_client
                 .call("crypto.public_key", serde_json::json!({}))
@@ -218,12 +282,11 @@ impl AuthBackend for SecurityBackend {
                 .get("public_key")
                 .and_then(|v| v.as_str())
                 .map(String::from)
-        })
+        }
     }
 
-    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
-            // Health check via JSON-RPC over unix socket
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let _health: serde_json::Value = self
                 .rpc_client
                 .call("crypto.health", serde_json::json!({}))
@@ -236,14 +299,14 @@ impl AuthBackend for SecurityBackend {
 
             tracing::info!("Successfully connected to security/crypto service via unix socket");
             Ok(())
-        })
+        }
     }
 
     fn request_token<'a>(
         &'a self,
         request: &'a TokenRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
+        async move {
             let params = serde_json::to_value(request).map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
             })?;
@@ -258,18 +321,17 @@ impl AuthBackend for SecurityBackend {
                     ))
                 })?;
 
-            // Validate token
             self.validate_token(&token)?;
 
             Ok(token)
-        })
+        }
     }
 
     fn refresh_token<'a>(
         &'a self,
         request: &'a TokenRefreshRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
+        async move {
             let params = serde_json::to_value(request).map_err(|e| {
                 ToadStoolError::runtime(format!("Failed to serialize request: {e}"))
             })?;
@@ -281,7 +343,7 @@ impl AuthBackend for SecurityBackend {
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to refresh token: {e}")))?;
 
             Ok(token)
-        })
+        }
     }
 }
 
@@ -337,29 +399,28 @@ impl AuthBackend for InMemoryAuthBackend {
     fn sign_payload<'a>(
         &'a self,
         payload: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
+        async move {
             use base64::{Engine as _, engine::general_purpose};
             tracing::warn!("INSECURE: In-memory mock signature. Acceptable ONLY in tests.");
             Ok(format!(
                 "ed25519:mock:{}",
                 general_purpose::STANDARD.encode(payload.as_bytes())
             ))
-        })
+        }
     }
 
-    fn public_key(&self) -> Pin<Box<dyn Future<Output = Option<String>> + Send + '_>> {
-        Box::pin(async move { Some("test-public-key".to_string()) })
+    fn public_key(&self) -> impl Future<Output = Option<String>> + Send + '_ {
+        async move { Some("test-public-key".to_string()) }
     }
 
     fn request_token<'a>(
         &'a self,
         request: &'a TokenRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
+        async move {
             let token = Self::generate_test_token(&request.requesting_primal);
 
-            // Store token for potential refresh
             self.tokens
                 .lock()
                 .await
@@ -367,15 +428,14 @@ impl AuthBackend for InMemoryAuthBackend {
 
             tracing::debug!("Generated test token for {}", request.requesting_primal);
             Ok(token)
-        })
+        }
     }
 
     fn refresh_token<'a>(
         &'a self,
         request: &'a TokenRefreshRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a>> {
-        Box::pin(async move {
-            // Generate a refreshed token
+    ) -> impl Future<Output = ToadStoolResult<AuthenticationToken>> + Send + 'a {
+        async move {
             let token = AuthenticationToken {
                 id: format!("test-refreshed-token-{}", request.requesting_primal),
                 token_type: "Bearer".to_string(),
@@ -392,7 +452,6 @@ impl AuthBackend for InMemoryAuthBackend {
                 claims: HashMap::new(),
             };
 
-            // Store refreshed token
             self.tokens
                 .lock()
                 .await
@@ -400,7 +459,7 @@ impl AuthBackend for InMemoryAuthBackend {
 
             tracing::debug!("Refreshed test token for {}", request.requesting_primal);
             Ok(token)
-        })
+        }
     }
 }
 

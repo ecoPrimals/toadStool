@@ -113,7 +113,7 @@ pub use ecosystem::{
 pub use encryption::{
     CryptoCapability, CryptoProvider, CryptoProviderRegistry, EncryptedInput, EncryptedOutput,
     EncryptedPayload, EncryptionConfig, EncryptionContext, EncryptionContextBuilder, EncryptionKey,
-    EncryptionMetadata, SecurityLevel as EncryptionSecurityLevel,
+    EncryptionMetadata, NoopCryptoProvider, SecurityLevel as EncryptionSecurityLevel,
 };
 pub use error::{
     ConfigError, ConfigResult, ExecutionError, ExecutionResult, IntegrationError,
@@ -123,7 +123,7 @@ pub use error::{
 pub use execution::{
     CallbackConfig, CallbackEvent, ExecutionInput, ExecutionOutput, ExecutionRequest,
     ExecutionResponse, ExecutionStatus, LoggingConfig, RuntimeCapabilities,
-    RuntimeConfig as ExecutionRuntimeConfig, RuntimeEngine, RuntimeType,
+    RuntimeConfig as ExecutionRuntimeConfig, RuntimeEngine, RuntimeType, StubRuntimeEngine,
 };
 pub use os_layer::{
     LegacyCompatibilityLayer, LinuxCompatibilityLayer, MacOSCompatibilityLayer,
@@ -131,10 +131,12 @@ pub use os_layer::{
     PlatformInfo as OSPlatformInfo, WindowsCompatibilityLayer,
 };
 pub use resources::ResourceRequirements as UniversalResourceRequirements;
+#[cfg(any(test, feature = "test-mocks"))]
+pub use resources::TestResourceMonitor;
 pub use resources::{
     CpuRequirements, GpuRequirements, MemoryRequirements, NetworkRequirements, ResourceLimits,
-    ResourceMonitor, ResourceRequirements, ResourceUsage, RuntimeMetrics, StorageRequirements,
-    SystemResourceMonitor, SystemResources,
+    ResourceMonitor, ResourceMonitorDispatch, ResourceRequirements, ResourceUsage, RuntimeMetrics,
+    StorageRequirements, SystemResourceMonitor, SystemResources,
 };
 pub use runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy};
 pub use security::{
@@ -143,8 +145,8 @@ pub use security::{
 };
 pub use universal::{
     JobPriority, PlatformStatus, UniversalComputePlatform, UniversalJob, UniversalJobType,
-    UniversalPlatformConfig, UniversalScheduler, UniversalSystemResources,
-    init_with_runtime_engines,
+    UniversalPlatformConfig, UniversalPrimalProviderDispatch, UniversalScheduler,
+    UniversalSystemResources, init_with_runtime_engines,
 };
 pub use workload::{
     ExecutableSource, GpuArgument, GpuProgramSource, PortMapping as WorkloadPortMapping,

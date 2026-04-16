@@ -3,16 +3,16 @@
 
 use std::collections::HashMap;
 
-use super::CloudProvider;
+use super::provider::CloudProvider;
 
 /// Cloud provider registry
 ///
 /// Maintains a registry of available cloud providers.
-pub struct CloudProviderRegistry {
-    providers: HashMap<String, Box<dyn CloudProvider>>,
+pub struct CloudProviderRegistry<P: CloudProvider> {
+    providers: HashMap<String, Box<P>>,
 }
 
-impl CloudProviderRegistry {
+impl<P: CloudProvider> CloudProviderRegistry<P> {
     /// Create a new empty registry
     pub fn new() -> Self {
         Self {
@@ -21,13 +21,13 @@ impl CloudProviderRegistry {
     }
 
     /// Register a provider
-    pub fn register(&mut self, provider: Box<dyn CloudProvider>) {
+    pub fn register(&mut self, provider: Box<P>) {
         let name = provider.name().to_string();
         self.providers.insert(name, provider);
     }
 
     /// Get provider by name
-    pub fn get(&self, name: &str) -> Option<&dyn CloudProvider> {
+    pub fn get(&self, name: &str) -> Option<&P> {
         self.providers.get(name).map(|p| p.as_ref())
     }
 
@@ -42,7 +42,7 @@ impl CloudProviderRegistry {
     }
 }
 
-impl Default for CloudProviderRegistry {
+impl<P: CloudProvider> Default for CloudProviderRegistry<P> {
     fn default() -> Self {
         Self::new()
     }

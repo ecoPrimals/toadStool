@@ -25,7 +25,7 @@ fn create_test_state(config: ServerConfig) -> ServerState {
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+        resource_monitor: Arc::new(MockResourceMonitor::new_successful().into_dispatch()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }

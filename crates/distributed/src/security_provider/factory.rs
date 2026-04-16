@@ -23,6 +23,7 @@ use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use toadstool_common::universal_adapter::{CapabilityHandle, ServiceEndpoint};
 
+use super::dispatch::SecurityProviderDispatch;
 use super::provider::SecurityProvider;
 use super::unix_socket_provider::UnixSocketSecurityProvider;
 
@@ -64,7 +65,7 @@ impl SecurityProviderFactory {
     /// ```
     pub async fn create_from_handle(
         handle: &CapabilityHandle,
-    ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+    ) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
         // Inspect endpoint to determine provider type
         match handle.endpoint() {
             ServiceEndpoint::Http(url) => Self::create_http_provider(url).await,
@@ -81,7 +82,7 @@ impl SecurityProviderFactory {
     ///
     /// NOTE: HTTP is not the preferred transport for security operations.
     /// Use Unix sockets for local IPC or mDNS for remote discovery.
-    async fn create_http_provider(url: &str) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+    async fn create_http_provider(url: &str) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
         // HTTP transport is not ecoBin-compliant (requires TLS/HTTP stack)
         // Prefer Unix sockets for local communication
         Err(ToadStoolError::runtime(format!(
@@ -97,7 +98,7 @@ impl SecurityProviderFactory {
     /// This is the preferred transport for inter-primal IPC (ecoBin compliant).
     async fn create_unix_socket_provider(
         path: &std::path::Path,
-    ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+    ) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
         // Verify socket exists
         if !path.exists() {
             return Err(ToadStoolError::not_found(format!(
@@ -115,7 +116,7 @@ impl SecurityProviderFactory {
                     "✅ Connected to security provider via Unix socket: {}",
                     path.display()
                 );
-                Ok(Arc::new(provider) as Arc<dyn SecurityProvider>)
+                Ok(Arc::new(SecurityProviderDispatch::UnixSocket(provider)))
             }
             Err(e) => Err(ToadStoolError::runtime(format!(
                 "Security provider at {} not responding: {e}",
@@ -131,7 +132,7 @@ impl SecurityProviderFactory {
     async fn create_tcp_provider(
         host: &str,
         port: u16,
-    ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+    ) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
         use crate::security_provider::tcp_provider::TcpSecurityProvider;
 
         let provider = TcpSecurityProvider::new(host, port);
@@ -139,7 +140,7 @@ impl SecurityProviderFactory {
         match provider.health_check().await {
             Ok(_) => {
                 tracing::info!("Connected to security provider via TCP: {}:{}", host, port);
-                Ok(Arc::new(provider) as Arc<dyn SecurityProvider>)
+                Ok(Arc::new(SecurityProviderDispatch::Tcp(provider)))
             }
             Err(e) => Err(ToadStoolError::runtime(format!(
                 "Security provider at {host}:{port} not responding: {e}",
@@ -148,13 +149,15 @@ impl SecurityProviderFactory {
     }
 
     /// Create in-process provider
-    async fn create_in_process_provider() -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+    async fn create_in_process_provider() -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
         // For in-process, we can try to instantiate providers directly
 
         // Try Security implementation first
         use crate::security_provider::security_impl::DistributedSecurityProvider;
         match DistributedSecurityProvider::new().await {
-            Ok(provider) => return Ok(Arc::new(provider) as Arc<dyn SecurityProvider>),
+            Ok(provider) => {
+                return Ok(Arc::new(SecurityProviderDispatch::Distributed(provider)));
+            }
             Err(_) => {
                 // Security not available, try other providers
             }
@@ -169,12 +172,14 @@ impl SecurityProviderFactory {
             let keyring = LocalKeyringProvider::new();
             if keyring.backend() != &KeyringBackend::InMemory {
                 tracing::info!("LocalKeyringProvider available (OS keyring — dev/CI only)");
-                return Ok(Arc::new(keyring) as Arc<dyn SecurityProvider>);
+                return Ok(Arc::new(SecurityProviderDispatch::LocalKeyring(keyring)));
             }
 
             use crate::security_provider::software_hsm::SoftwareHsmProvider;
             tracing::info!("Using SoftwareHsmProvider (in-memory, ephemeral keys — dev/CI only)");
-            Ok(Arc::new(SoftwareHsmProvider::new()) as Arc<dyn SecurityProvider>)
+            Ok(Arc::new(SecurityProviderDispatch::SoftwareHsm(
+                SoftwareHsmProvider::new(),
+            )))
         }
 
         #[cfg(not(feature = "dev-crypto"))]
@@ -194,7 +199,7 @@ impl SecurityProviderFactory {
     async fn create_custom_provider(
         protocol: &str,
         address: &str,
-    ) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+    ) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
         Err(ToadStoolError::runtime(format!(
             "Custom protocol '{protocol}' at '{address}' is not supported. \
              ecoBin-compliant transports: UnixSocket (preferred), TCP (cross-machine), InProcess.",
@@ -203,8 +208,10 @@ impl SecurityProviderFactory {
 
     /// Create a mock provider for testing (not available in default production builds)
     #[cfg(any(test, feature = "test-mocks"))]
-    pub fn create_mock() -> Arc<dyn SecurityProvider> {
-        Arc::new(super::provider::MockSecurityProvider::new())
+    pub fn create_mock() -> Arc<SecurityProviderDispatch> {
+        Arc::new(SecurityProviderDispatch::Mock(
+            super::provider::MockSecurityProvider::new(),
+        ))
     }
 }
 
@@ -230,7 +237,7 @@ impl SecurityProviderFactory {
 /// ```
 pub async fn discover_security_provider(
     features: Vec<toadstool_common::universal_adapter::SecurityFeature>,
-) -> ToadStoolResult<Arc<dyn SecurityProvider>> {
+) -> ToadStoolResult<Arc<SecurityProviderDispatch>> {
     use toadstool_common::universal_adapter::{CapabilityType, TrustLevel, UniversalAdapter};
 
     // Discover security capability via Universal Adapter

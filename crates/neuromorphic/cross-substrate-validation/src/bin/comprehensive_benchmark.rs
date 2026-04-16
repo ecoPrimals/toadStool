@@ -8,7 +8,7 @@
 
 use akida_driver::DeviceManager;
 use cross_substrate_validation::{print_results_summary, run_comprehensive_benchmark};
-use toadstool_runtime_universal::UniversalRuntime;
+use toadstool_runtime_universal::{ComputeUnit, UniversalRuntime};
 
 /// Typed error for comprehensive benchmark.
 #[derive(Debug, thiserror::Error)]

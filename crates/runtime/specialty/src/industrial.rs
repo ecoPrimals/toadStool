@@ -12,7 +12,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
@@ -103,8 +102,8 @@ impl LegacyAdapter for PLCAdapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing PLC adapter");
             for (name, industrial_config) in &config.industrial_configs {
                 if matches!(
@@ -117,23 +116,21 @@ impl LegacyAdapter for PLCAdapter {
                 }
             }
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down PLC adapter");
             Ok(())
-        })
+        }
     }
 
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             let plc_job = PLCJob {
                 job_id: job.job_id,
                 program: "PLC Program".to_string(),
@@ -142,14 +139,14 @@ impl LegacyAdapter for PLCAdapter {
 
             self.active_jobs.write().await.insert(job.job_id, plc_job);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -160,28 +157,25 @@ impl LegacyAdapter for PLCAdapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }
             drop(jobs);
             Ok(())
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         _job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async {
             Ok(JobOutput {
                 stdout: "PLC execution output".to_string(),
                 stderr: String::new(),
@@ -189,13 +183,11 @@ impl LegacyAdapter for PLCAdapter {
                 output_files: vec![],
                 binary_output: None,
             })
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             Ok(SystemInfo {
                 system_name: "PLC System".to_string(),
                 system_type: LegacySystemType::PlcLadder,
@@ -227,13 +219,11 @@ impl LegacyAdapter for PLCAdapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async { Ok(true) })
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async { Ok(true) }
     }
 }
 
@@ -249,8 +239,8 @@ impl LegacyAdapter for SCADAAdapter {
     fn initialize<'a>(
         &'a mut self,
         config: &'a SpecialtyRuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Initializing SCADA adapter");
             for (name, industrial_config) in &config.industrial_configs {
                 if matches!(
@@ -263,23 +253,21 @@ impl LegacyAdapter for SCADAAdapter {
                 }
             }
             Ok(())
-        })
+        }
     }
 
-    fn shutdown<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
+    fn shutdown<'a>(&'a mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async {
             info!("Shutting down SCADA adapter");
             Ok(())
-        })
+        }
     }
 
     fn submit_job(
         &self,
         job: LegacyJob,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Uuid>> + Send + '_ {
+        async move {
             let scada_job = SCADAJob {
                 job_id: job.job_id,
                 configuration: "SCADA Configuration".to_string(),
@@ -288,14 +276,14 @@ impl LegacyAdapter for SCADAAdapter {
 
             self.active_jobs.write().await.insert(job.job_id, scada_job);
             Ok(job.job_id)
-        })
+        }
     }
 
     fn get_job_status(
         &self,
         job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobStatus>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<JobStatus>> + Send + '_ {
+        async move {
             let jobs = self.active_jobs.read().await;
             jobs.get(&job_id).map_or_else(
                 || {
@@ -306,28 +294,25 @@ impl LegacyAdapter for SCADAAdapter {
                 },
                 |job| Ok(job.status.clone()),
             )
-        })
+        }
     }
 
-    fn cancel_job(
-        &self,
-        job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn cancel_job(&self, job_id: Uuid) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             let mut jobs = self.active_jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
             }
             drop(jobs);
             Ok(())
-        })
+        }
     }
 
     fn get_job_output(
         &self,
         _job_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<JobOutput>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<JobOutput>> + Send + '_ {
+        async {
             Ok(JobOutput {
                 stdout: "SCADA execution output".to_string(),
                 stderr: String::new(),
@@ -335,13 +320,11 @@ impl LegacyAdapter for SCADAAdapter {
                 output_files: vec![],
                 binary_output: None,
             })
-        })
+        }
     }
 
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>> {
-        Box::pin(async {
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_ {
+        async {
             Ok(SystemInfo {
                 system_name: "SCADA System".to_string(),
                 system_type: LegacySystemType::ScadaSystem,
@@ -373,12 +356,10 @@ impl LegacyAdapter for SCADAAdapter {
                 },
                 status: crate::SystemStatus::Online,
             })
-        })
+        }
     }
 
-    fn test_connectivity(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + '_>> {
-        Box::pin(async { Ok(true) })
+    fn test_connectivity(&self) -> impl Future<Output = ToadStoolResult<bool>> + Send + '_ {
+        async { Ok(true) }
     }
 }

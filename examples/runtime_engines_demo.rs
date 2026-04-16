@@ -20,6 +20,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use uuid::Uuid;
@@ -52,8 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration
     let config = ToadStoolConfig::default();
 
-    // Create runtime orchestrator with selection strategy
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    // Create runtime orchestrator with selection strategy (native engine type for this demo).
+    let orchestrator = RuntimeOrchestrator::<NativeRuntimeEngine>::create(
+        RuntimeSelectionStrategy::FirstAvailable,
+    );
 
     // Initialize and register all runtime engines
     println!("\n📦 Initializing Runtime Engines...");
@@ -62,17 +65,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let native_engine = NativeRuntimeEngine::new();
     println!("✅ Native Runtime Engine initialized");
     let _ = orchestrator
-        .register_engine(RuntimeType::Native, Box::new(native_engine))
+        .register_engine(RuntimeType::Native, Arc::new(native_engine))
         .await;
 
     // 2. WebAssembly Runtime Engine
     let wasm_config = toadstool_runtime_wasm::WasmRuntimeConfig::default();
     match WasmRuntimeEngine::new(wasm_config) {
-        Ok(wasm_engine) => {
-            println!("✅ WebAssembly Runtime Engine initialized");
-            let _ = orchestrator
-                .register_engine(RuntimeType::Wasm, Box::new(wasm_engine))
-                .await;
+        Ok(_wasm_engine) => {
+            println!(
+                "✅ WebAssembly Runtime Engine initialized (demo keeps a single engine type in the orchestrator; WASM is not registered here)"
+            );
         }
         Err(e) => println!("❌ WebAssembly Runtime Engine failed: {e}"),
     }

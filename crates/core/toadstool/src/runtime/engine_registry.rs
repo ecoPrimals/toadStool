@@ -8,25 +8,25 @@ use tracing::info;
 
 use crate::{ExecutionRequest, RuntimeEngine, RuntimeType, ToadStoolError, ToadStoolResult};
 
-pub(crate) struct EngineRegistry {
-    engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
+pub(crate) struct EngineRegistry<E: RuntimeEngine> {
+    engines: Arc<RwLock<HashMap<RuntimeType, Arc<E>>>>,
 }
 
-impl EngineRegistry {
+impl<E: RuntimeEngine> EngineRegistry<E> {
     pub(crate) fn new() -> Self {
         Self {
             engines: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    pub(crate) fn engines(&self) -> &Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>> {
+    pub(crate) fn engines(&self) -> &Arc<RwLock<HashMap<RuntimeType, Arc<E>>>> {
         &self.engines
     }
 
     pub async fn register_engine(
         &self,
         runtime_type: RuntimeType,
-        engine: Box<dyn RuntimeEngine>,
+        engine: Arc<E>,
     ) -> ToadStoolResult<()> {
         info!("Registering runtime engine: {:?}", runtime_type);
 
@@ -48,10 +48,10 @@ pub enum RuntimeSelectionStrategy {
 }
 
 impl RuntimeSelectionStrategy {
-    pub(crate) async fn select_runtime(
+    pub(crate) async fn select_runtime<E: RuntimeEngine>(
         &self,
         request: &ExecutionRequest,
-        engines: &Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
+        engines: &Arc<RwLock<HashMap<RuntimeType, Arc<E>>>>,
     ) -> ToadStoolResult<RuntimeType> {
         let engines_guard = engines.read().await;
         let workload_type = request.workload.workload_type();

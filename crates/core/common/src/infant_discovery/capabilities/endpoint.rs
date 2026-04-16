@@ -46,6 +46,9 @@ impl Default for EndpointResolver {
 /// Endpoint source trait - one way to find service endpoints
 ///
 /// Migrated from `async_trait` to native async for zero-cost abstraction.
+///
+/// Async methods return a pinned boxed future, not `impl Future` (RPITIT), so the trait remains
+/// object-safe for `dyn EndpointSource` in the discovery engine and resolver.
 pub trait EndpointSource: Send + Sync {
     /// Try to resolve service endpoint from this source
     fn resolve(

@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::pin::Pin;
 use toadstool::error::ToadStoolResult;
 
 use super::types::{
@@ -37,7 +36,6 @@ use super::types::{DecryptionMetadata, SecurityProof};
 /// - ✅ Runtime discovery: Universal Adapter finds best provider
 /// - ✅ Self-knowledge: Each provider knows only itself
 /// - ✅ Testable: Easy to mock for testing
-// Object-safe async trait via explicit `Pin<Box<dyn Future<...>>>` (dyn-compatible).
 pub trait SecurityProvider: Send + Sync {
     /// Get provider capabilities
     ///
@@ -45,15 +43,13 @@ pub trait SecurityProvider: Send + Sync {
     /// Used by Universal Adapter for best-match selection.
     fn capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_;
 
     /// Get provider metadata
     ///
     /// Returns information about this provider (type, version, etc.).
     /// Note: Does NOT return primal name! Returns generic metadata.
-    fn metadata(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>>;
+    fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_;
 
     /// Encrypt data
     ///
@@ -71,7 +67,7 @@ pub trait SecurityProvider: Send + Sync {
         &'a self,
         data: &'a [u8],
         options: Option<EncryptionOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a;
 
     /// Decrypt data
     ///
@@ -89,7 +85,7 @@ pub trait SecurityProvider: Send + Sync {
         &'a self,
         ciphertext: &'a [u8],
         metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a;
 
     /// Sign data
     ///
@@ -107,7 +103,7 @@ pub trait SecurityProvider: Send + Sync {
         &'a self,
         data: &'a [u8],
         options: Option<SigningOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a;
 
     /// Verify signature
     ///
@@ -127,7 +123,7 @@ pub trait SecurityProvider: Send + Sync {
         data: &'a [u8],
         signature: &'a [u8],
         public_key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a;
 
     /// Create a permission
     ///
@@ -143,7 +139,7 @@ pub trait SecurityProvider: Send + Sync {
     fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_;
 
     /// Validate a permission
     ///
@@ -159,7 +155,7 @@ pub trait SecurityProvider: Send + Sync {
     fn validate_permission<'a>(
         &'a self,
         permission: &'a SecurityPermission,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a;
 
     /// Revoke a permission
     ///
@@ -177,7 +173,7 @@ pub trait SecurityProvider: Send + Sync {
         &'a self,
         permission_id: &'a uuid::Uuid,
         reason: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Health check
     ///
@@ -186,9 +182,7 @@ pub trait SecurityProvider: Send + Sync {
     /// # Returns
     ///
     /// Provider health status
-    fn health_check(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>>;
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_;
 }
 
 /// Security capabilities a provider can offer
@@ -307,30 +301,28 @@ impl MockSecurityProvider {
 impl SecurityProvider for MockSecurityProvider {
     fn capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_ {
         let caps = self.capabilities.clone();
-        Box::pin(async move { Ok(caps) })
+        async move { Ok(caps) }
     }
 
-    fn metadata(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
-        Box::pin(async {
+    fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_ {
+        async {
             Ok(ProviderMetadata {
                 provider_id: uuid::Uuid::new_v4().to_string(),
                 provider_type: "mock".to_string(),
                 provider_version: "1.0.0".to_string(),
                 metadata: std::collections::HashMap::new(),
             })
-        })
+        }
     }
 
     fn encrypt<'a>(
         &'a self,
         data: &'a [u8],
         _options: Option<EncryptionOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a {
+        async move {
             // Mock encryption: just reverse bytes
             let mut ciphertext = data.to_vec();
             ciphertext.reverse();
@@ -345,15 +337,15 @@ impl SecurityProvider for MockSecurityProvider {
                     encrypted_at: std::time::SystemTime::now(),
                 },
             })
-        })
+        }
     }
 
     fn decrypt<'a>(
         &'a self,
         ciphertext: &'a [u8],
         _metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a {
+        async move {
             // Mock decryption: reverse bytes back
             let mut plaintext = ciphertext.to_vec();
             plaintext.reverse();
@@ -365,22 +357,22 @@ impl SecurityProvider for MockSecurityProvider {
                     decrypted_at: std::time::SystemTime::now(),
                 },
             })
-        })
+        }
     }
 
     fn sign<'a>(
         &'a self,
         _data: &'a [u8],
         _options: Option<SigningOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a {
+        async {
             Ok(SignatureResult {
                 signature: vec![0xDE, 0xAD, 0xBE, 0xEF],
                 algorithm: SignatureAlgorithm::Ed25519,
                 key_id: "mock-key".to_string(),
                 signed_at: std::time::SystemTime::now(),
             })
-        })
+        }
     }
 
     fn verify<'a>(
@@ -388,15 +380,15 @@ impl SecurityProvider for MockSecurityProvider {
         _data: &'a [u8],
         _signature: &'a [u8],
         _public_key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
-        Box::pin(async { Ok(VerificationResult::Valid) })
+    ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a {
+        async { Ok(VerificationResult::Valid) }
     }
 
     fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_ {
+        async move {
             let now = std::time::SystemTime::now();
 
             Ok(SecurityPermission {
@@ -419,29 +411,26 @@ impl SecurityProvider for MockSecurityProvider {
                     metadata: std::collections::HashMap::new(),
                 },
             })
-        })
+        }
     }
 
     fn validate_permission<'a>(
         &'a self,
         _permission: &'a SecurityPermission,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
-    {
-        Box::pin(async { Ok(PermissionValidationResult::Valid) })
+    ) -> impl Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a {
+        async { Ok(PermissionValidationResult::Valid) }
     }
 
     fn revoke_permission<'a>(
         &'a self,
         _permission_id: &'a uuid::Uuid,
         _reason: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async { Ok(()) }
     }
 
-    fn health_check(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
-        Box::pin(async { Ok(ProviderHealth::Healthy) })
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
+        async { Ok(ProviderHealth::Healthy) }
     }
 }
 

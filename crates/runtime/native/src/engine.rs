@@ -3,9 +3,7 @@
 
 use bytes::Bytes;
 use std::collections::HashMap;
-use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -22,7 +20,7 @@ use toadstool::{
         ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
         RuntimeConfig, RuntimeEngine, RuntimeType,
     },
-    resources::{ResourceMonitor, RuntimeMetrics},
+    resources::{ResourceMonitor, ResourceMonitorDispatch, RuntimeMetrics},
     workload::WorkloadSpec,
 };
 
@@ -35,7 +33,7 @@ use crate::validation;
 pub struct NativeRuntimeEngine {
     pub(crate) config: RuntimeConfig,
     active_processes: Arc<RwLock<HashMap<Uuid, ProcessHandle>>>,
-    resource_monitor: Option<Arc<dyn ResourceMonitor>>,
+    resource_monitor: Option<Arc<ResourceMonitorDispatch>>,
     capabilities: RuntimeCapabilities,
 }
 
@@ -67,7 +65,7 @@ impl NativeRuntimeEngine {
 
     /// Attach resource monitor for execution metrics
     #[must_use]
-    pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
+    pub fn with_resource_monitor(mut self, monitor: Arc<ResourceMonitorDispatch>) -> Self {
         self.resource_monitor = Some(monitor);
         self
     }
@@ -201,8 +199,8 @@ impl RuntimeEngine for NativeRuntimeEngine {
     fn initialize(
         &mut self,
         config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("Initializing Native Runtime Engine");
             self.config = config;
 
@@ -221,14 +219,14 @@ impl RuntimeEngine for NativeRuntimeEngine {
                     "Failed to initialize native runtime: {e}"
                 ))),
             }
-        })
+        }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             info!("Executing native workload: {}", request.execution_id);
 
             let processes = self.active_processes.read().await;
@@ -265,7 +263,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
             let executable_path = validation::resolve_executable(&self.config, executable_source)?;
 
             self.execute_workload(&request, executable_path).await
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -278,18 +276,18 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async {
             if self.active_processes.read().await.is_empty() {
                 return Ok(RuntimeMetrics::default());
             }
 
             Ok(RuntimeMetrics::default())
-        })
+        }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async {
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
             info!("Shutting down Native Runtime Engine");
 
             let to_kill: Vec<(Uuid, Option<Child>)> = {
@@ -310,7 +308,7 @@ impl RuntimeEngine for NativeRuntimeEngine {
 
             info!("Native runtime engine shut down successfully");
             Ok(())
-        })
+        }
     }
 }
 

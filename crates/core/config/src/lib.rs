@@ -40,6 +40,7 @@ pub mod builder; // ✅ NEW: Unified configuration builders
 pub mod config_utils;
 pub mod constants;
 pub mod defaults;
+pub mod discovery_client_dispatch;
 pub mod discovery_defaults;
 pub mod discovery_integration;
 pub mod env_config;
@@ -47,6 +48,7 @@ pub mod mdns_discovery; // ✅ Phase 4: mDNS service discovery
 pub mod network_config;
 pub mod ports;
 pub mod primal_capabilities; // ✅ NEW: Universal capability-based discovery
+pub use discovery_client_dispatch::DiscoveryClientDispatch;
 pub mod runtime_defaults;
 pub mod services;
 

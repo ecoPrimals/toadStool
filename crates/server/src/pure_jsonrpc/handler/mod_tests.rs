@@ -7,7 +7,9 @@ use super::JsonRpcHandler;
 use crate::pure_jsonrpc::types::{JsonRpcError, JsonRpcRequest};
 
 fn test_handler() -> JsonRpcHandler {
-    let executor = Arc::new(crate::tarpc_server::StandaloneExecutor::new());
+    let executor = Arc::new(crate::tarpc_server::WorkloadExecutorDispatch::Standalone(
+        crate::tarpc_server::StandaloneExecutor::new(),
+    ));
     JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 

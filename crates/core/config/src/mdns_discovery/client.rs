@@ -2,8 +2,6 @@
 //! mDNS discovery client: cache, registration, and [`DiscoveryClient`] trait.
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
@@ -187,158 +185,109 @@ impl MdnsDiscoveryClient {
 }
 
 impl DiscoveryClient for MdnsDiscoveryClient {
-    fn discover_by_capability<'a>(
+    async fn discover_by_capability<'a>(
         &'a self,
         capability: &'a Capability,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
-        Box::pin(async move {
-            // Clean up stale entries first
-            self.cleanup_stale_entries().await;
+    ) -> ToadStoolResult<Vec<DiscoveredService>> {
+        // Clean up stale entries first
+        self.cleanup_stale_entries().await;
 
-            // Trigger mDNS discovery for ecoPrimals services
-            // Note: Currently using cache-based discovery. When mdns-sd is integrated,
-            // this will trigger actual mDNS queries for service discovery.
-            // For now, services must be explicitly registered via register_service().
-
-            // Future: Trigger actual mDNS-SD browse for _ecoprimals._tcp.local.
-            // This will automatically discover services on the network without
-            // explicit registration.
-
-            // Query cache for services with requested capability
-            let services: Vec<DiscoveredService> = self
-                .cache
-                .read()
-                .await
-                .values()
-                .filter_map(|entry| {
-                    if entry.service.capabilities.contains(capability) {
-                        Some(entry.service.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            if services.is_empty() {
-                debug!(
-                    "No services found with capability {:?} via mDNS",
-                    capability
-                );
-            } else {
-                info!(
-                    "Found {} service(s) with capability {:?} via mDNS",
-                    services.len(),
-                    capability
-                );
-            }
-
-            Ok(services)
-        })
-    }
-
-    fn discover_all<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<DiscoveredService>>> + Send + 'a>> {
-        Box::pin(async move {
-            // Clean up stale entries first
-            self.cleanup_stale_entries().await;
-
-            // Trigger mDNS browse for all ecoPrimals services
-            // Future: When mdns-sd is integrated, this will browse for all services
-
-            let services: Vec<DiscoveredService> = self
-                .cache
-                .read()
-                .await
-                .values()
-                .map(|entry| entry.service.clone())
-                .collect();
-
-            info!("Discovered {} total service(s) via mDNS", services.len());
-            Ok(services)
-        })
-    }
-
-    fn register_service<'a>(
-        &'a self,
-        service: &'a DiscoveredService,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            let service_id = service.id.as_deref().unwrap_or("unknown");
-            info!("Registering service {} via mDNS", service_id);
-
-            // Advertise service via mDNS
-            // Future: When mdns-sd is integrated, this will:
-            // 1. Create an mDNS service record for _ecoprimals._tcp.local.
-            // 2. Add TXT records encoding service capabilities
-            // 3. Respond to mDNS queries automatically
-            //
-            // For now, we track advertised services for future integration
-            if !service.endpoints.is_empty() {
-                let hostname = format!("{service_id}.local");
-
-                self.advertised_services
-                    .write()
-                    .await
-                    .insert(service_id.to_string(), hostname.clone());
-
-                info!(
-                    "Service {} registered (hostname: {}, type: {})",
-                    service_id, hostname, MDNS_SERVICE_TYPE,
-                );
-                debug!("Full mDNS advertisement will be enabled when mdns-sd is integrated");
-            }
-
-            // Add to cache (always do this regardless of mDNS status)
-            self.cache_service(service.clone()).await;
-
-            Ok(())
-        })
-    }
-
-    fn deregister_service<'a>(
-        &'a self,
-        service_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            info!("Deregistering service {} from mDNS", service_id);
-
-            // Stop advertising service via mDNS
-            // Future: When mdns-sd is integrated, this will stop mDNS responses
-            let value = self.advertised_services.write().await.remove(service_id);
-            if let Some(hostname) = value {
-                info!(
-                    "Deregistered service {} (hostname: {})",
-                    service_id, hostname
-                );
-            }
-
-            // Remove from cache
-            self.cache.write().await.remove(service_id);
-
-            Ok(())
-        })
-    }
-
-    fn health_check<'a>(
-        &'a self,
-        service_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>> {
-        Box::pin(async move {
-            // Update last_seen timestamp
-            self.touch_service(service_id).await;
-
-            // In mDNS, presence on network indicates health
-            // Services that go offline stop responding to mDNS queries
-            let cache = self.cache.read().await;
-            cache.get(service_id).map_or(Ok(false), |entry| {
-                let age = SystemTime::now()
-                    .duration_since(entry.last_seen)
-                    .unwrap_or(Duration::from_secs(0));
-
-                // Consider healthy if seen within TTL period
-                Ok(age < self.cache_ttl)
+        // Query cache for services with requested capability
+        let services: Vec<DiscoveredService> = self
+            .cache
+            .read()
+            .await
+            .values()
+            .filter_map(|entry| {
+                if entry.service.capabilities.contains(capability) {
+                    Some(entry.service.clone())
+                } else {
+                    None
+                }
             })
+            .collect();
+
+        if services.is_empty() {
+            debug!(
+                "No services found with capability {:?} via mDNS",
+                capability
+            );
+        } else {
+            info!(
+                "Found {} service(s) with capability {:?} via mDNS",
+                services.len(),
+                capability
+            );
+        }
+
+        Ok(services)
+    }
+
+    async fn discover_all(&self) -> ToadStoolResult<Vec<DiscoveredService>> {
+        self.cleanup_stale_entries().await;
+
+        let services: Vec<DiscoveredService> = self
+            .cache
+            .read()
+            .await
+            .values()
+            .map(|entry| entry.service.clone())
+            .collect();
+
+        info!("Discovered {} total service(s) via mDNS", services.len());
+        Ok(services)
+    }
+
+    async fn register_service<'a>(&'a self, service: &'a DiscoveredService) -> ToadStoolResult<()> {
+        let service_id = service.id.as_deref().unwrap_or("unknown");
+        info!("Registering service {} via mDNS", service_id);
+
+        if !service.endpoints.is_empty() {
+            let hostname = format!("{service_id}.local");
+
+            self.advertised_services
+                .write()
+                .await
+                .insert(service_id.to_string(), hostname.clone());
+
+            info!(
+                "Service {} registered (hostname: {}, type: {})",
+                service_id, hostname, MDNS_SERVICE_TYPE,
+            );
+            debug!("Full mDNS advertisement will be enabled when mdns-sd is integrated");
+        }
+
+        self.cache_service(service.clone()).await;
+
+        Ok(())
+    }
+
+    async fn deregister_service(&self, service_id: &str) -> ToadStoolResult<()> {
+        info!("Deregistering service {} from mDNS", service_id);
+
+        let value = self.advertised_services.write().await.remove(service_id);
+        if let Some(hostname) = value {
+            info!(
+                "Deregistered service {} (hostname: {})",
+                service_id, hostname
+            );
+        }
+
+        self.cache.write().await.remove(service_id);
+
+        Ok(())
+    }
+
+    async fn health_check<'a>(&'a self, service_id: &'a str) -> ToadStoolResult<bool> {
+        self.touch_service(service_id).await;
+
+        let cache = self.cache.read().await;
+        cache.get(service_id).map_or(Ok(false), |entry| {
+            let age = SystemTime::now()
+                .duration_since(entry.last_seen)
+                .unwrap_or(Duration::from_secs(0));
+
+            Ok(age < self.cache_ttl)
         })
     }
 }

@@ -62,9 +62,9 @@ fn resolve_env_port(env_var: &str, default: u16) -> u16 {
 mod tests;
 
 /// Complete primal discovery engine with mDNS integration
-pub struct PrimalDiscoveryEngine {
+pub struct PrimalDiscoveryEngine<C: DiscoveryClient> {
     /// Primary discovery backend (mDNS)
-    mdns_client: Option<Arc<dyn DiscoveryClient + Send + Sync>>,
+    mdns_client: Option<Arc<C>>,
 
     /// Discovered endpoints cache
     cache: Arc<RwLock<HashMap<String, CachedEndpoint>>>,
@@ -189,25 +189,14 @@ impl DiscoveryConfig {
     }
 }
 
-impl PrimalDiscoveryEngine {
-    /// Create new discovery engine with mDNS client
-    ///
-    /// # Errors
-    ///
-    /// Returns error if mDNS client is required but unavailable
-    pub fn new(
-        mdns_client: Option<Arc<dyn DiscoveryClient + Send + Sync>>,
-    ) -> ToadStoolResult<Self> {
-        Self::with_config(mdns_client, DiscoveryConfig::default())
-    }
-
+impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
     /// Create with custom configuration
     ///
     /// # Errors
     ///
     /// Returns error if configuration is invalid or mDNS client is required but missing
     pub fn with_config(
-        mdns_client: Option<Arc<dyn DiscoveryClient + Send + Sync>>,
+        mdns_client: Option<Arc<C>>,
         config: DiscoveryConfig,
     ) -> ToadStoolResult<Self> {
         // Validate configuration
@@ -234,6 +223,33 @@ impl PrimalDiscoveryEngine {
             config: Arc::new(config),
         })
     }
+}
+
+impl PrimalDiscoveryEngine<crate::runtime_discovery::LocalhostDiscoveryClient> {
+    /// Create new discovery engine without an external discovery client (cache + fallbacks only).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if configuration is invalid
+    pub fn new_without_client() -> ToadStoolResult<Self> {
+        Self::with_config(None, DiscoveryConfig::default())
+    }
+
+    /// Same as [`Self::with_config`] with no external client.
+    pub fn without_client(config: DiscoveryConfig) -> ToadStoolResult<Self> {
+        Self::with_config(None, config)
+    }
+}
+
+impl<C: DiscoveryClient> PrimalDiscoveryEngine<C> {
+    /// Create new discovery engine with optional discovery client and default configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if mDNS client is required but unavailable
+    pub fn with_client_and_defaults(mdns_client: Option<Arc<C>>) -> ToadStoolResult<Self> {
+        Self::with_config(mdns_client, DiscoveryConfig::default())
+    }
 
     /// Discover service by capability (main interface)
     ///
@@ -252,7 +268,7 @@ impl PrimalDiscoveryEngine {
     /// # use toadstool_common::primal_discovery_complete::PrimalDiscoveryEngine;
     /// # use toadstool_common::primal_identity::Capability;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-    /// let engine = PrimalDiscoveryEngine::new(None)?;
+    /// let engine = PrimalDiscoveryEngine::new_without_client()?;
     ///
     /// // Find orchestration service (discovers Songbird if available)
     /// let services = engine.discover_by_capability(&Capability::Coordination(

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use std::future::Future;
-use std::pin::Pin;
+use std::sync::Arc;
+
+use crate::ToadStoolResult;
 
 use super::*;
 
@@ -23,14 +24,10 @@ impl CryptoProvider for MockProvider {
         &'a self,
         _data: &'a [u8],
         _key: &'a EncryptionKey,
-    ) -> Pin<
-        Box<
-            dyn Future<Output = ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>>
-                + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move { Ok((EncryptedPayload::default(), EncryptionMetadata::default())) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>>
+    + Send
+    + 'a {
+        async { Ok((EncryptedPayload::default(), EncryptionMetadata::default())) }
     }
 
     fn decrypt<'a>(
@@ -38,34 +35,34 @@ impl CryptoProvider for MockProvider {
         _encrypted: &'a EncryptedPayload,
         _key: &'a EncryptionKey,
         _metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
-        Box::pin(async move { Ok(vec![]) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a {
+        async { Ok(vec![]) }
     }
 
     fn generate_key(
         &self,
         _security_level: SecurityLevel,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_>> {
-        Box::pin(async move { Ok(EncryptionKey::default()) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_ {
+        async { Ok(EncryptionKey::default()) }
     }
 
     fn get_key<'a>(
         &'a self,
         _key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a>> {
-        Box::pin(async move { Ok(EncryptionKey::default()) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a {
+        async { Ok(EncryptionKey::default()) }
     }
 
     fn health_check(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
-        Box::pin(async move { Ok(ProviderHealth::healthy(10)) })
+    ) -> impl std::future::Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
+        async { Ok(ProviderHealth::healthy(10)) }
     }
 }
 
 #[tokio::test]
 async fn test_registry_register() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "test".to_string(),
         capability: CryptoCapability {
@@ -84,7 +81,7 @@ async fn test_registry_register() {
 
 #[tokio::test]
 async fn test_registry_find_provider() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "test".to_string(),
         capability: CryptoCapability {
@@ -151,13 +148,13 @@ fn test_provider_health_debug_clone() {
 
 #[tokio::test]
 async fn test_registry_default() {
-    let registry = CryptoProviderRegistry::default();
+    let registry = CryptoProviderRegistry::<MockProvider>::default();
     assert!(registry.list_providers().await.is_empty());
 }
 
 #[tokio::test]
 async fn test_registry_register_duplicate_fails() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "dup".to_string(),
         capability: CryptoCapability {
@@ -180,7 +177,7 @@ async fn test_registry_register_duplicate_fails() {
 
 #[tokio::test]
 async fn test_registry_unregister_not_found() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let result = registry.unregister("nonexistent").await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("not found"));
@@ -188,7 +185,7 @@ async fn test_registry_unregister_not_found() {
 
 #[tokio::test]
 async fn test_registry_unregister() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "unreg".to_string(),
         capability: CryptoCapability {
@@ -206,7 +203,7 @@ async fn test_registry_unregister() {
 
 #[tokio::test]
 async fn test_registry_find_provider_no_match() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "test".to_string(),
         capability: CryptoCapability {
@@ -228,7 +225,7 @@ async fn test_registry_find_provider_no_match() {
 
 #[tokio::test]
 async fn test_registry_find_all_providers() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let p1 = Arc::new(MockProvider {
         id: "p1".to_string(),
         capability: CryptoCapability {
@@ -259,7 +256,7 @@ async fn test_registry_find_all_providers() {
 
 #[tokio::test]
 async fn test_registry_get_provider() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "get-me".to_string(),
         capability: CryptoCapability {
@@ -279,7 +276,7 @@ async fn test_registry_get_provider() {
 
 #[tokio::test]
 async fn test_registry_health_check_all() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let provider = Arc::new(MockProvider {
         id: "healthy".to_string(),
         capability: CryptoCapability {
@@ -298,14 +295,14 @@ async fn test_registry_health_check_all() {
 
 #[tokio::test]
 async fn test_registry_list_providers_empty() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     let list = registry.list_providers().await;
     assert!(list.is_empty());
 }
 
 #[tokio::test]
 async fn test_registry_list_providers_multiple() {
-    let registry = CryptoProviderRegistry::new();
+    let registry = CryptoProviderRegistry::<MockProvider>::new();
     for (id, alg) in [("a", "aes"), ("b", "chacha")] {
         let provider = Arc::new(MockProvider {
             id: id.to_string(),

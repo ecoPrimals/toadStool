@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
-use crate::universal::{ComputeBuffer, OptimizationHints, Precision};
+use crate::universal::{ComputeBuffer, ComputeContext, OptimizationHints, Precision};
 
 #[test]
 fn test_cpu_resource_creation() {

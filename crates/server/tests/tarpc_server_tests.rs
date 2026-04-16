@@ -7,42 +7,21 @@
 )]
 //! Integration tests for ToadStool tarpc server
 
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use tarpc::context::Context;
 
 use toadstool_server::rpc_types::{
-    AvailableResources, ComputeCapabilities, ExecutionMetrics, ResourceRequirements,
-    ToadStoolComputeRpc, WorkloadPriority, WorkloadResult, WorkloadStatus, WorkloadSubmission,
+    ResourceRequirements, ToadStoolComputeRpc, WorkloadPriority, WorkloadStatus, WorkloadSubmission,
 };
-use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
+use toadstool_server::tarpc_server::{
+    StandaloneExecutor, TestWorkloadDouble, ToadStoolTarpcServer, WorkloadExecutor,
+    WorkloadExecutorDispatch,
+};
 
-/// Mock executor that fails on execute for testing error paths
-struct FailingExecutor;
-
-impl WorkloadExecutor for FailingExecutor {
-    fn execute(
-        &self,
-        _submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
-        Box::pin(async move { Err("executor failed".to_string()) })
-    }
-
-    fn query_capabilities(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
-        Box::pin(async move { Err("capabilities unavailable".to_string()) })
-    }
-
-    fn cancel<'a>(
-        &'a self,
-        _workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
-        Box::pin(async move { Err("cancel failed".to_string()) })
-    }
+fn arc_test_dispatch(kind: TestWorkloadDouble) -> Arc<WorkloadExecutorDispatch> {
+    Arc::new(WorkloadExecutorDispatch::TestDouble(kind))
 }
 
 fn sample_submission(workload_id: &str) -> WorkloadSubmission {
@@ -63,7 +42,9 @@ fn sample_submission(workload_id: &str) -> WorkloadSubmission {
 
 #[tokio::test]
 async fn test_server_creation() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let health = server
@@ -77,14 +58,18 @@ async fn test_server_creation() {
 #[tokio::test]
 async fn test_server_creation_with_error_count() {
     let error_count = Arc::new(AtomicU64::new(0));
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let _server = ToadStoolTarpcServer::new("0.2.0", executor, Some(Arc::clone(&error_count)));
     assert_eq!(error_count.load(Ordering::Relaxed), 0);
 }
 
 #[tokio::test]
 async fn test_health_check() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let health = server
@@ -99,7 +84,9 @@ async fn test_health_check() {
 
 #[tokio::test]
 async fn test_submit_workload_success() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let submission = sample_submission("work-001");
 
@@ -118,7 +105,7 @@ async fn test_submit_workload_executor_error() {
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new(
         "0.1.0",
-        Arc::new(FailingExecutor),
+        arc_test_dispatch(TestWorkloadDouble::FailingIntegration),
         Some(Arc::clone(&error_count)),
     );
     let submission = sample_submission("work-fail");
@@ -132,7 +119,9 @@ async fn test_submit_workload_executor_error() {
 
 #[tokio::test]
 async fn test_query_status_found() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let submission = sample_submission("work-query");
     server
@@ -151,7 +140,9 @@ async fn test_query_status_found() {
 
 #[tokio::test]
 async fn test_query_status_not_found() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, Some(Arc::clone(&error_count)));
 
@@ -166,7 +157,9 @@ async fn test_query_status_not_found() {
 
 #[tokio::test]
 async fn test_cancel_workload() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let submission = sample_submission("work-cancel");
     server
@@ -193,7 +186,7 @@ async fn test_cancel_workload_executor_error() {
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new(
         "0.1.0",
-        Arc::new(FailingExecutor),
+        arc_test_dispatch(TestWorkloadDouble::FailingIntegration),
         Some(Arc::clone(&error_count)),
     );
 
@@ -208,7 +201,9 @@ async fn test_cancel_workload_executor_error() {
 
 #[tokio::test]
 async fn test_list_workloads() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     server
         .clone()
@@ -233,7 +228,7 @@ async fn test_query_capabilities_executor_error() {
     let error_count = Arc::new(AtomicU64::new(0));
     let server = ToadStoolTarpcServer::new(
         "0.1.0",
-        Arc::new(FailingExecutor),
+        arc_test_dispatch(TestWorkloadDouble::FailingIntegration),
         Some(Arc::clone(&error_count)),
     );
 
@@ -261,7 +256,9 @@ async fn test_standalone_executor() {
 
 #[tokio::test]
 async fn test_query_capabilities() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let caps = server
@@ -275,7 +272,9 @@ async fn test_query_capabilities() {
 
 #[tokio::test]
 async fn test_server_clone() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     let cloned = server.clone();
 
@@ -292,7 +291,9 @@ async fn test_server_clone() {
 
 #[tokio::test]
 async fn test_list_workloads_with_filter() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     server
         .clone()
@@ -311,7 +312,9 @@ async fn test_list_workloads_with_filter() {
 
 #[tokio::test]
 async fn test_health_check_resource_utilization() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let health = server
@@ -323,66 +326,9 @@ async fn test_health_check_resource_utilization() {
     assert!(health.resource_utilization >= 0.0 && health.resource_utilization <= 1.0);
 }
 
-/// Executor that returns Queued status for testing active/queued workload counts
-struct QueuedExecutor;
-
-impl WorkloadExecutor for QueuedExecutor {
-    fn execute(
-        &self,
-        submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(WorkloadResult {
-                workload_id: submission.workload_id,
-                status: WorkloadStatus::Queued,
-                data: None,
-                error: None,
-                metrics: ExecutionMetrics {
-                    queued_duration_secs: 0.0,
-                    execution_duration_secs: 0.0,
-                    cpu_cores_used: 0,
-                    memory_used_bytes: 0,
-                    gpu_memory_used_bytes: None,
-                },
-            })
-        })
-    }
-
-    fn query_capabilities(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
-        Box::pin(async move {
-            Ok(ComputeCapabilities {
-                service_id: "queued-test".to_string(),
-                compute_units: vec![],
-                supported_workload_types: vec![],
-                available_resources: AvailableResources {
-                    total_cpu_cores: 1,
-                    available_cpu_cores: 1,
-                    total_memory_bytes: 1024,
-                    available_memory_bytes: 1024,
-                    total_gpu_memory_bytes: None,
-                    available_gpu_memory_bytes: None,
-                    cpu_utilization: 0.0,
-                    memory_utilization: 0.0,
-                    gpu_utilization: None,
-                },
-                metadata: std::collections::HashMap::new(),
-            })
-        })
-    }
-
-    fn cancel<'a>(
-        &'a self,
-        _workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-}
-
 #[tokio::test]
 async fn test_health_check_with_queued_workloads() {
-    let executor = Arc::new(QueuedExecutor);
+    let executor = arc_test_dispatch(TestWorkloadDouble::QueuedIntegration);
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
     server
         .clone()
@@ -403,7 +349,9 @@ async fn test_health_check_with_queued_workloads() {
 #[tokio::test]
 #[expect(deprecated)]
 async fn test_serve_tcp_debug_returns_error() {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new("0.1.0", executor, None);
 
     let result = server.serve_tcp_debug("127.0.0.1:0".parse().unwrap()).await;

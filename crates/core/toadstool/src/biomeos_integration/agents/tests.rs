@@ -460,7 +460,12 @@ async fn test_unload_model_nonexistent_returns_error() {
 async fn test_manager_new_with_backend() {
     let config = test_config();
     let backend = crate::biomeos_integration::InMemoryAgentBackend::new();
-    let manager = AgentDeploymentManager::new(config, std::sync::Arc::new(backend));
+    let manager = AgentDeploymentManager::new(
+        config,
+        std::sync::Arc::new(crate::biomeos_integration::AgentBackendDispatch::InMemory(
+            backend,
+        )),
+    );
 
     let agents = manager.list_agents().await;
     assert!(agents.is_empty());

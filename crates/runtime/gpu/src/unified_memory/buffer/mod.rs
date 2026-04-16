@@ -15,7 +15,8 @@ mod threading;
 mod tests;
 
 use crate::unified_memory::{
-    backend::{BackendAllocation, UnifiedMemoryBackend},
+    backend::BackendAllocation,
+    backend_dispatch::UnifiedMemoryBackendDispatch,
     types::{BufferId, SyncState, UnifiedBufferMetadata, UnifiedMemoryStats},
 };
 use std::collections::HashMap;
@@ -75,7 +76,7 @@ pub struct UnifiedBuffer {
     allocation: Option<BackendAllocation>,
 
     /// Backend reference
-    backend: Arc<dyn UnifiedMemoryBackend>,
+    backend: Arc<UnifiedMemoryBackendDispatch>,
 
     /// Synchronization state
     sync_state: Arc<RwLock<SyncState>>,

@@ -278,3 +278,11 @@ significant_drop_tightening = "allow" # False positives on lock guards
 
 # Pedantic lint exceptions — match_same_arms is common in dispatch tables
 match_same_arms = "allow"          # Dispatch tables intentionally share arms for clarity
+# RPITIT / trait impls often use `fn -> impl Future { async {} }` for Send bounds; async-fn-in-trait has tradeoffs
+manual_async_fn = "allow"
+# Explicit `'a` on RPITIT trait methods is sometimes required for unification; elided form triggers the same patterns
+elidable_lifetime_names = "allow"
+# Dispatch enums intentionally embed large runtime handles; boxing would ripple through call sites
+large_enum_variant = "allow"
+# Zero-sized optimizer placeholders keyed by framework; a map preserves future per-framework state
+zero_sized_map_values = "allow"

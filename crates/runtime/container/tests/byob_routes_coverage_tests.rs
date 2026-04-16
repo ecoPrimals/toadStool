@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Coverage tests for `byob_routes.rs` — route handlers with a mock executor.
+//!
+//! These tests run the app with [`axum::serve`] on a local listener and assert via minimal HTTP/1.1.
 
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
+use axum::Router;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::SystemTime;
 use toadstool::byob::{
@@ -15,7 +13,9 @@ use toadstool::byob::{
     NetworkUsage, ResourceUsage,
 };
 use toadstool_runtime_container::ByobApi;
-use tower::ServiceExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 struct MockByobExecutor;
@@ -48,14 +48,10 @@ impl ByobExecutor for MockByobExecutor {
     fn deploy_biome(
         &self,
         _request: ByobDeploymentRequest,
-    ) -> Pin<
-        Box<
-            dyn Future<Output = toadstool::error::ToadStoolResult<ByobDeploymentResponse>>
-                + Send
-                + '_,
-        >,
-    > {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = toadstool::error::ToadStoolResult<ByobDeploymentResponse>>
+    + Send
+    + '_ {
+        async move {
             let now = SystemTime::now();
             Ok(ByobDeploymentResponse {
                 deployment_id: Uuid::new_v4(),
@@ -66,32 +62,25 @@ impl ByobExecutor for MockByobExecutor {
                 created_at: now,
                 updated_at: now,
             })
-        })
+        }
     }
 
     fn list_deployments(
         &self,
-    ) -> Pin<
-        Box<
-            dyn Future<Output = toadstool::error::ToadStoolResult<Vec<ByobDeploymentResponse>>>
-                + Send
-                + '_,
-        >,
-    > {
-        Box::pin(async move { Ok(vec![]) })
+    ) -> impl std::future::Future<
+        Output = toadstool::error::ToadStoolResult<Vec<ByobDeploymentResponse>>,
+    > + Send
+    + '_ {
+        async move { Ok(vec![]) }
     }
 
     fn get_deployment_status(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<
-        Box<
-            dyn Future<Output = toadstool::error::ToadStoolResult<ByobDeploymentResponse>>
-                + Send
-                + '_,
-        >,
-    > {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = toadstool::error::ToadStoolResult<ByobDeploymentResponse>>
+    + Send
+    + '_ {
+        async move {
             let now = SystemTime::now();
             Ok(ByobDeploymentResponse {
                 deployment_id,
@@ -102,52 +91,73 @@ impl ByobExecutor for MockByobExecutor {
                 created_at: now,
                 updated_at: now,
             })
-        })
+        }
     }
 
     fn stop_deployment(
         &self,
         _deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    ) -> impl std::future::Future<Output = toadstool::error::ToadStoolResult<()>> + Send + '_ {
+        async move { Ok(()) }
     }
 
     fn get_resource_usage(
         &self,
         _deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<ResourceUsage>> + Send + '_>>
+    ) -> impl std::future::Future<Output = toadstool::error::ToadStoolResult<ResourceUsage>> + Send + '_
     {
-        Box::pin(async move { Ok(mock_resource_usage()) })
+        async move { Ok(mock_resource_usage()) }
     }
 }
 
-fn app() -> axum::Router {
-    let executor: Arc<dyn ByobExecutor> = Arc::new(MockByobExecutor);
-    ByobApi::new(executor).router()
+fn test_app() -> Router {
+    Router::new()
+        .merge(ByobApi::<MockByobExecutor>::routes())
+        .with_state(Arc::new(MockByobExecutor))
+}
+
+async fn spawn_test_server(app: Router) -> (SocketAddr, JoinHandle<Result<(), std::io::Error>>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let make_svc = app.into_make_service();
+    let server = tokio::spawn(async move { axum::serve(listener, make_svc).await });
+    (addr, server)
+}
+
+async fn read_http_status(addr: SocketAddr, request: &[u8]) -> u16 {
+    let mut stream = TcpStream::connect(addr).await.unwrap();
+    stream.write_all(request).await.unwrap();
+    let mut buf = vec![0u8; 2048];
+    let n = stream.read(&mut buf).await.unwrap();
+    let head = String::from_utf8_lossy(&buf[..n]);
+    head.split_whitespace()
+        .nth(1)
+        .expect("status line")
+        .parse()
+        .expect("status code")
 }
 
 #[tokio::test]
 async fn health_check_returns_200() {
-    let req = Request::builder()
-        .uri("/byob/health")
-        .body(Body::empty())
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let (addr, server) = spawn_test_server(test_app()).await;
+    let req = b"GET /byob/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    let status = read_http_status(addr, req).await;
+    server.abort();
+    assert_eq!(status, 200);
 }
 
 #[tokio::test]
 async fn list_deployments_returns_200() {
-    let req = Request::builder()
-        .uri("/byob/deployments")
-        .body(Body::empty())
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let (addr, server) = spawn_test_server(test_app()).await;
+    let req = b"GET /byob/deployments HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    let status = read_http_status(addr, req).await;
+    server.abort();
+    assert_eq!(status, 200);
 }
 
 #[tokio::test]
 async fn deploy_biome_returns_200() {
+    let (addr, server) = spawn_test_server(test_app()).await;
     let body = serde_json::json!({
         "deployment_id": "550e8400-e29b-41d4-a716-446655440000",
         "team_id": "test-team",
@@ -174,80 +184,88 @@ async fn deploy_biome_returns_200() {
         },
         "created_at": 1_704_067_200_u64
     });
-    let req = Request::builder()
-        .method("POST")
-        .uri("/byob/deploy")
-        .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&body).unwrap()))
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let payload = serde_json::to_vec(&body).unwrap();
+    let mut req = format!(
+        "POST /byob/deploy HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        payload.len()
+    )
+    .into_bytes();
+    req.extend_from_slice(&payload);
+
+    let status = read_http_status(addr, &req).await;
+    server.abort();
+    assert_eq!(status, 200);
 }
 
 #[tokio::test]
 async fn get_deployment_status_returns_200() {
+    let (addr, server) = spawn_test_server(test_app()).await;
     let id = Uuid::new_v4();
-    let req = Request::builder()
-        .uri(format!("/byob/deployments/{id}"))
-        .body(Body::empty())
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let path = format!("/byob/deployments/{id}");
+    let req = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+    let status = read_http_status(addr, req.as_bytes()).await;
+    server.abort();
+    assert_eq!(status, 200);
 }
 
 #[tokio::test]
 async fn stop_deployment_returns_200() {
+    let (addr, server) = spawn_test_server(test_app()).await;
     let id = Uuid::new_v4();
-    let req = Request::builder()
-        .method("POST")
-        .uri(format!("/byob/deployments/{id}/stop"))
-        .body(Body::empty())
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let path = format!("/byob/deployments/{id}/stop");
+    let req = format!(
+        "POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    let status = read_http_status(addr, req.as_bytes()).await;
+    server.abort();
+    assert_eq!(status, 200);
 }
 
 #[tokio::test]
 async fn get_resource_usage_returns_200() {
+    let (addr, server) = spawn_test_server(test_app()).await;
     let id = Uuid::new_v4();
-    let req = Request::builder()
-        .uri(format!("/byob/deployments/{id}/usage"))
-        .body(Body::empty())
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let path = format!("/byob/deployments/{id}/usage");
+    let req = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+    let status = read_http_status(addr, req.as_bytes()).await;
+    server.abort();
+    assert_eq!(status, 200);
 }
 
 #[tokio::test]
 async fn deploy_biome_invalid_json_returns_error() {
-    let req = Request::builder()
-        .method("POST")
-        .uri("/byob/deploy")
-        .header("content-type", "application/json")
-        .body(Body::from(b"not json".to_vec()))
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_ne!(resp.status(), StatusCode::OK);
+    let (addr, server) = spawn_test_server(test_app()).await;
+    let payload = b"not json".as_slice();
+    let mut req = format!(
+        "POST /byob/deploy HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        payload.len()
+    )
+    .into_bytes();
+    req.extend_from_slice(payload);
+
+    let status = read_http_status(addr, &req).await;
+    server.abort();
+    assert_ne!(status, 200);
 }
 
 #[tokio::test]
 async fn unknown_route_returns_404() {
-    let req = Request::builder()
-        .uri("/byob/nonexistent")
-        .body(Body::empty())
-        .unwrap();
-    let resp = app().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    let (addr, server) = spawn_test_server(test_app()).await;
+    let req = b"GET /byob/nonexistent HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    let status = read_http_status(addr, req).await;
+    server.abort();
+    assert_eq!(status, 404);
 }
 
 #[tokio::test]
 async fn routes_without_state_can_be_used_by_caller() {
-    let executor: Arc<dyn ByobExecutor> = Arc::new(MockByobExecutor);
-    let router = ByobApi::routes().with_state(executor);
-    let req = Request::builder()
-        .uri("/byob/health")
-        .body(Body::empty())
-        .unwrap();
-    let resp = router.oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
+    let executor: Arc<MockByobExecutor> = Arc::new(MockByobExecutor);
+    let app = Router::new()
+        .merge(ByobApi::<MockByobExecutor>::routes())
+        .with_state(executor);
+    let (addr, server) = spawn_test_server(app).await;
+    let req = b"GET /byob/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    let status = read_http_status(addr, req).await;
+    server.abort();
+    assert_eq!(status, 200);
 }

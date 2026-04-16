@@ -4,10 +4,13 @@
 //! Parses runtime hints, infers runtime from workload spec, and registers
 //! available runtime engines with the orchestrator.
 
+use std::sync::Arc;
+
 use crate::{CliContextExt, Result};
 use tracing::{debug, info};
 
 use toadstool::{execution::RuntimeType, runtime::RuntimeOrchestrator, workload::WorkloadSpec};
+use toadstool_server::RuntimeEngineDispatch;
 
 use toadstool_runtime_native::NativeRuntimeEngine;
 #[cfg(feature = "wasm")]
@@ -44,11 +47,16 @@ pub(super) const fn infer_runtime_type(workload: &WorkloadSpec) -> RuntimeType {
 }
 
 /// Register all available runtime engines with the orchestrator.
-pub(super) async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator) -> Result<()> {
+pub(super) async fn register_runtime_engines(
+    orchestrator: &RuntimeOrchestrator<RuntimeEngineDispatch>,
+) -> Result<()> {
     // Native runtime (always available)
     let native_engine = NativeRuntimeEngine::new();
     orchestrator
-        .register_engine(RuntimeType::Native, Box::new(native_engine))
+        .register_engine(
+            RuntimeType::Native,
+            Arc::new(RuntimeEngineDispatch::Native(native_engine)),
+        )
         .await
         .context("Failed to register native runtime")?;
     info!("   ✅ Native runtime registered");
@@ -64,7 +72,10 @@ pub(super) async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator)
         match WasmRuntimeEngine::new(wasm_config) {
             Ok(wasm_engine) => {
                 orchestrator
-                    .register_engine(RuntimeType::Wasm, Box::new(wasm_engine))
+                    .register_engine(
+                        RuntimeType::Wasm,
+                        Arc::new(RuntimeEngineDispatch::Wasm(wasm_engine)),
+                    )
                     .await
                     .context("Failed to register WASM runtime")?;
                 info!("   ✅ WASM runtime registered");
@@ -85,7 +96,10 @@ pub(super) async fn register_runtime_engines(orchestrator: &RuntimeOrchestrator)
         match UniversalGpuEngine::new().await {
             Ok(gpu_engine) => {
                 orchestrator
-                    .register_engine(RuntimeType::Gpu, Box::new(gpu_engine))
+                    .register_engine(
+                        RuntimeType::Gpu,
+                        Arc::new(RuntimeEngineDispatch::Gpu(gpu_engine)),
+                    )
                     .await
                     .context("Failed to register GPU runtime")?;
                 info!("   ✅ GPU runtime registered");

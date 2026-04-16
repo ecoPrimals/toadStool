@@ -98,12 +98,12 @@ fn test_gpu_requirements_via_reexport() {
     assert_eq!(gpu.min_units, 1);
 }
 
-#[test]
-fn test_resource_monitor_trait_via_reexport() {
-    use super::ResourceMonitor;
+#[tokio::test]
+async fn test_resource_monitor_trait_via_reexport() {
+    use super::{ResourceMonitor, ResourceMonitorDispatch};
     let _monitor = SystemResourceMonitor::new();
-    // Trait object through re-export
-    let _: &dyn ResourceMonitor = &SystemResourceMonitor::default();
+    let dispatch = ResourceMonitorDispatch::System(SystemResourceMonitor::default());
+    assert!(ResourceMonitor::start_monitoring(&dispatch, "w").is_ok());
 }
 
 #[test]

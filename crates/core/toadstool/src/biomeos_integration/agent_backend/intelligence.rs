@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use std::future::Future;
-use std::pin::Pin;
 
 use super::super::types::{AgentConfig, ModelConfig};
 use super::AgentBackend;
@@ -93,8 +92,8 @@ impl IntelligenceBackend {
 }
 
 impl AgentBackend for IntelligenceBackend {
-    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             // Health check via JSON-RPC over unix socket
             let _health: serde_json::Value = self
                 .rpc_client
@@ -106,14 +105,14 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Successfully connected to AI/routing service via unix socket");
             Ok(())
-        })
+        }
     }
 
     fn deploy_agent<'a>(
         &'a self,
         config: &'a AgentConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a {
+        async move {
             let params = serde_json::to_value(config)
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
 
@@ -130,14 +129,14 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Deployed agent: {}", config.name);
             Ok(agent_info)
-        })
+        }
     }
 
     fn load_model<'a>(
         &'a self,
         config: &'a ModelConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a {
+        async move {
             let params = serde_json::to_value(config)
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to serialize config: {e}")))?;
 
@@ -151,15 +150,15 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Loaded model: {}", config.name);
             Ok(model_info)
-        })
+        }
     }
 
     fn scale_agent<'a>(
         &'a self,
         agent_name: &'a str,
         replicas: u32,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             let params = serde_json::json!({
                 "agent_name": agent_name,
                 "replicas": replicas
@@ -173,14 +172,14 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Scaled agent {} to {} replicas", agent_name, replicas);
             Ok(())
-        })
+        }
     }
 
     fn stop_agent<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             let params = serde_json::json!({"agent_name": agent_name});
 
             let _: serde_json::Value = self
@@ -191,14 +190,14 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Stopped agent {}", agent_name);
             Ok(())
-        })
+        }
     }
 
     fn remove_agent<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             let params = serde_json::json!({"agent_name": agent_name});
 
             let _: serde_json::Value = self
@@ -209,14 +208,14 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Removed agent {}", agent_name);
             Ok(())
-        })
+        }
     }
 
     fn get_agent_status<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a {
+        async move {
             let params = serde_json::json!({"agent_name": agent_name});
 
             let status: AgentStatus = self
@@ -226,13 +225,11 @@ impl AgentBackend for IntelligenceBackend {
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to get agent status: {e}")))?;
 
             Ok(status)
-        })
+        }
     }
 
-    fn list_agents(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_>> {
-        Box::pin(async move {
+    fn list_agents(&self) -> impl Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_ {
+        async move {
             let agents: Vec<AgentInfo> = self
                 .rpc_client
                 .call_typed("ai.list_agents", serde_json::json!({}))
@@ -240,13 +237,11 @@ impl AgentBackend for IntelligenceBackend {
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to list agents: {e}")))?;
 
             Ok(agents)
-        })
+        }
     }
 
-    fn list_models(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_>> {
-        Box::pin(async move {
+    fn list_models(&self) -> impl Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_ {
+        async move {
             let models: Vec<ModelInfo> = self
                 .rpc_client
                 .call_typed("ai.list_models", serde_json::json!({}))
@@ -254,14 +249,14 @@ impl AgentBackend for IntelligenceBackend {
                 .map_err(|e| ToadStoolError::runtime(format!("Failed to list models: {e}")))?;
 
             Ok(models)
-        })
+        }
     }
 
     fn get_agent_resources<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a {
+        async move {
             let params = serde_json::json!({"agent_name": agent_name});
 
             let resources: AgentResourceUsage = self
@@ -273,14 +268,14 @@ impl AgentBackend for IntelligenceBackend {
                 })?;
 
             Ok(resources)
-        })
+        }
     }
 
     fn unload_model<'a>(
         &'a self,
         model_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             let params = serde_json::json!({"model_name": model_name});
 
             let _: serde_json::Value = self
@@ -291,6 +286,6 @@ impl AgentBackend for IntelligenceBackend {
 
             tracing::info!("Unloaded model {}", model_name);
             Ok(())
-        })
+        }
     }
 }

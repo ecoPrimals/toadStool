@@ -13,9 +13,9 @@ use crate::policy::*;
 /// Main orchestrator for workload distribution
 ///
 /// **Deep Debt**: Discovers substrates at runtime, no hardcoding
-pub struct WorkloadOrchestrator {
+pub struct WorkloadOrchestrator<S: ComputeSubstrate> {
     /// Available substrates (discovered at runtime)
-    substrates: Arc<RwLock<Vec<SubstrateHandle>>>,
+    substrates: Arc<RwLock<Vec<Arc<S>>>>,
 
     /// Selection policy
     policy: SelectionPolicy,
@@ -24,7 +24,7 @@ pub struct WorkloadOrchestrator {
     history: Arc<RwLock<PerformanceHistory>>,
 }
 
-impl WorkloadOrchestrator {
+impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
     /// Discover all available substrates
     ///
     /// **Deep Debt**: Runtime discovery, capability-based
@@ -41,7 +41,7 @@ impl WorkloadOrchestrator {
     }
 
     /// Create with explicit substrates (for testing)
-    pub fn with_substrates(substrates: Vec<SubstrateHandle>) -> Self {
+    pub fn with_substrates(substrates: Vec<Arc<S>>) -> Self {
         Self {
             substrates: Arc::new(RwLock::new(substrates)),
             policy: SelectionPolicy::default(),
@@ -50,7 +50,7 @@ impl WorkloadOrchestrator {
     }
 
     /// Register a substrate
-    pub fn register_substrate(&self, substrate: SubstrateHandle) {
+    pub fn register_substrate(&self, substrate: Arc<S>) {
         self.substrates
             .write()
             .expect("lock poisoned")
@@ -125,10 +125,7 @@ impl WorkloadOrchestrator {
         clippy::significant_drop_tightening,
         reason = "drop order is intentional"
     )] // selected is from policy using substrates/history
-    fn select_substrate(
-        &self,
-        request: &WorkloadRequest,
-    ) -> Result<SubstrateHandle, OrchestrationError> {
+    fn select_substrate(&self, request: &WorkloadRequest) -> Result<Arc<S>, OrchestrationError> {
         let substrates = self.substrates.read().expect("lock poisoned");
 
         if substrates.is_empty() {
@@ -149,7 +146,7 @@ impl WorkloadOrchestrator {
     fn rank_substrates(
         &self,
         request: &WorkloadRequest,
-    ) -> Result<Vec<SubstrateHandle>, OrchestrationError> {
+    ) -> Result<Vec<Arc<S>>, OrchestrationError> {
         let substrates = self.substrates.read().expect("lock poisoned");
         let history = self.history.read().expect("lock poisoned");
 
@@ -162,7 +159,7 @@ impl WorkloadOrchestrator {
     /// Execute on specific substrate
     async fn execute_on_substrate(
         &self,
-        substrate: SubstrateHandle,
+        substrate: Arc<S>,
         request: &WorkloadRequest,
     ) -> Result<WorkloadResult, OrchestrationError> {
         let start = Instant::now();
@@ -207,11 +204,6 @@ impl WorkloadOrchestrator {
         }
     }
 }
-
-/// Handle to a compute substrate
-///
-/// **Deep Debt**: Type-erased for flexibility, discovered at runtime
-pub type SubstrateHandle = Arc<dyn ComputeSubstrate>;
 
 /// Workload request
 ///

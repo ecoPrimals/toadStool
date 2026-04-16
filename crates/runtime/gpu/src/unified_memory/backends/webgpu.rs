@@ -29,8 +29,6 @@ use crate::unified_memory::{
     backend::{BackendAllocation, BackendInitializer, UnifiedMemoryBackend, WebGpuAllocation},
     types::{BackendType, MemoryFlags, UnifiedMemoryCapabilities},
 };
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use wgpu;
@@ -171,98 +169,86 @@ impl UnifiedMemoryBackend for WebGpuBackend {
         clippy::cast_possible_truncation,
         reason = "truncation acceptable for this conversion"
     )] // compare against wgpu device limits
-    fn allocate_unified(
+    async fn allocate_unified(
         &self,
         size: usize,
         flags: MemoryFlags,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<BackendAllocation>> + Send + '_>> {
-        Box::pin(async move {
-            // Validate size
-            if size == 0 {
-                return Err(ToadStoolError::runtime("Cannot allocate 0 bytes"));
-            }
+    ) -> ToadStoolResult<BackendAllocation> {
+        // Validate size
+        if size == 0 {
+            return Err(ToadStoolError::runtime("Cannot allocate 0 bytes"));
+        }
 
-            if size > self.limits.max_buffer_size as usize {
-                return Err(ToadStoolError::runtime(format!(
-                    "Allocation size {} exceeds device maximum {}",
-                    size, self.limits.max_buffer_size
-                )));
-            }
+        if size > self.limits.max_buffer_size as usize {
+            return Err(ToadStoolError::runtime(format!(
+                "Allocation size {} exceeds device maximum {}",
+                size, self.limits.max_buffer_size
+            )));
+        }
 
-            // Determine usage flags based on MemoryFlags
-            let usage = if flags.prefer_gpu {
-                // GPU-optimized: Storage buffer for compute
-                wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::MAP_READ
-                    | wgpu::BufferUsages::MAP_WRITE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST
-            } else {
-                // CPU-optimized or balanced: Map-friendly
-                wgpu::BufferUsages::MAP_READ
-                    | wgpu::BufferUsages::MAP_WRITE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST
-            };
+        // Determine usage flags based on MemoryFlags
+        let usage = if flags.prefer_gpu {
+            // GPU-optimized: Storage buffer for compute
+            wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::MAP_READ
+                | wgpu::BufferUsages::MAP_WRITE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST
+        } else {
+            // CPU-optimized or balanced: Map-friendly
+            wgpu::BufferUsages::MAP_READ
+                | wgpu::BufferUsages::MAP_WRITE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST
+        };
 
-            // Create buffer
-            let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ToadStool Unified Buffer"),
-                size: size as u64,
-                usage,
-                mapped_at_creation: false, // Don't map at creation
-            });
+        // Create buffer
+        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ToadStool Unified Buffer"),
+            size: size as u64,
+            usage,
+            mapped_at_creation: false, // Don't map at creation
+        });
 
-            let allocation = WebGpuAllocation {
-                buffer: Some(buffer),
-                size,
-                mapped_ptr: None, // Will be set when mapped
-            };
+        let allocation = WebGpuAllocation {
+            buffer: Some(buffer),
+            size,
+            mapped_ptr: None, // Will be set when mapped
+        };
 
-            Ok(BackendAllocation::WebGpu(allocation))
-        })
+        Ok(BackendAllocation::WebGpu(allocation))
     }
 
-    fn free_unified(
-        &self,
-        allocation: BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
-            match allocation {
-                BackendAllocation::WebGpu(_alloc) => {
-                    // Buffer will be dropped automatically
-                    // wgpu handles cleanup via Drop trait
-                    Ok(())
-                }
-                _ => Err(ToadStoolError::runtime(
-                    "Invalid allocation type for WebGPU backend",
-                )),
+    async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()> {
+        match allocation {
+            BackendAllocation::WebGpu(_alloc) => {
+                // Buffer will be dropped automatically
+                // wgpu handles cleanup via Drop trait
+                Ok(())
             }
-        })
+            _ => Err(ToadStoolError::runtime(
+                "Invalid allocation type for WebGPU backend",
+            )),
+        }
     }
 
-    fn map_cpu_ptr<'a>(
-        &'a self,
-        allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<*mut u8>> + Send + 'a>> {
-        Box::pin(async {
-            match allocation {
-                BackendAllocation::WebGpu(alloc) => {
-                    // For WebGPU, we can't provide a true raw pointer due to wgpu's safe API
-                    // Return a non-null sentinel that can be used for identification
-                    // Actual access needs to go through wgpu's BufferSlice API
+    async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8> {
+        match allocation {
+            BackendAllocation::WebGpu(alloc) => {
+                // For WebGPU, we can't provide a true raw pointer due to wgpu's safe API
+                // Return a non-null sentinel that can be used for identification
+                // Actual access needs to go through wgpu's BufferSlice API
 
-                    // Use the buffer's address as a unique identifier
-                    alloc.buffer.as_ref().map_or_else(
-                        || Err(ToadStoolError::runtime("Buffer has been freed")),
-                        |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
-                    )
-                }
-                _ => Err(ToadStoolError::runtime(
-                    "Invalid allocation type for WebGPU backend",
-                )),
+                // Use the buffer's address as a unique identifier
+                alloc.buffer.as_ref().map_or_else(
+                    || Err(ToadStoolError::runtime("Buffer has been freed")),
+                    |buffer| Ok(buffer as *const wgpu::Buffer as *mut u8),
+                )
             }
-        })
+            _ => Err(ToadStoolError::runtime(
+                "Invalid allocation type for WebGPU backend",
+            )),
+        }
     }
 
     fn get_device_ptr(&self, allocation: &BackendAllocation) -> *const u8 {
@@ -277,26 +263,14 @@ impl UnifiedMemoryBackend for WebGpuBackend {
         }
     }
 
-    fn sync_cpu_to_device<'a>(
-        &'a self,
-        _allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
-            // WebGPU handles synchronization automatically
-            // No explicit sync needed for mappable buffers
-            Ok(())
-        })
+    async fn sync_cpu_to_device(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
+        // WebGPU handles synchronization automatically
+        Ok(())
     }
 
-    fn sync_device_to_cpu<'a>(
-        &'a self,
-        _allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async {
-            // WebGPU handles synchronization automatically
-            // No explicit sync needed for mappable buffers
-            Ok(())
-        })
+    async fn sync_device_to_cpu(&self, _allocation: &BackendAllocation) -> ToadStoolResult<()> {
+        // WebGPU handles synchronization automatically
+        Ok(())
     }
 
     fn is_valid(&self, allocation: &BackendAllocation) -> bool {

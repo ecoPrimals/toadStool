@@ -67,7 +67,11 @@ async fn main() -> toadstool::ToadStoolResult<()> {
         max_concurrent_jobs: 10,
         pure_ecosystem: false,
     };
-    let _custom_platform = toadstool::UniversalComputePlatform::new_with_config(config).await?;
+    let _custom_platform =
+        toadstool::UniversalComputePlatform::<toadstool::StubRuntimeEngine>::new_with_config(
+            config,
+        )
+        .await?;
     println!("   ✅ Custom platform created with universal configuration!");
 
     // Create universal job

@@ -10,10 +10,12 @@ use super::process_request;
 use super::serve_unix;
 use super::tcp::handle_tcp_connection;
 use crate::pure_jsonrpc::JsonRpcHandler;
-use crate::tarpc_server::StandaloneExecutor;
+use crate::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 fn test_handler() -> JsonRpcHandler {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     JsonRpcHandler::new(executor, "test-conn-1.0.0".to_string(), None)
 }
 

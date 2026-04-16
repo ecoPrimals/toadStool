@@ -79,7 +79,9 @@ pub use state::{ActiveExecution, ClientInfo, ServerEvent, ServerState, ServerSta
     since = "2.2.0",
     note = "Use pure_jsonrpc::JsonRpcHandler — no TCP hardcoding"
 )]
-pub use tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor};
+pub use tarpc_server::{
+    StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutor, WorkloadExecutorDispatch,
+};
 
 #[cfg(all(test, feature = "tarpc"))]
 #[deprecated(since = "2.2.0", note = "Use StandaloneExecutor instead")]
@@ -144,10 +146,13 @@ pub mod resource_validator;
 #[cfg(feature = "tarpc")]
 pub mod rpc_types; // Pure RPC types (depends on tarpc service definitions)
 // server: REMOVED — axum HTTP server is not the JSON-RPC surface here; use pure_jsonrpc
+pub mod runtime_engine_dispatch;
 pub mod state;
 #[cfg(feature = "tarpc")]
 pub mod tarpc_server;
 pub mod unibin; // UniBin server entry point (shared between binaries)
+
+pub use runtime_engine_dispatch::{GpuRuntimeEngine, RuntimeEngineDispatch};
 
 // Re-export background services for tests
 pub use background::start_background_services;

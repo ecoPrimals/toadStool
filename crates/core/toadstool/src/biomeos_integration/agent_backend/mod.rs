@@ -12,7 +12,6 @@ mod types;
 mod tests;
 
 use std::future::Future;
-use std::pin::Pin;
 
 use super::types::{AgentConfig, ModelConfig};
 use crate::ToadStoolResult;
@@ -23,19 +22,26 @@ pub use types::{
     ModelResourceRequirements, ModelStatus,
 };
 
+/// Concrete agent backend for dependency injection (replaces `Arc<dyn AgentBackend>`).
+pub enum AgentBackendDispatch {
+    /// Intelligence / ML service backend (Unix JSON-RPC).
+    Intelligence(IntelligenceBackend),
+    /// In-memory backend for tests and local simulation.
+    InMemory(InMemoryAgentBackend),
+}
+
 /// Trait defining the interface for agent deployment backends
 ///
 /// This allows dependency injection of different agent deployment implementations
 /// (production intelligence-service backend, in-memory test backend, etc.) without relying
 /// on feature flags or conditional compilation.
-// NOTE(async-dyn): async methods return `Pin<Box<dyn Future>>` — native async fn in trait is not dyn-compatible
 pub trait AgentBackend: Send + Sync {
     /// Initialize/test connection to agent backend
     ///
     /// For network backends (intelligence service), this tests connectivity.
     /// For local backends (in-memory), this is typically a no-op.
-    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     /// Deploy an AI agent from configuration
@@ -50,7 +56,7 @@ pub trait AgentBackend: Send + Sync {
     fn deploy_agent<'a>(
         &'a self,
         config: &'a AgentConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a;
 
     /// Load a model for agent use
     ///
@@ -64,26 +70,26 @@ pub trait AgentBackend: Send + Sync {
     fn load_model<'a>(
         &'a self,
         config: &'a ModelConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a;
 
     /// Scale an agent to specified replica count
     fn scale_agent<'a>(
         &'a self,
         agent_name: &'a str,
         replicas: u32,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Stop an agent
     fn stop_agent<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Remove an agent
     fn remove_agent<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Get agent status
     ///
@@ -96,32 +102,163 @@ pub trait AgentBackend: Send + Sync {
     fn get_agent_status<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a;
 
     /// List all deployed agents
-    fn list_agents(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_>>;
+    fn list_agents(&self) -> impl Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_;
 
     /// List all loaded models
-    fn list_models(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_>>;
+    fn list_models(&self) -> impl Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_;
 
     /// Get agent resource usage
     fn get_agent_resources<'a>(
         &'a self,
         agent_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a;
 
     /// Unload a model
     fn unload_model<'a>(
         &'a self,
         model_name: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Health check for agent backend
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
+    }
+}
+
+impl AgentBackend for AgentBackendDispatch {
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.initialize().await,
+                Self::InMemory(b) => b.initialize().await,
+            }
+        }
+    }
+
+    fn deploy_agent<'a>(
+        &'a self,
+        config: &'a AgentConfig,
+    ) -> impl Future<Output = ToadStoolResult<AgentInfo>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.deploy_agent(config).await,
+                Self::InMemory(b) => b.deploy_agent(config).await,
+            }
+        }
+    }
+
+    fn load_model<'a>(
+        &'a self,
+        config: &'a ModelConfig,
+    ) -> impl Future<Output = ToadStoolResult<ModelInfo>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.load_model(config).await,
+                Self::InMemory(b) => b.load_model(config).await,
+            }
+        }
+    }
+
+    fn scale_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+        replicas: u32,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.scale_agent(agent_name, replicas).await,
+                Self::InMemory(b) => b.scale_agent(agent_name, replicas).await,
+            }
+        }
+    }
+
+    fn stop_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.stop_agent(agent_name).await,
+                Self::InMemory(b) => b.stop_agent(agent_name).await,
+            }
+        }
+    }
+
+    fn remove_agent<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.remove_agent(agent_name).await,
+                Self::InMemory(b) => b.remove_agent(agent_name).await,
+            }
+        }
+    }
+
+    fn get_agent_status<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<AgentStatus>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.get_agent_status(agent_name).await,
+                Self::InMemory(b) => b.get_agent_status(agent_name).await,
+            }
+        }
+    }
+
+    fn list_agents(&self) -> impl Future<Output = ToadStoolResult<Vec<AgentInfo>>> + Send + '_ {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.list_agents().await,
+                Self::InMemory(b) => b.list_agents().await,
+            }
+        }
+    }
+
+    fn list_models(&self) -> impl Future<Output = ToadStoolResult<Vec<ModelInfo>>> + Send + '_ {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.list_models().await,
+                Self::InMemory(b) => b.list_models().await,
+            }
+        }
+    }
+
+    fn get_agent_resources<'a>(
+        &'a self,
+        agent_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<AgentResourceUsage>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.get_agent_resources(agent_name).await,
+                Self::InMemory(b) => b.get_agent_resources(agent_name).await,
+            }
+        }
+    }
+
+    fn unload_model<'a>(
+        &'a self,
+        model_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.unload_model(model_name).await,
+                Self::InMemory(b) => b.unload_model(model_name).await,
+            }
+        }
+    }
+
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
+            match self {
+                Self::Intelligence(b) => b.health_check().await,
+                Self::InMemory(b) => b.health_check().await,
+            }
+        }
     }
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 
 use crate::error::SubstrateError;
@@ -26,9 +25,9 @@ impl ComputeSubstrate for MockSubstrate {
     fn execute_buffer_op(
         &self,
         operation: BufferOperation,
-    ) -> Pin<Box<dyn Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>> {
+    ) -> impl Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_ {
         let substrate_name = self.name().to_string();
-        Box::pin(async move {
+        async move {
             Ok(BufferOutput {
                 data: vec![0; operation.buffer_size()],
                 metadata: BufferMetadata {
@@ -37,7 +36,7 @@ impl ComputeSubstrate for MockSubstrate {
                     power_consumed_mw: Some(65000.0),
                 },
             })
-        })
+        }
     }
 }
 

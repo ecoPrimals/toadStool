@@ -92,12 +92,16 @@ Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
 
 ## Known Limitations (not actionable debt)
 
-### D-ASYNC-DYN-MARKERS — RESOLVED S203r (fully deprecated)
+### D-ASYNC-DYN-MARKERS — RESOLVED S203s (stadial parity gate cleared)
 **Scope**: Workspace — `async-trait` crate fully removed and banned in `deny.toml`.
-**Resolution**: All ~91 `#[async_trait]` annotations (55 production, 36 test) evolved to
-manual `Pin<Box<dyn Future>>` for dyn-dispatched traits or native AFIT for non-dyn traits.
-Zero runtime behavior change. `async-trait` removed from workspace `[dependencies]` and
-all 13 crate `Cargo.toml` files. Banned in `deny.toml` alongside `ring`.
+**Resolution (S203r)**: All ~91 `#[async_trait]` annotations evolved to manual
+`Pin<Box<dyn Future>>` or native AFIT.
+**Resolution (S203s)**: Stadial parity gate cleared. ~32 finite-implementor traits
+converted from `dyn Trait` dispatch to **enum dispatch + RPITIT**. ~864 `Pin<Box<dyn Future>>`
+cascaded away. `RuntimeEngine` genericized across 7 runtime crates with dispatch enum in
+server crate. Remaining `dyn` usages (24) are justified unbounded: infant discovery plugin
+registry (`EndpointSource`, `SubstrateDetector`), `PrimalIntegration`, `MessageHandler`,
+testing utilities (`Generator<T>`, `RandomNumberGenerator`).
 **Evolution history**: S203j migrated 13 zero-dyn traits to native AFIT (freed 8 crates).
 S203n closed at dyn-ceiling (158 annotations). S203r completed full deprecation across
 all remaining 32 dyn-constrained traits using manual future boxing.

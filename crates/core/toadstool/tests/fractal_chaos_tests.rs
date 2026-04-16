@@ -10,6 +10,7 @@
 //!
 //! Tests system behavior under random, extreme, and unexpected inputs.
 
+use toadstool::cloud_provider_trait::NoopCloudProvider;
 use toadstool::composition_constraints::*;
 use toadstool::composition_engine::CompositionEngine;
 use toadstool::multi_workload_compositor::MultiWorkloadCompositor;
@@ -308,7 +309,9 @@ async fn test_concurrent_compositions() {
 /// Test: Migration with extreme constraints
 #[tokio::test]
 async fn test_migration_extreme_constraints() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
 
     // Impossible constraints
     let constraints = vec![

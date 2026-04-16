@@ -2,8 +2,8 @@
 //! Memory pressure handling and optimization.
 
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -49,15 +49,51 @@ pub enum MemoryPressureLevel {
 
 /// Memory pressure callback trait
 ///
-/// Stored as `Arc<dyn MemoryPressureCallback>` in [`MemoryPressureHandler`].
-/// Uses manual `Pin<Box<dyn Future>>` for dyn-compatibility (no `async-trait` macro).
+/// Stored as [`Arc<MemoryPressureDispatch>`] in [`MemoryPressureHandler`].
 pub trait MemoryPressureCallback: Send + Sync {
     /// Invoked when memory pressure exceeds a threshold.
     fn handle_pressure(
         &self,
         level: MemoryPressureLevel,
         usage_percent: f64,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send + '_>>;
+    ) -> impl Future<Output = ()> + Send + '_;
+}
+
+/// Dispatches [`MemoryPressureCallback`] to concrete implementations (enum dispatch).
+#[derive(Clone, Debug)]
+pub enum MemoryPressureDispatch {
+    /// Production logging callback.
+    Default(DefaultMemoryPressureCallback),
+    /// Records the last observed [`MemoryPressureLevel`] as 0–3 in the atomic (for tests).
+    TestTracker(Arc<AtomicU8>),
+}
+
+impl MemoryPressureCallback for MemoryPressureDispatch {
+    fn handle_pressure(
+        &self,
+        level: MemoryPressureLevel,
+        usage_percent: f64,
+    ) -> impl Future<Output = ()> + Send + '_ {
+        let this = self.clone();
+        async move {
+            match &this {
+                MemoryPressureDispatch::Default(d) => {
+                    d.handle_pressure(level, usage_percent).await;
+                }
+                MemoryPressureDispatch::TestTracker(seen) => {
+                    seen.store(
+                        match level {
+                            MemoryPressureLevel::Normal => 0,
+                            MemoryPressureLevel::Warning => 1,
+                            MemoryPressureLevel::Critical => 2,
+                            MemoryPressureLevel::Emergency => 3,
+                        },
+                        Ordering::SeqCst,
+                    );
+                }
+            }
+        }
+    }
 }
 
 /// Memory pressure handler
@@ -65,7 +101,7 @@ pub struct MemoryPressureHandler {
     config: MemoryPressureConfig,
     current_usage: Arc<RwLock<u64>>,
     /// Arc-wrapped so we can clone and invoke without holding lock across .await
-    callbacks: Arc<RwLock<Vec<Arc<dyn MemoryPressureCallback>>>>,
+    callbacks: Arc<RwLock<Vec<Arc<MemoryPressureDispatch>>>>,
 }
 
 impl MemoryPressureHandler {
@@ -80,14 +116,9 @@ impl MemoryPressureHandler {
     }
 
     /// Register a callback. Accepts `Arc` so we can clone and invoke without holding lock across await.
-    pub async fn register_callback(&self, callback: Arc<dyn MemoryPressureCallback>) {
+    pub async fn register_callback(&self, callback: Arc<MemoryPressureDispatch>) {
         let mut callbacks = self.callbacks.write().await;
         callbacks.push(callback);
-    }
-
-    /// Registers a callback from `Box`; converts to `Arc` for storage.
-    pub async fn register_callback_box(&self, callback: Box<dyn MemoryPressureCallback>) {
-        self.register_callback(Arc::from(callback)).await;
     }
 
     /// Updates current memory usage and triggers callbacks if thresholds exceeded.
@@ -112,7 +143,7 @@ impl MemoryPressureHandler {
 
         if level != MemoryPressureLevel::Normal {
             // Clone Arc refs and release lock before await (avoid holding lock across .await)
-            let callback_arcs: Vec<Arc<dyn MemoryPressureCallback>> = {
+            let callback_arcs: Vec<Arc<MemoryPressureDispatch>> = {
                 let guard = self.callbacks.read().await;
                 guard.iter().map(Arc::clone).collect()
             };
@@ -133,6 +164,7 @@ impl MemoryPressureHandler {
 }
 
 /// Default memory pressure callback
+#[derive(Clone, Copy, Debug)]
 pub struct DefaultMemoryPressureCallback;
 
 impl MemoryPressureCallback for DefaultMemoryPressureCallback {
@@ -140,8 +172,8 @@ impl MemoryPressureCallback for DefaultMemoryPressureCallback {
         &self,
         level: MemoryPressureLevel,
         usage_percent: f64,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ()> + Send + '_ {
+        async move {
             match level {
                 MemoryPressureLevel::Normal => {}
                 MemoryPressureLevel::Warning => {
@@ -154,7 +186,7 @@ impl MemoryPressureCallback for DefaultMemoryPressureCallback {
                     error!("Memory pressure emergency: {:.1}% usage", usage_percent);
                 }
             }
-        })
+        }
     }
 }
 
@@ -214,29 +246,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_memory_pressure_callback_invoked() {
-        static LEVEL_SEEN: AtomicU8 = AtomicU8::new(0);
-        LEVEL_SEEN.store(0, Ordering::SeqCst);
-
-        struct CallbackTracker;
-        impl MemoryPressureCallback for CallbackTracker {
-            fn handle_pressure(
-                &self,
-                level: MemoryPressureLevel,
-                _usage_percent: f64,
-            ) -> Pin<Box<dyn Future<Output = ()> + Send + '_>> {
-                Box::pin(async move {
-                    LEVEL_SEEN.store(
-                        match level {
-                            MemoryPressureLevel::Normal => 0,
-                            MemoryPressureLevel::Warning => 1,
-                            MemoryPressureLevel::Critical => 2,
-                            MemoryPressureLevel::Emergency => 3,
-                        },
-                        Ordering::SeqCst,
-                    );
-                })
-            }
-        }
+        let level_seen = Arc::new(AtomicU8::new(0));
 
         let config = MemoryPressureConfig {
             warning_threshold: 50.0,
@@ -246,12 +256,14 @@ mod tests {
         };
         let handler = MemoryPressureHandler::new(config);
         handler
-            .register_callback_box(Box::new(CallbackTracker))
+            .register_callback(Arc::new(MemoryPressureDispatch::TestTracker(Arc::clone(
+                &level_seen,
+            ))))
             .await;
 
         // 75% should trigger Warning callback
         handler.update_memory_usage(100, 75).await;
-        assert_eq!(LEVEL_SEEN.load(Ordering::SeqCst), 1);
+        assert_eq!(level_seen.load(Ordering::SeqCst), 1);
     }
 
     #[tokio::test]

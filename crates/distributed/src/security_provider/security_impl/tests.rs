@@ -13,6 +13,7 @@
 )]
 mod tests {
     use super::super::client::DistributedSecurityProvider;
+    use crate::security_provider::SecurityProviderDispatch;
     use crate::security_provider::provider::*;
     use crate::security_provider::types::*;
 
@@ -174,11 +175,12 @@ mod tests {
         assert_sync::<DistributedSecurityProvider>();
     }
 
-    /// Test provider can be used as trait object
+    /// Test provider behind dispatch enum
     #[tokio::test]
-    async fn test_security_provider_as_trait_object() {
-        let provider: Box<dyn SecurityProvider> =
-            Box::new(DistributedSecurityProvider::new().await.unwrap());
+    async fn test_security_provider_dispatch_wrapper() {
+        let provider = SecurityProviderDispatch::Distributed(
+            DistributedSecurityProvider::new().await.unwrap(),
+        );
 
         let caps = provider.capabilities().await.unwrap();
         assert!(!caps.is_empty());

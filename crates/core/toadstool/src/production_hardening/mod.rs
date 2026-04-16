@@ -18,7 +18,7 @@ pub use circuit_breaker::{
 };
 pub use memory_pressure::{
     DefaultMemoryPressureCallback, MemoryPressureCallback, MemoryPressureConfig,
-    MemoryPressureHandler, MemoryPressureLevel,
+    MemoryPressureDispatch, MemoryPressureHandler, MemoryPressureLevel,
 };
 pub use resource_leak::{ResourceAllocation, ResourceLeakDetector};
 
@@ -98,7 +98,9 @@ impl ProductionHardeningManager {
         }
         if self.config.enable_memory_pressure {
             self.memory_handler
-                .register_callback(Arc::new(DefaultMemoryPressureCallback))
+                .register_callback(Arc::new(MemoryPressureDispatch::Default(
+                    DefaultMemoryPressureCallback,
+                )))
                 .await;
         }
         Ok(())

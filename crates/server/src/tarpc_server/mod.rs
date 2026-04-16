@@ -5,9 +5,11 @@
 //! Follows the coordination service's architecture pattern.
 
 mod connection;
+mod dispatch;
 mod executor;
 
-pub use executor::{StandaloneExecutor, WorkloadExecutor};
+pub use dispatch::WorkloadExecutorDispatch;
+pub use executor::{StandaloneExecutor, TestWorkloadDouble, WorkloadExecutor};
 
 #[cfg(test)]
 pub use executor::TestExecutor;
@@ -43,7 +45,7 @@ pub struct ToadStoolTarpcServer {
     /// Active workloads (`Arc<str>` key = zero-copy clone for entry/insert)
     workloads: Arc<RwLock<std::collections::HashMap<Arc<str>, WorkloadResult>>>,
     /// Workload executor (real implementation, not mock)
-    executor: Arc<dyn WorkloadExecutor + Send + Sync>,
+    executor: Arc<WorkloadExecutorDispatch>,
     /// Error count for monitoring
     error_count: Arc<AtomicU64>,
 }
@@ -108,7 +110,7 @@ impl ToadStoolTarpcServer {
     /// Pass `error_count` to share the counter with JSON-RPC server for unified monitoring.
     pub fn new(
         version: impl AsRef<str>,
-        executor: Arc<dyn WorkloadExecutor + Send + Sync>,
+        executor: Arc<WorkloadExecutorDispatch>,
         error_count: Option<Arc<AtomicU64>>,
     ) -> Self {
         Self {

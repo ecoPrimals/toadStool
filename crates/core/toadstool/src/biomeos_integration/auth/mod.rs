@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use toadstool_common::constants::primal_identity::{PRIMAL_NAME, audience};
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
-use super::auth_backend::AuthBackend;
+use super::auth_backend::{AuthBackend, AuthBackendDispatch};
 use crate::ToadStoolResult;
 
 pub use permissions::{
@@ -92,14 +92,14 @@ fn default_token_audience() -> Vec<String> {
 pub struct AuthenticationManager {
     config: AuthManagerConfig,
     current_token: Option<AuthenticationToken>,
-    backend: Arc<dyn AuthBackend>,
+    backend: Arc<AuthBackendDispatch>,
     refresh_task: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl AuthenticationManager {
     /// Creates a new auth manager with config and backend.
     #[must_use]
-    pub fn new(config: AuthManagerConfig, backend: Arc<dyn AuthBackend>) -> Self {
+    pub fn new(config: AuthManagerConfig, backend: Arc<AuthBackendDispatch>) -> Self {
         Self {
             config,
             current_token: None,
@@ -160,7 +160,7 @@ impl AuthenticationManager {
         Ok(Self {
             config,
             current_token: None,
-            backend: Arc::new(backend),
+            backend: Arc::new(AuthBackendDispatch::Security(backend)),
             refresh_task: None,
         })
     }
@@ -174,7 +174,7 @@ impl AuthenticationManager {
         Self {
             config,
             current_token: None,
-            backend: Arc::new(backend),
+            backend: Arc::new(AuthBackendDispatch::Security(backend)),
             refresh_task: None,
         }
     }
@@ -189,7 +189,7 @@ impl AuthenticationManager {
         Self {
             config,
             current_token: None,
-            backend: Arc::new(backend),
+            backend: Arc::new(AuthBackendDispatch::InMemory(backend)),
             refresh_task: None,
         }
     }

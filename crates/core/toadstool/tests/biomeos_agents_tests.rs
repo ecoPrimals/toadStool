@@ -15,7 +15,7 @@
 
 use std::sync::Arc;
 use std::time::SystemTime;
-use toadstool::biomeos_integration::agent_backend::InMemoryAgentBackend;
+use toadstool::biomeos_integration::agent_backend::{AgentBackendDispatch, InMemoryAgentBackend};
 use toadstool::biomeos_integration::agents::*;
 
 // ============================================================================
@@ -482,7 +482,7 @@ fn test_agent_deployment_manager_creation() {
         resource_limits: serde_json::Map::new(),
     };
 
-    let backend = Arc::new(InMemoryAgentBackend::new());
+    let backend = Arc::new(AgentBackendDispatch::InMemory(InMemoryAgentBackend::new()));
     let _manager = AgentDeploymentManager::new(config, backend);
 
     // Manager created successfully (no Debug impl, so just verify creation)
@@ -498,7 +498,7 @@ async fn test_agent_deployment_manager_initialize_intelligence_connection() {
         resource_limits: serde_json::Map::new(),
     };
 
-    let backend = Arc::new(InMemoryAgentBackend::new());
+    let backend = Arc::new(AgentBackendDispatch::InMemory(InMemoryAgentBackend::new()));
     let manager = AgentDeploymentManager::new(config, backend);
     let result = manager.initialize_intelligence_connection().await;
 
@@ -521,7 +521,7 @@ async fn test_agent_deployment_manager_health_check() {
         resource_limits: serde_json::Map::new(),
     };
 
-    let backend = Arc::new(InMemoryAgentBackend::new());
+    let backend = Arc::new(AgentBackendDispatch::InMemory(InMemoryAgentBackend::new()));
     let manager = AgentDeploymentManager::new(config, backend);
     let result = manager.health_check().await;
 

@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use toadstool::resources::ResourceRequirements;
 use toadstool::universal::{
-    JobPriority, UniversalJob, UniversalJobType, UniversalPrimalRegistry, UniversalScheduler,
+    JobPriority, UniversalJob, UniversalJobType, UniversalPrimalProviderDispatch,
+    UniversalPrimalRegistry, UniversalScheduler,
 };
 use uuid::Uuid;
 
@@ -15,21 +16,21 @@ use super::helpers::{create_resource_spec, create_test_context, create_test_nati
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_creation() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let result = UniversalScheduler::new(registry).await;
     assert!(result.is_ok(), "Scheduler creation should succeed");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_creation_with_empty_registry() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     assert_eq!(scheduler.get_active_job_count().await, 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_creation_result_is_ok() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let result = UniversalScheduler::new(registry).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap().get_active_job_count().await, 0);
@@ -37,7 +38,7 @@ async fn test_scheduler_creation_result_is_ok() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_get_active_job_count() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     assert_eq!(
         scheduler.get_active_job_count().await,
@@ -48,7 +49,7 @@ async fn test_scheduler_get_active_job_count() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_native_job() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = create_test_native_job(JobPriority::Normal);
     let result = scheduler.schedule_job(job).await;
@@ -57,7 +58,7 @@ async fn test_scheduler_schedule_native_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_wasm_job() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -78,7 +79,7 @@ async fn test_scheduler_schedule_wasm_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_active_job_count_after_completion() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = create_test_native_job(JobPriority::Normal);
     let _ = scheduler.schedule_job(job).await.unwrap();
@@ -91,7 +92,7 @@ async fn test_scheduler_active_job_count_after_completion() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_sequential_job_submission() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     for i in 0..5 {
         let job = UniversalJob {
@@ -117,7 +118,7 @@ async fn test_scheduler_sequential_job_submission() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_job_result_contains_execution_id() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let response = scheduler
         .schedule_job(create_test_native_job(JobPriority::Normal))
@@ -132,7 +133,7 @@ async fn test_scheduler_job_result_contains_execution_id() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_native_job_output_has_runtime_type() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let response = scheduler
         .schedule_job(create_test_native_job(JobPriority::High))
@@ -147,7 +148,7 @@ async fn test_scheduler_native_job_output_has_runtime_type() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_job_with_custom_resources() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -167,7 +168,7 @@ async fn test_scheduler_job_with_custom_resources() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_job_with_minimal_resources() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),

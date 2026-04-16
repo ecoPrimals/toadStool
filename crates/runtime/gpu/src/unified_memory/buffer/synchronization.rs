@@ -2,6 +2,7 @@
 //! CPU/GPU synchronization and bulk fill helpers for [`super::UnifiedBuffer`].
 
 use super::UnifiedBuffer;
+use crate::unified_memory::backend::UnifiedMemoryBackend;
 use crate::unified_memory::types::{SyncState, SyncTarget};
 use toadstool::error::ToadStoolResult;
 

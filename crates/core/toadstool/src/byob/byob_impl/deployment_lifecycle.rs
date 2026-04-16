@@ -9,12 +9,14 @@ use crate::byob::byob_types::{
     ByobDeploymentRequest, DeploymentStatus, HealthCheck, NetworkInfo, ServiceEndpoint, ServiceSpec,
 };
 use crate::byob::deployment::ActiveDeployment;
-use crate::{ExecutionRequest, ExecutionStatus, ToadStoolError, ToadStoolResult, WorkloadSpec};
+use crate::{
+    ExecutionRequest, ExecutionStatus, RuntimeEngine, ToadStoolError, ToadStoolResult, WorkloadSpec,
+};
 use toadstool_common::constants::timeouts;
 
 use super::ByobComputeExecutor;
 
-impl ByobComputeExecutor {
+impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
     /// Create execution request for a service
     pub(super) fn create_service_execution_request(
         &self,

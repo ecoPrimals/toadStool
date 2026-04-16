@@ -7,7 +7,6 @@
 
 use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::time::{Duration, Instant};
 use toadstool::{ToadStoolError, ToadStoolResult as Result};
 use tokio::sync::{Barrier, broadcast, mpsc, oneshot};
@@ -95,17 +94,14 @@ where
 ///
 /// Polls a health check function until it returns true or timeout is reached.
 /// The health check function receives ownership and must be cloneable.
-pub async fn wait_for_service_ready<F>(check: F, timeout: Duration) -> Result<()>
+pub async fn wait_for_service_ready<F, Fut>(check: F, timeout: Duration) -> Result<()>
 where
-    F: Fn() -> Pin<Box<dyn Future<Output = bool> + Send>> + Send + Sync,
+    F: Fn() -> Fut + Send + Sync,
+    Fut: Future<Output = bool> + Send,
 {
-    wait_for_condition(
-        || async { check().await },
-        timeout,
-        Duration::from_millis(10),
-    )
-    .await
-    .map_err(|e| ToadStoolError::runtime(format!("Service did not become ready: {e}")))
+    wait_for_condition(check, timeout, Duration::from_millis(10))
+        .await
+        .map_err(|e| ToadStoolError::runtime(format!("Service did not become ready: {e}")))
 }
 
 /// Wait for multiple conditions concurrently
@@ -478,10 +474,10 @@ mod tests {
         let result = wait_for_service_ready(
             move || {
                 let c = std::sync::Arc::clone(&count_clone);
-                Box::pin(async move {
+                async move {
                     c.fetch_add(1, Ordering::SeqCst);
                     c.load(Ordering::SeqCst) > 2
-                })
+                }
             },
             Duration::from_secs(1),
         )

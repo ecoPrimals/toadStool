@@ -51,7 +51,7 @@ async fn test_statistics() {
 
 #[tokio::test]
 async fn test_execute_distributed_single() {
-    use crate::cpu_resource::CpuComputeResource;
+    use crate::cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch};
     use crate::universal::{
         ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
     };
@@ -60,7 +60,9 @@ async fn test_execute_distributed_single() {
         SchedulingPolicy::CapabilityMatch,
     ));
     let cpu = CpuComputeResource::new().expect("CPU resource");
-    local.register_resource(Arc::new(cpu)).await;
+    local
+        .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+        .await;
 
     let scheduler = DistributedGpuScheduler::new(local);
 
@@ -84,7 +86,7 @@ async fn test_execute_distributed_single() {
 
 #[tokio::test]
 async fn test_execute_distributed_data_parallel() {
-    use crate::cpu_resource::CpuComputeResource;
+    use crate::cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch};
     use crate::universal::{
         ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
     };
@@ -93,7 +95,9 @@ async fn test_execute_distributed_data_parallel() {
         SchedulingPolicy::CapabilityMatch,
     ));
     let cpu = CpuComputeResource::new().expect("CPU resource");
-    local.register_resource(Arc::new(cpu)).await;
+    local
+        .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+        .await;
 
     let scheduler = DistributedGpuScheduler::new(local);
 
@@ -117,7 +121,7 @@ async fn test_execute_distributed_data_parallel() {
 
 #[tokio::test]
 async fn test_execute_distributed_pipeline() {
-    use crate::cpu_resource::CpuComputeResource;
+    use crate::cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch};
     use crate::universal::{
         ComputeRequirements, OptimizationHints, UniversalKernel, UniversalWorkload,
     };
@@ -126,7 +130,9 @@ async fn test_execute_distributed_pipeline() {
         SchedulingPolicy::CapabilityMatch,
     ));
     let cpu = CpuComputeResource::new().expect("CPU resource");
-    local.register_resource(Arc::new(cpu)).await;
+    local
+        .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(cpu)))
+        .await;
 
     let scheduler = DistributedGpuScheduler::new(local);
 

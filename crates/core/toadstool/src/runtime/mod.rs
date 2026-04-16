@@ -10,8 +10,8 @@ use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
 use crate::{
-    ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType, ToadStoolError,
-    ToadStoolResult, WorkloadType,
+    ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType, StubRuntimeEngine,
+    ToadStoolError, ToadStoolResult, WorkloadType,
 };
 
 use crate::workload::{BackendSelector, WorkloadAnalyzer};
@@ -19,9 +19,9 @@ use crate::workload::{BackendSelector, WorkloadAnalyzer};
 use engine_registry::EngineRegistry;
 
 /// Runtime orchestrator that manages multiple runtime engines
-pub struct RuntimeOrchestrator {
+pub struct RuntimeOrchestrator<E: RuntimeEngine = StubRuntimeEngine> {
     /// Registered runtime engines
-    registry: EngineRegistry,
+    registry: EngineRegistry<E>,
     /// Runtime selection strategy
     selection_strategy: RuntimeSelectionStrategy,
     /// Workload analyzer for intelligent routing (AI/ML, CUDA)
@@ -30,10 +30,12 @@ pub struct RuntimeOrchestrator {
     backend_selector: Arc<BackendSelector>,
 }
 
-impl RuntimeOrchestrator {
-    /// Create a new runtime orchestrator
+impl<E: RuntimeEngine> RuntimeOrchestrator<E> {
+    /// Create a new runtime orchestrator for engine type `E`.
+    ///
+    /// When `E` is [`StubRuntimeEngine`], use the inherent `new` constructor instead of turbofish.
     #[must_use]
-    pub fn new(selection_strategy: RuntimeSelectionStrategy) -> Self {
+    pub fn create(selection_strategy: RuntimeSelectionStrategy) -> Self {
         Self {
             registry: EngineRegistry::new(),
             selection_strategy,
@@ -42,9 +44,9 @@ impl RuntimeOrchestrator {
         }
     }
 
-    /// Create orchestrator with custom backend selector (for testing)
+    /// Create orchestrator with custom backend selector (for testing).
     #[must_use]
-    pub fn with_backend_selector(
+    pub fn create_with_backend_selector(
         selection_strategy: RuntimeSelectionStrategy,
         backend_selector: BackendSelector,
     ) -> Self {
@@ -64,7 +66,7 @@ impl RuntimeOrchestrator {
     pub async fn register_engine(
         &self,
         runtime_type: RuntimeType,
-        engine: Box<dyn RuntimeEngine>,
+        engine: Arc<E>,
     ) -> ToadStoolResult<()> {
         self.registry.register_engine(runtime_type, engine).await
     }
@@ -185,6 +187,23 @@ impl RuntimeOrchestrator {
             drop(engines);
             result
         }
+    }
+}
+
+impl RuntimeOrchestrator<StubRuntimeEngine> {
+    /// Create a new runtime orchestrator (empty registry until engines are registered).
+    #[must_use]
+    pub fn new(selection_strategy: RuntimeSelectionStrategy) -> Self {
+        Self::create(selection_strategy)
+    }
+
+    /// Create orchestrator with custom backend selector (for testing).
+    #[must_use]
+    pub fn with_backend_selector(
+        selection_strategy: RuntimeSelectionStrategy,
+        backend_selector: BackendSelector,
+    ) -> Self {
+        Self::create_with_backend_selector(selection_strategy, backend_selector)
     }
 }
 

@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
+    async_fn_in_trait,
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
@@ -103,7 +104,7 @@ pub use substrate::{
     PowerMeasurement, SubstrateAdapter, SubstrateCapabilities, SubstrateType, UnaryOp,
 };
 pub use types::{
-    Capabilities, ComputeError, ComputeUnit, ComputeUnitType, DataType, ExecutionModel,
-    LatencyProfile, OperationType, Output, OutputMetadata, Parallelism, ParamValue, PowerProfile,
-    Workload, WorkloadBuilder, WorkloadData, WorkloadParams,
+    Capabilities, ComputeError, ComputeUnit, ComputeUnitDispatch, ComputeUnitType, DataType,
+    ExecutionModel, LatencyProfile, OperationType, Output, OutputMetadata, Parallelism, ParamValue,
+    PowerProfile, Workload, WorkloadBuilder, WorkloadData, WorkloadParams,
 };

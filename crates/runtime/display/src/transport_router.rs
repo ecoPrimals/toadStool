@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Transport Router — any hardware input to any hardware output.
 //!
-//! Discovers all available [`HardwareTransport`] endpoints and routes data
-//! between any Rx transport and any Tx transport. Supports capability-based
+//! Discovers all available [`HardwareTransport`](toadstool_core::HardwareTransport) endpoints
+//! and routes data between any Rx transport and any Tx transport. Supports capability-based
 //! selection (e.g. "give me a 10+ Gbps unidirectional Tx").
 
 use std::collections::HashMap;
 
-use crate::hardware_transport::{
+use toadstool_core::{
     HardwareTransport, TransportDirection, TransportError, TransportInfo, TransportMedium,
 };
+
+use crate::hardware_transport_dispatch::HardwareTransportDispatch;
 
 /// Criteria for selecting a transport endpoint.
 #[derive(Debug, Clone, Default)]
@@ -55,7 +57,7 @@ impl TransportFilter {
         self
     }
 
-    fn matches(&self, transport: &dyn HardwareTransport) -> bool {
+    fn matches(&self, transport: &HardwareTransportDispatch) -> bool {
         let info = transport.info();
         if let Some(dir) = self.direction
             && info.direction != dir
@@ -77,7 +79,7 @@ impl TransportFilter {
 
 /// A registered transport with its runtime handle.
 struct RegisteredTransport {
-    transport: Box<dyn HardwareTransport>,
+    transport: HardwareTransportDispatch,
 }
 
 /// Routes data between any registered hardware transports.
@@ -101,14 +103,14 @@ impl TransportRouter {
     }
 
     /// Register a transport. Uses `transport.info().id` as the key.
-    pub fn register(&mut self, transport: Box<dyn HardwareTransport>) {
+    pub fn register(&mut self, transport: HardwareTransportDispatch) {
         let id = transport.info().id.clone();
         self.transports
             .insert(id, RegisteredTransport { transport });
     }
 
     /// Remove a transport by ID.
-    pub fn unregister(&mut self, id: &str) -> Option<Box<dyn HardwareTransport>> {
+    pub fn unregister(&mut self, id: &str) -> Option<HardwareTransportDispatch> {
         self.transports.remove(id).map(|r| r.transport)
     }
 
@@ -126,24 +128,20 @@ impl TransportRouter {
     pub fn find(&self, filter: &TransportFilter) -> Vec<String> {
         self.transports
             .iter()
-            .filter(|(_, r)| filter.matches(r.transport.as_ref()))
+            .filter(|(_, r)| filter.matches(&r.transport))
             .map(|(id, _)| id.clone())
             .collect()
     }
 
     /// Get a reference to a transport by ID.
     #[must_use]
-    pub fn get(&self, id: &str) -> Option<&dyn HardwareTransport> {
-        self.transports
-            .get(id)
-            .map(|r| &*r.transport as &dyn HardwareTransport)
+    pub fn get(&self, id: &str) -> Option<&HardwareTransportDispatch> {
+        self.transports.get(id).map(|r| &r.transport)
     }
 
     /// Get a mutable reference to a transport by ID.
-    pub fn get_mut(&mut self, id: &str) -> Option<&mut (dyn HardwareTransport + 'static)> {
-        self.transports
-            .get_mut(id)
-            .map(|r| &mut *r.transport as &mut (dyn HardwareTransport + 'static))
+    pub fn get_mut(&mut self, id: &str) -> Option<&mut HardwareTransportDispatch> {
+        self.transports.get_mut(id).map(|r| &mut r.transport)
     }
 
     /// Route a chunk of data from one transport (Rx) to another (Tx).
@@ -169,7 +167,6 @@ impl TransportRouter {
             ));
         }
 
-        // Temporarily take the Rx transport out so we can mutably borrow both.
         let mut rx_reg = self.transports.remove(rx_id).ok_or_else(|| {
             TransportError::Unavailable(format!("rx transport not found: {rx_id}"))
         })?;
@@ -187,7 +184,6 @@ impl TransportRouter {
             tx_reg.transport.send(&buf[..n])
         })();
 
-        // Always re-insert the Rx transport.
         self.transports.insert(rx_id.to_string(), rx_reg);
         result
     }
@@ -230,79 +226,36 @@ impl Default for TransportRouter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hardware_transport::{TransportDirection, TransportInfo, TransportMedium};
-
-    /// Minimal loopback transport for testing.
-    struct LoopbackTransport {
-        info: TransportInfo,
-        buf: Vec<u8>,
-    }
-
-    impl LoopbackTransport {
-        fn new(id: &str, direction: TransportDirection) -> Self {
-            Self {
-                info: TransportInfo {
-                    id: id.to_string(),
-                    label: id.to_string(),
-                    medium: TransportMedium::Serial,
-                    direction,
-                },
-                buf: Vec::new(),
-            }
-        }
-    }
-
-    impl HardwareTransport for LoopbackTransport {
-        fn info(&self) -> &TransportInfo {
-            &self.info
-        }
-        fn bandwidth_bps(&self) -> u64 {
-            1_000_000
-        }
-        fn is_available(&self) -> bool {
-            true
-        }
-        fn send(&mut self, data: &[u8]) -> Result<usize, TransportError> {
-            self.buf.extend_from_slice(data);
-            Ok(data.len())
-        }
-        fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-            let n = buf.len().min(self.buf.len());
-            buf[..n].copy_from_slice(&self.buf[..n]);
-            self.buf.drain(..n);
-            Ok(n)
-        }
-    }
+    use crate::hardware_transport_dispatch::{HardwareTransportDispatch, TestLoopbackTransport};
+    use toadstool_core::TransportDirection;
 
     #[test]
     fn register_and_list() {
         let mut router = TransportRouter::new();
-        router.register(Box::new(LoopbackTransport::new(
-            "a",
-            TransportDirection::Tx,
-        )));
-        router.register(Box::new(LoopbackTransport::new(
-            "b",
-            TransportDirection::Rx,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("a", TransportDirection::Tx),
+        ));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("b", TransportDirection::Rx),
+        ));
         assert_eq!(router.list().len(), 2);
     }
 
     #[test]
     fn filter_by_direction() {
         let mut router = TransportRouter::new();
-        router.register(Box::new(LoopbackTransport::new(
-            "tx1",
-            TransportDirection::Tx,
-        )));
-        router.register(Box::new(LoopbackTransport::new(
-            "rx1",
-            TransportDirection::Rx,
-        )));
-        router.register(Box::new(LoopbackTransport::new(
-            "bidi1",
-            TransportDirection::Bidirectional,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("tx1", TransportDirection::Tx),
+        ));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("rx1", TransportDirection::Rx),
+        ));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth(
+                "bidi1",
+                TransportDirection::Bidirectional,
+            ),
+        ));
 
         let tx_only = router.find(&TransportFilter::tx());
         assert!(tx_only.contains(&"tx1".to_string()));
@@ -313,10 +266,9 @@ mod tests {
     #[test]
     fn filter_by_bandwidth() {
         let mut router = TransportRouter::new();
-        router.register(Box::new(LoopbackTransport::new(
-            "slow",
-            TransportDirection::Tx,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::new("slow", TransportDirection::Tx, 1_000_000),
+        ));
 
         let high_bw = TransportFilter::tx().with_min_bandwidth(10_000_000_000);
         assert!(router.find(&high_bw).is_empty());
@@ -329,13 +281,13 @@ mod tests {
     fn route_once_transfers_data() {
         let mut router = TransportRouter::new();
 
-        let mut rx = LoopbackTransport::new("rx", TransportDirection::Bidirectional);
+        let mut rx =
+            TestLoopbackTransport::with_default_bandwidth("rx", TransportDirection::Bidirectional);
         rx.buf = b"hello transport".to_vec();
-        router.register(Box::new(rx));
-        router.register(Box::new(LoopbackTransport::new(
-            "tx",
-            TransportDirection::Bidirectional,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(rx));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("tx", TransportDirection::Bidirectional),
+        ));
 
         let n = router.route_once("rx", "tx", 1024).unwrap();
         assert_eq!(n, 15);
@@ -344,20 +296,21 @@ mod tests {
     #[test]
     fn route_same_id_rejected() {
         let mut router = TransportRouter::new();
-        router.register(Box::new(LoopbackTransport::new(
-            "self",
-            TransportDirection::Bidirectional,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth(
+                "self",
+                TransportDirection::Bidirectional,
+            ),
+        ));
         assert!(router.route_once("self", "self", 64).is_err());
     }
 
     #[test]
     fn unregister() {
         let mut router = TransportRouter::new();
-        router.register(Box::new(LoopbackTransport::new(
-            "a",
-            TransportDirection::Tx,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("a", TransportDirection::Tx),
+        ));
         assert!(router.unregister("a").is_some());
         assert!(router.unregister("a").is_none());
         assert!(router.list().is_empty());

@@ -8,12 +8,14 @@ use std::time::Duration;
 
 use tracing::{debug, warn};
 
+use toadstool::RuntimeEngine;
+
 use crate::state::ServerState;
 use toadstool_common::constants::timeouts::HEALTH_CHECK_INTERVAL;
 use tokio::time::interval;
 
 /// Capability heartbeat background task
-pub(super) async fn run(state: ServerState) {
+pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
     debug!("Starting capability heartbeat task");
 
     let heartbeat_interval = if let Some(ref primal_config) = state.config.primal_capabilities {
@@ -47,17 +49,18 @@ mod tests {
     use tokio::sync::{RwLock, broadcast};
 
     use crate::config::ServerConfig;
+    use crate::runtime_engine_dispatch::RuntimeEngineDispatch;
     use crate::state::{ServerState, ServerStatistics};
 
     #[tokio::test]
     async fn test_capability_run_no_provider_completes_one_tick() {
         let (event_broadcaster, _) = broadcast::channel(100);
-        let state = ServerState {
+        let state = ServerState::<RuntimeEngineDispatch> {
             runtime_engines: Arc::new(RwLock::new(HashMap::new())),
             active_executions: Arc::new(RwLock::new(HashMap::new())),
             event_broadcaster,
             config: ServerConfig::default(),
-            resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
+            resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new().into()),
             stats: Arc::new(RwLock::new(ServerStatistics::default())),
             capability_provider: None,
         };

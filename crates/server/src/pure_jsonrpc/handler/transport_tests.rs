@@ -2,61 +2,17 @@
 use super::*;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use serde_json::json;
-use toadstool_core::{
-    HardwareTransport, TransportDirection, TransportError, TransportInfo, TransportMedium,
-};
-
-/// Minimal transport for exercising the router in unit tests (mirrors `toadstool_core` tests).
-struct LoopbackTransport {
-    info: TransportInfo,
-    buf: Vec<u8>,
-}
-
-impl LoopbackTransport {
-    fn new(id: &str, direction: TransportDirection) -> Self {
-        Self {
-            info: TransportInfo {
-                id: id.to_string(),
-                label: id.to_string(),
-                medium: TransportMedium::Serial,
-                direction,
-            },
-            buf: Vec::new(),
-        }
-    }
-}
-
-impl HardwareTransport for LoopbackTransport {
-    fn info(&self) -> &TransportInfo {
-        &self.info
-    }
-    fn bandwidth_bps(&self) -> u64 {
-        1_000_000
-    }
-    fn is_available(&self) -> bool {
-        true
-    }
-    fn send(&mut self, data: &[u8]) -> Result<usize, TransportError> {
-        self.buf.extend_from_slice(data);
-        Ok(data.len())
-    }
-    fn recv(&mut self, buf: &mut [u8]) -> Result<usize, TransportError> {
-        let n = buf.len().min(self.buf.len());
-        buf[..n].copy_from_slice(&self.buf[..n]);
-        self.buf.drain(..n);
-        Ok(n)
-    }
-}
+use toadstool_core::TransportDirection;
+use toadstool_display::{HardwareTransportDispatch, TestLoopbackTransport};
 
 async fn register_rx_tx_pair(handler: &TransportHandler) {
     let mut router = handler.transport_router.lock().await;
-    let mut rx = LoopbackTransport::new("rx", TransportDirection::Rx);
-    rx.buf = b"chunk".to_vec();
-    router.register(Box::new(rx));
-    router.register(Box::new(LoopbackTransport::new(
-        "tx",
-        TransportDirection::Tx,
-    )));
+    let rx = TestLoopbackTransport::with_default_bandwidth("rx", TransportDirection::Rx)
+        .with_initial_recv_data(b"chunk");
+    router.register(HardwareTransportDispatch::TestLoopback(rx));
+    router.register(HardwareTransportDispatch::TestLoopback(
+        TestLoopbackTransport::with_default_bandwidth("tx", TransportDirection::Tx),
+    ));
 }
 
 #[tokio::test]
@@ -158,10 +114,9 @@ async fn transport_stream_unregistered_tx_id() {
     let h = TransportHandler::new();
     {
         let mut router = h.transport_router.lock().await;
-        router.register(Box::new(LoopbackTransport::new(
-            "rx-only",
-            TransportDirection::Rx,
-        )));
+        router.register(HardwareTransportDispatch::TestLoopback(
+            TestLoopbackTransport::with_default_bandwidth("rx-only", TransportDirection::Rx),
+        ));
     }
     let e = h
         .transport_stream(Some(&json!({ "rx_id": "rx-only", "tx_id": "missing-tx" })))

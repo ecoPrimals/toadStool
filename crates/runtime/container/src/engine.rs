@@ -5,7 +5,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::time::SystemTime;
 
 use tracing::{debug, info};
@@ -57,8 +56,8 @@ impl RuntimeEngine for ContainerRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
             debug!("Initializing container runtime engine");
 
             #[cfg(feature = "docker")]
@@ -77,14 +76,14 @@ impl RuntimeEngine for ContainerRuntimeEngine {
 
             info!("Container runtime engine initialized successfully");
             Ok(())
-        })
+        }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             debug!("Executing container workload: {}", request.execution_id);
 
             self.validate_resource_requirements(&request)?;
@@ -131,7 +130,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
                     "Invalid workload type for container runtime",
                 ))
             }
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -144,8 +143,8 @@ impl RuntimeEngine for ContainerRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async {
             let start_time = SystemTime::now();
 
             let cpu_metrics = CpuMetrics {
@@ -188,11 +187,11 @@ impl RuntimeEngine for ContainerRuntimeEngine {
                 gpu: None,
                 timing: timing_metrics,
             })
-        })
+        }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async {
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
             info!("Shutting down container runtime engine");
 
             let container_ids: Vec<Uuid> = {
@@ -219,7 +218,7 @@ impl RuntimeEngine for ContainerRuntimeEngine {
 
             info!("Container runtime engine shut down successfully");
             Ok(())
-        })
+        }
     }
 }
 

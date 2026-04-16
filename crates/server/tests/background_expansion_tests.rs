@@ -23,10 +23,11 @@ use toadstool_server::{
     ActiveExecution, ClientInfo, ServerConfig, ServerEvent, ServerState, ServerStatistics,
     background::*,
 };
+use toadstool_testing::mocks::runtime_engines::MockRuntimeEngine;
 use tokio::sync::{RwLock, broadcast};
 
 /// Helper to create test server state with config
-fn create_test_state_with_config(config: ServerConfig) -> ServerState {
+fn create_test_state_with_config(config: ServerConfig) -> ServerState<MockRuntimeEngine> {
     let (event_broadcaster, _) = broadcast::channel(100);
 
     ServerState {
@@ -34,14 +35,14 @@ fn create_test_state_with_config(config: ServerConfig) -> ServerState {
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
+        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new().into()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }
 }
 
 /// Helper with default config
-fn create_test_state() -> ServerState {
+fn create_test_state() -> ServerState<MockRuntimeEngine> {
     create_test_state_with_config(ServerConfig::default())
 }
 
@@ -90,10 +91,9 @@ async fn test_health_check_with_runtime_engines() {
     // Add a mock runtime engine
     {
         let mut engines = state.runtime_engines.write().await;
-        use toadstool_testing::mocks::MockRuntimeEngine;
         engines.insert(
             toadstool::RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
     }
 

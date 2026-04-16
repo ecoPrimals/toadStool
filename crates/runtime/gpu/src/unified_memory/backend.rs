@@ -6,8 +6,6 @@
 use crate::unified_memory::types::{
     AccessPattern, BackendType, MemoryFlags, UnifiedMemoryCapabilities,
 };
-use std::future::Future;
-use std::pin::Pin;
 use toadstool::error::ToadStoolResult;
 
 /// Opaque CPU/GPU address token for unified-memory allocations.
@@ -184,11 +182,11 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     /// # Returns
     ///
     /// Backend-specific allocation handle on success, or error if allocation fails.
-    fn allocate_unified(
+    async fn allocate_unified(
         &self,
         size: usize,
         flags: MemoryFlags,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<BackendAllocation>> + Send + '_>>;
+    ) -> ToadStoolResult<BackendAllocation>;
 
     /// Free unified memory
     ///
@@ -199,10 +197,7 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     /// # Safety
     ///
     /// Caller must ensure no outstanding references to the allocation exist.
-    fn free_unified(
-        &self,
-        allocation: BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    async fn free_unified(&self, allocation: BackendAllocation) -> ToadStoolResult<()>;
 
     /// Get CPU-accessible pointer
     ///
@@ -216,10 +211,7 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     ///
     /// The returned pointer is valid only for the lifetime of the allocation.
     /// Caller must ensure proper synchronization before accessing.
-    fn map_cpu_ptr<'a>(
-        &'a self,
-        allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<*mut u8>> + Send + 'a>>;
+    async fn map_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<*mut u8>;
 
     /// Unmap CPU pointer (if needed)
     ///
@@ -228,15 +220,9 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     /// # Arguments
     ///
     /// * `allocation` - The allocation to unmap
-    fn unmap_cpu_ptr<'a>(
-        &'a self,
-        allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            // Default: no-op (most backends use persistent mapping)
-            let _ = allocation;
-            Ok(())
-        })
+    async fn unmap_cpu_ptr(&self, allocation: &BackendAllocation) -> ToadStoolResult<()> {
+        let _ = allocation;
+        Ok(())
     }
 
     /// Get GPU device pointer
@@ -260,15 +246,9 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     /// # Arguments
     ///
     /// * `allocation` - The allocation to sync
-    fn sync_cpu_to_device<'a>(
-        &'a self,
-        allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            // Default: no-op (assume coherent memory)
-            let _ = allocation;
-            Ok(())
-        })
+    async fn sync_cpu_to_device(&self, allocation: &BackendAllocation) -> ToadStoolResult<()> {
+        let _ = allocation;
+        Ok(())
     }
 
     /// Synchronize GPU → CPU
@@ -279,15 +259,9 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     /// # Arguments
     ///
     /// * `allocation` - The allocation to sync
-    fn sync_device_to_cpu<'a>(
-        &'a self,
-        allocation: &'a BackendAllocation,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            // Default: no-op (assume coherent memory)
-            let _ = allocation;
-            Ok(())
-        })
+    async fn sync_device_to_cpu(&self, allocation: &BackendAllocation) -> ToadStoolResult<()> {
+        let _ = allocation;
+        Ok(())
     }
 
     /// Optimize for specific access pattern
@@ -298,16 +272,13 @@ pub trait UnifiedMemoryBackend: Send + Sync {
     ///
     /// * `allocation` - The allocation to optimize
     /// * `pattern` - Expected access pattern
-    fn optimize_for_pattern<'a>(
-        &'a self,
-        allocation: &'a BackendAllocation,
+    async fn optimize_for_pattern(
+        &self,
+        allocation: &BackendAllocation,
         pattern: AccessPattern,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
-            // Default: no-op
-            let _ = (allocation, pattern);
-            Ok(())
-        })
+    ) -> ToadStoolResult<()> {
+        let _ = (allocation, pattern);
+        Ok(())
     }
 
     /// Validate allocation is still valid

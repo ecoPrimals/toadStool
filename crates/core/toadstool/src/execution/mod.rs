@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::future::Future;
-use std::pin::Pin;
 use toadstool_common::constants::timeouts;
 use uuid::Uuid;
 
@@ -458,7 +457,7 @@ pub struct LoggingConfig {
 ///
 /// # Performance Note: Native Async Traits
 ///
-/// This trait uses native async Rust (`Pin<Box<dyn Future<...>>>`) instead of the `async_trait` macro.
+/// This trait uses return-position `impl Future` (RPITIT) for async methods.
 /// This provides zero-cost abstraction and improved performance.
 ///
 /// **Benefits**: Zero macro overhead, faster compilation, more efficient stack usage
@@ -478,7 +477,7 @@ pub trait RuntimeEngine: Send + Sync {
     fn initialize(
         &mut self,
         config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Execute a workload and return the result.
     ///
@@ -486,7 +485,7 @@ pub trait RuntimeEngine: Send + Sync {
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_;
 
     /// Get the capabilities supported by this runtime.
     ///
@@ -503,13 +502,17 @@ pub trait RuntimeEngine: Send + Sync {
     /// Returns performance and resource usage metrics.
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<crate::RuntimeMetrics>> + Send + '_;
 
     /// Shutdown the runtime engine and clean up resources.
     ///
     /// This method is called once before the engine is dropped.
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 }
+
+mod stub_runtime_engine;
+
+pub use stub_runtime_engine::StubRuntimeEngine;
 
 // RuntimeOrchestrator is now defined in runtime.rs module
 // Re-export it here for backward compatibility

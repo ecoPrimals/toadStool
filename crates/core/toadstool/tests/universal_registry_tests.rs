@@ -6,13 +6,13 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use uuid::Uuid;
 
 use toadstool::universal::{
     NetworkLocation, PrimalCapability, PrimalContext, PrimalEndpoints, PrimalHealth, PrimalRequest,
-    PrimalResponse, PrimalType, ResponseStatus, SecurityLevel, UniversalPrimalRegistry,
+    PrimalResponse, PrimalType, ResponseStatus, SecurityLevel, UniversalPrimalProvider,
+    UniversalPrimalRegistry,
 };
 
 // ============================================================================
@@ -77,8 +77,8 @@ impl toadstool::universal::UniversalPrimalProvider for MockPrimalProvider {
         self.capabilities.clone()
     }
 
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -95,10 +95,10 @@ impl toadstool::universal::UniversalPrimalProvider for MockPrimalProvider {
     fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<PrimalResponse>> + Send + '_>> {
+    ) -> impl Future<Output = toadstool::ToadStoolResult<PrimalResponse>> + Send + '_ {
         let fail_requests = self.fail_requests;
         let instance_id = self.instance_id.clone();
-        Box::pin(async move {
+        async move {
             if fail_requests {
                 return Err(toadstool::ToadStoolError::execution("mock failure"));
             }
@@ -109,20 +109,18 @@ impl toadstool::universal::UniversalPrimalProvider for MockPrimalProvider {
                 metadata: HashMap::new(),
                 timestamp: std::time::SystemTime::now(),
             })
-        })
+        }
     }
 
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = toadstool::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
-    fn shutdown(
-        &mut self,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = toadstool::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn can_serve_context(&self, context: &PrimalContext) -> bool {
@@ -155,19 +153,19 @@ fn create_test_context(user_id: &str) -> PrimalContext {
 
 #[test]
 fn test_registry_new() {
-    let _registry = UniversalPrimalRegistry::new();
+    let _registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
 }
 
 #[test]
 fn test_registry_default() {
-    let registry = UniversalPrimalRegistry::default();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     // Default should be equivalent to new
     let _ = registry;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_empty_get_all_providers() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let providers = registry.get_all_providers().await;
     assert!(
         providers.is_empty(),
@@ -177,7 +175,7 @@ async fn test_registry_empty_get_all_providers() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_empty_find_by_capability() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
@@ -187,7 +185,7 @@ async fn test_registry_empty_find_by_capability() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_empty_find_by_context() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let context = create_test_context("user-1");
     let providers = registry.find_by_context(&context).await;
     assert!(providers.is_empty());
@@ -199,7 +197,7 @@ async fn test_registry_empty_find_by_context() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_register_single_provider() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "primal-1",
         PrimalType::Compute,
@@ -219,7 +217,7 @@ async fn test_registry_register_single_provider() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_register_multiple_providers() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
 
     for i in 1..=5 {
         let provider = Arc::new(MockPrimalProvider::new(
@@ -239,7 +237,7 @@ async fn test_registry_register_multiple_providers() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_register_overwrites_same_instance_id() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
 
     let provider1 = Arc::new(MockPrimalProvider::new(
         "same-id",
@@ -272,7 +270,7 @@ async fn test_registry_register_overwrites_same_instance_id() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_capability_native_execution() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
     };
@@ -291,7 +289,7 @@ async fn test_registry_find_by_capability_native_execution() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_capability_wasm() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let capability = PrimalCapability::WasmExecution { wasi_support: true };
     let provider = Arc::new(MockPrimalProvider::new(
         "wasm-1",
@@ -307,7 +305,7 @@ async fn test_registry_find_by_capability_wasm() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_capability_multiple_with_same_cap() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let capability = PrimalCapability::ContainerRuntime {
         orchestrators: vec!["docker".to_string()],
     };
@@ -333,7 +331,7 @@ async fn test_registry_find_by_capability_multiple_with_same_cap() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_capability_no_match() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "primal-1",
         PrimalType::Compute,
@@ -355,7 +353,7 @@ async fn test_registry_find_by_capability_no_match() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_context() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let context = create_test_context("alice");
     let provider = Arc::new(MockPrimalProvider::new(
         "alice-primal",
@@ -374,7 +372,7 @@ async fn test_registry_find_by_context() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_context_filters_can_serve() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(
         MockPrimalProvider::new(
             "restricted-primal",
@@ -401,7 +399,7 @@ async fn test_registry_find_by_context_filters_can_serve() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_find_by_context_unknown_user_empty() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "primal-1",
         PrimalType::Compute,
@@ -422,7 +420,7 @@ async fn test_registry_find_by_context_unknown_user_empty() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_route_request_success() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "target-primal",
         PrimalType::Compute,
@@ -454,7 +452,7 @@ async fn test_registry_route_request_success() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_route_request_target_not_found() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "registered-primal",
         PrimalType::Compute,
@@ -480,7 +478,7 @@ async fn test_registry_route_request_target_not_found() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_route_request_provider_returns_error() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(
         MockPrimalProvider::new(
             "failing-primal",
@@ -509,7 +507,7 @@ async fn test_registry_route_request_provider_returns_error() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_route_request_empty_registry() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
 
     let request = PrimalRequest {
         id: Uuid::new_v4(),
@@ -532,7 +530,7 @@ async fn test_registry_route_request_empty_registry() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_provider_primal_type_preserved() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "storage-1",
         PrimalType::Storage,
@@ -547,7 +545,7 @@ async fn test_registry_provider_primal_type_preserved() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_registry_custom_primal_type() {
-    let registry = UniversalPrimalRegistry::new();
+    let registry = UniversalPrimalRegistry::<MockPrimalProvider>::new_typed();
     let provider = Arc::new(MockPrimalProvider::new(
         "custom-1",
         PrimalType::Custom("analytics".to_string()),

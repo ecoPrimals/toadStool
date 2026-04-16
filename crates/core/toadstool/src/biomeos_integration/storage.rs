@@ -8,19 +8,19 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use super::storage_backend::{StorageBackend, VolumeStatus};
+use super::storage_backend::{StorageBackend, StorageBackendDispatch, VolumeStatus};
 use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use crate::ToadStoolResult;
 
 /// Storage provisioning manager for the storage service.
 ///
-/// Uses dependency injection via the `StorageBackend` trait for flexibility.
+/// Uses dependency injection via [`StorageBackendDispatch`] for flexibility.
 /// No conditional compilation or feature flags — the backend determines behavior.
 pub struct StorageProvisioningManager {
     /// Configuration
     config: StorageProvisioningConfig,
     /// Pluggable storage backend (remote storage service, in-memory, etc.)
-    backend: Arc<dyn StorageBackend>,
+    backend: Arc<StorageBackendDispatch>,
 }
 
 /// Configuration for storage provisioning manager
@@ -63,7 +63,7 @@ impl Default for StorageProvisioningConfig {
 impl StorageProvisioningManager {
     /// Create a new storage provisioning manager with custom backend
     #[must_use]
-    pub fn new(config: StorageProvisioningConfig, backend: Arc<dyn StorageBackend>) -> Self {
+    pub fn new(config: StorageProvisioningConfig, backend: Arc<StorageBackendDispatch>) -> Self {
         Self { config, backend }
     }
 
@@ -83,7 +83,7 @@ impl StorageProvisioningManager {
         .await?;
         Ok(Self {
             config,
-            backend: Arc::new(backend),
+            backend: Arc::new(StorageBackendDispatch::Socket(backend)),
         })
     }
 
@@ -105,17 +105,18 @@ impl StorageProvisioningManager {
         );
         Self {
             config,
-            backend: Arc::new(backend),
+            backend: Arc::new(StorageBackendDispatch::Socket(backend)),
         }
     }
 
     /// Create a new manager with in-memory test backend
     #[must_use]
+    #[cfg(any(test, feature = "test-mocks"))]
     pub fn with_inmemory(config: StorageProvisioningConfig) -> Self {
         let backend = super::storage_backend::InMemoryBackend::new(config.storage_tier.clone());
         Self {
             config,
-            backend: Arc::new(backend),
+            backend: Arc::new(StorageBackendDispatch::InMemory(backend)),
         }
     }
 

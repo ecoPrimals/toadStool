@@ -173,7 +173,9 @@ fn test_manager_with_custom_backend() {
         ..StorageProvisioningConfig::default()
     };
 
-    let backend = Arc::new(InMemoryBackend::new("standard".to_string()));
+    let backend = Arc::new(StorageBackendDispatch::InMemory(InMemoryBackend::new(
+        "standard".to_string(),
+    )));
     let _manager = StorageProvisioningManager::new(config, backend);
     // Manager should create successfully (no panic = success)
 }
@@ -284,7 +286,9 @@ fn test_manager_shared_backend() {
         ..StorageProvisioningConfig::default()
     };
 
-    let backend = Arc::new(InMemoryBackend::new("standard".to_string()));
+    let backend = Arc::new(StorageBackendDispatch::InMemory(InMemoryBackend::new(
+        "standard".to_string(),
+    )));
     let backend_clone = backend.clone();
 
     let _manager1 = StorageProvisioningManager::new(config.clone(), backend);

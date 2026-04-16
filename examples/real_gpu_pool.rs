@@ -19,11 +19,11 @@
 use std::sync::Arc;
 use std::time::Instant;
 use toadstool_runtime_gpu::{
-    cpu_resource::CpuComputeResource,
+    cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch},
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
     universal::{
-        ComputeBuffer, ComputeRequirements, MemoryAccessPattern, Operation, OptimizationHints,
-        Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
+        ComputeBuffer, ComputeContext, ComputeRequirements, MemoryAccessPattern, Operation,
+        OptimizationHints, Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
     },
 };
 
@@ -64,7 +64,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             println!();
 
-            scheduler.register_resource(Arc::new(cpu_resource)).await;
+            scheduler
+                .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(
+                    cpu_resource,
+                )))
+                .await;
         }
         Err(e) => {
             eprintln!("❌ Failed to initialize CPU resource: {e}");

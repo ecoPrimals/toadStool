@@ -9,7 +9,9 @@ use toadstool_common::constants::PRIMAL_NAME;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use crate::execution::{ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeType};
+use crate::execution::{
+    ExecutionInput, ExecutionRequest, ExecutionResponse, RuntimeEngine, RuntimeType,
+};
 use crate::resources::ResourceRequirements;
 use crate::workload::ExecutableSource;
 use crate::{SecurityContext, ToadStoolResult, WorkloadSpec};
@@ -17,9 +19,13 @@ use crate::{SecurityContext, ToadStoolResult, WorkloadSpec};
 use super::super::UniversalScheduler;
 use super::discover::discover_self_ip_address;
 use crate::universal::requests::{PrimalRequest, ResponseStatus};
+use crate::universal::traits::UniversalPrimalProvider;
 use crate::universal::types::{NetworkLocation, PrimalCapability, PrimalContext, SecurityLevel};
 
-impl UniversalScheduler {
+impl<P, E: RuntimeEngine> UniversalScheduler<P, E>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
     /// Execute a native job (binary/script)
     #[expect(
         clippy::cast_possible_truncation,

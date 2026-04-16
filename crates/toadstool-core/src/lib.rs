@@ -19,7 +19,6 @@ pub mod npu_dispatch;
 /// RT cores, TMUs, ROPs, rasterizer, depth buffer, tessellator, video
 /// encoder — modeled as first-class types for discovery and routing.
 pub mod silicon;
-pub mod transport_router;
 
 pub use hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 pub use hardware_transport::{
@@ -38,4 +37,3 @@ pub use silicon::{
     MultiUnitRoutingPlan, PerformanceMeasurement, PerformanceSurfaceEntry, RoutedOperation,
     RtCoreGen, SiliconCapabilities, SiliconUnit, TensorCoreGen,
 };
-pub use transport_router::{TransportFilter, TransportRouter};

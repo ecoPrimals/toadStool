@@ -3,6 +3,7 @@
 
 use crate::unified_memory::{
     backend::{BackendInitializer, UnifiedMemoryBackend},
+    backend_dispatch::UnifiedMemoryBackendDispatch,
     buffer::UnifiedBuffer,
     types::{
         BackendStrategy, BackendType, BufferId, BufferIdGenerator, MemoryFlags,
@@ -41,7 +42,7 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 /// ```
 pub struct UniversalUnifiedMemory {
     /// Active backend
-    backend: Arc<dyn UnifiedMemoryBackend>,
+    backend: Arc<UnifiedMemoryBackendDispatch>,
 
     /// Buffer ID generator
     id_generator: BufferIdGenerator,
@@ -151,7 +152,7 @@ impl UniversalUnifiedMemory {
     /// Select backend based on strategy
     async fn select_backend(
         strategy: &BackendStrategy,
-    ) -> ToadStoolResult<Arc<dyn UnifiedMemoryBackend>> {
+    ) -> ToadStoolResult<Arc<UnifiedMemoryBackendDispatch>> {
         match strategy {
             BackendStrategy::Automatic => Self::select_automatic().await,
             BackendStrategy::SovereignOnly => Self::select_sovereign().await,
@@ -161,14 +162,14 @@ impl UniversalUnifiedMemory {
     }
 
     /// Automatic selection (sovereignty-first)
-    async fn select_automatic() -> ToadStoolResult<Arc<dyn UnifiedMemoryBackend>> {
+    async fn select_automatic() -> ToadStoolResult<Arc<UnifiedMemoryBackendDispatch>> {
         // Priority 1: WebGPU (sovereignty)
         #[cfg(feature = "webgpu")]
         {
             use crate::unified_memory::backends::webgpu::WebGpuBackend;
             if let Ok(backend) = WebGpuBackend::try_init().await {
                 tracing::info!("🎯 Selected WebGPU backend (pure Rust, sovereign)");
-                return Ok(Arc::new(backend));
+                return Ok(Arc::new(UnifiedMemoryBackendDispatch::WebGpu(backend)));
             }
         }
 
@@ -178,7 +179,7 @@ impl UniversalUnifiedMemory {
             use crate::unified_memory::backends::vulkan::VulkanBackend;
             if let Ok(backend) = VulkanBackend::try_init().await {
                 tracing::info!("🎯 Selected Vulkan backend (cross-vendor)");
-                return Ok(Arc::new(backend));
+                return Ok(Arc::new(UnifiedMemoryBackendDispatch::Vulkan(backend)));
             }
         }
 
@@ -186,16 +187,16 @@ impl UniversalUnifiedMemory {
         use crate::unified_memory::backends::cpu::CpuBackend;
         let backend = CpuBackend::try_init().await?;
         tracing::warn!("⚠️  Using CPU backend (no GPU unified memory available)");
-        Ok(Arc::new(backend))
+        Ok(Arc::new(UnifiedMemoryBackendDispatch::Cpu(backend)))
     }
 
     /// Sovereign-only selection (`WebGPU` or fail)
-    async fn select_sovereign() -> ToadStoolResult<Arc<dyn UnifiedMemoryBackend>> {
+    async fn select_sovereign() -> ToadStoolResult<Arc<UnifiedMemoryBackendDispatch>> {
         #[cfg(feature = "webgpu")]
         {
             use crate::unified_memory::backends::webgpu::WebGpuBackend;
             let backend = WebGpuBackend::try_init().await?;
-            Ok(Arc::new(backend))
+            Ok(Arc::new(UnifiedMemoryBackendDispatch::WebGpu(backend)))
         }
 
         #[cfg(not(feature = "webgpu"))]
@@ -207,13 +208,13 @@ impl UniversalUnifiedMemory {
     }
 
     /// Performance selection (fastest first)
-    async fn select_performance() -> ToadStoolResult<Arc<dyn UnifiedMemoryBackend>> {
+    async fn select_performance() -> ToadStoolResult<Arc<UnifiedMemoryBackendDispatch>> {
         // Priority 1: Vulkan (fastest modern)
         #[cfg(feature = "vulkan")]
         {
             use crate::unified_memory::backends::vulkan::VulkanBackend;
             if let Ok(backend) = VulkanBackend::try_init().await {
-                return Ok(Arc::new(backend));
+                return Ok(Arc::new(UnifiedMemoryBackendDispatch::Vulkan(backend)));
             }
         }
 
@@ -222,27 +223,27 @@ impl UniversalUnifiedMemory {
         {
             use crate::unified_memory::backends::webgpu::WebGpuBackend;
             if let Ok(backend) = WebGpuBackend::try_init().await {
-                return Ok(Arc::new(backend));
+                return Ok(Arc::new(UnifiedMemoryBackendDispatch::WebGpu(backend)));
             }
         }
 
         // Fallback: CPU
         use crate::unified_memory::backends::cpu::CpuBackend;
         let backend = CpuBackend::try_init().await?;
-        Ok(Arc::new(backend))
+        Ok(Arc::new(UnifiedMemoryBackendDispatch::Cpu(backend)))
     }
 
     /// Select specific backend
     async fn select_specific(
         backend_type: BackendType,
-    ) -> ToadStoolResult<Arc<dyn UnifiedMemoryBackend>> {
+    ) -> ToadStoolResult<Arc<UnifiedMemoryBackendDispatch>> {
         match backend_type {
             BackendType::Vulkan => {
                 #[cfg(feature = "vulkan")]
                 {
                     use crate::unified_memory::backends::vulkan::VulkanBackend;
                     let backend = VulkanBackend::try_init().await?;
-                    Ok(Arc::new(backend))
+                    Ok(Arc::new(UnifiedMemoryBackendDispatch::Vulkan(backend)))
                 }
                 #[cfg(not(feature = "vulkan"))]
                 {
@@ -257,7 +258,7 @@ impl UniversalUnifiedMemory {
                 {
                     use crate::unified_memory::backends::webgpu::WebGpuBackend;
                     let backend = WebGpuBackend::try_init().await?;
-                    Ok(Arc::new(backend))
+                    Ok(Arc::new(UnifiedMemoryBackendDispatch::WebGpu(backend)))
                 }
                 #[cfg(not(feature = "webgpu"))]
                 {
@@ -267,7 +268,7 @@ impl UniversalUnifiedMemory {
             BackendType::Cpu => {
                 use crate::unified_memory::backends::cpu::CpuBackend;
                 let backend = CpuBackend::try_init().await?;
-                Ok(Arc::new(backend))
+                Ok(Arc::new(UnifiedMemoryBackendDispatch::Cpu(backend)))
             }
         }
     }

@@ -5,7 +5,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -129,24 +128,22 @@ impl DistributedSecurityProvider {
 impl SecurityProvider for DistributedSecurityProvider {
     fn capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_ {
         let caps = self.capabilities.clone();
-        Box::pin(async move { Ok(caps) })
+        async move { Ok(caps) }
     }
 
-    fn metadata(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
+    fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_ {
         let meta = self.metadata.clone();
-        Box::pin(async move { Ok(meta) })
+        async move { Ok(meta) }
     }
 
     fn encrypt<'a>(
         &'a self,
         data: &'a [u8],
         _options: Option<EncryptionOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to encrypt
@@ -193,15 +190,15 @@ impl SecurityProvider for DistributedSecurityProvider {
                     encrypted_at: std::time::SystemTime::now(),
                 },
             })
-        })
+        }
     }
 
     fn decrypt<'a>(
         &'a self,
         ciphertext: &'a [u8],
         metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to decrypt
@@ -225,15 +222,15 @@ impl SecurityProvider for DistributedSecurityProvider {
                     decrypted_at: std::time::SystemTime::now(),
                 },
             })
-        })
+        }
     }
 
     fn sign<'a>(
         &'a self,
         data: &'a [u8],
         _options: Option<SigningOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to sign
@@ -245,7 +242,7 @@ impl SecurityProvider for DistributedSecurityProvider {
                 key_id: response.key_id,
                 signed_at: std::time::SystemTime::now(),
             })
-        })
+        }
     }
 
     fn verify<'a>(
@@ -253,8 +250,8 @@ impl SecurityProvider for DistributedSecurityProvider {
         data: &'a [u8],
         signature: &'a [u8],
         public_key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to verify
@@ -265,14 +262,14 @@ impl SecurityProvider for DistributedSecurityProvider {
             } else {
                 VerificationResult::Invalid
             })
-        })
+        }
     }
 
     fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_ {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to create permission
@@ -295,15 +292,14 @@ impl SecurityProvider for DistributedSecurityProvider {
                 },
                 provider_metadata: self.metadata.clone(),
             })
-        })
+        }
     }
 
     fn validate_permission<'a>(
         &'a self,
         permission: &'a SecurityPermission,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
-    {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to validate
@@ -314,26 +310,24 @@ impl SecurityProvider for DistributedSecurityProvider {
             } else {
                 PermissionValidationResult::InvalidSignature
             })
-        })
+        }
     }
 
     fn revoke_permission<'a>(
         &'a self,
         permission_id: &'a uuid::Uuid,
         reason: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             let client = self.get_client().await?;
 
             // Use Security client to revoke
             client.revoke_permission(permission_id, reason).await
-        })
+        }
     }
 
-    fn health_check(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
-        Box::pin(async {
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
+        async {
             let client_opt = self.client.read().await;
             let client = match client_opt.as_ref() {
                 Some(c) => Arc::clone(c),
@@ -347,7 +341,7 @@ impl SecurityProvider for DistributedSecurityProvider {
                 Ok(_) => Ok(ProviderHealth::Degraded),
                 Err(_) => Ok(ProviderHealth::Unhealthy),
             }
-        })
+        }
     }
 }
 

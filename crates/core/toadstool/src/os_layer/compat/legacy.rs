@@ -5,7 +5,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::pin::Pin;
 
 use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 
@@ -79,15 +78,15 @@ impl CompatibilityLayer for LegacyCompatibilityLayer {
     fn execute_with_compatibility(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move { Ok(ExecutionResponse::default()) })
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move { Ok(ExecutionResponse::default()) }
     }
 
-    fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn initialize(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }

@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use toadstool::WorkloadType;
-use toadstool::resources::ResourceMonitor;
+use toadstool::resources::ResourceMonitorDispatch;
 
 use crate::strategy::{BackendSelectionStrategy, EvolutionMetrics};
 use crate::types::{ComputeEngineStatistics, GpuFramework};
@@ -14,7 +14,7 @@ use super::UniversalGpuEngine;
 impl UniversalGpuEngine {
     /// Set resource monitor
     #[must_use]
-    pub fn with_resource_monitor(mut self, monitor: Arc<dyn ResourceMonitor>) -> Self {
+    pub fn with_resource_monitor(mut self, monitor: Arc<ResourceMonitorDispatch>) -> Self {
         self.resource_monitor = Some(monitor);
         self
     }

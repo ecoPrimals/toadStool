@@ -6,8 +6,6 @@ use super::types::{
     KernelInput, KernelOutput, UniversalComputeDevice,
 };
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use toadstool::error::ToadStoolResult;
 use uuid::Uuid;
 
@@ -17,53 +15,42 @@ pub trait ParallelComputeFramework: Send + Sync {
     fn framework_type(&self) -> GpuFramework;
 
     /// Discover available devices
-    fn discover_devices(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<UniversalComputeDevice>>> + Send + '_>>;
+    async fn discover_devices(&self) -> ToadStoolResult<Vec<UniversalComputeDevice>>;
 
     /// Create compute session
-    fn create_session<'a>(
-        &'a self,
-        device_id: &'a DeviceId,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + 'a>>;
+    async fn create_session(&self, device_id: &DeviceId) -> ToadStoolResult<Uuid>;
 
     /// Compile kernel for device
-    fn compile_kernel<'a>(
-        &'a self,
-        session_id: Uuid,
-        kernel_source: &'a str,
-        format: KernelFormat,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompiledKernel>> + Send + 'a>>;
-
-    /// Execute compiled kernel
-    fn execute_kernel<'a>(
-        &'a self,
-        session_id: Uuid,
-        kernel: &'a CompiledKernel,
-        inputs: &'a [KernelInput],
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<KernelOutput>> + Send + 'a>>;
-
-    /// Destroy compute session
-    fn destroy_session(
+    async fn compile_kernel(
         &self,
         session_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+        kernel_source: &str,
+        format: KernelFormat,
+    ) -> ToadStoolResult<CompiledKernel>;
+
+    /// Execute compiled kernel
+    async fn execute_kernel(
+        &self,
+        session_id: Uuid,
+        kernel: &CompiledKernel,
+        inputs: &[KernelInput],
+    ) -> ToadStoolResult<KernelOutput>;
+
+    /// Destroy compute session
+    async fn destroy_session(&self, session_id: Uuid) -> ToadStoolResult<()>;
 
     /// Get device usage information
-    fn get_device_usage<'a>(
-        &'a self,
-        device_id: &'a DeviceId,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceUsage>> + Send + 'a>>;
+    async fn get_device_usage(&self, device_id: &DeviceId) -> ToadStoolResult<DeviceUsage>;
 
     /// Check if framework supports recursive execution
     fn supports_recursion(&self) -> bool;
 
     /// Spawn recursive compute session
-    fn spawn_recursive_session<'a>(
-        &'a self,
+    async fn spawn_recursive_session(
+        &self,
         parent_session: Uuid,
-        device_id: &'a DeviceId,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Uuid>> + Send + 'a>>;
+        device_id: &DeviceId,
+    ) -> ToadStoolResult<Uuid>;
 }
 
 /// Trait for kernel optimization

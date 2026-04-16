@@ -8,12 +8,14 @@ use std::time::Duration;
 
 use tracing::{debug, info, warn};
 
+use toadstool::RuntimeEngine;
+
 use crate::state::{ServerEvent, ServerState};
 use toadstool_common::constants::timeouts::DEFAULT_CACHE_TTL;
 use tokio::time::interval;
 
 /// Cleanup background task
-pub(super) async fn run(state: ServerState) {
+pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
     debug!("Starting cleanup task");
 
     let mut interval = interval(DEFAULT_CACHE_TTL); // Cleanup every 5 minutes

@@ -18,7 +18,6 @@ use aes_gcm::{Aes256Gcm, Nonce};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::RngCore;
 use std::future::Future;
-use std::pin::Pin;
 use tokio::sync::RwLock;
 use tracing::debug;
 
@@ -90,21 +89,19 @@ impl Default for SoftwareHsmProvider {
 impl SecurityProvider for SoftwareHsmProvider {
     fn capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_ {
+        async {
             Ok(vec![
                 SecurityCapability::SymmetricEncryption,
                 SecurityCapability::DigitalSignatures,
                 SecurityCapability::KeyManagement,
                 SecurityCapability::PermissionIssuance,
             ])
-        })
+        }
     }
 
-    fn metadata(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
-        Box::pin(async {
+    fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_ {
+        async {
             Ok(ProviderMetadata {
                 provider_id: "software-hsm-local".to_string(),
                 provider_type: "SoftwareHSM".to_string(),
@@ -117,15 +114,15 @@ impl SecurityProvider for SoftwareHsmProvider {
                     m
                 },
             })
-        })
+        }
     }
 
     fn encrypt<'a>(
         &'a self,
         data: &'a [u8],
         options: Option<EncryptionOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a {
+        async move {
             let key_id = options
                 .and_then(|o| o.key_id)
                 .unwrap_or_else(|| "default".to_string());
@@ -161,15 +158,15 @@ impl SecurityProvider for SoftwareHsmProvider {
                     encrypted_at: SystemTime::now(),
                 },
             })
-        })
+        }
     }
 
     fn decrypt<'a>(
         &'a self,
         ciphertext: &'a [u8],
         metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a {
+        async move {
             // Expect wire format: nonce (12 B) || ciphertext+tag
             if ciphertext.len() < 12 + 16 {
                 return Err(ToadStoolError::security("Ciphertext too short".to_string()));
@@ -204,15 +201,15 @@ impl SecurityProvider for SoftwareHsmProvider {
                     decrypted_at: SystemTime::now(),
                 },
             })
-        })
+        }
     }
 
     fn sign<'a>(
         &'a self,
         data: &'a [u8],
         options: Option<SigningOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a {
+        async move {
             let key_id = options
                 .and_then(|o| o.key_id)
                 .unwrap_or_else(|| "default".to_string());
@@ -229,7 +226,7 @@ impl SecurityProvider for SoftwareHsmProvider {
                 key_id: key_id_clone,
                 signed_at: SystemTime::now(),
             })
-        })
+        }
     }
 
     fn verify<'a>(
@@ -237,8 +234,8 @@ impl SecurityProvider for SoftwareHsmProvider {
         data: &'a [u8],
         signature: &'a [u8],
         public_key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a {
+        async move {
             let store = self.keys.read().await;
             let signing_key = store.get_signing(public_key_id).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Key '{public_key_id}' not found"))
@@ -255,14 +252,14 @@ impl SecurityProvider for SoftwareHsmProvider {
                 Ok(()) => Ok(VerificationResult::Valid),
                 Err(_) => Ok(VerificationResult::Invalid),
             }
-        })
+        }
     }
 
     fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_ {
+        async move {
             let payload = serde_json::to_vec(&request)
                 .map_err(|e| ToadStoolError::security(e.to_string()))?;
             let sig_result = self.sign(&payload, None).await?;
@@ -284,15 +281,14 @@ impl SecurityProvider for SoftwareHsmProvider {
                 },
                 provider_metadata: self.metadata().await?,
             })
-        })
+        }
     }
 
     fn validate_permission<'a>(
         &'a self,
         permission: &'a SecurityPermission,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
-    {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a {
+        async move {
             // Check revocation list
             {
                 let revoked = self.revoked.read().await;
@@ -331,15 +327,15 @@ impl SecurityProvider for SoftwareHsmProvider {
                 VerificationResult::Valid => Ok(PermissionValidationResult::Valid),
                 _ => Ok(PermissionValidationResult::InvalidSignature),
             }
-        })
+        }
     }
 
     fn revoke_permission<'a>(
         &'a self,
         permission_id: &'a uuid::Uuid,
         reason: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             debug!(?permission_id, reason, "SoftwareHSM: revoking permission");
             let mut revoked = self.revoked.write().await;
             if !revoked.contains(permission_id) {
@@ -347,13 +343,11 @@ impl SecurityProvider for SoftwareHsmProvider {
                 drop(revoked);
             }
             Ok(())
-        })
+        }
     }
 
-    fn health_check(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
-        Box::pin(async { Ok(ProviderHealth::Healthy) })
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
+        async { Ok(ProviderHealth::Healthy) }
     }
 }
 

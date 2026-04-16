@@ -10,13 +10,11 @@
 
 use super::*;
 use crate::cloud_provider_trait::{
-    CloudCapabilities, CloudError, CloudProvider, CostEstimate, GpuType, WorkloadHealth,
-    WorkloadLocation, WorkloadSpec,
+    CloudCapabilities, CloudError, CloudProvider, CostEstimate, GpuType, NoopCloudProvider,
+    WorkloadHealth, WorkloadLocation, WorkloadSpec,
 };
 use crate::composition_constraints::Constraint;
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 
 struct MockCloudProvider {
     name: String,
@@ -30,10 +28,10 @@ impl CloudProvider for MockCloudProvider {
 
     fn capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_>> {
+    ) -> impl std::future::Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_ {
         let name = self.name.clone();
         let supports_gpu = self.supports_gpu;
-        Box::pin(async move {
+        async move {
             Ok(CloudCapabilities {
                 name,
                 available_regions: vec!["us-west-1".to_string(), "eu-west-1".to_string()],
@@ -45,15 +43,15 @@ impl CloudProvider for MockCloudProvider {
                 supports_autoscaling: true,
                 custom: HashMap::new(),
             })
-        })
+        }
     }
 
     fn deploy_workload<'a>(
         &'a self,
         workload_id: &'a str,
         _region: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
-        Box::pin(async move { Ok(format!("instance-{workload_id}")) })
+    ) -> impl std::future::Future<Output = Result<String, CloudError>> + Send + 'a {
+        async move { Ok(format!("instance-{workload_id}")) }
     }
 
     fn migrate_workload<'a>(
@@ -61,43 +59,43 @@ impl CloudProvider for MockCloudProvider {
         workload_id: &'a str,
         _source: WorkloadLocation,
         _target_region: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
-        Box::pin(async move { Ok(format!("migrated-{workload_id}")) })
+    ) -> impl std::future::Future<Output = Result<String, CloudError>> + Send + 'a {
+        async move { Ok(format!("migrated-{workload_id}")) }
     }
 
     fn check_health<'a>(
         &'a self,
         _instance_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a>> {
-        Box::pin(async move { Ok(WorkloadHealth::Healthy) })
+    ) -> impl std::future::Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a {
+        async move { Ok(WorkloadHealth::Healthy) }
     }
 
     fn terminate_workload<'a>(
         &'a self,
         _instance_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), CloudError>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
+    ) -> impl std::future::Future<Output = Result<(), CloudError>> + Send + 'a {
+        async move { Ok(()) }
     }
 
     fn estimate_cost<'a>(
         &'a self,
         _workload_spec: &'a WorkloadSpec,
         _region: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<CostEstimate, CloudError>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = Result<CostEstimate, CloudError>> + Send + 'a {
+        async move {
             Ok(CostEstimate {
                 cost_per_hour: 5.0,
                 estimated_total_cost: Some(10.0),
                 breakdown: HashMap::new(),
             })
-        })
+        }
     }
 
     fn available_gpu_types<'a>(
         &'a self,
         _region: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a {
+        async move {
             Ok(vec![GpuType {
                 name: "V100".to_string(),
                 memory_gb: 16.0,
@@ -105,7 +103,7 @@ impl CloudProvider for MockCloudProvider {
                 cost_per_hour: 3.0,
                 available_regions: vec!["us-west-1".to_string()],
             }])
-        })
+        }
     }
 }
 
@@ -216,13 +214,15 @@ fn test_migration_recommendation_should_migrate() {
 
 #[tokio::test]
 async fn test_coordinator_initialization() {
-    let result = MigrationCoordinator::new().await;
+    let result = MigrationCoordinator::<NoopCloudProvider>::new().await;
     assert!(result.is_ok());
 }
 
 #[tokio::test]
 async fn test_coordinator_starts_empty() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let providers = coordinator.available_providers().await;
     assert!(providers.is_empty());
     let stats = coordinator.stats().await;
@@ -231,7 +231,9 @@ async fn test_coordinator_starts_empty() {
 
 #[tokio::test]
 async fn test_provider_registration() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<MockCloudProvider>::new()
+        .await
+        .unwrap();
     let initial = coordinator.available_providers().await;
     assert_eq!(initial.len(), 0);
 
@@ -249,7 +251,9 @@ async fn test_provider_registration() {
 
 #[tokio::test]
 async fn test_should_migrate_evaluation() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let constraints = vec![Constraint::requires_gpu(), Constraint::max_latency_ms(100)];
     let recommendation = coordinator
         .should_migrate("test-workload", &constraints)
@@ -262,7 +266,9 @@ async fn test_should_migrate_evaluation() {
 
 #[tokio::test]
 async fn test_workload_tracking() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let location = WorkloadLocation::Local {
         hostname: "test-host".to_string(),
     };
@@ -281,7 +287,9 @@ async fn test_workload_tracking() {
 
 #[tokio::test]
 async fn test_migrate_from_untracked_to_cloud() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let result = coordinator.migrate_workload("new-workload").await;
     assert!(result.is_ok());
     let loc = result.unwrap();
@@ -290,7 +298,9 @@ async fn test_migrate_from_untracked_to_cloud() {
 
 #[tokio::test]
 async fn test_migrate_from_cloud_to_local() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     coordinator
         .track_workload(
             "cloud-workload",
@@ -310,7 +320,9 @@ async fn test_migrate_from_cloud_to_local() {
 
 #[tokio::test]
 async fn test_migration_stats() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let initial_stats = coordinator.stats().await;
     assert_eq!(initial_stats.total_migrations, 0);
     let _ = coordinator.migrate_workload("test").await;
@@ -334,8 +346,10 @@ fn test_validate_recommendation() {
 // ── Planner path coverage ─────────────────────────────────────────────────────
 
 /// Helper: coordinator with one registered cloud provider.
-async fn coordinator_with_provider() -> MigrationCoordinator {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+async fn coordinator_with_provider() -> MigrationCoordinator<MockCloudProvider> {
+    let coordinator = MigrationCoordinator::<MockCloudProvider>::new()
+        .await
+        .unwrap();
     coordinator
         .register_provider(Box::new(MockCloudProvider {
             name: "TestCloud".to_string(),
@@ -350,7 +364,9 @@ async fn test_planner_no_providers_returns_no_migrate() {
     // With no registered providers, evaluate_migration_targets returns
     // "No cloud providers available" or the engine returns "Current location optimal".
     // Either way: should_migrate=false, non-empty reason, valid confidence.
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let rec = coordinator
         .should_migrate("wl", &[Constraint::requires_gpu()])
         .await
@@ -488,7 +504,9 @@ async fn test_should_migrate_optimal_returns_early() {
     // Calling with empty constraints on a fresh coordinator — CompositionEngine
     // should evaluate as feasible with high score → returns early without
     // reaching evaluate_migration_targets.
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
     let rec = coordinator.should_migrate("optimal-wl", &[]).await.unwrap();
     // Either path is valid; ensure we get a coherent result.
     assert!(!rec.reason.is_empty());

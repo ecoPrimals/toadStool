@@ -165,6 +165,13 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ## Completed This Session (S90-203)
 
+### Session S203s: Stadial Parity Gate Cleared (Apr 16, 2026)
+- **Stadial parity gate cleared** — ~32 finite-implementor traits converted from `dyn Trait` dispatch to **enum dispatch + RPITIT**. Zero finite-implementor `dyn` remaining.
+- **~864 `Pin<Box<dyn Future>>`** cascaded away when traits moved to RPITIT.
+- **`RuntimeEngine` genericized** across 7 runtime crates with `RuntimeEngineDispatch` enum in server.
+- **Gate verification**: `cargo deny check bans` PASS, clippy clean, 5,200+ tests verified.
+- **Remaining dyn (justified)**: infant discovery plugin registry, PrimalIntegration, MessageHandler, testing utilities.
+
 ### Session S203r: async-trait Full Deprecation (Apr 16, 2026)
 - **`async-trait` fully deprecated** — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn) across 55+ files in 13 crates. Zero runtime behavior change.
 - **Banned in `deny.toml`** — `async-trait` added to `[bans.deny]` with `wrappers = ["axum", "axum-core", "config", "wiggle"]` for transitive deps.

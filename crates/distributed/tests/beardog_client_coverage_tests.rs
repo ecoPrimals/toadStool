@@ -89,17 +89,27 @@ fn security_client_new_creates() {
 #[test]
 #[expect(deprecated)]
 fn provider_id_returns_security() {
+    use std::sync::Arc;
+
     use toadstool::encryption::CryptoProvider;
-    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
-    assert_eq!(client.provider_id(), "crypto");
+    use toadstool_distributed::security::DistributedCryptoProvider;
+
+    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    assert_eq!(crypto.provider_id(), "crypto");
 }
 
 #[test]
 #[expect(deprecated)]
 fn capabilities_returns_default() {
+    use std::sync::Arc;
+
     use toadstool::encryption::CryptoProvider;
-    let client = SecurityClient::new(SecurityConfig::default()).unwrap();
-    let caps = client.capabilities();
+    use toadstool_distributed::security::DistributedCryptoProvider;
+
+    let client = Arc::new(SecurityClient::new(SecurityConfig::default()).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    let caps = crypto.capabilities();
     assert!(!caps.algorithms.is_empty());
 }
 

@@ -28,7 +28,6 @@
 //! implementation (SPI, JTAG, proprietary), and device-specific algorithms.
 
 use std::future::{Future, ready};
-use std::pin::Pin;
 
 use crate::{
     ProgrammingInterface, ProgrammingInterfaceType, SpecialtyRuntimeError, ToadStoolResult,
@@ -67,79 +66,66 @@ macro_rules! impl_programmer_stub {
             fn initialize<'a>(
                 &'a mut self,
                 _config: &'a ProgrammingInterface,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(ready(Err(programmer_placeholder_err(
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                ready(Err(programmer_placeholder_err(
                     $platform,
                     "Programmer initialization",
-                ))))
+                )))
             }
 
-            fn connect(
-                &mut self,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Err(programmer_placeholder_err(
+            fn connect(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Err(programmer_placeholder_err(
                     $platform,
                     "Programmer connect",
-                ))))
+                )))
             }
 
-            fn disconnect(
-                &mut self,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Ok(())))
+            fn disconnect(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Ok(()))
             }
 
             fn read_memory(
                 &mut self,
                 _address: u32,
                 _length: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>> {
-                Box::pin(ready(Err(programmer_placeholder_err(
-                    $platform,
-                    "Memory read",
-                ))))
+            ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_ {
+                ready(Err(programmer_placeholder_err($platform, "Memory read")))
             }
 
             fn write_memory<'a>(
                 &'a mut self,
                 _address: u32,
                 data: &'a [u8],
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(async move {
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                async move {
                     let _ = data;
                     Err(programmer_placeholder_err($platform, "Memory write"))
-                })
+                }
             }
 
             fn erase_memory(
                 &mut self,
                 _address: u32,
                 _length: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-                Box::pin(ready(Err(programmer_placeholder_err(
-                    $platform,
-                    "Memory erase",
-                ))))
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+                ready(Err(programmer_placeholder_err($platform, "Memory erase")))
             }
 
             fn verify_memory<'a>(
                 &'a mut self,
                 _address: u32,
                 expected_data: &'a [u8],
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<bool>> + Send + 'a>> {
-                Box::pin(async move {
+            ) -> impl Future<Output = ToadStoolResult<bool>> + Send + 'a {
+                async move {
                     let _ = expected_data;
                     Err(programmer_placeholder_err($platform, "Memory verify"))
-                })
+                }
             }
 
             fn get_target_info(
                 &self,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<TargetInfo>> + Send + '_>> {
-                Box::pin(ready(Err(programmer_placeholder_err(
-                    $platform,
-                    "Target info",
-                ))))
+            ) -> impl Future<Output = ToadStoolResult<TargetInfo>> + Send + '_ {
+                ready(Err(programmer_placeholder_err($platform, "Target info")))
             }
         }
     };

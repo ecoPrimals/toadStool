@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Direct coverage for `UniversalCloudOrchestrator` helpers and [`DeploymentStrategy`] dispatch.
 
-use std::future::Future;
-use std::pin::Pin;
 use std::time::SystemTime;
 use toadstool::ExecutionRequest;
-use toadstool::error::ToadStoolError;
 use uuid::Uuid;
 
 use super::common::{
-    MockCloudProvider, make_availability, make_mock_capabilities, make_mock_metadata,
+    MockCloudProvider, TestUniversalOrchestrator, make_availability, make_mock_capabilities,
     make_orchestrator_config, make_requirements,
 };
 use crate::cloud::types::{
-    AvailabilityInfo, CloudDeploymentResult, CloudOrchestratorConfig, ComplianceCertification,
-    DeploymentStrategy, DistributionStrategy, MultiCloudDistribution,
+    CloudDeploymentResult, CloudOrchestratorConfig, ComplianceCertification, DeploymentStrategy,
+    DistributionStrategy, MultiCloudDistribution,
 };
-use crate::cloud::{CloudProviderInterface, UniversalCloudOrchestrator};
 use crate::types::DistributedRetryConfig;
 use crate::{ExecutionTarget, JobPriority, UniversalJob, UniversalJobType};
 
@@ -40,7 +36,7 @@ fn sample_job(job_type: Option<UniversalJobType>) -> UniversalJob {
 
 #[tokio::test]
 async fn test_split_job_local_not_supported() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::Local));
@@ -57,7 +53,7 @@ async fn test_split_job_local_not_supported() {
 
 #[tokio::test]
 async fn test_split_job_remote_toadstool_replicates() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::RemoteToadStool {
@@ -77,7 +73,7 @@ async fn test_split_job_remote_toadstool_replicates() {
 
 #[tokio::test]
 async fn test_split_job_ecosystem_tool_load_balance_path() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::EcosystemTool {
@@ -94,7 +90,7 @@ async fn test_split_job_ecosystem_tool_load_balance_path() {
 
 #[tokio::test]
 async fn test_split_job_none_job_type_replicates_default_branch() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let mut job = sample_job(None);
@@ -109,14 +105,15 @@ async fn test_split_job_none_job_type_replicates_default_branch() {
 
 #[tokio::test]
 async fn test_deploy_to_single_cloud_ok() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
-    let mock = Box::new(MockCloudProvider {
+    let mock = MockCloudProvider {
         capabilities_override: None,
+        fail_availability: false,
         name: "aws".to_string(),
         availability: make_availability(32.0, 64.0, 500.0),
-    });
+    };
     orch.register_provider("aws".to_string(), mock)
         .await
         .unwrap();
@@ -127,7 +124,7 @@ async fn test_deploy_to_single_cloud_ok() {
 
 #[tokio::test]
 async fn test_deploy_to_single_cloud_missing_provider() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));
@@ -140,17 +137,18 @@ async fn test_deploy_to_single_cloud_missing_provider() {
 
 #[tokio::test]
 async fn test_deploy_to_multiple_clouds_two_providers() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     for name in ["aws", "gcp"] {
         orch.register_provider(
             name.to_string(),
-            Box::new(MockCloudProvider {
+            MockCloudProvider {
                 capabilities_override: None,
+                fail_availability: false,
                 name: name.to_string(),
                 availability: make_availability(32.0, 64.0, 500.0),
-            }),
+            },
         )
         .await
         .unwrap();
@@ -176,16 +174,17 @@ async fn test_deploy_to_multiple_clouds_two_providers() {
 
 #[tokio::test]
 async fn test_deploy_to_multiple_clouds_missing_named_provider() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(32.0, 64.0, 500.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -205,16 +204,17 @@ async fn test_deploy_to_multiple_clouds_missing_named_provider() {
 
 #[tokio::test]
 async fn test_deploy_with_cloud_burst_primary_handles_all() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     orch.register_provider(
         "primary".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: None,
+            fail_availability: false,
             name: "primary".to_string(),
             availability: make_availability(256.0, 512.0, 2000.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -228,16 +228,17 @@ async fn test_deploy_with_cloud_burst_primary_handles_all() {
 
 #[tokio::test]
 async fn test_deploy_with_cloud_burst_insufficient_primary_uses_burst_path() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     orch.register_provider(
         "primary".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: None,
+            fail_availability: false,
             name: "primary".to_string(),
             availability: make_availability(0.5, 0.5, 0.5),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -255,7 +256,7 @@ async fn test_deploy_with_cloud_burst_insufficient_primary_uses_burst_path() {
 
 #[tokio::test]
 async fn test_deploy_with_cloud_burst_primary_not_found() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));
@@ -268,17 +269,18 @@ async fn test_deploy_with_cloud_burst_primary_not_found() {
 
 #[tokio::test]
 async fn test_dispatch_deployment_strategy_multicloud_public_entrypoint() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     for name in ["aws", "gcp"] {
         orch.register_provider(
             name.to_string(),
-            Box::new(MockCloudProvider {
+            MockCloudProvider {
                 capabilities_override: None,
+                fail_availability: false,
                 name: name.to_string(),
                 availability: make_availability(32.0, 64.0, 500.0),
-            }),
+            },
         )
         .await
         .unwrap();
@@ -302,16 +304,17 @@ async fn test_dispatch_deployment_strategy_multicloud_public_entrypoint() {
 
 #[tokio::test]
 async fn test_dispatch_deployment_strategy_hybrid_burst_arm() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     orch.register_provider(
         "primary".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: None,
+            fail_availability: false,
             name: "primary".to_string(),
             availability: make_availability(256.0, 512.0, 2000.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -329,7 +332,7 @@ async fn test_dispatch_deployment_strategy_hybrid_burst_arm() {
 
 #[tokio::test]
 async fn test_dispatch_deployment_strategy_federated_arm() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));
@@ -345,7 +348,7 @@ async fn test_dispatch_deployment_strategy_federated_arm() {
 
 #[tokio::test]
 async fn test_deploy_to_federation_builds_coordination_endpoint() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));
@@ -361,127 +364,30 @@ async fn test_deploy_to_federation_builds_coordination_endpoint() {
     }
 }
 
-struct FailingAvailabilityProvider {
-    name: String,
-}
-
-impl CloudProviderInterface for FailingAvailabilityProvider {
-    fn deploy_job<'a>(
-        &'a self,
-        job: &'a UniversalJob,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobHandle>,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            Ok(crate::cloud::types::CloudJobHandle {
-                job_id: job.job_id,
-                provider_job_id: "x".to_string(),
-                provider_name: self.name.clone(),
-                created_at: SystemTime::now(),
-            })
-        })
-    }
-
-    fn get_job_status<'a>(
-        &'a self,
-        _handle: &'a crate::cloud::types::CloudJobHandle,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<crate::cloud::types::CloudJobStatus>,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move { Ok(crate::cloud::types::CloudJobStatus::Running) })
-    }
-
-    fn scale_job<'a>(
-        &'a self,
-        _handle: &'a crate::cloud::types::CloudJobHandle,
-        _scale_config: crate::cloud::types::ScaleConfig,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn terminate_job<'a>(
-        &'a self,
-        _handle: &'a crate::cloud::types::CloudJobHandle,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn get_pricing<'a>(
-        &'a self,
-        _resource_spec: &'a crate::cloud::types::ResourceSpec,
-    ) -> Pin<
-        Box<
-            dyn Future<Output = toadstool::error::ToadStoolResult<crate::cloud::types::PricingInfo>>
-                + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            Ok(crate::cloud::types::PricingInfo {
-                cpu_cost_per_hour: 0.0,
-                memory_cost_per_gb_hour: 0.0,
-                storage_cost_per_gb_month: 0.0,
-                network_cost_per_gb: 0.0,
-                total_estimated_cost: 0.0,
-            })
-        })
-    }
-
-    fn get_availability<'a>(
-        &'a self,
-        _region: Option<String>,
-    ) -> Pin<
-        Box<dyn Future<Output = toadstool::error::ToadStoolResult<AvailabilityInfo>> + Send + 'a>,
-    > {
-        Box::pin(async move { Err(ToadStoolError::not_found("availability probe failed")) })
-    }
-
-    fn validate_compliance<'a>(
-        &'a self,
-        _requirements: &'a crate::ResourceRequirements,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<bool>> + Send + 'a>> {
-        Box::pin(async move { Ok(true) })
-    }
-
-    fn get_capabilities(&self) -> crate::cloud::types::CloudCapabilities {
-        make_mock_capabilities()
-    }
-
-    fn get_metadata(&self) -> crate::cloud::types::CloudProviderMetadata {
-        make_mock_metadata(&self.name)
-    }
-}
-
 #[tokio::test]
 async fn test_get_multi_cloud_availability_marks_failure() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     orch.register_provider(
         "flake".to_string(),
-        Box::new(FailingAvailabilityProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: true,
             name: "flake".to_string(),
-        }),
+            availability: make_availability(1.0, 1.0, 1.0),
+        },
     )
     .await
     .unwrap();
     orch.register_provider(
         "good".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: None,
+            fail_availability: false,
             name: "good".to_string(),
             availability: make_availability(4.0, 8.0, 100.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -496,7 +402,7 @@ async fn test_get_multi_cloud_availability_marks_failure() {
 
 #[tokio::test]
 async fn test_distribute_work_across_two_burst_providers() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let map = orch
@@ -509,7 +415,7 @@ async fn test_distribute_work_across_two_burst_providers() {
 
 #[tokio::test]
 async fn test_analyze_deployment_requirements_empty_provider_list() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));
@@ -525,7 +431,7 @@ async fn test_analyze_deployment_requirements_multi_selected_single_compliant_fa
 {
     let mut config: CloudOrchestratorConfig = make_orchestrator_config();
     config.compliance_config.required_certifications = vec![ComplianceCertification::HIPAA];
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
     let mut caps_ok = make_mock_capabilities();
     caps_ok
@@ -535,21 +441,23 @@ async fn test_analyze_deployment_requirements_multi_selected_single_compliant_fa
 
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: Some(caps_ok),
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(32.0, 64.0, 500.0),
-        }),
+        },
     )
     .await
     .unwrap();
     orch.register_provider(
         "gcp".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
             capabilities_override: Some(caps_fail),
+            fail_availability: false,
             name: "gcp".to_string(),
             availability: make_availability(32.0, 64.0, 500.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -566,17 +474,18 @@ async fn test_analyze_deployment_requirements_multi_selected_single_compliant_fa
 
 #[tokio::test]
 async fn test_analyze_deployment_requirements_multicloud_when_multiple_compliant() {
-    let mut orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let mut orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     for name in ["aws", "gcp"] {
         orch.register_provider(
             name.to_string(),
-            Box::new(MockCloudProvider {
+            MockCloudProvider {
                 capabilities_override: None,
+                fail_availability: false,
                 name: name.to_string(),
                 availability: make_availability(32.0, 64.0, 500.0),
-            }),
+            },
         )
         .await
         .unwrap();
@@ -594,7 +503,7 @@ async fn test_analyze_deployment_requirements_multicloud_when_multiple_compliant
 
 #[tokio::test]
 async fn test_calculate_burst_distribution_includes_burst_providers() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let job = sample_job(Some(UniversalJobType::ComputeIntensive));

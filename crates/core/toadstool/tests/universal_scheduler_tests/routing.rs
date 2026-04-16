@@ -10,9 +10,14 @@ use std::time::Duration;
 
 use toadstool::resources::ResourceRequirements;
 use toadstool::universal::{
-    JobPriority, PrimalType, UniversalJob, UniversalJobType, UniversalPrimalRegistry,
-    UniversalScheduler,
+    JobPriority, PrimalType, UniversalJob, UniversalJobType, UniversalPrimalProviderDispatch,
+    UniversalPrimalRegistry, UniversalScheduler,
 };
+
+type SchedDispatchWithSimpleMock = UniversalScheduler<
+    UniversalPrimalProviderDispatch,
+    simple_mock_engine::SimpleMockRuntimeEngine,
+>;
 use uuid::Uuid;
 
 use super::helpers::{
@@ -21,7 +26,7 @@ use super::helpers::{
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_primal_job() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<SucceedingMockProvider>::new_typed());
     registry
         .register_primal(Arc::new(SucceedingMockProvider {
             instance_id: "compute-mock-1".to_string(),
@@ -67,7 +72,7 @@ async fn test_scheduler_schedule_primal_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_schedule_biome_os_job() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<SucceedingMockProvider>::new_typed());
     registry
         .register_primal(Arc::new(SucceedingMockProvider {
             instance_id: "biome-os-mock-1".to_string(),
@@ -103,7 +108,7 @@ async fn test_scheduler_schedule_biome_os_job() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_wasm_job_response_structure() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -134,7 +139,7 @@ async fn test_scheduler_wasm_job_response_structure() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_primal_job_no_provider_returns_error_response() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -169,7 +174,7 @@ async fn test_scheduler_primal_job_no_provider_returns_error_response() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_biome_os_job_no_provider_returns_error_response() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<SucceedingMockProvider>::new_typed());
     registry
         .register_primal(Arc::new(SucceedingMockProvider {
             instance_id: "compute-only".to_string(),
@@ -207,7 +212,7 @@ async fn test_scheduler_biome_os_job_no_provider_returns_error_response() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_primal_provider_route_fails_returns_error_response() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<FailingMockProvider>::new_typed());
     registry
         .register_primal(Arc::new(FailingMockProvider {
             instance_id: "failing-compute".to_string(),
@@ -244,7 +249,7 @@ async fn test_scheduler_primal_provider_route_fails_returns_error_response() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_native_nonexistent_executable_returns_error_response() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -274,9 +279,6 @@ async fn test_scheduler_native_nonexistent_executable_returns_error_response() {
 /// Uses `toadstool_testing::MockRuntimeEngine::new_successful()` would require
 /// mock configuration; this minimal impl avoids that.
 mod simple_mock_engine {
-    use std::future::Future;
-    use std::pin::Pin;
-
     use toadstool::execution::{
         ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities, RuntimeConfig,
         RuntimeEngine, RuntimeType,
@@ -289,15 +291,16 @@ mod simple_mock_engine {
         fn initialize(
             &mut self,
             _config: RuntimeConfig,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-            Box::pin(async { Ok(()) })
+        ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+            async { Ok(()) }
         }
 
         fn execute(
             &self,
             request: ExecutionRequest,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-            Box::pin(async move {
+        ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_
+        {
+            async move {
                 Ok(ExecutionResponse {
                     execution_id: request.execution_id,
                     status: ExecutionStatus::Success,
@@ -307,7 +310,7 @@ mod simple_mock_engine {
                     runtime_used: RuntimeType::Native,
                     warnings: vec![],
                 })
-            })
+            }
         }
 
         fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -326,12 +329,15 @@ mod simple_mock_engine {
 
         fn get_metrics(
             &self,
-        ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-            Box::pin(async { Ok(RuntimeMetrics::default()) })
+        ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_
+        {
+            async { Ok(RuntimeMetrics::default()) }
         }
 
-        fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-            Box::pin(async { Ok(()) })
+        fn shutdown(
+            &mut self,
+        ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+            async { Ok(()) }
         }
     }
 }
@@ -340,12 +346,12 @@ mod simple_mock_engine {
 async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
     use toadstool::execution::RuntimeType;
 
-    let registry = Arc::new(UniversalPrimalRegistry::new());
-    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
+    let scheduler = SchedDispatchWithSimpleMock::create(registry).await.unwrap();
 
     assert!(scheduler.available_runtimes().await.is_empty());
 
-    let engine = Box::new(simple_mock_engine::SimpleMockRuntimeEngine);
+    let engine = Arc::new(simple_mock_engine::SimpleMockRuntimeEngine);
     scheduler
         .register_runtime_engine(RuntimeType::Native, engine)
         .await;
@@ -359,15 +365,14 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
 async fn test_scheduler_with_runtime_engines() {
     use toadstool::execution::RuntimeType;
 
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
     engines.insert(
         RuntimeType::Native,
-        Box::new(simple_mock_engine::SimpleMockRuntimeEngine)
-            as Box<dyn toadstool::execution::RuntimeEngine>,
+        Arc::new(simple_mock_engine::SimpleMockRuntimeEngine),
     );
 
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    let scheduler = SchedDispatchWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
     let runtimes = scheduler.available_runtimes().await;
@@ -379,7 +384,7 @@ async fn test_scheduler_with_runtime_engines() {
 async fn test_scheduler_find_primals_by_capability() {
     use toadstool::universal::PrimalCapability;
 
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<SucceedingMockProvider>::new_typed());
     registry
         .register_primal(Arc::new(SucceedingMockProvider {
             instance_id: "cap-1".to_string(),

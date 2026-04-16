@@ -8,11 +8,13 @@ use std::time::Duration;
 
 use tracing::debug;
 
+use toadstool::RuntimeEngine;
+
 use crate::state::ServerState;
 use tokio::time::interval;
 
 /// Statistics collection background task
-pub(super) async fn run(state: ServerState) {
+pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
     debug!("Starting statistics collection task");
 
     let mut interval = interval(Duration::from_secs(60)); // Collect stats every minute

@@ -3,7 +3,7 @@
 //!
 //! Tests that kernel and userspace backends produce identical results
 
-use akida_driver::{BackendSelection, select_backend};
+use akida_driver::{BackendSelection, NpuBackend, select_backend};
 
 #[test]
 #[ignore = "requires Akida hardware"]

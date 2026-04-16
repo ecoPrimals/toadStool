@@ -4,8 +4,12 @@
 //! Provides unified interface for kernel and userspace backends.
 //! Deep debt compliant: capability-based, runtime discovery, no hardcoding.
 
+use crate::backends::kernel::KernelBackend;
+use crate::backends::userspace::UserspaceBackend;
+use crate::backends::vfio::VfioBackend;
 use crate::capabilities::Capabilities;
 use crate::error::Result;
+use crate::synthetic::SyntheticNpuBackend;
 use std::fmt::Debug;
 
 /// NPU backend trait - unified interface for kernel and userspace drivers
@@ -114,6 +118,91 @@ impl std::fmt::Display for BackendType {
     }
 }
 
+/// Concrete Akida backend (kernel, userspace, VFIO, or synthetic) — used instead of `Box<dyn NpuBackend>`.
+#[derive(Debug)]
+pub enum NpuBackendDispatch {
+    /// Kernel driver (`/dev/akida*`).
+    Kernel(KernelBackend),
+    /// Userspace driver (mmap PCIe BARs).
+    Userspace(UserspaceBackend),
+    /// VFIO driver (pure Rust with DMA).
+    Vfio(VfioBackend),
+    /// In-memory backend for tests and simulations (no hardware).
+    Synthetic(SyntheticNpuBackend),
+}
+
+impl NpuBackend for NpuBackendDispatch {
+    fn init(device_id: &str) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        select_backend(BackendSelection::Auto, device_id)
+    }
+
+    fn capabilities(&self) -> &Capabilities {
+        match self {
+            Self::Kernel(b) => b.capabilities(),
+            Self::Userspace(b) => b.capabilities(),
+            Self::Vfio(b) => b.capabilities(),
+            Self::Synthetic(b) => b.capabilities(),
+        }
+    }
+
+    fn load_model(&mut self, model: &[u8]) -> Result<ModelHandle> {
+        match self {
+            Self::Kernel(b) => b.load_model(model),
+            Self::Userspace(b) => b.load_model(model),
+            Self::Vfio(b) => b.load_model(model),
+            Self::Synthetic(b) => b.load_model(model),
+        }
+    }
+
+    fn load_reservoir(&mut self, w_in: &[f32], w_res: &[f32]) -> Result<()> {
+        match self {
+            Self::Kernel(b) => b.load_reservoir(w_in, w_res),
+            Self::Userspace(b) => b.load_reservoir(w_in, w_res),
+            Self::Vfio(b) => b.load_reservoir(w_in, w_res),
+            Self::Synthetic(b) => b.load_reservoir(w_in, w_res),
+        }
+    }
+
+    fn infer(&mut self, input: &[f32]) -> Result<Vec<f32>> {
+        match self {
+            Self::Kernel(b) => b.infer(input),
+            Self::Userspace(b) => b.infer(input),
+            Self::Vfio(b) => b.infer(input),
+            Self::Synthetic(b) => b.infer(input),
+        }
+    }
+
+    fn measure_power(&self) -> Result<f32> {
+        match self {
+            Self::Kernel(b) => b.measure_power(),
+            Self::Userspace(b) => b.measure_power(),
+            Self::Vfio(b) => b.measure_power(),
+            Self::Synthetic(b) => b.measure_power(),
+        }
+    }
+
+    fn backend_type(&self) -> BackendType {
+        match self {
+            Self::Kernel(b) => b.backend_type(),
+            Self::Userspace(b) => b.backend_type(),
+            Self::Vfio(b) => b.backend_type(),
+            Self::Synthetic(b) => b.backend_type(),
+        }
+    }
+
+    fn is_ready(&self) -> bool {
+        match self {
+            Self::Kernel(b) => b.is_ready(),
+            Self::Userspace(b) => b.is_ready(),
+            Self::Vfio(b) => b.is_ready(),
+            Self::Synthetic(b) => b.is_ready(),
+        }
+    }
+}
+
 /// Backend selection strategy
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackendSelection {
@@ -137,40 +226,32 @@ pub enum BackendSelection {
 /// # Errors
 ///
 /// Returns error if no suitable backend can be initialized for the given device.
-pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<Box<dyn NpuBackend>> {
-    use crate::backends::kernel::KernelBackend;
-    use crate::backends::userspace::UserspaceBackend;
-    use crate::backends::vfio::VfioBackend;
-
+pub fn select_backend(selection: BackendSelection, device_id: &str) -> Result<NpuBackendDispatch> {
     match selection {
         BackendSelection::Auto => {
             // Try kernel first (best performance with C module)
             if let Ok(backend) = KernelBackend::init(device_id) {
                 tracing::info!("Using kernel backend for {device_id}");
-                return Ok(Box::new(backend));
+                return Ok(NpuBackendDispatch::Kernel(backend));
             }
 
             // Try VFIO second (pure Rust with DMA)
             if let Ok(backend) = VfioBackend::init(device_id) {
                 tracing::info!("Using VFIO backend for {device_id}");
-                return Ok(Box::new(backend));
+                return Ok(NpuBackendDispatch::Vfio(backend));
             }
 
             // Fall back to userspace (pure Rust, no DMA)
             tracing::info!("Kernel/VFIO unavailable, using userspace for {device_id}");
-            UserspaceBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
+            UserspaceBackend::init(device_id).map(NpuBackendDispatch::Userspace)
         }
 
-        BackendSelection::Kernel => {
-            KernelBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
-        }
+        BackendSelection::Kernel => KernelBackend::init(device_id).map(NpuBackendDispatch::Kernel),
 
         BackendSelection::Userspace => {
-            UserspaceBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
+            UserspaceBackend::init(device_id).map(NpuBackendDispatch::Userspace)
         }
 
-        BackendSelection::Vfio => {
-            VfioBackend::init(device_id).map(|b| Box::new(b) as Box<dyn NpuBackend>)
-        }
+        BackendSelection::Vfio => VfioBackend::init(device_id).map(NpuBackendDispatch::Vfio),
     }
 }

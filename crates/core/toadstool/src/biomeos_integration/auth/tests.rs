@@ -11,6 +11,7 @@ use toadstool_common::constants::primal_identity::audience;
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 use super::*;
+use crate::biomeos_integration::auth_backend::AuthBackendDispatch;
 use crate::biomeos_integration::types::{CoordinationConfig, ToadStoolConfig};
 
 fn test_config() -> AuthManagerConfig {
@@ -80,7 +81,8 @@ fn test_authentication_token_construction() {
 fn test_authentication_manager_new() {
     let config = test_config();
     let backend = crate::biomeos_integration::InMemoryAuthBackend::new();
-    let _manager = AuthenticationManager::new(config, Arc::new(backend));
+    let _manager =
+        AuthenticationManager::new(config, Arc::new(AuthBackendDispatch::InMemory(backend)));
 }
 
 #[tokio::test(flavor = "current_thread")]

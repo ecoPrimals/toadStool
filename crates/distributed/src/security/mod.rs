@@ -9,12 +9,14 @@
 
 pub mod client;
 pub mod client_evolved;
+pub mod crypto_dispatch;
 pub mod discovery;
 #[cfg(test)]
 mod tests;
 pub mod types;
 
 pub use client::SecurityClient;
+pub use crypto_dispatch::DistributedCryptoProvider;
 pub use discovery::SecurityDiscovery;
 pub use types::{
     EncryptionRequest, EncryptionResponse, KeyManagementRequest, KeyManagementResponse,

@@ -24,6 +24,6 @@ pub use builder::EncryptionContextBuilder;
 pub use capability::CryptoCapability;
 pub use config::{EncryptedInput, EncryptedOutput, EncryptionConfig};
 pub use context::EncryptionContext;
-pub use provider::{CryptoProvider, CryptoProviderRegistry};
+pub use provider::{CryptoProvider, CryptoProviderRegistry, NoopCryptoProvider};
 pub use security::SecurityLevel;
 pub use types::{EncryptedPayload, EncryptionKey, EncryptionMetadata};

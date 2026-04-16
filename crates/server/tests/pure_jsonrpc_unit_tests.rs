@@ -15,10 +15,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use toadstool_server::pure_jsonrpc::*;
 use toadstool_server::rpc_types::{ResourceRequirements, WorkloadPriority};
-use toadstool_server::tarpc_server::StandaloneExecutor;
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 fn test_handler() -> JsonRpcHandler {
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
 }
 
@@ -373,7 +375,9 @@ async fn test_compute_list_with_state_filter() {
 #[tokio::test]
 async fn test_health_error_count_incremented() {
     let error_count = Arc::new(std::sync::atomic::AtomicU64::new(0));
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "1.0".to_string(), Some(error_count));
 
     let bad_request = mk_request("unknown.method", None, 1);

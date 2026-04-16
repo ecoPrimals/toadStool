@@ -104,7 +104,7 @@ pub enum TransportError {
 /// Generic hardware transport — the core abstraction for any-to-any I/O.
 ///
 /// Every physical data path that toadStool manages implements this trait.
-/// The [`super::TransportRouter`] composes transports to build pipelines
+/// The `TransportRouter` in `toadstool-display` composes transports to build pipelines
 /// like: GPU framebuffer -> HDMI out -> capture card in -> serial out.
 pub trait HardwareTransport: Send + Sync {
     /// Static metadata for this transport endpoint.

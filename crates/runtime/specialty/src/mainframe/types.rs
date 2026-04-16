@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -67,13 +66,17 @@ pub struct COBOLCompiler {
     pub library_paths: Vec<PathBuf>,
 }
 
+/// Placeholder for a future 3270 session implementation (no concrete backend yet).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Terminal3270SessionPlaceholder;
+
 /// 3270 Terminal Emulator
 #[derive(Debug)]
 pub struct Terminal3270 {
     /// Connection settings
     pub connection: ConnectionSettings,
     /// Terminal session
-    pub session: Option<Box<dyn Terminal3270Session>>,
+    pub session: Option<Terminal3270SessionPlaceholder>,
     /// Screen buffer
     pub screen_buffer: Vec<Vec<char>>,
     /// Cursor position
@@ -88,38 +91,35 @@ pub trait Terminal3270Session: Send + Sync + std::fmt::Debug {
     fn connect(
         &mut self,
         settings: &ConnectionSettings,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Disconnect from mainframe
-    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn disconnect(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Send data to mainframe
-    fn send_data(
-        &mut self,
-        data: &[u8],
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn send_data(&mut self, data: &[u8]) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Receive data from mainframe
     fn receive_data(
         &mut self,
         timeout: Duration,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + '_;
 
     /// Send key sequence
     fn send_key(
         &mut self,
         key: Terminal3270Key,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Get screen contents
-    fn get_screen(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+    fn get_screen(&self) -> impl Future<Output = ToadStoolResult<String>> + Send + '_;
 
     /// Wait for field
     fn wait_for_field(
         &mut self,
         field_name: &str,
         timeout: Duration,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + '_;
 }
 
 /// 3270 Terminal Attributes
@@ -216,6 +216,10 @@ pub struct VAXFortranCompiler {
     pub library_paths: Vec<PathBuf>,
 }
 
+/// Placeholder for a future VAX session implementation (no concrete backend yet).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VAXTerminalSessionPlaceholder;
+
 /// VAX Terminal Interface
 #[derive(Debug)]
 pub struct VAXTerminal {
@@ -224,7 +228,7 @@ pub struct VAXTerminal {
     /// Terminal attributes
     pub attributes: VAXTerminalAttributes,
     /// Session handle
-    pub session: Option<Box<dyn VAXTerminalSession>>,
+    pub session: Option<VAXTerminalSessionPlaceholder>,
 }
 
 /// VAX Terminal Attributes
@@ -244,21 +248,19 @@ pub trait VAXTerminalSession: Send + Sync + std::fmt::Debug {
     fn connect(
         &mut self,
         settings: &ConnectionSettings,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Disconnect from VAX system
-    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn disconnect(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Execute DCL command
     fn execute_dcl(
         &mut self,
         command: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + '_;
 
     /// Get system information
-    fn get_system_info(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemInfo>> + Send + '_>>;
+    fn get_system_info(&self) -> impl Future<Output = ToadStoolResult<SystemInfo>> + Send + '_;
 }
 
 /// VMS File System Manager
@@ -298,13 +300,17 @@ pub struct RPGCompiler {
     pub object_library: String,
 }
 
+/// Placeholder for a future 5250 session implementation (no concrete backend yet).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Terminal5250SessionPlaceholder;
+
 /// 5250 Terminal Emulator for AS/400
 #[derive(Debug)]
 pub struct Terminal5250 {
     /// Connection settings
     pub connection: ConnectionSettings,
     /// Terminal session
-    pub session: Option<Box<dyn Terminal5250Session>>,
+    pub session: Option<Terminal5250SessionPlaceholder>,
     /// Screen buffer
     pub screen_buffer: Vec<Vec<char>>,
     /// Field definitions
@@ -317,27 +323,27 @@ pub trait Terminal5250Session: Send + Sync + std::fmt::Debug {
     fn connect(
         &mut self,
         settings: &ConnectionSettings,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Disconnect from AS/400
-    fn disconnect(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn disconnect(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Execute command
     fn execute_command(
         &mut self,
         command: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + '_;
 
     /// Navigate to menu
     fn navigate_menu(
         &mut self,
         menu_option: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// Get screen fields
     fn get_screen_fields(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<Field5250>>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<Vec<Field5250>>> + Send + '_;
 }
 
 /// 5250 Field Definition

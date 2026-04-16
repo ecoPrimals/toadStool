@@ -114,9 +114,9 @@ fn verify_memory_accessible(
 ///
 /// This is the preferred path when BAR0 MMIO is available — directly reads
 /// the register and checks against the expected value with mask.
-pub fn verify_register_via_access(
+pub fn verify_register_via_access<R: super::RegisterAccess + ?Sized>(
     step_index: usize,
-    access: &dyn super::RegisterAccess,
+    access: &R,
     offset: u64,
     expected: u64,
     mask: u64,

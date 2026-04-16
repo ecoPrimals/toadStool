@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Trait re-exported from compat module; async methods use manual Pin<Box<dyn Future>>
+// Trait re-exported from compat module; async methods use RPITIT on `CompatibilityLayer`.
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,10 +17,13 @@ use crate::{
 };
 use tracing::info;
 
+// Re-export the canonical `CompatibilityLayer` trait and dispatch enum from compat.
+pub use super::compat::{CompatibilityLayer, CompatibilityLayerDispatch};
+
 /// OS Layer Manager for universal compatibility
 pub struct OSLayerManager {
     /// Available compatibility layers
-    compatibility_layers: Arc<RwLock<HashMap<String, Box<dyn CompatibilityLayer>>>>,
+    compatibility_layers: Arc<RwLock<HashMap<String, CompatibilityLayerDispatch>>>,
     /// OS layer configuration
     config: OSLayerConfig,
 }
@@ -107,11 +110,6 @@ impl PlatformInfo {
     }
 }
 
-// Re-export the canonical CompatibilityLayer trait from compat module
-// The complete trait definition is in `compat.rs` with 5 methods.
-// This provides backward compatibility for any code importing from here.
-pub use super::compat::CompatibilityLayer;
-
 impl OSLayerManager {
     /// Creates a new OS layer manager with the given config.
     #[must_use]
@@ -135,25 +133,37 @@ impl OSLayerManager {
         // Initialize Linux compatibility layer
         if self.config.enabled {
             let linux_layer = LinuxCompatibilityLayer::new();
-            layers.insert("linux".to_string(), Box::new(linux_layer));
+            layers.insert(
+                "linux".to_string(),
+                CompatibilityLayerDispatch::Linux(linux_layer),
+            );
         }
 
         // Initialize Windows compatibility layer
         if self.config.enabled {
             let windows_layer = WindowsCompatibilityLayer::new();
-            layers.insert("windows".to_string(), Box::new(windows_layer));
+            layers.insert(
+                "windows".to_string(),
+                CompatibilityLayerDispatch::Windows(windows_layer),
+            );
         }
 
         // Initialize macOS compatibility layer
         if self.config.enabled {
             let macos_layer = MacOSCompatibilityLayer::new();
-            layers.insert("macos".to_string(), Box::new(macos_layer));
+            layers.insert(
+                "macos".to_string(),
+                CompatibilityLayerDispatch::MacOS(macos_layer),
+            );
         }
 
         // Initialize legacy compatibility layer
         if self.config.enabled {
             let legacy_layer = LegacyCompatibilityLayer::new();
-            layers.insert("legacy".to_string(), Box::new(legacy_layer));
+            layers.insert(
+                "legacy".to_string(),
+                CompatibilityLayerDispatch::Legacy(legacy_layer),
+            );
         }
         drop(layers);
 

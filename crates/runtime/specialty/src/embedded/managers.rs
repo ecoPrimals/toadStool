@@ -4,13 +4,9 @@
 //! This module contains managers for memory layouts and peripheral configurations.
 
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use crate::types::configs::embedded::PeripheralConfig;
 use crate::{LegacyArchitecture, MemoryLayout};
-
-use super::types::PeripheralInterface;
 
 /// Memory layout manager
 #[derive(Debug)]
@@ -24,8 +20,6 @@ pub struct MemoryLayoutManager {
 pub struct PeripheralManager {
     /// Peripheral configurations
     peripherals: HashMap<String, PeripheralConfig>,
-    /// Active peripheral instances
-    _active_peripherals: Arc<RwLock<HashMap<String, Box<dyn PeripheralInterface>>>>,
 }
 
 impl MemoryLayoutManager {
@@ -62,7 +56,6 @@ impl PeripheralManager {
     pub fn new() -> Self {
         Self {
             peripherals: HashMap::new(),
-            _active_peripherals: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 

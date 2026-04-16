@@ -15,13 +15,15 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 use toadstool_server::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest};
-use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutor};
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 // ─── transport.discover ────────────────────────────────────────────────────
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_discover_returns_structure() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -44,7 +46,9 @@ async fn transport_discover_returns_structure() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_list_returns_empty_initially() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -68,7 +72,9 @@ async fn transport_list_returns_empty_initially() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_route_missing_params() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -84,7 +90,9 @@ async fn transport_route_missing_params() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_route_missing_rx_id() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -100,7 +108,9 @@ async fn transport_route_missing_rx_id() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_route_missing_tx_id() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -116,7 +126,9 @@ async fn transport_route_missing_tx_id() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_route_with_nonexistent_transports() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -135,7 +147,9 @@ async fn transport_route_with_nonexistent_transports() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn transport_route_with_buf_size() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -157,7 +171,9 @@ async fn transport_route_with_buf_size() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn toadstool_health_returns_structure() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "1.2.3", Some(Arc::new(AtomicU64::new(0))));
 
     let request = JsonRpcRequest {
@@ -176,7 +192,9 @@ async fn toadstool_health_returns_structure() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn compute_health_alias() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "2.0.0", None);
 
     let request = JsonRpcRequest {
@@ -192,7 +210,9 @@ async fn compute_health_alias() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn toadstool_version_returns_info() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "3.0.0", None);
 
     let request = JsonRpcRequest {
@@ -210,7 +230,9 @@ async fn toadstool_version_returns_info() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn resources_estimate_exercises_handler() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -225,7 +247,9 @@ async fn resources_estimate_exercises_handler() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn resources_validate_availability_exercises_handler() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -240,7 +264,9 @@ async fn resources_validate_availability_exercises_handler() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn resources_suggest_optimizations_exercises_handler() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -255,7 +281,9 @@ async fn resources_suggest_optimizations_exercises_handler() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn invalid_jsonrpc_version_returns_error() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -271,7 +299,9 @@ async fn invalid_jsonrpc_version_returns_error() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn gate_list_returns_structure() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -286,7 +316,9 @@ async fn gate_list_returns_structure() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn gpu_info_returns_structure() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -301,7 +333,9 @@ async fn gpu_info_returns_structure() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn gpu_memory_returns_structure() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -316,7 +350,9 @@ async fn gpu_memory_returns_structure() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn toadstool_query_capabilities() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {
@@ -331,7 +367,9 @@ async fn toadstool_query_capabilities() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn toadstool_list_workloads() {
-    let executor: Arc<dyn WorkloadExecutor + Send + Sync> = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let handler = JsonRpcHandler::new(executor, "0.1.0", None);
 
     let request = JsonRpcRequest {

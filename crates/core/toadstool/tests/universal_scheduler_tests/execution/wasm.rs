@@ -8,7 +8,8 @@ use std::time::Duration;
 use toadstool::execution::{ExecutionStatus, RuntimeType};
 use toadstool::resources::ResourceRequirements;
 use toadstool::universal::{
-    JobPriority, UniversalJob, UniversalJobType, UniversalPrimalRegistry, UniversalScheduler,
+    JobPriority, UniversalJob, UniversalJobType, UniversalPrimalProviderDispatch,
+    UniversalPrimalRegistry, UniversalScheduler,
 };
 use uuid::Uuid;
 
@@ -16,7 +17,7 @@ use super::super::helpers::create_test_context;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_wasm_no_engine_returns_failed() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),

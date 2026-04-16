@@ -2,18 +2,20 @@
 //! Config and helper tests
 
 use super::common::{make_availability, make_orchestrator_config, make_requirements};
+use crate::cloud::HybridSchedulingStrategy;
 use crate::cloud::types::{
     CloudDeploymentResult, CloudJobHandle, CloudOrchestratorConfig, DeploymentStrategy,
     DistributionStrategy, FederatedDeployment, MultiCloudDistribution,
 };
-use crate::cloud::{HybridSchedulingStrategy, UniversalCloudOrchestrator};
+
+use super::common::TestUniversalOrchestrator;
 use std::time::SystemTime;
 use uuid::Uuid;
 
 #[tokio::test]
 async fn test_orchestrator_construction() {
     let config = make_orchestrator_config();
-    let orch = UniversalCloudOrchestrator::new(config).await;
+    let orch = TestUniversalOrchestrator::new(config).await;
     assert!(orch.is_ok());
 }
 
@@ -23,14 +25,14 @@ async fn test_orchestrator_config_scheduling_strategies() {
         scheduling_strategy: HybridSchedulingStrategy::CostOptimized,
         ..make_orchestrator_config()
     };
-    let orch = UniversalCloudOrchestrator::new(config_cost).await;
+    let orch = TestUniversalOrchestrator::new(config_cost).await;
     assert!(orch.is_ok());
 
     let config_perf = CloudOrchestratorConfig {
         scheduling_strategy: HybridSchedulingStrategy::PerformanceOptimized,
         ..make_orchestrator_config()
     };
-    let orch2 = UniversalCloudOrchestrator::new(config_perf).await;
+    let orch2 = TestUniversalOrchestrator::new(config_perf).await;
     assert!(orch2.is_ok());
 }
 

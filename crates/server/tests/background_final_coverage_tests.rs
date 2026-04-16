@@ -18,9 +18,10 @@ use toadstool_server::{
     ActiveExecution, ClientInfo, HealthCheckConfig, ServerConfig, ServerEvent, ServerState,
     ServerStatistics, background::*,
 };
+use toadstool_testing::mocks::runtime_engines::MockRuntimeEngine;
 use tokio::sync::{RwLock, broadcast};
 
-fn create_test_state_with_config(config: ServerConfig) -> ServerState {
+fn create_test_state_with_config(config: ServerConfig) -> ServerState<MockRuntimeEngine> {
     let (event_broadcaster, _) = broadcast::channel(100);
 
     ServerState {
@@ -28,7 +29,7 @@ fn create_test_state_with_config(config: ServerConfig) -> ServerState {
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
+        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new().into()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }
@@ -222,7 +223,7 @@ async fn test_health_status_transitions_from_healthy_to_unhealthy() {
         use toadstool_testing::mocks::MockRuntimeEngine;
         engines.insert(
             toadstool::RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
     }
 
@@ -270,15 +271,15 @@ async fn test_multiple_runtime_engine_health_checks() {
         use toadstool_testing::mocks::MockRuntimeEngine;
         engines.insert(
             toadstool::RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
         engines.insert(
             toadstool::RuntimeType::Wasm,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
         engines.insert(
             toadstool::RuntimeType::Container,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
     }
 
@@ -348,11 +349,11 @@ async fn test_statistics_collection_with_runtime_engines() {
         use toadstool_testing::mocks::MockRuntimeEngine;
         engines.insert(
             toadstool::RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
         engines.insert(
             toadstool::RuntimeType::Wasm,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
     }
 
@@ -409,7 +410,7 @@ async fn test_health_check_resources_disabled_but_engines_enabled() {
         use toadstool_testing::mocks::MockRuntimeEngine;
         engines.insert(
             toadstool::RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new()),
+            Arc::new(MockRuntimeEngine::new()),
         );
     }
 

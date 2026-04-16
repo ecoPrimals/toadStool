@@ -2,8 +2,6 @@
 //! [`toadstool::execution::RuntimeEngine`] integration and request/response mapping.
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::time::{Duration, SystemTime};
 
 use tracing::{info, warn};
@@ -27,18 +25,18 @@ impl RuntimeEngine for UniversalGpuEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
             // Already initialized in constructor
             Ok(())
-        })
+        }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             let workload = Self::convert_request_to_workload(&request)?;
             let result = self.execute_workload(workload).await?;
 
@@ -76,7 +74,7 @@ impl RuntimeEngine for UniversalGpuEngine {
                     result.primary_output.errors
                 },
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -106,8 +104,8 @@ impl RuntimeEngine for UniversalGpuEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl std::future::Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async {
             Ok(RuntimeMetrics {
                 cpu: toadstool::resources::CpuMetrics {
                     usage_percent: 0.0, // GPU doesn't use CPU metrics
@@ -143,11 +141,11 @@ impl RuntimeEngine for UniversalGpuEngine {
                     duration: Duration::ZERO,
                 },
             })
-        })
+        }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async {
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
             // Destroy all active sessions
             let session_ids: Vec<Uuid> = {
                 let sessions = self.active_sessions.read().await;
@@ -165,7 +163,7 @@ impl RuntimeEngine for UniversalGpuEngine {
 
             info!("Universal GPU Engine shutdown complete");
             Ok(())
-        })
+        }
     }
 }
 

@@ -23,7 +23,7 @@ use crate::cloud::{
     HybridCloudScheduler, MultiCloudLoadBalancer, UniversalCloudOrchestrator,
 };
 
-impl UniversalCloudOrchestrator {
+impl<P: CloudProviderInterface> UniversalCloudOrchestrator<P> {
     /// Create new cloud orchestrator
     pub async fn new(config: CloudOrchestratorConfig) -> ToadStoolResult<Self> {
         let providers = RwLock::new(HashMap::new());
@@ -44,11 +44,7 @@ impl UniversalCloudOrchestrator {
     }
 
     /// Register a cloud provider
-    pub async fn register_provider(
-        &mut self,
-        name: String,
-        provider: Box<dyn CloudProviderInterface>,
-    ) -> ToadStoolResult<()> {
+    pub async fn register_provider(&mut self, name: String, provider: P) -> ToadStoolResult<()> {
         info!("Registering cloud provider: {}", name);
 
         let capabilities = provider.get_capabilities();

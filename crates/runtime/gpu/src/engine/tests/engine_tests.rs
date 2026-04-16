@@ -173,30 +173,10 @@ async fn test_engine_with_config_and_strategy() {
 
 #[tokio::test]
 async fn test_engine_with_resource_monitor() {
-    use toadstool::resources::{ResourceMonitor, RuntimeMetrics, SystemResources};
-    struct MockMonitor;
-    impl ResourceMonitor for MockMonitor {
-        fn start_monitoring(&self, _workload_id: &str) -> toadstool::ToadStoolResult<()> {
-            Ok(())
-        }
-        fn stop_monitoring(&self, _workload_id: &str) -> toadstool::ToadStoolResult<()> {
-            Ok(())
-        }
-        fn get_metrics(
-            &self,
-            _workload_id: &str,
-        ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_>>
-        {
-            Box::pin(async { Ok(toadstool::resources::RuntimeMetrics::default()) })
-        }
-        fn get_system_resources(
-            &self,
-        ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<SystemResources>> + Send + '_>>
-        {
-            Box::pin(async { Ok(toadstool::resources::SystemResources::default()) })
-        }
-    }
-    let engine = UniversalGpuEngine::default().with_resource_monitor(Arc::new(MockMonitor));
+    use toadstool::resources::ResourceMonitorDispatch;
+    let engine = UniversalGpuEngine::default().with_resource_monitor(Arc::new(
+        ResourceMonitorDispatch::System(toadstool::resources::SystemResourceMonitor::new()),
+    ));
     let stats = engine.get_statistics().await;
     assert_eq!(stats.total_devices, 0);
 }

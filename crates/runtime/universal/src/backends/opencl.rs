@@ -8,8 +8,6 @@
 //! be used for real execution.
 
 use crate::types::*;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::OnceLock;
 
 /// Placeholder capability record for the removed OpenCL path (S198): empty ops/types, zero throughput.
@@ -80,16 +78,11 @@ impl ComputeUnit for OpenClComputeUnit {
         "OpenCL (deprecated)"
     }
 
-    fn execute<'a>(
-        &'a self,
-        _workload: Workload,
-    ) -> Pin<Box<dyn Future<Output = Result<Output, ComputeError>> + Send + 'a>> {
-        Box::pin(async move {
-            Err(ComputeError::BackendError(
-                "OpenCL is not available in toadstool-runtime-universal. \
-                 Use wgpu or barraCuda/coralReef IPC."
-                    .to_string(),
-            ))
-        })
+    async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
+        Err(ComputeError::BackendError(
+            "OpenCL is not available in toadstool-runtime-universal. \
+             Use wgpu or barraCuda/coralReef IPC."
+                .to_string(),
+        ))
     }
 }

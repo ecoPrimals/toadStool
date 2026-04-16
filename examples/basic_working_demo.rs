@@ -8,14 +8,14 @@ use tracing::{Level, info};
 use uuid::Uuid;
 
 use toadstool::{
-    WorkloadType,
+    ResourceMonitor, SystemResourceMonitor, WorkloadType,
     execution::{ExecutionInput, ExecutionRequest, RuntimeConfig, RuntimeEngine, RuntimeType},
-    resources::{ResourceMonitor, ResourceRequirements},
+    resources::{ResourceMonitorDispatch, ResourceRequirements},
     security::{Capability, IsolationLevel, SecurityContext},
     workload::{ExecutableSource, WorkloadSpec},
 };
 
-use toadstool_management_monitoring::SystemResourceMonitor;
+use toadstool_management_monitoring::SystemResourceMonitor as MonitoringResourceMonitor;
 use toadstool_runtime_native::NativeRuntimeEngine;
 
 #[tokio::main]
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn test_resource_monitor() -> Result<(), Box<dyn std::error::Error>> {
-    let monitor = SystemResourceMonitor::new();
+    let monitor = MonitoringResourceMonitor::new();
 
     // Test basic functionality
     let workload_id = "test-workload-1";
@@ -126,11 +126,10 @@ async fn test_native_runtime() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn test_integration() -> Result<(), Box<dyn std::error::Error>> {
     // Create resource monitor
-    let monitor = Arc::new(SystemResourceMonitor::new());
+    let monitor: Arc<ResourceMonitorDispatch> = Arc::new(SystemResourceMonitor::new().into());
 
     // Create native runtime with monitor
-    let mut engine = NativeRuntimeEngine::new()
-        .with_resource_monitor(monitor.clone() as Arc<dyn ResourceMonitor>);
+    let mut engine = NativeRuntimeEngine::new().with_resource_monitor(monitor.clone());
     engine.initialize(RuntimeConfig::default()).await?;
 
     info!("✓ Created integrated runtime with monitoring");

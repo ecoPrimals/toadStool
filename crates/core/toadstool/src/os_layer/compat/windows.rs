@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::pin::Pin;
 
 use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 use toadstool_common::error::SystemError;
@@ -84,8 +83,8 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
     fn execute_with_compatibility(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             if !cfg!(target_os = "windows") {
                 return Err(SystemError::NotSupported {
                     feature: "windows_compat_layer".into(),
@@ -94,23 +93,23 @@ impl CompatibilityLayer for WindowsCompatibilityLayer {
                 .into());
             }
             Ok(ExecutionResponse::default())
-        })
+        }
     }
 
-    fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        if !cfg!(target_os = "windows") {
-            return Box::pin(async move {
-                Err(SystemError::NotSupported {
+    fn initialize(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
+            if !cfg!(target_os = "windows") {
+                return Err(SystemError::NotSupported {
                     feature: "windows_compat_layer".into(),
                     reason: "WindowsCompatibilityLayer requires target_os = windows. Current platform is not Windows.".into(),
                 }
-                .into())
-            });
+                .into());
+            }
+            Ok(())
         }
-        Box::pin(async move { Ok(()) })
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }

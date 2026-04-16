@@ -8,16 +8,12 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
 use super::{CryptoCapability, EncryptedPayload, EncryptionKey, EncryptionMetadata, SecurityLevel};
-
-/// Boxed Send future (avoids clippy::type_complexity on nested generics).
-type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// Trait for crypto service providers
 ///
@@ -35,7 +31,7 @@ pub trait CryptoProvider: Send + Sync {
         &'a self,
         data: &'a [u8],
         key: &'a EncryptionKey,
-    ) -> BoxFuture<'a, ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>>;
+    ) -> impl Future<Output = ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>> + Send + 'a;
 
     /// Decrypt data
     fn decrypt<'a>(
@@ -43,24 +39,93 @@ pub trait CryptoProvider: Send + Sync {
         encrypted: &'a EncryptedPayload,
         key: &'a EncryptionKey,
         metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a;
 
     /// Generate new encryption key
     fn generate_key(
         &self,
         security_level: SecurityLevel,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_;
 
     /// Get existing key by ID
     fn get_key<'a>(
         &'a self,
         key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a>>;
+    ) -> impl Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a;
 
     /// Check if provider is healthy and reachable
-    fn health_check(
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_;
+}
+
+/// Default placeholder used when no crypto backend is selected.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NoopCryptoProvider;
+
+impl CryptoProvider for NoopCryptoProvider {
+    fn provider_id(&self) -> &'static str {
+        "noop"
+    }
+
+    fn capabilities(&self) -> &CryptoCapability {
+        static CAP: std::sync::OnceLock<CryptoCapability> = std::sync::OnceLock::new();
+        CAP.get_or_init(|| CryptoCapability {
+            algorithms: vec![],
+            security_level: SecurityLevel::Standard,
+            hardware_backed: false,
+        })
+    }
+
+    fn encrypt<'a>(
+        &'a self,
+        _data: &'a [u8],
+        _key: &'a EncryptionKey,
+    ) -> impl Future<Output = ToadStoolResult<(EncryptedPayload, EncryptionMetadata)>> + Send + 'a
+    {
+        async {
+            Err(ToadStoolError::configuration(
+                "NoopCryptoProvider cannot encrypt",
+            ))
+        }
+    }
+
+    fn decrypt<'a>(
+        &'a self,
+        _encrypted: &'a EncryptedPayload,
+        _key: &'a EncryptionKey,
+        _metadata: &'a EncryptionMetadata,
+    ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a {
+        async {
+            Err(ToadStoolError::configuration(
+                "NoopCryptoProvider cannot decrypt",
+            ))
+        }
+    }
+
+    fn generate_key(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>>;
+        _security_level: SecurityLevel,
+    ) -> impl Future<Output = ToadStoolResult<EncryptionKey>> + Send + '_ {
+        async {
+            Err(ToadStoolError::configuration(
+                "NoopCryptoProvider cannot generate keys",
+            ))
+        }
+    }
+
+    fn get_key<'a>(
+        &'a self,
+        _key_id: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<EncryptionKey>> + Send + 'a {
+        async {
+            Err(ToadStoolError::configuration(
+                "NoopCryptoProvider has no keys",
+            ))
+        }
+    }
+
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
+        async { Ok(ProviderHealth::unhealthy("noop crypto provider")) }
+    }
 }
 
 /// Provider health status
@@ -104,11 +169,11 @@ impl ProviderHealth {
 /// Registry of available crypto providers
 ///
 /// **Design**: Central discovery point, no hardcoded providers
-pub struct CryptoProviderRegistry {
-    providers: Arc<RwLock<HashMap<String, Arc<dyn CryptoProvider>>>>,
+pub struct CryptoProviderRegistry<P: CryptoProvider> {
+    providers: Arc<RwLock<HashMap<String, Arc<P>>>>,
 }
 
-impl CryptoProviderRegistry {
+impl<P: CryptoProvider> CryptoProviderRegistry<P> {
     /// Create new registry
     pub fn new() -> Self {
         Self {
@@ -123,7 +188,7 @@ impl CryptoProviderRegistry {
     /// # Errors
     ///
     /// Returns error if the provider ID is already registered.
-    pub async fn register(&self, provider: Arc<dyn CryptoProvider>) -> ToadStoolResult<()> {
+    pub async fn register(&self, provider: Arc<P>) -> ToadStoolResult<()> {
         let provider_id = provider.provider_id().to_string();
         let mut providers = self.providers.write().await;
 
@@ -165,9 +230,9 @@ impl CryptoProviderRegistry {
     pub async fn find_provider(
         &self,
         capability: &CryptoCapability,
-    ) -> ToadStoolResult<Option<Arc<dyn CryptoProvider>>> {
+    ) -> ToadStoolResult<Option<Arc<P>>> {
         // Find all matching providers
-        let mut matches: Vec<(u32, Arc<dyn CryptoProvider>)> = self
+        let mut matches: Vec<(u32, Arc<P>)> = self
             .providers
             .read()
             .await
@@ -198,8 +263,8 @@ impl CryptoProviderRegistry {
     pub async fn find_all_providers(
         &self,
         capability: &CryptoCapability,
-    ) -> ToadStoolResult<Vec<Arc<dyn CryptoProvider>>> {
-        let matches: Vec<Arc<dyn CryptoProvider>> = self
+    ) -> ToadStoolResult<Vec<Arc<P>>> {
+        let matches: Vec<Arc<P>> = self
             .providers
             .read()
             .await
@@ -216,10 +281,7 @@ impl CryptoProviderRegistry {
     /// # Errors
     ///
     /// Returns error if `provider_id` is not registered.
-    pub async fn get_provider(
-        &self,
-        provider_id: &str,
-    ) -> ToadStoolResult<Arc<dyn CryptoProvider>> {
+    pub async fn get_provider(&self, provider_id: &str) -> ToadStoolResult<Arc<P>> {
         self.providers
             .read()
             .await
@@ -235,7 +297,7 @@ impl CryptoProviderRegistry {
 
     /// Check health of all providers
     pub async fn health_check_all(&self) -> HashMap<String, ProviderHealth> {
-        let to_check: Vec<(String, Arc<dyn CryptoProvider>)> = self
+        let to_check: Vec<(String, Arc<P>)> = self
             .providers
             .read()
             .await
@@ -256,7 +318,7 @@ impl CryptoProviderRegistry {
     }
 }
 
-impl Default for CryptoProviderRegistry {
+impl<P: CryptoProvider> Default for CryptoProviderRegistry<P> {
     fn default() -> Self {
         Self::new()
     }

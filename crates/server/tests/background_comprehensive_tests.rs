@@ -35,7 +35,7 @@ fn create_test_state_with_config(config: ServerConfig) -> ServerState {
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new()),
+        resource_monitor: Arc::new(toadstool::SystemResourceMonitor::new().into()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }

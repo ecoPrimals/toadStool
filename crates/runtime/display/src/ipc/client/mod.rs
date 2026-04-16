@@ -5,6 +5,7 @@
 //! Submodules separate endpoint discovery, connection setup, RPC framing, and
 //! display operations.
 
+mod async_stream_dispatch;
 mod connection;
 mod discovery;
 mod operations;
@@ -14,8 +15,8 @@ mod tests;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::{TcpStream, UnixStream};
+
+pub(super) use async_stream_dispatch::AsyncStreamDispatch;
 
 use toadstool_config::defaults::ports::DISPLAY_IPC_FALLBACK;
 
@@ -49,18 +50,6 @@ pub enum IpcEndpoint {
     TcpLocal(SocketAddr),
 }
 
-/// Polymorphic async stream trait
-///
-/// Allows `DisplayClient` to work with both `UnixStream` and `TcpStream` transparently.
-pub(super) trait AsyncStream: AsyncRead + AsyncWrite + Unpin + Send {}
-
-// Implement for both stream types
-impl AsyncStream for UnixStream {}
-impl AsyncStream for TcpStream {}
-
-#[cfg(test)]
-impl AsyncStream for tokio::io::DuplexStream {}
-
 /// Display client
 ///
 /// **ISOMORPHIC**: Connects via Unix sockets OR TCP automatically.
@@ -81,6 +70,6 @@ impl AsyncStream for tokio::io::DuplexStream {}
 /// # }
 /// ```
 pub struct DisplayClient {
-    stream: Box<dyn AsyncStream>,
+    pub(super) stream: AsyncStreamDispatch,
     endpoint: IpcEndpoint,
 }

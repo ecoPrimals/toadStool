@@ -12,6 +12,7 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use crate::compiler::UniversalKernelCompiler;
 use crate::config::UniversalGpuConfig;
 use crate::coordinator::ComputeResourceCoordinator;
+use crate::parallel_framework_dispatch::ParallelComputeFrameworkDispatch;
 use crate::strategy::{BackendSelectionStrategy, EvolutionMetrics};
 use crate::traits::ParallelComputeFramework;
 use crate::types::GpuFramework;
@@ -114,11 +115,13 @@ impl UniversalGpuEngine {
     async fn create_framework_instance(
         &self,
         framework_type: GpuFramework,
-    ) -> ToadStoolResult<Arc<dyn ParallelComputeFramework>> {
+    ) -> ToadStoolResult<Arc<ParallelComputeFrameworkDispatch>> {
         match framework_type {
             GpuFramework::WebGpu => {
                 let framework = crate::frameworks::WebGpuFramework::new()?;
-                Ok(Arc::new(framework))
+                Ok(Arc::new(ParallelComputeFrameworkDispatch::WebGpu(
+                    framework,
+                )))
             }
             GpuFramework::Vulkan => {
                 // Vulkan support requires additional platform-specific dependencies
@@ -135,7 +138,9 @@ impl UniversalGpuEngine {
             _ => {
                 // For other frameworks, use fallback implementation
                 let framework = crate::frameworks::FallbackFramework::new(framework_type);
-                Ok(Arc::new(framework))
+                Ok(Arc::new(ParallelComputeFrameworkDispatch::Fallback(
+                    framework,
+                )))
             }
         }
     }

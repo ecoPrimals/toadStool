@@ -26,7 +26,8 @@ use toadstool_common::constants::timeouts::HEALTH_CHECK_INTERVAL;
 
 pub use alerting::{evaluate_health_alerts, load_default_alert_rules};
 pub use collectors::{
-    MetricsCollector, NetworkMetricsCollector, ProcessMetricsCollector, SystemMetricsCollector,
+    MetricsCollector, MetricsCollectorDispatch, NetworkMetricsCollector, ProcessMetricsCollector,
+    SystemMetricsCollector,
 };
 pub use dashboard::{
     collect_biome_status, collect_performance_metrics, collect_resource_usage,
@@ -39,7 +40,7 @@ pub use types::*;
 /// Comprehensive monitoring system for `ToadStool`
 pub struct MonitoringSystem {
     sessions: Arc<RwLock<HashMap<String, MonitoringSession>>>,
-    collectors: Arc<RwLock<HashMap<String, Arc<dyn MetricsCollector + Send + Sync>>>>,
+    collectors: Arc<RwLock<HashMap<String, Arc<MetricsCollectorDispatch>>>>,
     alert_rules: Arc<RwLock<Vec<AlertRule>>>,
     metrics_store: Arc<RwLock<MetricsStore>>,
     config: MonitoringConfig,
@@ -194,15 +195,21 @@ impl MonitoringSystem {
             let mut collectors = self.collectors.write().await;
             collectors.insert(
                 "system".to_string(),
-                Arc::new(SystemMetricsCollector::new()),
+                Arc::new(MetricsCollectorDispatch::System(
+                    SystemMetricsCollector::new(),
+                )),
             );
             collectors.insert(
                 "process".to_string(),
-                Arc::new(ProcessMetricsCollector::new()),
+                Arc::new(MetricsCollectorDispatch::Process(
+                    ProcessMetricsCollector::new(),
+                )),
             );
             collectors.insert(
                 "network".to_string(),
-                Arc::new(NetworkMetricsCollector::new()),
+                Arc::new(MetricsCollectorDispatch::Network(
+                    NetworkMetricsCollector::new(),
+                )),
             );
             info!("📊 Registered {} default collectors", collectors.len());
             drop(collectors);

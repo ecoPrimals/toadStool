@@ -14,11 +14,11 @@
 
 use std::sync::Arc;
 use toadstool_runtime_gpu::{
-    cpu_resource::CpuComputeResource,
+    cpu_resource::{CpuComputeResource, UniversalComputeResourceDispatch},
     scheduler::{SchedulingPolicy, UniversalComputeScheduler},
     universal::{
-        ComputeBuffer, ComputeRequirements, Operation, OptimizationHints, Precision,
-        UniversalComputeResource, UniversalKernel, UniversalWorkload,
+        ComputeBuffer, ComputeContext, ComputeRequirements, Operation, OptimizationHints,
+        Precision, UniversalComputeResource, UniversalKernel, UniversalWorkload,
     },
 };
 
@@ -36,9 +36,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let scheduler = UniversalComputeScheduler::new(SchedulingPolicy::CapabilityMatch);
 
     // Register CPU as compute resource
-    let cpu_resource = Arc::new(CpuComputeResource::new()?);
+    let cpu_resource = CpuComputeResource::new()?;
     scheduler
-        .register_resource(Arc::clone(&cpu_resource) as Arc<dyn UniversalComputeResource>)
+        .register_resource(Arc::new(UniversalComputeResourceDispatch::Cpu(
+            cpu_resource,
+        )))
         .await;
 
     println!("\n✅ Registered compute resources:");
@@ -165,9 +167,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n🎯 Capability scores:");
 
-    // Score CPU
-    let cpu_score = cpu_resource.score_workload(&test_requirements);
-    let cpu_can = cpu_resource.can_execute(&test_requirements);
+    // Score CPU (separate instance: the registered resource was moved into the scheduler)
+    let cpu_for_scoring = CpuComputeResource::new()?;
+    let cpu_score = cpu_for_scoring.score_workload(&test_requirements);
+    let cpu_can = cpu_for_scoring.can_execute(&test_requirements);
 
     println!("   - CPU: {cpu_score:.2} (can execute: {cpu_can})");
 

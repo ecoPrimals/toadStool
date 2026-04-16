@@ -16,7 +16,7 @@ use toadstool_server::pure_jsonrpc::{JsonRpcError, JsonRpcHandler, JsonRpcReques
 use toadstool_server::resource_estimator::EstimationError;
 use toadstool_server::resource_validator::ValidationError;
 use toadstool_server::state::ServerEvent;
-use toadstool_server::tarpc_server::StandaloneExecutor;
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 use uuid::Uuid;
 
 // ───── JSON-RPC invalid version and request ID ─────────────────────────────
@@ -25,7 +25,9 @@ use uuid::Uuid;
 async fn test_invalid_jsonrpc_version_increments_error_count() {
     let error_count = Arc::new(AtomicU64::new(0));
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         Some(Arc::clone(&error_count)),
     );
@@ -44,7 +46,9 @@ async fn test_invalid_jsonrpc_version_increments_error_count() {
 #[tokio::test]
 async fn test_request_with_null_id_preserves_null_in_response() {
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     );
@@ -196,7 +200,9 @@ fn test_jsonrpc_error_serialization_roundtrip() {
 async fn test_method_not_found_increments_error_count() {
     let error_count = Arc::new(AtomicU64::new(0));
     let handler = JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         Some(Arc::clone(&error_count)),
     );

@@ -27,6 +27,7 @@ pub mod pipeline_graph;
 pub mod platform;
 
 // Primal system
+pub mod primal_provider_dispatch;
 pub mod provider;
 pub mod registry;
 pub mod traits;
@@ -40,6 +41,7 @@ pub use platform::{
     PlatformStatus, UniversalComputePlatform, UniversalPlatformConfig, get_platform_status,
     init_with_runtime_engines,
 };
+pub use primal_provider_dispatch::UniversalPrimalProviderDispatch;
 pub use provider::ToadStoolPrimalProvider;
 pub use registry::UniversalPrimalRegistry;
 pub use requests::{PrimalEndpoints, PrimalRequest, PrimalResponse, ResponseStatus};

@@ -410,34 +410,11 @@ fn execution_status_variants_round_trip() {
 
 #[tokio::test]
 async fn with_resource_monitor_preserves_statistics_shape() {
-    use std::future::Future;
-    use std::pin::Pin;
-    use toadstool::resources::{ResourceMonitor, SystemResources};
+    use toadstool::resources::ResourceMonitorDispatch;
 
-    struct NopMonitor;
-    impl ResourceMonitor for NopMonitor {
-        fn start_monitoring(&self, _: &str) -> toadstool::ToadStoolResult<()> {
-            Ok(())
-        }
-        fn stop_monitoring(&self, _: &str) -> toadstool::ToadStoolResult<()> {
-            Ok(())
-        }
-        fn get_metrics(
-            &self,
-            _: &str,
-        ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_>>
-        {
-            Box::pin(async { Ok(RuntimeMetrics::default()) })
-        }
-        fn get_system_resources(
-            &self,
-        ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<SystemResources>> + Send + '_>>
-        {
-            Box::pin(async { Ok(SystemResources::default()) })
-        }
-    }
-
-    let engine = UniversalGpuEngine::default().with_resource_monitor(Arc::new(NopMonitor));
+    let engine = UniversalGpuEngine::default().with_resource_monitor(Arc::new(
+        ResourceMonitorDispatch::System(toadstool::resources::SystemResourceMonitor::new()),
+    ));
     let s = engine.get_statistics().await;
     assert_eq!(s.total_devices, 0);
 }

@@ -33,7 +33,9 @@
 use std::sync::Arc;
 use toadstool_common::ToadStoolResult;
 use toadstool_common::primal_identity::{Capability, DiscoveredService};
-use toadstool_common::runtime_discovery::RuntimeDiscovery;
+use toadstool_common::runtime_discovery::{DiscoveryClient, RuntimeDiscovery};
+
+use crate::discovery_client_dispatch::DiscoveryClientDispatch;
 
 /// Discover a service by capability with fallback to legacy endpoint
 ///
@@ -70,8 +72,8 @@ use toadstool_common::runtime_discovery::RuntimeDiscovery;
 /// # Errors
 ///
 /// This function does not fail; it always returns the discovered endpoint or fallback.
-pub async fn discover_or_fallback(
-    discovery: &RuntimeDiscovery,
+pub async fn discover_or_fallback<C: DiscoveryClient>(
+    discovery: &RuntimeDiscovery<C>,
     capability: &Capability,
     fallback_endpoint: &str,
 ) -> ToadStoolResult<String> {
@@ -137,8 +139,8 @@ pub async fn discover_or_fallback(
 /// # Errors
 ///
 /// Returns `Err` if discovery fails.
-pub async fn discover_all_by_capability(
-    discovery: &RuntimeDiscovery,
+pub async fn discover_all_by_capability<C: DiscoveryClient>(
+    discovery: &RuntimeDiscovery<C>,
     capability: &Capability,
 ) -> ToadStoolResult<Vec<DiscoveredService>> {
     discovery.discover_capability(capability).await
@@ -163,8 +165,8 @@ pub async fn discover_all_by_capability(
 /// # Errors
 ///
 /// This function does not fail; it always returns the discovered endpoint or fallback.
-pub async fn discover_with_load_balancing(
-    discovery: &RuntimeDiscovery,
+pub async fn discover_with_load_balancing<C: DiscoveryClient>(
+    discovery: &RuntimeDiscovery<C>,
     capability: &Capability,
     fallback_endpoint: &str,
 ) -> ToadStoolResult<String> {
@@ -243,8 +245,10 @@ pub async fn discover_with_load_balancing(
 /// # Errors
 ///
 /// This implementation does not fail; returns [`ToadStoolResult`] for API consistency.
-pub fn create_discovery() -> ToadStoolResult<RuntimeDiscovery> {
-    let client = Arc::new(toadstool_common::runtime_discovery::LocalhostDiscoveryClient::new());
+pub fn create_discovery() -> ToadStoolResult<RuntimeDiscovery<DiscoveryClientDispatch>> {
+    let client = Arc::new(DiscoveryClientDispatch::Localhost(
+        toadstool_common::runtime_discovery::LocalhostDiscoveryClient::new(),
+    ));
     Ok(RuntimeDiscovery::new(client))
 }
 

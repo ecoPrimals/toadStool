@@ -9,14 +9,18 @@ use tracing::info;
 
 use crate::{ToadStoolError, ToadStoolResult};
 
+use super::primal_provider_dispatch::UniversalPrimalProviderDispatch;
 use super::requests::{PrimalRequest, PrimalResponse};
 use super::traits::UniversalPrimalProvider;
 use super::types::{PrimalCapability, PrimalContext};
 
 /// Universal primal registry for capability-based discovery
-pub struct UniversalPrimalRegistry {
+pub struct UniversalPrimalRegistry<P = UniversalPrimalProviderDispatch>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
     /// Registered primal providers
-    providers: RwLock<HashMap<String, Arc<dyn UniversalPrimalProvider>>>,
+    providers: RwLock<HashMap<String, Arc<P>>>,
     /// Capability index: capability -> provider instance IDs
     capability_index: RwLock<HashMap<String, Vec<String>>>,
     /// Context index: `user_id` -> provider instance IDs
@@ -25,16 +29,32 @@ pub struct UniversalPrimalRegistry {
     type_index: RwLock<HashMap<String, Vec<String>>>,
 }
 
-impl Default for UniversalPrimalRegistry {
+impl Default for UniversalPrimalRegistry<UniversalPrimalProviderDispatch> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl UniversalPrimalRegistry {
-    /// Create new registry
+impl UniversalPrimalRegistry<UniversalPrimalProviderDispatch> {
+    /// Create new registry (production default: [`UniversalPrimalProviderDispatch`]).
     #[must_use]
     pub fn new() -> Self {
+        Self {
+            providers: RwLock::new(HashMap::new()),
+            capability_index: RwLock::new(HashMap::new()),
+            context_index: RwLock::new(HashMap::new()),
+            type_index: RwLock::new(HashMap::new()),
+        }
+    }
+}
+
+impl<P> UniversalPrimalRegistry<P>
+where
+    P: UniversalPrimalProvider + Send + Sync + 'static,
+{
+    /// Create an empty registry for a concrete provider type `P` (e.g. test mocks).
+    #[must_use]
+    pub fn new_typed() -> Self {
         Self {
             providers: RwLock::new(HashMap::new()),
             capability_index: RwLock::new(HashMap::new()),
@@ -48,10 +68,7 @@ impl UniversalPrimalRegistry {
     /// # Errors
     ///
     /// This function currently always returns `Ok`; the `Result` type is reserved for future validation.
-    pub async fn register_primal(
-        &self,
-        provider: Arc<dyn UniversalPrimalProvider>,
-    ) -> ToadStoolResult<()> {
+    pub async fn register_primal(&self, provider: Arc<P>) -> ToadStoolResult<()> {
         let instance_id = provider.instance_id().to_string();
         let capabilities = provider.capabilities();
         let context = provider.context().clone();
@@ -96,10 +113,7 @@ impl UniversalPrimalRegistry {
     }
 
     /// Find providers by capability
-    pub async fn find_by_capability(
-        &self,
-        capability: &PrimalCapability,
-    ) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn find_by_capability(&self, capability: &PrimalCapability) -> Vec<Arc<P>> {
         let cap_key = format!("{capability:?}");
         let capability_index = self.capability_index.read().await;
         let providers = self.providers.read().await;
@@ -116,10 +130,7 @@ impl UniversalPrimalRegistry {
     }
 
     /// Find providers by context
-    pub async fn find_by_context(
-        &self,
-        context: &PrimalContext,
-    ) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn find_by_context(&self, context: &PrimalContext) -> Vec<Arc<P>> {
         let context_index = self.context_index.read().await;
         let providers = self.providers.read().await;
 
@@ -154,7 +165,7 @@ impl UniversalPrimalRegistry {
     }
 
     /// Get all registered providers
-    pub async fn get_all_providers(&self) -> Vec<Arc<dyn UniversalPrimalProvider>> {
+    pub async fn get_all_providers(&self) -> Vec<Arc<P>> {
         self.providers.read().await.values().cloned().collect()
     }
 }
@@ -188,24 +199,28 @@ mod tests {
 
     #[test]
     fn test_registry_default() {
-        let _registry = UniversalPrimalRegistry::default();
+        let _registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::default();
         // Default creates new registry
     }
 
     #[tokio::test]
     async fn test_registry_new_and_register() {
-        let registry = UniversalPrimalRegistry::new();
+        let registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
         let context = make_test_context();
-        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
+            ToadStoolPrimalProvider::new(context),
+        ));
         let result = registry.register_primal(provider).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_registry_find_by_capability() {
-        let registry = UniversalPrimalRegistry::new();
+        let registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
         let context = make_test_context();
-        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
+            ToadStoolPrimalProvider::new(context),
+        ));
         registry.register_primal(provider).await.unwrap();
 
         let providers = registry
@@ -216,9 +231,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_registry_find_by_context() {
-        let registry = UniversalPrimalRegistry::new();
+        let registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
         let context = make_test_context();
-        let provider = Arc::new(ToadStoolPrimalProvider::new(context.clone()));
+        let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
+            ToadStoolPrimalProvider::new(context.clone()),
+        ));
         registry.register_primal(provider).await.unwrap();
 
         let providers = registry.find_by_context(&context).await;
@@ -227,9 +244,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_registry_get_all_providers() {
-        let registry = UniversalPrimalRegistry::new();
+        let registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
         let context = make_test_context();
-        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
+            ToadStoolPrimalProvider::new(context),
+        ));
         registry.register_primal(provider).await.unwrap();
 
         let all = registry.get_all_providers().await;
@@ -238,9 +257,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_registry_route_request() {
-        let registry = UniversalPrimalRegistry::new();
+        let registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
         let context = make_test_context();
-        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(
+            ToadStoolPrimalProvider::new(context),
+        ));
         registry.register_primal(provider).await.unwrap();
 
         let request = PrimalRequest {
@@ -259,7 +280,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_registry_route_request_unknown_target() {
-        let registry = UniversalPrimalRegistry::new();
+        let registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
         let request = PrimalRequest {
             id: Uuid::new_v4(),
             source: "source".to_string(),

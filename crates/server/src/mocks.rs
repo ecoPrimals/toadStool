@@ -10,8 +10,6 @@
 #[cfg(any(test, feature = "test-mocks"))]
 use std::future::Future;
 #[cfg(any(test, feature = "test-mocks"))]
-use std::pin::Pin;
-#[cfg(any(test, feature = "test-mocks"))]
 use toadstool::{ResourceMonitor, RuntimeMetrics, SystemResources, ToadStoolResult};
 
 /// Mock resource monitor for testing
@@ -46,14 +44,14 @@ impl ResourceMonitor for MockResourceMonitor {
     fn get_metrics(
         &self,
         _workload_id: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async move { Ok(RuntimeMetrics::default()) })
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async move { Ok(RuntimeMetrics::default()) }
     }
 
     fn get_system_resources(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_ {
+        async move {
             Ok(SystemResources {
                 available_cpu_cores: 4.0,
                 available_memory_bytes: 8_000_000_000,
@@ -65,7 +63,7 @@ impl ResourceMonitor for MockResourceMonitor {
                 total_cpu_cores: 8,
                 total_memory_bytes: 16_000_000_000,
             })
-        })
+        }
     }
 }
 

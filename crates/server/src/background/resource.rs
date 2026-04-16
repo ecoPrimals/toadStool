@@ -4,13 +4,16 @@
 //! Collects CPU/memory usage, broadcasts ResourceUsageUpdate events,
 //! and updates server statistics (uptime, peak concurrent executions).
 
+use toadstool::ResourceMonitor;
 use tracing::{debug, warn};
+
+use toadstool::RuntimeEngine;
 
 use crate::state::{ServerEvent, ServerState};
 use tokio::time::interval;
 
 /// Resource monitoring background task
-pub(super) async fn run(state: ServerState) {
+pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
     debug!("Starting resource monitoring task");
 
     let mut interval = interval(state.config.resource_monitoring_interval);

@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -42,16 +41,16 @@ impl RuntimeEngine for TestRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
         let should_fail = self.should_fail;
-        Box::pin(async move {
+        async move {
             if should_fail {
                 return Err(ToadStoolError::runtime(
                     "Test execution failure".to_string(),
@@ -67,7 +66,7 @@ impl RuntimeEngine for TestRuntimeEngine {
                 runtime_used: RuntimeType::Native,
                 warnings: vec![],
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -84,14 +83,12 @@ impl RuntimeEngine for TestRuntimeEngine {
         true
     }
 
-    fn get_metrics(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async { Ok(RuntimeMetrics::default()) })
+    fn get_metrics(&self) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async { Ok(RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 

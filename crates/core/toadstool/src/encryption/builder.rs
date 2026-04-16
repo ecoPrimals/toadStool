@@ -1,25 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::marker::PhantomData;
 use uuid::Uuid;
 
 use super::config::EncryptionConfig;
 use super::context::EncryptionContext;
+use super::provider::{CryptoProvider, NoopCryptoProvider};
 use super::security::SecurityLevel;
 
 /// Builder for encryption contexts
 ///
 /// **Design**: Fluent API, modern Rust idioms
-pub struct EncryptionContextBuilder {
+pub struct EncryptionContextBuilder<P: CryptoProvider = NoopCryptoProvider> {
     execution_id: Uuid,
     config: EncryptionConfig,
+    _marker: PhantomData<P>,
 }
 
-impl EncryptionContextBuilder {
+impl<P: CryptoProvider> EncryptionContextBuilder<P> {
     /// Creates a new builder for the given execution ID.
     pub fn new(execution_id: Uuid) -> Self {
         Self {
             execution_id,
             config: EncryptionConfig::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -54,7 +58,7 @@ impl EncryptionContextBuilder {
     }
 
     /// Builds the encryption context.
-    pub fn build(self) -> EncryptionContext {
+    pub fn build(self) -> EncryptionContext<P> {
         EncryptionContext::new(self.execution_id, self.config)
     }
 }

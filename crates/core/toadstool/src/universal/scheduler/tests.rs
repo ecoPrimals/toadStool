@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,6 +16,7 @@ use crate::resources::{ResourceRequirements, RuntimeMetrics};
 use crate::workload::WorkloadType;
 
 use super::super::jobs::{JobPriority, UniversalJob, UniversalJobType};
+use super::super::primal_provider_dispatch::UniversalPrimalProviderDispatch;
 use super::super::registry::UniversalPrimalRegistry;
 use super::super::types::{NetworkLocation, PrimalCapability, PrimalContext, SecurityLevel};
 use super::UniversalScheduler;
@@ -56,15 +56,15 @@ impl RuntimeEngine for SimpleMockRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = crate::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = crate::ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             let runtime_used = request.runtime_hint.unwrap_or(RuntimeType::Native);
             Ok(ExecutionResponse {
                 execution_id: request.execution_id,
@@ -75,7 +75,7 @@ impl RuntimeEngine for SimpleMockRuntimeEngine {
                 runtime_used,
                 warnings: vec![],
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> crate::RuntimeCapabilities {
@@ -94,20 +94,21 @@ impl RuntimeEngine for SimpleMockRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async { Ok(RuntimeMetrics::default()) })
+    ) -> impl Future<Output = crate::ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async { Ok(RuntimeMetrics::default()) }
     }
 
-    fn shutdown(
-        &mut self,
-    ) -> Pin<Box<dyn Future<Output = crate::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = crate::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 
+type SchedWithSimpleMock =
+    UniversalScheduler<UniversalPrimalProviderDispatch, SimpleMockRuntimeEngine>;
+
 #[tokio::test]
 async fn test_scheduler_new_basic_construction() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await;
     assert!(scheduler.is_ok());
     let scheduler = scheduler.unwrap();
@@ -116,13 +117,10 @@ async fn test_scheduler_new_basic_construction() {
 
 #[tokio::test]
 async fn test_scheduler_with_runtime_engines() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Native,
-        Box::new(SimpleMockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
+    let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
     let runtimes = scheduler.available_runtimes().await;
@@ -132,13 +130,13 @@ async fn test_scheduler_with_runtime_engines() {
 
 #[tokio::test]
 async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
-    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
+    let scheduler = SchedWithSimpleMock::create(registry).await.unwrap();
 
     assert!(scheduler.available_runtimes().await.is_empty());
 
     scheduler
-        .register_runtime_engine(RuntimeType::Native, Box::new(SimpleMockRuntimeEngine))
+        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine))
         .await;
 
     let runtimes = scheduler.available_runtimes().await;
@@ -146,7 +144,7 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
     assert_eq!(runtimes[0], RuntimeType::Native);
 
     scheduler
-        .register_runtime_engine(RuntimeType::Wasm, Box::new(SimpleMockRuntimeEngine))
+        .register_runtime_engine(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine))
         .await;
 
     let runtimes = scheduler.available_runtimes().await;
@@ -157,14 +155,14 @@ async fn test_scheduler_register_runtime_engine_and_available_runtimes() {
 
 #[tokio::test]
 async fn test_scheduler_get_active_job_count_starts_at_zero() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     assert_eq!(scheduler.get_active_job_count().await, 0);
 }
 
 #[tokio::test]
 async fn test_scheduler_find_primals_by_capability_empty_registry() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
@@ -175,7 +173,7 @@ async fn test_scheduler_find_primals_by_capability_empty_registry() {
 
 #[tokio::test]
 async fn test_schedule_job_native_echo_hello() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -197,7 +195,7 @@ async fn test_schedule_job_native_echo_hello() {
 
 #[tokio::test]
 async fn test_schedule_job_native_nonexistent_binary_returns_failed() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -221,7 +219,7 @@ async fn test_schedule_job_native_nonexistent_binary_returns_failed() {
 
 #[tokio::test]
 async fn test_schedule_job_wasm_no_engine_returns_error() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Wasm {
@@ -245,7 +243,7 @@ async fn test_schedule_job_wasm_no_engine_returns_error() {
 
 #[tokio::test]
 async fn test_schedule_job_primal_no_provider_returns_error() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Primal {
@@ -265,7 +263,7 @@ async fn test_schedule_job_primal_no_provider_returns_error() {
 
 #[tokio::test]
 async fn test_schedule_job_biome_os_no_provider_returns_error() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::BiomeOS {
@@ -284,13 +282,10 @@ async fn test_schedule_job_biome_os_no_provider_returns_error() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_get_active_job_count_during_execution() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Native,
-        Box::new(SimpleMockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
+    let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
 
@@ -320,13 +315,10 @@ async fn test_get_active_job_count_during_execution() {
 
 #[tokio::test]
 async fn test_schedule_job_with_native_engine_prefers_engine_over_direct_exec() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Native,
-        Box::new(SimpleMockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine));
+    let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
 
@@ -345,13 +337,10 @@ async fn test_schedule_job_with_native_engine_prefers_engine_over_direct_exec() 
 
 #[tokio::test]
 async fn test_schedule_job_wasm_with_engine_succeeds() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Wasm,
-        Box::new(SimpleMockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine));
+    let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .unwrap();
 
@@ -370,10 +359,9 @@ async fn test_schedule_job_wasm_with_engine_succeeds() {
 
 #[tokio::test]
 async fn test_find_primals_by_capability_with_registered_provider() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
-    let provider = Arc::new(crate::universal::ToadStoolPrimalProvider::new(
-        make_test_context(),
-    ));
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
+    let inner = crate::universal::ToadStoolPrimalProvider::new(make_test_context());
+    let provider = Arc::new(UniversalPrimalProviderDispatch::ToadStool(inner));
     registry.register_primal(provider).await.unwrap();
 
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
@@ -386,7 +374,7 @@ async fn test_find_primals_by_capability_with_registered_provider() {
 
 #[tokio::test]
 async fn test_schedule_job_native_with_env_vars() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let mut env = HashMap::new();
@@ -414,7 +402,7 @@ async fn test_schedule_job_native_with_env_vars() {
 
 #[tokio::test]
 async fn test_schedule_job_native_stderr_output() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     // sh -c 'echo "stderr message" >&2' writes to stderr
@@ -437,7 +425,7 @@ async fn test_schedule_job_native_stderr_output() {
 
 #[tokio::test]
 async fn test_schedule_job_native_failed_process_nonzero_exit() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     // `false` exits with code 1
@@ -459,7 +447,7 @@ async fn test_schedule_job_native_failed_process_nonzero_exit() {
 
 #[tokio::test]
 async fn test_schedule_job_native_exit_code_42() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -477,7 +465,7 @@ async fn test_schedule_job_native_exit_code_42() {
 
 #[tokio::test]
 async fn test_schedule_multiple_concurrent_native_jobs() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = Arc::new(UniversalScheduler::new(registry).await.unwrap());
 
     let mut handles = vec![];
@@ -509,7 +497,7 @@ async fn test_schedule_multiple_concurrent_native_jobs() {
 
 #[tokio::test]
 async fn test_schedule_job_native_stdout_and_stderr() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -543,7 +531,7 @@ async fn test_schedule_job_native_stdout_and_stderr() {
 
 #[tokio::test]
 async fn test_schedule_job_native_with_args() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -567,7 +555,7 @@ async fn test_schedule_job_native_with_args() {
 
 #[tokio::test]
 async fn test_schedule_job_native_true_succeeds() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -585,7 +573,7 @@ async fn test_schedule_job_native_true_succeeds() {
 
 #[tokio::test]
 async fn test_schedule_job_active_count_after_completion() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
 
     let job = make_universal_job(UniversalJobType::Native {
@@ -601,14 +589,14 @@ async fn test_schedule_job_active_count_after_completion() {
 
 #[tokio::test]
 async fn test_register_runtime_engine_replaces_existing() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
-    let scheduler = UniversalScheduler::new(registry).await.unwrap();
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
+    let scheduler = SchedWithSimpleMock::create(registry).await.unwrap();
 
     scheduler
-        .register_runtime_engine(RuntimeType::Native, Box::new(SimpleMockRuntimeEngine))
+        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine))
         .await;
     scheduler
-        .register_runtime_engine(RuntimeType::Native, Box::new(SimpleMockRuntimeEngine))
+        .register_runtime_engine(RuntimeType::Native, Arc::new(SimpleMockRuntimeEngine))
         .await;
 
     let runtimes = scheduler.available_runtimes().await;
@@ -620,7 +608,7 @@ async fn test_register_runtime_engine_replaces_existing() {
 #[tokio::test]
 async fn test_universal_scheduler_via_crate_reexport() {
     use crate::UniversalScheduler;
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry)
         .await
         .expect("scheduler creation");
@@ -629,14 +617,10 @@ async fn test_universal_scheduler_via_crate_reexport() {
 
 #[tokio::test]
 async fn test_scheduler_with_runtime_engines_via_crate_reexport() {
-    use crate::UniversalScheduler;
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let mut engines = HashMap::new();
-    engines.insert(
-        RuntimeType::Wasm,
-        Box::new(SimpleMockRuntimeEngine) as Box<dyn RuntimeEngine>,
-    );
-    let scheduler = UniversalScheduler::with_runtime_engines(registry, engines)
+    engines.insert(RuntimeType::Wasm, Arc::new(SimpleMockRuntimeEngine));
+    let scheduler = SchedWithSimpleMock::create_with_runtime_engines(registry, engines)
         .await
         .expect("scheduler with engines");
     let runtimes = scheduler.available_runtimes().await;
@@ -647,7 +631,7 @@ async fn test_scheduler_with_runtime_engines_via_crate_reexport() {
 #[tokio::test]
 async fn test_schedule_job_native_via_crate_reexport() {
     use crate::UniversalScheduler;
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry)
         .await
         .expect("scheduler creation");
@@ -665,7 +649,7 @@ async fn test_schedule_job_native_via_crate_reexport() {
 #[tokio::test]
 async fn test_scheduler_find_primals_via_crate_reexport() {
     use crate::UniversalScheduler;
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry)
         .await
         .expect("scheduler creation");

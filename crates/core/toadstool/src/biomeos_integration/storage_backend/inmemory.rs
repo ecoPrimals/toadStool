@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::sync::Mutex;
@@ -36,17 +35,17 @@ impl InMemoryBackend {
 }
 
 impl StorageBackend for InMemoryBackend {
-    fn provision_volume(
-        &self,
-        config: &VolumeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
+    fn provision_volume<'a>(
+        &'a self,
+        config: &'a VolumeConfig,
+    ) -> impl std::future::Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
         let volumes = Arc::clone(&self.volumes);
         let storage_tier = self.storage_tier.clone();
         let config_name = config.name.clone();
         let config_size = config.size.clone();
         let config_storage_class = config.storage_class.clone();
 
-        Box::pin(async move {
+        async move {
             let volume_info = VolumeInfo {
                 name: config_name.clone(),
                 id: format!("test-{config_name}"),
@@ -63,19 +62,19 @@ impl StorageBackend for InMemoryBackend {
 
             tracing::debug!("Provisioned test volume: {}", volume_info.name);
             Ok(volume_info)
-        })
+        }
     }
 
-    fn provision_persistent_volume(
-        &self,
-        config: &PersistentVolume,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>> {
+    fn provision_persistent_volume<'a>(
+        &'a self,
+        config: &'a PersistentVolume,
+    ) -> impl std::future::Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
         let volumes = Arc::clone(&self.volumes);
         let config_name = config.name.clone();
         let config_capacity = config.capacity.clone();
         let config_storage_class = config.storage_class.clone();
 
-        Box::pin(async move {
+        async move {
             let volume_info = VolumeInfo {
                 name: config_name.clone(),
                 id: format!("test-pv-{config_name}"),
@@ -92,20 +91,20 @@ impl StorageBackend for InMemoryBackend {
 
             tracing::debug!("Provisioned test persistent volume: {}", volume_info.name);
             Ok(volume_info)
-        })
+        }
     }
 
-    fn mount_volume(
-        &self,
-        volume_name: &str,
-        service_name: &str,
-        _mount_path: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn mount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+        _mount_path: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
         let service_name = service_name.to_string();
 
-        Box::pin(async move {
+        async move {
             if !volumes.lock().await.contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
@@ -118,19 +117,19 @@ impl StorageBackend for InMemoryBackend {
                 service_name
             );
             Ok(())
-        })
+        }
     }
 
-    fn unmount_volume(
-        &self,
-        volume_name: &str,
-        service_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn unmount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
         let service_name = service_name.to_string();
 
-        Box::pin(async move {
+        async move {
             if !volumes.lock().await.contains_key(&volume_name) {
                 return Err(ToadStoolError::not_found(format!(
                     "Volume {volume_name} not found"
@@ -143,49 +142,47 @@ impl StorageBackend for InMemoryBackend {
                 service_name
             );
             Ok(())
-        })
+        }
     }
 
-    fn delete_volume(
-        &self,
-        volume_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
+    fn delete_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
 
-        Box::pin(async move {
+        async move {
             volumes.lock().await.remove(&volume_name).ok_or_else(|| {
                 ToadStoolError::not_found(format!("Volume {volume_name} not found"))
             })?;
 
             tracing::debug!("Deleted test volume: {}", volume_name);
             Ok(())
-        })
+        }
     }
 
-    fn get_volume_status(
-        &self,
-        volume_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>> {
+    fn get_volume_status<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl std::future::Future<Output = ToadStoolResult<VolumeStatus>> + Send + 'a {
         let volumes = Arc::clone(&self.volumes);
         let volume_name = volume_name.to_string();
 
-        Box::pin(async move {
+        async move {
             let vols = volumes.lock().await;
             vols.get(&volume_name)
                 .map(|_| VolumeStatus::Available)
                 .ok_or_else(|| ToadStoolError::not_found(format!("Volume {volume_name} not found")))
-        })
+        }
     }
 
-    fn list_volumes(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>> {
+    fn list_volumes(&self) -> impl Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_ {
         let volumes = Arc::clone(&self.volumes);
 
-        Box::pin(async move {
+        async move {
             let vols: tokio::sync::MutexGuard<HashMap<String, VolumeInfo>> = volumes.lock().await;
             Ok(vols.values().cloned().collect())
-        })
+        }
     }
 }

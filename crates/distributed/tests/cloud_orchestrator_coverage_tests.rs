@@ -6,8 +6,6 @@
 //! Tests `deploy_universal_job`, `register_provider`, deployment strategies,
 //! burst distribution, and multi-cloud paths.
 
-use std::future::Future;
-use std::pin::Pin;
 use std::time::SystemTime;
 use toadstool::ExecutionRequest;
 use uuid::Uuid;
@@ -15,9 +13,9 @@ use uuid::Uuid;
 use std::time::Duration;
 use toadstool_distributed::cloud::types::AvailabilityInfo;
 use toadstool_distributed::cloud::{
-    CloudOrchestratorConfig, CloudProviderInterface, ComplianceConfig, CostConfig,
-    FederationConfig, HybridSchedulingStrategy, LoadBalancerConfig, LoadBalancingAlgorithm,
-    UniversalCloudOrchestrator,
+    CloudOrchestratorConfig, ComplianceConfig, CostConfig, FederationConfig,
+    HybridSchedulingStrategy, LoadBalancerConfig, LoadBalancingAlgorithm, MockCloudProvider,
+    TestUniversalOrchestrator,
 };
 use toadstool_distributed::types::resources::{
     CpuRequirements, MemoryRequirements, NetworkRequirements, StorageRequirements,
@@ -87,154 +85,6 @@ fn make_requirements(cpu: f64, memory_bytes: u64, storage_bytes: u64) -> Resourc
     }
 }
 
-fn make_mock_capabilities() -> toadstool_distributed::cloud::types::CloudCapabilities {
-    use toadstool_distributed::cloud::types::{
-        ComplianceCertification, ComputeType, NetworkingFeature, Region, SecurityFeature,
-        StorageType,
-    };
-    toadstool_distributed::cloud::types::CloudCapabilities {
-        compute_types: vec![ComputeType::VM, ComputeType::Container],
-        storage_types: vec![StorageType::BlockStorage, StorageType::ObjectStorage],
-        networking_features: vec![NetworkingFeature::VPC, NetworkingFeature::LoadBalancer],
-        security_features: vec![SecurityFeature::Encryption, SecurityFeature::Compliance],
-        compliance_certifications: vec![
-            ComplianceCertification::SOC2,
-            ComplianceCertification::ISO27001,
-        ],
-        regions: vec![Region {
-            name: "us-east-1".to_string(),
-            location: "Virginia".to_string(),
-            availability_zones: vec!["us-east-1a".to_string(), "us-east-1b".to_string()],
-        }],
-        max_cpu_cores: Some(256),
-        max_memory_gb: Some(1024),
-        gpu_support: true,
-        kubernetes_support: true,
-        serverless_support: false,
-    }
-}
-
-fn make_mock_metadata(name: &str) -> toadstool_distributed::cloud::types::CloudProviderMetadata {
-    toadstool_distributed::cloud::types::CloudProviderMetadata {
-        name: name.to_string(),
-        version: "1.0".to_string(),
-        api_version: "v1".to_string(),
-        supported_protocols: vec!["rest".to_string(), "grpc".to_string()],
-        documentation_url: "https://example.com/docs".to_string(),
-        support_contact: "support@example.com".to_string(),
-    }
-}
-
-struct MockCloudProvider {
-    name: String,
-    availability: AvailabilityInfo,
-}
-
-impl CloudProviderInterface for MockCloudProvider {
-    fn deploy_job<'a>(
-        &'a self,
-        job: &'a UniversalJob,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<
-                        toadstool_distributed::cloud::types::CloudJobHandle,
-                    >,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            Ok(toadstool_distributed::cloud::types::CloudJobHandle {
-                job_id: job.job_id,
-                provider_job_id: format!("mock-{}", Uuid::new_v4()),
-                provider_name: self.name.clone(),
-                created_at: SystemTime::now(),
-            })
-        })
-    }
-
-    fn get_job_status<'a>(
-        &'a self,
-        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<
-                        toadstool_distributed::cloud::types::CloudJobStatus,
-                    >,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move { Ok(toadstool_distributed::cloud::types::CloudJobStatus::Running) })
-    }
-
-    fn scale_job<'a>(
-        &'a self,
-        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
-        _scale_config: toadstool_distributed::cloud::types::ScaleConfig,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn terminate_job<'a>(
-        &'a self,
-        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn get_pricing<'a>(
-        &'a self,
-        _resource_spec: &'a toadstool_distributed::cloud::types::ResourceSpec,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<
-                        toadstool_distributed::cloud::types::PricingInfo,
-                    >,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            Ok(toadstool_distributed::cloud::types::PricingInfo {
-                cpu_cost_per_hour: 0.1,
-                memory_cost_per_gb_hour: 0.05,
-                storage_cost_per_gb_month: 0.01,
-                network_cost_per_gb: 0.02,
-                total_estimated_cost: 10.0,
-            })
-        })
-    }
-
-    fn get_availability<'a>(
-        &'a self,
-        _region: Option<String>,
-    ) -> Pin<
-        Box<dyn Future<Output = toadstool::error::ToadStoolResult<AvailabilityInfo>> + Send + 'a>,
-    > {
-        let availability = self.availability.clone();
-        Box::pin(async move { Ok(availability) })
-    }
-
-    fn validate_compliance<'a>(
-        &'a self,
-        _requirements: &'a ResourceRequirements,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<bool>> + Send + 'a>> {
-        Box::pin(async move { Ok(true) })
-    }
-
-    fn get_capabilities(&self) -> toadstool_distributed::cloud::types::CloudCapabilities {
-        make_mock_capabilities()
-    }
-
-    fn get_metadata(&self) -> toadstool_distributed::cloud::types::CloudProviderMetadata {
-        make_mock_metadata(&self.name)
-    }
-}
-
 fn make_job(job_type: UniversalJobType) -> UniversalJob {
     UniversalJob {
         job_id: Uuid::new_v4(),
@@ -260,16 +110,20 @@ fn make_job(job_type: UniversalJobType) -> UniversalJob {
 #[tokio::test]
 async fn test_deploy_burst_primary_has_capacity() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let primary = Box::new(MockCloudProvider {
+    let primary = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "aws".to_string(),
         availability: make_availability(32.0, 64.0, 500.0),
-    });
-    let burst = Box::new(MockCloudProvider {
+    };
+    let burst = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "gcp".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
-    });
+    };
     orch.register_provider("aws".to_string(), primary)
         .await
         .unwrap();
@@ -294,16 +148,20 @@ async fn test_deploy_multi_cloud_with_multiple_allowed_regions() {
         "eu-west-1".to_string(),
         "ap-south-1".to_string(),
     ];
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let p1 = Box::new(MockCloudProvider {
+    let p1 = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
-    });
-    let p2 = Box::new(MockCloudProvider {
+    };
+    let p2 = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "gcp".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
-    });
+    };
     orch.register_provider("aws".to_string(), p1).await.unwrap();
     orch.register_provider("gcp".to_string(), p2).await.unwrap();
 
@@ -321,12 +179,14 @@ async fn test_deploy_multi_cloud_with_multiple_allowed_regions() {
 #[tokio::test]
 async fn test_deploy_job_with_none_type() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let mock = Box::new(MockCloudProvider {
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
-    });
+    };
     orch.register_provider("aws".to_string(), mock)
         .await
         .unwrap();
@@ -355,126 +215,17 @@ async fn test_deploy_job_with_none_type() {
 // Provider availability failure - mark_provider_unavailable path
 // ============================================================================
 
-struct FailingAvailabilityProvider {
-    name: String,
-}
-
-impl CloudProviderInterface for FailingAvailabilityProvider {
-    fn deploy_job<'a>(
-        &'a self,
-        job: &'a UniversalJob,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<
-                        toadstool_distributed::cloud::types::CloudJobHandle,
-                    >,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            Ok(toadstool_distributed::cloud::types::CloudJobHandle {
-                job_id: job.job_id,
-                provider_job_id: "fail-1".to_string(),
-                provider_name: self.name.clone(),
-                created_at: SystemTime::now(),
-            })
-        })
-    }
-
-    fn get_job_status<'a>(
-        &'a self,
-        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<
-                        toadstool_distributed::cloud::types::CloudJobStatus,
-                    >,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move { Ok(toadstool_distributed::cloud::types::CloudJobStatus::Completed) })
-    }
-
-    fn scale_job<'a>(
-        &'a self,
-        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
-        _scale_config: toadstool_distributed::cloud::types::ScaleConfig,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn terminate_job<'a>(
-        &'a self,
-        _handle: &'a toadstool_distributed::cloud::types::CloudJobHandle,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn get_pricing<'a>(
-        &'a self,
-        _resource_spec: &'a toadstool_distributed::cloud::types::ResourceSpec,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = toadstool::error::ToadStoolResult<
-                        toadstool_distributed::cloud::types::PricingInfo,
-                    >,
-                > + Send
-                + 'a,
-        >,
-    > {
-        Box::pin(async move {
-            Ok(toadstool_distributed::cloud::types::PricingInfo {
-                cpu_cost_per_hour: 0.0,
-                memory_cost_per_gb_hour: 0.0,
-                storage_cost_per_gb_month: 0.0,
-                network_cost_per_gb: 0.0,
-                total_estimated_cost: 0.0,
-            })
-        })
-    }
-
-    fn get_availability<'a>(
-        &'a self,
-        _region: Option<String>,
-    ) -> Pin<
-        Box<dyn Future<Output = toadstool::error::ToadStoolResult<AvailabilityInfo>> + Send + 'a>,
-    > {
-        Box::pin(async move {
-            Err(toadstool::ToadStoolError::runtime(
-                "availability check failed",
-            ))
-        })
-    }
-
-    fn validate_compliance<'a>(
-        &'a self,
-        _requirements: &'a ResourceRequirements,
-    ) -> Pin<Box<dyn Future<Output = toadstool::error::ToadStoolResult<bool>> + Send + 'a>> {
-        Box::pin(async move { Ok(true) })
-    }
-
-    fn get_capabilities(&self) -> toadstool_distributed::cloud::types::CloudCapabilities {
-        make_mock_capabilities()
-    }
-
-    fn get_metadata(&self) -> toadstool_distributed::cloud::types::CloudProviderMetadata {
-        make_mock_metadata(&self.name)
-    }
-}
-
 #[tokio::test]
 async fn test_deploy_with_provider_availability_failure() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let failing = Box::new(FailingAvailabilityProvider {
+    let failing = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: true,
         name: "failing".to_string(),
-    });
+        availability: make_availability(1.0, 1.0, 1.0),
+    };
     orch.register_provider("failing".to_string(), failing)
         .await
         .unwrap();
@@ -490,11 +241,13 @@ async fn test_deploy_with_provider_availability_failure() {
 #[tokio::test]
 async fn test_deploy_generous_resource_match() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
-    let mock = Box::new(MockCloudProvider {
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "generous".to_string(),
         availability: make_availability(64.0, 256.0, 2000.0),
-    });
+    };
     orch.register_provider("generous".to_string(), mock)
         .await
         .unwrap();
@@ -506,11 +259,13 @@ async fn test_deploy_generous_resource_match() {
 #[tokio::test]
 async fn test_deploy_insufficient_cpu_provider() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
-    let mock = Box::new(MockCloudProvider {
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "small".to_string(),
         availability: make_availability(0.5, 1.0, 5.0),
-    });
+    };
     orch.register_provider("small".to_string(), mock)
         .await
         .unwrap();
@@ -521,12 +276,14 @@ async fn test_deploy_insufficient_cpu_provider() {
 #[tokio::test]
 async fn test_deploy_ecosystem_tool_job_type() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let mock = Box::new(MockCloudProvider {
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "aws".to_string(),
         availability: make_availability(16.0, 32.0, 200.0),
-    });
+    };
     orch.register_provider("aws".to_string(), mock)
         .await
         .unwrap();
@@ -541,12 +298,14 @@ async fn test_deploy_ecosystem_tool_job_type() {
 #[tokio::test]
 async fn test_deploy_storage_intensive_job() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let mock = Box::new(MockCloudProvider {
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "storage".to_string(),
         availability: make_availability(4.0, 8.0, 500.0),
-    });
+    };
     orch.register_provider("storage".to_string(), mock)
         .await
         .unwrap();
@@ -558,23 +317,27 @@ async fn test_deploy_storage_intensive_job() {
 #[tokio::test]
 async fn test_register_provider_multiple() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
     orch.register_provider(
         "p1".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "p1".to_string(),
             availability: make_availability(8.0, 16.0, 100.0),
-        }),
+        },
     )
     .await
     .unwrap();
     orch.register_provider(
         "p2".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "p2".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -586,12 +349,14 @@ async fn test_register_provider_multiple() {
 #[tokio::test]
 async fn test_deploy_remote_toadstool_job() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
 
-    let mock = Box::new(MockCloudProvider {
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "remote".to_string(),
         availability: make_availability(8.0, 16.0, 100.0),
-    });
+    };
     orch.register_provider("remote".to_string(), mock)
         .await
         .unwrap();
@@ -606,11 +371,13 @@ async fn test_deploy_remote_toadstool_job() {
 #[tokio::test]
 async fn test_deploy_over_provisioned_resources() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
-    let mock = Box::new(MockCloudProvider {
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
+    let mock = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: false,
         name: "mega".to_string(),
         availability: make_availability(100.0, 200.0, 1000.0),
-    });
+    };
     orch.register_provider("mega".to_string(), mock)
         .await
         .unwrap();
@@ -627,10 +394,13 @@ async fn test_deploy_over_provisioned_resources() {
 #[tokio::test]
 async fn test_deploy_all_providers_unavailable() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
-    let failing = Box::new(FailingAvailabilityProvider {
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
+    let failing = MockCloudProvider {
+        capabilities_override: None,
+        fail_availability: true,
         name: "only-provider".to_string(),
-    });
+        availability: make_availability(1.0, 1.0, 1.0),
+    };
     orch.register_provider("only-provider".to_string(), failing)
         .await
         .unwrap();
@@ -653,7 +423,7 @@ async fn test_orchestrator_with_budget_limit() {
     let mut config = make_orchestrator_config();
     config.cost_config.budget_limit = Some(1000.0);
     config.cost_config.spot_instance_preference = 0.8;
-    let orch = UniversalCloudOrchestrator::new(config).await;
+    let orch = TestUniversalOrchestrator::new(config).await;
     assert!(orch.is_ok());
 }
 
@@ -661,13 +431,15 @@ async fn test_orchestrator_with_budget_limit() {
 async fn test_orchestrator_cost_optimized_strategy() {
     let mut config = make_orchestrator_config();
     config.scheduling_strategy = HybridSchedulingStrategy::CostOptimized;
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -680,13 +452,15 @@ async fn test_orchestrator_cost_optimized_strategy() {
 async fn test_orchestrator_performance_optimized_strategy() {
     let mut config = make_orchestrator_config();
     config.scheduling_strategy = HybridSchedulingStrategy::PerformanceOptimized;
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -699,13 +473,15 @@ async fn test_orchestrator_performance_optimized_strategy() {
 async fn test_orchestrator_compliance_first_strategy() {
     let mut config = make_orchestrator_config();
     config.scheduling_strategy = HybridSchedulingStrategy::ComplianceFirst;
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -720,13 +496,15 @@ async fn test_orchestrator_geographic_affinity_strategy() {
     config.scheduling_strategy = HybridSchedulingStrategy::GeographicAffinity {
         preferred_regions: vec!["us-east-1".to_string(), "eu-west-1".to_string()],
     };
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -742,13 +520,15 @@ async fn test_orchestrator_latency_sensitive_strategy() {
         max_latency_ms: 50,
         target_regions: vec!["us-east-1".to_string()],
     };
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -763,13 +543,15 @@ async fn test_orchestrator_sustainability_strategy() {
     config.scheduling_strategy = HybridSchedulingStrategy::SustainabilityFocused {
         renewable_energy_preference: 0.9,
     };
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -787,7 +569,7 @@ async fn test_orchestrator_with_federation_config() {
     let mut config = make_orchestrator_config();
     config.federation_config.discovery_endpoints = vec!["https://fed.example.com".to_string()];
     config.federation_config.trust_anchors = vec!["anchor-1".to_string()];
-    let orch = UniversalCloudOrchestrator::new(config).await;
+    let orch = TestUniversalOrchestrator::new(config).await;
     assert!(orch.is_ok());
 }
 
@@ -800,13 +582,15 @@ async fn test_orchestrator_with_federation_config() {
 #[tokio::test]
 async fn test_deploy_local_job_single_cloud_succeeds() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -822,13 +606,15 @@ async fn test_deploy_local_job_single_cloud_succeeds() {
 #[tokio::test]
 async fn test_deploy_network_intensive_job() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();
@@ -844,13 +630,15 @@ async fn test_deploy_network_intensive_job() {
 #[tokio::test]
 async fn test_deploy_memory_intensive_job() {
     let config = make_orchestrator_config();
-    let mut orch = UniversalCloudOrchestrator::new(config).await.unwrap();
+    let mut orch = TestUniversalOrchestrator::new(config).await.unwrap();
     orch.register_provider(
         "aws".to_string(),
-        Box::new(MockCloudProvider {
+        MockCloudProvider {
+            capabilities_override: None,
+            fail_availability: false,
             name: "aws".to_string(),
             availability: make_availability(16.0, 32.0, 200.0),
-        }),
+        },
     )
     .await
     .unwrap();

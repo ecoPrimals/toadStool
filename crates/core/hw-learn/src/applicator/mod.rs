@@ -32,6 +32,20 @@ pub trait RegisterAccess {
     fn write_u32(&mut self, offset: u64, value: u32) -> Result<(), String>;
 }
 
+/// Placeholder `RegisterAccess` for applicators constructed without BAR0 MMIO.
+#[derive(Debug, Default)]
+pub struct NoRegisterAccess;
+
+impl RegisterAccess for NoRegisterAccess {
+    fn read_u32(&self, _offset: u64) -> Result<u32, String> {
+        Err("no register access".into())
+    }
+
+    fn write_u32(&mut self, _offset: u64, _value: u32) -> Result<(), String> {
+        Err("no register access".into())
+    }
+}
+
 /// Result of applying a recipe.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApplyResult {
@@ -78,12 +92,12 @@ pub struct StepResult {
 /// - **BAR0-backed** (`with_register_access`) — uses a `RegisterAccess`
 ///   implementation (e.g. `nvpmu::Bar0Access`) for direct register writes
 ///   and verification.
-pub struct RecipeApplicator<'a> {
+pub struct RecipeApplicator<'a, R: RegisterAccess + ?Sized = NoRegisterAccess> {
     dry_run: bool,
-    register_access: Option<&'a mut dyn RegisterAccess>,
+    register_access: Option<&'a mut R>,
 }
 
-impl<'a> RecipeApplicator<'a> {
+impl<'a> RecipeApplicator<'a, NoRegisterAccess> {
     /// Create an applicator without BAR0 access.
     ///
     /// Register writes will be routed through the ioctl path.
@@ -101,11 +115,18 @@ impl<'a> RecipeApplicator<'a> {
     /// When attached, `RegisterWrite` steps use BAR0 MMIO directly and
     /// `Verify::RegisterMatch` uses `verify_register_via_access`.
     #[must_use]
-    pub fn with_register_access(mut self, access: &'a mut dyn RegisterAccess) -> Self {
-        self.register_access = Some(access);
-        self
+    pub fn with_register_access<A: RegisterAccess + ?Sized>(
+        self,
+        access: &'a mut A,
+    ) -> RecipeApplicator<'a, A> {
+        RecipeApplicator {
+            dry_run: self.dry_run,
+            register_access: Some(access),
+        }
     }
+}
 
+impl<R: RegisterAccess + ?Sized> RecipeApplicator<'_, R> {
     /// Apply a recipe to the target GPU.
     ///
     /// Returns an `ApplyResult` with per-step feedback.
@@ -244,10 +265,10 @@ impl<'a> RecipeApplicator<'a> {
                     expected,
                     mask,
                 } = check
-                    && let Some(ref access) = self.register_access
+                    && let Some(access) = self.register_access.as_mut()
                 {
                     return verify::verify_register_via_access(
-                        index, *access, *offset, *expected, *mask,
+                        index, &**access, *offset, *expected, *mask,
                     );
                 }
                 verify::run_verification(index, card_path, check)

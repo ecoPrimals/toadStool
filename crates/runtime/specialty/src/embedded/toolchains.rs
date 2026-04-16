@@ -21,7 +21,6 @@
 
 use std::future::{Future, ready};
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 
 use toadstool::ToadStoolError;
 
@@ -93,16 +92,16 @@ impl EmbeddedToolchain for Toolchain6502 {
     fn initialize<'a>(
         &'a mut self,
         _config: &'a EmbeddedConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(ready(Err(toolchain_unavailable("6502 initialization"))))
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        ready(Err(toolchain_unavailable("6502 initialization")))
     }
 
     fn compile<'a>(
         &'a self,
         _sources: &'a [SourceFile],
         _output_path: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a>> {
-        Box::pin(ready(Err(toolchain_unavailable("6502 compilation"))))
+    ) -> impl Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a {
+        ready(Err(toolchain_unavailable("6502 compilation")))
     }
 
     fn link<'a>(
@@ -110,35 +109,31 @@ impl EmbeddedToolchain for Toolchain6502 {
         _objects: &'a [PathBuf],
         _output_path: &'a Path,
         _memory_layout: &'a MemoryLayout,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<LinkResult>> + Send + 'a>> {
-        Box::pin(ready(Err(toolchain_unavailable("6502 linking"))))
+    ) -> impl Future<Output = ToadStoolResult<LinkResult>> + Send + 'a {
+        ready(Err(toolchain_unavailable("6502 linking")))
     }
 
     fn generate_rom_image<'a>(
         &'a self,
         _executable: &'a Path,
         _format: OutputFileType,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
-        Box::pin(ready(Err(toolchain_unavailable(
-            "6502 ROM image generation",
-        ))))
+    ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a {
+        ready(Err(toolchain_unavailable("6502 ROM image generation")))
     }
 
     fn disassemble<'a>(
         &'a self,
         _binary: &'a [u8],
         _start_address: u32,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
-        Box::pin(ready(Err(toolchain_unavailable("6502 disassembly"))))
+    ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
+        ready(Err(toolchain_unavailable("6502 disassembly")))
     }
 
     fn create_memory_map<'a>(
         &'a self,
         _executable: &'a Path,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a>> {
-        Box::pin(ready(Err(toolchain_unavailable(
-            "6502 memory map creation",
-        ))))
+    ) -> impl Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a {
+        ready(Err(toolchain_unavailable("6502 memory map creation")))
     }
 }
 
@@ -191,22 +186,19 @@ macro_rules! impl_pending_toolchain {
             fn initialize<'a>(
                 &'a mut self,
                 _config: &'a EmbeddedConfig,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-                Box::pin(ready(Err(toolchain_unavailable(format!(
+            ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+                ready(Err(toolchain_unavailable(format!(
                     "{} initialization",
                     $name
-                )))))
+                ))))
             }
 
             fn compile<'a>(
                 &'a self,
                 _sources: &'a [SourceFile],
                 _output_path: &'a Path,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a>> {
-                Box::pin(ready(Err(toolchain_unavailable(format!(
-                    "{} compilation",
-                    $name
-                )))))
+            ) -> impl Future<Output = ToadStoolResult<CompilationResult>> + Send + 'a {
+                ready(Err(toolchain_unavailable(format!("{} compilation", $name))))
             }
 
             fn link<'a>(
@@ -214,43 +206,37 @@ macro_rules! impl_pending_toolchain {
                 _objects: &'a [PathBuf],
                 _output_path: &'a Path,
                 _memory_layout: &'a MemoryLayout,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<LinkResult>> + Send + 'a>> {
-                Box::pin(ready(Err(toolchain_unavailable(format!(
-                    "{} linking",
-                    $name
-                )))))
+            ) -> impl Future<Output = ToadStoolResult<LinkResult>> + Send + 'a {
+                ready(Err(toolchain_unavailable(format!("{} linking", $name))))
             }
 
             fn generate_rom_image<'a>(
                 &'a self,
                 _executable: &'a Path,
                 _format: OutputFileType,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a>> {
-                Box::pin(ready(Err(toolchain_unavailable(format!(
+            ) -> impl Future<Output = ToadStoolResult<Vec<u8>>> + Send + 'a {
+                ready(Err(toolchain_unavailable(format!(
                     "{} ROM image generation",
                     $name
-                )))))
+                ))))
             }
 
             fn disassemble<'a>(
                 &'a self,
                 _binary: &'a [u8],
                 _start_address: u32,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<String>> + Send + 'a>> {
-                Box::pin(ready(Err(toolchain_unavailable(format!(
-                    "{} disassembly",
-                    $name
-                )))))
+            ) -> impl Future<Output = ToadStoolResult<String>> + Send + 'a {
+                ready(Err(toolchain_unavailable(format!("{} disassembly", $name))))
             }
 
             fn create_memory_map<'a>(
                 &'a self,
                 _executable: &'a Path,
-            ) -> Pin<Box<dyn Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a>> {
-                Box::pin(ready(Err(toolchain_unavailable(format!(
+            ) -> impl Future<Output = ToadStoolResult<MemoryMap>> + Send + 'a {
+                ready(Err(toolchain_unavailable(format!(
                     "{} memory map creation",
                     $name
-                )))))
+                ))))
             }
         }
     };

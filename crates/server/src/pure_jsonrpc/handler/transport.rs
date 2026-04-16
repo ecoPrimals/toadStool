@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use toadstool_core::HardwareTransport;
+use toadstool_display::{HardwareTransportDispatch, TransportRouter};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
@@ -22,7 +23,7 @@ struct ActiveStream {
 
 /// Handles hardware transport discovery and routing.
 pub(super) struct TransportHandler {
-    pub(super) transport_router: Arc<Mutex<toadstool_core::TransportRouter>>,
+    pub(super) transport_router: Arc<Mutex<TransportRouter>>,
     active_streams: Mutex<HashMap<String, ActiveStream>>,
     next_stream_id: Mutex<u64>,
 }
@@ -30,7 +31,7 @@ pub(super) struct TransportHandler {
 impl TransportHandler {
     pub(super) fn new() -> Self {
         Self {
-            transport_router: Arc::new(Mutex::new(toadstool_core::TransportRouter::new())),
+            transport_router: Arc::new(Mutex::new(TransportRouter::new())),
             active_streams: Mutex::new(HashMap::new()),
             next_stream_id: Mutex::new(1),
         }
@@ -145,7 +146,7 @@ impl TransportHandler {
         let bandwidth = transport.bandwidth_bps();
 
         let mut router = self.transport_router.lock().await;
-        router.register(Box::new(transport));
+        router.register(HardwareTransportDispatch::Pcie(transport));
 
         Ok(serde_json::json!({
             "id": id,

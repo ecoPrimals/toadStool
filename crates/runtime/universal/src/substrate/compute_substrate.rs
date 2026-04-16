@@ -2,7 +2,6 @@
 
 use crate::error::SubstrateError;
 use std::future::Future;
-use std::pin::Pin;
 
 use super::buffer::{BufferOperation, BufferOutput, PerformanceMetrics, PowerMeasurement};
 use super::capabilities::SubstrateCapabilities;
@@ -29,16 +28,16 @@ pub trait ComputeSubstrate: Send + Sync {
     fn execute_buffer_op(
         &self,
         operation: BufferOperation,
-    ) -> Pin<Box<dyn Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>>;
+    ) -> impl Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_;
 
     /// Measure power consumption (optional, returns estimate if unavailable)
     ///
     /// **Deep Debt**: Measure actual power, don't hardcode
     fn measure_power(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<PowerMeasurement, SubstrateError>> + Send + '_>> {
+    ) -> impl Future<Output = Result<PowerMeasurement, SubstrateError>> + Send + '_ {
         let ty = self.substrate_type();
-        Box::pin(async move { Ok(PowerMeasurement::estimated_for_type(ty)) })
+        async move { Ok(PowerMeasurement::estimated_for_type(ty)) }
     }
 
     /// Profile operation performance
@@ -47,9 +46,9 @@ pub trait ComputeSubstrate: Send + Sync {
     fn profile_operation(
         &self,
         operation: &BufferOperation,
-    ) -> Pin<Box<dyn Future<Output = Result<PerformanceMetrics, SubstrateError>> + Send + '_>> {
+    ) -> impl Future<Output = Result<PerformanceMetrics, SubstrateError>> + Send + '_ {
         let op = operation.clone();
-        Box::pin(async {
+        async {
             let buffer_size = op.buffer_size();
             let start = std::time::Instant::now();
             let _ = self.execute_buffer_op(op).await?;
@@ -64,6 +63,6 @@ pub trait ComputeSubstrate: Send + Sync {
                 },
                 latency_ms: duration.as_secs_f64() * 1000.0,
             })
-        })
+        }
     }
 }

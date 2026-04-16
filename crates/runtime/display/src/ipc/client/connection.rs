@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use super::{DisplayClient, IpcEndpoint};
+use super::{AsyncStreamDispatch, DisplayClient, IpcEndpoint};
 use crate::DisplayError;
 use tokio::net::{TcpStream, UnixStream};
 
@@ -64,7 +64,7 @@ impl DisplayClient {
                 tracing::info!("✅ Connected to display server (Unix socket)");
 
                 Ok(Self {
-                    stream: Box::new(stream),
+                    stream: AsyncStreamDispatch::Unix(stream),
                     endpoint,
                 })
             }
@@ -78,7 +78,7 @@ impl DisplayClient {
                 tracing::info!("✅ Connected to display server (TCP fallback)");
 
                 Ok(Self {
-                    stream: Box::new(stream),
+                    stream: AsyncStreamDispatch::Tcp(stream),
                     endpoint,
                 })
             }
@@ -103,7 +103,7 @@ impl DisplayClient {
         tracing::info!("✅ Connected to display server");
 
         Ok(Self {
-            stream: Box::new(stream),
+            stream: AsyncStreamDispatch::Unix(stream),
             endpoint: IpcEndpoint::UnixSocket(path),
         })
     }
@@ -119,7 +119,7 @@ impl DisplayClient {
     #[must_use]
     pub fn new_for_test(stream: tokio::io::DuplexStream, endpoint: IpcEndpoint) -> Self {
         Self {
-            stream: Box::new(stream),
+            stream: AsyncStreamDispatch::Duplex(stream),
             endpoint,
         }
     }

@@ -11,9 +11,13 @@ use uuid::Uuid;
 
 use toadstool_config::defaults;
 
-use crate::{ToadStoolResult, execution::RuntimeEngine, execution::RuntimeType};
+use crate::{
+    ToadStoolResult,
+    execution::{RuntimeEngine, RuntimeType, StubRuntimeEngine},
+};
 
 use super::jobs::UniversalJob;
+use super::primal_provider_dispatch::UniversalPrimalProviderDispatch;
 use super::provider::ToadStoolPrimalProvider;
 use super::registry::UniversalPrimalRegistry;
 use super::scheduler::UniversalScheduler;
@@ -61,30 +65,20 @@ pub enum PlatformStatus {
 }
 
 /// Universal compute platform
-pub struct UniversalComputePlatform {
+pub struct UniversalComputePlatform<E: RuntimeEngine = StubRuntimeEngine> {
     /// Platform configuration
     config: UniversalPlatformConfig,
     /// Runtime engines
-    runtime_engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
+    runtime_engines: Arc<RwLock<HashMap<RuntimeType, Arc<E>>>>,
     /// Universal scheduler
-    scheduler: Arc<UniversalScheduler>,
+    scheduler: Arc<UniversalScheduler<UniversalPrimalProviderDispatch, E>>,
     /// Primal registry
-    primal_registry: Arc<UniversalPrimalRegistry>,
+    primal_registry: Arc<UniversalPrimalRegistry<UniversalPrimalProviderDispatch>>,
     /// `ToadStool` primal provider
     toadstool_provider: Option<Arc<ToadStoolPrimalProvider>>,
 }
 
-impl UniversalComputePlatform {
-    /// Create new platform
-    ///
-    /// # Errors
-    /// Returns a `ToadStoolError` if platform initialization fails or primal
-    /// registration encounters errors.
-    #[must_use = "Platform creation should be checked"]
-    pub async fn new() -> ToadStoolResult<Self> {
-        Self::new_with_config(UniversalPlatformConfig::default()).await
-    }
-
+impl<E: RuntimeEngine> UniversalComputePlatform<E> {
     /// Create new platform with config
     ///
     /// # Errors
@@ -94,8 +88,14 @@ impl UniversalComputePlatform {
     /// - ToadStool provider registration fails.
     #[must_use = "Platform creation should be checked"]
     pub async fn new_with_config(config: UniversalPlatformConfig) -> ToadStoolResult<Self> {
-        let primal_registry = Arc::new(UniversalPrimalRegistry::new());
-        let scheduler = Arc::new(UniversalScheduler::new(primal_registry.clone()).await?);
+        let primal_registry =
+            Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
+        let scheduler = Arc::new(
+            UniversalScheduler::<UniversalPrimalProviderDispatch, E>::create(
+                primal_registry.clone(),
+            )
+            .await?,
+        );
 
         let mut platform = Self {
             config,
@@ -128,11 +128,13 @@ impl UniversalComputePlatform {
             metadata: HashMap::new(),
         };
 
-        let provider = Arc::new(ToadStoolPrimalProvider::new(context));
+        let inner = ToadStoolPrimalProvider::new(context);
         self.primal_registry
-            .register_primal(provider.clone())
+            .register_primal(Arc::new(UniversalPrimalProviderDispatch::ToadStool(
+                inner.clone(),
+            )))
             .await?;
-        self.toadstool_provider = Some(provider);
+        self.toadstool_provider = Some(Arc::new(inner));
 
         info!("ToadStool registered as universal primal");
         Ok(())
@@ -158,7 +160,7 @@ impl UniversalComputePlatform {
     pub async fn register_runtime_engine(
         &self,
         runtime_type: RuntimeType,
-        engine: Box<dyn RuntimeEngine>,
+        engine: Arc<E>,
     ) -> ToadStoolResult<()> {
         self.runtime_engines
             .write()
@@ -176,7 +178,7 @@ impl UniversalComputePlatform {
     pub async fn find_primals_by_capability(
         &self,
         capability: &PrimalCapability,
-    ) -> Vec<Arc<dyn super::traits::UniversalPrimalProvider>> {
+    ) -> Vec<Arc<UniversalPrimalProviderDispatch>> {
         self.primal_registry.find_by_capability(capability).await
     }
 
@@ -228,15 +230,28 @@ impl UniversalComputePlatform {
     }
 }
 
+impl UniversalComputePlatform<StubRuntimeEngine> {
+    /// Create new platform (stub engine type; register real engines separately when needed).
+    ///
+    /// # Errors
+    /// Returns a `ToadStoolError` if platform initialization fails or primal
+    /// registration encounters errors.
+    #[must_use = "Platform creation should be checked"]
+    pub async fn new() -> ToadStoolResult<Self> {
+        Self::new_with_config(UniversalPlatformConfig::default()).await
+    }
+}
+
 /// Initialize platform with runtime engines
 ///
 /// # Errors
 ///
 /// Returns error if platform creation or engine registration fails.
-pub async fn init_with_runtime_engines(
-    engines: Vec<(RuntimeType, Box<dyn RuntimeEngine>)>,
-) -> ToadStoolResult<UniversalComputePlatform> {
-    let platform = UniversalComputePlatform::new().await?;
+pub async fn init_with_runtime_engines<E: RuntimeEngine>(
+    engines: Vec<(RuntimeType, Arc<E>)>,
+) -> ToadStoolResult<UniversalComputePlatform<E>> {
+    let platform =
+        UniversalComputePlatform::<E>::new_with_config(UniversalPlatformConfig::default()).await?;
 
     for (runtime_type, engine) in engines {
         platform
@@ -329,7 +344,7 @@ mod tests {
             max_concurrent_jobs: 50,
             pure_ecosystem: false,
         };
-        let platform = UniversalComputePlatform::new_with_config(config)
+        let platform = UniversalComputePlatform::<StubRuntimeEngine>::new_with_config(config)
             .await
             .unwrap();
         assert!(!platform.is_recursive_hosting_enabled());
@@ -377,7 +392,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_init_with_runtime_engines_empty_list() {
-        let platform = init_with_runtime_engines(vec![]).await.unwrap();
+        let platform = init_with_runtime_engines::<StubRuntimeEngine>(vec![])
+            .await
+            .unwrap();
         let runtimes = platform.get_available_runtimes().await;
         let _ = runtimes; // Empty or default-seeded — just verify no panic.
     }

@@ -24,7 +24,6 @@
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -244,22 +243,20 @@ struct RevokeRequest<'a> {
 impl SecurityProvider for UnixSocketSecurityProvider {
     fn capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_>> {
-        Box::pin(async { self.send_request("security.capabilities", ()).await })
+    ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_ {
+        async { self.send_request("security.capabilities", ()).await }
     }
 
-    fn metadata(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_>> {
-        Box::pin(async { self.send_request("security.metadata", ()).await })
+    fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_ {
+        async { self.send_request("security.metadata", ()).await }
     }
 
     fn encrypt<'a>(
         &'a self,
         data: &'a [u8],
         options: Option<EncryptionOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<EncryptionResult>> + Send + 'a {
+        async move {
             self.send_request(
                 "security.encrypt",
                 EncryptRequest {
@@ -268,15 +265,15 @@ impl SecurityProvider for UnixSocketSecurityProvider {
                 },
             )
             .await
-        })
+        }
     }
 
     fn decrypt<'a>(
         &'a self,
         ciphertext: &'a [u8],
         metadata: &'a EncryptionMetadata,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<DecryptionResult>> + Send + 'a {
+        async move {
             self.send_request(
                 "security.decrypt",
                 DecryptRequest {
@@ -285,15 +282,15 @@ impl SecurityProvider for UnixSocketSecurityProvider {
                 },
             )
             .await
-        })
+        }
     }
 
     fn sign<'a>(
         &'a self,
         data: &'a [u8],
         options: Option<SigningOptions>,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SignatureResult>> + Send + 'a {
+        async move {
             self.send_request(
                 "security.sign",
                 SignRequest {
@@ -302,7 +299,7 @@ impl SecurityProvider for UnixSocketSecurityProvider {
                 },
             )
             .await
-        })
+        }
     }
 
     fn verify<'a>(
@@ -310,8 +307,8 @@ impl SecurityProvider for UnixSocketSecurityProvider {
         data: &'a [u8],
         signature: &'a [u8],
         public_key_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<VerificationResult>> + Send + 'a {
+        async move {
             self.send_request(
                 "security.verify",
                 VerifyRequest {
@@ -321,36 +318,35 @@ impl SecurityProvider for UnixSocketSecurityProvider {
                 },
             )
             .await
-        })
+        }
     }
 
     fn create_permission(
         &self,
         request: PermissionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SecurityPermission>> + Send + '_ {
+        async move {
             self.send_request("security.createPermission", request)
                 .await
-        })
+        }
     }
 
     fn validate_permission<'a>(
         &'a self,
         permission: &'a SecurityPermission,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a>>
-    {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<PermissionValidationResult>> + Send + 'a {
+        async move {
             self.send_request("security.validatePermission", permission)
                 .await
-        })
+        }
     }
 
     fn revoke_permission<'a>(
         &'a self,
         permission_id: &'a uuid::Uuid,
         reason: &'a str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
             self.send_request(
                 "security.revokePermission",
                 RevokeRequest {
@@ -359,13 +355,11 @@ impl SecurityProvider for UnixSocketSecurityProvider {
                 },
             )
             .await
-        })
+        }
     }
 
-    fn health_check(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_>> {
-        Box::pin(async { self.send_request("security.healthCheck", ()).await })
+    fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
+        async { self.send_request("security.healthCheck", ()).await }
     }
 }
 

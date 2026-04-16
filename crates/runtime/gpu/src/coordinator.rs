@@ -20,7 +20,7 @@ pub struct ComputeResourceCoordinator {
     /// Allocation tracking
     _allocations: Arc<RwLock<HashMap<Uuid, ResourceAllocation>>>,
     /// Load balancer
-    load_balancer: Arc<Mutex<Box<dyn LoadBalancer>>>,
+    load_balancer: Arc<Mutex<WeightedRoundRobinBalancer>>,
     /// Configuration
     _config: ResourceConfig,
 }
@@ -32,7 +32,7 @@ impl ComputeResourceCoordinator {
         Self {
             resource_pools: Arc::new(RwLock::new(HashMap::new())),
             _allocations: Arc::new(RwLock::new(HashMap::new())),
-            load_balancer: Arc::new(Mutex::new(Box::new(WeightedRoundRobinBalancer::new()))),
+            load_balancer: Arc::new(Mutex::new(WeightedRoundRobinBalancer::new())),
             _config: config,
         }
     }

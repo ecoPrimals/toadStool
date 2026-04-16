@@ -9,12 +9,11 @@ use uuid::Uuid;
 
 use crate::config::SpecialtyRuntimeConfig;
 use crate::types::configs::CompilationToolchainConfig as ToolchainConfig;
+use crate::types::dispatch::{LegacyAdapterDispatch, LegacyEmulatorDispatch};
 use crate::types::emulation::LegacyEmulator;
 use crate::types::jobs::LegacyJob;
 use crate::types::systems::{LegacyArchitecture, LegacySystemType};
-use crate::types::traits::{
-    JobOutput, JobStatus, LegacyAdapter, LegacyCommunicationSession, SpecialtyRuntimeMetrics,
-};
+use crate::types::traits::{JobOutput, JobStatus, LegacyAdapter, SpecialtyRuntimeMetrics};
 use toadstool::{ToadStoolError, ToadStoolResult};
 
 use super::embedded;
@@ -28,30 +27,25 @@ pub struct SpecialtyRuntimeEngine {
     /// Runtime configuration
     pub(crate) config: SpecialtyRuntimeConfig,
     /// Active specialty hardware adapters (Arc for concurrent access across awaits)
-    pub(crate) adapters: Arc<RwLock<HashMap<LegacySystemType, Arc<dyn LegacyAdapter>>>>,
+    pub(crate) adapters: Arc<RwLock<HashMap<LegacySystemType, Arc<LegacyAdapterDispatch>>>>,
     /// Cross-compilation toolchains
     pub(crate) toolchains: Arc<RwLock<HashMap<LegacyArchitecture, ToolchainConfig>>>,
     /// Active specialty jobs
     pub(crate) active_jobs: Arc<RwLock<HashMap<Uuid, LegacyJob>>>,
-    /// Communication sessions
-    pub(crate) _communication_sessions:
-        Arc<RwLock<HashMap<Uuid, Box<dyn LegacyCommunicationSession>>>>,
     /// System emulators
-    pub(crate) emulators: Arc<RwLock<HashMap<LegacySystemType, Box<dyn LegacyEmulator>>>>,
+    pub(crate) emulators: Arc<RwLock<HashMap<LegacySystemType, LegacyEmulatorDispatch>>>,
     /// Runtime metrics
     pub(crate) metrics: Arc<Mutex<SpecialtyRuntimeMetrics>>,
 }
 
-#[expect(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for SpecialtyRuntimeEngine {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SpecialtyRuntimeEngine")
             .field("config", &self.config)
-            .field("adapters", &"<Arc<dyn LegacyAdapter> map>")
+            .field("adapters", &"<Arc<LegacyAdapterDispatch> map>")
             .field("toolchains", &"<ToolchainConfig map>")
             .field("active_jobs", &"<LegacyJob map>")
-            .field("communication_sessions", &"<sessions>")
-            .field("emulators", &"<emulators>")
+            .field("emulators", &"<LegacyEmulatorDispatch map>")
             .field("metrics", &"<SpecialtyRuntimeMetrics>")
             .finish()
     }
@@ -65,7 +59,6 @@ impl SpecialtyRuntimeEngine {
             adapters: Arc::new(RwLock::new(HashMap::new())),
             toolchains: Arc::new(RwLock::new(HashMap::new())),
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
-            _communication_sessions: Arc::new(RwLock::new(HashMap::new())),
             emulators: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(Mutex::new(SpecialtyRuntimeMetrics::default())),
         }
@@ -105,22 +98,22 @@ impl SpecialtyRuntimeEngine {
     async fn initialize_mainframe_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing mainframe adapters");
         let ibm_adapter = mainframe::IBMMainframeAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::IbmSystem360, Arc::new(ibm_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::IbmSystem360,
+            Arc::new(LegacyAdapterDispatch::IbmMainframe(ibm_adapter)),
+        );
 
         let vax_adapter = mainframe::VAXVMSAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::VaxVms, Arc::new(vax_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::VaxVms,
+            Arc::new(LegacyAdapterDispatch::VaxVms(vax_adapter)),
+        );
 
         let as400_adapter = mainframe::AS400Adapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::AS400, Arc::new(as400_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::AS400,
+            Arc::new(LegacyAdapterDispatch::As400(as400_adapter)),
+        );
 
         Ok(())
     }
@@ -128,16 +121,16 @@ impl SpecialtyRuntimeEngine {
     async fn initialize_embedded_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing embedded system adapters");
         let mcu_8bit_adapter = embedded::Microcontroller8BitAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::Intel8080, Arc::new(mcu_8bit_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::Intel8080,
+            Arc::new(LegacyAdapterDispatch::Microcontroller8Bit(mcu_8bit_adapter)),
+        );
 
         let system_16bit_adapter = embedded::System16BitAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::Intel8086, Arc::new(system_16bit_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::Intel8086,
+            Arc::new(LegacyAdapterDispatch::System16Bit(system_16bit_adapter)),
+        );
 
         Ok(())
     }
@@ -145,16 +138,16 @@ impl SpecialtyRuntimeEngine {
     async fn initialize_industrial_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing industrial system adapters");
         let plc_adapter = industrial::PLCAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::PlcLadder, Arc::new(plc_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::PlcLadder,
+            Arc::new(LegacyAdapterDispatch::Plc(plc_adapter)),
+        );
 
         let scada_adapter = industrial::SCADAAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::ScadaSystem, Arc::new(scada_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::ScadaSystem,
+            Arc::new(LegacyAdapterDispatch::Scada(scada_adapter)),
+        );
 
         Ok(())
     }
@@ -162,16 +155,16 @@ impl SpecialtyRuntimeEngine {
     async fn initialize_realtime_adapters(&self) -> ToadStoolResult<()> {
         info!("Initializing real-time system adapters");
         let vxworks_adapter = realtime::VxWorksAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::VxWorks, Arc::new(vxworks_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::VxWorks,
+            Arc::new(LegacyAdapterDispatch::VxWorks(vxworks_adapter)),
+        );
 
         let qnx_adapter = realtime::QNXAdapter::new();
-        self.adapters
-            .write()
-            .await
-            .insert(LegacySystemType::QnxLegacy, Arc::new(qnx_adapter));
+        self.adapters.write().await.insert(
+            LegacySystemType::QnxLegacy,
+            Arc::new(LegacyAdapterDispatch::Qnx(qnx_adapter)),
+        );
 
         Ok(())
     }
@@ -188,16 +181,16 @@ impl SpecialtyRuntimeEngine {
     async fn initialize_emulators(&self) -> ToadStoolResult<()> {
         info!("Initializing emulators");
         let pdp11_emulator = emulation::PDP11Emulator::new();
-        self.emulators
-            .write()
-            .await
-            .insert(LegacySystemType::PDP11, Box::new(pdp11_emulator));
+        self.emulators.write().await.insert(
+            LegacySystemType::PDP11,
+            LegacyEmulatorDispatch::Pdp11(pdp11_emulator),
+        );
 
         let apple2_emulator = emulation::Apple2Emulator::new();
-        self.emulators
-            .write()
-            .await
-            .insert(LegacySystemType::AppleIi, Box::new(apple2_emulator));
+        self.emulators.write().await.insert(
+            LegacySystemType::AppleIi,
+            LegacyEmulatorDispatch::Apple2(apple2_emulator),
+        );
 
         Ok(())
     }

@@ -28,7 +28,10 @@ use toadstool_server::{
     ActiveExecution, ClientInfo, HealthCheckConfig, ServerConfig, ServerEvent, ServerState,
     ServerStatistics, start_background_services,
 };
-use toadstool_server::{pure_jsonrpc::JsonRpcHandler, tarpc_server::StandaloneExecutor};
+use toadstool_server::{
+    pure_jsonrpc::JsonRpcHandler,
+    tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch},
+};
 use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
 
 // ============================================================================
@@ -186,14 +189,18 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
     let socket_path = PathBuf::from("/dev/null/tarpc-socket");
     let jsonrpc_socket = PathBuf::from("/dev/null/jsonrpc-socket");
 
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new(
         "1.0.0",
         executor,
         Some(Arc::new(std::sync::atomic::AtomicU64::new(0))),
     );
     let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     ));
@@ -291,7 +298,7 @@ fn create_test_state() -> ServerState {
         event_broadcaster,
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         config,
-        resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+        resource_monitor: Arc::new(MockResourceMonitor::new_successful().into_dispatch()),
         capability_provider: None,
     }
 }

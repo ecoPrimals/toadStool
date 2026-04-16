@@ -15,14 +15,14 @@ use uuid::Uuid;
 
 use toadstool_common::constants::timeouts::WORKLOAD_EXECUTION_TIMEOUT;
 
-fn create_test_state(config: ServerConfig) -> ServerState {
+fn create_test_state(config: ServerConfig) -> ServerState<MockRuntimeEngine> {
     let (event_broadcaster, _) = broadcast::channel(100);
     ServerState {
         runtime_engines: Arc::new(RwLock::new(HashMap::new())),
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(SystemResourceMonitor::new()),
+        resource_monitor: Arc::new(SystemResourceMonitor::new().into()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }
@@ -54,7 +54,8 @@ async fn test_perform_health_check_resource_monitor_failure_returns_false() {
         ..ServerConfig::default()
     };
     let mut state = create_test_state(config);
-    state.resource_monitor = Arc::new(MockResourceMonitor::new_monitoring_failure());
+    state.resource_monitor =
+        Arc::new(MockResourceMonitor::new_monitoring_failure().into_dispatch());
 
     let healthy = perform_health_check(&state).await;
     assert!(!healthy);
@@ -73,7 +74,7 @@ async fn test_perform_health_check_cpu_threshold_exceeded_returns_false() {
         ..ServerConfig::default()
     };
     let mut state = create_test_state(config);
-    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
+    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful().into_dispatch());
     let healthy = perform_health_check(&state).await;
     assert!(!healthy);
 }
@@ -91,7 +92,7 @@ async fn test_perform_health_check_memory_threshold_exceeded_returns_false() {
         ..ServerConfig::default()
     };
     let mut state = create_test_state(config);
-    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
+    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful().into_dispatch());
     let healthy = perform_health_check(&state).await;
     assert!(!healthy);
 }
@@ -126,7 +127,7 @@ async fn test_perform_health_check_engine_get_metrics_fails_returns_false() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_metrics_failure()),
+            Arc::new(MockRuntimeEngine::new_metrics_failure()),
         );
     }
 
@@ -184,12 +185,12 @@ async fn test_perform_health_check_all_conditions_pass_returns_true() {
         ..ServerConfig::default()
     };
     let mut state = create_test_state(config);
-    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
+    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful().into_dispatch());
     {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
     }
 
@@ -225,12 +226,12 @@ async fn test_start_background_services_with_capability_provider() {
         resource_monitoring_interval: Duration::from_secs(3600),
         ..ServerConfig::default()
     };
-    let state = ServerState {
+    let state = ServerState::<crate::runtime_engine_dispatch::RuntimeEngineDispatch> {
         runtime_engines: Arc::new(RwLock::new(HashMap::new())),
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(SystemResourceMonitor::new()),
+        resource_monitor: Arc::new(SystemResourceMonitor::new().into()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: Some(Arc::new(CapabilityProvider::default())),
     };
@@ -409,7 +410,7 @@ async fn test_perform_health_check_resources_ok_below_threshold() {
         ..ServerConfig::default()
     };
     let mut state = create_test_state(config);
-    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful());
+    state.resource_monitor = Arc::new(MockResourceMonitor::new_successful().into_dispatch());
     let healthy = perform_health_check(&state).await;
     assert!(healthy);
 }
@@ -429,7 +430,7 @@ async fn test_perform_health_check_single_engine_healthy() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
     }
     let healthy = perform_health_check(&state).await;
@@ -451,7 +452,7 @@ async fn test_perform_health_check_multiple_engines_all_healthy() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
     }
     let healthy = perform_health_check(&state).await;

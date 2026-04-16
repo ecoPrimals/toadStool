@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::time::Duration;
 use toadstool::resources::{
     CpuRequirements, MemoryRequirements, NetworkRequirements, ResourceRequirements,
@@ -45,8 +44,8 @@ impl UniversalPrimalProvider for SucceedingMockProvider {
             architectures: vec!["x86_64".to_string()],
         }]
     }
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
     fn endpoints(&self) -> PrimalEndpoints {
         PrimalEndpoints {
@@ -61,9 +60,9 @@ impl UniversalPrimalProvider for SucceedingMockProvider {
     fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<PrimalResponse>> + Send + '_>> {
+    ) -> impl Future<Output = toadstool::ToadStoolResult<PrimalResponse>> + Send + '_ {
         let primal_type = self.primal_type.clone();
-        Box::pin(async move {
+        async move {
             Ok(PrimalResponse {
                 request_id: request.id,
                 status: ResponseStatus::Success,
@@ -74,18 +73,16 @@ impl UniversalPrimalProvider for SucceedingMockProvider {
                 metadata: HashMap::new(),
                 timestamp: std::time::SystemTime::now(),
             })
-        })
+        }
     }
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = toadstool::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
-    fn shutdown(
-        &mut self,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = toadstool::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
         true
@@ -116,8 +113,8 @@ impl UniversalPrimalProvider for FailingMockProvider {
             architectures: vec!["x86_64".to_string(), "aarch64".to_string()],
         }]
     }
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
-        Box::pin(async { PrimalHealth::Healthy })
+    fn health_check(&self) -> impl Future<Output = PrimalHealth> + Send + '_ {
+        async { PrimalHealth::Healthy }
     }
     fn endpoints(&self) -> PrimalEndpoints {
         PrimalEndpoints {
@@ -132,23 +129,21 @@ impl UniversalPrimalProvider for FailingMockProvider {
     fn handle_primal_request(
         &self,
         _request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<PrimalResponse>> + Send + '_>> {
-        Box::pin(async {
+    ) -> impl Future<Output = toadstool::ToadStoolResult<PrimalResponse>> + Send + '_ {
+        async {
             Err(toadstool::ToadStoolError::execution(
                 "mock provider failure",
             ))
-        })
+        }
     }
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = toadstool::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
-    fn shutdown(
-        &mut self,
-    ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = toadstool::ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
     fn can_serve_context(&self, _context: &PrimalContext) -> bool {
         true

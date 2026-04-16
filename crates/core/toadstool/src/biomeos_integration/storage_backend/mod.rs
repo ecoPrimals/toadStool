@@ -15,19 +15,22 @@
 //!
 //! ```ignore
 //! // Production
-//! let backend: Arc<dyn StorageBackend> = Arc::new(
-//!     SocketStorageBackend::new_async("fast", true, 3).await?
+//! let backend: Arc<StorageBackendDispatch> = Arc::new(
+//!     StorageBackendDispatch::Socket(
+//!         SocketStorageBackend::new_async("fast", true, 3).await?
+//!     )
 //! );
 //!
 //! // Testing
-//! let backend: Arc<dyn StorageBackend> = Arc::new(InMemoryBackend::new("test"));
+//! let backend: Arc<StorageBackendDispatch> = Arc::new(
+//!     StorageBackendDispatch::InMemory(InMemoryBackend::new("test"))
+//! );
 //!
 //! // Same API, different implementation!
 //! let volume = backend.provision_volume(&config).await?;
 //! ```
 
 use std::future::Future;
-use std::pin::Pin;
 
 use super::types::{PersistentVolume, VolumeConfig, VolumeInfo};
 use crate::ToadStoolResult;
@@ -84,51 +87,161 @@ pub trait StorageBackend: Send + Sync {
     /// Initialize the storage backend and test connectivity.
     ///
     /// Default implementation is a no-op (suitable for in-memory backends).
-    fn initialize(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     /// Provision a new volume from configuration.
-    fn provision_volume(
-        &self,
-        config: &VolumeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>>;
+    fn provision_volume<'a>(
+        &'a self,
+        config: &'a VolumeConfig,
+    ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a;
 
     /// Provision a persistent volume with lifecycle guarantees.
-    fn provision_persistent_volume(
-        &self,
-        config: &PersistentVolume,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeInfo>> + Send + '_>>;
+    fn provision_persistent_volume<'a>(
+        &'a self,
+        config: &'a PersistentVolume,
+    ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a;
 
     /// Mount a volume to a service at the specified path.
-    fn mount_volume(
-        &self,
-        volume_name: &str,
-        service_name: &str,
-        mount_path: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn mount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+        mount_path: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Unmount a volume from a service.
-    fn unmount_volume(
-        &self,
-        volume_name: &str,
-        service_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn unmount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Delete a volume and free its storage.
-    fn delete_volume(
-        &self,
-        volume_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    fn delete_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a;
 
     /// Get the current status of a volume.
-    fn get_volume_status(
-        &self,
-        volume_name: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<VolumeStatus>> + Send + '_>>;
+    fn get_volume_status<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<VolumeStatus>> + Send + 'a;
 
     /// List all volumes managed by this backend.
-    fn list_volumes(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_>>;
+    fn list_volumes(&self) -> impl Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_;
+}
+
+/// Dispatch enum for storage backends (replaces `Arc<dyn StorageBackend>`).
+pub enum StorageBackendDispatch {
+    /// Production backend — Unix socket JSON-RPC to the storage service.
+    Socket(SocketStorageBackend),
+    /// In-memory backend for tests and lightweight in-process use.
+    #[cfg(any(test, feature = "test-mocks"))]
+    InMemory(InMemoryBackend),
+}
+
+impl StorageBackend for StorageBackendDispatch {
+    fn initialize(&self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
+            match self {
+                Self::Socket(b) => b.initialize().await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.initialize().await,
+            }
+        }
+    }
+
+    fn provision_volume<'a>(
+        &'a self,
+        config: &'a VolumeConfig,
+    ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
+        async move {
+            match self {
+                Self::Socket(b) => b.provision_volume(config).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.provision_volume(config).await,
+            }
+        }
+    }
+
+    fn provision_persistent_volume<'a>(
+        &'a self,
+        config: &'a PersistentVolume,
+    ) -> impl Future<Output = ToadStoolResult<VolumeInfo>> + Send + 'a {
+        async move {
+            match self {
+                Self::Socket(b) => b.provision_persistent_volume(config).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.provision_persistent_volume(config).await,
+            }
+        }
+    }
+
+    fn mount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+        mount_path: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Socket(b) => b.mount_volume(volume_name, service_name, mount_path).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.mount_volume(volume_name, service_name, mount_path).await,
+            }
+        }
+    }
+
+    fn unmount_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+        service_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Socket(b) => b.unmount_volume(volume_name, service_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.unmount_volume(volume_name, service_name).await,
+            }
+        }
+    }
+
+    fn delete_volume<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + 'a {
+        async move {
+            match self {
+                Self::Socket(b) => b.delete_volume(volume_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.delete_volume(volume_name).await,
+            }
+        }
+    }
+
+    fn get_volume_status<'a>(
+        &'a self,
+        volume_name: &'a str,
+    ) -> impl Future<Output = ToadStoolResult<VolumeStatus>> + Send + 'a {
+        async move {
+            match self {
+                Self::Socket(b) => b.get_volume_status(volume_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.get_volume_status(volume_name).await,
+            }
+        }
+    }
+
+    fn list_volumes(&self) -> impl Future<Output = ToadStoolResult<Vec<VolumeInfo>>> + Send + '_ {
+        async move {
+            match self {
+                Self::Socket(b) => b.list_volumes().await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                Self::InMemory(b) => b.list_volumes().await,
+            }
+        }
+    }
 }

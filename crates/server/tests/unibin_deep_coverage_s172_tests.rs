@@ -14,7 +14,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use toadstool_server::pure_jsonrpc::JsonRpcHandler;
-use toadstool_server::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer};
+use toadstool_server::tarpc_server::{
+    StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch,
+};
 use toadstool_server::unibin::{
     create_executor, ensure_biomeos_directory, get_socket_path, is_platform_constraint_str,
     is_selinux_enforcing, query_local_capabilities, resolve_family_id, resolve_node_id,
@@ -205,14 +207,18 @@ fn unibin_s172_write_tcp_discovery_file_port_max() {
 async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
     let socket_path = PathBuf::from("/dev/null/tarpc.sock");
     let jsonrpc_socket = PathBuf::from("/dev/null/jsonrpc.sock");
-    let executor = Arc::new(StandaloneExecutor::new());
+    let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
+        StandaloneExecutor::new(),
+    ));
     let server = ToadStoolTarpcServer::new(
         "1.0.0",
         executor,
         Some(Arc::new(std::sync::atomic::AtomicU64::new(0))),
     );
     let jsonrpc_handler = Arc::new(JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "1.0.0".to_string(),
         None,
     ));

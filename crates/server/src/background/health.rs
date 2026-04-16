@@ -4,13 +4,14 @@
 //! Runs periodic health checks (resources, runtime engines, execution count)
 //! and broadcasts HealthStatusChanged when status transitions.
 
+use toadstool::{ResourceMonitor, RuntimeEngine};
 use tracing::{debug, info, warn};
 
 use crate::state::{ServerEvent, ServerState};
 use tokio::time::interval;
 
 /// Health monitoring background task
-pub(super) async fn run(state: ServerState) {
+pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
     debug!("Starting health monitoring task");
 
     let mut interval = interval(state.config.health_check.interval);
@@ -54,7 +55,7 @@ pub(super) async fn run(state: ServerState) {
 ///
 /// Exposed as pub(crate) for unit testing - not part of public API
 #[doc(hidden)]
-pub(crate) async fn perform_health_check(state: &ServerState) -> bool {
+pub(crate) async fn perform_health_check<E: RuntimeEngine>(state: &ServerState<E>) -> bool {
     let config = &state.config.health_check;
 
     // Check system resources using real data

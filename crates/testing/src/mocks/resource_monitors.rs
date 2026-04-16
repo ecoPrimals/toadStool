@@ -17,150 +17,78 @@
 
 //! Mock resource monitors for testing
 
-use mockall::mock;
 use std::future::Future;
-use std::pin::Pin;
 
 use toadstool::{
-    error::ToadStoolResult,
-    resources::{ResourceMonitor, RuntimeMetrics, SystemResources},
+    ResourceMonitor, ResourceMonitorDispatch, RuntimeMetrics, SystemResources, TestResourceMonitor,
+    ToadStoolResult,
 };
 
-use crate::fixtures::create_test_runtime_metrics;
-
-// Mock trait for ResourceMonitor
-mock! {
-    pub ResourceMonitor {}
-
-    impl std::fmt::Debug for ResourceMonitor {
-        fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
-    }
-
-    impl ResourceMonitor for ResourceMonitor {
-        fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
-        fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()>;
-        fn get_metrics(&self, workload_id: &str) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send>>;
-        fn get_system_resources(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send>>;
-    }
+/// Mock resource monitor (delegates to [`ResourceMonitorDispatch::Test`] presets).
+#[derive(Clone, Debug)]
+pub struct MockResourceMonitor {
+    inner: ResourceMonitorDispatch,
 }
 
 impl MockResourceMonitor {
     /// Create a mock resource monitor that works successfully
     #[must_use]
     pub fn new_successful() -> Self {
-        let mut mock = Self::new();
-
-        // Debug implementation
-        mock.expect_fmt()
-            .returning(|f| write!(f, "MockResourceMonitor"));
-
-        mock.expect_start_monitoring()
-            .returning(|_workload_id| Ok(()));
-
-        mock.expect_stop_monitoring()
-            .returning(|_workload_id| Ok(()));
-
-        mock.expect_get_metrics()
-            .returning(|_workload_id| Box::pin(async move { Ok(create_test_runtime_metrics()) }));
-
-        mock.expect_get_system_resources().returning(|| {
-            Box::pin(async move {
-                Ok(SystemResources {
-                    available_cpu_cores: 8.0,
-                    available_memory_bytes: 16 * 1024 * 1024 * 1024, // 16GB
-                    available_storage_bytes: 1024 * 1024 * 1024 * 1024, // 1TB
-                    available_network_bandwidth: Some(1000000000),   // 1Gbps
-                    available_gpu_units: 1,
-                    cpu_usage_percent: 25.0,
-                    memory_usage_percent: 50.0,
-                    total_cpu_cores: 16,
-                    total_memory_bytes: 32 * 1024 * 1024 * 1024, // 32GB
-                })
-            })
-        });
-
-        mock
+        Self {
+            inner: ResourceMonitorDispatch::Test(TestResourceMonitor::successful()),
+        }
     }
 
     /// Create a mock resource monitor that reports limit violations
     #[must_use]
     pub fn new_limit_violations() -> Self {
-        let mut mock = Self::new();
-
-        mock.expect_fmt()
-            .returning(|f| write!(f, "MockResourceMonitor(LimitViolations)"));
-
-        mock.expect_start_monitoring()
-            .returning(|_workload_id| Ok(()));
-
-        mock.expect_stop_monitoring()
-            .returning(|_workload_id| Ok(()));
-
-        mock.expect_get_metrics().returning(|_workload_id| {
-            Box::pin(async move {
-                let mut metrics = create_test_runtime_metrics();
-                metrics.cpu.usage_percent = 95.0; // High CPU usage
-                metrics.memory.used_bytes = 1024 * 1024 * 1024 * 7; // 7GB memory usage
-                Ok(metrics)
-            })
-        });
-
-        mock.expect_get_system_resources().returning(|| {
-            Box::pin(async move {
-                Ok(SystemResources {
-                    available_cpu_cores: 2.0,                          // Limited resources
-                    available_memory_bytes: 4 * 1024 * 1024 * 1024,    // 4GB
-                    available_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
-                    available_network_bandwidth: Some(100000000),      // 100Mbps
-                    available_gpu_units: 0,
-                    cpu_usage_percent: 75.0,    // High usage
-                    memory_usage_percent: 87.5, // 7GB/8GB = 87.5%
-                    total_cpu_cores: 8,
-                    total_memory_bytes: 8 * 1024 * 1024 * 1024, // 8GB
-                })
-            })
-        });
-
-        mock
+        Self {
+            inner: ResourceMonitorDispatch::Test(
+                toadstool::resources::TestResourceMonitor::limit_violations(),
+            ),
+        }
     }
 
     /// Create a mock resource monitor that fails operations
     #[must_use]
     pub fn new_monitoring_failure() -> Self {
-        let mut mock = Self::new();
+        Self {
+            inner: ResourceMonitorDispatch::Test(
+                toadstool::resources::TestResourceMonitor::monitoring_failure(),
+            ),
+        }
+    }
 
-        mock.expect_fmt()
-            .returning(|f| write!(f, "MockResourceMonitor(Failure)"));
+    /// Returns the underlying [`ResourceMonitorDispatch`] for `Arc<…>`-style APIs.
+    #[must_use]
+    pub fn into_dispatch(self) -> ResourceMonitorDispatch {
+        self.inner
+    }
+}
 
-        mock.expect_start_monitoring().returning(|_workload_id| {
-            Err(toadstool::error::ToadStoolError::resource(
-                "Failed to start monitoring",
-            ))
-        });
+impl ResourceMonitor for MockResourceMonitor {
+    fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
+        self.inner.start_monitoring(workload_id)
+    }
 
-        mock.expect_stop_monitoring().returning(|_workload_id| {
-            Err(toadstool::error::ToadStoolError::resource(
-                "Failed to stop monitoring",
-            ))
-        });
+    fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
+        self.inner.stop_monitoring(workload_id)
+    }
 
-        mock.expect_get_metrics().returning(|_workload_id| {
-            Box::pin(async move {
-                Err(toadstool::error::ToadStoolError::resource(
-                    "Failed to get metrics",
-                ))
-            })
-        });
+    fn get_metrics(
+        &self,
+        workload_id: &str,
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        let inner = self.inner.clone();
+        let workload_id = workload_id.to_string();
+        async move { inner.get_metrics(&workload_id).await }
+    }
 
-        mock.expect_get_system_resources().returning(|| {
-            Box::pin(async move {
-                Err(toadstool::error::ToadStoolError::resource(
-                    "Failed to get system resources",
-                ))
-            })
-        });
-
-        mock
+    fn get_system_resources(
+        &self,
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_ {
+        let inner = self.inner.clone();
+        async move { inner.get_system_resources().await }
     }
 }
 

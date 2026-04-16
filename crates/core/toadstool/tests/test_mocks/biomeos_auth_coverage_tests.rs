@@ -18,6 +18,7 @@ use std::time::Duration;
 
 use toadstool::biomeos_integration::InMemoryAuthBackend;
 use toadstool::biomeos_integration::auth::{AuthManagerConfig, AuthenticationManager};
+use toadstool::biomeos_integration::auth_backend::AuthBackendDispatch;
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
 fn base_config() -> AuthManagerConfig {
@@ -38,7 +39,7 @@ fn base_config() -> AuthManagerConfig {
 fn auth_manager_new() {
     let config = base_config();
     let backend = InMemoryAuthBackend::new();
-    let _m = AuthenticationManager::new(config, Arc::new(backend));
+    let _m = AuthenticationManager::new(config, Arc::new(AuthBackendDispatch::InMemory(backend)));
 }
 
 #[test]

@@ -14,27 +14,31 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use toadstool::cloud_provider_trait::{CloudProvider, CloudCapabilities};
+//! use toadstool::cloud_provider_trait::{CloudCapabilities, CloudProvider};
 //!
-//! # async fn example(provider: Box<dyn CloudProvider>) -> Result<(), Box<dyn std::error::Error>> {
-//! // Query provider capabilities
-//! let caps = provider.capabilities().await?;
-//! println!("Provider: {}", caps.name);
-//! println!("Regions: {:?}", caps.available_regions);
-//! println!("Has GPU: {}", caps.supports_gpu);
+//! async fn example<P: CloudProvider>(
+//!     provider: &P,
+//! ) -> Result<(), Box<dyn std::error::Error>> {
+//!     // Query provider capabilities
+//!     let caps = provider.capabilities().await?;
+//!     println!("Provider: {}", caps.name);
+//!     println!("Regions: {:?}", caps.available_regions);
+//!     println!("Has GPU: {}", caps.supports_gpu);
 //!
-//! // Deploy workload
-//! let instance_id = provider.deploy_workload("my-workload", &caps.available_regions[0]).await?;
-//! println!("Deployed: {}", instance_id);
-//! # Ok(())
-//! # }
+//!     // Deploy workload
+//!     let instance_id = provider
+//!         .deploy_workload("my-workload", &caps.available_regions[0])
+//!         .await?;
+//!     println!("Deployed: {}", instance_id);
+//!     Ok(())
+//! }
 //! ```
 
 mod provider;
 mod registry;
 mod types;
 
-pub use provider::CloudProvider;
+pub use provider::{CloudProvider, NoopCloudProvider};
 pub use registry::CloudProviderRegistry;
 pub use types::{
     CloudCapabilities, CloudError, CostEstimate, GpuType, WorkloadHealth, WorkloadLocation,
@@ -45,8 +49,6 @@ pub use types::{
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use std::future::Future;
-    use std::pin::Pin;
 
     // Mock provider for testing
     struct MockProvider {
@@ -60,10 +62,9 @@ mod tests {
 
         fn capabilities(
             &self,
-        ) -> Pin<Box<dyn Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_>>
-        {
+        ) -> impl Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_ {
             let name = self.name.clone();
-            Box::pin(async move {
+            async move {
                 Ok(CloudCapabilities {
                     name,
                     available_regions: vec!["us-west-1".to_string()],
@@ -75,15 +76,15 @@ mod tests {
                     supports_autoscaling: true,
                     custom: HashMap::new(),
                 })
-            })
+            }
         }
 
         fn deploy_workload<'a>(
             &'a self,
             workload_id: &'a str,
             _region: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(format!("instance-{workload_id}")) })
+        ) -> impl Future<Output = Result<String, CloudError>> + Send + 'a {
+            async move { Ok(format!("instance-{workload_id}")) }
         }
 
         fn migrate_workload<'a>(
@@ -91,43 +92,43 @@ mod tests {
             workload_id: &'a str,
             _source: WorkloadLocation,
             _target_region: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(format!("migrated-{workload_id}")) })
+        ) -> impl Future<Output = Result<String, CloudError>> + Send + 'a {
+            async move { Ok(format!("migrated-{workload_id}")) }
         }
 
         fn check_health<'a>(
             &'a self,
             _instance_id: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(WorkloadHealth::Healthy) })
+        ) -> impl Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a {
+            async move { Ok(WorkloadHealth::Healthy) }
         }
 
         fn terminate_workload<'a>(
             &'a self,
             _instance_id: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<(), CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(()) })
+        ) -> impl Future<Output = Result<(), CloudError>> + Send + 'a {
+            async move { Ok(()) }
         }
 
         fn estimate_cost<'a>(
             &'a self,
             _workload_spec: &'a WorkloadSpec,
             _region: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<CostEstimate, CloudError>> + Send + 'a>> {
-            Box::pin(async move {
+        ) -> impl Future<Output = Result<CostEstimate, CloudError>> + Send + 'a {
+            async move {
                 Ok(CostEstimate {
                     cost_per_hour: 5.0,
                     estimated_total_cost: Some(10.0),
                     breakdown: HashMap::new(),
                 })
-            })
+            }
         }
 
         fn available_gpu_types<'a>(
             &'a self,
             _region: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a>> {
-            Box::pin(async move {
+        ) -> impl Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a {
+            async move {
                 Ok(vec![GpuType {
                     name: "V100".to_string(),
                     memory_gb: 16.0,
@@ -135,7 +136,7 @@ mod tests {
                     cost_per_hour: 3.0,
                     available_regions: vec!["us-west-1".to_string()],
                 }])
-            })
+            }
         }
     }
 
@@ -154,7 +155,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_provider_registry() {
-        let mut registry = CloudProviderRegistry::new();
+        let mut registry = CloudProviderRegistry::<MockProvider>::new();
 
         let provider = Box::new(MockProvider {
             name: "TestCloud".to_string(),
@@ -310,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_cloud_provider_registry_default() {
-        let registry = CloudProviderRegistry::default();
+        let registry = CloudProviderRegistry::<NoopCloudProvider>::default();
         assert!(registry.available_providers().is_empty());
     }
 

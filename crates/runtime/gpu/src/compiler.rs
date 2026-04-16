@@ -19,8 +19,8 @@ pub struct UniversalKernelCompiler {
     _input_formats: Vec<KernelFormat>,
     /// Target frameworks for compilation
     _target_frameworks: Vec<GpuFramework>,
-    /// Optimization strategies
-    optimizers: HashMap<GpuFramework, Box<dyn KernelOptimizer>>,
+    /// Optimization strategies (per framework).
+    optimizers: HashMap<GpuFramework, BasicKernelOptimizer>,
     /// Configuration
     config: CompilationConfig,
 }

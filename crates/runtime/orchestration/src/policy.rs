@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use crate::error::OrchestrationError;
 use crate::orchestrator::*;
+use toadstool_runtime_universal::substrate::ComputeSubstrate;
 
 /// Selection policy for choosing substrates
 ///
@@ -35,12 +36,12 @@ pub enum SelectionPolicy {
 
 impl SelectionPolicy {
     /// Select optimal substrate for workload
-    pub fn select(
+    pub fn select<S: ComputeSubstrate>(
         &self,
-        substrates: &[SubstrateHandle],
+        substrates: &[Arc<S>],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
-    ) -> Result<SubstrateHandle, OrchestrationError> {
+    ) -> Result<Arc<S>, OrchestrationError> {
         if substrates.is_empty() {
             return Err(OrchestrationError::NoSubstrates);
         }
@@ -60,12 +61,12 @@ impl SelectionPolicy {
     /// Rank all substrates by score (descending).
     ///
     /// Uses `Arc::clone` rather than deep clone — cheap refcount bump.
-    pub fn rank_all(
+    pub fn rank_all<S: ComputeSubstrate>(
         &self,
-        substrates: &[SubstrateHandle],
+        substrates: &[Arc<S>],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
-    ) -> Result<Vec<(SubstrateHandle, f64)>, OrchestrationError> {
+    ) -> Result<Vec<(Arc<S>, f64)>, OrchestrationError> {
         let mut ranked: Vec<_> = substrates
             .iter()
             .map(|s| {
@@ -83,11 +84,11 @@ impl SelectionPolicy {
     ///
     /// Tracks index during comparison to avoid cloning every candidate;
     /// only the winning `Arc` is cloned once at the end.
-    fn select_fastest(
+    fn select_fastest<S: ComputeSubstrate>(
         &self,
-        substrates: &[SubstrateHandle],
+        substrates: &[Arc<S>],
         history: &PerformanceHistory,
-    ) -> Result<SubstrateHandle, OrchestrationError> {
+    ) -> Result<Arc<S>, OrchestrationError> {
         let no_history = std::time::Duration::from_secs(999);
         let mut best_idx = 0;
         let mut best_duration = history
@@ -111,10 +112,10 @@ impl SelectionPolicy {
     /// Select most energy-efficient substrate.
     ///
     /// Single `Arc::clone` at the end instead of per-candidate.
-    fn select_most_efficient(
+    fn select_most_efficient<S: ComputeSubstrate>(
         &self,
-        substrates: &[SubstrateHandle],
-    ) -> Result<SubstrateHandle, OrchestrationError> {
+        substrates: &[Arc<S>],
+    ) -> Result<Arc<S>, OrchestrationError> {
         let mut best_idx = 0;
         let mut best_power = substrates[0].capabilities().power_watts;
 
@@ -132,12 +133,12 @@ impl SelectionPolicy {
     /// Adaptive selection based on workload target.
     ///
     /// Single `Arc::clone` at the end instead of per-candidate.
-    fn select_adaptive(
+    fn select_adaptive<S: ComputeSubstrate>(
         &self,
-        substrates: &[SubstrateHandle],
+        substrates: &[Arc<S>],
         request: &WorkloadRequest,
         history: &PerformanceHistory,
-    ) -> Result<SubstrateHandle, OrchestrationError> {
+    ) -> Result<Arc<S>, OrchestrationError> {
         let mut best_idx = 0;
         let mut best_score = self.score_substrate(&substrates[0], request, history);
 
@@ -153,9 +154,9 @@ impl SelectionPolicy {
     }
 
     /// Score a substrate for a workload (higher is better)
-    fn score_substrate(
+    fn score_substrate<S: ComputeSubstrate>(
         &self,
-        substrate: &SubstrateHandle,
+        substrate: &Arc<S>,
         request: &WorkloadRequest,
         history: &PerformanceHistory,
     ) -> f64 {
@@ -206,7 +207,6 @@ impl SelectionPolicy {
 mod tests {
     use super::*;
     use std::future::Future;
-    use std::pin::Pin;
     use std::sync::Arc;
     use toadstool_runtime_universal::SubstrateError;
     use toadstool_runtime_universal::substrate::*;
@@ -235,9 +235,8 @@ mod tests {
         fn execute_buffer_op(
             &self,
             _op: BufferOperation,
-        ) -> Pin<Box<dyn Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>>
-        {
-            Box::pin(async { Ok(BufferOutput::default()) })
+        ) -> impl Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_ {
+            async { Ok(BufferOutput::default()) }
         }
     }
 
@@ -245,7 +244,7 @@ mod tests {
     fn test_adaptive_policy() {
         let policy = SelectionPolicy::Adaptive;
 
-        let substrates: Vec<SubstrateHandle> = vec![
+        let substrates: Vec<Arc<MockSubstrate>> = vec![
             Arc::new(MockSubstrate {
                 name: "CPU".to_string(),
                 substrate_type: SubstrateType::Cpu,
@@ -281,7 +280,7 @@ mod tests {
     fn test_power_budget_constraint() {
         let policy = SelectionPolicy::Adaptive;
 
-        let substrates: Vec<SubstrateHandle> = vec![
+        let substrates: Vec<Arc<MockSubstrate>> = vec![
             Arc::new(MockSubstrate {
                 name: "GPU".to_string(),
                 substrate_type: SubstrateType::Gpu,

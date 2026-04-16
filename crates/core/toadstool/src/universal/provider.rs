@@ -2,8 +2,6 @@
 //! ToadStool Primal Provider implementation
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -19,6 +17,7 @@ use super::traits::UniversalPrimalProvider;
 use super::types::{PrimalCapability, PrimalContext, PrimalHealth, PrimalType};
 
 /// `ToadStool` primal provider implementation
+#[derive(Clone)]
 pub struct ToadStoolPrimalProvider {
     /// Context
     context: PrimalContext,
@@ -83,9 +82,9 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
         ]
     }
 
-    fn health_check(&self) -> Pin<Box<dyn Future<Output = PrimalHealth> + Send + '_>> {
+    fn health_check(&self) -> impl std::future::Future<Output = PrimalHealth> + Send + '_ {
         let health_status = self.health_status.clone();
-        Box::pin(async move { health_status.read().await.clone() })
+        async move { health_status.read().await.clone() }
     }
 
     fn endpoints(&self) -> PrimalEndpoints {
@@ -106,8 +105,8 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     fn handle_primal_request(
         &self,
         request: PrimalRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<PrimalResponse>> + Send + '_ {
+        async move {
             debug!("Handling primal request: {:?}", request.request_type);
 
             Ok(PrimalResponse {
@@ -120,24 +119,24 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
                 metadata: HashMap::new(),
                 timestamp: std::time::SystemTime::now(),
             })
-        })
+        }
     }
 
     fn initialize(
         &mut self,
         _config: serde_json::Value,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("ToadStool primal provider initialized");
             Ok(())
-        })
+        }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("ToadStool primal provider shutting down");
             Ok(())
-        })
+        }
     }
 
     fn can_serve_context(&self, context: &PrimalContext) -> bool {

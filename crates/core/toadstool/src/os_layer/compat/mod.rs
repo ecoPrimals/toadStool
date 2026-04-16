@@ -11,8 +11,8 @@ mod macos;
 mod trait_def;
 mod windows;
 
-// Re-export trait (canonical definition)
-pub use trait_def::CompatibilityLayer;
+// Re-export trait (canonical definition) and dispatch enum
+pub use trait_def::{CompatibilityLayer, CompatibilityLayerDispatch};
 
 // Re-export platform-specific layers and configs
 pub use legacy::{LegacyCompatConfig, LegacyCompatibilityLayer};

@@ -4,7 +4,7 @@
 
 //! Migration planning logic — evaluation of when and where to migrate.
 
-use crate::cloud_provider_trait::WorkloadLocation;
+use crate::cloud_provider_trait::{CloudProvider, WorkloadLocation};
 use crate::composition_constraints::{CompositionRequest, Constraint, ConstraintPriority};
 use crate::workload_migration::{CostImpact, MigrationRecommendation, MigrationTarget};
 
@@ -13,7 +13,7 @@ use crate::ToadStoolResult;
 use std::collections::HashMap;
 use tracing::{debug, info};
 
-impl MigrationCoordinator {
+impl<P: CloudProvider> MigrationCoordinator<P> {
     /// Evaluate if workload should migrate
     ///
     /// # Errors
@@ -160,8 +160,6 @@ mod tests {
     };
     use crate::composition_constraints::Constraint;
     use std::collections::HashMap;
-    use std::future::Future;
-    use std::pin::Pin;
 
     struct MockProvider;
     impl CloudProvider for MockProvider {
@@ -170,9 +168,9 @@ mod tests {
         }
         fn capabilities(
             &self,
-        ) -> Pin<Box<dyn Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_>>
+        ) -> impl std::future::Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_
         {
-            Box::pin(async move {
+            async {
                 Ok(CloudCapabilities {
                     name: "MockProvider".to_string(),
                     available_regions: vec!["us-west-1".to_string()],
@@ -184,53 +182,56 @@ mod tests {
                     supports_autoscaling: false,
                     custom: HashMap::new(),
                 })
-            })
+            }
         }
         fn deploy_workload<'a>(
             &'a self,
             id: &'a str,
             _: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(format!("inst-{id}")) })
+        ) -> impl std::future::Future<Output = Result<String, CloudError>> + Send + 'a {
+            async move { Ok(format!("inst-{id}")) }
         }
         fn migrate_workload<'a>(
             &'a self,
             id: &'a str,
             _: WorkloadLocation,
             _: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<String, CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(format!("migrated-{id}")) })
+        ) -> impl std::future::Future<Output = Result<String, CloudError>> + Send + 'a {
+            async move { Ok(format!("migrated-{id}")) }
         }
         fn check_health<'a>(
             &'a self,
             _: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(WorkloadHealth::Healthy) })
+        ) -> impl std::future::Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a
+        {
+            async move { Ok(WorkloadHealth::Healthy) }
         }
         fn terminate_workload<'a>(
             &'a self,
             _: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<(), CloudError>> + Send + 'a>> {
-            Box::pin(async move { Ok(()) })
+        ) -> impl std::future::Future<Output = Result<(), CloudError>> + Send + 'a {
+            async move { Ok(()) }
         }
         fn estimate_cost<'a>(
             &'a self,
             _: &'a WorkloadSpec,
             _: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<CostEstimate, CloudError>> + Send + 'a>> {
-            Box::pin(async move {
+        ) -> impl std::future::Future<Output = Result<CostEstimate, CloudError>> + Send + 'a
+        {
+            async move {
                 Ok(CostEstimate {
                     cost_per_hour: 5.0,
                     estimated_total_cost: Some(10.0),
                     breakdown: HashMap::new(),
                 })
-            })
+            }
         }
         fn available_gpu_types<'a>(
             &'a self,
             _: &'a str,
-        ) -> Pin<Box<dyn Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a>> {
-            Box::pin(async move {
+        ) -> impl std::future::Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a
+        {
+            async move {
                 Ok(vec![GpuType {
                     name: "V100".to_string(),
                     memory_gb: 16.0,
@@ -238,13 +239,13 @@ mod tests {
                     cost_per_hour: 3.0,
                     available_regions: vec!["us-west-1".to_string()],
                 }])
-            })
+            }
         }
     }
 
     #[tokio::test]
     async fn test_planner_no_providers_returns_no_migrate_reason() {
-        let coordinator = MigrationCoordinator::new()
+        let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
         let rec = coordinator
@@ -257,7 +258,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_planner_local_minimize_cost_stays_local() {
-        let coordinator = MigrationCoordinator::new()
+        let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
         coordinator.register_provider(Box::new(MockProvider)).await;
@@ -285,7 +286,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_planner_cloud_minimize_cost_migrates_to_local() {
-        let coordinator = MigrationCoordinator::new()
+        let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
         coordinator.register_provider(Box::new(MockProvider)).await;
@@ -309,7 +310,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_planner_max_cost_per_hour_triggers_cost_branch() {
-        let coordinator = MigrationCoordinator::new()
+        let coordinator = MigrationCoordinator::<MockProvider>::new()
             .await
             .expect("coordinator creation");
         coordinator.register_provider(Box::new(MockProvider)).await;

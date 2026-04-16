@@ -10,8 +10,6 @@ mod tests;
 mod types;
 
 use crate::types::*;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 pub use types::{
@@ -53,18 +51,10 @@ impl ComputeUnit for WgpuComputeUnit {
         &self.name
     }
 
-    fn execute<'a>(
-        &'a self,
-        _workload: Workload,
-    ) -> Pin<Box<dyn Future<Output = Result<Output, ComputeError>> + Send + 'a>> {
-        Box::pin(async move {
-            // toadStool provides hardware discovery and capability probing.
-            // GPU compute dispatch (shaders, pipelines) is owned by the network / shader compute layer.
-            // Use that layer's `ComputeDispatch` for actual GPU execution.
-            Err(ComputeError::ExecutionFailed(
-                "GPU compute dispatch is owned by the compute capability — discover via 'compute' capability IPC"
-                    .to_string(),
-            ))
-        })
+    async fn execute(&self, _workload: Workload) -> Result<Output, ComputeError> {
+        Err(ComputeError::ExecutionFailed(
+            "GPU compute dispatch is owned by the compute capability — discover via 'compute' capability IPC"
+                .to_string(),
+        ))
     }
 }

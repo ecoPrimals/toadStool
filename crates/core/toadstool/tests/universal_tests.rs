@@ -434,13 +434,13 @@ fn test_job_priority_min() {
 
 #[test]
 fn test_universal_primal_registry_creation() {
-    let _registry = UniversalPrimalRegistry::new();
+    let _registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new();
     // Registry should be created without panicking
 }
 
 #[test]
 fn test_universal_primal_registry_default() {
-    let _registry = UniversalPrimalRegistry::default();
+    let _registry = UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::default();
     // Default registry should be valid
 }
 

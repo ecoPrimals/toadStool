@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
-use std::future::Future;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::time::Duration;
 use toadstool::execution::RuntimeConfig;
-use toadstool::resources::{ResourceMonitor, RuntimeMetrics, SystemResources};
+use toadstool::resources::ResourceMonitorDispatch;
 use toadstool::workload::{PortMapping, RegistryAuth, VolumeMount, WorkloadSpec};
 use toadstool::{
     ExecutionRequest, IsolationLevel, PortProtocol, RuntimeEngine, RuntimeType, SecurityContext,
@@ -238,30 +236,9 @@ async fn test_container_execution_config_default() {
 #[tokio::test]
 async fn test_with_resource_monitor() {
     if let Ok(engine) = ContainerRuntimeEngine::new() {
-        struct MockMonitor;
-        impl ResourceMonitor for MockMonitor {
-            fn start_monitoring(&self, _workload_id: &str) -> toadstool::ToadStoolResult<()> {
-                Ok(())
-            }
-            fn stop_monitoring(&self, _workload_id: &str) -> toadstool::ToadStoolResult<()> {
-                Ok(())
-            }
-            fn get_metrics(
-                &self,
-                _workload_id: &str,
-            ) -> Pin<Box<dyn Future<Output = toadstool::ToadStoolResult<RuntimeMetrics>> + Send + '_>>
-            {
-                Box::pin(async { Ok(toadstool::resources::RuntimeMetrics::default()) })
-            }
-            fn get_system_resources(
-                &self,
-            ) -> Pin<
-                Box<dyn Future<Output = toadstool::ToadStoolResult<SystemResources>> + Send + '_>,
-            > {
-                Box::pin(async { Ok(toadstool::resources::SystemResources::default()) })
-            }
-        }
-        let _engine = engine.with_resource_monitor(Arc::new(MockMonitor));
+        let _engine = engine.with_resource_monitor(Arc::new(ResourceMonitorDispatch::System(
+            toadstool::resources::SystemResourceMonitor::new(),
+        )));
     }
 }
 

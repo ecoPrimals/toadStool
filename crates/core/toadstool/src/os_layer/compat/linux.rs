@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::pin::Pin;
 
 use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 #[cfg(target_os = "linux")]
@@ -148,8 +147,8 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
     fn execute_with_compatibility(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             if !cfg!(target_os = "linux") {
                 return Err(SystemError::NotSupported {
                     feature: "linux_compat_layer".into(),
@@ -158,35 +157,33 @@ impl CompatibilityLayer for LinuxCompatibilityLayer {
                 .into());
             }
             Ok(ExecutionResponse::default())
-        })
+        }
     }
 
-    fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        let uname_info = Self::detect_platform();
-        if !cfg!(target_os = "linux") {
-            return Box::pin(async move {
-                Err(SystemError::NotSupported {
+    fn initialize(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
+            let uname_info = Self::detect_platform();
+            if !cfg!(target_os = "linux") {
+                return Err(SystemError::NotSupported {
                     feature: "linux_compat_layer".into(),
                     reason: "LinuxCompatibilityLayer requires target_os = linux. Current platform is not Linux.".into(),
                 }
-                .into())
-            });
-        }
-        if uname_info == "not_linux" {
-            return Box::pin(async move {
-                Err(SystemError::NotSupported {
+                .into());
+            }
+            if uname_info == "not_linux" {
+                return Err(SystemError::NotSupported {
                     feature: "linux_compat_layer".into(),
                     reason: "Platform detection failed: not running on Linux.".into(),
                 }
-                .into())
-            });
+                .into());
+            }
+            self.uname_info = Some(uname_info);
+            Ok(())
         }
-        self.uname_info = Some(uname_info);
-        Box::pin(async move { Ok(()) })
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 

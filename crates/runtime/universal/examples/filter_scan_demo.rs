@@ -13,6 +13,7 @@
 //! These operations are common in data processing and demonstrate
 //! different parallelism patterns.
 
+use toadstool_runtime_universal::ComputeUnit;
 use toadstool_runtime_universal::runtime::UniversalRuntime;
 use toadstool_runtime_universal::types::{
     ComputeError, DataType, OperationType, Workload, WorkloadData, WorkloadParams,

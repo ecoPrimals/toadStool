@@ -4,7 +4,7 @@
 //! This module provides the main UniversalRuntime API that applications use.
 
 use crate::capabilities::{CapabilityDiscovery, WorkloadProfile};
-use crate::types::*;
+use crate::types::{ComputeUnit, ComputeUnitDispatch, *};
 
 #[path = "stats.rs"]
 pub(crate) mod stats;
@@ -16,7 +16,7 @@ pub use stats::RuntimeStats;
 /// available compute units and provides a unified API for execution.
 pub struct UniversalRuntime {
     /// Discovered compute units
-    units: Vec<Box<dyn ComputeUnit>>,
+    units: Vec<ComputeUnitDispatch>,
 }
 
 impl UniversalRuntime {
@@ -25,7 +25,7 @@ impl UniversalRuntime {
     /// Use this instead of `discover()` when you need to avoid wgpu/GPU initialization
     /// (e.g. in CI where wgpu may SIGSEGV on Vulkan+NVIDIA).
     #[must_use]
-    pub fn new(units: Vec<Box<dyn ComputeUnit>>) -> Self {
+    pub fn new(units: Vec<ComputeUnitDispatch>) -> Self {
         Self { units }
     }
 
@@ -66,7 +66,7 @@ impl UniversalRuntime {
     }
 
     /// Get reference to all units
-    pub fn units(&self) -> &[Box<dyn ComputeUnit>] {
+    pub fn units(&self) -> &[ComputeUnitDispatch] {
         &self.units
     }
 
@@ -182,11 +182,10 @@ impl UniversalRuntime {
     }
 
     /// Get units by type
-    pub fn units_by_type(&self, unit_type: ComputeUnitType) -> Vec<&dyn ComputeUnit> {
+    pub fn units_by_type(&self, unit_type: ComputeUnitType) -> Vec<&ComputeUnitDispatch> {
         self.units
             .iter()
             .filter(|u| u.capabilities().unit_type == unit_type)
-            .map(|u| u.as_ref() as &dyn ComputeUnit)
             .collect()
     }
 

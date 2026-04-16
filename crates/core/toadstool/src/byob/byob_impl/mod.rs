@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
@@ -24,17 +23,18 @@ use super::validation::DeploymentValidator;
 
 #[cfg(test)]
 pub(crate) use crate::{
-    ExecutionRequest, ExecutionStatus, RuntimeEngine, ToadStoolError, ToadStoolResult,
+    ExecutionRequest, ExecutionStatus, RuntimeEngine, StubRuntimeEngine, ToadStoolError,
+    ToadStoolResult,
 };
 #[cfg(not(test))]
-use crate::{RuntimeEngine, ToadStoolError, ToadStoolResult};
+use crate::{RuntimeEngine, StubRuntimeEngine, ToadStoolError, ToadStoolResult};
 
 mod deployment_lifecycle;
 
 /// BYOB compute executor for team biome deployment and lifecycle management.
-pub struct ByobComputeExecutor {
+pub struct ByobComputeExecutor<E: RuntimeEngine + 'static> {
     /// Runtime engine for executing workloads
-    runtime_engine: Arc<dyn RuntimeEngine>,
+    runtime_engine: Arc<E>,
     /// Active deployments
     active_deployments: Arc<RwLock<HashMap<Uuid, ActiveDeployment>>>,
     /// Configuration
@@ -44,42 +44,92 @@ pub struct ByobComputeExecutor {
 }
 
 /// BYOB executor trait
-// NOTE(async-dyn): Native `async fn` in traits is not object-safe; each method returns
-// `Pin<Box<dyn Future<Output = ...> + Send + '_>>` manually so `Arc<dyn ByobExecutor>` works without `async_trait`.
 pub trait ByobExecutor: Send + Sync {
     /// Deploy a team biome
     fn deploy_biome(
         &self,
         request: ByobDeploymentRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_;
 
     /// Get deployment status
     fn get_deployment_status(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_;
 
     /// Stop a deployment
     fn stop_deployment(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_;
 
     /// List active deployments
     fn list_deployments(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<ByobDeploymentResponse>>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<Vec<ByobDeploymentResponse>>> + Send + '_;
 
     /// Get resource usage for a deployment
     fn get_resource_usage(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ResourceUsage>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<ResourceUsage>> + Send + '_;
 }
 
-impl ByobComputeExecutor {
+/// Dispatches [`ByobExecutor`] to concrete implementations (enum dispatch).
+pub enum ByobExecutorDispatch<E: RuntimeEngine + 'static = StubRuntimeEngine> {
+    /// Production compute executor.
+    Compute(ByobComputeExecutor<E>),
+}
+
+impl<E: RuntimeEngine + 'static> ByobExecutor for ByobExecutorDispatch<E> {
+    fn deploy_biome(
+        &self,
+        request: ByobDeploymentRequest,
+    ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_ {
+        match self {
+            Self::Compute(executor) => executor.deploy_biome(request),
+        }
+    }
+
+    fn get_deployment_status(
+        &self,
+        deployment_id: Uuid,
+    ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_ {
+        match self {
+            Self::Compute(executor) => executor.get_deployment_status(deployment_id),
+        }
+    }
+
+    fn stop_deployment(
+        &self,
+        deployment_id: Uuid,
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        match self {
+            Self::Compute(executor) => executor.stop_deployment(deployment_id),
+        }
+    }
+
+    fn list_deployments(
+        &self,
+    ) -> impl Future<Output = ToadStoolResult<Vec<ByobDeploymentResponse>>> + Send + '_ {
+        match self {
+            Self::Compute(executor) => executor.list_deployments(),
+        }
+    }
+
+    fn get_resource_usage(
+        &self,
+        deployment_id: Uuid,
+    ) -> impl Future<Output = ToadStoolResult<ResourceUsage>> + Send + '_ {
+        match self {
+            Self::Compute(executor) => executor.get_resource_usage(deployment_id),
+        }
+    }
+}
+
+impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
     /// Create a new BYOB compute executor
-    pub fn new(runtime_engine: Arc<dyn RuntimeEngine>, config: ByobExecutorConfig) -> Self {
+    pub fn new(runtime_engine: Arc<E>, config: ByobExecutorConfig) -> Self {
         Self {
             runtime_engine,
             active_deployments: Arc::new(RwLock::new(HashMap::new())),
@@ -178,12 +228,12 @@ impl ByobComputeExecutor {
     }
 }
 
-impl ByobExecutor for ByobComputeExecutor {
+impl<E: RuntimeEngine + 'static> ByobExecutor for ByobComputeExecutor<E> {
     fn deploy_biome(
         &self,
         request: ByobDeploymentRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_ {
+        async move {
             info!("Starting BYOB deployment: {}", request.deployment_id);
 
             // Validate deployment request
@@ -227,14 +277,14 @@ impl ByobExecutor for ByobComputeExecutor {
                 response.deployment_id
             );
             Ok(response)
-        })
+        }
     }
 
     fn get_deployment_status(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ByobDeploymentResponse>> + Send + '_ {
+        async move {
             self.active_deployments
                 .read()
                 .await
@@ -247,14 +297,14 @@ impl ByobExecutor for ByobComputeExecutor {
                     },
                     |deployment| Ok(deployment.to_response()),
                 )
-        })
+        }
     }
 
     fn stop_deployment(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move {
             info!("🛑 Stopping deployment: {}", deployment_id);
 
             // Cancel background health monitor for this deployment
@@ -329,14 +379,13 @@ impl ByobExecutor for ByobComputeExecutor {
             }
 
             Ok(())
-        })
+        }
     }
 
     fn list_deployments(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Vec<ByobDeploymentResponse>>> + Send + '_>>
-    {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<Vec<ByobDeploymentResponse>>> + Send + '_ {
+        async move {
             let responses = self
                 .active_deployments
                 .read()
@@ -356,14 +405,14 @@ impl ByobExecutor for ByobComputeExecutor {
                 .collect();
 
             Ok(responses)
-        })
+        }
     }
 
     fn get_resource_usage(
         &self,
         deployment_id: Uuid,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ResourceUsage>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ResourceUsage>> + Send + '_ {
+        async move {
             // Refresh usage metrics before returning so callers always see current stats.
             self.update_resource_usage(deployment_id).await?;
 
@@ -379,16 +428,18 @@ impl ByobExecutor for ByobComputeExecutor {
                     },
                     |deployment| Ok(deployment.resource_usage.clone()),
                 )
-        })
+        }
     }
 }
 
 /// Create a default BYOB compute executor
-pub fn create_byob_executor(runtime_engine: Arc<dyn RuntimeEngine>) -> Arc<dyn ByobExecutor> {
-    Arc::new(ByobComputeExecutor::new(
+pub fn create_byob_executor<E: RuntimeEngine + 'static>(
+    runtime_engine: Arc<E>,
+) -> Arc<ByobExecutorDispatch<E>> {
+    Arc::new(ByobExecutorDispatch::Compute(ByobComputeExecutor::new(
         runtime_engine,
         ByobExecutorConfig::default(),
-    ))
+    )))
 }
 
 #[cfg(test)]

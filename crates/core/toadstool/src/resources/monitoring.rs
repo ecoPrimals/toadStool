@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
@@ -39,15 +38,16 @@ pub trait ResourceMonitor: Send + Sync {
     fn get_metrics(
         &self,
         workload_id: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_;
 
     /// Get system resource availability
     fn get_system_resources(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>>;
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_;
 }
 
 /// Real system resource monitor using toadstool-sysmon (pure Rust /proc parsing).
+#[derive(Clone)]
 pub struct SystemResourceMonitor {
     workload_metrics: Arc<RwLock<HashMap<String, RuntimeMetrics>>>,
 }
@@ -305,20 +305,20 @@ impl ResourceMonitor for SystemResourceMonitor {
     fn get_metrics(
         &self,
         workload_id: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         let workload_metrics = self.workload_metrics.clone();
         let workload_id = workload_id.to_string();
 
-        Box::pin(async move {
+        async move {
             let metrics_map = workload_metrics.read().await;
             Ok(metrics_map.get(&workload_id).cloned().unwrap_or_default())
-        })
+        }
     }
 
     fn get_system_resources(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_ {
+        async {
             let cpu_usage_percent = self.get_cpu_usage().await?;
             let total_cpu_cores = toadstool_sysmon::cpu_count();
             #[expect(
@@ -361,7 +361,218 @@ impl ResourceMonitor for SystemResourceMonitor {
                 total_cpu_cores,
                 total_memory_bytes: mem.total,
             })
-        })
+        }
+    }
+}
+
+/// Test-only monitor behavior (mirrors `toadstool_testing::MockResourceMonitor` presets).
+#[cfg(any(test, feature = "test-mocks"))]
+#[derive(Debug, Clone, Copy)]
+pub enum TestResourceMonitorBehavior {
+    /// Successful paths with moderate resource readings.
+    Successful,
+    /// High usage / constrained resources.
+    LimitViolations,
+    /// All operations fail with resource errors.
+    MonitoringFailure,
+}
+
+/// Lightweight resource monitor for tests and the `test-mocks` feature.
+#[cfg(any(test, feature = "test-mocks"))]
+#[derive(Debug, Clone)]
+pub struct TestResourceMonitor {
+    behavior: TestResourceMonitorBehavior,
+}
+
+#[cfg(any(test, feature = "test-mocks"))]
+impl TestResourceMonitor {
+    /// Successful monitor (default test readings).
+    #[must_use]
+    pub fn successful() -> Self {
+        Self {
+            behavior: TestResourceMonitorBehavior::Successful,
+        }
+    }
+
+    /// Monitor reporting constrained resources.
+    #[must_use]
+    pub fn limit_violations() -> Self {
+        Self {
+            behavior: TestResourceMonitorBehavior::LimitViolations,
+        }
+    }
+
+    /// Monitor that fails all operations.
+    #[must_use]
+    pub fn monitoring_failure() -> Self {
+        Self {
+            behavior: TestResourceMonitorBehavior::MonitoringFailure,
+        }
+    }
+}
+
+#[cfg(any(test, feature = "test-mocks"))]
+impl ResourceMonitor for TestResourceMonitor {
+    fn start_monitoring(&self, _workload_id: &str) -> ToadStoolResult<()> {
+        match self.behavior {
+            TestResourceMonitorBehavior::MonitoringFailure => Err(crate::ToadStoolError::resource(
+                "Failed to start monitoring",
+            )),
+            _ => Ok(()),
+        }
+    }
+
+    fn stop_monitoring(&self, _workload_id: &str) -> ToadStoolResult<()> {
+        match self.behavior {
+            TestResourceMonitorBehavior::MonitoringFailure => {
+                Err(crate::ToadStoolError::resource("Failed to stop monitoring"))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn get_metrics(
+        &self,
+        workload_id: &str,
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        let behavior = self.behavior;
+        let workload_id = workload_id.to_string();
+        async move {
+            match behavior {
+                TestResourceMonitorBehavior::MonitoringFailure => {
+                    Err(crate::ToadStoolError::resource("Failed to get metrics"))
+                }
+                TestResourceMonitorBehavior::LimitViolations => {
+                    let mut metrics = RuntimeMetrics::default();
+                    metrics.cpu.usage_percent = 95.0;
+                    metrics.memory.used_bytes = 1024 * 1024 * 1024 * 7;
+                    Ok(metrics)
+                }
+                TestResourceMonitorBehavior::Successful => {
+                    let mut metrics = RuntimeMetrics::default();
+                    metrics.cpu.usage_percent = 42.0;
+                    let _ = workload_id;
+                    Ok(metrics)
+                }
+            }
+        }
+    }
+
+    fn get_system_resources(
+        &self,
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_ {
+        let behavior = self.behavior;
+        async move {
+            match behavior {
+                TestResourceMonitorBehavior::MonitoringFailure => Err(
+                    crate::ToadStoolError::resource("Failed to get system resources"),
+                ),
+                TestResourceMonitorBehavior::LimitViolations => Ok(SystemResources {
+                    available_cpu_cores: 2.0,
+                    available_memory_bytes: 4 * 1024 * 1024 * 1024,
+                    available_storage_bytes: 100 * 1024 * 1024 * 1024,
+                    available_network_bandwidth: Some(100_000_000),
+                    available_gpu_units: 0,
+                    cpu_usage_percent: 75.0,
+                    memory_usage_percent: 87.5,
+                    total_cpu_cores: 8,
+                    total_memory_bytes: 8 * 1024 * 1024 * 1024,
+                }),
+                TestResourceMonitorBehavior::Successful => Ok(SystemResources {
+                    available_cpu_cores: 8.0,
+                    available_memory_bytes: 16 * 1024 * 1024 * 1024,
+                    available_storage_bytes: 1024 * 1024 * 1024 * 1024,
+                    available_network_bandwidth: Some(1_000_000_000),
+                    available_gpu_units: 1,
+                    cpu_usage_percent: 25.0,
+                    memory_usage_percent: 50.0,
+                    total_cpu_cores: 16,
+                    total_memory_bytes: 32 * 1024 * 1024 * 1024,
+                }),
+            }
+        }
+    }
+}
+
+/// Enum dispatch for [`ResourceMonitor`] (replaces `dyn ResourceMonitor` at type-erased boundaries).
+#[derive(Clone)]
+pub enum ResourceMonitorDispatch {
+    /// Live system monitor.
+    System(SystemResourceMonitor),
+    /// Test monitor (`test-mocks` / unit tests).
+    #[cfg(any(test, feature = "test-mocks"))]
+    Test(TestResourceMonitor),
+}
+
+impl std::fmt::Debug for ResourceMonitorDispatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ResourceMonitorDispatch::System(_) => f.write_str("ResourceMonitorDispatch::System"),
+            #[cfg(any(test, feature = "test-mocks"))]
+            ResourceMonitorDispatch::Test(t) => f
+                .debug_tuple("ResourceMonitorDispatch::Test")
+                .field(t)
+                .finish(),
+        }
+    }
+}
+
+impl ResourceMonitor for ResourceMonitorDispatch {
+    fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
+        match self {
+            Self::System(m) => m.start_monitoring(workload_id),
+            #[cfg(any(test, feature = "test-mocks"))]
+            Self::Test(t) => t.start_monitoring(workload_id),
+        }
+    }
+
+    fn stop_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
+        match self {
+            Self::System(m) => m.stop_monitoring(workload_id),
+            #[cfg(any(test, feature = "test-mocks"))]
+            Self::Test(t) => t.stop_monitoring(workload_id),
+        }
+    }
+
+    fn get_metrics(
+        &self,
+        workload_id: &str,
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        let dispatch = self.clone();
+        let workload_id = workload_id.to_string();
+        async move {
+            match &dispatch {
+                ResourceMonitorDispatch::System(m) => m.get_metrics(&workload_id).await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                ResourceMonitorDispatch::Test(t) => t.get_metrics(&workload_id).await,
+            }
+        }
+    }
+
+    fn get_system_resources(
+        &self,
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_ {
+        let dispatch = self.clone();
+        async move {
+            match &dispatch {
+                ResourceMonitorDispatch::System(m) => m.get_system_resources().await,
+                #[cfg(any(test, feature = "test-mocks"))]
+                ResourceMonitorDispatch::Test(t) => t.get_system_resources().await,
+            }
+        }
+    }
+}
+
+impl From<SystemResourceMonitor> for ResourceMonitorDispatch {
+    fn from(m: SystemResourceMonitor) -> Self {
+        Self::System(m)
+    }
+}
+
+#[cfg(any(test, feature = "test-mocks"))]
+impl From<TestResourceMonitor> for ResourceMonitorDispatch {
+    fn from(m: TestResourceMonitor) -> Self {
+        Self::Test(m)
     }
 }
 

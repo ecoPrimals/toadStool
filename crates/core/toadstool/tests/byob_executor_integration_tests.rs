@@ -8,7 +8,6 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::byob::{
@@ -47,16 +46,16 @@ impl RuntimeEngine for MockRuntimeEngine {
     fn initialize(
         &mut self,
         _config: RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move { Ok(()) }
     }
 
     fn execute(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
         let should_fail = self.should_fail;
-        Box::pin(async move {
+        async move {
             if should_fail {
                 Err(toadstool::ToadStoolError::execution(
                     "Mock execution failure".to_string(),
@@ -80,7 +79,7 @@ impl RuntimeEngine for MockRuntimeEngine {
                     warnings: Vec::new(),
                 })
             }
-        })
+        }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {
@@ -97,14 +96,12 @@ impl RuntimeEngine for MockRuntimeEngine {
         true
     }
 
-    fn get_metrics(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
-        Box::pin(async move { Ok(RuntimeMetrics::default()) })
+    fn get_metrics(&self) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+        async move { Ok(RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async move { Ok(()) }
     }
 }
 
@@ -271,7 +268,7 @@ fn test_byob_executor_config_serialization() {
 
 #[test]
 fn test_byob_executor_creation() {
-    let runtime_engine = Arc::new(MockRuntimeEngine::new()) as Arc<dyn RuntimeEngine>;
+    let runtime_engine = Arc::new(MockRuntimeEngine::new());
     let config = ByobExecutorConfig::default();
     let executor = ByobComputeExecutor::new(runtime_engine, config);
 
@@ -282,7 +279,7 @@ fn test_byob_executor_creation() {
 
 #[test]
 fn test_byob_executor_creation_with_custom_config() {
-    let runtime_engine = Arc::new(MockRuntimeEngine::new()) as Arc<dyn RuntimeEngine>;
+    let runtime_engine = Arc::new(MockRuntimeEngine::new());
     let config = ByobExecutorConfig {
         max_concurrent_deployments: 25,
         default_network_subnet: "172.16.0.0/12".to_string(),

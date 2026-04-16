@@ -7,7 +7,9 @@ use std::time::{Duration, SystemTime};
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
-use toadstool::{ExecutionStatus, ResourceMonitor, RuntimeEngine, RuntimeType};
+use toadstool::{ExecutionStatus, ResourceMonitorDispatch, RuntimeEngine, RuntimeType};
+
+use crate::runtime_engine_dispatch::RuntimeEngineDispatch;
 
 use crate::config::ServerConfig;
 
@@ -209,10 +211,9 @@ pub struct ClientInfo {
 }
 
 /// Server state container
-#[derive(Clone)]
-pub struct ServerState {
+pub struct ServerState<E: RuntimeEngine = RuntimeEngineDispatch> {
     /// Registered runtime engines
-    pub runtime_engines: Arc<RwLock<HashMap<RuntimeType, Box<dyn RuntimeEngine>>>>,
+    pub runtime_engines: Arc<RwLock<HashMap<RuntimeType, Arc<E>>>>,
 
     /// Active executions
     pub active_executions: Arc<RwLock<HashMap<Uuid, ActiveExecution>>>,
@@ -224,7 +225,7 @@ pub struct ServerState {
     pub config: ServerConfig,
 
     /// Resource monitor
-    pub resource_monitor: Arc<dyn ResourceMonitor>,
+    pub resource_monitor: Arc<ResourceMonitorDispatch>,
 
     /// Server statistics
     pub stats: Arc<RwLock<ServerStatistics>>,
@@ -232,6 +233,20 @@ pub struct ServerState {
     /// Capability provider for primal integration (optional)
     pub capability_provider:
         Option<Arc<toadstool_distributed::primal_capabilities::CapabilityProvider>>,
+}
+
+impl<E: RuntimeEngine> Clone for ServerState<E> {
+    fn clone(&self) -> Self {
+        Self {
+            runtime_engines: Arc::clone(&self.runtime_engines),
+            active_executions: Arc::clone(&self.active_executions),
+            event_broadcaster: self.event_broadcaster.clone(),
+            config: self.config.clone(),
+            resource_monitor: Arc::clone(&self.resource_monitor),
+            stats: Arc::clone(&self.stats),
+            capability_provider: self.capability_provider.clone(),
+        }
+    }
 }
 
 /// Server statistics tracking

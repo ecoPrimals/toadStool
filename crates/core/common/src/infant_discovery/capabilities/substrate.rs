@@ -72,6 +72,9 @@ impl DetectedSubstrate {
 /// Substrate detection trait - implemented by specific detectors
 ///
 /// Migrated from `async_trait` to native async for zero-cost abstraction.
+///
+/// Async methods return a pinned boxed future, not `impl Future` (RPITIT), so the trait remains
+/// object-safe for `dyn SubstrateDetector` in the discovery engine.
 pub trait SubstrateDetector: Send + Sync {
     /// Try to detect this substrate type
     fn detect(

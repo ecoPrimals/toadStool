@@ -29,6 +29,7 @@ use toadstool::{
     execution::ExecutionRequest,
     runtime::{RuntimeOrchestrator, RuntimeSelectionStrategy},
 };
+use toadstool_server::RuntimeEngineDispatch;
 
 // Re-export public types for external consumers
 pub use spec::{ExecutionSpec, ResourceSpec, SecuritySpec, WorkloadFile, WorkloadMetadata};
@@ -73,7 +74,9 @@ pub async fn execute_workload(
 
     // Create runtime orchestrator
     info!("🔧 Initializing runtime orchestrator");
-    let orchestrator = RuntimeOrchestrator::new(RuntimeSelectionStrategy::FirstAvailable);
+    let orchestrator = RuntimeOrchestrator::<RuntimeEngineDispatch>::create(
+        RuntimeSelectionStrategy::FirstAvailable,
+    );
 
     // Register available runtime engines
     register_runtime_engines(&orchestrator).await?;

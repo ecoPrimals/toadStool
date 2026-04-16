@@ -23,8 +23,6 @@
 //! Not just splitting a large file, but **improving architecture**.
 
 use crate::types::*;
-use std::future::Future;
-use std::pin::Pin;
 use std::time::Instant;
 
 #[cfg(target_os = "linux")]
@@ -161,68 +159,61 @@ impl ComputeUnit for CpuComputeUnit {
         &self.name
     }
 
-    fn execute<'a>(
-        &'a self,
-        workload: Workload,
-    ) -> Pin<Box<dyn Future<Output = Result<Output, ComputeError>> + Send + 'a>> {
-        Box::pin(async move {
-            let start = Instant::now();
+    async fn execute(&self, workload: Workload) -> Result<Output, ComputeError> {
+        let start = Instant::now();
 
-            // Dispatch to appropriate operation module based on pattern
-            let data = match workload.operation {
-                // Basic operations (embarrassingly parallel)
-                OperationType::Map => basic_ops::execute_map(workload)?,
-                OperationType::Filter => basic_ops::execute_filter(workload)?,
-                OperationType::Reduce => basic_ops::execute_reduce(workload)?,
-                OperationType::Scan => basic_ops::execute_scan(workload)?,
+        // Dispatch to appropriate operation module based on pattern
+        let data = match workload.operation {
+            // Basic operations (embarrassingly parallel)
+            OperationType::Map => basic_ops::execute_map(workload)?,
+            OperationType::Filter => basic_ops::execute_filter(workload)?,
+            OperationType::Reduce => basic_ops::execute_reduce(workload)?,
+            OperationType::Scan => basic_ops::execute_scan(workload)?,
 
-                // Vector operations (memory-bound)
-                OperationType::DotProduct => vector_ops::execute_dot_product(workload)?,
-                OperationType::ElementwiseBinary => {
-                    vector_ops::execute_elementwise_binary(workload)?
-                }
-                OperationType::Gather => vector_ops::execute_gather(workload)?,
-                OperationType::Scatter => vector_ops::execute_scatter(workload)?,
+            // Vector operations (memory-bound)
+            OperationType::DotProduct => vector_ops::execute_dot_product(workload)?,
+            OperationType::ElementwiseBinary => vector_ops::execute_elementwise_binary(workload)?,
+            OperationType::Gather => vector_ops::execute_gather(workload)?,
+            OperationType::Scatter => vector_ops::execute_scatter(workload)?,
 
-                // Transform operations (layout transformations)
-                OperationType::Transpose => transform_ops::execute_transpose(workload)?,
+            // Transform operations (layout transformations)
+            OperationType::Transpose => transform_ops::execute_transpose(workload)?,
 
-                // Activation operations (element-wise, SIMD-friendly)
-                OperationType::Softmax => activation_ops::execute_softmax(workload)?,
-                OperationType::ReLU => activation_ops::execute_relu(workload)?,
-                OperationType::GELU => activation_ops::execute_gelu(workload)?,
-                OperationType::Tanh => activation_ops::execute_tanh(workload)?,
-                OperationType::Sigmoid => activation_ops::execute_sigmoid(workload)?,
-                OperationType::Dropout => activation_ops::execute_dropout(workload),
+            // Activation operations (element-wise, SIMD-friendly)
+            OperationType::Softmax => activation_ops::execute_softmax(workload)?,
+            OperationType::ReLU => activation_ops::execute_relu(workload)?,
+            OperationType::GELU => activation_ops::execute_gelu(workload)?,
+            OperationType::Tanh => activation_ops::execute_tanh(workload)?,
+            OperationType::Sigmoid => activation_ops::execute_sigmoid(workload)?,
+            OperationType::Dropout => activation_ops::execute_dropout(workload),
 
-                // Normalization operations (reduce-map-reduce pattern)
-                OperationType::LayerNorm => normalization_ops::execute_layernorm(workload)?,
-                OperationType::BatchNorm => normalization_ops::execute_batchnorm(workload)?,
+            // Normalization operations (reduce-map-reduce pattern)
+            OperationType::LayerNorm => normalization_ops::execute_layernorm(workload)?,
+            OperationType::BatchNorm => normalization_ops::execute_batchnorm(workload)?,
 
-                // Tensor operations (compute-intensive, tiled)
-                OperationType::MatMul => tensor_ops::execute_matmul(workload)?,
-                OperationType::Conv => tensor_ops::execute_conv(workload)?,
-                OperationType::MaxPool2D => tensor_ops::execute_maxpool2d(workload)?,
-                OperationType::AvgPool2D => tensor_ops::execute_avgpool2d(workload)?,
+            // Tensor operations (compute-intensive, tiled)
+            OperationType::MatMul => tensor_ops::execute_matmul(workload)?,
+            OperationType::Conv => tensor_ops::execute_conv(workload)?,
+            OperationType::MaxPool2D => tensor_ops::execute_maxpool2d(workload)?,
+            OperationType::AvgPool2D => tensor_ops::execute_avgpool2d(workload)?,
 
-                OperationType::Custom => {
-                    return Err(ComputeError::ExecutionFailed(
-                        "Custom operations not yet implemented".to_string(),
-                    ));
-                }
-            };
+            OperationType::Custom => {
+                return Err(ComputeError::ExecutionFailed(
+                    "Custom operations not yet implemented".to_string(),
+                ));
+            }
+        };
 
-            let duration = start.elapsed();
+        let duration = start.elapsed();
 
-            Ok(Output {
-                data,
-                metadata: OutputMetadata {
-                    unit_name: self.name.clone(),
-                    unit_type: ComputeUnitType::Cpu,
-                    duration,
-                    power_consumed_mw: None, // Can't measure easily on CPU
-                },
-            })
+        Ok(Output {
+            data,
+            metadata: OutputMetadata {
+                unit_name: self.name.clone(),
+                unit_type: ComputeUnitType::Cpu,
+                duration,
+                power_consumed_mw: None, // Can't measure easily on CPU
+            },
         })
     }
 }

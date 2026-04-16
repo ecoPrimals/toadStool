@@ -4,13 +4,13 @@
 
 //! Migration execution and state transfer logic.
 
-use crate::cloud_provider_trait::WorkloadLocation;
+use crate::cloud_provider_trait::{CloudProvider, WorkloadLocation};
 
 use super::MigrationCoordinator;
 use crate::ToadStoolResult;
 use tracing::info;
 
-impl MigrationCoordinator {
+impl<P: CloudProvider> MigrationCoordinator<P> {
     /// Migrate workload based on recommendation
     ///
     /// # Errors

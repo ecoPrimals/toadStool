@@ -7,12 +7,14 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use toadstool_server::StandaloneExecutor;
 use toadstool_server::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest};
+use toadstool_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 
 fn test_handler() -> JsonRpcHandler {
     JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         "test-s162-hw".to_string(),
         None,
     )

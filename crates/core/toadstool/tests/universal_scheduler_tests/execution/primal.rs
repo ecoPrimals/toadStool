@@ -7,7 +7,8 @@ use std::time::Duration;
 use toadstool::execution::ExecutionStatus;
 use toadstool::resources::ResourceRequirements;
 use toadstool::universal::{
-    JobPriority, UniversalJob, UniversalJobType, UniversalPrimalRegistry, UniversalScheduler,
+    JobPriority, UniversalJob, UniversalJobType, UniversalPrimalProviderDispatch,
+    UniversalPrimalRegistry, UniversalScheduler,
 };
 use uuid::Uuid;
 
@@ -16,7 +17,7 @@ use super::fixtures::{PrimalRouteErrorProvider, SuccessWithOutputMockProvider, t
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_primal_with_provider_success() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<SuccessWithOutputMockProvider>::new_typed());
     let provider = Arc::new(SuccessWithOutputMockProvider {
         instance_id: "compute-1".to_string(),
         context: test_ctx(),
@@ -55,7 +56,7 @@ async fn test_execute_primal_with_provider_success() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_primal_route_failure() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<PrimalRouteErrorProvider>::new_typed());
     let provider = Arc::new(PrimalRouteErrorProvider {
         instance_id: "compute-err".to_string(),
         context: test_ctx(),
@@ -88,7 +89,7 @@ async fn test_execute_primal_route_failure() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_primal_no_provider() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<UniversalPrimalProviderDispatch>::new());
     let scheduler = UniversalScheduler::new(registry).await.unwrap();
     let job = UniversalJob {
         id: Uuid::new_v4(),
@@ -115,7 +116,7 @@ async fn test_execute_primal_no_provider() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_execute_primal_no_provider_with_available_list() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<SuccessWithOutputMockProvider>::new_typed());
     let provider = Arc::new(SuccessWithOutputMockProvider {
         instance_id: "other-1".to_string(),
         context: test_ctx(),

@@ -92,6 +92,7 @@
 
 // Module declarations
 pub mod backend;
+pub mod backend_dispatch;
 pub mod buffer;
 pub mod manager;
 pub mod types;
@@ -101,6 +102,7 @@ pub mod backends;
 
 // Re-exports for convenience
 pub use backend::UnifiedMemoryBackend;
+pub use backend_dispatch::UnifiedMemoryBackendDispatch;
 pub use buffer::UnifiedBuffer;
 pub use manager::UniversalUnifiedMemory;
 pub use types::*;

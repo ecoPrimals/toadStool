@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::marker::PhantomData;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -7,14 +8,14 @@ use crate::{ToadStoolError, ToadStoolResult};
 
 use super::capability::CryptoCapability;
 use super::config::{EncryptedInput, EncryptedOutput, EncryptionConfig};
-use super::provider::{CryptoProvider, CryptoProviderRegistry};
+use super::provider::{CryptoProvider, CryptoProviderRegistry, NoopCryptoProvider};
 use super::security::SecurityLevel;
 use super::types::EncryptionKey;
 
 /// Encryption context for an execution
 ///
 /// **Design**: Holds encryption state for an execution lifecycle
-pub struct EncryptionContext {
+pub struct EncryptionContext<P: CryptoProvider = NoopCryptoProvider> {
     /// Execution identifier
     execution_id: Uuid,
 
@@ -22,13 +23,15 @@ pub struct EncryptionContext {
     config: EncryptionConfig,
 
     /// Discovered crypto provider (runtime discovery)
-    provider: Option<Arc<dyn CryptoProvider>>,
+    provider: Option<Arc<P>>,
 
     /// Active encryption key
     active_key: Option<EncryptionKey>,
+
+    _marker: PhantomData<P>,
 }
 
-impl EncryptionContext {
+impl<P: CryptoProvider> EncryptionContext<P> {
     /// Create new encryption context
     ///
     /// **Design**: No provider passed in - discovered at runtime
@@ -38,6 +41,7 @@ impl EncryptionContext {
             config,
             provider: None,
             active_key: None,
+            _marker: PhantomData,
         }
     }
 
@@ -50,7 +54,7 @@ impl EncryptionContext {
     /// Returns error if provider lookup fails.
     pub async fn discover_provider(
         &mut self,
-        registry: &CryptoProviderRegistry,
+        registry: &CryptoProviderRegistry<P>,
     ) -> ToadStoolResult<()> {
         let capability = CryptoCapability {
             algorithms: self.config.preferred_algorithms.clone(),
@@ -142,7 +146,7 @@ impl EncryptionContext {
     async fn get_or_fetch_key(
         &mut self,
         key_id: &str,
-        provider: &dyn CryptoProvider,
+        provider: &P,
     ) -> ToadStoolResult<EncryptionKey> {
         if let Some(ref key) = self.active_key {
             if key.id == key_id {
@@ -166,7 +170,7 @@ impl EncryptionContext {
     }
 }
 
-impl std::fmt::Debug for EncryptionContext {
+impl<P: CryptoProvider> std::fmt::Debug for EncryptionContext<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EncryptionContext")
             .field("execution_id", &self.execution_id)

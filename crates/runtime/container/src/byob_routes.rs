@@ -23,46 +23,50 @@ use toadstool::{
 };
 
 /// HTTP API for BYOB operations (router factory)
-pub struct ByobApi {
-    executor: Arc<dyn ByobExecutor>,
+pub struct ByobApi<E: ByobExecutor + Send + Sync + 'static> {
+    executor: Arc<E>,
 }
 
-impl ByobApi {
+impl<E: ByobExecutor + Send + Sync + 'static> ByobApi<E> {
     /// Create a new BYOB API
-    pub fn new(executor: Arc<dyn ByobExecutor>) -> Self {
+    pub fn new(executor: Arc<E>) -> Self {
         Self { executor }
     }
 
     /// Create router for BYOB API with state already applied.
+    ///
+    /// After `with_state`, Axum treats the router as having no remaining state parameter (`Router<()>`),
+    /// so it can be passed to `into_make_service` or `axum::serve` like the merge pattern in
+    /// `byob_server`.
     pub fn router(self) -> Router {
         Self::routes().with_state(self.executor)
     }
 
     /// Build BYOB route definitions without applying state.
-    /// The caller is responsible for providing `Arc<dyn ByobExecutor>` via `with_state`.
-    pub fn routes() -> Router<Arc<dyn ByobExecutor>> {
+    /// The caller is responsible for providing `Arc<E>` via `with_state`.
+    pub fn routes() -> Router<Arc<E>> {
         Router::new()
-            .route("/byob/deploy", post(deploy_biome))
-            .route("/byob/deployments", get(list_deployments))
+            .route("/byob/deploy", post(deploy_biome::<E>))
+            .route("/byob/deployments", get(list_deployments::<E>))
             .route(
                 "/byob/deployments/:deployment_id",
-                get(get_deployment_status),
+                get(get_deployment_status::<E>),
             )
             .route(
                 "/byob/deployments/:deployment_id/stop",
-                post(stop_deployment),
+                post(stop_deployment::<E>),
             )
             .route(
                 "/byob/deployments/:deployment_id/usage",
-                get(get_resource_usage),
+                get(get_resource_usage::<E>),
             )
             .route("/byob/health", get(health_check))
     }
 }
 
 /// Deploy a team biome
-async fn deploy_biome(
-    State(executor): State<Arc<dyn ByobExecutor>>,
+async fn deploy_biome<E: ByobExecutor + Send + Sync + 'static>(
+    State(executor): State<Arc<E>>,
     Json(request): Json<ByobDeploymentRequest>,
 ) -> Result<Json<ByobDeploymentResponse>, ByobApiError> {
     info!(
@@ -86,8 +90,8 @@ async fn deploy_biome(
 }
 
 /// List all active deployments
-async fn list_deployments(
-    State(executor): State<Arc<dyn ByobExecutor>>,
+async fn list_deployments<E: ByobExecutor + Send + Sync + 'static>(
+    State(executor): State<Arc<E>>,
 ) -> Result<Json<Vec<ByobDeploymentResponse>>, ByobApiError> {
     match executor.list_deployments().await {
         Ok(deployments) => Ok(Json(deployments)),
@@ -99,8 +103,8 @@ async fn list_deployments(
 }
 
 /// Get deployment status
-async fn get_deployment_status(
-    State(executor): State<Arc<dyn ByobExecutor>>,
+async fn get_deployment_status<E: ByobExecutor + Send + Sync + 'static>(
+    State(executor): State<Arc<E>>,
     Path(deployment_id): Path<Uuid>,
 ) -> Result<Json<ByobDeploymentResponse>, ByobApiError> {
     match executor.get_deployment_status(deployment_id).await {
@@ -113,8 +117,8 @@ async fn get_deployment_status(
 }
 
 /// Stop a deployment
-async fn stop_deployment(
-    State(executor): State<Arc<dyn ByobExecutor>>,
+async fn stop_deployment<E: ByobExecutor + Send + Sync + 'static>(
+    State(executor): State<Arc<E>>,
     Path(deployment_id): Path<Uuid>,
 ) -> Result<Json<StopDeploymentResponse>, ByobApiError> {
     match executor.stop_deployment(deployment_id).await {
@@ -130,8 +134,8 @@ async fn stop_deployment(
 }
 
 /// Get resource usage for a deployment
-async fn get_resource_usage(
-    State(executor): State<Arc<dyn ByobExecutor>>,
+async fn get_resource_usage<E: ByobExecutor + Send + Sync + 'static>(
+    State(executor): State<Arc<E>>,
     Path(deployment_id): Path<Uuid>,
 ) -> Result<Json<ResourceUsage>, ByobApiError> {
     match executor.get_resource_usage(deployment_id).await {

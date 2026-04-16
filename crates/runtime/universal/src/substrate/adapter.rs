@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // ADAPTER: ComputeSubstrate → ComputeUnit
 
+use super::buffer::BufferOperation;
+use super::capabilities::SubstrateCapabilities;
+use super::compute_substrate::ComputeSubstrate;
+use super::substrate_kind::SubstrateType;
 use crate::error::SubstrateError;
 use crate::types::{
     Capabilities, ComputeError, ComputeUnit, ComputeUnitType, DataType, ExecutionModel,
     LatencyProfile, OperationType, Output, OutputMetadata, Parallelism, PowerProfile, Workload,
     WorkloadData,
 };
-use std::future::Future;
-use std::pin::Pin;
-
-use super::buffer::BufferOperation;
-use super::capabilities::SubstrateCapabilities;
-use super::compute_substrate::ComputeSubstrate;
-use super::substrate_kind::SubstrateType;
 
 /// Adapter to use a `ComputeSubstrate` as a `ComputeUnit`
 ///
@@ -99,33 +96,28 @@ impl<S: ComputeSubstrate> ComputeUnit for SubstrateAdapter<S> {
         self.substrate.name()
     }
 
-    fn execute<'a>(
-        &'a self,
-        workload: Workload,
-    ) -> Pin<Box<dyn Future<Output = Result<Output, ComputeError>> + Send + 'a>> {
-        Box::pin(async move {
-            // Convert Workload → BufferOperation (consumes workload for zero-copy)
-            let buffer_op = self.convert_workload(workload)?;
+    async fn execute(&self, workload: Workload) -> Result<Output, ComputeError> {
+        // Convert Workload → BufferOperation (consumes workload for zero-copy)
+        let buffer_op = self.convert_workload(workload)?;
 
-            // Execute on substrate
-            let start = std::time::Instant::now();
-            let output = self
-                .substrate
-                .execute_buffer_op(buffer_op)
-                .await
-                .map_err(|e: SubstrateError| ComputeError::ExecutionFailed(e.to_string()))?;
-            let duration = start.elapsed();
+        // Execute on substrate
+        let start = std::time::Instant::now();
+        let output = self
+            .substrate
+            .execute_buffer_op(buffer_op)
+            .await
+            .map_err(|e: SubstrateError| ComputeError::ExecutionFailed(e.to_string()))?;
+        let duration = start.elapsed();
 
-            // Convert BufferOutput → Output
-            Ok(Output {
-                data: WorkloadData::Custom(output.data),
-                metadata: OutputMetadata {
-                    unit_name: self.substrate.name().to_string(),
-                    unit_type: self.capabilities.unit_type,
-                    duration,
-                    power_consumed_mw: output.metadata.power_consumed_mw,
-                },
-            })
+        // Convert BufferOutput → Output
+        Ok(Output {
+            data: WorkloadData::Custom(output.data),
+            metadata: OutputMetadata {
+                unit_name: self.substrate.name().to_string(),
+                unit_type: self.capabilities.unit_type,
+                duration,
+                power_consumed_mw: output.metadata.power_consumed_mw,
+            },
         })
     }
 }

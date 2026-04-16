@@ -35,7 +35,7 @@ fn create_test_state() -> ServerState {
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+        resource_monitor: Arc::new(MockResourceMonitor::new_successful().into_dispatch()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }
@@ -50,7 +50,7 @@ fn create_test_state_with_config(config: ServerConfig) -> ServerState {
         active_executions: Arc::new(RwLock::new(HashMap::new())),
         event_broadcaster,
         config,
-        resource_monitor: Arc::new(MockResourceMonitor::new_successful()),
+        resource_monitor: Arc::new(MockResourceMonitor::new_successful().into_dispatch()),
         stats: Arc::new(RwLock::new(ServerStatistics::default())),
         capability_provider: None,
     }
@@ -256,7 +256,7 @@ mod background_services_tests {
     async fn test_background_services_with_successful_monitor() {
         let state = create_test_state();
 
-        // The default state uses MockResourceMonitor::new_successful()
+        // The default state uses `MockResourceMonitor::new_successful().into_dispatch()`
         // This test verifies background services work with a successful monitor
         let mut event_receiver = state.event_broadcaster.subscribe();
 

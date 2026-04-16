@@ -8,7 +8,6 @@ use crate::byob::{
 };
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -108,17 +107,16 @@ impl RuntimeEngine for TestRuntimeEngine {
     fn initialize(
         &mut self,
         _config: crate::execution::RuntimeConfig,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    ) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 
     fn execute(
         &self,
         request: ExecutionRequest,
-    ) -> Pin<
-        Box<dyn Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_>,
-    > {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<crate::execution::ExecutionResponse>> + Send + '_
+    {
+        async move {
             Ok(crate::execution::ExecutionResponse {
                 execution_id: request.execution_id,
                 status: ExecutionStatus::Success,
@@ -128,7 +126,7 @@ impl RuntimeEngine for TestRuntimeEngine {
                 runtime_used: crate::execution::RuntimeType::Native,
                 warnings: vec![],
             })
-        })
+        }
     }
 
     fn get_capabilities(&self) -> crate::execution::RuntimeCapabilities {
@@ -147,17 +145,16 @@ impl RuntimeEngine for TestRuntimeEngine {
 
     fn get_metrics(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_>>
-    {
-        Box::pin(async { Ok(crate::resources::RuntimeMetrics::default()) })
+    ) -> impl Future<Output = ToadStoolResult<crate::resources::RuntimeMetrics>> + Send + '_ {
+        async { Ok(crate::resources::RuntimeMetrics::default()) }
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }
 
-pub fn create_test_runtime_engine() -> Arc<dyn RuntimeEngine> {
+pub fn create_test_runtime_engine() -> Arc<TestRuntimeEngine> {
     Arc::new(TestRuntimeEngine)
 }
 

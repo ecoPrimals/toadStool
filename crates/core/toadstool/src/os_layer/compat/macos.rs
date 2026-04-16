@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
-use std::pin::Pin;
 
 use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 use toadstool_common::error::SystemError;
@@ -84,8 +83,8 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
     fn execute_with_compatibility(
         &self,
         _request: ExecutionRequest,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
+        async move {
             if !cfg!(target_os = "macos") {
                 return Err(SystemError::NotSupported {
                     feature: "macos_compat_layer".into(),
@@ -94,23 +93,23 @@ impl CompatibilityLayer for MacOSCompatibilityLayer {
                 .into());
             }
             Ok(ExecutionResponse::default())
-        })
+        }
     }
 
-    fn initialize(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        if !cfg!(target_os = "macos") {
-            return Box::pin(async move {
-                Err(SystemError::NotSupported {
+    fn initialize(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async {
+            if !cfg!(target_os = "macos") {
+                return Err(SystemError::NotSupported {
                     feature: "macos_compat_layer".into(),
                     reason: "MacOSCompatibilityLayer requires target_os = macos. Current platform is not macOS.".into(),
                 }
-                .into())
-            });
+                .into());
+            }
+            Ok(())
         }
-        Box::pin(async move { Ok(()) })
     }
 
-    fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
-        Box::pin(async move { Ok(()) })
+    fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
+        async { Ok(()) }
     }
 }

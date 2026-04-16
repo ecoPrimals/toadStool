@@ -22,6 +22,7 @@ use std::time::SystemTime;
 use toadstool::error::ToadStoolResult;
 
 use super::permissions::SecurityProviderPermission;
+use crate::security_provider::SecurityProviderDispatch;
 use crate::security_provider::provider::SecurityProvider;
 use crate::security_provider::types::{
     PermissionScope as ProviderPermissionScope, ProviderMetadata,
@@ -34,7 +35,7 @@ use crate::security_provider::types::{
 /// **Deep Debt**: Uses Universal Adapter to discover security provider (no hardcoded primal)
 pub struct SecurityPermissionValidator {
     /// Security provider (discovered at runtime via Universal Adapter)
-    security_provider: Option<Arc<dyn SecurityProvider>>,
+    security_provider: Option<Arc<SecurityProviderDispatch>>,
 
     /// Security provider public keys for permission verification (fallback)
     security_provider_keys: HashMap<String, SecurityPublicKey>,
@@ -71,7 +72,7 @@ impl SecurityPermissionValidator {
     /// Discover security provider via Universal Adapter
     ///
     /// **Deep Debt**: Runtime discovery, not hardcoded!
-    async fn discover_security_provider() -> Option<Arc<dyn SecurityProvider>> {
+    async fn discover_security_provider() -> Option<Arc<SecurityProviderDispatch>> {
         // Try to discover security provider via Universal Adapter
         use toadstool_common::universal_adapter::{
             CapabilityType, SecurityFeature, TrustLevel, UniversalAdapter,

@@ -8,7 +8,9 @@ mod types;
 mod tests;
 
 // Re-export all public types for backward compatibility
-pub use monitoring::{ResourceMonitor, SystemResourceMonitor};
+#[cfg(any(test, feature = "test-mocks"))]
+pub use monitoring::TestResourceMonitor;
+pub use monitoring::{ResourceMonitor, ResourceMonitorDispatch, SystemResourceMonitor};
 pub use types::{
     CpuLimits, CpuMetrics, CpuRequirements, GpuMetrics, GpuRequirements, LoadAverages,
     MemoryLimits, MemoryMetrics, MemoryRequirements, NetworkLimits, NetworkMetrics,

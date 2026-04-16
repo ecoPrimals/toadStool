@@ -10,8 +10,6 @@ use crate::universal::{
     PrecisionCapabilities, UniversalComputeResource, UniversalKernel, UniversalWorkload,
     WorkloadResult,
 };
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -219,7 +217,6 @@ impl CpuComputeResource {
     }
 }
 
-// NOTE(async-dyn): `Pin<Box<dyn Future>>` for object-safe async methods on trait objects.
 impl UniversalComputeResource for CpuComputeResource {
     fn capabilities(&self) -> &ComputeCapabilities {
         &self.capabilities
@@ -229,25 +226,20 @@ impl UniversalComputeResource for CpuComputeResource {
         "cpu-main"
     }
 
-    fn create_context(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<Box<dyn ComputeContext>>> + Send + '_>> {
+    async fn create_context(&self) -> ToadStoolResult<ComputeContextDispatch> {
         let thread_pool = Arc::clone(&self.thread_pool);
         let utilization = Arc::clone(&self.utilization);
         let resource_id = self.resource_id().to_string();
-        Box::pin(async move {
-            Ok(Box::new(CpuComputeContext {
-                context_id: Uuid::new_v4(),
-                resource_id,
-                thread_pool,
-                utilization,
-            }) as Box<dyn ComputeContext>)
-        })
+        Ok(ComputeContextDispatch::Cpu(CpuComputeContext {
+            context_id: Uuid::new_v4(),
+            resource_id,
+            thread_pool,
+            utilization,
+        }))
     }
 
-    fn utilization(&self) -> Pin<Box<dyn Future<Output = f32> + Send + '_>> {
-        let utilization = Arc::clone(&self.utilization);
-        Box::pin(async move { *utilization.read().await })
+    async fn utilization(&self) -> f32 {
+        *self.utilization.read().await
     }
 
     #[expect(
@@ -276,14 +268,13 @@ impl UniversalComputeResource for CpuComputeResource {
 }
 
 /// CPU compute context
-struct CpuComputeContext {
+pub struct CpuComputeContext {
     context_id: Uuid,
     resource_id: String,
     thread_pool: Arc<rayon::ThreadPool>,
     utilization: Arc<RwLock<f32>>,
 }
 
-// NOTE(async-dyn): `Pin<Box<dyn Future>>` for object-safe async methods on trait objects.
 impl ComputeContext for CpuComputeContext {
     fn context_id(&self) -> Uuid {
         self.context_id
@@ -293,78 +284,71 @@ impl ComputeContext for CpuComputeContext {
         &self.resource_id
     }
 
-    fn execute<'a>(
-        &'a mut self,
-        workload: &'a UniversalWorkload,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<WorkloadResult>> + Send + 'a>> {
-        Box::pin(async move {
-            tracing::info!(
-                "🚀 Executing workload {} on CPU (REAL CPU PARALLEL EXECUTION)",
-                workload.id
-            );
+    async fn execute(&mut self, workload: &UniversalWorkload) -> ToadStoolResult<WorkloadResult> {
+        tracing::info!(
+            "🚀 Executing workload {} on CPU (REAL CPU PARALLEL EXECUTION)",
+            workload.id
+        );
 
-            let start_time = std::time::Instant::now();
+        let start_time = std::time::Instant::now();
 
-            // Update utilization
-            {
-                let mut util = self.utilization.write().await;
-                *util = 1.0; // Mark as busy
+        // Update utilization
+        {
+            let mut util = self.utilization.write().await;
+            *util = 1.0; // Mark as busy
+        }
+
+        // Execute based on kernel type
+        let result = match &workload.kernel {
+            UniversalKernel::Operation {
+                operation,
+                parameters,
+            } => {
+                self.execute_operation(operation, parameters, workload)
+                    .await
             }
-
-            // Execute based on kernel type
-            let result = match &workload.kernel {
-                UniversalKernel::Operation {
-                    operation,
-                    parameters,
-                } => {
-                    self.execute_operation(operation, parameters, workload)
-                        .await
-                }
-                UniversalKernel::Source { language, code, .. } => {
-                    self.execute_source(language, code, workload).await
-                }
-                _ => Err(ToadStoolError::runtime(
-                    "Kernel type not yet supported on CPU",
-                )),
-            };
-
-            // Update utilization
-            {
-                let mut util = self.utilization.write().await;
-                *util = 0.0; // Mark as idle
+            UniversalKernel::Source { language, code, .. } => {
+                self.execute_source(language, code, workload).await
             }
+            _ => Err(ToadStoolError::runtime(
+                "Kernel type not yet supported on CPU",
+            )),
+        };
 
-            let execution_time = start_time.elapsed();
+        // Update utilization
+        {
+            let mut util = self.utilization.write().await;
+            *util = 0.0; // Mark as idle
+        }
 
-            match result {
-                Ok(outputs) => {
-                    tracing::info!(
-                        "✅ Workload {} executed on CPU in {:?}",
-                        workload.id,
-                        execution_time
-                    );
+        let execution_time = start_time.elapsed();
 
-                    Ok(WorkloadResult {
-                        outputs,
-                        metrics: ExecutionMetrics {
-                            execution_time,
-                            memory_used: workload.requirements.memory_bytes,
-                            energy_joules: Some(execution_time.as_secs_f64() * 50.0), // ~50W CPU
-                            utilization: 1.0,
-                        },
-                        messages: vec![],
-                    })
-                }
-                Err(e) => Err(e),
+        match result {
+            Ok(outputs) => {
+                tracing::info!(
+                    "✅ Workload {} executed on CPU in {:?}",
+                    workload.id,
+                    execution_time
+                );
+
+                Ok(WorkloadResult {
+                    outputs,
+                    metrics: ExecutionMetrics {
+                        execution_time,
+                        memory_used: workload.requirements.memory_bytes,
+                        energy_joules: Some(execution_time.as_secs_f64() * 50.0), // ~50W CPU
+                        utilization: 1.0,
+                    },
+                    messages: vec![],
+                })
             }
-        })
+            Err(e) => Err(e),
+        }
     }
 
-    fn close(self: Box<Self>) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send>> {
-        Box::pin(async move {
-            tracing::info!("Closed CPU context {}", self.context_id);
-            Ok(())
-        })
+    async fn close(self: Box<Self>) -> ToadStoolResult<()> {
+        tracing::info!("Closed CPU context {}", self.context_id);
+        Ok(())
     }
 }
 
@@ -485,6 +469,83 @@ impl CpuComputeContext {
             _ => Err(ToadStoolError::runtime(format!(
                 "Language {language:?} not supported on CPU"
             ))),
+        }
+    }
+}
+
+/// Enum dispatch for [`UniversalComputeResource`](crate::universal::execution::UniversalComputeResource).
+pub enum UniversalComputeResourceDispatch {
+    /// CPU (Rayon-backed) resource.
+    Cpu(CpuComputeResource),
+}
+
+/// Enum dispatch for [`ComputeContext`](crate::universal::execution::ComputeContext).
+pub enum ComputeContextDispatch {
+    /// CPU execution context.
+    Cpu(CpuComputeContext),
+}
+
+impl ComputeContextDispatch {
+    /// Close this context (see [`ComputeContext::close`]).
+    pub async fn close(self) -> ToadStoolResult<()> {
+        <Self as ComputeContext>::close(Box::new(self)).await
+    }
+}
+
+impl UniversalComputeResource for UniversalComputeResourceDispatch {
+    fn capabilities(&self) -> &ComputeCapabilities {
+        match self {
+            Self::Cpu(r) => r.capabilities(),
+        }
+    }
+
+    fn resource_id(&self) -> &str {
+        match self {
+            Self::Cpu(r) => r.resource_id(),
+        }
+    }
+
+    async fn create_context(&self) -> ToadStoolResult<ComputeContextDispatch> {
+        match self {
+            Self::Cpu(r) => r.create_context().await,
+        }
+    }
+
+    async fn utilization(&self) -> f32 {
+        match self {
+            Self::Cpu(r) => r.utilization().await,
+        }
+    }
+
+    fn estimate_execution_time(&self, requirements: &ComputeRequirements) -> Duration {
+        match self {
+            Self::Cpu(r) => r.estimate_execution_time(requirements),
+        }
+    }
+}
+
+impl ComputeContext for ComputeContextDispatch {
+    fn context_id(&self) -> Uuid {
+        match self {
+            Self::Cpu(c) => c.context_id(),
+        }
+    }
+
+    fn resource_id(&self) -> &str {
+        match self {
+            Self::Cpu(c) => c.resource_id(),
+        }
+    }
+
+    async fn execute(&mut self, workload: &UniversalWorkload) -> ToadStoolResult<WorkloadResult> {
+        match self {
+            Self::Cpu(c) => c.execute(workload).await,
+        }
+    }
+
+    async fn close(self: Box<Self>) -> ToadStoolResult<()> {
+        match *self {
+            Self::Cpu(c) => <CpuComputeContext as ComputeContext>::close(Box::new(c)).await,
         }
     }
 }

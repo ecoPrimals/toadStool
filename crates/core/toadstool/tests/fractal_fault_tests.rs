@@ -10,6 +10,7 @@
 //!
 //! Tests error handling, edge cases, and graceful degradation.
 
+use toadstool::cloud_provider_trait::NoopCloudProvider;
 use toadstool::composition_constraints::*;
 use toadstool::composition_engine::CompositionEngine;
 use toadstool::deployment_layer::{DeploymentLayer, LayerDetector};
@@ -154,7 +155,9 @@ async fn test_all_hard_constraints_fail() {
 /// Test: Migration recommendation for non-tracked workload
 #[tokio::test]
 async fn test_migration_untracked_workload() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
 
     let location = coordinator.get_workload_location("non-existent").await;
     assert!(location.is_none());
@@ -337,7 +340,9 @@ async fn test_engine_stats_accumulation() {
 /// Test: Migration stats tracking
 #[tokio::test]
 async fn test_migration_stats_tracking() {
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
 
     let initial_stats = coordinator.stats().await;
     let initial_migrations = initial_stats.total_migrations;
@@ -359,7 +364,9 @@ async fn test_migration_stats_tracking() {
 async fn test_workload_location_persistence() {
     use toadstool::cloud_provider_trait::WorkloadLocation;
 
-    let coordinator = MigrationCoordinator::new().await.unwrap();
+    let coordinator = MigrationCoordinator::<NoopCloudProvider>::new()
+        .await
+        .unwrap();
 
     let location = WorkloadLocation::Local {
         hostname: "test-host".to_string(),

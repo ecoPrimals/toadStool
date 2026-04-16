@@ -43,6 +43,7 @@
 //! # }
 //! ```
 
+pub mod dispatch;
 pub mod factory;
 pub mod provider;
 pub mod tcp_provider;
@@ -60,6 +61,7 @@ pub mod software_hsm;
 // Security implementation (ONE of many possible implementations)
 pub mod security_impl;
 
+pub use dispatch::SecurityProviderDispatch;
 pub use factory::*;
 pub use provider::*;
 pub use types::*;

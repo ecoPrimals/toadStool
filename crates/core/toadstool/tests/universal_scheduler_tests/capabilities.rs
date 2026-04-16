@@ -5,7 +5,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use toadstool::universal::{
-    JobPriority, PrimalCapability, UniversalPrimalRegistry, UniversalScheduler,
+    JobPriority, PrimalCapability, UniversalPrimalProviderDispatch, UniversalPrimalRegistry,
+    UniversalScheduler,
 };
 
 use super::helpers::{FailingMockProvider, create_test_context};
@@ -14,9 +15,11 @@ use super::helpers::{FailingMockProvider, create_test_context};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_primals_by_native_capability() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     let capability = PrimalCapability::NativeExecution {
         architectures: vec!["x86_64".to_string()],
     };
@@ -27,9 +30,11 @@ async fn test_scheduler_find_primals_by_native_capability() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_wasm_capability() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     let capability = PrimalCapability::WasmExecution { wasi_support: true };
     let primals = scheduler.find_primals_by_capability(&capability).await;
     let _ = primals.len();
@@ -37,9 +42,11 @@ async fn test_scheduler_find_wasm_capability() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_container_runtime_capability() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     let capability = PrimalCapability::ContainerRuntime {
         orchestrators: vec!["docker".to_string()],
     };
@@ -48,18 +55,22 @@ async fn test_scheduler_find_container_runtime_capability() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_gpu_capability() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     let capability = PrimalCapability::GpuAcceleration { cuda_support: true };
     let _ = scheduler.find_primals_by_capability(&capability).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_find_custom_capability() {
-    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::new()))
-        .await
-        .unwrap();
+    let scheduler = UniversalScheduler::new(Arc::new(UniversalPrimalRegistry::<
+        UniversalPrimalProviderDispatch,
+    >::new()))
+    .await
+    .unwrap();
     let capability = PrimalCapability::Custom {
         name: "custom-analytics".to_string(),
         attributes: HashMap::new(),
@@ -71,7 +82,7 @@ async fn test_scheduler_find_custom_capability() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_scheduler_native_job_fails_when_provider_returns_error() {
-    let registry = Arc::new(UniversalPrimalRegistry::new());
+    let registry = Arc::new(UniversalPrimalRegistry::<FailingMockProvider>::new_typed());
     registry
         .register_primal(Arc::new(FailingMockProvider {
             instance_id: "failing-native".to_string(),

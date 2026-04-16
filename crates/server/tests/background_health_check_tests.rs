@@ -15,7 +15,8 @@ use std::time::Duration;
 use tokio::sync::{RwLock, broadcast};
 use uuid::Uuid;
 
-use toadstool::{ExecutionStatus, RuntimeType};
+use toadstool::execution::RuntimeEngine;
+use toadstool::{ExecutionStatus, ResourceMonitor, RuntimeType};
 use toadstool_server::config::{HealthCheckConfig, ServerConfig};
 use toadstool_server::state::{ServerState, ServerStatistics};
 use toadstool_testing::mocks::resource_monitors::MockResourceMonitor;
@@ -29,9 +30,9 @@ use toadstool_testing::mocks::runtime_engines::MockRuntimeEngine;
 // Test Helper Functions
 // =============================================================================
 
-fn create_test_server_state(config: ServerConfig) -> ServerState {
+fn create_test_server_state(config: ServerConfig) -> ServerState<MockRuntimeEngine> {
     let (event_tx, _event_rx) = broadcast::channel(100);
-    let resource_monitor = Arc::new(MockResourceMonitor::new_successful());
+    let resource_monitor = Arc::new(MockResourceMonitor::new_successful().into_dispatch());
 
     ServerState {
         runtime_engines: Arc::new(RwLock::new(HashMap::new())),
@@ -199,7 +200,7 @@ async fn test_runtime_engine_registration() {
     // Register a runtime engine
     {
         let mut engines = state.runtime_engines.write().await;
-        engines.insert(RuntimeType::Native, Box::new(MockRuntimeEngine::new()));
+        engines.insert(RuntimeType::Native, Arc::new(MockRuntimeEngine::new()));
     }
 
     // Verify engine was registered
@@ -244,7 +245,7 @@ async fn test_runtime_engine_health_check_success() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
     }
 
@@ -273,7 +274,7 @@ async fn test_runtime_engine_health_check_failure() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_execution_failure()),
+            Arc::new(MockRuntimeEngine::new_execution_failure()),
         );
     }
 
@@ -301,15 +302,15 @@ async fn test_multiple_runtime_engines() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
         engines.insert(
             RuntimeType::Wasm,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
         engines.insert(
             RuntimeType::Container,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
     }
 
@@ -464,7 +465,7 @@ async fn test_complete_health_check_scenario_healthy() {
         let mut engines = state.runtime_engines.write().await;
         engines.insert(
             RuntimeType::Native,
-            Box::new(MockRuntimeEngine::new_successful()),
+            Arc::new(MockRuntimeEngine::new_successful()),
         );
     }
 

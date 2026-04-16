@@ -2,7 +2,7 @@
 #![expect(clippy::float_cmp, reason = "test values are exact literals")]
 
 use super::*;
-use crate::types::{DataType, OperationType, WorkloadData, WorkloadParams};
+use crate::types::{ComputeUnitDispatch, DataType, OperationType, WorkloadData, WorkloadParams};
 
 fn simple_f32_workload(op: OperationType, input: WorkloadData) -> Workload {
     Workload {
@@ -120,7 +120,7 @@ async fn test_execute_map_f32() {
 #[tokio::test]
 async fn test_runtime_new_with_cpu_units() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     assert_eq!(runtime.num_units(), 1);
     let stats = runtime.stats();
@@ -130,7 +130,7 @@ async fn test_runtime_new_with_cpu_units() {
 #[tokio::test]
 async fn test_runtime_new_execute_on_index() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let w = simple_f32_workload(
         OperationType::Map,
@@ -143,7 +143,7 @@ async fn test_runtime_new_execute_on_index() {
 #[tokio::test]
 async fn test_runtime_new_execute_optimal() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let w = simple_f32_workload(
         OperationType::Map,
@@ -156,7 +156,7 @@ async fn test_runtime_new_execute_optimal() {
 #[tokio::test]
 async fn test_runtime_new_execute_on_type_cpu() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![1.0, 2.0]));
     let out = runtime
@@ -169,7 +169,7 @@ async fn test_runtime_new_execute_on_type_cpu() {
 #[tokio::test]
 async fn test_runtime_new_execute_on_invalid_index() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![]));
     let result = runtime.execute_on(9999, w).await;
@@ -179,7 +179,7 @@ async fn test_runtime_new_execute_on_invalid_index() {
 #[tokio::test]
 async fn test_runtime_new_execute_on_type_nonexistent() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![1.0, 2.0]));
     let result = runtime.execute_on_type(ComputeUnitType::GpuWgpu, w).await;
@@ -189,7 +189,7 @@ async fn test_runtime_new_execute_on_type_nonexistent() {
 #[tokio::test]
 async fn test_runtime_new_units_by_type() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let cpu_units = runtime.units_by_type(ComputeUnitType::Cpu);
     assert_eq!(cpu_units.len(), 1);
@@ -200,7 +200,7 @@ async fn test_runtime_new_units_by_type() {
 #[tokio::test]
 async fn test_runtime_new_execute_map_f32() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let input = vec![1.0f32, 2.0, 3.0];
     let out = runtime
@@ -217,7 +217,7 @@ async fn test_runtime_new_execute_map_f32() {
 #[tokio::test]
 async fn test_runtime_new_execute_map_f32_returns_vec() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let result = runtime.execute_map_f32(vec![1.0, 2.0], |x| x).await;
     assert!(result.is_ok());
@@ -228,7 +228,7 @@ async fn test_runtime_new_execute_map_f32_returns_vec() {
 
 #[tokio::test]
 async fn test_runtime_new_empty_units_fails_optimal() {
-    let units: Vec<Box<dyn ComputeUnit>> = vec![];
+    let units: Vec<ComputeUnitDispatch> = vec![];
     let runtime = UniversalRuntime::new(units);
     let w = simple_f32_workload(OperationType::Map, WorkloadData::F32Vec(vec![1.0, 2.0]));
     let result = runtime.execute_optimal(w).await;
@@ -239,7 +239,10 @@ async fn test_runtime_new_empty_units_fails_optimal() {
 async fn test_runtime_new_stats_aggregation() {
     let cpu1 = crate::backends::CpuComputeUnit::discover();
     let cpu2 = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu1), Box::new(cpu2)];
+    let units: Vec<ComputeUnitDispatch> = vec![
+        ComputeUnitDispatch::Cpu(cpu1),
+        ComputeUnitDispatch::Cpu(cpu2),
+    ];
     let runtime = UniversalRuntime::new(units);
     let stats = runtime.stats();
     assert_eq!(stats.num_cpu, 2);
@@ -248,69 +251,18 @@ async fn test_runtime_new_stats_aggregation() {
 }
 
 #[tokio::test]
-async fn test_runtime_stats_display_neuromorphic_custom() {
-    use crate::error::SubstrateError;
-    use crate::substrate::{
-        BufferOperation, BufferOutput, ComputeSubstrate, SubstrateAdapter, SubstrateType,
-    };
-
-    struct NpuMock;
-    impl ComputeSubstrate for NpuMock {
-        fn name(&self) -> &'static str {
-            "Test NPU"
-        }
-        fn substrate_type(&self) -> SubstrateType {
-            SubstrateType::Npu
-        }
-        fn execute_buffer_op(
-            &self,
-            op: BufferOperation,
-        ) -> std::pin::Pin<
-            Box<dyn std::future::Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>,
-        > {
-            let len = op.buffer_size();
-            Box::pin(async move {
-                Ok(BufferOutput {
-                    data: vec![0; len],
-                    metadata: crate::substrate::BufferMetadata::default(),
-                })
-            })
-        }
-    }
-    struct FpgaMock;
-    impl ComputeSubstrate for FpgaMock {
-        fn name(&self) -> &'static str {
-            "Test FPGA"
-        }
-        fn substrate_type(&self) -> SubstrateType {
-            SubstrateType::Fpga
-        }
-        fn execute_buffer_op(
-            &self,
-            op: BufferOperation,
-        ) -> std::pin::Pin<
-            Box<dyn std::future::Future<Output = Result<BufferOutput, SubstrateError>> + Send + '_>,
-        > {
-            let len = op.buffer_size();
-            Box::pin(async move {
-                Ok(BufferOutput {
-                    data: vec![0; len],
-                    metadata: crate::substrate::BufferMetadata::default(),
-                })
-            })
-        }
-    }
-    let units: Vec<Box<dyn ComputeUnit>> = vec![
-        Box::new(SubstrateAdapter::new(NpuMock)),
-        Box::new(SubstrateAdapter::new(FpgaMock)),
+async fn test_runtime_stats_display_multi_unit() {
+    let cpu1 = crate::backends::CpuComputeUnit::discover();
+    let cpu2 = crate::backends::CpuComputeUnit::discover();
+    let units: Vec<ComputeUnitDispatch> = vec![
+        ComputeUnitDispatch::Cpu(cpu1),
+        ComputeUnitDispatch::Cpu(cpu2),
     ];
     let runtime = UniversalRuntime::new(units);
     let stats = runtime.stats();
-    assert_eq!(stats.num_neuromorphic, 1);
-    assert_eq!(stats.num_custom, 1);
+    assert_eq!(stats.num_cpu, 2);
     let s = format!("{stats}");
-    assert!(s.contains("Neuromorphic units: 1"));
-    assert!(s.contains("Custom units: 1"));
+    assert!(s.contains("CPU units: 2"));
 }
 
 #[tokio::test]
@@ -326,7 +278,7 @@ async fn test_runtime_stats_display_all_zero() {
 #[tokio::test]
 async fn test_runtime_units_accessor() {
     let cpu = crate::backends::CpuComputeUnit::discover();
-    let units: Vec<Box<dyn ComputeUnit>> = vec![Box::new(cpu)];
+    let units: Vec<ComputeUnitDispatch> = vec![ComputeUnitDispatch::Cpu(cpu)];
     let runtime = UniversalRuntime::new(units);
     let units_ref = runtime.units();
     assert_eq!(units_ref.len(), 1);

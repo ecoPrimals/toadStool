@@ -37,6 +37,8 @@ use std::time::SystemTime;
 use crate::ToadStoolResult;
 use crate::workload::WorkloadSpec;
 
+use crate::cloud_provider_trait::CloudProvider;
+
 use super::{MigrationCoordinator, MigrationRecommendation, MigrationTarget};
 
 // ─── Basic recommendation validation ─────────────────────────────────────────
@@ -199,7 +201,10 @@ pub struct PreMigrationSnapshot {
 
 impl PreMigrationSnapshot {
     /// Capture the current state of a workload before migration.
-    pub async fn capture(coordinator: &MigrationCoordinator, workload_id: &str) -> Self {
+    pub async fn capture<P: CloudProvider>(
+        coordinator: &MigrationCoordinator<P>,
+        workload_id: &str,
+    ) -> Self {
         let location = coordinator.get_workload_location(workload_id).await;
         Self {
             workload_id: workload_id.to_string(),
@@ -211,7 +216,7 @@ impl PreMigrationSnapshot {
     /// Restore the workload to its pre-migration state.
     ///
     /// If no location was recorded (workload was not tracked), this is a no-op.
-    pub async fn rollback(&self, coordinator: &MigrationCoordinator) {
+    pub async fn rollback<P: CloudProvider>(&self, coordinator: &MigrationCoordinator<P>) {
         if let Some(ref location) = self.location_before {
             coordinator
                 .track_workload(self.workload_id.clone(), location.clone())

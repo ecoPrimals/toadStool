@@ -2,7 +2,6 @@
 //! Workload executor trait and [`StandaloneExecutor`] (single-node / dev).
 
 use std::future::Future;
-use std::pin::Pin;
 
 use tracing::{info, warn};
 
@@ -10,6 +9,9 @@ use crate::rpc_types::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, WorkloadResult,
     WorkloadStatus, WorkloadSubmission,
 };
+
+mod test_doubles;
+pub use test_doubles::TestWorkloadDouble;
 
 /// Workload executor trait (capability-based, not hardcoded)
 ///
@@ -22,18 +24,18 @@ pub trait WorkloadExecutor {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>>;
+    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_;
 
     /// Query this executor's capabilities (self-knowledge)
     fn query_capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>>;
+    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_;
 
     /// Cancel running workload
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>>;
+    ) -> impl Future<Output = Result<(), String>> + Send + 'a;
 }
 
 /// Standalone executor for single-instance mode
@@ -136,8 +138,8 @@ impl WorkloadExecutor for StandaloneExecutor {
     fn execute(
         &self,
         submission: WorkloadSubmission,
-    ) -> Pin<Box<dyn Future<Output = Result<WorkloadResult, String>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = Result<WorkloadResult, String>> + Send + '_ {
+        async move {
             info!(
                 "Executing workload: {} (type: {})",
                 submission.workload_id.as_ref(),
@@ -218,24 +220,24 @@ impl WorkloadExecutor for StandaloneExecutor {
                     },
                 },
             })
-        })
+        }
     }
 
     fn query_capabilities(
         &self,
-    ) -> Pin<Box<dyn Future<Output = Result<ComputeCapabilities, String>> + Send + '_>> {
+    ) -> impl Future<Output = Result<ComputeCapabilities, String>> + Send + '_ {
         let caps = self.capabilities.clone();
-        Box::pin(async move { Ok(caps) })
+        async move { Ok(caps) }
     }
 
     fn cancel<'a>(
         &'a self,
         workload_id: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = Result<(), String>> + Send + 'a {
+        async move {
             warn!("Cancel requested for workload: {}", workload_id);
             Ok(())
-        })
+        }
     }
 }
 

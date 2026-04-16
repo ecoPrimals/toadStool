@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -48,22 +47,22 @@ impl ResourceMonitor for SystemResourceMonitor {
     fn get_metrics(
         &self,
         workload_id: &str,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_>> {
+    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         let workload_id = workload_id.to_string();
-        Box::pin(async move {
+        async move {
             // Modern async access - no blocking!
             let usage_data = self.usage_data.read().await;
 
             usage_data.get(&workload_id).cloned().ok_or_else(|| {
                 ResourceMonitorError::ProcessNotRegistered(workload_id.clone()).into()
             })
-        })
+        }
     }
 
     fn get_system_resources(
         &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<SystemResources>> + Send + '_>> {
-        Box::pin(async move {
+    ) -> impl Future<Output = ToadStoolResult<SystemResources>> + Send + '_ {
+        async {
             // /proc, sysctl, and statvfs are blocking I/O — run on the blocking
             // pool so we don't stall the async runtime under load.
             let snapshot = if let Ok(tuple) =
@@ -104,7 +103,7 @@ impl ResourceMonitor for SystemResourceMonitor {
                 total_cpu_cores,
                 total_memory_bytes,
             })
-        })
+        }
     }
 }
 

@@ -2,7 +2,10 @@
 //! Security discovery behavior tests — async endpoint selection and health
 
 use crate::security::types::{SecurityCapability, SecurityEndpoint};
-use crate::security::{SecurityClient, SecurityConfig, SecurityDiscovery, ServiceLocation};
+use crate::security::{
+    DistributedCryptoProvider, SecurityClient, SecurityConfig, SecurityDiscovery, ServiceLocation,
+};
+use std::sync::Arc;
 use toadstool::CryptoProvider;
 
 #[test]
@@ -77,16 +80,18 @@ async fn test_security_discovery_preferred_location_network() {
 #[allow(deprecated)]
 fn test_security_client_provider_id() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
-    assert_eq!(client.provider_id(), "crypto");
+    let client = Arc::new(SecurityClient::new(config).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    assert_eq!(crypto.provider_id(), "crypto");
 }
 
 #[test]
 #[allow(deprecated)]
 fn test_security_client_capabilities() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
-    assert!(!client.capabilities().algorithms.is_empty());
+    let client = Arc::new(SecurityClient::new(config).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    assert!(!crypto.capabilities().algorithms.is_empty());
 }
 
 #[tokio::test]
@@ -190,8 +195,9 @@ fn test_security_client_creation_with_custom_config() {
 #[allow(deprecated)]
 fn test_security_client_creation_default_config() {
     let config = SecurityConfig::default();
-    let client = SecurityClient::new(config).unwrap();
-    assert_eq!(client.provider_id(), "crypto");
+    let client = Arc::new(SecurityClient::new(config).unwrap());
+    let crypto = DistributedCryptoProvider::Security(Arc::clone(&client));
+    assert_eq!(crypto.provider_id(), "crypto");
 }
 
 #[tokio::test]

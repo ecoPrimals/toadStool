@@ -64,7 +64,9 @@ toadstool-testing = { path = "../../testing" }
 proptest = { workspace = true }
 
 [features]
-default = ["mdns"]
+# `test-mocks` is default so integration tests can use in-memory backends (e.g. `StorageBackendDispatch::InMemory`)
+# without passing `--features test-mocks` on every test target.
+default = ["mdns", "test-mocks"]
 # In-memory auth mock (`InMemoryAuthBackend`); for tests and explicit `--features test-mocks`
 test-mocks = []
 # Gates reqwest-based HTTP communication in ecosystem modules

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Capacity and can_handle tests
 
+use super::common::TestUniversalOrchestrator;
 use super::common::{make_availability, make_orchestrator_config, make_requirements};
-use crate::cloud::UniversalCloudOrchestrator;
 
 #[tokio::test]
 async fn test_can_handle_full_job_sufficient_resources() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(8.0, 16.0, 100.0);
@@ -16,7 +16,7 @@ async fn test_can_handle_full_job_sufficient_resources() {
 
 #[tokio::test]
 async fn test_can_handle_full_job_insufficient_cpu() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(2.0, 64.0, 500.0);
@@ -26,7 +26,7 @@ async fn test_can_handle_full_job_insufficient_cpu() {
 
 #[tokio::test]
 async fn test_can_handle_full_job_insufficient_memory() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(16.0, 2.0, 500.0);
@@ -36,7 +36,7 @@ async fn test_can_handle_full_job_insufficient_memory() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_exact_fit() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(4.0, 8.0, 100.0);
@@ -47,7 +47,7 @@ async fn test_calculate_provider_capacity_exact_fit() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_cpu_limited() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(8.0, 32.0, 500.0);
@@ -58,7 +58,7 @@ async fn test_calculate_provider_capacity_cpu_limited() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_capped_at_one() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(32.0, 128.0, 1000.0);
@@ -69,7 +69,7 @@ async fn test_calculate_provider_capacity_capped_at_one() {
 
 #[tokio::test]
 async fn test_can_handle_full_job_exact_resources() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(4.0, 8.0, 100.0);
@@ -79,7 +79,7 @@ async fn test_can_handle_full_job_exact_resources() {
 
 #[tokio::test]
 async fn test_can_handle_full_job_insufficient_storage() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(16.0, 32.0, 10.0);
@@ -89,7 +89,7 @@ async fn test_can_handle_full_job_insufficient_storage() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_memory_limited() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(16.0, 4.0, 500.0);
@@ -100,7 +100,7 @@ async fn test_calculate_provider_capacity_memory_limited() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_storage_limited() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(32.0, 128.0, 25.0);
@@ -111,7 +111,7 @@ async fn test_calculate_provider_capacity_storage_limited() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_zero_requirements() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(1.0, 1.0, 1.0);
@@ -122,7 +122,7 @@ async fn test_calculate_provider_capacity_zero_requirements() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_all_above_requirements() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(100.0, 200.0, 1000.0);
@@ -133,7 +133,7 @@ async fn test_calculate_provider_capacity_all_above_requirements() {
 
 #[tokio::test]
 async fn test_provider_selection_cpu_bottleneck() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(2.0, 128.0, 1000.0);
@@ -144,7 +144,7 @@ async fn test_provider_selection_cpu_bottleneck() {
 
 #[tokio::test]
 async fn test_provider_selection_storage_bottleneck() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(64.0, 256.0, 25.0);
@@ -154,7 +154,7 @@ async fn test_provider_selection_storage_bottleneck() {
 
 #[tokio::test]
 async fn test_resource_capacity_management_distribute_work() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(8.0, 16.0, 100.0);
@@ -165,7 +165,7 @@ async fn test_resource_capacity_management_distribute_work() {
 
 #[tokio::test]
 async fn test_can_handle_full_job_boundary_exactly() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(4.0, 8.0, 100.0);
@@ -175,7 +175,7 @@ async fn test_can_handle_full_job_boundary_exactly() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_storage_ratio() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(8.0, 32.0, 50.0);
@@ -186,7 +186,7 @@ async fn test_calculate_provider_capacity_storage_ratio() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_zero_requirements_avoids_division_by_zero() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(8.0, 16.0, 100.0);
@@ -198,7 +198,7 @@ async fn test_calculate_provider_capacity_zero_requirements_avoids_division_by_z
 
 #[tokio::test]
 async fn test_can_handle_full_job_minimum_boundary() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(1.0, 0.000000001, 0.000000001);
@@ -211,7 +211,7 @@ async fn test_can_handle_full_job_minimum_boundary() {
 
 #[tokio::test]
 async fn test_calculate_provider_capacity_inf_avoids_panic() {
-    let orch = UniversalCloudOrchestrator::new(make_orchestrator_config())
+    let orch = TestUniversalOrchestrator::new(make_orchestrator_config())
         .await
         .unwrap();
     let availability = make_availability(f64::INFINITY, f64::INFINITY, f64::INFINITY);
