@@ -31,8 +31,8 @@ etcetera = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
-criterion = "0.5"
-proptest = "1.0"
+criterion = { workspace = true }
+proptest = { workspace = true }
 
 [features]
 default = []

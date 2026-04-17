@@ -24,7 +24,7 @@ tokio-test = "0.4"
 
 # Mocking and testing utilities
 mockall = "0.12"
-proptest = "1.0"
+proptest = { workspace = true }
 wiremock = { version = "0.6", optional = true }
 
 # Async testing
@@ -40,7 +40,7 @@ bytes = { workspace = true }
 uuid = { workspace = true }
 
 # Temporary directories and files for testing
-tempfile = "3.0"
+tempfile = { workspace = true }
 # tempdir removed: deprecated crate, tests already use tempfile
 
 # HTTP client for integration tests
@@ -59,7 +59,7 @@ fake = { version = "2.0", features = ["derive", "uuid"] }
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = { workspace = true }
 temp-env = "0.3"
 
 [features]

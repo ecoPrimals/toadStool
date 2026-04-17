@@ -5,7 +5,8 @@
 //! require actual network binding.
 
 use super::execution::{
-    create_executor, is_platform_constraint_str, is_selinux_enforcing, write_tcp_discovery_file,
+    UnibinExecutionConfig, create_executor, is_platform_constraint_str, is_selinux_enforcing,
+    write_tcp_discovery_file,
 };
 use super::format::{ensure_biomeos_directory, get_socket_path, socket_filename_for_family};
 use super::*;
@@ -379,7 +380,7 @@ fn get_socket_path_xdg_runtime_dir_fallback() {
 #[tokio::test]
 async fn create_executor_standalone_mode() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
-        let result = create_executor("test-family").await;
+        let result = create_executor("test-family", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "create_executor should succeed in standalone mode"
@@ -393,7 +394,7 @@ async fn create_executor_standalone_mode() {
 #[tokio::test]
 async fn create_executor_standalone_mode_true_lowercase() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("true"))], async {
-        let result = create_executor("default").await;
+        let result = create_executor("default", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "TOADSTOOL_STANDALONE=true should use standalone"

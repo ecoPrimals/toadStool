@@ -3,9 +3,13 @@
 use std::collections::HashMap;
 
 use crate::error::ToadStoolResult;
+use crate::interned_strings::socket_env;
 use crate::primal_identity::{Capability, DiscoveredService, ServiceEndpoint};
 
 use super::client::DiscoveryClient;
+
+/// Service id for [`LocalhostDiscoveryClient::with_local_compute`] seeded native compute.
+pub const LOCALHOST_COMPUTE_SERVICE_ID: &str = "localhost-compute";
 
 /// Localhost discovery client - fallback when no discovery service available
 pub struct LocalhostDiscoveryClient {
@@ -30,13 +34,13 @@ impl LocalhostDiscoveryClient {
     /// Reads `TOADSTOOL_LOCAL_PORT` (default: OS-assigned) to avoid hardcoded ports.
     #[must_use]
     pub fn with_local_compute(mut self) -> Self {
-        let port: u16 = std::env::var("TOADSTOOL_LOCAL_PORT")
+        let port: u16 = std::env::var(socket_env::TOADSTOOL_LOCAL_PORT)
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
         if port > 0 {
             self.services.push(DiscoveredService {
-                id: Some("localhost-compute".to_string()),
+                id: Some(LOCALHOST_COMPUTE_SERVICE_ID.to_string()),
                 capabilities: vec![Capability::Compute(
                     crate::primal_identity::ComputeCapability::NativeExecution,
                 )],
@@ -108,6 +112,8 @@ mod tests {
     };
 
     use crate::runtime_discovery::client::DiscoveryClient;
+
+    use super::LOCALHOST_COMPUTE_SERVICE_ID;
 
     use super::LocalhostDiscoveryClient;
 
@@ -219,7 +225,7 @@ mod tests {
             let client = LocalhostDiscoveryClient::new().with_local_compute();
             let all = client.discover_all().await.unwrap();
             assert_eq!(all.len(), 1);
-            assert_eq!(all[0].id.as_deref(), Some("localhost-compute"));
+            assert_eq!(all[0].id.as_deref(), Some(LOCALHOST_COMPUTE_SERVICE_ID));
             let ep = &all[0].endpoints[0];
             assert_eq!(ep.protocol, "http");
             assert_eq!(ep.port, 18444);

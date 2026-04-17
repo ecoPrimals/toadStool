@@ -96,6 +96,9 @@ pub enum TransportType {
     Http,
     /// Pure Rust tRPC transport
     TRpc,
+    /// Binary-framed primal IPC (MessagePack + length-delimited) after `TSB1` handshake
+    #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+    Binary,
     /// TCP socket transport
     Tcp,
     /// UDP socket transport

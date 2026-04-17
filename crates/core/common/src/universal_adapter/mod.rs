@@ -52,8 +52,8 @@ pub use capability_types::{
 #[cfg(feature = "mdns")]
 pub use discovery_engine::MDnsSource;
 pub use discovery_engine::{
-    DiscoveryEngine, DiscoverySource, DiscoverySourceDispatch, EnvironmentSource,
-    LocalRegistrySource,
+    DiscoveryEngine, DiscoverySource, DiscoverySourceDispatch, EnvironmentProviderConfig,
+    EnvironmentSource, LocalRegistrySource,
 };
 pub use graceful_degradation::{DegradationStrategy, GracefulDegradation};
 pub use provider_registry::ProviderRegistry;

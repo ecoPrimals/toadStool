@@ -104,13 +104,24 @@ test-mocks = []
 # Reference: wateringHole/UNIBIN_ARCHITECTURE_STANDARD.md
 
 [dev-dependencies]
+toadstool-display = { path = "../runtime/display", features = ["test-mocks"] }
 criterion = { workspace = true }
 hw-learn = { path = "../core/hw-learn" }
 tokio-test = "0.4"
-tempfile = "3.8"
+tempfile = { workspace = true }
 temp-env = { version = "0.3", features = ["async_closure"] }
 toadstool-testing = { path = "../testing" }
 proptest = { workspace = true }
+
+[[test]]
+name = "tarpc_server_tests"
+path = "tests/tarpc_server_tests.rs"
+required-features = ["test-mocks"]
+
+[[test]]
+name = "tarpc_server_coverage_expansion_tests"
+path = "tests/tarpc_server_coverage_expansion_tests.rs"
+required-features = ["test-mocks"]
 
 [[bench]]
 name = "jsonrpc_throughput"

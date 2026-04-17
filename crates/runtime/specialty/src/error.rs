@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use crate::embedded::errors::{EmbeddedEmulatorError, EmbeddedProgrammerError};
 use toadstool::{SystemError, ToadStoolError};
 
 /// Errors that can occur during specialty runtime operations.
@@ -45,54 +46,28 @@ pub enum SpecialtyRuntimeError {
     #[error("Other error: {0}")]
     Other(String),
 
-    /// Not available on this platform / build: [`crate::embedded::types::ProgrammerInterface`] until hardware backends exist.
+    /// Embedded programmer transport / device not available — see [`EmbeddedProgrammerError`].
     ///
     /// See DEBT.md `D-EMBEDDED-PROGRAMMER` for evolution tracking.
-    #[error("{operation} is not yet implemented for platform `{platform}`: {detail}")]
-    EmbeddedProgrammerPlaceholder {
-        /// Stable platform id (e.g. `generic_isp`, `parallel_eprom`).
-        platform: &'static str,
-        /// Operation name (e.g. `"Memory read"`).
-        operation: &'static str,
-        /// What a full implementation would require (transport, protocol, device support).
-        detail: &'static str,
-    },
+    #[error(transparent)]
+    EmbeddedProgrammer(#[from] EmbeddedProgrammerError),
 
-    /// Not available on this platform / build: [`crate::embedded::types::EmbeddedEmulator`] until CPU cores exist.
+    /// Embedded emulator core / debug transport not available — see [`EmbeddedEmulatorError`].
     ///
     /// See DEBT.md `D-EMBEDDED-EMULATOR` for evolution tracking.
-    #[error(
-        "`{operation}` is not yet implemented for platform `{platform}` (feature {feature_id})"
-    )]
-    EmbeddedEmulatorPlaceholder {
-        /// Architecture / platform id (e.g. `mos6502`, `z80`).
-        platform: &'static str,
-        /// Stable feature id for `SystemError::NotSupported` mapping (e.g. `embedded_emulator_mos6502`).
-        feature_id: &'static str,
-        /// Operation name (e.g. `"step"`).
-        operation: &'static str,
-    },
+    #[error(transparent)]
+    EmbeddedEmulator(#[from] EmbeddedEmulatorError),
 }
 
 impl From<SpecialtyRuntimeError> for ToadStoolError {
     fn from(err: SpecialtyRuntimeError) -> Self {
         match err {
-            SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
-                platform,
-                operation,
-                detail,
-            } => ToadStoolError::not_supported(format!(
-                "{operation} is not yet implemented for platform `{platform}`: {detail}"
-            )),
-            SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
-                platform,
-                feature_id,
-                operation,
-            } => SystemError::NotSupported {
-                feature: feature_id.to_string(),
-                reason: format!(
-                    "{operation} is not yet implemented for platform `{platform}`: embedded CPU emulator core not available in this build"
-                ),
+            SpecialtyRuntimeError::EmbeddedProgrammer(e) => {
+                ToadStoolError::not_supported(e.to_string())
+            }
+            SpecialtyRuntimeError::EmbeddedEmulator(e) => SystemError::NotSupported {
+                feature: "embedded_emulator".into(),
+                reason: e.to_string(),
             }
             .into(),
             e => ToadStoolError::runtime(e.to_string()),
@@ -103,6 +78,7 @@ impl From<SpecialtyRuntimeError> for ToadStoolError {
 #[cfg(test)]
 mod tests {
     use super::SpecialtyRuntimeError;
+    use crate::embedded::errors::{EmbeddedEmulatorError, EmbeddedProgrammerError};
     use std::error::Error as StdError;
     use std::io;
     use toadstool::ToadStoolError;
@@ -227,37 +203,31 @@ mod tests {
     }
 
     #[test]
-    fn embedded_programmer_placeholder_maps_to_not_supported() {
-        let spec = SpecialtyRuntimeError::EmbeddedProgrammerPlaceholder {
-            platform: "generic_isp",
-            operation: "Memory read",
-            detail: "test detail",
-        };
+    fn embedded_programmer_error_maps_to_not_supported() {
+        let spec = SpecialtyRuntimeError::EmbeddedProgrammer(
+            EmbeddedProgrammerError::TransportNotConfigured { interface: "ISP" },
+        );
         let top: ToadStoolError = spec.into();
         let out = top.to_string();
         assert!(
             out.to_lowercase().contains("not supported"),
             "expected not-supported semantics: {out}"
         );
-        assert!(out.contains("Memory read"), "{out}");
+        assert!(out.contains("transport"), "{out}");
     }
 
     #[test]
-    fn embedded_emulator_placeholder_maps_to_system_not_supported() {
-        let spec = SpecialtyRuntimeError::EmbeddedEmulatorPlaceholder {
-            platform: "mos6502",
-            feature_id: "embedded_emulator_mos6502",
-            operation: "step",
-        };
+    fn embedded_emulator_error_maps_to_system_not_supported() {
+        let spec =
+            SpecialtyRuntimeError::EmbeddedEmulator(EmbeddedEmulatorError::CoreNotAvailable {
+                platform: "mos6502",
+            });
         let top: ToadStoolError = spec.into();
         let out = top.to_string();
         assert!(
             out.to_lowercase().contains("not supported"),
             "expected not-supported semantics: {out}"
         );
-        assert!(
-            out.contains("emulator") || out.contains("embedded_emulator"),
-            "{out}"
-        );
+        assert!(out.contains("emulator") || out.contains("mos6502"), "{out}");
     }
 }

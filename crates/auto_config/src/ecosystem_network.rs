@@ -26,6 +26,9 @@ const TCP_PROBE_CONNECT_TIMEOUT: Duration = if cfg!(test) {
     Duration::from_secs(2)
 };
 
+/// `/24`-style network base (IPv4) used only when `range` lacks a valid prefix (see `scan_network_range`).
+pub const DEFAULT_SCAN_SUBNET: &str = "192.168.1.0";
+
 /// Get local network ranges for scanning
 ///
 /// Returns a list of CIDR-style network ranges to scan for ecosystem services.
@@ -103,7 +106,7 @@ pub async fn scan_network_range(
 ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
     let mut services = HashMap::new();
 
-    let base_ip = range.split('/').next().unwrap_or("192.168.1.0");
+    let base_ip = range.split('/').next().unwrap_or(DEFAULT_SCAN_SUBNET);
     let ip_parts: Vec<&str> = base_ip.split('.').collect();
 
     if ip_parts.len() != 4 {

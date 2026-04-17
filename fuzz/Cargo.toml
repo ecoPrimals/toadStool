@@ -10,11 +10,12 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-tokio = { version = "1", features = ["rt", "io-util"] }
+tokio = { version = "1", features = ["rt", "macros"] }
 
 # Crates under test
 toadstool-common = { path = "../crates/core/common" }
 toadstool-config = { path = "../crates/core/config" }
+toadstool-runtime-gpu = { path = "../crates/runtime/gpu", features = ["fuzz"] }
 
 # For direct JSON-RPC parsing (serde_json::from_slice on raw bytes)
 serde = { version = "1.0", features = ["derive"] }
@@ -34,4 +35,9 @@ doc = false
 [[bin]]
 name = "fuzz_btsp_framing"
 path = "fuzz_targets/fuzz_btsp_framing.rs"
+doc = false
+
+[[bin]]
+name = "gpu_buffer_access"
+path = "fuzz_targets/gpu_buffer_access.rs"
 doc = false

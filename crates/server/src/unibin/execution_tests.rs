@@ -5,7 +5,7 @@ use super::*;
 #[tokio::test]
 async fn create_executor_standalone_mode() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
-        let result = create_executor("test-family").await;
+        let result = create_executor("test-family", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "standalone executor creation failed: {:?}",
@@ -18,7 +18,7 @@ async fn create_executor_standalone_mode() {
 #[tokio::test]
 async fn create_executor_standalone_mode_true_lowercase() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("true"))], async {
-        let result = create_executor("my-family").await;
+        let result = create_executor("my-family", &UnibinExecutionConfig::from_env()).await;
         assert!(result.is_ok());
     })
     .await;
@@ -27,7 +27,7 @@ async fn create_executor_standalone_mode_true_lowercase() {
 #[tokio::test]
 async fn create_executor_standalone_mode_true_uppercase() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("TRUE"))], async {
-        let result = create_executor("test-family").await;
+        let result = create_executor("test-family", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "standalone executor with TRUE should succeed: {:?}",
@@ -49,7 +49,7 @@ fn write_tcp_discovery_file_fails_on_readonly_dir() {
 #[tokio::test]
 async fn create_executor_integrated_mode_when_standalone_unset() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", None::<&str>)], async {
-        let result = create_executor("integrated-family").await;
+        let result = create_executor("integrated-family", &UnibinExecutionConfig::from_env()).await;
         match &result {
             Ok(_) => {}
             Err(e) => assert!(!e.to_string().is_empty(), "error should have message"),
@@ -61,7 +61,7 @@ async fn create_executor_integrated_mode_when_standalone_unset() {
 #[tokio::test]
 async fn create_executor_integrated_mode_when_standalone_0() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("0"))], async {
-        let result = create_executor("family-0").await;
+        let result = create_executor("family-0", &UnibinExecutionConfig::from_env()).await;
         match &result {
             Ok(_) => {}
             Err(e) => assert!(!e.to_string().is_empty()),

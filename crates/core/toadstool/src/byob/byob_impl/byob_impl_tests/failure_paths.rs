@@ -200,7 +200,24 @@ async fn test_deploy_biome_execute_returns_error() {
 }
 
 #[tokio::test]
-async fn test_get_resource_usage_network_tiers_web_and_database() {
+async fn test_stop_deployment_unknown_id_is_not_found() {
+    let executor = ByobComputeExecutor::new(
+        create_test_runtime_engine(),
+        create_test_config(8080, vec![80]),
+    );
+    let err = executor
+        .stop_deployment(Uuid::nil())
+        .await
+        .expect_err("missing deployment");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("not found") || msg.contains("Not found"),
+        "unexpected: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_get_resource_usage_web_and_database_services() {
     let engine = create_test_runtime_engine();
     let executor = ByobComputeExecutor::new(engine, create_test_config(8080, vec![80]));
 
@@ -255,8 +272,12 @@ async fn test_get_resource_usage_network_tiers_web_and_database() {
         .get_resource_usage(req.deployment_id)
         .await
         .unwrap();
-    assert!(usage.network_usage.bytes_sent > 1024 * 1024);
-    assert!(usage.network_usage.bytes_received > 0);
+    assert!(
+        usage.memory_usage > 0,
+        "expected cgroup or /proc VmRSS for this process"
+    );
+    // Network totals are delta-based against the previous poll; the first sample is often zero
+    // when reading real `/proc/net/dev`. Spec-tier network estimates apply only in simulation fallback.
 }
 
 #[tokio::test]

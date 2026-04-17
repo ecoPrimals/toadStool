@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
+// `deny` (not `forbid`) so `plugin_system` can contain narrowly-scoped `unsafe` for the
+// `plugin-loading` feature (`libloading` / plugin ABI). All other modules remain safe-only.
+#![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
     clippy::must_use_candidate,
@@ -103,6 +105,10 @@ pub mod semantic_methods;
 pub mod universal;
 pub mod workload;
 pub mod workload_migration;
+
+#[cfg(feature = "proptest-strategies")]
+pub mod proptest_strategies;
+
 // biomeOS integration is now handled as a primal through the ecosystem module
 // Re-export core types
 pub use ecosystem::{

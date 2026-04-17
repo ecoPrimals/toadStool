@@ -1,39 +1,64 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Programmer implementations for embedded systems
 //!
-//! # Future Feature
-//!
-//! This module contains placeholder types for future embedded systems support.
-//! Full implementation will include device communication, programming, and verification.
-//!
-//! **Status**: Planned for future release
-//! **Priority**: P3 (Low) - Optional advanced feature
+//! [`GenericProgrammer`] and [`EPROMProgrammer`] hold parsed configuration and a
+//! [`super::protocol_engine::ProtocolEngine`] for transport-free validation and sequence
+//! generation. Hardware I/O remains in future transport crates.
 
-/// Generic programmer for various devices
+use crate::embedded::chip_database::{AvrChipInfo, PicChipInfo};
+use crate::embedded::protocol_engine::ProtocolEngine;
+
+/// Generic programmer for ISP / ICSP targets (AVR, PIC, …).
 #[derive(Debug)]
-pub struct GenericProgrammer;
-
-/// EPROM-specific programmer
-#[derive(Debug)]
-pub struct EPROMProgrammer;
-
-impl GenericProgrammer {
-    /// Create a new generic programmer
-    pub const fn new() -> Self {
-        Self
-    }
+pub struct GenericProgrammer {
+    pub(crate) inner: Option<GenericProgrammerInner>,
 }
 
-impl EPROMProgrammer {
-    /// Create a new EPROM programmer
+/// Parsed programmer state after successful [`GenericProgrammer`] initialization.
+#[derive(Debug)]
+pub(crate) struct GenericProgrammerInner {
+    pub avr: Option<&'static AvrChipInfo>,
+    pub pic: Option<&'static PicChipInfo>,
+    pub clock_hz: u64,
+    #[allow(dead_code)]
+    pub voltage_mv: u32,
+    pub connected: bool,
+    pub engine: ProtocolEngine,
+}
+
+impl GenericProgrammer {
+    /// Create an uninitialized programmer (call `initialize` via trait).
     pub const fn new() -> Self {
-        Self
+        Self { inner: None }
     }
 }
 
 impl Default for GenericProgrammer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// EPROM / parallel ROM programmer (abstract parallel bus protocol).
+#[derive(Debug)]
+pub struct EPROMProgrammer {
+    pub(crate) inner: Option<EpromProgrammerInner>,
+}
+
+#[derive(Debug)]
+pub(crate) struct EpromProgrammerInner {
+    pub device_name: String,
+    pub size_bytes: u32,
+    pub voltage_mv: u32,
+    pub connected: bool,
+    #[allow(dead_code)]
+    pub engine: ProtocolEngine,
+}
+
+impl EPROMProgrammer {
+    /// Create an uninitialized EPROM programmer (call `initialize` via trait).
+    pub const fn new() -> Self {
+        Self { inner: None }
     }
 }
 
@@ -49,18 +74,16 @@ mod tests {
 
     #[test]
     fn generic_programmer_new_and_default_agree() {
-        assert_eq!(
-            format!("{:?}", GenericProgrammer::new()),
-            format!("{:?}", GenericProgrammer)
-        );
+        let a = GenericProgrammer::new();
+        let b = GenericProgrammer::default();
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
     }
 
     #[test]
     fn eprom_programmer_new_and_default_agree() {
-        assert_eq!(
-            format!("{:?}", EPROMProgrammer::new()),
-            format!("{:?}", EPROMProgrammer)
-        );
+        let a = EPROMProgrammer::new();
+        let b = EPROMProgrammer::default();
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
     }
 
     #[test]
@@ -71,7 +94,3 @@ mod tests {
         assert!(e.contains("EPROMProgrammer"), "{e}");
     }
 }
-
-// Future Enhancement: Implement ProgrammerInterface trait for each programmer
-// This will require full implementation of device communication, programming, and verification
-// Tracked as future feature - not required for current production deployment

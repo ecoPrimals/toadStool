@@ -150,3 +150,26 @@ impl UnifiedBuffer {
         Ok(unsafe { slice_ptr.as_ref() })
     }
 }
+
+/// Fuzz-only entry: exercises [`Self::as_cpu_slice`] / [`Self::as_cpu_slice_mut`] (`NonNull::as_ref` /
+/// `as_mut`) under libFuzzer. Enable the `fuzz` crate feature (`toadstool-fuzz` sets it).
+#[cfg(feature = "fuzz")]
+impl UnifiedBuffer {
+    /// Touch immutable and mutable CPU slice views after the same validation path as production I/O.
+    #[inline]
+    pub fn fuzz_exercise_cpu_slice_views(&mut self) -> ToadStoolResult<()> {
+        {
+            let imm = self.as_cpu_slice()?;
+            let _ = imm.len();
+            let _ = imm.first().copied();
+        }
+        {
+            let buf = self.as_cpu_slice_mut()?;
+            if !buf.is_empty() {
+                let i = buf.len().saturating_sub(1);
+                buf[i] ^= 0;
+            }
+        }
+        Ok(())
+    }
+}

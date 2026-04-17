@@ -16,8 +16,14 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 toadstool-sysmon = { path = "../sysmon" }
 rustix = { version = "1.1", features = ["fs"] }
+proptest = { workspace = true, optional = true }
+
+[features]
+default = []
+proptest-strategies = ["dep:proptest"]
 
 [dev-dependencies]
+proptest = { workspace = true }
 
 [lints]
 workspace = true

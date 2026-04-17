@@ -9,7 +9,7 @@
 pub mod nouveau_drm;
 pub mod verify;
 
-use crate::distiller::{InitRecipe, InitStep, VerifyCheck};
+use crate::distiller::{InitRecipe, InitStep};
 use serde::{Deserialize, Serialize};
 
 /// Abstraction over GPU register I/O.
@@ -92,9 +92,12 @@ pub struct StepResult {
 /// - **BAR0-backed** (`with_register_access`) — uses a `RegisterAccess`
 ///   implementation (e.g. `nvpmu::Bar0Access`) for direct register writes
 ///   and verification.
-pub struct RecipeApplicator<'a, R: RegisterAccess + ?Sized = NoRegisterAccess> {
+/// - Optional **GPU readback** (`with_gpu_readback`) — wires [`verify::GpuReadbackAccess`]
+///   for [`VerifyCheck::ComputeReadback`] when a scratch / VRAM read path exists.
+pub struct RecipeApplicator<'a, R: RegisterAccess = NoRegisterAccess> {
     dry_run: bool,
     register_access: Option<&'a mut R>,
+    gpu_readback: Option<&'a dyn verify::GpuReadbackAccess>,
 }
 
 impl<'a> RecipeApplicator<'a, NoRegisterAccess> {
@@ -107,26 +110,37 @@ impl<'a> RecipeApplicator<'a, NoRegisterAccess> {
         Self {
             dry_run,
             register_access: None,
+            gpu_readback: None,
         }
     }
 
     /// Attach a `RegisterAccess` implementation for direct register I/O.
     ///
     /// When attached, `RegisterWrite` steps use BAR0 MMIO directly and
-    /// `Verify::RegisterMatch` uses `verify_register_via_access`.
+    /// `Verify::RegisterMatch` uses typed verification via [`verify::run_verification`].
     #[must_use]
-    pub fn with_register_access<A: RegisterAccess + ?Sized>(
+    pub fn with_register_access<A: RegisterAccess>(
         self,
         access: &'a mut A,
     ) -> RecipeApplicator<'a, A> {
         RecipeApplicator {
             dry_run: self.dry_run,
             register_access: Some(access),
+            gpu_readback: self.gpu_readback,
         }
     }
 }
 
-impl<R: RegisterAccess + ?Sized> RecipeApplicator<'_, R> {
+impl<'a, R: RegisterAccess> RecipeApplicator<'a, R> {
+    /// Attach an optional GPU readback implementation for compute / VRAM verification.
+    #[must_use]
+    pub fn with_gpu_readback(mut self, gpu: &'a dyn verify::GpuReadbackAccess) -> Self {
+        self.gpu_readback = Some(gpu);
+        self
+    }
+}
+
+impl<R: RegisterAccess> RecipeApplicator<'_, R> {
     /// Apply a recipe to the target GPU.
     ///
     /// Returns an `ApplyResult` with per-step feedback.
@@ -259,20 +273,15 @@ impl<R: RegisterAccess + ?Sized> RecipeApplicator<'_, R> {
                     detail: format!("delayed {us}us"),
                 }
             }
-            InitStep::Verify { check } => {
-                if let VerifyCheck::RegisterMatch {
-                    offset,
-                    expected,
-                    mask,
-                } = check
-                    && let Some(access) = self.register_access.as_mut()
-                {
-                    return verify::verify_register_via_access(
-                        index, &**access, *offset, *expected, *mask,
-                    );
-                }
-                verify::run_verification(index, card_path, check)
-            }
+            InitStep::Verify { check } => verify::run_verification(
+                index,
+                card_path,
+                check,
+                self.register_access
+                    .as_mut()
+                    .map(|access| &mut **access as &mut dyn RegisterAccess),
+                self.gpu_readback,
+            ),
         }
     }
 }

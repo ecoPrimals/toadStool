@@ -71,12 +71,20 @@ name = "beardog_client_coverage_tests"
 [[test]]
 name = "access_control_coverage_tests"
 
+[[test]]
+name = "cloud_orchestrator_coverage_tests"
+required-features = ["test-mocks"]
+
+[[test]]
+name = "distributed_coverage_s155b_tests"
+required-features = ["test-mocks"]
+
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }
 tokio-test = "0.4"
-tempfile = "3.0"
+tempfile = { workspace = true }
 temp-env = "0.3"
-toml = "0.8"
+toml = { workspace = true }
 anyhow = "1"
 proptest = { workspace = true }
 

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a718f3bb9a2373858297865c9dabf51e99f565f49b657619db17451ab55a9310 # shrinks to recipe = InitRecipe { source_arch: GpuArch { vendor: Amd, generation: "A", chip: "_", compute_class: "_" }, source_driver: Amdgpu, target_arch: GpuArch { vendor: Amd, generation: "A", chip: "a", compute_class: "-" }, steps: [], confidence: 0.38831412929705444, description: "" }

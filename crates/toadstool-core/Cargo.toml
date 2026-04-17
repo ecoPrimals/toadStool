@@ -21,6 +21,7 @@ akida-driver = { path = "../neuromorphic/akida-driver" }
 
 [dev-dependencies]
 serde_json = "1.0"
+akida-driver = { path = "../neuromorphic/akida-driver", features = ["test-mocks"] }
 
 [lints]
 workspace = true

@@ -48,7 +48,7 @@ hardware-learning = ["hw-learn", "toadstool-sysmon"]
 all = ["cpu", "wgpu-backend", "hardware-learning"]
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = { workspace = true }
 
 [lints]
 workspace = true

@@ -31,6 +31,9 @@ pub enum Transport {
     Http(HttpTransport),
     /// tRPC over Unix sockets
     TRpc(TRpcTransport),
+    /// Binary-framed MessagePack (Rust-to-Rust), with JSON-RPC fallback when negotiation fails
+    #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+    BinaryTrpc(BinaryTrpcTransport),
 }
 
 impl Transport {
@@ -43,6 +46,8 @@ impl Transport {
         match self {
             Self::Http(transport) => transport.send_message(message, endpoint).await,
             Self::TRpc(transport) => transport.send_message(message, endpoint).await,
+            #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+            Self::BinaryTrpc(transport) => transport.send_message(message, endpoint).await,
         }
     }
 
@@ -51,6 +56,8 @@ impl Transport {
         match self {
             Self::Http(transport) => transport.supports_endpoint(endpoint),
             Self::TRpc(transport) => transport.supports_endpoint(endpoint),
+            #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+            Self::BinaryTrpc(transport) => transport.supports_endpoint(endpoint),
         }
     }
 
@@ -59,6 +66,8 @@ impl Transport {
         match self {
             Self::Http(transport) => transport.transport_type(),
             Self::TRpc(transport) => transport.transport_type(),
+            #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+            Self::BinaryTrpc(transport) => transport.transport_type(),
         }
     }
 }
@@ -227,6 +236,157 @@ impl TRpcTransport {
     }
 }
 
+/// Binary primal transport: `TSB1` + version handshake, then MessagePack frames (length-delimited),
+/// matching the codec stack used by [`tarpc::serde_transport`] over TCP/Unix.
+///
+/// If the peer does not complete the handshake (e.g. speaks JSON-RPC only), falls back to
+/// [`TRpcTransport`] on the same socket path / host:port.
+#[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+#[derive(Debug, Clone)]
+pub struct BinaryTrpcTransport {}
+
+#[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+impl Default for BinaryTrpcTransport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+impl BinaryTrpcTransport {
+    /// Create a binary tRPC transport handle.
+    pub const fn new() -> Self {
+        Self {}
+    }
+
+    /// Send message using binary framing, or JSON-RPC if the peer rejects the handshake.
+    pub async fn send_message(
+        &self,
+        message: &ProtocolMessage,
+        endpoint: &ServiceEndpoint,
+    ) -> ProtocolResult<ProtocolMessage> {
+        use std::net::SocketAddr;
+        use std::path::PathBuf;
+        use std::time::Duration;
+
+        use futures::{SinkExt, StreamExt};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpStream;
+        use tokio::net::UnixStream;
+        use tokio_serde::formats::SymmetricalMessagePack;
+        use tokio_util::codec::LengthDelimitedCodec;
+
+        const HANDSHAKE_MAGIC: &[u8; 4] = b"TSB1";
+        const HANDSHAKE_VERSION: u32 = 1;
+
+        async fn run_binary_roundtrip<S>(
+            mut stream: S,
+            message: &ProtocolMessage,
+        ) -> ProtocolResult<ProtocolMessage>
+        where
+            S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+        {
+            let mut hdr = [0u8; 8];
+            hdr[0..4].copy_from_slice(HANDSHAKE_MAGIC);
+            hdr[4..8].copy_from_slice(&HANDSHAKE_VERSION.to_be_bytes());
+            stream
+                .write_all(&hdr)
+                .await
+                .map_err(|e| ProtocolError::Negotiation(format!("binary handshake write: {e}")))?;
+            stream
+                .flush()
+                .await
+                .map_err(|e| ProtocolError::Negotiation(format!("binary handshake flush: {e}")))?;
+            stream
+                .read_exact(&mut hdr)
+                .await
+                .map_err(|e| ProtocolError::Negotiation(format!("binary handshake read: {e}")))?;
+            if &hdr[0..4] != HANDSHAKE_MAGIC {
+                return Err(ProtocolError::Negotiation(
+                    "peer binary handshake magic mismatch".to_string(),
+                ));
+            }
+            let ver = u32::from_be_bytes(hdr[4..8].try_into().expect("8 bytes"));
+            if ver != HANDSHAKE_VERSION {
+                return Err(ProtocolError::Negotiation(format!(
+                    "unsupported binary protocol version {ver}"
+                )));
+            }
+
+            let framed = LengthDelimitedCodec::builder()
+                .max_frame_length(16 * 1024 * 1024)
+                .new_framed(stream);
+            let mut t = tarpc::serde_transport::new(
+                framed,
+                SymmetricalMessagePack::<ProtocolMessage>::default(),
+            );
+            t.send(message.clone())
+                .await
+                .map_err(|e| ProtocolError::Transport(format!("binary MessagePack send: {e}")))?;
+            t.next()
+                .await
+                .transpose()
+                .map_err(|e| ProtocolError::Transport(format!("binary MessagePack recv: {e}")))?
+                .ok_or_else(|| {
+                    ProtocolError::Transport("binary peer closed before response".to_string())
+                })
+        }
+
+        let try_binary = async {
+            if let Some(ref path) = endpoint.path {
+                let socket = PathBuf::from(path);
+                if !socket.exists() {
+                    return Err(ProtocolError::TRpcTransportNotAvailable);
+                }
+                let stream = UnixStream::connect(&socket).await.map_err(|e| {
+                    ProtocolError::Transport(format!("Unix connect {}: {e}", socket.display()))
+                })?;
+                tokio::time::timeout(
+                    Duration::from_secs(5),
+                    run_binary_roundtrip(stream, message),
+                )
+                .await
+                .map_err(|_| ProtocolError::Timeout("binary handshake".to_string()))?
+            } else {
+                let addr: SocketAddr = format!("{}:{}", endpoint.address, endpoint.port)
+                    .parse()
+                    .map_err(|e| ProtocolError::Transport(format!("invalid TCP address: {e}")))?;
+                let stream = TcpStream::connect(addr)
+                    .await
+                    .map_err(|e| ProtocolError::Transport(format!("TCP connect: {e}")))?;
+                tokio::time::timeout(
+                    Duration::from_secs(5),
+                    run_binary_roundtrip(stream, message),
+                )
+                .await
+                .map_err(|_| ProtocolError::Timeout("binary handshake".to_string()))?
+            }
+        };
+
+        match try_binary.await {
+            Ok(m) => Ok(m),
+            Err(e) => {
+                tracing::debug!(error = %e, "binary primal transport failed; falling back to JSON-RPC");
+                let mut json_endpoint = endpoint.clone();
+                json_endpoint.transport = TransportType::TRpc;
+                TRpcTransport::new()
+                    .send_message(message, &json_endpoint)
+                    .await
+            }
+        }
+    }
+
+    /// Binary transport is selected only for [`TransportType::Binary`] endpoints.
+    pub const fn supports_endpoint(&self, endpoint: &ServiceEndpoint) -> bool {
+        matches!(endpoint.transport, TransportType::Binary)
+    }
+
+    /// Return transport type.
+    pub const fn transport_type(&self) -> TransportType {
+        TransportType::Binary
+    }
+}
+
 /// Transport manager for handling multiple transport types
 #[derive(Debug)]
 pub struct TransportManager {
@@ -247,6 +407,11 @@ impl TransportManager {
         // Register default transports (WebSocket removed — use JSON-RPC 2.0)
         transports.insert(TransportType::Http, Transport::Http(HttpTransport::new()));
         transports.insert(TransportType::TRpc, Transport::TRpc(TRpcTransport::new()));
+        #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+        transports.insert(
+            TransportType::Binary,
+            Transport::BinaryTrpc(BinaryTrpcTransport::new()),
+        );
 
         Self { transports }
     }

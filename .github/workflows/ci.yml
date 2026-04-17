@@ -206,6 +206,7 @@ jobs:
           - fuzz_jsonrpc_parse
           - fuzz_config_toml
           - fuzz_btsp_framing
+          - gpu_buffer_access
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly

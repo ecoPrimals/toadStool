@@ -4,6 +4,7 @@
 //! This module provides the main UniversalRuntime API that applications use.
 
 use crate::capabilities::{CapabilityDiscovery, WorkloadProfile};
+use crate::compute_discovery_settings::ComputeDiscoverySettings;
 use crate::types::{ComputeUnit, ComputeUnitDispatch, *};
 
 #[path = "stats.rs"]
@@ -51,7 +52,8 @@ impl UniversalRuntime {
     ///
     /// Returns [`ComputeError::NoSuitableUnit`] when discovery finds no compute units.
     pub async fn discover() -> Result<Self, ComputeError> {
-        let units = CapabilityDiscovery::discover_all().await;
+        let settings = ComputeDiscoverySettings::from_env();
+        let units = CapabilityDiscovery::discover_all(&settings).await;
 
         if units.is_empty() {
             return Err(ComputeError::NoSuitableUnit);

@@ -1,58 +1,50 @@
 # Active Technical Debt Register
 
-**Date**: April 16, 2026 — S203p
+**Date**: April 16, 2026 — S203t
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
 
 ## Active Debt
 
-### D-SANDBOX-SIMULATION — Active
-**Crate**: `security/sandbox` | **File**: `linux.rs`
-Linux sandbox operations (`destroy_sandbox`, `setup_mount`, `apply_security_policy`,
-`get_sandbox_logs`, `monitor_sandbox`) return success without actual namespace/cgroup/
-seccomp/mount operations. `monitor_sandbox` returns all-zero `ResourceUsage`. Logs are
-synthetic strings. Requires real kernel namespace/cgroup integration to evolve.
+Outstanding technical debt that still requires active engineering work (four items).
 
-### D-PLUGIN-SIMULATE — Active
-**Crate**: `core/toadstool` | **File**: `plugin_system/manager.rs`
-`load_plugin` / `unload_plugin` simulate load/unload (no `dlopen`, no cleanup).
-Evolution requires plugin ABI design.
-
-### D-BYOB-RESOURCE-SIM — Active
-**Crate**: `core/toadstool` | **File**: `byob/byob_impl/mod.rs`
-`update_resource_usage` returns simulated CPU/memory/network from service specs,
-not real metrics. Evolution requires integration with cgroup stats or monitoring.
-
-### D-WORKLOAD-CLIENT-IPC — Active
-**Crate**: `client` | **File**: `client/core.rs`
-`submit_workload` / `get_execution_status` always return `Err` for non-GPU workload
-types. JSON-RPC method mapping not yet wired for native/container/wasm/python paths.
-
-### D-HW-LEARN-VERIFY — Active
+### D-HW-LEARN-VERIFY — Active (evolved)
 **Crate**: `core/hw-learn` | **File**: `applicator/verify.rs`
-`verify_register`, `verify_compute_readback`, `verify_memory_accessible` return
-failure results with debt-tracking messages. Requires nouveau UAPI parsing.
-
-### D-TARPC-PHASE3-BINARY
-**Crate**: `integration/protocols` | **Feature**: `tarpc-transport`
-`TRpcTransport::send_message` now wired (S197): resolves target primal's Unix
-socket via capability discovery and sends via JSON-RPC 2.0 (the universal
-protocol per wateringHole). **Phase 3b**: negotiate tarpc binary framing for
-eligible Rust-to-Rust peers when coordination mesh supports protocol switching.
-Files: `transport.rs`.
+**S203**: Replaced stringly debt messages with `VerificationResult` (`Success` /
+`Mismatch` / `Unavailable` / `Error`). Register and BAR-mapped memory checks use
+`RegisterAccess` when attached; compute readback uses optional `GpuReadbackAccess`;
+`Unavailable` carries `UnavailableReason` (no register access, no GPU readback path,
+VFIO-only apertures). `RecipeApplicator::with_gpu_readback` wires readback.
+**Remaining**: nouveau DRM UAPI register query without BAR mmap, full VRAM/VFIO probes.
 
 ### D-EMBEDDED-PROGRAMMER
 **Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
-ISP/ICSP/parallel programmer trait impls return `EmbeddedProgrammerPlaceholder` errors.
-**Partially resolved S198**: `thiserror`-based platform-specific error types replace generic placeholders; behavior remains placeholder until hardware-specific transport layers (USB, parallel, serial) land.
-Files: `embedded/programmer_impls.rs`, `embedded/programmers.rs`.
+USB/serial/parallel **transport** is still absent — operations that would clock bits on the wire
+return `TransportNotConfigured` after validation succeeds.
+**Evolved (protocol)**: `embedded/chip_database.rs` (AVR/PIC signatures, voltage and ISP/ICSP
+clock bounds, EPROM sizes), `embedded/protocol_engine.rs` (`ProtocolEngine`, AVR ISP 4-byte
+frames, PIC18 ICSP entry/key + opcode stream, parallel EPROM read block encoding), extended
+`EmbeddedProgrammerError` (address/data/config/operation variants). `GenericProgrammer` /
+`EPROMProgrammer` parse `connection_params` (`family`, `chip`, `clock_hz`, `voltage_mv`, …),
+run chip DB validation on `initialize`, build protocol sequences on `connect`, and validate
+ranges/alignment before returning transport errors on `read_memory` / `write_memory` / `erase` /
+`verify`. `embedded/protocol.rs` delegates signature checks to the chip database.
+**Remaining**: real adapters, MISO modeling, PE/high-level PIC routines.
+Files: `embedded/chip_database.rs`, `embedded/protocol_engine.rs`, `embedded/errors.rs`,
+`embedded/protocol.rs`, `embedded/programmers.rs`, `embedded/programmer_impls.rs`.
 
 ### D-EMBEDDED-EMULATOR
 **Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
-MOS 6502 / Z80 emulator trait impls return `EmbeddedEmulatorPlaceholder` errors.
-**Partially resolved S198**: Typed errors as above; cycle-accurate CPU cores and real emulation still deferred.
-Files: `embedded/emulator_impls.rs`, `embedded/emulators.rs`.
+**Evolved (CPU)**: `embedded/cpu6502.rs` (NMOS 6502 subset: loads/stores, ALU, branches, JSR/RTS/JMP,
+stack, cycle counts) and `embedded/cpuz80.rs` (NOP/HALT, LD r,r', ALU, JP/JR/CALL/RET, LD A,imm,
+block-style `ED` opcode). `Emulator6502` / `EmulatorZ80` wrap cores with breakpoints and lifecycle;
+`emulator_impls.rs` implements `EmbeddedEmulator` (init/load/start/stop/step/registers/memory/status).
+`EmbeddedEmulatorError::NotReady` covers uninitialized paths; `CoreNotAvailable` is unused in the
+default build. **Remaining**: decimal-mode 6502, full Z80 prefix tables / timing, peripherals, remote
+debug transport (GDB), cycle-accurate vs instruction-count models.
+Files: `embedded/cpu6502.rs`, `embedded/cpuz80.rs`, `embedded/emulators.rs`, `embedded/emulator_impls.rs`,
+`embedded/errors.rs`.
 
 ### D-COVERAGE-GAP
 **Scope**: Workspace | **Metric**: `cargo llvm-cov`
@@ -72,22 +64,60 @@ integration (primal manager lifecycle, storage artifacts),
 WASM (component model registry/core).
 Files: `scripts/run-coverage.sh`, `.github/workflows/ci.yml`.
 
-### D-FUZZ-TARGETS-UNSAFE
-**Crate**: `runtime/gpu` | Scope: `unified_memory/buffer/access.rs`
-Remaining unsafe surface: two `from_raw_parts(_mut)` call sites. Safety docs
-now accurately distinguish runtime-checked vs backend-contract-assumed invariants.
-Dead u8 alignment check removed S197. Evolution: fuzz the access paths, consider
-`NonNull::slice_from_raw_parts` for fat-pointer representation.
-Files: `buffer/access.rs`.
 
-### D-FUZZ-TARGETS — seed corpus & extended campaigns
+## Evolved Debt (monitoring)
+
+Substantially improved in recent iterations; track remaining follow-ups and closure criteria (three items).
+
+### D-SANDBOX-SIMULATION — EVOLVED S203s
+**Crate**: `security/sandbox` | **Module**: `linux/`
+Linux sandbox operations now use real `rustix` mount/unmount, capability probing at
+manager construction, `/proc` + cgroup v2 parsing for `monitor_sandbox`, optional
+seccomp-BPF baseline via `seccompiler` when the `seccomp` feature is enabled (default),
+and on-disk log collection under `TOADSTOOL_SANDBOX_LOG_DIR` or `DEFAULT_SANDBOX_LOG_DIR`
+(see `linux/constants.rs`). **Graceful degradation**: without `CAP_SYS_ADMIN`, `setup_mount`
+returns structured `SecurityError::PermissionDenied` (no fake success); seccomp install
+failures log a warning and continue; missing PID or proc nodes yield zeros with warnings.
+Files: `linux/mod.rs`, `linux/proc.rs`, `linux/privilege.rs`, `linux/constants.rs`.
+
+### D-FUZZ-TARGETS-UNSAFE — EVOLVED S203p
+**Crate**: `runtime/gpu` | Scope: `unified_memory/buffer/access.rs`
+**S203p**: `gpu_buffer_access` libFuzzer target (`fuzz/fuzz_targets/gpu_buffer_access.rs`) drives
+`UnifiedBuffer` allocation + `fuzz_exercise_cpu_slice_views` (feature `fuzz` on `toadstool-runtime-gpu`)
+against the CPU unified-memory backend — exercises `NonNull::as_ref` / `as_mut` after `validate_cpu_ptr`.
+**Remaining**: extended campaigns / sanitizer triage; optional `NonNull::slice_from_raw_parts` refactors.
+Files: `buffer/access.rs`, `fuzz/Cargo.toml`, `fuzz/fuzz_targets/gpu_buffer_access.rs`.
+
+### D-FUZZ-TARGETS — EVOLVED S203p (proptest bridge; seeds still open)
 **Scope**: Workspace | **Dir**: `fuzz/`
-Three fuzz targets landed (S197) and **CI smoke integration landed (S203)**.
-`ci.yml` now runs all three targets with `cargo fuzz run` (2min/target, nightly).
-Remaining: add seed corpus from real JSON-RPC traffic, run extended campaigns,
-add proptest bridge for property-based input generation.
-See also: `D-FUZZ-TARGETS-UNSAFE` (GPU buffer access paths).
-Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `.github/workflows/ci.yml`.
+Four fuzz targets (S197 + `gpu_buffer_access` S203p); **CI smoke** runs each with `cargo fuzz run`
+(2min/target, nightly). **S203p**: proptest strategies — `toadstool::proptest_strategies` (`WorkloadType`,
+`ResourceRequirements`), `hw-learn::proptest_strategies` (`InitRecipe`), with round-trip / dry-run tests.
+**Remaining**: seed corpus from real JSON-RPC traffic, long-running fuzz campaigns beyond CI smoke.
+Files: `fuzz/Cargo.toml`, `fuzz/fuzz_targets/*.rs`, `crates/core/toadstool/src/proptest_strategies.rs`,
+`crates/core/hw-learn/src/proptest_strategies.rs`, `.github/workflows/ci.yml`.
+
+
+## Recently Resolved (S203t)
+
+Closed in this register cycle; kept here for traceability (two items).
+
+### D-PLUGIN-SIMULATE — RESOLVED S203q
+**Crate**: `core/toadstool` | **Feature**: `plugin-loading` (optional; default off so tests without `.so` stay green)
+Real dynamic loading via `libloading`: `plugin_system/abi.rs` defines `PLUGIN_ABI_VERSION`, `PluginVTable`,
+and symbol types; `plugin_system/ffi_loader.rs` resolves `plugin_init`, `plugin_version`, optional
+`plugin_name`, validates ABI, runs `on_load` / `on_unload`. `PluginManager` keeps `HashMap<PluginId, LoadedPlugin>`
+and drops the library on unload. Typed errors: `PluginError::SymbolNotFound`, `PluginError::PluginAbiMismatch`.
+Without the feature, hosts log once and keep simulated load/unload. **Unsafe** is confined to `ffi_loader`;
+crate root uses `#![deny(unsafe_code)]` (not `forbid`) so the loader can use `extern "C"` calls.
+
+### D-TARPC-PHASE3-BINARY — RESOLVED S203q
+**Crate**: `integration/protocols` | **Features**: `tarpc-transport` + `binary-transport`
+`TransportType::Binary` selects `BinaryTrpcTransport`: 8-byte `TSB1` + big-endian protocol version
+handshake, then length-delimited MessagePack frames via `tarpc::serde_transport` + `tokio_serde::formats::SymmetricalMessagePack`
+(`rmp-serde`). TCP uses `address`:`port`; Unix uses `endpoint.path`. If handshake or binary round-trip
+fails (non-Rust / legacy peer), falls back to existing JSON-RPC [`TRpcTransport`] on the same logical
+endpoint (`transport` forced to `TRpc`). `TRpcTransport` JSON-RPC path unchanged.
 
 
 ## Known Limitations (not actionable debt)
@@ -105,6 +135,23 @@ testing utilities (`Generator<T>`, `RandomNumberGenerator`).
 **Evolution history**: S203j migrated 13 zero-dyn traits to native AFIT (freed 8 crates).
 S203n closed at dyn-ceiling (158 annotations). S203r completed full deprecation across
 all remaining 32 dyn-constrained traits using manual future boxing.
+
+## S203q Resolved Debt (BYOB cgroup/`proc` metrics + workload JSON-RPC client)
+
+### D-BYOB-RESOURCE-SIM — RESOLVED S203q
+**Crate**: `core/toadstool` | **Files**: `byob/resource_metrics.rs`, `byob/byob_impl/mod.rs`, `byob/deployment.rs`
+`ResourceMetricsReader` reads cgroup v2 when available (`memory.current`, `memory.max` for telemetry,
+`cpu.stat` `usage_usec`, `io.stat` aggregate rbytes/wbytes), then falls back to `/proc/[pid]/stat` (utime+stime
+ticks), `/proc/[pid]/status` (VmRSS), and `/proc/[pid]/net/dev` (non-`lo` RX/TX bytes). Last resort:
+spec-based simulation with `tracing::warn!`. `ActiveDeployment` stores `ResourcePollState` for CPU and
+network deltas between polls. Pure Rust string parsers covered by synthetic unit tests.
+
+### D-WORKLOAD-CLIENT-IPC — RESOLVED S203q
+**Crate**: `toadstool-client` | **File**: `client/core.rs`
+`submit_workload` dispatches `execution.submit_native` / `execution.submit_container` / `execution.submit_wasm` /
+`execution.submit_python` / `execution.submit_custom` via existing `UnixJsonRpcClient`; `get_execution_status`
+calls `execution.status` with `workload_id`/`execution_id`. Public `execution_submit_method` maps `WorkloadType` → JSON-RPC method name; submit params JSON includes serialized workload
+fields (`timeout_secs` in place of `Duration`). Successful submits cache `ExecutionInfo` in `active_executions`.
 
 ## S203p Resolved Debt (Env Interning Complete + Coverage Wave 3)
 
@@ -249,7 +296,8 @@ Smart refactoring (not line splits) into cohesive submodules:
 ### D-ACTIVE-DEBT-CATALOG — RESOLVED S203k
 Cataloged 5 previously-undocumented active debt items with D- prefix:
 `D-SANDBOX-SIMULATION`, `D-PLUGIN-SIMULATE`, `D-BYOB-RESOURCE-SIM`,
-`D-WORKLOAD-CLIENT-IPC`, `D-HW-LEARN-VERIFY`.
+`D-WORKLOAD-CLIENT-IPC`, `D-HW-LEARN-VERIFY`. (`D-BYOB-RESOURCE-SIM` and
+`D-WORKLOAD-CLIENT-IPC` closed **S203q**.)
 
 ## S203j Resolved Debt (Deep Debt Execution: Idiomatic Evolution Pass)
 

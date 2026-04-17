@@ -10,8 +10,8 @@ mod format;
 // Re-exports: capability probe, execution helpers, socket layout (integration tests / coverage)
 pub use capabilities::query_local_capabilities;
 pub use execution::{
-    create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
-    write_tcp_discovery_file,
+    UnibinExecutionConfig, create_executor, is_platform_constraint_str, is_selinux_enforcing,
+    start_servers_with_fallback, write_tcp_discovery_file,
 };
 pub use format::{
     ensure_biomeos_directory, get_socket_path, legacy_socket_filename_for_family,
@@ -132,8 +132,10 @@ pub async fn run_server_main(
     let socket_path = format::get_socket_path(&family_id, &node_id)?;
     info!("✅ Final socket path: {:?}", socket_path);
 
+    let unibin_config = execution::UnibinExecutionConfig::from_env();
+
     info!("Initializing compute executor...");
-    let executor = execution::create_executor(&family_id).await?;
+    let executor = execution::create_executor(&family_id, &unibin_config).await?;
     let version = env!("CARGO_PKG_VERSION").to_string();
 
     let error_count = Arc::new(AtomicU64::new(0));
@@ -234,6 +236,7 @@ pub async fn run_server_main(
 
     let socket_path_for_server = socket_path.clone();
     let jsonrpc_socket_for_server = jsonrpc_socket.clone();
+    let unibin_for_server = unibin_config.clone();
 
     let server_handle = tokio::spawn(async move {
         match execution::start_servers_with_fallback(
@@ -242,6 +245,7 @@ pub async fn run_server_main(
             socket_path_for_server,
             jsonrpc_socket_for_server,
             tcp_port,
+            &unibin_for_server,
         )
         .await
         {

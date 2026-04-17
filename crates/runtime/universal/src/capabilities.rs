@@ -4,7 +4,12 @@
 //! This module implements runtime discovery of compute capabilities,
 //! following the principle: "Discover, don't hardcode"
 
+use crate::compute_discovery_settings::ComputeDiscoverySettings;
 use crate::types::{ComputeUnitDispatch, *};
+
+#[cfg(feature = "wgpu-backend")]
+/// Wall-clock budget for enumerating wgpu adapters before falling back to CPU-only.
+const DEFAULT_WGPU_DISCOVERY_TIMEOUT_SECS: u64 = 10;
 
 /// Capability discovery engine
 pub struct CapabilityDiscovery;
@@ -18,7 +23,7 @@ impl CapabilityDiscovery {
     /// - Neuromorphic processors (future)
     ///
     /// No hardcoded assumptions - everything is discovered!
-    pub async fn discover_all() -> Vec<ComputeUnitDispatch> {
+    pub async fn discover_all(settings: &ComputeDiscoverySettings) -> Vec<ComputeUnitDispatch> {
         let mut units: Vec<ComputeUnitDispatch> = Vec::new();
 
         // Discover CPU
@@ -29,8 +34,11 @@ impl CapabilityDiscovery {
         // Discover GPU (wgpu) — isolated so driver crashes don't bring down the process
         #[cfg(feature = "wgpu-backend")]
         {
-            match tokio::time::timeout(std::time::Duration::from_secs(10), Self::discover_wgpu())
-                .await
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(DEFAULT_WGPU_DISCOVERY_TIMEOUT_SECS),
+                Self::discover_wgpu(settings),
+            )
+            .await
             {
                 Ok(gpu_units) => units.extend(gpu_units),
                 Err(_) => {
@@ -67,11 +75,11 @@ impl CapabilityDiscovery {
     /// Catches panics from GPU driver initialization so that headless/CI
     /// environments degrade gracefully to CPU-only instead of segfaulting.
     ///
-    /// **hotSpring absorption (S94):** Multi-adapter selection with env var
-    /// override. Set `TOADSTOOL_GPU_ADAPTER` to a comma-separated fallback
-    /// list: index (`"0"`), name substring (`"3090,titan"`), or `"auto"`.
+    /// **hotSpring absorption (S94):** Multi-adapter selection via
+    /// [`ComputeDiscoverySettings::gpu_adapter_selector`]: comma-separated
+    /// index (`"0"`), name substring (`"3090,titan"`), or `"auto"`.
     #[cfg(feature = "wgpu-backend")]
-    async fn discover_wgpu() -> Vec<ComputeUnitDispatch> {
+    async fn discover_wgpu(settings: &ComputeDiscoverySettings) -> Vec<ComputeUnitDispatch> {
         use crate::backends::WgpuComputeUnit;
 
         let adapters = match std::panic::catch_unwind(|| {
@@ -102,8 +110,8 @@ impl CapabilityDiscovery {
             }
         }
 
-        if let Ok(selector) = std::env::var("TOADSTOOL_GPU_ADAPTER") {
-            return Self::select_adapters(&selector, &infos, units);
+        if let Some(selector) = &settings.gpu_adapter_selector {
+            return Self::select_adapters(selector, &infos, units);
         }
 
         units
@@ -352,7 +360,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_all_returns_units() {
-        let units = CapabilityDiscovery::discover_all().await;
+        let units = CapabilityDiscovery::discover_all(&ComputeDiscoverySettings::default()).await;
         // Should have at least CPU on default features
         #[cfg(feature = "cpu")]
         assert!(!units.is_empty(), "Should discover at least CPU");

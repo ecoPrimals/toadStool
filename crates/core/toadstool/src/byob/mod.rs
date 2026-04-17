@@ -19,7 +19,9 @@ pub mod byob_types;
 pub mod config;
 mod deployment; // Internal module
 pub mod health_monitor;
+pub(crate) mod ipv4_subnet;
 pub mod network_manager;
+mod resource_metrics;
 mod validation; // Internal validation logic
 
 // Re-export all public types and implementations

@@ -9,6 +9,7 @@ use crate::backends::userspace::UserspaceBackend;
 use crate::backends::vfio::VfioBackend;
 use crate::capabilities::Capabilities;
 use crate::error::Result;
+#[cfg(any(test, feature = "test-mocks"))]
 use crate::synthetic::SyntheticNpuBackend;
 use std::fmt::Debug;
 
@@ -118,7 +119,7 @@ impl std::fmt::Display for BackendType {
     }
 }
 
-/// Concrete Akida backend (kernel, userspace, VFIO, or synthetic) — used instead of `Box<dyn NpuBackend>`.
+/// Concrete Akida backend (kernel, userspace, VFIO; optional synthetic via `test-mocks`) — used instead of `Box<dyn NpuBackend>`.
 #[derive(Debug)]
 pub enum NpuBackendDispatch {
     /// Kernel driver (`/dev/akida*`).
@@ -128,6 +129,7 @@ pub enum NpuBackendDispatch {
     /// VFIO driver (pure Rust with DMA).
     Vfio(VfioBackend),
     /// In-memory backend for tests and simulations (no hardware).
+    #[cfg(any(test, feature = "test-mocks"))]
     Synthetic(SyntheticNpuBackend),
 }
 
@@ -144,6 +146,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.capabilities(),
             Self::Userspace(b) => b.capabilities(),
             Self::Vfio(b) => b.capabilities(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.capabilities(),
         }
     }
@@ -153,6 +156,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.load_model(model),
             Self::Userspace(b) => b.load_model(model),
             Self::Vfio(b) => b.load_model(model),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.load_model(model),
         }
     }
@@ -162,6 +166,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.load_reservoir(w_in, w_res),
             Self::Userspace(b) => b.load_reservoir(w_in, w_res),
             Self::Vfio(b) => b.load_reservoir(w_in, w_res),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.load_reservoir(w_in, w_res),
         }
     }
@@ -171,6 +176,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.infer(input),
             Self::Userspace(b) => b.infer(input),
             Self::Vfio(b) => b.infer(input),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.infer(input),
         }
     }
@@ -180,6 +186,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.measure_power(),
             Self::Userspace(b) => b.measure_power(),
             Self::Vfio(b) => b.measure_power(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.measure_power(),
         }
     }
@@ -189,6 +196,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.backend_type(),
             Self::Userspace(b) => b.backend_type(),
             Self::Vfio(b) => b.backend_type(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.backend_type(),
         }
     }
@@ -198,6 +206,7 @@ impl NpuBackend for NpuBackendDispatch {
             Self::Kernel(b) => b.is_ready(),
             Self::Userspace(b) => b.is_ready(),
             Self::Vfio(b) => b.is_ready(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::Synthetic(b) => b.is_ready(),
         }
     }

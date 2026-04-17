@@ -52,6 +52,7 @@ mod inference;
 mod io;
 mod loading;
 pub mod mmio;
+#[cfg(any(test, feature = "test-mocks"))]
 mod synthetic;
 
 /// NPU hardware setup and initialization
@@ -88,6 +89,7 @@ pub use discovery::{DeviceInfo, DeviceManager};
 pub use error::{AkidaError, Result};
 pub use inference::{InferenceConfig, InferenceExecutor, InferenceResult};
 pub use loading::{LoadConfig, LoadMetrics, ModelLoader, ModelProgram, NpuConfig};
+#[cfg(any(test, feature = "test-mocks"))]
 pub use synthetic::SyntheticNpuBackend;
 
 /// Re-export commonly used types

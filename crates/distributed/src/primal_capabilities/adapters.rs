@@ -11,6 +11,38 @@ use serde::{Deserialize, Serialize};
 use super::registry::Capability;
 use crate::error::DistributedError;
 
+/// HTTP path suffix for workload execution, appended to the ToadStool base URL (`TOADSTOOL_ENDPOINT`).
+///
+/// Override via [`CoordinationAdapterConfig::workload_execute_path`].
+pub const WORKLOAD_EXECUTE_PATH: &str = "/api/v1/workload/execute";
+
+/// Configuration for [`CoordinationAdapter`], including optional overrides for federation API paths.
+#[derive(Debug, Clone)]
+pub struct CoordinationAdapterConfig {
+    /// Coordination primal base URL or socket identifier (adapter-specific).
+    pub coordination_endpoint: String,
+    /// Path suffix for workload execution (leading slash, e.g. [`WORKLOAD_EXECUTE_PATH`]).
+    pub workload_execute_path: String,
+}
+
+impl CoordinationAdapterConfig {
+    /// Creates config with the default [`WORKLOAD_EXECUTE_PATH`].
+    #[must_use]
+    pub fn new(coordination_endpoint: impl Into<String>) -> Self {
+        Self {
+            coordination_endpoint: coordination_endpoint.into(),
+            workload_execute_path: WORKLOAD_EXECUTE_PATH.to_string(),
+        }
+    }
+
+    /// Sets a custom workload execution path (for non-standard deployments or tests).
+    #[must_use]
+    pub fn workload_execute_path(mut self, path: impl Into<String>) -> Self {
+        self.workload_execute_path = path.into();
+        self
+    }
+}
+
 /// Trait for primal adapters
 ///
 /// Implement this trait to add support for a new primal.
@@ -53,9 +85,29 @@ pub struct CoordinationAdapter {
     endpoint: String,
     rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient,
     toadstool_endpoint: String,
+    workload_execute_path: String,
 }
 
 impl CoordinationAdapter {
+    fn build(
+        coordination_endpoint: String,
+        toadstool_endpoint: String,
+        workload_execute_path: String,
+    ) -> Result<Self, DistributedError> {
+        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
+            capabilities::COORDINATION,
+        );
+
+        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
+
+        Ok(Self {
+            endpoint: coordination_endpoint,
+            rpc_client,
+            toadstool_endpoint,
+            workload_execute_path,
+        })
+    }
+
     /// Create a new Coordination adapter with runtime discovery
     ///
     /// # Architecture
@@ -71,20 +123,18 @@ impl CoordinationAdapter {
     /// - HTTP client cannot be created
     /// - TOADSTOOL_ENDPOINT environment variable is not set (primal must know itself)
     pub fn new(coordination_endpoint: &str) -> Result<Self, DistributedError> {
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
-            capabilities::COORDINATION,
-        );
+        Self::from_config(CoordinationAdapterConfig::new(coordination_endpoint))
+    }
 
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
-
+    /// Create a coordination adapter from explicit configuration (path override supported).
+    pub fn from_config(config: CoordinationAdapterConfig) -> Result<Self, DistributedError> {
         let toadstool_endpoint = std::env::var("TOADSTOOL_ENDPOINT")
             .map_err(|_| DistributedError::ToadstoolEndpointNotSet)?;
-
-        Ok(Self {
-            endpoint: coordination_endpoint.to_string(),
-            rpc_client,
+        Self::build(
+            config.coordination_endpoint,
             toadstool_endpoint,
-        })
+            config.workload_execute_path,
+        )
     }
 
     /// Create adapter with explicit endpoint (for testing/development)
@@ -93,17 +143,11 @@ impl CoordinationAdapter {
         coordination_endpoint: &str,
         toadstool_endpoint: String,
     ) -> Result<Self, DistributedError> {
-        let socket_path = toadstool_common::primal_sockets::get_socket_path_for_capability(
-            capabilities::COORDINATION,
-        );
-
-        let rpc_client = toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(socket_path);
-
-        Ok(Self {
-            endpoint: coordination_endpoint.to_string(),
-            rpc_client,
+        Self::build(
+            coordination_endpoint.to_string(),
             toadstool_endpoint,
-        })
+            WORKLOAD_EXECUTE_PATH.to_string(),
+        )
     }
 }
 
@@ -141,7 +185,11 @@ impl PrimalAdapter for CoordinationAdapter {
                     confidence: c.confidence,
                 })
                 .collect(),
-            workload_endpoint: format!("{}/api/v1/workload/execute", self.toadstool_endpoint),
+            workload_endpoint: format!(
+                "{}{}",
+                self.toadstool_endpoint.trim_end_matches('/'),
+                self.workload_execute_path
+            ),
         };
 
         let params = serde_json::to_value(&registration)?;

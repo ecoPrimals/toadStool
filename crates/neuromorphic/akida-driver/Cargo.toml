@@ -37,10 +37,11 @@ toadstool-hw-safe = { path = "../../core/hw-safe" }
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-criterion = "0.5"
+criterion = { workspace = true }
 
 [features]
 default = []
+test-mocks = []
 
 [[example]]
 name = "enumerate_devices"

@@ -12,6 +12,7 @@ use crate::transport::DisplayTransport;
 use crate::serial_transport::SerialTransport;
 
 /// Test-only loopback transport (see integration tests and router unit tests).
+#[cfg(any(test, feature = "test-mocks"))]
 #[doc(hidden)]
 pub struct TestLoopbackTransport {
     pub(crate) info: TransportInfo,
@@ -19,6 +20,7 @@ pub struct TestLoopbackTransport {
     pub(crate) bandwidth_bps: u64,
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl TestLoopbackTransport {
     /// Creates a loopback transport with configurable bandwidth (for filter tests).
     #[must_use]
@@ -54,6 +56,7 @@ impl TestLoopbackTransport {
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl HardwareTransport for TestLoopbackTransport {
     fn info(&self) -> &TransportInfo {
         &self.info
@@ -81,12 +84,14 @@ impl HardwareTransport for TestLoopbackTransport {
 }
 
 /// High-bandwidth mock transport for filter tests (medium Display).
+#[cfg(any(test, feature = "test-mocks"))]
 #[doc(hidden)]
 pub struct TestHighBandwidthTransport {
     info: TransportInfo,
     bandwidth_bps: u64,
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl TestHighBandwidthTransport {
     /// Creates a transport with explicit metadata and bandwidth.
     #[must_use]
@@ -108,6 +113,7 @@ impl TestHighBandwidthTransport {
     }
 }
 
+#[cfg(any(test, feature = "test-mocks"))]
 impl HardwareTransport for TestHighBandwidthTransport {
     fn info(&self) -> &TransportInfo {
         &self.info
@@ -142,8 +148,10 @@ pub enum HardwareTransportDispatch {
     #[cfg(feature = "serial-transport")]
     Serial(SerialTransport),
     /// Loopback test double.
+    #[cfg(any(test, feature = "test-mocks"))]
     TestLoopback(TestLoopbackTransport),
     /// High-bandwidth test double.
+    #[cfg(any(test, feature = "test-mocks"))]
     TestHighBandwidth(TestHighBandwidthTransport),
 }
 
@@ -155,7 +163,9 @@ impl HardwareTransport for HardwareTransportDispatch {
             Self::Pcie(t) => t.info(),
             #[cfg(feature = "serial-transport")]
             Self::Serial(t) => t.info(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestLoopback(t) => t.info(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestHighBandwidth(t) => t.info(),
         }
     }
@@ -167,7 +177,9 @@ impl HardwareTransport for HardwareTransportDispatch {
             Self::Pcie(t) => t.bandwidth_bps(),
             #[cfg(feature = "serial-transport")]
             Self::Serial(t) => t.bandwidth_bps(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestLoopback(t) => t.bandwidth_bps(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestHighBandwidth(t) => t.bandwidth_bps(),
         }
     }
@@ -179,7 +191,9 @@ impl HardwareTransport for HardwareTransportDispatch {
             Self::Pcie(t) => t.is_available(),
             #[cfg(feature = "serial-transport")]
             Self::Serial(t) => t.is_available(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestLoopback(t) => t.is_available(),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestHighBandwidth(t) => t.is_available(),
         }
     }
@@ -191,7 +205,9 @@ impl HardwareTransport for HardwareTransportDispatch {
             Self::Pcie(t) => t.send(data),
             #[cfg(feature = "serial-transport")]
             Self::Serial(t) => t.send(data),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestLoopback(t) => t.send(data),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestHighBandwidth(t) => t.send(data),
         }
     }
@@ -203,7 +219,9 @@ impl HardwareTransport for HardwareTransportDispatch {
             Self::Pcie(t) => t.recv(buf),
             #[cfg(feature = "serial-transport")]
             Self::Serial(t) => t.recv(buf),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestLoopback(t) => t.recv(buf),
+            #[cfg(any(test, feature = "test-mocks"))]
             Self::TestHighBandwidth(t) => t.recv(buf),
         }
     }

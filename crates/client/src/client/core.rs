@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use serde_json::Value;
 use tokio::sync::{RwLock, mpsc};
 use tracing::{debug, info};
 use url::Url;
@@ -20,7 +21,7 @@ use super::config::ClientConfig;
 use super::error::{ClientError, ClientResult};
 use super::types::{
     ClusterStatus, EventHandlers, ExecutionInfo, ExecutionStatus, ToadStoolEvent,
-    WorkloadSubmission,
+    WorkloadSubmission, WorkloadType,
 };
 
 /// Resolve socket path from config.
@@ -53,6 +54,120 @@ pub(crate) fn resolve_socket_path(base_url: &str) -> PathBuf {
     }
     // Default: domain-based socket per PRIMAL_SELF_KNOWLEDGE_STANDARD v1.1
     toadstool_common::platform_paths::toadstool_socket_dir().join("compute.sock")
+}
+
+/// JSON-RPC method name for workload submission (see `execution.submit_*` family).
+#[must_use]
+pub fn execution_submit_method(workload_type: &WorkloadType) -> &'static str {
+    match workload_type {
+        WorkloadType::Native { .. } => "execution.submit_native",
+        WorkloadType::Container { .. } => "execution.submit_container",
+        WorkloadType::Wasm { .. } => "execution.submit_wasm",
+        WorkloadType::Python { .. } => "execution.submit_python",
+        WorkloadType::Custom { .. } => "execution.submit_custom",
+    }
+}
+
+fn workload_submission_params(workload: &WorkloadSubmission) -> Value {
+    serde_json::json!({
+        "workload_type": workload.workload_type,
+        "runtime_hint": workload.runtime_hint,
+        "priority": workload.priority,
+        "timeout_secs": workload.timeout.map(|d| d.as_secs()),
+        "environment": workload.environment,
+        "resources": workload.resources,
+        "metadata": workload.metadata,
+    })
+}
+
+fn parse_execution_id(value: &Value) -> Option<Uuid> {
+    let id = value
+        .get("execution_id")
+        .or_else(|| value.get("workload_id"))
+        .or_else(|| value.get("job_id"))
+        .or_else(|| value.get("id"))?;
+    if let Some(s) = id.as_str() {
+        return Uuid::parse_str(s).ok();
+    }
+    None
+}
+
+fn execution_info_from_submit_response(
+    value: &Value,
+    submitted_at: std::time::SystemTime,
+) -> ClientResult<ExecutionInfo> {
+    let execution_id = parse_execution_id(value).ok_or_else(|| {
+        ClientError::Server(
+            "execution submit: response missing execution_id/workload_id/job_id".to_string(),
+        )
+    })?;
+    let status = value
+        .get("status")
+        .and_then(|v| v.as_str())
+        .map_or(ExecutionStatus::Queued, map_execution_status_str);
+    Ok(ExecutionInfo {
+        execution_id,
+        status,
+        submitted_at,
+        started_at: None,
+        completed_at: None,
+        runtime_type: value
+            .get("runtime_type")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        error_message: value
+            .get("error")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        output: None,
+        metrics: None,
+    })
+}
+
+fn execution_info_from_status_response(value: &Value, execution_id: Uuid) -> ExecutionInfo {
+    let status_str = value
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let status = map_execution_status_str(status_str);
+    let terminal = matches!(
+        status,
+        ExecutionStatus::Completed
+            | ExecutionStatus::Failed
+            | ExecutionStatus::Cancelled
+            | ExecutionStatus::Timeout
+    );
+    ExecutionInfo {
+        execution_id,
+        status,
+        submitted_at: std::time::SystemTime::now(),
+        started_at: None,
+        completed_at: terminal.then(std::time::SystemTime::now),
+        runtime_type: value
+            .get("runtime_type")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        error_message: value
+            .get("error")
+            .or_else(|| value.get("error_message"))
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        output: None,
+        metrics: None,
+    }
+}
+
+fn map_execution_status_str(s: &str) -> ExecutionStatus {
+    match s.to_lowercase().as_str() {
+        "completed" | "success" | "succeeded" | "done" => ExecutionStatus::Completed,
+        "failed" | "error" | "failure" => ExecutionStatus::Failed,
+        "cancelled" | "canceled" => ExecutionStatus::Cancelled,
+        "running" | "active" => ExecutionStatus::Running,
+        "queued" => ExecutionStatus::Queued,
+        "pending" => ExecutionStatus::Pending,
+        "timeout" | "timed_out" | "timed out" => ExecutionStatus::Timeout,
+        _ => ExecutionStatus::Running,
+    }
 }
 
 /// ToadStool client for interacting with ToadStool servers
@@ -117,36 +232,49 @@ impl ToadStoolClient {
 
     /// Submit a workload for execution
     ///
-    /// Use `compute.submit` JSON-RPC method for GPU/compute jobs.
-    /// Workload execution (native/container/wasm/python) is not yet mapped to JSON-RPC.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error - workload submission via JSON-RPC not fully implemented
-    #[expect(
-        clippy::unused_async,
-        reason = "API surface; may perform async I/O in future"
-    )]
+    /// Uses `execution.submit_native` / `execution.submit_container` / `execution.submit_wasm` /
+    /// `execution.submit_python` / `execution.submit_custom` over Unix JSON-RPC. GPU jobs use
+    /// `compute.submit` (see server docs).
     pub async fn submit_workload(
         &self,
-        _workload: WorkloadSubmission,
+        workload: WorkloadSubmission,
     ) -> ClientResult<ExecutionInfo> {
-        Err(ClientError::Http(
-            "Workload submission: use compute.submit for GPU jobs; native/container/wasm/python not yet exposed via JSON-RPC".to_string(),
-        ))
+        let method = execution_submit_method(&workload.workload_type);
+        let params = workload_submission_params(&workload);
+        let submitted_at = std::time::SystemTime::now();
+        let result = self
+            .rpc_client
+            .call(method, params)
+            .await
+            .map_err(|e| ClientError::Server(format!("{method}: {e}")))?;
+        let info = execution_info_from_submit_response(&result, submitted_at)?;
+        self.active_executions
+            .write()
+            .await
+            .insert(info.execution_id, info.clone());
+        Ok(info)
     }
 
-    /// Get execution status
+    /// Get execution status for a workload execution
     ///
-    /// Use `compute.status` for GPU job status. Execution status (`active_executions`) not exposed.
-    #[expect(
-        clippy::unused_async,
-        reason = "API surface; may perform async I/O in future"
-    )]
-    pub async fn get_execution_status(&self, _execution_id: Uuid) -> ClientResult<ExecutionInfo> {
-        Err(ClientError::Http(
-            "Execution status: use compute.status for GPU jobs; workload executions not yet exposed via JSON-RPC".to_string(),
-        ))
+    /// Calls `execution.status` with the workload/execution id. GPU jobs continue to use
+    /// `compute.status` via [`Self::wait_for_completion`].
+    pub async fn get_execution_status(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
+        let params = serde_json::json!({
+            "workload_id": execution_id.to_string(),
+            "execution_id": execution_id.to_string(),
+        });
+        let result = self
+            .rpc_client
+            .call("execution.status", params)
+            .await
+            .map_err(|e| ClientError::Server(format!("execution.status: {e}")))?;
+        let info = execution_info_from_status_response(&result, execution_id);
+        self.active_executions
+            .write()
+            .await
+            .insert(execution_id, info.clone());
+        Ok(info)
     }
 
     /// Cancel an execution

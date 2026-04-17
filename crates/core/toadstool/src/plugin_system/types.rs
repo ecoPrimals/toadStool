@@ -7,6 +7,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Stable identifier for a registered plugin (manifest `name`).
+pub type PluginId = String;
+
 /// Plugin configuration
 #[derive(Debug, Clone)]
 pub struct PluginConfig {
@@ -143,4 +146,17 @@ pub enum PluginError {
     /// Configuration error
     #[error("Configuration error: {0}")]
     ConfigError(String),
+
+    /// Shared library is missing a required exported symbol
+    #[error("Missing plugin symbol: {0}")]
+    SymbolNotFound(String),
+
+    /// Host/plugin ABI version mismatch
+    #[error("Plugin ABI mismatch: host ABI {host}, plugin reports {plugin}")]
+    PluginAbiMismatch {
+        /// ABI version expected by this ToadStool build ([`super::abi::PLUGIN_ABI_VERSION`]).
+        host: u32,
+        /// ABI version reported by the shared library.
+        plugin: u32,
+    },
 }

@@ -7,12 +7,14 @@ use criterion::black_box;
 use criterion::{Criterion, criterion_group, criterion_main};
 use toadstool_server::pure_jsonrpc::JsonRpcHandler;
 use toadstool_server::pure_jsonrpc::process_request;
-use toadstool_server::tarpc_server::StandaloneExecutor;
+use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
 use tokio::runtime::Runtime;
 
 fn jsonrpc_handler() -> JsonRpcHandler {
     JsonRpcHandler::new(
-        Arc::new(StandaloneExecutor::new()),
+        Arc::new(WorkloadExecutorDispatch::Standalone(
+            StandaloneExecutor::new(),
+        )),
         Arc::<str>::from("bench-1.0.0"),
         None,
     )

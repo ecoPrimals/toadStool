@@ -28,7 +28,7 @@ futures = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
-criterion = "0.5"
+criterion = { workspace = true }
 
 [lints]
 workspace = true

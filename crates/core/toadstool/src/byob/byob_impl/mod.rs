@@ -10,15 +10,16 @@ use uuid::Uuid;
 
 #[cfg(test)]
 pub(crate) use super::byob_types::{
-    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, HealthCheck, NetworkUsage,
-    ResourceUsage, ServiceSpec,
+    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, HealthCheck, ResourceUsage,
+    ServiceSpec,
 };
 #[cfg(not(test))]
 use super::byob_types::{
-    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, NetworkUsage, ResourceUsage,
+    ByobDeploymentRequest, ByobDeploymentResponse, DeploymentStatus, ResourceUsage,
 };
 use super::config::ByobExecutorConfig;
 use super::deployment::ActiveDeployment;
+use super::resource_metrics::{ResourceMetricsReader, merge_sample_with_gpu};
 use super::validation::DeploymentValidator;
 
 #[cfg(test)]
@@ -151,69 +152,25 @@ impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
             .await
             .get_mut(&deployment_id)
         {
-            // Collect resource usage from all services
-            let mut cpu_total = 0.0;
-            let mut total_memory = 0;
-            let mut total_storage = 0;
-            let mut gpu_total = 0;
-            let mut total_network_sent = 0;
-            let mut total_network_received = 0;
+            let pid = std::process::id();
+            let reader = ResourceMetricsReader::new();
+            let prev = deployment.resource_poll_state.as_ref();
+            let (sample, new_state) = reader.sample(pid, prev).await;
+            deployment.resource_poll_state = Some(new_state);
+
+            let usage = merge_sample_with_gpu(sample, &deployment.request.services);
+            let cpu_total = usage.cpu_usage;
+            let total_memory = usage.memory_usage;
+            let total_storage = usage.storage_usage;
+
+            deployment.update_resource_usage(usage);
 
             for (service_name, execution_id) in &deployment.service_executions {
-                // NOTE: Resource usage simulation - estimates based on service specifications.
-                // Full implementation would query runtime engine via RuntimeEngine trait.
-                if let Some(service_spec) = deployment.request.services.get(service_name) {
-                    // Simulate CPU usage (50-80% of allocated)
-                    if let Some(cpu_cores) = service_spec.resources.cpu_cores {
-                        cpu_total += cpu_cores * 0.65; // Simulate 65% usage
-                    }
-
-                    // Simulate memory usage (60-90% of allocated)
-                    if let Some(memory_bytes) = service_spec.resources.memory_bytes {
-                        total_memory += (memory_bytes * 3) / 4; // Simulate 75% usage
-                    }
-
-                    // Simulate storage usage (30-50% of allocated)
-                    if let Some(storage_bytes) = service_spec.resources.storage_bytes {
-                        total_storage += (storage_bytes * 2) / 5; // Simulate 40% usage
-                    }
-
-                    // Simulate GPU usage
-                    if let Some(gpu_count) = service_spec.resources.gpu_count {
-                        gpu_total += gpu_count;
-                    }
-
-                    // Simulate network usage (based on service type)
-                    let base_network_usage = match service_spec.image.as_deref() {
-                        Some(image) if image.contains("web") || image.contains("api") => {
-                            1024 * 1024
-                        } // 1MB for web services
-                        Some(image) if image.contains("database") => 512 * 1024, // 512KB for databases
-                        _ => 256 * 1024, // 256KB for other services
-                    };
-
-                    total_network_sent += base_network_usage;
-                    total_network_received += base_network_usage / 2; // Assume less incoming traffic
-                }
-
                 debug!(
                     "📊 Collected metrics for service {} (execution: {})",
                     service_name, execution_id
                 );
             }
-
-            deployment.update_resource_usage(ResourceUsage {
-                cpu_usage: cpu_total,
-                memory_usage: total_memory,
-                storage_usage: total_storage,
-                gpu_usage: gpu_total,
-                network_usage: NetworkUsage {
-                    bytes_sent: total_network_sent,
-                    bytes_received: total_network_received,
-                    packets_sent: total_network_sent / 1024, // Rough estimate
-                    packets_received: total_network_received / 1024,
-                },
-            });
 
             debug!(
                 "📊 Updated resource usage for deployment {}: CPU: {:.2}, Memory: {}MB, Storage: {}MB",

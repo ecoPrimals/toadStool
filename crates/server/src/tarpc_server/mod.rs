@@ -9,7 +9,9 @@ mod dispatch;
 mod executor;
 
 pub use dispatch::WorkloadExecutorDispatch;
-pub use executor::{StandaloneExecutor, TestWorkloadDouble, WorkloadExecutor};
+#[cfg(any(test, feature = "test-mocks"))]
+pub use executor::TestWorkloadDouble;
+pub use executor::{StandaloneExecutor, WorkloadExecutor};
 
 #[cfg(test)]
 pub use executor::TestExecutor;

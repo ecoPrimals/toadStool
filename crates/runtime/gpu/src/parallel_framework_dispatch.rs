@@ -96,3 +96,32 @@ impl ParallelComputeFramework for ParallelComputeFrameworkDispatch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::frameworks::FallbackFramework;
+    use crate::traits::ParallelComputeFramework;
+    use crate::types::{DeviceId, GpuFramework};
+
+    #[tokio::test]
+    async fn fallback_dispatch_discovers_no_devices() {
+        let fb = FallbackFramework::new(GpuFramework::Vulkan);
+        let d = ParallelComputeFrameworkDispatch::Fallback(fb);
+        assert_eq!(d.framework_type(), GpuFramework::Vulkan);
+        let devs = d.discover_devices().await.unwrap();
+        assert!(devs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn fallback_dispatch_session_errors_without_hardware() {
+        let fb = FallbackFramework::new(GpuFramework::WebGpu);
+        let d = ParallelComputeFrameworkDispatch::Fallback(fb);
+        let id = DeviceId {
+            framework: GpuFramework::WebGpu,
+            device_index: 0,
+            uuid: "test".to_string(),
+        };
+        assert!(d.create_session(&id).await.is_err());
+    }
+}

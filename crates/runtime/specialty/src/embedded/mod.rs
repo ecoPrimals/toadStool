@@ -13,6 +13,10 @@
 
 // Module declarations
 pub mod adapters;
+/// Chip metadata (signatures, voltage, timing) for programmer validation.
+pub mod chip_database;
+pub mod cpu6502;
+pub mod cpuz80;
 pub mod dos;
 /// Placeholder trait impls for emulators. When real hardware backends land
 /// behind `embedded-hw`, add a parallel `#[cfg(feature = "embedded-hw")]`
@@ -21,11 +25,16 @@ pub mod dos;
 #[cfg(feature = "embedded-placeholder-impls")]
 pub mod emulator_impls;
 pub mod emulators;
+pub mod errors;
 pub mod managers;
 /// Placeholder trait impls for programmers — same gating as `emulator_impls`.
 #[cfg(feature = "embedded-placeholder-impls")]
 pub mod programmer_impls;
 pub mod programmers;
+/// ISP / ICSP protocol logic without hardware transports (testable).
+pub mod protocol;
+/// Byte-level protocol sequences (AVR ISP, PIC ICSP, parallel EPROM) without I/O.
+pub mod protocol_engine;
 pub mod toolchains;
 pub mod types;
 

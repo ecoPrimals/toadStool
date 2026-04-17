@@ -8,6 +8,15 @@ use sha2::{Digest, Sha256};
 
 use crate::types::{PolicyEvaluationResult, PolicyResult, SecurityPolicy};
 
+fn encode_hex_lower(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    let mut s = String::with_capacity(bytes.len().saturating_mul(2));
+    for &b in bytes {
+        let _ = write!(s, "{:02x}", b);
+    }
+    s
+}
+
 /// Merge evaluation results from parent policies
 pub(crate) fn merge_evaluation_results(
     target: &mut PolicyEvaluationResult,
@@ -36,7 +45,8 @@ pub(crate) fn generate_composed_policy_id(policy_ids: &[String]) -> String {
     for id in policy_ids {
         hasher.update(id.as_bytes());
     }
-    format!("composed_{}", &hex::encode(hasher.finalize())[..16])
+    let digest = hasher.finalize();
+    format!("composed_{}", &encode_hex_lower(&digest[..8]))
 }
 
 /// Build a merged [`SecurityPolicy`] from loaded policies (rules + metadata).

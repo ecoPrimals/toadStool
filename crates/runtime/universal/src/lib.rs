@@ -82,6 +82,7 @@
 
 pub mod backends;
 pub mod capabilities;
+pub mod compute_discovery_settings;
 pub mod error;
 pub mod runtime;
 pub mod substrate; // ✅ NEW: Simplified substrate abstraction
@@ -97,6 +98,7 @@ pub use capabilities::{
     CapabilityDiscovery, LatencyRequirement, PowerConstraint, ThroughputRequirement,
     WorkloadProfile, WorkloadSize,
 };
+pub use compute_discovery_settings::ComputeDiscoverySettings;
 pub use error::SubstrateError;
 pub use runtime::{RuntimeStats, UniversalRuntime};
 pub use substrate::{

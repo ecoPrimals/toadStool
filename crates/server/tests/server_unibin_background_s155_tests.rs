@@ -20,9 +20,10 @@ use tokio::sync::{RwLock, broadcast};
 use toadstool::{ExecutionStatus, RuntimeType};
 use toadstool_server::ToadStoolTarpcServer;
 use toadstool_server::unibin::{
-    ShutdownSignal, create_executor, ensure_biomeos_directory, exit_codes, get_socket_path,
-    is_platform_constraint_str, is_selinux_enforcing, resolve_family_id, resolve_node_id,
-    socket_filename_for_family, start_servers_with_fallback, write_tcp_discovery_file,
+    ShutdownSignal, UnibinExecutionConfig, create_executor, ensure_biomeos_directory, exit_codes,
+    get_socket_path, is_platform_constraint_str, is_selinux_enforcing, resolve_family_id,
+    resolve_node_id, socket_filename_for_family, start_servers_with_fallback,
+    write_tcp_discovery_file,
 };
 use toadstool_server::{
     ActiveExecution, ClientInfo, HealthCheckConfig, ServerConfig, ServerEvent, ServerState,
@@ -117,7 +118,7 @@ fn s155_get_socket_path_tmp_fallback_when_xdg_not_exists() {
 #[tokio::test]
 async fn s155_create_executor_standalone_mode() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
-        let result = create_executor("test-family").await;
+        let result = create_executor("test-family", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "standalone executor creation failed: {:?}",
@@ -205,9 +206,15 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
         None,
     ));
 
-    let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
-            .await;
+    let result = start_servers_with_fallback(
+        server,
+        jsonrpc_handler,
+        socket_path,
+        jsonrpc_socket,
+        None,
+        &UnibinExecutionConfig::from_env(),
+    )
+    .await;
 
     assert!(result.is_err());
 }

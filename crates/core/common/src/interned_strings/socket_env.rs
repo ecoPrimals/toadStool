@@ -209,6 +209,26 @@ pub const AUTHENTICATION_URL: &str = "AUTHENTICATION_URL";
 pub const NLP_URL: &str = "NLP_URL";
 pub const TOADSTOOL_ENTROPY_SERVICE_URL: &str = "TOADSTOOL_ENTROPY_SERVICE_URL";
 
+/// Universal adapter: explicit capability provider URL for discovery (`EnvironmentSource`).
+pub const TOADSTOOL_SECURITY_PROVIDER: &str = "TOADSTOOL_SECURITY_PROVIDER";
+/// Universal adapter: explicit capability provider URL for discovery (`EnvironmentSource`).
+pub const TOADSTOOL_STORAGE_PROVIDER: &str = "TOADSTOOL_STORAGE_PROVIDER";
+/// Universal adapter: explicit capability provider URL for discovery (`EnvironmentSource`).
+pub const TOADSTOOL_COORDINATION_PROVIDER: &str = "TOADSTOOL_COORDINATION_PROVIDER";
+/// Universal adapter: explicit capability provider URL for discovery (`EnvironmentSource`).
+pub const TOADSTOOL_INTELLIGENCE_PROVIDER: &str = "TOADSTOOL_INTELLIGENCE_PROVIDER";
+
+/// Comma-separated wgpu adapter selector (index, name substring, or `auto`).
+pub const TOADSTOOL_GPU_ADAPTER: &str = "TOADSTOOL_GPU_ADAPTER";
+
+/// Display IPC: full `host:port` TCP endpoint override.
+pub const TOADSTOOL_DISPLAY_IPC_ADDR: &str = "TOADSTOOL_DISPLAY_IPC_ADDR";
+/// Display IPC: port-only override (pairs with loopback host from shared network constants).
+pub const TOADSTOOL_DISPLAY_IPC_PORT: &str = "TOADSTOOL_DISPLAY_IPC_PORT";
+
+/// Localhost discovery: HTTP port for native compute when no service registry is available.
+pub const TOADSTOOL_LOCAL_PORT: &str = "TOADSTOOL_LOCAL_PORT";
+
 // Cloud / deployment layer hints (AWS, GCP, Azure — used by environment detection).
 pub const AWS_EXECUTION_ENV: &str = "AWS_EXECUTION_ENV";
 pub const AWS_LAMBDA_FUNCTION_NAME: &str = "AWS_LAMBDA_FUNCTION_NAME";

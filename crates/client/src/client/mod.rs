@@ -13,7 +13,7 @@ mod core_tests;
 
 // Re-export main types for convenience
 pub use config::{AuthConfig, ClientConfig};
-pub use core::ToadStoolClient;
+pub use core::{ToadStoolClient, execution_submit_method};
 pub use error::{ClientError, ClientResult};
 pub use types::{
     ClusterStatus, ExecutionInfo, ExecutionMetrics, ExecutionOutput, ExecutionStatus, JobPriority,

@@ -13,6 +13,8 @@ categories = ["api-bindings", "network-programming"]
 default = []
 networking = []
 tarpc-transport = []
+# MessagePack + length-delimited framing (`tarpc::serde_transport`) for Rust-to-Rust peers
+binary-transport = ["tarpc-transport", "dep:tokio-serde", "dep:tokio-util", "dep:futures"]
 
 [dependencies]
 # Core ToadStool types
@@ -27,6 +29,11 @@ tarpc = { workspace = true }
 
 # Async runtime
 tokio = { workspace = true }
+
+# Binary framing (optional; `binary-transport` feature)
+futures = { workspace = true, optional = true }
+tokio-serde = { workspace = true, optional = true }
+tokio-util = { workspace = true, optional = true }
 
 # Serialization (rc for Arc<str> zero-copy serialization)
 serde = { workspace = true, features = ["rc"] }
@@ -44,7 +51,7 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 temp-env = "0.3"
-tempfile = "3.8"
+tempfile = { workspace = true }
 tokio-test = "0.4"
 
 [lints]

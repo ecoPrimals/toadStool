@@ -43,6 +43,9 @@ tracing-subscriber = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 
+# Property-test strategies (`proptest_strategies` module) — optional for downstream crates
+proptest = { workspace = true, optional = true }
+
 # System monitoring — Pure Rust via /proc (replaces sysinfo)
 toadstool-sysmon = { workspace = true }
 
@@ -51,6 +54,8 @@ base64 = "0.22"
 
 # Security
 zeroize = { version = "1.7", features = ["derive"] }
+
+libloading = { workspace = true, optional = true }
 
 mdns-sd = { version = "0.10", optional = true }
 # MUST use same version as workspace to prevent duplicate symbol errors  
@@ -67,6 +72,9 @@ proptest = { workspace = true }
 # `test-mocks` is default so integration tests can use in-memory backends (e.g. `StorageBackendDispatch::InMemory`)
 # without passing `--features test-mocks` on every test target.
 default = ["mdns", "test-mocks"]
+# Real `dlopen`/`dlclose` plugin loading (`libloading`). Omit from default so unit tests
+# without `.so` fixtures keep simulated load/unload unless this feature is enabled.
+plugin-loading = ["dep:libloading"]
 # In-memory auth mock (`InMemoryAuthBackend`); for tests and explicit `--features test-mocks`
 test-mocks = []
 # Gates reqwest-based HTTP communication in ecosystem modules
@@ -74,6 +82,8 @@ networking = []
 wgpu = ["dep:wgpu"]
 # mDNS bootstrap discovery (songBird's domain -- use for cold-start only)
 mdns = ["dep:mdns-sd"]
+# Proptest generators for workload/resource types (`crate::proptest_strategies`).
+proptest-strategies = ["dep:proptest"]
 
 [[test]]
 name = "biomeos_auth_coverage_tests"

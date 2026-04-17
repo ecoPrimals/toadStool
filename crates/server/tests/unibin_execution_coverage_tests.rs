@@ -20,8 +20,8 @@ use toadstool_server::tarpc_server::{
 };
 use toadstool_server::unibin::exit_codes;
 use toadstool_server::unibin::{
-    create_executor, is_platform_constraint_str, is_selinux_enforcing, start_servers_with_fallback,
-    write_tcp_discovery_file,
+    UnibinExecutionConfig, create_executor, is_platform_constraint_str, is_selinux_enforcing,
+    start_servers_with_fallback, write_tcp_discovery_file,
 };
 
 // ============================================================================
@@ -31,7 +31,7 @@ use toadstool_server::unibin::{
 #[tokio::test]
 async fn create_executor_standalone_with_empty_string() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some(""))], async {
-        let result = create_executor("empty-family").await;
+        let result = create_executor("empty-family", &UnibinExecutionConfig::from_env()).await;
         if let Err(e) = &result {
             assert!(!e.to_string().is_empty());
         }
@@ -42,7 +42,7 @@ async fn create_executor_standalone_with_empty_string() {
 #[tokio::test]
 async fn create_executor_standalone_with_false() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("false"))], async {
-        let result = create_executor("false-family").await;
+        let result = create_executor("false-family", &UnibinExecutionConfig::from_env()).await;
         if let Err(e) = &result {
             assert!(!e.to_string().is_empty());
         }
@@ -71,7 +71,8 @@ async fn create_executor_distributed_with_legacy_songbird_endpoint_env() {
             ("SONGBIRD_ENDPOINT", Some("unix:///tmp/songbird.sock")),
         ],
         async {
-            let result = create_executor("songbird-family").await;
+            let result =
+                create_executor("songbird-family", &UnibinExecutionConfig::from_env()).await;
             if let Err(e) = &result {
                 assert!(!e.to_string().is_empty());
             }
@@ -111,7 +112,7 @@ async fn create_executor_distributed_with_auth_token() {
             ("SONGBIRD_AUTH_TOKEN", Some("test-secret-token")),
         ],
         async {
-            let result = create_executor("auth-family").await;
+            let result = create_executor("auth-family", &UnibinExecutionConfig::from_env()).await;
             if let Err(e) = &result {
                 assert!(!e.to_string().is_empty());
             }
@@ -232,9 +233,15 @@ async fn start_servers_with_fallback_fails_on_non_platform_error() {
         None,
     ));
 
-    let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
-            .await;
+    let result = start_servers_with_fallback(
+        server,
+        jsonrpc_handler,
+        socket_path,
+        jsonrpc_socket,
+        None,
+        &UnibinExecutionConfig::from_env(),
+    )
+    .await;
 
     assert!(result.is_err());
     let err_str = result.unwrap_err().to_string();
@@ -442,7 +449,7 @@ fn is_platform_constraint_str_protocol_substring() {
 #[tokio::test]
 async fn create_executor_family_id_in_instance() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
-        let result = create_executor("family-xyz").await;
+        let result = create_executor("family-xyz", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "executor creation failed: {:?}",
@@ -480,9 +487,15 @@ async fn start_servers_platform_constraint_triggers_tcp_fallback() {
         "1.0.0".to_string(),
         None,
     ));
-    let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
-            .await;
+    let result = start_servers_with_fallback(
+        server,
+        jsonrpc_handler,
+        socket_path,
+        jsonrpc_socket,
+        None,
+        &UnibinExecutionConfig::from_env(),
+    )
+    .await;
     assert!(result.is_err());
 }
 

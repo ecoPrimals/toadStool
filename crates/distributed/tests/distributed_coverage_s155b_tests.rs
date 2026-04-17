@@ -400,6 +400,7 @@ fn make_orchestrator_config() -> CloudOrchestratorConfig {
             discovery_endpoints: vec![],
             trust_anchors: vec![],
         },
+        federation_endpoint: None,
     }
 }
 

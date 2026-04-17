@@ -58,19 +58,26 @@ toadstool-sysmon = { path = "../../core/sysmon" }
 
 [dev-dependencies]
 tokio-test = "0.4"
-criterion = "0.5"
+criterion = { workspace = true }
 tracing-subscriber = "0.3"
-tempfile = "3"
+tempfile = { workspace = true }
 temp-env = { version = "0.3", features = ["async_closure"] }
 toadstool-core = { path = "../../toadstool-core" }
 
 
 [features]
 default = []
+# Test doubles for router / handler tests — not in default (see `#[cfg(any(test, feature = "test-mocks"))]`).
+test-mocks = []
 # Use rustix instead of linux-drm (fallback)
 rustix-backend = []
 # Enable serial transport (USB/UART) for edge device bridging
 serial-transport = ["serialport"]
+
+[[test]]
+name = "transport_integration_tests"
+path = "tests/transport_integration_tests.rs"
+required-features = ["test-mocks"]
 
 [lints]
 workspace = true

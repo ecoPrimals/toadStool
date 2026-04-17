@@ -14,6 +14,7 @@ mod federation;
 mod load_balancing;
 mod orchestrator;
 mod scheduling;
+#[cfg(any(test, feature = "test-mocks"))]
 mod test_mocks;
 /// Shared cloud configuration, capabilities, deployment, and cost types.
 pub mod types;
@@ -26,8 +27,10 @@ pub use compliance::{
 };
 /// Cloud provider abstraction and universal orchestrator entry points.
 pub use core::{CloudProvider, CloudProviderInterface, UniversalCloudOrchestrator};
+#[cfg(any(test, feature = "test-mocks"))]
 pub use test_mocks::MockCloudProvider;
-/// [`UniversalCloudOrchestrator`] with [`MockCloudProvider`] (tests and examples).
+/// [`UniversalCloudOrchestrator`] with [`MockCloudProvider`] (tests; enable `test-mocks` for integration tests).
+#[cfg(any(test, feature = "test-mocks"))]
 pub type TestUniversalOrchestrator = UniversalCloudOrchestrator<MockCloudProvider>;
 /// Cost models, optimizer, estimates, and pricing tiers.
 pub use cost::{

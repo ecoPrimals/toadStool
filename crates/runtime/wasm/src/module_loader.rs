@@ -14,6 +14,15 @@ use toadstool::workload::WasmModuleSource;
 
 use crate::config::WasmRuntimeConfig;
 
+fn encode_hex_lower(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    let mut s = String::with_capacity(bytes.len().saturating_mul(2));
+    for &b in bytes {
+        let _ = write!(s, "{:02x}", b);
+    }
+    s
+}
+
 /// Module loader for WASM modules
 pub struct ModuleLoader {
     engine: Engine,
@@ -60,7 +69,7 @@ impl ModuleLoader {
         }
 
         let hash = hasher.finalize();
-        format!("wasm_{}", hex::encode(&hash[..16]))
+        format!("wasm_{}", encode_hex_lower(&hash[..16]))
     }
 
     /// Load WASM module from various sources

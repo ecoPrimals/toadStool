@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![cfg(any(test, feature = "test-mocks"))]
 //! Consolidated workload executor doubles for tests (see [`crate::tarpc_server::WorkloadExecutorDispatch`]).
 //!
 //! Not used by production server startup paths; kept for unit and integration tests

@@ -12,6 +12,7 @@ use toadstool_common::constants::platform_paths::{etc_paths, install_paths};
 use toadstool_common::interned_strings::capabilities;
 use toadstool_common::interned_strings::socket_env;
 use toadstool_common::primal_sockets::SocketPathEnv;
+use toadstool_config::ports::{capability_fallback, resolve_capability_port};
 
 // --- Network configurator defaults (overridable via env) ---
 
@@ -22,6 +23,41 @@ const DEFAULT_DNS_PORT: u16 = 53;
 const DEFAULT_PROXY_CONCURRENCY: u32 = 2;
 const DEFAULT_SIDECAR_IMAGE: &str = "toadstool/service-mesh-proxy:latest";
 const RFC1918_RANGES: &[&str] = &["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
+
+/// Default DNS search suffixes for the orchestration resolver stack.
+///
+/// Used when building [`OrchestrationNetworkConfig`] defaults. Override the full list via
+/// `dns_discovery.search_domains` in config, or set `TOADSTOOL_DNS_SEARCH_DOMAINS`
+/// (comma-separated) for a process-wide default.
+mod dns_defaults {
+    /// Cluster-local search suffix for mesh-scoped names.
+    pub const TOADSTOOL_CLUSTER: &str = "toadstool.local";
+    /// Ecosystem-wide search suffix for shared discovery.
+    pub const ECOSYSTEM: &str = "ecosystem.local";
+    /// Default `TOADSTOOL_BASE_DOMAIN` when that variable is unset (third search label).
+    pub const DEFAULT_BASE_DOMAIN: &str = "primal.local";
+}
+
+/// Resolver search domains: `TOADSTOOL_DNS_SEARCH_DOMAINS` first, then [`dns_defaults`].
+fn default_orchestration_dns_search_domains() -> Vec<String> {
+    if let Ok(v) = std::env::var("TOADSTOOL_DNS_SEARCH_DOMAINS") {
+        let domains: Vec<String> = v
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect();
+        if !domains.is_empty() {
+            return domains;
+        }
+    }
+    vec![
+        dns_defaults::TOADSTOOL_CLUSTER.into(),
+        dns_defaults::ECOSYSTEM.into(),
+        std::env::var(socket_env::TOADSTOOL_BASE_DOMAIN)
+            .unwrap_or_else(|_| dns_defaults::DEFAULT_BASE_DOMAIN.into()),
+    ]
+}
 
 /// Parse `/etc/resolv.conf` text and return `nameserver` IP (or hostname) entries in order.
 fn parse_resolv_conf(contents: &str) -> Vec<String> {
@@ -162,12 +198,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
         dns_discovery: DnsDiscoveryConfig {
             enabled: true,
             dns_servers: system_dns_resolvers(),
-            search_domains: vec![
-                "toadstool.local".to_string(),
-                "ecosystem.local".to_string(),
-                std::env::var(socket_env::TOADSTOOL_BASE_DOMAIN)
-                    .unwrap_or_else(|_| "primal.local".to_string()),
-            ],
+            search_domains: default_orchestration_dns_search_domains(),
             // Use environment-aware service domains instead of hardcoded values
             service_domains: ServiceDomainsConfig::from_env(),
             resolution_timeout: Duration::from_secs(5),
@@ -203,10 +234,13 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         let env = SocketPathEnv::from_env();
                         env.security_connection_hint.unwrap_or_else(|| {
                             let domains = ServiceDomainsConfig::from_env();
-                            let port = std::env::var(socket_env::TOADSTOOL_SECURITY_PORT)
-                                .or_else(|_| std::env::var("TOADSTOOL_BEARDOG_PORT"))
-                                .unwrap_or_else(|_| "8000".to_string());
-                            format!("http://{}:{}", domains.security, port)
+                            // `SocketPathEnv::security_connection_hint` first; then same port chain as
+                            // health probes — env overrides with cold-start fallback matching
+                            // `toadstool_common::constants::discovery_ports::DEFAULT_SECURITY_PORT`
+                            // (`capability_fallback::SECURITY`).
+                            let port =
+                                resolve_capability_port("SECURITY", capability_fallback::SECURITY);
+                            format!("http://{}:{port}", domains.security)
                         })
                     },
                     auth_token: None,
@@ -393,7 +427,6 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             interval: Duration::from_secs(30),
             // Health endpoints now constructed dynamically from service domains + env ports
             endpoints: {
-                use toadstool_config::ports::{capability_fallback, resolve_capability_port};
                 let domains = ServiceDomainsConfig::from_env();
                 let coordination_port =
                     resolve_capability_port("COORDINATION", capability_fallback::COORDINATION);

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#![cfg(any(test, feature = "test-mocks"))]
 //! In-memory synthetic Akida backend for integration tests (no PCI or `/dev` access).
 
 use crate::backend::{BackendType, ModelHandle, NpuBackend};

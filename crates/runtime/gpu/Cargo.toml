@@ -103,12 +103,14 @@ detect-apple = []
 spirv = ["dep:spirv"]
 jit = ["cranelift-jit", "wasmtime"]
 testing = []
+# `cargo-fuzz` / `toadstool-fuzz` enables this to call internal CPU slice construction paths.
+fuzz = []
 
 [dev-dependencies]
 bytes = { workspace = true }
 tokio-test = { workspace = true }
-proptest = "1.0"
-criterion = "0.5"
+proptest = { workspace = true }
+criterion = { workspace = true }
 tracing-subscriber = "0.3"
 
 # Dev dependencies don't share features - each test runs in isolation

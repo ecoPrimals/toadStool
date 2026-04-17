@@ -21,11 +21,10 @@ tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml_ng = "0.10"
-toml = "0.8"
+toml = { workspace = true }
 
 # Security and cryptography
 sha2 = "0.10"
-hex = { workspace = true }
 uuid = { workspace = true }
 
 # Collections and utilities
@@ -54,7 +53,7 @@ windows = { version = "0.52", features = [
 
 [dev-dependencies]
 toadstool-testing = { path = "../../testing" }
-tempfile = "3.0"
+tempfile = { workspace = true }
 test-log = "0.2"
 env_logger = "0.11"
 

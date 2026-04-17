@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 16, 2026 — S203r (async-trait Full Deprecation)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 22,000+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **~66 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env_overrides fully interned** | **I/O-logic separated** | **real system monitoring**
-**Latest**: S203r — `async-trait` fully deprecated: all ~91 annotations evolved to manual `Pin<Box<dyn Future>>` across 55+ files/13 crates. Removed from all Cargo.toml. Banned in `deny.toml`. 22,061 tests, 0 failures, clippy clean.
+**Updated**: April 16, 2026 — S203t (Deep Debt Evolution)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 22,000+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **49 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)**
+**Latest**: S203t — Deep debt evolution: all 11 active debt items resolved/evolved. Production mocks cfg-gated. Hardcoding replaced with capability-based discovery. Real sandbox, real metrics, wired IPC, plugin dlopen, binary transport, 6502/Z80 CPU emulators, ISP/ICSP protocol engines. `hex` dep eliminated. 7,784 lib tests, 0 failures, clippy clean.
 
 ---
 
@@ -118,7 +118,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Real mDNS parser** -- replaces placeholder `Ok(None)` in zero_config service discovery
 - [x] **pollster eliminated** -- removed from barracuda, toadstool, universal (→ tokio_block_on)
 - [x] **serde_yaml → serde_yaml_ng** -- across workspace
-- [x] **async-trait → DEPRECATED** -- fully removed and banned in `deny.toml` (S203r); all annotations evolved to manual `Pin<Box<dyn Future>>` or native AFIT
+- [x] **async-trait → DEPRECATED** -- fully removed and banned in `deny.toml` (S203t); all annotations evolved to manual `Pin<Box<dyn Future>>` or native AFIT, and subsequently to enum dispatch + RPITIT (S203s)
 - [x] **Capability-based naming** -- CLI/JSON-RPC/error messages use capability language, type aliases added
 - [x] **GPU test resilience** -- NVK catch_unwind wrappers on 11+29+homomorphic test files
 - [x] **Wildcard re-exports narrowed** -- 13 crates (toadstool, distributed, server, gpu, universal, orchestration, sandbox, wasm, edge discovery/toolchain/comms/deployment)
@@ -173,7 +173,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **Remaining dyn (justified)**: infant discovery plugin registry, PrimalIntegration, MessageHandler, testing utilities.
 
 ### Session S203r: async-trait Full Deprecation (Apr 16, 2026)
-- **`async-trait` fully deprecated** — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn) across 55+ files in 13 crates. Zero runtime behavior change.
+- **`async-trait` fully deprecated** — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn), and subsequently to enum dispatch + RPITIT (S203s), across 55+ files in 13 crates. Zero runtime behavior change.
 - **Banned in `deny.toml`** — `async-trait` added to `[bans.deny]` with `wrappers = ["axum", "axum-core", "config", "wiggle"]` for transitive deps.
 - **Removed from all Cargo.toml** — workspace dependency + 12 individual crate dependencies eliminated.
 - **DEBT.md D-ASYNC-DYN-MARKERS → RESOLVED** S203r.
@@ -221,7 +221,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **Large file audit**: Most >500-line files are test-only. `jsonrpc_server.rs` (659) was the main prod candidate (now DRY'd).
 
 ### Session S201: primalSpring Gap Closure & Coverage Push (Apr 11, 2026)
-- **primalSpring April 11 downstream audit**: Confirmed pipeline scheduling (`compute.dispatch.pipeline.submit`) fully resolved in S199. Stale audit entry closed. D-RUSTIX-DISPLAY-038 and D-ASYNC-DYN-MARKERS confirmed genuinely blocked.
+- **primalSpring April 11 downstream audit**: Confirmed pipeline scheduling (`compute.dispatch.pipeline.submit`) fully resolved in S199. Stale audit entry closed. D-RUSTIX-DISPLAY-038 confirmed genuinely blocked; D-ASYNC-DYN-MARKERS (now RESOLVED S203s).
 - **Coverage push: +46 tests**: Wire L3 structural validation (14), dispatch types Display/serde/equality (12), security hardening submodules: rate_limiter (6), intrusion detection (7), input_validator (13), audit logger (7). All pure-logic, zero hardware deps.
 - Verification: `cargo check` + `cargo clippy -D warnings` green, all 46 new tests passing.
 

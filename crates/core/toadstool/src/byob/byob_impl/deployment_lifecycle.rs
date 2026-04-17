@@ -190,15 +190,17 @@ impl<E: RuntimeEngine + 'static> ByobComputeExecutor<E> {
     ) -> NetworkInfo {
         let network_name = format!("byob-{}-{}", deployment.team_id, deployment.deployment_id);
         let subnet_cidr = deployment.network_config.subnet_cidr.clone();
-        let gateway_ip = "10.0.0.1".to_string(); // Default gateway
+        let (gateway_ip, internal_ips) = crate::byob::ipv4_subnet::gateway_and_service_ips(
+            &subnet_cidr,
+            deployment.services.len(),
+        );
 
         // Create service endpoints
         // ✅ ZERO-COPY: Pre-allocate HashMap with known capacity
         let mut service_endpoints = HashMap::with_capacity(deployment.services.len());
-        for (service_name, service_spec) in &deployment.services {
-            // Allocate internal IP address
-            let internal_ip = format!("10.0.0.{}", 10 + service_endpoints.len());
-
+        for ((service_name, service_spec), internal_ip) in
+            deployment.services.iter().zip(internal_ips.into_iter())
+        {
             // Allocate external IP if service has exposed ports
             let external_ip = self.allocate_external_ip(service_spec, &deployment.team_id);
 

@@ -53,7 +53,7 @@ flate2 = { version = "1.0", default-features = false, features = ["rust_backend"
 axum = "0.7"
 clap = { workspace = true }
 tracing-subscriber = { workspace = true }
-toml = "0.8"
+toml = { workspace = true }
 
 [features]
 default = ["docker"]

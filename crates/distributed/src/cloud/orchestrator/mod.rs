@@ -33,6 +33,8 @@ impl<P: CloudProviderInterface> UniversalCloudOrchestrator<P> {
         let load_balancer = MultiCloudLoadBalancer::new(config.load_balancer_config).await?;
         let federation_manager = CloudFederationManager::new(config.federation_config).await?;
 
+        let federation_endpoint = config.federation_endpoint.clone();
+
         Ok(Self {
             providers,
             hybrid_scheduler,
@@ -40,6 +42,7 @@ impl<P: CloudProviderInterface> UniversalCloudOrchestrator<P> {
             compliance_enforcer,
             _load_balancer: load_balancer,
             _federation_manager: federation_manager,
+            federation_endpoint,
         })
     }
 
@@ -260,19 +263,26 @@ impl<P: CloudProviderInterface> UniversalCloudOrchestrator<P> {
         _job: &UniversalJob,
         _federation_nodes: &[String],
     ) -> ToadStoolResult<CloudDeploymentResult> {
+        let coordination_endpoint = if let Some(ref url) = self.federation_endpoint {
+            url.clone()
+        } else if let Ok(url) = std::env::var("TOADSTOOL_FEDERATION_ENDPOINT") {
+            url
+        } else {
+            let synthesized = format!(
+                "https://federation.{}:{}",
+                std::env::var("TOADSTOOL_DOMAIN").unwrap_or_else(|_| "toadstool.local".to_string()),
+                toadstool_config::defaults::network::FEDERATION_PORT
+            );
+            warn!(
+                "TOADSTOOL_FEDERATION_ENDPOINT is unset and no federation_endpoint in CloudOrchestratorConfig; using synthesized federation URL: {synthesized}"
+            );
+            synthesized
+        };
+
         let federation_deployment = FederatedDeployment {
             federation_id: Uuid::new_v4(),
             nodes: vec![],
-            coordination_endpoint: std::env::var("TOADSTOOL_FEDERATION_ENDPOINT").unwrap_or_else(
-                |_| {
-                    format!(
-                        "https://federation.{}:{}",
-                        std::env::var("TOADSTOOL_DOMAIN")
-                            .unwrap_or_else(|_| "toadstool.local".to_string()),
-                        toadstool_config::defaults::network::FEDERATION_PORT
-                    )
-                },
-            ),
+            coordination_endpoint,
         };
 
         Ok(CloudDeploymentResult::Federated {

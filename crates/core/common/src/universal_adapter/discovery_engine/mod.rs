@@ -12,13 +12,14 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::path::Path;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
 #[expect(deprecated)] // Protocol compatibility: platform path convention
 use crate::constants::ecosystem::well_known::BIOMEOS;
 use crate::constants::network::{HTTP_PROTOCOL, UNIX_SOCKET_URL_PREFIX};
+use crate::interned_strings::socket_env;
+use crate::platform_paths::{PathEnv, PlatformPaths};
 use crate::{ToadStoolError, ToadStoolResult};
 
 #[cfg(test)]
@@ -274,15 +275,56 @@ impl DiscoverySource for MDnsSource {
     }
 }
 
+/// Capability provider URLs for [`EnvironmentSource`] (from env at startup or injected for tests).
+#[derive(Debug, Clone, Default)]
+pub struct EnvironmentProviderConfig {
+    /// `TOADSTOOL_SECURITY_PROVIDER`
+    pub security_provider_url: Option<String>,
+    /// `TOADSTOOL_STORAGE_PROVIDER`
+    pub storage_provider_url: Option<String>,
+    /// `TOADSTOOL_COORDINATION_PROVIDER`
+    pub coordination_provider_url: Option<String>,
+    /// `TOADSTOOL_INTELLIGENCE_PROVIDER`
+    pub intelligence_provider_url: Option<String>,
+}
+
+impl EnvironmentProviderConfig {
+    /// Read provider URL overrides from the process environment.
+    #[must_use]
+    pub fn from_env() -> Self {
+        Self {
+            security_provider_url: std::env::var(socket_env::TOADSTOOL_SECURITY_PROVIDER).ok(),
+            storage_provider_url: std::env::var(socket_env::TOADSTOOL_STORAGE_PROVIDER).ok(),
+            coordination_provider_url: std::env::var(socket_env::TOADSTOOL_COORDINATION_PROVIDER)
+                .ok(),
+            intelligence_provider_url: std::env::var(socket_env::TOADSTOOL_INTELLIGENCE_PROVIDER)
+                .ok(),
+        }
+    }
+}
+
 /// Environment variable discovery source (TOADSTOOL_*_PROVIDER vars).
-#[derive(Default)]
-pub struct EnvironmentSource {}
+pub struct EnvironmentSource {
+    providers: EnvironmentProviderConfig,
+}
+
+impl Default for EnvironmentSource {
+    fn default() -> Self {
+        Self::from_config(EnvironmentProviderConfig::default())
+    }
+}
 
 impl EnvironmentSource {
     /// Create environment source (reads TOADSTOOL_*_PROVIDER vars).
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self::from_config(EnvironmentProviderConfig::from_env())
+    }
+
+    /// Build from a pre-built provider map (no direct `env::var` reads in [`DiscoverySource::discover`]).
+    #[must_use]
+    pub fn from_config(providers: EnvironmentProviderConfig) -> Self {
+        Self { providers }
     }
 
     pub(crate) fn parse_endpoint(url: &str) -> ToadStoolResult<ServiceEndpoint> {
@@ -323,8 +365,8 @@ impl DiscoverySource for EnvironmentSource {
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let mut providers = Vec::new();
 
-        if let Ok(url) = std::env::var("TOADSTOOL_SECURITY_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
+        if let Some(url) = &self.providers.security_provider_url {
+            if let Ok(endpoint) = Self::parse_endpoint(url) {
                 providers.push(CapabilityInfo {
                     provider_id: uuid::Uuid::new_v4().to_string(),
                     capability: crate::universal_adapter::CapabilityType::Security {
@@ -338,8 +380,8 @@ impl DiscoverySource for EnvironmentSource {
             }
         }
 
-        if let Ok(url) = std::env::var("TOADSTOOL_STORAGE_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
+        if let Some(url) = &self.providers.storage_provider_url {
+            if let Ok(endpoint) = Self::parse_endpoint(url) {
                 providers.push(CapabilityInfo {
                     provider_id: uuid::Uuid::new_v4().to_string(),
                     capability: crate::universal_adapter::CapabilityType::Storage {
@@ -353,8 +395,8 @@ impl DiscoverySource for EnvironmentSource {
             }
         }
 
-        if let Ok(url) = std::env::var("TOADSTOOL_COORDINATION_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
+        if let Some(url) = &self.providers.coordination_provider_url {
+            if let Ok(endpoint) = Self::parse_endpoint(url) {
                 providers.push(CapabilityInfo {
                     provider_id: uuid::Uuid::new_v4().to_string(),
                     capability: crate::universal_adapter::CapabilityType::Coordination {
@@ -368,8 +410,8 @@ impl DiscoverySource for EnvironmentSource {
             }
         }
 
-        if let Ok(url) = std::env::var("TOADSTOOL_INTELLIGENCE_PROVIDER") {
-            if let Ok(endpoint) = Self::parse_endpoint(&url) {
+        if let Some(url) = &self.providers.intelligence_provider_url {
+            if let Ok(endpoint) = Self::parse_endpoint(url) {
                 providers.push(CapabilityInfo {
                     provider_id: uuid::Uuid::new_v4().to_string(),
                     capability: crate::universal_adapter::CapabilityType::Intelligence {
@@ -473,11 +515,9 @@ impl LocalRegistrySource {
 impl DiscoverySource for LocalRegistrySource {
     #[expect(deprecated)] // BIOMEOS used for platform path convention
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
-        let config_dir = std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
-            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-            format!("{home}/.config")
-        });
-        let registry_path = Path::new(&config_dir).join(BIOMEOS).join("registry.json");
+        let env = PathEnv::from_env();
+        let paths = PlatformPaths::new(&env);
+        let registry_path = paths.config_dir().join(BIOMEOS).join("registry.json");
 
         if !registry_path.exists() {
             return Ok(vec![]);

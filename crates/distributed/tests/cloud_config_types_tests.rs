@@ -524,6 +524,7 @@ fn test_complete_cloud_orchestrator_config() {
         compliance_config,
         load_balancer_config,
         federation_config,
+        federation_endpoint: None,
     };
 
     // Verify all components are properly configured

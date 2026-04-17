@@ -124,12 +124,13 @@ pub use client::{
     NativeWorkloadBuilder,
     PythonWorkloadBuilder,
     ResourceRequirements,
-    // Main client
     ToadStoolClient,
     ToadStoolEvent,
     WasmWorkloadBuilder,
     WorkloadSubmission,
     WorkloadType,
+    // Main client
+    execution_submit_method,
 };
 
 #[cfg(feature = "tarpc")]

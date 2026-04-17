@@ -98,6 +98,12 @@ pub struct CloudOrchestratorConfig {
     pub load_balancer_config: LoadBalancerConfig,
     /// Federation config.
     pub federation_config: FederationConfig,
+    /// Explicit federation control-plane URL (HTTPS or as deployed).
+    ///
+    /// When `None`, resolution uses `TOADSTOOL_FEDERATION_ENDPOINT`, then a synthesized
+    /// `https://federation.{domain}:{port}` default (see cloud orchestrator) with a warning.
+    #[serde(default)]
+    pub federation_endpoint: Option<String>,
 }
 
 /// Cost configuration for cloud orchestration.

@@ -38,6 +38,11 @@
 //! # }
 //! ```
 
+pub mod abi;
+
+#[cfg(feature = "plugin-loading")]
+mod ffi_loader;
+
 mod manager;
 mod registry;
 mod traits;
@@ -50,4 +55,4 @@ mod tests;
 pub use manager::PluginManager;
 pub use registry::TypedPluginRegistry;
 pub use traits::PluginCapability;
-pub use types::{PluginConfig, PluginError, PluginInfo, PluginManifest, PluginState};
+pub use types::{PluginConfig, PluginError, PluginId, PluginInfo, PluginManifest, PluginState};

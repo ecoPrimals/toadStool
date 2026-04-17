@@ -29,6 +29,10 @@ pub mod distiller;
 pub mod knowledge;
 pub mod observer;
 
+#[cfg(any(test, feature = "proptest-strategies"))]
+pub mod proptest_strategies;
+
+pub use applicator::verify::{GpuReadbackAccess, UnavailableReason, VerificationResult};
 pub use applicator::{
     ApplyResult, ApplyVerdict, NoRegisterAccess, RecipeApplicator, RegisterAccess,
 };

@@ -100,6 +100,7 @@ pub use capabilities::DisplayCapabilities;
 pub use capture_transport::{CaptureTransport, discover_capture_transports};
 pub use drm::DrmBackend;
 pub use hardware_transport_dispatch::HardwareTransportDispatch;
+#[cfg(any(test, feature = "test-mocks"))]
 #[doc(hidden)]
 pub use hardware_transport_dispatch::{TestHighBandwidthTransport, TestLoopbackTransport};
 pub use input::{InputEvent, InputManager};

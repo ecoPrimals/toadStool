@@ -18,9 +18,10 @@ use toadstool_server::tarpc_server::{
     StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch,
 };
 use toadstool_server::unibin::{
-    create_executor, ensure_biomeos_directory, get_socket_path, is_platform_constraint_str,
-    is_selinux_enforcing, query_local_capabilities, resolve_family_id, resolve_node_id,
-    socket_filename_for_family, start_servers_with_fallback, write_tcp_discovery_file,
+    UnibinExecutionConfig, create_executor, ensure_biomeos_directory, get_socket_path,
+    is_platform_constraint_str, is_selinux_enforcing, query_local_capabilities, resolve_family_id,
+    resolve_node_id, socket_filename_for_family, start_servers_with_fallback,
+    write_tcp_discovery_file,
 };
 
 // ── resolve_family_id / resolve_node_id: malformed & boundary inputs ───────────
@@ -222,9 +223,15 @@ async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
         "1.0.0".to_string(),
         None,
     ));
-    let result =
-        start_servers_with_fallback(server, jsonrpc_handler, socket_path, jsonrpc_socket, None)
-            .await;
+    let result = start_servers_with_fallback(
+        server,
+        jsonrpc_handler,
+        socket_path,
+        jsonrpc_socket,
+        None,
+        &UnibinExecutionConfig::from_env(),
+    )
+    .await;
     assert!(result.is_err());
 }
 
@@ -234,7 +241,7 @@ async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
 async fn unibin_s172_create_executor_standalone_numeric_two() {
     // Only "1" / "true" (case-insensitive) select standalone; "2" uses distributed path.
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("2"))], async {
-        let result = create_executor("unibin-s172-two").await;
+        let result = create_executor("unibin-s172-two", &UnibinExecutionConfig::from_env()).await;
         match &result {
             Ok(_) => {}
             Err(e) => assert!(!e.to_string().is_empty()),
@@ -252,7 +259,11 @@ async fn unibin_s172_create_executor_standalone_no_explicit_coordination_endpoin
             ("TOADSTOOL_COORDINATION_ENDPOINT", None::<&str>),
         ],
         async {
-            let result = create_executor("unibin-s172-no-endpoint").await;
+            let result = create_executor(
+                "unibin-s172-no-endpoint",
+                &UnibinExecutionConfig::from_env(),
+            )
+            .await;
             match &result {
                 Ok(_) => {}
                 Err(e) => assert!(!e.to_string().is_empty()),

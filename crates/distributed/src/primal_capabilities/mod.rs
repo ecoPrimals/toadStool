@@ -58,7 +58,9 @@ pub mod adapters;
 pub mod registry;
 pub mod workload;
 
-pub use adapters::{CoordinationAdapter, PrimalAdapter};
+pub use adapters::{
+    CoordinationAdapter, CoordinationAdapterConfig, PrimalAdapter, WORKLOAD_EXECUTE_PATH,
+};
 pub use registry::{Capability, CapabilityRegistry, ProviderRegistration, ProviderRegistry};
 pub use workload::{WorkloadExecutor, WorkloadRequest, WorkloadResponse};
 

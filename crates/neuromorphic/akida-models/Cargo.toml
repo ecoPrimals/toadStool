@@ -25,8 +25,7 @@ tracing-subscriber = { workspace = true }
 akida-driver = { path = "../akida-driver" }
 
 [dev-dependencies]
-hex = { workspace = true }
-tempfile = "3"
+tempfile = { workspace = true }
 
 [features]
 # Stubs are opt-in: default library builds must not ship NeuroBench stub generators.

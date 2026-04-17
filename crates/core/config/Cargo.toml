@@ -34,8 +34,8 @@ url = { workspace = true }
 
 # File system and path handling (Pure Rust Evolution - Jan 17, 2026)
 # OLD: directories = "5.0" (pulls in dirs-sys with C FFI)
-# NEW: etcetera = "0.8" (100% Pure Rust!)
-etcetera = "0.8"
+# NEW: Pure Rust config dirs (etcetera)
+etcetera = { workspace = true }
 
 # Internal dependencies
 toadstool-common = { path = "../common" }

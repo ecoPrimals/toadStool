@@ -11,6 +11,9 @@ use super::types::{
     SubTaskStatus, ToadStoolCoordinationIntegration,
 };
 
+/// Placeholder ETA for message-queue coordination responses until the broker reports real timings.
+pub const DEFAULT_ESTIMATED_COMPLETION_SECS: u64 = 420;
+
 impl ToadStoolCoordinationIntegration {
     /// Submit subtask to Coordination for execution on specific nodes
     pub(super) async fn submit_subtask_to_coordination(
@@ -119,7 +122,10 @@ impl ToadStoolCoordinationIntegration {
             job_id: uuid::Uuid::new_v4(),
             status: "queued".to_owned(),
             message: "Job submitted successfully to message queue".to_owned(),
-            estimated_completion: Some(SystemTime::now() + std::time::Duration::from_secs(420)),
+            estimated_completion: Some(
+                SystemTime::now()
+                    + std::time::Duration::from_secs(DEFAULT_ESTIMATED_COMPLETION_SECS),
+            ),
         })
     }
 }
@@ -260,5 +266,34 @@ mod tests {
         assert_eq!(handle.target_nodes, vec!["n1".to_string()]);
         assert!(matches!(handle.status, SubTaskStatus::Submitted));
         assert!(!handle.coordination_job_id.is_nil());
+    }
+
+    #[tokio::test]
+    async fn mq_submit_response_status_roundtrips_serde() {
+        use super::super::types::CoordinationJobResponse;
+        let resp = CoordinationJobResponse::Success {
+            job_id: Uuid::new_v4(),
+            status: "queued".to_owned(),
+            message: "Job submitted successfully to message queue".to_owned(),
+            estimated_completion: Some(
+                std::time::SystemTime::now()
+                    + std::time::Duration::from_secs(super::DEFAULT_ESTIMATED_COMPLETION_SECS),
+            ),
+        };
+        let json = serde_json::to_string(&resp).expect("serde");
+        let back: CoordinationJobResponse = serde_json::from_str(&json).expect("de");
+        match back {
+            CoordinationJobResponse::Success {
+                status,
+                message,
+                estimated_completion,
+                ..
+            } => {
+                assert_eq!(status, "queued");
+                assert!(message.contains("message queue"));
+                assert!(estimated_completion.is_some());
+            }
+            CoordinationJobResponse::Error { .. } => panic!("unexpected variant"),
+        }
     }
 }

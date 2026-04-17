@@ -8,7 +8,7 @@
 use super::super::*;
 use super::common::*;
 use crate::byob::{
-    PortMapping, ServiceResourceRequirements, TeamNetworkConfig, TeamResourceQuotas,
+    NetworkUsage, PortMapping, ServiceResourceRequirements, TeamNetworkConfig, TeamResourceQuotas,
     TeamSecurityConfig, validation::DeploymentValidator,
 };
 use std::collections::HashMap;
@@ -59,13 +59,13 @@ fn test_create_deployment_network_structure() {
         format!("byob-team-a-{}", request.deployment_id)
     );
     assert_eq!(network.subnet_cidr, "192.168.1.0/24");
-    assert_eq!(network.gateway_ip, "10.0.0.1");
+    assert_eq!(network.gateway_ip, "192.168.1.1");
     assert_eq!(network.service_endpoints.len(), 1);
     assert!(network.service_endpoints.contains_key("svc1"));
 
     let ep = network.service_endpoints.get("svc1").unwrap();
     assert_eq!(ep.name, "svc1");
-    assert!(ep.internal_ip.starts_with("10.0.0."));
+    assert_eq!(ep.internal_ip, "192.168.1.10");
 }
 
 #[test]

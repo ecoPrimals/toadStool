@@ -18,7 +18,8 @@ pub struct DnsDiscoveryConfig {
     pub enabled: bool,
     /// DNS servers
     pub dns_servers: Vec<String>,
-    /// Search domains
+    /// Search domains (override defaults from `orchestration_default_network_config` /
+    /// `TOADSTOOL_DNS_SEARCH_DOMAINS` when building programmatic defaults)
     pub search_domains: Vec<String>,
     /// Service domains
     pub service_domains: ServiceDomainsConfig,

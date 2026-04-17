@@ -10,6 +10,7 @@ mod connection;
 mod discovery;
 mod operations;
 mod rpc;
+mod tcp_endpoint;
 #[cfg(test)]
 mod tests;
 
@@ -18,27 +19,20 @@ use std::path::PathBuf;
 
 pub(super) use async_stream_dispatch::AsyncStreamDispatch;
 
-use toadstool_config::defaults::ports::DISPLAY_IPC_FALLBACK;
+pub use tcp_endpoint::DisplayIpcTcpSettings;
 
 /// Loopback address used when constructing TCP fallback endpoints.
-const LOOPBACK: &str = toadstool_common::constants::network::LOCALHOST_IPV4;
+pub(super) const LOOPBACK: &str = toadstool_common::constants::network::LOCALHOST_IPV4;
 
 /// Default TCP address for display IPC fallback.
 ///
 /// Resolution order:
-/// 1. `TOADSTOOL_DISPLAY_IPC_ADDR` environment variable (full `host:port`)
-/// 2. `TOADSTOOL_DISPLAY_IPC_PORT` environment variable (port only, binds localhost)
-/// 3. Capability fallback port on localhost
+/// 1. `TOADSTOOL_DISPLAY_IPC_ADDR` (full `host:port`)
+/// 2. TCP discovery files under runtime/temp paths ([`PlatformPaths`](toadstool_common::platform_paths::PlatformPaths))
+/// 3. `TOADSTOOL_DISPLAY_IPC_PORT` or the cold-start fallback from `toadstool_config::defaults::ports`
 #[must_use]
 pub fn default_display_ipc_tcp_addr() -> String {
-    if let Ok(addr) = std::env::var("TOADSTOOL_DISPLAY_IPC_ADDR") {
-        return addr;
-    }
-    let port = std::env::var("TOADSTOOL_DISPLAY_IPC_PORT")
-        .ok()
-        .and_then(|p| p.parse::<u16>().ok())
-        .unwrap_or(DISPLAY_IPC_FALLBACK);
-    format!("{LOOPBACK}:{port}")
+    tcp_endpoint::default_display_ipc_tcp_addr()
 }
 
 /// IPC endpoint (polymorphic - Unix OR TCP)

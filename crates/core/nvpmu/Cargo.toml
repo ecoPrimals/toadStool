@@ -28,7 +28,7 @@ name = "nvpmu-monitor"
 path = "src/bin/nvpmu_monitor.rs"
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

@@ -231,6 +231,8 @@ pub struct UniversalCloudOrchestrator<P: CloudProviderInterface> {
     pub(crate) _load_balancer: MultiCloudLoadBalancer,
     /// Federation manager for cloud-to-cloud communication (Phase 2+)
     pub(crate) _federation_manager: CloudFederationManager,
+    /// Optional explicit federation endpoint (mirrors [`crate::cloud::types::CloudOrchestratorConfig::federation_endpoint`]).
+    pub(crate) federation_endpoint: Option<String>,
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

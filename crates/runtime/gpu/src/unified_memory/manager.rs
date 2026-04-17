@@ -495,4 +495,15 @@ mod tests {
         assert_eq!(memory.total_allocated(), 3072);
         assert_eq!(memory.active_allocations(), 2);
     }
+
+    #[tokio::test]
+    async fn allocation_rejects_over_max() {
+        let memory =
+            UniversalUnifiedMemory::with_strategy(BackendStrategy::Specific(BackendType::Cpu))
+                .await
+                .unwrap();
+        let max = memory.capabilities().max_allocation_size;
+        let result = memory.allocate(max + 1).await;
+        assert!(result.is_err());
+    }
 }

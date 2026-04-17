@@ -15,13 +15,91 @@ use toadstool_common::constants::platform_paths::sysfs;
 use toadstool_common::interned_strings::socket_env;
 use toadstool_distributed::{DistributedConfig, StandaloneConfig};
 
-/// Bind to any interface with OS-assigned port (TCP fallback when Unix sockets unavailable).
-///
-/// Overridable via `TOADSTOOL_BIND_ADDRESS` environment variable.
-fn bind_any() -> String {
-    let host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
-        .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
-    format!("{host}:0")
+/// Defaults for UniBin coordinator integration when corresponding env vars are unset.
+mod unibin_execution_defaults {
+    /// Default maximum concurrent workload executions for the embedded standalone executor.
+    pub const DEFAULT_MAX_CONCURRENT_WORKLOADS: u32 = 10;
+    /// Default wall-clock timeout for workload execution (seconds).
+    pub const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 300;
+    /// Default cap for the local job queue when job queuing is enabled.
+    pub const DEFAULT_MAX_JOB_QUEUE_SIZE: usize = 100;
+    /// Interval between coordination health reports (seconds).
+    pub const DEFAULT_COORDINATION_HEALTH_REPORT_INTERVAL_SECS: u64 = 60;
+}
+
+/// Snapshot of UniBin networking and coordination options (read once at process startup).
+#[derive(Debug, Clone)]
+pub struct UnibinExecutionConfig {
+    /// Host for `host:0` TCP bind fallback and `--port` JSON-RPC binds (`TOADSTOOL_BIND_ADDRESS`).
+    pub bind_host: String,
+    /// Full `host:port` override for TCP IPC when Unix sockets are unavailable (`TOADSTOOL_TCP_BIND_ADDRESS`).
+    pub tcp_bind_address: Option<String>,
+    /// When false, use standalone executor (`TOADSTOOL_STANDALONE`).
+    pub use_distributed: bool,
+    /// Optional bearer token for coordination plane registration.
+    pub coordination_auth_token: Option<String>,
+    /// Maximum concurrent executions (`TOADSTOOL_MAX_CONCURRENT_EXECUTIONS`).
+    pub max_concurrent_executions: u32,
+    /// Default workload timeout in seconds (`TOADSTOOL_EXECUTION_TIMEOUT`).
+    pub default_timeout_secs: u64,
+    /// Whether the embedded job queue is enabled.
+    pub enable_job_queue: bool,
+    /// Maximum queued jobs when [`Self::enable_job_queue`] is true.
+    pub max_queue_size: usize,
+    /// Seconds between coordination health reports.
+    pub health_reporting_interval_secs: u64,
+}
+
+impl UnibinExecutionConfig {
+    /// Load UniBin execution settings from the process environment (call once at startup).
+    #[must_use]
+    pub fn from_env() -> Self {
+        let bind_host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
+            .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
+        let tcp_bind_address = std::env::var(socket_env::TOADSTOOL_TCP_BIND_ADDRESS).ok();
+        let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
+            .map(|v| v != "1" && v.to_lowercase() != "true")
+            .unwrap_or(true);
+        let coordination_auth_token = std::env::var(socket_env::COORDINATION_AUTH_TOKEN)
+            .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_AUTH_TOKEN))
+            .ok();
+        let max_concurrent_executions =
+            std::env::var(socket_env::TOADSTOOL_MAX_CONCURRENT_EXECUTIONS)
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(unibin_execution_defaults::DEFAULT_MAX_CONCURRENT_WORKLOADS);
+        let default_timeout_secs = std::env::var(socket_env::TOADSTOOL_EXECUTION_TIMEOUT)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(unibin_execution_defaults::DEFAULT_WORKLOAD_TIMEOUT_SECS);
+
+        Self {
+            bind_host,
+            tcp_bind_address,
+            use_distributed,
+            coordination_auth_token,
+            max_concurrent_executions,
+            default_timeout_secs,
+            enable_job_queue: true,
+            max_queue_size: unibin_execution_defaults::DEFAULT_MAX_JOB_QUEUE_SIZE,
+            health_reporting_interval_secs:
+                unibin_execution_defaults::DEFAULT_COORDINATION_HEALTH_REPORT_INTERVAL_SECS,
+        }
+    }
+
+    /// `host:0` bind address for OS-assigned TCP port (TCP fallback when Unix sockets unavailable).
+    #[must_use]
+    pub fn bind_any_os_port(&self) -> String {
+        format!("{}:0", self.bind_host)
+    }
+
+    /// Effective TCP bind address for IPC fallback: explicit `TOADSTOOL_TCP_BIND_ADDRESS` or [`Self::bind_any_os_port`].
+    #[must_use]
+    pub fn tcp_ipc_bind_addr(&self) -> String {
+        self.tcp_bind_address
+            .clone()
+            .unwrap_or_else(|| self.bind_any_os_port())
+    }
 }
 
 /// Create executor with distributed or standalone mode
@@ -32,14 +110,11 @@ fn bind_any() -> String {
 /// cannot be created.
 pub async fn create_executor(
     family_id: &str,
+    cfg: &UnibinExecutionConfig,
 ) -> Result<std::sync::Arc<WorkloadExecutorDispatch>, ServerError> {
     info!("Creating executor with distributed coordinator (isomorphic/fractal)");
 
-    let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
-        .map(|v| v != "1" && v.to_lowercase() != "true")
-        .unwrap_or(true);
-
-    if use_distributed {
+    if cfg.use_distributed {
         info!("Initializing distributed coordinator mode");
         let capabilities = capabilities::query_local_capabilities().await;
         info!("Local capabilities: {:?}", capabilities);
@@ -48,10 +123,10 @@ pub async fn create_executor(
         let config = DistributedConfig {
             instance_id: format!("toadstool-{family_id}"),
             standalone: StandaloneConfig {
-                max_concurrent_executions: 10,
-                default_timeout_secs: 300,
-                enable_job_queue: true,
-                max_queue_size: 100,
+                max_concurrent_executions: cfg.max_concurrent_executions,
+                default_timeout_secs: cfg.default_timeout_secs,
+                enable_job_queue: cfg.enable_job_queue,
+                max_queue_size: cfg.max_queue_size,
             },
             coordination: Some(toadstool_distributed::CoordinationConfig {
                 endpoint: socket_env
@@ -63,10 +138,8 @@ pub async fn create_executor(
                         );
                         String::new()
                     }),
-                auth_token: std::env::var(socket_env::COORDINATION_AUTH_TOKEN)
-                    .or_else(|_| std::env::var(socket_env::LEGACY_SONGBIRD_AUTH_TOKEN))
-                    .ok(),
-                health_reporting_interval_secs: 60,
+                auth_token: cfg.coordination_auth_token.clone(),
+                health_reporting_interval_secs: cfg.health_reporting_interval_secs,
             }),
         };
 
@@ -102,13 +175,15 @@ pub async fn start_servers_with_fallback(
     socket_path: PathBuf,
     jsonrpc_socket: PathBuf,
     tcp_port: Option<u16>,
+    cfg: &UnibinExecutionConfig,
 ) -> ServerResult<()> {
     // When --port is explicitly provided, always start TCP alongside Unix sockets (UniBin std).
     if let Some(port) = tcp_port {
         info!("   --port {port} specified: starting TCP JSON-RPC (UniBin standard)");
         let tcp_handler = Arc::clone(&jsonrpc_handler);
+        let bind_host = cfg.bind_host.clone();
         tokio::spawn(async move {
-            if let Err(e) = start_tcp_jsonrpc_on_port(tcp_handler, port).await {
+            if let Err(e) = start_tcp_jsonrpc_on_port(tcp_handler, port, bind_host).await {
                 error!("TCP JSON-RPC on port {port} failed: {e}");
             }
         });
@@ -123,7 +198,7 @@ pub async fn start_servers_with_fallback(
             if is_platform_constraint_str(&error_str) {
                 warn!("⚠️  Unix sockets unavailable: {}", error_str);
                 warn!("   Detected platform constraint, adapting...");
-                start_tcp_servers(server, jsonrpc_handler).await
+                start_tcp_servers(server, jsonrpc_handler, cfg).await
             } else {
                 error!("❌ Real error (not platform constraint): {}", error_str);
                 Err(e)
@@ -175,13 +250,13 @@ async fn try_unix_servers(
 async fn start_tcp_servers(
     server: ToadStoolTarpcServer,
     jsonrpc_handler: Arc<JsonRpcHandler>,
+    cfg: &UnibinExecutionConfig,
 ) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
     info!("🌐 Starting TCP IPC fallback (isomorphic mode)");
 
-    let bind_addr =
-        std::env::var(socket_env::TOADSTOOL_TCP_BIND_ADDRESS).unwrap_or_else(|_| bind_any());
+    let bind_addr = cfg.tcp_ipc_bind_addr();
 
     let tarpc_listener = TcpListener::bind(&bind_addr)
         .await
@@ -217,12 +292,14 @@ async fn start_tcp_servers(
 /// Start a TCP JSON-RPC listener bound to a specific port (UniBin `--port` support).
 ///
 /// Newline-delimited JSON-RPC per `PRIMAL_IPC_PROTOCOL.md`.
-async fn start_tcp_jsonrpc_on_port(handler: Arc<JsonRpcHandler>, port: u16) -> ServerResult<()> {
+async fn start_tcp_jsonrpc_on_port(
+    handler: Arc<JsonRpcHandler>,
+    port: u16,
+    bind_host: String,
+) -> ServerResult<()> {
     use tokio::net::TcpListener;
 
-    let host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
-        .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
-    let addr = format!("{host}:{port}");
+    let addr = format!("{bind_host}:{port}");
     let listener = TcpListener::bind(&addr)
         .await
         .map_err(|e| ServerError::Network(format!("--port {port} bind failed: {e}")))?;

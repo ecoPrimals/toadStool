@@ -29,7 +29,7 @@ zeroize = { version = "1.7", features = ["derive"] }
 
 # Infant discovery dependencies
 tokio = { workspace = true }
-toml = "0.8"
+toml = { workspace = true }
 base64 = "0.22"
 semver = { version = "1.0.27", features = ["serde"] }
 
@@ -48,8 +48,9 @@ rand = { workspace = true, optional = true }
 tokio-test = { workspace = true }
 tokio = { workspace = true }
 proptest = { workspace = true }
-tempfile = "3"
+tempfile = { workspace = true }
 temp-env = { version = "0.3", features = ["async_closure"] }
+toadstool = { path = "../toadstool", features = ["proptest-strategies"] }
 
 [features]
 default = ["mdns", "btsp"]

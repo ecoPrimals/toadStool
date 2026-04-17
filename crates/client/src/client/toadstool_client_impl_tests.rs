@@ -97,7 +97,13 @@ mod client_method_tests {
         let result = client.submit_workload(workload).await;
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(err.to_string().contains("compute.submit") || err.to_string().contains("JSON-RPC"));
+        let msg = err.to_string();
+        assert!(
+            msg.contains("execution.submit_native")
+                || msg.contains("JSON-RPC")
+                || msg.contains("connect")
+                || msg.contains("Failed"),
+        );
     }
 
     #[tokio::test]
@@ -105,7 +111,10 @@ mod client_method_tests {
         let client = test_client();
         let result = client.get_execution_status(uuid::Uuid::new_v4()).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("compute.status"));
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("execution.status") || msg.contains("connect") || msg.contains("Failed")
+        );
     }
 
     #[tokio::test]

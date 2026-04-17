@@ -94,6 +94,7 @@ impl CrossPlatformSandboxManager {
     /// Setup filesystem mounts for sandbox
     async fn setup_filesystem_mounts(
         &self,
+        sandbox_id: &str,
         sandbox_dir: &Path,
         mounts: &[FilesystemMount],
     ) -> ToadStoolResult<()> {
@@ -113,7 +114,9 @@ impl CrossPlatformSandboxManager {
 
             // Platform-specific mount implementation
             #[cfg(target_os = "linux")]
-            self.linux_manager.setup_mount(mount, &target_path).await?;
+            self.linux_manager
+                .setup_mount(sandbox_id, mount, &target_path)
+                .await?;
 
             #[cfg(target_os = "macos")]
             self.macos_manager.setup_mount(mount, &target_path).await?;
@@ -147,7 +150,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
             helpers::create_sandbox_directories(&self.config.sandbox_root, &sandbox_id).await?;
 
         // Setup filesystem mounts
-        self.setup_filesystem_mounts(&sandbox_dir, &spec.filesystem_mounts)
+        self.setup_filesystem_mounts(&sandbox_id, &sandbox_dir, &spec.filesystem_mounts)
             .await?;
 
         // Create sandbox info
