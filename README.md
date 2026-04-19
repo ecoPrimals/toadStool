@@ -42,10 +42,10 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,000+ tests, 0 failures** (7,784 lib-only verified S203t), **93** ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,124 lib-only verified S173), **~100** ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; **40 crates forbid, 7 deny** `unsafe_code` (**47/47**) |
+| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow]` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
 | Production stubs / test mocks | Stubs evolved to real implementations (edge USB/BT/IPv6, scheduler queuing, monitoring via sysmon+statvfs); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -59,7 +59,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | JSON-RPC surface | **65** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files target **< 500 lines** (S203i: 52 production files refactored via test extraction across S203c/e/g/i; 25 files remain >500 lines — pure production code with no extractable test blocks, all <700 lines) |
+| File size limit | All production files target **< 500 lines** (S203i+S173: 52 production files refactored via test extraction; 3 specialty >700L files smart-refactored into directory modules; remaining >500L files are pure production — hardware drivers, type defs, all <700 lines) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -247,10 +247,10 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **22,000+**, 0 failures |
+| Workspace tests | **20,000+**, 0 failures |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; **40 crates forbid, 7 deny** `unsafe_code` (**47/47**) |
+| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
@@ -274,6 +274,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S173 (Apr 19, 2026)**: **Deep debt evolution** — runtime/edge compilation fixed (61 errors resolved: error constructor API alignment, `platform_paths` module path, `Box<dyn CommunicationProtocol>` Clone workaround, `serialport` Mutex migration, `Display` impl for `EdgePlatform`, UUID v5 feature, `Arc<Self>` borrow-escape fix). Smart-refactored 3 large specialty files into directory modules: `cpu6502.rs` (828L→`cpu6502/{mod,alu,decode,tests}.rs`), `emulator_impls.rs` (717L→`emulator_impls/{mod,mos6502,z80,tests}.rs`), `programmer_impls.rs` (712L→`programmer_impls/{mod,init,generic,eprom,tests}.rs`). `#[allow(dead_code)]` → `#[expect(dead_code, reason)]` in sandbox/proc.rs and embedded/programmers.rs. All edge tests passing (102+16+98). Clippy clean.
 - **S203t (Apr 16, 2026)**: **Deep debt evolution pass** — All 11 active debt items resolved or evolved. Production mocks cfg-gated (`TestWorkloadDouble`, `MockCloudProvider`, `SyntheticNpuBackend`, test transports behind `#[cfg(any(test, feature = "test-mocks"))]`). Critical hardcoding replaced with capability-based discovery (BYOB subnet derivation, federation endpoint config, DNS discovery, env centralization through config structs). Real Linux sandbox ops via rustix (mounts, cgroup/proc monitoring, optional seccomp-BPF). Real resource metrics from cgroup v2 / /proc. Workload client IPC fully wired (JSON-RPC method dispatch for all workload types). Plugin system evolved to real `libloading`-based dlopen with C ABI + versioning. Binary tarpc framing via MessagePack for Rust-to-Rust peers. 6502/Z80 CPU emulators in pure Rust. ISP/ICSP protocol engines with chip database validation. HW verification with typed `VerificationResult` enum. Fuzz targets for GPU buffer unsafe code. Proptest strategies for core types. `hex` dep eliminated. Workspace deps aligned. 7,784 tests, 0 failures, clippy clean.
 - **S203s (Apr 16, 2026)**: **Stadial parity gate cleared** — ~32 finite-implementor traits converted from `dyn Trait` dispatch to **enum dispatch + RPITIT**. ~864 `Pin<Box<dyn Future>>` cascaded away. `RuntimeEngine` genericized across 7 runtime crates. Zero finite-implementor `dyn` remaining. `cargo deny check bans` passes, clippy clean, 5,200+ tests verified.
 - **S203r (Apr 16, 2026)**: `async-trait` fully deprecated — all ~91 `#[async_trait]` annotations evolved to manual `Pin<Box<dyn Future>>` across 55+ files in 13 crates. Crate removed from all Cargo.toml. Banned in `deny.toml` (transitive via axum/config/wiggle allowed). `DEBT.md` D-ASYNC-DYN-MARKERS → RESOLVED. 22,061 tests, 0 failures, clippy clean.
@@ -379,7 +380,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 16, 2026 — S203t. **22,000+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; **40 crates forbid, 7 deny** `unsafe_code` (**47/47**). IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 19, 2026 — S173. **20,000+** workspace tests, 0 failures. ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow]`. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

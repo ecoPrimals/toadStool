@@ -47,22 +47,26 @@ what the interaction would look like and which capabilities were discovered.
 | 04 | resource-management | Estimation, validation, optimization | 30s | Intermediate |
 | 05 | gpu-job-queue | GPU dispatch and queue management | 60s | Intermediate |
 
-### 01-shader-pipeline/
+### 01-shader-pipeline/ (ARCHIVED S169)
 
-| # | Demo | Description | Duration | Difficulty |
-|---|------|-------------|----------|------------|
-| 01 | naga-fallback | WGSL -> SPIR-V via naga (standalone) | 30s | Beginner |
-| 02 | coralreef-compile | Shader compilation via coralReef | 60s | Intermediate |
-| 03 | compile-status | Async compilation status polling | 30s | Intermediate |
+> These demos reference APIs moved to coralReef. Preserved as fossil reference.
 
-### 02-compute-patterns/
+| # | Demo | Description | Status |
+|---|------|-------------|--------|
+| 01 | naga-fallback | WGSL -> SPIR-V via naga | Archived — see coralReef |
+| 02 | coralreef-compile | Shader compilation via coralReef | Archived — see coralReef |
+| 03 | compile-status | Async compilation status polling | Archived — see coralReef |
 
-| # | Demo | Description | Duration | Difficulty |
-|---|------|-------------|----------|------------|
-| 01 | capability-discovery | Runtime discovery of compute primals | 30s | Intermediate |
-| 02 | science-dispatch | GPU compute job submission | 60s | Advanced |
-| 03 | deploy-graph | Capability-based routing to barraCuda | 60s | Advanced |
-| 04 | shader-to-gpu | Full compile -> dispatch -> execute triangle | 120s | Advanced |
+### 02-compute-patterns/ (ARCHIVED S169)
+
+> These demos reference APIs moved to barraCuda/coralReef. Preserved as fossil reference.
+
+| # | Demo | Description | Status |
+|---|------|-------------|--------|
+| 01 | capability-discovery | Runtime discovery of compute primals | Archived |
+| 02 | science-dispatch | GPU compute job submission | Archived — see barraCuda |
+| 03 | deploy-graph | Capability-based routing to barraCuda | Archived |
+| 04 | shader-to-gpu | Full compile -> dispatch -> execute triangle | Archived — see coralReef |
 
 ### 03-ecosystem-integration/
 

@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 16, 2026 — S203t (Deep Debt Evolution)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 22,000+ tests (0 failures) | **~69 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | **46/46 crates with `unsafe_code` lint policy** | **49 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)**
-**Latest**: S203t — Deep debt evolution: all 11 active debt items resolved/evolved. Production mocks cfg-gated. Hardcoding replaced with capability-based discovery. Real sandbox, real metrics, wired IPC, plugin dlopen, binary transport, 6502/Z80 CPU emulators, ISP/ICSP protocol engines. `hex` dep eliminated. 7,784 lib tests, 0 failures, clippy clean.
+**Updated**: April 19, 2026 — S173 (Deep Debt Evolution)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 20,000+ tests (0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)**
+**Latest**: S173 — Deep debt evolution: runtime/edge compilation fixed (61 errors). Smart-refactored 3 large specialty files into directory modules (cpu6502 828L, emulator_impls 717L, programmer_impls 712L). Lint attributes evolved to `#[expect(dead_code, reason)]`. 7,124 lib tests, 0 failures, clippy clean.
 
 ---
 
@@ -163,7 +163,17 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-203)
+## Completed This Session (S90-S173)
+
+### Session S173: Deep Debt Evolution — Edge Compilation + Smart Refactoring (Apr 19, 2026)
+- **Runtime/edge compilation fixed** — 61 errors resolved: error constructor API alignment (`discovery_error`→`runtime`, `execution_error`→`execution`, etc.), `platform_paths` module path correction (`toadstool::`→`toadstool_common::`), `Box<dyn CommunicationProtocol>` Clone workaround (borrow-through-lock pattern), `serialport` `RwLock`→`Mutex` migration (`SerialPort` is `Send` but not `Sync`), `Display` impl for `EdgePlatform`, UUID `v5` feature gate, `Arc<Self>` borrow-escape fix for `start_continuous_discovery`.
+- **Smart-refactored 3 large specialty files** into directory modules:
+  - `cpu6502.rs` (828L) → `cpu6502/{mod,alu,decode,tests}.rs`
+  - `emulator_impls.rs` (717L) → `emulator_impls/{mod,mos6502,z80,tests}.rs`
+  - `programmer_impls.rs` (712L) → `programmer_impls/{mod,init,generic,eprom,tests}.rs`
+- **Lint evolution**: `#[allow(dead_code)]` → `#[expect(dead_code, reason)]` in `sandbox/proc.rs` and `embedded/programmers.rs` with explicit justifications.
+- **Test fix**: `edge_config_tests::test_edge_runtime_config_default` assertion updated for XDG-compliant cache path (was hardcoded `/tmp/toadstool_edge_cache`).
+- All quality gates green: 102 edge tests + 16 specialty tests + 98 sandbox tests passing. Clippy clean.
 
 ### Session S203s: Stadial Parity Gate Cleared (Apr 16, 2026)
 - **Stadial parity gate cleared** — ~32 finite-implementor traits converted from `dyn Trait` dispatch to **enum dispatch + RPITIT**. Zero finite-implementor `dyn` remaining.

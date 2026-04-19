@@ -1,6 +1,6 @@
 # Active Technical Debt Register
 
-**Date**: April 16, 2026 — S203t
+**Date**: April 19, 2026 — S173
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions.
@@ -32,19 +32,21 @@ ranges/alignment before returning transport errors on `read_memory` / `write_mem
 `verify`. `embedded/protocol.rs` delegates signature checks to the chip database.
 **Remaining**: real adapters, MISO modeling, PE/high-level PIC routines.
 Files: `embedded/chip_database.rs`, `embedded/protocol_engine.rs`, `embedded/errors.rs`,
-`embedded/protocol.rs`, `embedded/programmers.rs`, `embedded/programmer_impls.rs`.
+`embedded/protocol.rs`, `embedded/programmers.rs`, `embedded/programmer_impls/{mod,init,generic,eprom,tests}.rs`.
 
 ### D-EMBEDDED-EMULATOR
 **Crate**: `runtime/specialty` | **Feature**: `embedded-placeholder-impls`
-**Evolved (CPU)**: `embedded/cpu6502.rs` (NMOS 6502 subset: loads/stores, ALU, branches, JSR/RTS/JMP,
-stack, cycle counts) and `embedded/cpuz80.rs` (NOP/HALT, LD r,r', ALU, JP/JR/CALL/RET, LD A,imm,
-block-style `ED` opcode). `Emulator6502` / `EmulatorZ80` wrap cores with breakpoints and lifecycle;
-`emulator_impls.rs` implements `EmbeddedEmulator` (init/load/start/stop/step/registers/memory/status).
+**Evolved (CPU)**: `embedded/cpu6502/{mod,alu,decode,tests}.rs` (NMOS 6502 subset: loads/stores, ALU,
+branches, JSR/RTS/JMP, stack, cycle counts — smart-refactored S173 from monolithic 828L file) and
+`embedded/cpuz80.rs` (NOP/HALT, LD r,r', ALU, JP/JR/CALL/RET, LD A,imm, block-style `ED` opcode).
+`Emulator6502` / `EmulatorZ80` wrap cores with breakpoints and lifecycle;
+`emulator_impls/{mod,mos6502,z80,tests}.rs` implements `EmbeddedEmulator`
+(init/load/start/stop/step/registers/memory/status — smart-refactored S173 from monolithic 717L file).
 `EmbeddedEmulatorError::NotReady` covers uninitialized paths; `CoreNotAvailable` is unused in the
 default build. **Remaining**: decimal-mode 6502, full Z80 prefix tables / timing, peripherals, remote
 debug transport (GDB), cycle-accurate vs instruction-count models.
-Files: `embedded/cpu6502.rs`, `embedded/cpuz80.rs`, `embedded/emulators.rs`, `embedded/emulator_impls.rs`,
-`embedded/errors.rs`.
+Files: `embedded/cpu6502/{mod,alu,decode,tests}.rs`, `embedded/cpuz80.rs`, `embedded/emulators.rs`,
+`embedded/emulator_impls/{mod,mos6502,z80,tests}.rs`, `embedded/errors.rs`.
 
 ### D-COVERAGE-GAP
 **Scope**: Workspace | **Metric**: `cargo llvm-cov`

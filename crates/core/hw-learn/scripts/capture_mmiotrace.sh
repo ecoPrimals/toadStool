@@ -134,5 +134,5 @@ ls -lh "$OUTPUT_DIR"/mmiotrace_*.txt "$OUTPUT_DIR"/ioctl_trace.txt 2>/dev/null
 echo ""
 echo "Next step: use toadstool JSON-RPC to extract PMU init recipe"
 echo "  1. toadstool server  # start daemon"
-echo "  2. jq -n --arg td \"\$(cat \"$OUTPUT_DIR/mmiotrace_compute.txt\")\" '{jsonrpc:\"2.0\",method:\"compute.hardware.observe\",params:{trace_data:\$td},id:1}' | curl --unix-socket \"\${XDG_RUNTIME_DIR}/biomeos/toadstool.sock\" -H 'Content-Type: application/json' -d @- http://localhost/"
-echo "  3. jq -n --arg b \"\$(cat \"$OUTPUT_DIR/mmiotrace_baseline.txt\")\" --arg c \"\$(cat \"$OUTPUT_DIR/mmiotrace_compute.txt\")\" '{jsonrpc:\"2.0\",method:\"compute.hardware.distill\",params:{baseline:\$b,compute:\$c,chip:\"gv100\"},id:2}' | curl --unix-socket \"\${XDG_RUNTIME_DIR}/biomeos/toadstool.sock\" -H 'Content-Type: application/json' -d @- http://localhost/"
+echo "  2. echo '{\"jsonrpc\":\"2.0\",\"method\":\"compute.hardware.observe\",\"params\":{\"trace_file\":\"$OUTPUT_DIR/mmiotrace_compute.txt\"},\"id\":1}' | socat - UNIX-CONNECT:\${XDG_RUNTIME_DIR}/biomeos/compute.sock"
+echo "  3. echo '{\"jsonrpc\":\"2.0\",\"method\":\"compute.hardware.distill\",\"params\":{\"baseline_file\":\"$OUTPUT_DIR/mmiotrace_baseline.txt\",\"compute_file\":\"$OUTPUT_DIR/mmiotrace_compute.txt\",\"chip\":\"gv100\"},\"id\":2}' | socat - UNIX-CONNECT:\${XDG_RUNTIME_DIR}/biomeos/compute.sock"

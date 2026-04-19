@@ -38,15 +38,15 @@ cargo run --release
 
 Expected output: Workload submission, status polling, result retrieval, cancellation.
 
-## Step 5: (Optional) Start toadStool server for inter-primal demos
+## Step 5: (Optional) Start toadStool server for ecosystem demos
 
 ```bash
 # In a separate terminal:
 cd /path/to/toadStool
 cargo run --release --bin toadstool -- server
 
-# Then run compute-pattern demos:
-cd showcase/02-compute-patterns/01-capability-discovery
+# Then run ecosystem-integration demos:
+cd showcase/03-ecosystem-integration/01-coordination-registration
 cargo run --release
 ```
 
@@ -55,8 +55,8 @@ cargo run --release
 ## What Next?
 
 - Full local showcase: `showcase/00-local-primal/` (5 demos, 5 minutes)
-- Shader pipeline: `showcase/01-shader-pipeline/` (requires toadStool server)
-- Compute triangle: `showcase/02-compute-patterns/` (toadStool + barraCuda + coralReef)
-- Full ecosystem: `showcase/03-ecosystem-integration/` (all phase1 primals)
+- Ecosystem integration: `showcase/03-ecosystem-integration/` (requires running primals)
+
+> **Note**: `showcase/01-shader-pipeline/` and `showcase/02-compute-patterns/` are **archived (S169)** — the APIs they demonstrate have been moved to coralReef and barraCuda. They are preserved as fossil reference only.
 
 See [00_SHOWCASE_INDEX.md](00_SHOWCASE_INDEX.md) for the complete learning path.
