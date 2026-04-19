@@ -82,7 +82,7 @@ impl DeviceDiscoveryService {
                 std::net::IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 0)),
                 std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 0)),
             ],
-            ports: config.port_registry.edge_discovery_ports().to_vec(),
+            ports: vec![config.port_registry.server, config.port_registry.gpu_compute],
             timeout: Duration::from_secs(1),
         }));
 
@@ -224,17 +224,17 @@ impl DeviceDiscoveryService {
     /// - No drift accumulation
     /// - More precise timing
     /// - Idiomatic Tokio pattern
-    pub async fn start_continuous_discovery(&self) -> ToadStoolResult<()> {
+    pub fn start_continuous_discovery(
+        self: &Arc<Self>,
+    ) -> ToadStoolResult<()> {
         let discovery_interval = Duration::from_secs(self.config.discovery_timeout_secs);
-        let service = Arc::new(self);
+        let service = Arc::clone(self);
 
         tokio::spawn(async move {
-            // ✅ Use interval instead of sleep - prevents drift and more efficient
             let mut interval = tokio::time::interval(discovery_interval);
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
             loop {
-                // Wait for next tick (first tick fires immediately)
                 interval.tick().await;
 
                 if service.needs_discovery().await {

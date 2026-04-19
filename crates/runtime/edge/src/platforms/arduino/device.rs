@@ -4,8 +4,7 @@
 use serialport::SerialPortType;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use tracing::info;
+use tokio::sync::{Mutex, RwLock};
 use uuid::Uuid;
 
 use toadstool::error::ToadStoolResult;
@@ -18,7 +17,7 @@ pub struct ArduinoDevice {
     pub(in crate::platforms::arduino) id: Uuid,
     pub(in crate::platforms::arduino) info: EdgeDeviceInfo,
     pub(in crate::platforms::arduino) serial_port:
-        Arc<RwLock<Option<Box<dyn serialport::SerialPort + Send + Sync>>>>,
+        Arc<Mutex<Option<Box<dyn serialport::SerialPort>>>>,
     pub(in crate::platforms::arduino) compilation_cache: Arc<RwLock<HashMap<String, Vec<u8>>>>,
     pub(in crate::platforms::arduino) active_executions:
         Arc<RwLock<HashMap<Uuid, ArduinoExecution>>>,
@@ -81,7 +80,7 @@ impl ArduinoDevice {
         Ok(Self {
             id,
             info,
-            serial_port: Arc::new(RwLock::new(None)),
+            serial_port: Arc::new(Mutex::new(None)),
             compilation_cache: Arc::new(RwLock::new(HashMap::new())),
             active_executions: Arc::new(RwLock::new(HashMap::new())),
         })
@@ -224,7 +223,11 @@ impl ArduinoDevice {
     pub fn discover_devices() -> ToadStoolResult<Vec<ArduinoDevice>> {
         let mut devices = Vec::new();
 
-        for port in serialport::available_ports()? {
+        for port in serialport::available_ports().map_err(|e| {
+            toadstool::error::ToadStoolError::runtime(format!(
+                "Failed to enumerate serial ports: {e}"
+            ))
+        })? {
             if let SerialPortType::UsbPort(usb_info) = &port.port_type {
                 // Check for Arduino vendor IDs
                 if Self::is_arduino_device(usb_info.vid, usb_info.pid) {
@@ -240,7 +243,7 @@ impl ArduinoDevice {
     }
 
     /// Check if device is Arduino based on vendor/product ID
-    pub fn is_arduino_device(vid: u16, pid: u16) -> bool {
+    pub fn is_arduino_device(vid: u16, _pid: u16) -> bool {
         match vid {
             0x2341 => true, // Arduino LLC
             0x1B4F => true, // SparkFun

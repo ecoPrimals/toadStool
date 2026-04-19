@@ -121,11 +121,13 @@ pub fn avr_validate_flash_range(
     address: u32,
     length: u32,
 ) -> Result<(), EmbeddedProgrammerError> {
-    let end = address.checked_add(length).ok_or(EmbeddedProgrammerError::AddressOutOfRange {
-        address,
-        length,
-        limit: chip.flash_size,
-    })?;
+    let end = address
+        .checked_add(length)
+        .ok_or(EmbeddedProgrammerError::AddressOutOfRange {
+            address,
+            length,
+            limit: chip.flash_size,
+        })?;
     if end > chip.flash_size {
         return Err(EmbeddedProgrammerError::AddressOutOfRange {
             address,
@@ -265,11 +267,13 @@ pub fn pic_validate_flash_range(
     address: u32,
     length: u32,
 ) -> Result<(), EmbeddedProgrammerError> {
-    let end = address.checked_add(length).ok_or(EmbeddedProgrammerError::AddressOutOfRange {
-        address,
-        length,
-        limit: chip.flash_size,
-    })?;
+    let end = address
+        .checked_add(length)
+        .ok_or(EmbeddedProgrammerError::AddressOutOfRange {
+            address,
+            length,
+            limit: chip.flash_size,
+        })?;
     if end > chip.flash_size {
         return Err(EmbeddedProgrammerError::AddressOutOfRange {
             address,
@@ -291,11 +295,13 @@ pub fn parallel_eprom_read_block(
     length: u32,
     max_address: u32,
 ) -> Result<ParallelEpromSequence, EmbeddedProgrammerError> {
-    let end = address.checked_add(length).ok_or(EmbeddedProgrammerError::AddressOutOfRange {
-        address,
-        length,
-        limit: max_address,
-    })?;
+    let end = address
+        .checked_add(length)
+        .ok_or(EmbeddedProgrammerError::AddressOutOfRange {
+            address,
+            length,
+            limit: max_address,
+        })?;
     if end > max_address {
         return Err(EmbeddedProgrammerError::AddressOutOfRange {
             address,

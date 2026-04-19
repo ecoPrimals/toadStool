@@ -159,15 +159,17 @@ pub fn validate_avr_signature_db(
     chip_name: Option<&str>,
 ) -> Result<&'static AvrChipInfo, EmbeddedProgrammerError> {
     let sig = DeviceSignature::from_u32(signature);
-    let row = avr_by_signature(sig).ok_or_else(|| EmbeddedProgrammerError::ChipSignatureUnknown {
-        signature,
-        family: "avr".into(),
-    })?;
-    if let Some(name) = chip_name {
-        let expect = avr_by_name(name).ok_or_else(|| EmbeddedProgrammerError::ChipSignatureUnknown {
+    let row =
+        avr_by_signature(sig).ok_or_else(|| EmbeddedProgrammerError::ChipSignatureUnknown {
             signature,
-            family: format!("avr:{name}"),
+            family: "avr".into(),
         })?;
+    if let Some(name) = chip_name {
+        let expect =
+            avr_by_name(name).ok_or_else(|| EmbeddedProgrammerError::ChipSignatureUnknown {
+                signature,
+                family: format!("avr:{name}"),
+            })?;
         if expect.signature != sig {
             return Err(EmbeddedProgrammerError::ChipSignatureUnknown {
                 signature,

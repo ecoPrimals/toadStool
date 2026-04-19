@@ -34,7 +34,7 @@ impl DiscoveryMethod for SerialPortDiscovery {
 
             // Get available serial ports
             let ports = serialport::available_ports().map_err(|e| {
-                ToadStoolError::discovery_error(format!("Failed to enumerate serial ports: {}", e))
+                ToadStoolError::runtime(format!("Failed to enumerate serial ports: {}", e))
             })?;
 
             for port in ports {

@@ -13,8 +13,8 @@ use toadstool::error::{ToadStoolError, ToadStoolResult};
 use uuid::Uuid;
 
 use super::{
-    ConnectionInfo, ConnectionType, DeviceStatus, EdgeDeviceInfo, EdgeDeviceResources,
-    NetworkInterface, NetworkInterfaceType, PiModel, PiOS,
+    ConnectionInfo, ConnectionType, DeviceStatus, EdgeDeviceInfo, EdgeDeviceResources, PiModel,
+    PiOS,
 };
 
 /// Returns a `PlatformNotAvailable` error when Raspberry Pi hardware is not detected.
@@ -46,10 +46,7 @@ pub fn discover_raspberry_pi_devices() -> ToadStoolResult<Vec<RaspberryPiDevice>
 
     let model_str = std::fs::read_to_string(model_path)
         .map_err(|e| {
-            toadstool_common::error::SystemError::Io {
-                reason: format!("Failed to read device tree model: {}", e),
-            }
-            .into()
+            ToadStoolError::io(format!("Failed to read device tree model: {}", e))
         })?
         .trim_end_matches('\0')
         .to_string();

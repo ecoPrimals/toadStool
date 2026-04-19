@@ -2,7 +2,6 @@
 //! Compile and upload flows (Arduino CLI).
 
 use sha2::{Digest, Sha256};
-use std::time::Duration;
 use tracing::{debug, info};
 use uuid::Uuid;
 
@@ -31,12 +30,12 @@ impl ArduinoDevice {
         let sketch_path = temp_dir.join(format!("arduino_sketch_{}.ino", code_hash));
 
         std::fs::write(&sketch_path, code).map_err(|e| {
-            ToadStoolError::execution_error(format!("Failed to write sketch file: {}", e))
+            ToadStoolError::execution(format!("Failed to write sketch file: {}", e))
         })?;
 
         // Compile using Arduino CLI
         let sketch_path_str = sketch_path.to_str().ok_or_else(|| {
-            ToadStoolError::execution_error(format!("Invalid sketch path: {:?}", sketch_path))
+            ToadStoolError::execution(format!("Invalid sketch path: {:?}", sketch_path))
         })?;
 
         let output = std::process::Command::new("arduino-cli")
@@ -48,12 +47,12 @@ impl ArduinoDevice {
             ])
             .output()
             .map_err(|e| {
-                ToadStoolError::execution_error(format!("Failed to run Arduino CLI: {}", e))
+                ToadStoolError::execution(format!("Failed to run Arduino CLI: {}", e))
             })?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(ToadStoolError::execution_error(format!(
+            return Err(ToadStoolError::execution(format!(
                 "Arduino compilation failed: {}",
                 error_msg
             )));
@@ -62,7 +61,7 @@ impl ArduinoDevice {
         // Read compiled binary
         let hex_path = sketch_path.with_extension("hex");
         let compiled_code = std::fs::read(&hex_path).map_err(|e| {
-            ToadStoolError::execution_error(format!("Failed to read compiled binary: {}", e))
+            ToadStoolError::execution(format!("Failed to read compiled binary: {}", e))
         })?;
 
         // Cache compiled code
@@ -88,12 +87,12 @@ impl ArduinoDevice {
         let hex_path = temp_dir.join(format!("arduino_upload_{}.hex", Uuid::new_v4()));
 
         std::fs::write(&hex_path, compiled_code).map_err(|e| {
-            ToadStoolError::execution_error(format!("Failed to write hex file: {}", e))
+            ToadStoolError::execution(format!("Failed to write hex file: {}", e))
         })?;
 
         // Upload using Arduino CLI
         let hex_path_str = hex_path.to_str().ok_or_else(|| {
-            ToadStoolError::execution_error(format!("Invalid hex file path: {:?}", hex_path))
+            ToadStoolError::execution(format!("Invalid hex file path: {:?}", hex_path))
         })?;
 
         let output = std::process::Command::new("arduino-cli")
@@ -108,12 +107,12 @@ impl ArduinoDevice {
             ])
             .output()
             .map_err(|e| {
-                ToadStoolError::execution_error(format!("Failed to run Arduino CLI upload: {}", e))
+                ToadStoolError::execution(format!("Failed to run Arduino CLI upload: {}", e))
             })?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(ToadStoolError::execution_error(format!(
+            return Err(ToadStoolError::execution(format!(
                 "Arduino upload failed: {}",
                 error_msg
             )));

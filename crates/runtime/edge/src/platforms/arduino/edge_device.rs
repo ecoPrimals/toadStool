@@ -35,7 +35,7 @@ impl EdgeDevice for ArduinoDevice {
 
     fn is_connected(&self) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
         let dev = self.clone_handles();
-        Box::pin(async move { dev.serial_port.read().await.is_some() })
+        Box::pin(async move { dev.serial_port.lock().await.is_some() })
     }
 
     fn connect(&self) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>> {
@@ -152,7 +152,7 @@ impl EdgeDevice for ArduinoDevice {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>> {
         let dev = self.clone_handles();
         Box::pin(async move {
-            if dev.serial_port.read().await.is_some() {
+            if dev.serial_port.lock().await.is_some() {
                 Ok(DeviceStatus::Online)
             } else {
                 Ok(DeviceStatus::Offline)

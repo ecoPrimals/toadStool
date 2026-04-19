@@ -20,23 +20,21 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use toadstool::{
     WorkloadType,
     error::{ToadStoolError, ToadStoolResult},
     execution::{
-        ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
-        RuntimeConfig, RuntimeEngine,
+        ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities, RuntimeConfig,
+        RuntimeEngine,
     },
     resources::{
-        CpuMetrics, MemoryMetrics, NetworkMetrics, ResourceRequirements, RuntimeMetrics,
-        StorageMetrics, TimingMetrics,
+        CpuMetrics, MemoryMetrics, NetworkMetrics, RuntimeMetrics, StorageMetrics, TimingMetrics,
     },
-    security::SecurityContext,
 };
 
 // platforms: 30+ items (enums, structs, traits, device types); wildcard retained
@@ -138,8 +136,8 @@ pub struct ResourceUsage {
 impl Default for EdgeRuntimeConfig {
     fn default() -> Self {
         // Use XDG-compliant path resolution for cache
-        let cache_path = toadstool::platform_paths::PlatformPaths::new(
-            &toadstool::platform_paths::PathEnv::from_env(),
+        let cache_path = toadstool_common::platform_paths::PlatformPaths::new(
+            &toadstool_common::platform_paths::PathEnv::from_env(),
         )
         .toadstool_cache_dir()
         .join("edge_cache")
@@ -288,7 +286,9 @@ impl EdgeRuntimeEngine {
             if let Some(handle) = executions.get_mut(&execution_id) {
                 handle.status = match &result {
                     Ok(_) => ExecutionStatus::Success,
-                    Err(_) => ExecutionStatus::Failed,
+                    Err(e) => ExecutionStatus::Failed {
+                        error: e.to_string().into(),
+                    },
                 };
             }
         }
@@ -442,7 +442,7 @@ impl RuntimeEngine for EdgeRuntimeEngine {
 
 impl EdgeRuntimeEngine {
     /// Find suitable device for execution based on requirements
-    async fn find_suitable_device(&self, request: &ExecutionRequest) -> ToadStoolResult<Uuid> {
+    async fn find_suitable_device(&self, _request: &ExecutionRequest) -> ToadStoolResult<Uuid> {
         let devices = self.devices.read().await;
 
         if devices.is_empty() {

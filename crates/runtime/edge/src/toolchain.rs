@@ -5,13 +5,13 @@
 //! Supports Arduino, ESP32, ARM, and other embedded targets.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 
 use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
@@ -175,13 +175,13 @@ impl CrossCompilationToolchain {
         platform: &EdgePlatform,
     ) -> ToadStoolResult<CompilationTarget> {
         match platform {
-            EdgePlatform::Arduino { board, .. } => Ok(CompilationTarget {
+            EdgePlatform::Arduino { board: _, .. } => Ok(CompilationTarget {
                 platform: platform.clone(),
                 architecture: "avr".to_string(),
                 toolchain: "arduino".to_string(),
                 output_format: OutputFormat::Hex,
             }),
-            EdgePlatform::ESP32 { chip, framework } => Ok(CompilationTarget {
+            EdgePlatform::ESP32 { chip: _, framework: _ } => Ok(CompilationTarget {
                 platform: platform.clone(),
                 architecture: "xtensa".to_string(),
                 toolchain: "esp32".to_string(),
@@ -249,7 +249,7 @@ impl CrossCompilationToolchain {
         toolchain: &ToolchainInfo,
     ) -> ToadStoolResult<Vec<u8>> {
         if !toolchain.is_available {
-            return Err(ToadStoolError::not_available(format!(
+            return Err(ToadStoolError::not_supported(format!(
                 "Toolchain '{}' is not available",
                 toolchain.name
             )));
@@ -282,7 +282,7 @@ impl CrossCompilationToolchain {
 
         // Add target-specific flags
         match &target.platform {
-            EdgePlatform::Arduino { board, .. } => {
+            EdgePlatform::Arduino { board: _, .. } => {
                 cmd.args(&[
                     "-mmcu=atmega328p", // Default to Uno
                     "-DF_CPU=16000000L",
@@ -306,7 +306,7 @@ impl CrossCompilationToolchain {
         // Add source and output files
         cmd.arg(&source_file);
         let output_file_str = output_file.to_str().ok_or_else(|| {
-            ToadStoolError::compilation_error(format!(
+            ToadStoolError::runtime(format!(
                 "Invalid output file path: {:?}",
                 output_file
             ))
@@ -326,13 +326,13 @@ impl CrossCompilationToolchain {
         // Execute compilation
         info!("Executing compilation command: {:?}", cmd);
         let output = cmd.output().map_err(|e| {
-            ToadStoolError::execution_error(format!("Failed to execute compiler: {}", e))
+            ToadStoolError::execution(format!("Failed to execute compiler: {}", e))
         })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             error!("Compilation failed: {}", stderr);
-            return Err(ToadStoolError::execution_error(format!(
+            return Err(ToadStoolError::execution(format!(
                 "Compilation failed: {}",
                 stderr
             )));
@@ -340,7 +340,7 @@ impl CrossCompilationToolchain {
 
         // Read compiled binary
         let compiled_binary = std::fs::read(&output_file).map_err(|e| {
-            ToadStoolError::execution_error(format!("Failed to read compiled binary: {}", e))
+            ToadStoolError::execution(format!("Failed to read compiled binary: {}", e))
         })?;
 
         // Clean up temporary directory

@@ -63,6 +63,30 @@ pub enum EdgePlatform {
     },
 }
 
+impl std::fmt::Display for EdgePlatform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Arduino { board, version } => write!(f, "Arduino({board:?} v{version})"),
+            Self::ESP32 { chip, framework } => write!(f, "ESP32({chip:?}/{framework:?})"),
+            Self::RaspberryPi { model, os } => write!(f, "RaspberryPi({model:?}/{os:?})"),
+            Self::BeagleBone { variant } => write!(f, "BeagleBone({variant:?})"),
+            Self::Industrial {
+                system_type,
+                protocol,
+            } => write!(f, "Industrial({system_type:?}/{protocol:?})"),
+            Self::Microcontroller {
+                architecture,
+                vendor,
+                model,
+            } => write!(f, "MCU({architecture:?}/{vendor}/{model})"),
+            Self::LinuxEdge {
+                architecture,
+                kernel_version,
+            } => write!(f, "LinuxEdge({architecture}/kernel-{kernel_version})"),
+        }
+    }
+}
+
 /// Arduino Board Types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ArduinoBoard {

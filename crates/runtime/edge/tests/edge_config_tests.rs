@@ -16,7 +16,11 @@ fn test_edge_runtime_config_default() {
     assert_eq!(config.discovery_timeout_secs, 30);
     assert_eq!(config.max_devices, 100);
     assert_eq!(config.communication_timeout_ms, 5000);
-    assert_eq!(config.cross_compile_cache_path, "/tmp/toadstool_edge_cache");
+    assert!(
+        config.cross_compile_cache_path.ends_with("edge_cache"),
+        "XDG cache path should end with edge_cache: {}",
+        config.cross_compile_cache_path
+    );
     assert!(config.auto_provisioning);
 }
 

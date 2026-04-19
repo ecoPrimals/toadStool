@@ -50,7 +50,7 @@ fn probe_microcontroller_capabilities() -> Option<Vec<String>> {
         return None;
     }
 
-    let mut capabilities = vec![
+    let capabilities = vec![
         "serial".to_string(),
         "usb_serial".to_string(),
         "arm".to_string(),

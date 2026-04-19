@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{debug, warn};
+use tracing::debug;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 
@@ -53,7 +53,7 @@ impl UdevParser {
         let mut devices = Vec::new();
 
         let entries = fs::read_dir(&sys_class_path).map_err(|e| {
-            ToadStoolError::discovery_error(format!(
+            ToadStoolError::runtime(format!(
                 "Failed to read /sys/class/{}: {}",
                 subsystem, e
             ))
@@ -167,7 +167,7 @@ impl UdevParser {
     }
 
     /// Get device property
-    pub fn get_property(device: &UdevDevice, key: &str) -> Option<&String> {
+    pub fn get_property<'a>(device: &'a UdevDevice, key: &str) -> Option<&'a String> {
         device.properties.get(key)
     }
 

@@ -69,7 +69,7 @@ impl DiscoveryMethod for MDNSDiscovery {
 impl MDNSDiscovery {
     /// Discover edge devices via biomeOS runtime directory (Unix sockets for edge proxies)
     async fn discover_via_filesystem(&self) -> ToadStoolResult<Option<Vec<Arc<dyn EdgeDevice>>>> {
-        let biomeos_dir = toadstool::platform_paths::biomeos_runtime_dir();
+        let biomeos_dir = toadstool_common::platform_paths::biomeos_runtime_dir();
 
         if !biomeos_dir.exists() {
             return Ok(None);

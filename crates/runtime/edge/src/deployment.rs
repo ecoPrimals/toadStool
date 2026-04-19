@@ -6,10 +6,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::info;
 use uuid::Uuid;
 
-use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool::error::ToadStoolResult;
 
 use crate::EdgeRuntimeConfig;
 use crate::platforms::EdgeDevice;
