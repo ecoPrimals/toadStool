@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 20, 2026 — S174 (Deep Debt Evolution)
+**Updated**: April 21, 2026 — S175 (Deep Debt Evolution)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 20,000+ tests (0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)**
-**Latest**: S174 — Deep debt evolution: edge crate clippy clean (231→0 warnings). Server test compilation fixed. Lint attributes evolved (ffi_loader, v4l2, nvpmu). 4 orphaned build-deps removed. NoopCloudProvider capability-based errors. 7,818 lib tests, 0 failures, clippy clean.
+**Latest**: S175 — Deep debt evolution: NoopCryptoProvider evolved to capability-based errors. 6 eprintln→tracing in universal/capabilities.rs. 13 #[allow]→#[expect] with reasons across distributed/neuromorphic/management. armv7 cross-arch clean. 7,818 lib tests, 0 failures, clippy clean.
 
 ---
 
@@ -164,6 +164,12 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ---
 
 ## Completed This Session (S90-S174)
+
+### Session S175: Deep Debt Evolution — Crypto Errors + eprintln→tracing + Lint Attr Evolution (Apr 21, 2026)
+- **`NoopCryptoProvider` capability-based errors** — all 5 error-returning methods now use `NOOP_MSG` constant with capability-based guidance (`"no crypto provider registered; register a provider via crypto.provider.register capability"`). Matches `NoopCloudProvider` pattern from S174.
+- **`eprintln!` → `tracing`** — 6 `eprintln!` calls in `universal/capabilities.rs` migrated to structured `tracing::warn!`/`tracing::info!` with span fields (`adapter_index`, `adapter_name`, `selector`). Added `tracing` as workspace dep to `toadstool-runtime-universal`.
+- **`#[allow]` → `#[expect]` evolution** — 13 bare `#[allow]` evolved to `#[expect]` with reasons across: distributed (`gpu.rs` detection stubs, `federation/mod.rs` re-exports, `network/metrics.rs` field), neuromorphic (`pcie.rs` struct fields), management (`internal.rs` baseline metrics). Preventive `#[allow]` with reasons kept where lints don't fire (nvpmu VFIO/power_manager casts, server handler `unused_async`).
+- All quality gates green: `cargo check --workspace` clean, `cargo clippy --workspace -- -D warnings` 0 warnings, 7,818 lib tests pass, armv7 cross-arch clean.
 
 ### Session S174: Deep Debt Evolution — Edge Clippy Clean + Server Tests + Lint Evolution (Apr 20, 2026)
 - **Edge crate clippy clean** — 231 warnings → 0:

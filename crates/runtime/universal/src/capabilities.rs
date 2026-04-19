@@ -130,9 +130,7 @@ impl CapabilityDiscovery {
                     .filter(|(_, _, f64_ok)| *f64_ok)
                     .min_by_key(|(idx, _, _)| *idx);
                 if let Some((idx, name, _)) = best {
-                    eprintln!(
-                        "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER=auto → selected [{idx}] {name}"
-                    );
+                    tracing::info!(adapter_index = idx, adapter_name = %name, "TOADSTOOL_GPU_ADAPTER=auto → selected adapter");
                     let unit = units.swap_remove(*idx);
                     return vec![unit];
                 }

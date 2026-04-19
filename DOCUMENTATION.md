@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 20, 2026 — S174
+**Last Updated**: April 21, 2026 — S175
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S173 — April 19, 2026)
+## Current State (S175 — April 21, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **20,000+ tests** (7,818 lib-only S174), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **20,000+ tests** (7,818 lib-only S175), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`).
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
