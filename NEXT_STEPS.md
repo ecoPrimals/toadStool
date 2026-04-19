@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 19, 2026 — S173 (Deep Debt Evolution)
+**Updated**: April 20, 2026 — S174 (Deep Debt Evolution)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | 20,000+ tests (0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)**
-**Latest**: S173 — Deep debt evolution: runtime/edge compilation fixed (61 errors). Smart-refactored 3 large specialty files into directory modules (cpu6502 828L, emulator_impls 717L, programmer_impls 712L). Lint attributes evolved to `#[expect(dead_code, reason)]`. 7,124 lib tests, 0 failures, clippy clean.
+**Latest**: S174 — Deep debt evolution: edge crate clippy clean (231→0 warnings). Server test compilation fixed. Lint attributes evolved (ffi_loader, v4l2, nvpmu). 4 orphaned build-deps removed. NoopCloudProvider capability-based errors. 7,818 lib tests, 0 failures, clippy clean.
 
 ---
 
@@ -73,7 +73,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | VFIO PBDMA dispatch | Blocked on coralReef (USERD_TARGET encoding fix) |
 | E2E sovereign pipeline test | Blocked on VFIO dispatch |
 | Phase 2 dep migration: procfs → toadstool-sysmon | **RESOLVED** — `procfs` default features disabled (S129); dead `procfs` dep removed where unused (S160); runtime discovery uses `toadstool-sysmon` where applicable |
-| Phase 3: tarpc binary transport | Pending |
+| Phase 3: tarpc binary transport | **RESOLVED** S203t — MessagePack binary framing for Rust-to-Rust peers |
 | Property-based testing for computation modules | Pending |
 | Multi-primal integration test infrastructure | Pending |
 | Pipeline dispatch for ordered multi-stage (neuralSpring PG-05) | **RESOLVED** S199 — `compute.dispatch.pipeline.submit` + `.status` |
@@ -163,7 +163,27 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S173)
+## Completed This Session (S90-S174)
+
+### Session S174: Deep Debt Evolution — Edge Clippy Clean + Server Tests + Lint Evolution (Apr 20, 2026)
+- **Edge crate clippy clean** — 231 warnings → 0:
+  - Crate-level `#![allow(missing_docs, reason)]` for 211 hardware enum variants (self-documenting by name)
+  - 4 RPITIT signature mismatches aligned (`RuntimeEngine` impl methods match `impl Future` trait syntax)
+  - `DiscoveryFuture` and `MetricsFuture` type aliases extracted for complex `Pin<Box<dyn Future>>` return types
+  - `#[expect(dead_code, reason)]` added to 15 stored-for-lifecycle fields (discovery configs, execution handles, device IDs)
+  - 3 unfulfilled `#[expect(dead_code)]` removed from public constructors
+  - `MicrocontrollerArch::x86` renamed to `X86` (upper camel case)
+  - `Vec::new()` + push → `vec![...]` initializer in discovery service
+  - Unused `ToadStoolResult` import removed from `discovery/serial.rs`
+  - Unused `Pin`, `Future` imports removed from `lib.rs`
+- **Server test compilation fixed** — 2 `create_executor` calls in `unibin_execution_coverage_tests.rs` updated to pass `&UnibinExecutionConfig::from_env()` (new 2-arg signature).
+- **Lint attributes evolved**:
+  - `ffi_loader.rs`: `#[allow(dead_code)]` → `#[expect(dead_code, reason = "held for drop side-effect")]`
+  - `v4l2/types.rs`: `#![allow(missing_docs, dead_code)]` → added `reason` parameter
+  - `nvpmu/lib.rs`: `#[allow(unsafe_code)]` on dma/vfio modules → added `reason` parameter
+- **4 orphaned `[build-dependencies]`** removed from `Cargo.toml` files (edge, secure_enclave, specialty, python) — all had no `build.rs`.
+- **`NoopCloudProvider`** error messages evolved from bare `"noop"` to capability-based guidance (`"no cloud provider registered; register via cloud.provider.register capability"`).
+- All quality gates green: `cargo check --workspace` clean, `cargo clippy -p toadstool-runtime-edge -- -D warnings` 0 warnings, `cargo clippy --workspace` clean, 7,818 lib tests pass, 0 failures.
 
 ### Session S173: Deep Debt Evolution — Edge Compilation + Smart Refactoring (Apr 19, 2026)
 - **Runtime/edge compilation fixed** — 61 errors resolved: error constructor API alignment (`discovery_error`→`runtime`, `execution_error`→`execution`, etc.), `platform_paths` module path correction (`toadstool::`→`toadstool_common::`), `Box<dyn CommunicationProtocol>` Clone workaround (borrow-through-lock pattern), `serialport` `RwLock`→`Mutex` migration (`SerialPort` is `Send` but not `Sync`), `Display` impl for `EdgePlatform`, UUID `v5` feature gate, `Arc<Self>` borrow-escape fix for `start_continuous_discovery`.

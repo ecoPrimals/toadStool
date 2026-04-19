@@ -29,8 +29,8 @@ The server binds two Unix sockets:
 
 | Socket | Path | Protocol |
 |--------|------|----------|
-| Pure JSON-RPC | `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock` | JSON-RPC 2.0 (newline-delimited) |
-| tarpc | `$XDG_RUNTIME_DIR/biomeos/toadstool.sock` | tarpc binary codec |
+| JSON-RPC | `$XDG_RUNTIME_DIR/biomeos/compute.sock` | JSON-RPC 2.0 (newline-delimited) |
+| tarpc | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` | tarpc binary codec |
 
 If `--port <PORT>` is specified, it also listens on TCP (JSON-RPC, not HTTP).
 
@@ -41,11 +41,11 @@ Use any JSON-RPC 2.0 client over the Unix socket:
 ```bash
 # Health check
 echo '{"jsonrpc":"2.0","method":"health.liveness","id":1}' | \
-  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
+  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/compute.sock
 
 # List capabilities (used by biomeOS Neural API for routing)
 echo '{"jsonrpc":"2.0","method":"capabilities.list","id":2}' | \
-  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
+  socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/compute.sock
 ```
 
 ## Stopping the Server

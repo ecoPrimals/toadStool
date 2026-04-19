@@ -25,7 +25,8 @@ Ports are resolved via `toadstool_config::ports::resolve_capability_port()`:
 
 | Socket | Path |
 |--------|------|
-| Daemon | `$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock` |
+| Daemon (JSON-RPC) | `$XDG_RUNTIME_DIR/biomeos/compute.sock` |
+| Daemon (tarpc) | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` |
 | coralReef discovery | `$XDG_RUNTIME_DIR/biomeos/coralreef*.sock` (scanned) |
 | Capability discovery | `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` |
 

@@ -36,7 +36,7 @@ toadstool inventory
 ### Health Check
 
 ```bash
-echo '{"jsonrpc":"2.0","method":"health.check","id":1}' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
+echo '{"jsonrpc":"2.0","method":"health.check","id":1}' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/biomeos/compute.sock
 ```
 
 ### Quality Gates

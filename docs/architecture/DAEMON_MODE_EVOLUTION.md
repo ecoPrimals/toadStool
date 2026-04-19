@@ -10,7 +10,7 @@
 
 ```
 toadstool daemon start
-    ├── Unix socket: $XDG_RUNTIME_DIR/biomeos/toadstool.jsonrpc.sock
+    ├── Unix socket: $XDG_RUNTIME_DIR/biomeos/compute.sock (JSON-RPC) + compute-tarpc.sock (tarpc)
     ├── TCP (optional): --port <PORT> for JSON-RPC over TCP
     ├── JSON-RPC 2.0 methods (~65, semantic domain.verb naming)
     └── Graceful shutdown via SIGINT/SIGTERM
