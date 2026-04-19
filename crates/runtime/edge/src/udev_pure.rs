@@ -100,17 +100,15 @@ impl UdevParser {
             let device_real_path = device_path.join(&device_link);
 
             // Try to find vendor and product IDs
-            if let Ok(vendor_str) = fs::read_to_string(device_real_path.join("idVendor")) {
-                if let Ok(vid) = u16::from_str_radix(vendor_str.trim(), 16) {
+            if let Ok(vendor_str) = fs::read_to_string(device_real_path.join("idVendor"))
+                && let Ok(vid) = u16::from_str_radix(vendor_str.trim(), 16) {
                     vendor_id = Some(vid);
                 }
-            }
 
-            if let Ok(product_str) = fs::read_to_string(device_real_path.join("idProduct")) {
-                if let Ok(pid) = u16::from_str_radix(product_str.trim(), 16) {
+            if let Ok(product_str) = fs::read_to_string(device_real_path.join("idProduct"))
+                && let Ok(pid) = u16::from_str_radix(product_str.trim(), 16) {
                     product_id = Some(pid);
                 }
-            }
         }
 
         Ok(UdevDevice {
@@ -128,7 +126,8 @@ impl UdevParser {
         let mut devices = Vec::new();
 
         // Check common USB serial device classes
-        for subsystem in &["tty"] {
+        {
+            let subsystem = &"tty";
             let mut subsystem_devices = Self::discover_subsystem(subsystem)?;
 
             // Filter for USB serial devices

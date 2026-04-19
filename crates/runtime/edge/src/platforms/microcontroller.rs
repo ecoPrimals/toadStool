@@ -107,6 +107,7 @@ pub fn create_microcontroller_device(
 /// Capabilities (ARM, AVR, RISC-V, serial) are determined from connected hardware.
 #[derive(Debug)]
 pub struct MicrocontrollerDevice {
+    #[expect(dead_code, reason = "unique device ID; read via get_info().id")]
     id: Uuid,
     info: EdgeDeviceInfo,
 }
@@ -163,10 +164,6 @@ impl MicrocontrollerDevice {
 
     /// Create a device from connection parameters.
     /// Returns `Err` when the platform cannot create a device.
-    #[expect(
-        dead_code,
-        reason = "microcontroller platform constructor; requires target hardware"
-    )]
     pub fn new(
         _arch: MicrocontrollerArch,
         _vendor: String,

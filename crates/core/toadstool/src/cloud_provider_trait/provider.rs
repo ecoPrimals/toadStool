@@ -64,9 +64,12 @@ pub trait CloudProvider: Send + Sync {
 }
 
 /// Placeholder cloud provider used as the default type parameter when no vendor
-/// implementation is registered.
+/// implementation is registered. All methods return [`CloudError::ProviderUnavailable`]
+/// with capability-based guidance.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopCloudProvider;
+
+const NOOP_MSG: &str = "no cloud provider registered; register a provider via cloud.provider.register capability";
 
 impl CloudProvider for NoopCloudProvider {
     fn name(&self) -> &'static str {
@@ -76,7 +79,7 @@ impl CloudProvider for NoopCloudProvider {
     fn capabilities(
         &self,
     ) -> impl Future<Output = Result<CloudCapabilities, CloudError>> + Send + '_ {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 
     fn deploy_workload<'a>(
@@ -84,7 +87,7 @@ impl CloudProvider for NoopCloudProvider {
         _workload_id: &'a str,
         _region: &'a str,
     ) -> impl Future<Output = Result<String, CloudError>> + Send + 'a {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 
     fn migrate_workload<'a>(
@@ -93,21 +96,21 @@ impl CloudProvider for NoopCloudProvider {
         _source: WorkloadLocation,
         _target_region: &'a str,
     ) -> impl Future<Output = Result<String, CloudError>> + Send + 'a {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 
     fn check_health<'a>(
         &'a self,
         _instance_id: &'a str,
     ) -> impl Future<Output = Result<WorkloadHealth, CloudError>> + Send + 'a {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 
     fn terminate_workload<'a>(
         &'a self,
         _instance_id: &'a str,
     ) -> impl Future<Output = Result<(), CloudError>> + Send + 'a {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 
     fn estimate_cost<'a>(
@@ -115,13 +118,13 @@ impl CloudProvider for NoopCloudProvider {
         _workload_spec: &'a WorkloadSpec,
         _region: &'a str,
     ) -> impl Future<Output = Result<CostEstimate, CloudError>> + Send + 'a {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 
     fn available_gpu_types<'a>(
         &'a self,
         _region: &'a str,
     ) -> impl Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a {
-        async { Err(CloudError::ProviderUnavailable("noop".to_string())) }
+        async { Err(CloudError::ProviderUnavailable(NOOP_MSG.to_string())) }
     }
 }

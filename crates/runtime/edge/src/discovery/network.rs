@@ -26,13 +26,7 @@ impl DiscoveryMethod for NetworkDiscovery {
         "Network Discovery"
     }
 
-    fn discover(
-        &self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
-        >,
-    > {
+    fn discover(&self) -> super::DiscoveryFuture<'_> {
         Box::pin(async move {
             let mut devices = Vec::new();
 
@@ -156,12 +150,11 @@ impl NetworkDiscovery {
                     tokio::time::timeout(self.timeout, tokio::net::TcpStream::connect(sa)).await,
                     Ok(Ok(_))
                 );
-                if connect_ok {
-                    if let Some(device) = self.identify_network_device(IpAddr::V6(ip), port).await {
+                if connect_ok
+                    && let Some(device) = self.identify_network_device(IpAddr::V6(ip), port).await {
                         found.push(device);
                         break;
                     }
-                }
             }
         }
 

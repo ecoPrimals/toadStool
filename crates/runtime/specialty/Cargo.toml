@@ -86,10 +86,6 @@ native-bindings = ["cc", "bindgen"]
 cross-compilation = ["cross", "native-bindings"]
 # all = ["mainframe", "embedded", "industrial", "legacy-networking", "real-time", "cross-compilation"]
 
-[build-dependencies]
-cc = { version = "1.0", optional = true }
-bindgen = { version = "0.65", optional = true }
-
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = { workspace = true }

@@ -16,6 +16,9 @@ use std::future::Future;
 use std::pin::Pin;
 use uuid::Uuid;
 
+type DeviceFuture<'a, T> = Pin<Box<dyn Future<Output = ToadStoolResult<T>> + Send + 'a>>;
+type MetricsFuture<'a> = DeviceFuture<'a, HashMap<String, f64>>;
+
 use toadstool::{
     error::ToadStoolResult,
     execution::{ExecutionRequest, ExecutionResponse},
@@ -195,7 +198,7 @@ pub enum MicrocontrollerArch {
     PIC,
     MSP430,
     RISCV,
-    x86,
+    X86,
     Z80,
     M68K,
     PowerPC,
@@ -385,9 +388,7 @@ pub trait EdgeDevice: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<DeviceStatus>> + Send + '_>>;
 
     /// Get resource usage
-    fn get_resource_usage(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>>;
+    fn get_resource_usage(&self) -> MetricsFuture<'_>;
 
     /// Upload file to device
     fn upload_file(
@@ -424,9 +425,7 @@ pub trait EdgeDevice: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = ToadStoolResult<()>> + Send + '_>>;
 
     /// Get device sensors data
-    fn get_sensors(
-        &self,
-    ) -> Pin<Box<dyn Future<Output = ToadStoolResult<HashMap<String, f64>>> + Send + '_>>;
+    fn get_sensors(&self) -> MetricsFuture<'_>;
 
     /// Control device actuators
     fn control_actuators(

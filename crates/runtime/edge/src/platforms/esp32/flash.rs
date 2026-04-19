@@ -23,7 +23,7 @@ impl ESP32Device {
         })?;
 
         let output = std::process::Command::new("esptool.py")
-            .args(&[
+            .args([
                 "--chip",
                 "esp32",
                 "--port",

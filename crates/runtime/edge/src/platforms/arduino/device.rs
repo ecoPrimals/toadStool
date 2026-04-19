@@ -25,9 +25,12 @@ pub struct ArduinoDevice {
 
 #[derive(Debug, Clone)]
 pub(super) struct ArduinoExecution {
+    #[expect(dead_code, reason = "key in HashMap; read via get_executions() iteration")]
     pub(super) id: Uuid,
     pub(super) status: ExecutionStatus,
+    #[expect(dead_code, reason = "stored for timeout/metrics; will be used by health monitoring")]
     pub(super) started_at: std::time::Instant,
+    #[expect(dead_code, reason = "stored for cache invalidation on re-upload")]
     pub(super) code_hash: String,
 }
 

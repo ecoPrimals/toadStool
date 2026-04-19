@@ -28,6 +28,9 @@ pub use network::NetworkDiscovery;
 pub use serial::SerialPortDiscovery;
 pub use usb::USBDiscovery;
 
+type DiscoveryFuture<'a> =
+    std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + 'a>>;
+
 /// Device Discovery Service
 pub struct DeviceDiscoveryService {
     config: EdgeRuntimeConfig,
@@ -45,13 +48,7 @@ pub trait DiscoveryMethod: Send + Sync {
     fn get_name(&self) -> &str;
 
     /// Discover devices using this method
-    fn discover(
-        &self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
-        >,
-    >;
+    fn discover(&self) -> DiscoveryFuture<'_>;
 
     /// Check if method is available
     fn is_available(
@@ -67,53 +64,43 @@ impl DeviceDiscoveryService {
     pub async fn new(config: &EdgeRuntimeConfig) -> ToadStoolResult<Self> {
         info!("Initializing device discovery service");
 
-        let mut discovery_methods: Vec<Box<dyn DiscoveryMethod>> = Vec::new();
-
-        // Add serial port discovery
-        discovery_methods.push(Box::new(SerialPortDiscovery {
-            baud_rates: vec![9600, 115200, 57600, 38400, 19200],
-            timeout: Duration::from_secs(2),
-        }));
-
-        // Add network discovery
-        // ✅ Using PortRegistry for dynamic port configuration
-        discovery_methods.push(Box::new(NetworkDiscovery {
-            scan_range: vec![
-                std::net::IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 0)),
-                std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 0)),
-            ],
-            ports: vec![config.port_registry.server, config.port_registry.gpu_compute],
-            timeout: Duration::from_secs(1),
-        }));
-
-        // Add USB discovery
-        discovery_methods.push(Box::new(USBDiscovery {
-            vendor_filters: vec![
-                0x2341, // Arduino
-                0x1A86, // CH340
-                0x0403, // FTDI
-                0x10C4, // Silicon Labs
-                0x1B4F, // SparkFun
-            ],
-            product_filters: vec![],
-        }));
-
-        // Add Bluetooth discovery
-        discovery_methods.push(Box::new(BluetoothDiscovery {
-            scan_duration: Duration::from_secs(10),
-            device_types: vec!["ESP32".to_string(), "Arduino".to_string()],
-        }));
-
-        // Add mDNS discovery
-        discovery_methods.push(Box::new(MDNSDiscovery {
-            service_types: vec![
-                "_arduino._tcp".to_string(),
-                "_esp32._tcp".to_string(),
-                "_raspberry-pi._tcp".to_string(),
-                "_toadstool-edge._tcp".to_string(),
-            ],
-            timeout: Duration::from_secs(5),
-        }));
+        let discovery_methods: Vec<Box<dyn DiscoveryMethod>> = vec![
+            Box::new(SerialPortDiscovery {
+                baud_rates: vec![9600, 115200, 57600, 38400, 19200],
+                timeout: Duration::from_secs(2),
+            }),
+            Box::new(NetworkDiscovery {
+                scan_range: vec![
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 0)),
+                    std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 0)),
+                ],
+                ports: vec![config.port_registry.server, config.port_registry.gpu_compute],
+                timeout: Duration::from_secs(1),
+            }),
+            Box::new(USBDiscovery {
+                vendor_filters: vec![
+                    0x2341, // Arduino
+                    0x1A86, // CH340
+                    0x0403, // FTDI
+                    0x10C4, // Silicon Labs
+                    0x1B4F, // SparkFun
+                ],
+                product_filters: vec![],
+            }),
+            Box::new(BluetoothDiscovery {
+                scan_duration: Duration::from_secs(10),
+                device_types: vec!["ESP32".to_string(), "Arduino".to_string()],
+            }),
+            Box::new(MDNSDiscovery {
+                service_types: vec![
+                    "_arduino._tcp".to_string(),
+                    "_esp32._tcp".to_string(),
+                    "_raspberry-pi._tcp".to_string(),
+                    "_toadstool-edge._tcp".to_string(),
+                ],
+                timeout: Duration::from_secs(5),
+            }),
+        ];
 
         Ok(Self {
             config: config.clone(),
@@ -237,11 +224,10 @@ impl DeviceDiscoveryService {
             loop {
                 interval.tick().await;
 
-                if service.needs_discovery().await {
-                    if let Err(e) = service.discover_devices().await {
+                if service.needs_discovery().await
+                    && let Err(e) = service.discover_devices().await {
                         error!("Continuous discovery failed: {}", e);
                     }
-                }
             }
         });
 

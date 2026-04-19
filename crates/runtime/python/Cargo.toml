@@ -47,8 +47,5 @@ python-embedded = ["dep:pyo3", "dep:pyo3-asyncio"]
 ai-ml = []
 squirrel-preparation = []
 
-[build-dependencies]
-pyo3-build-config = { version = "0.20", optional = true }
-
 [lints]
 workspace = true

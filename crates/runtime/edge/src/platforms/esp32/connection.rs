@@ -14,7 +14,9 @@ use super::ESP32Device;
 #[derive(Debug, Clone)]
 pub(crate) struct ESP32Connection {
     pub(crate) connection_type: ESP32ConnectionType,
+    #[expect(dead_code, reason = "stored from discovery; will be used for reconnect logic")]
     pub(crate) address: String,
+    #[expect(dead_code, reason = "stored from discovery; will be used for TCP reconnect")]
     pub(crate) port: Option<u16>,
     pub(crate) is_connected: bool,
 }
@@ -28,9 +30,12 @@ pub(crate) enum ESP32ConnectionType {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ESP32Execution {
+    #[expect(dead_code, reason = "key in HashMap; read via get_executions() iteration")]
     pub(crate) id: Uuid,
     pub(crate) status: ExecutionStatus,
+    #[expect(dead_code, reason = "stored for timeout/metrics; will be used by health monitoring")]
     pub(crate) started_at: std::time::Instant,
+    #[expect(dead_code, reason = "stored for framework-specific cleanup on stop")]
     pub(crate) framework: ESP32Framework,
 }
 

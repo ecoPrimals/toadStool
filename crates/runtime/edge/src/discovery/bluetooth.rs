@@ -31,13 +31,7 @@ impl DiscoveryMethod for BluetoothDiscovery {
         "Bluetooth Discovery"
     }
 
-    fn discover(
-        &self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
-        >,
-    > {
+    fn discover(&self) -> super::DiscoveryFuture<'_> {
         Box::pin(async move {
             if !cfg!(target_os = "linux") {
                 return Ok(Vec::new());

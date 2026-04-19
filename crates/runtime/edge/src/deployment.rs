@@ -16,6 +16,7 @@ use crate::platforms::EdgeDevice;
 
 /// Deployment Coordinator
 pub struct DeploymentCoordinator {
+    #[expect(dead_code, reason = "stored from init; will be used for rollback policy + health checks")]
     config: EdgeRuntimeConfig,
     active_deployments: Arc<RwLock<HashMap<Uuid, DeploymentInfo>>>,
 }

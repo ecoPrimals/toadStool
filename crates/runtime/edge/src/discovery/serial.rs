@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::debug;
 
-use toadstool::error::{ToadStoolError, ToadStoolResult};
+use toadstool::error::ToadStoolError;
 
 use crate::platforms::*;
 
@@ -13,7 +13,9 @@ use super::DiscoveryMethod;
 
 /// Serial Port Discovery Method
 pub struct SerialPortDiscovery {
+    #[expect(dead_code, reason = "stored from config; will iterate baud rates during auto-detect")]
     pub(super) baud_rates: Vec<u32>,
+    #[expect(dead_code, reason = "stored from config; will bound serial probe wait")]
     pub(super) timeout: Duration,
 }
 
@@ -22,13 +24,7 @@ impl DiscoveryMethod for SerialPortDiscovery {
         "Serial Port Discovery"
     }
 
-    fn discover(
-        &self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
-        >,
-    > {
+    fn discover(&self) -> super::DiscoveryFuture<'_> {
         Box::pin(async move {
             let mut devices = Vec::new();
 

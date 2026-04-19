@@ -111,6 +111,7 @@ pub fn create_industrial_device(
 /// detected sysfs subsystems.
 #[derive(Debug)]
 pub struct IndustrialDevice {
+    #[expect(dead_code, reason = "unique device ID; read via get_info().id")]
     id: Uuid,
     info: EdgeDeviceInfo,
 }
@@ -165,10 +166,6 @@ impl IndustrialDevice {
 
     /// Create a device from connection parameters.
     /// Returns `Err` when the platform cannot create a device.
-    #[expect(
-        dead_code,
-        reason = "industrial platform constructor; requires target hardware discovery"
-    )]
     pub fn new(
         _system_type: IndustrialSystemType,
         _protocol: IndustrialProtocol,

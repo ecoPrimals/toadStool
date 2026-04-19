@@ -452,8 +452,8 @@ fn test_microcontroller_riscv() {
 
 #[test]
 fn test_microcontroller_x86() {
-    let arch = MicrocontrollerArch::x86;
-    assert_eq!(arch, MicrocontrollerArch::x86);
+    let arch = MicrocontrollerArch::X86;
+    assert_eq!(arch, MicrocontrollerArch::X86);
 }
 
 #[test]

@@ -13,7 +13,9 @@ use super::DiscoveryMethod;
 
 /// mDNS Discovery Method
 pub struct MDNSDiscovery {
+    #[expect(dead_code, reason = "stored from config; will filter mDNS service names on real networks")]
     pub(super) service_types: Vec<String>,
+    #[expect(dead_code, reason = "stored from config; will bound mDNS multicast wait")]
     pub(super) timeout: Duration,
 }
 
@@ -22,29 +24,21 @@ impl DiscoveryMethod for MDNSDiscovery {
         "mDNS Discovery"
     }
 
-    fn discover(
-        &self,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + '_,
-        >,
-    > {
+    fn discover(&self) -> super::DiscoveryFuture<'_> {
         Box::pin(async move {
             // Primary: filesystem-based discovery for edge devices registering via biomeOS runtime
             // Edge devices on the same host (e.g. Raspberry Pi running ToadStool) register sockets
-            if let Some(devices) = self.discover_via_filesystem().await? {
-                if !devices.is_empty() {
+            if let Some(devices) = self.discover_via_filesystem().await?
+                && !devices.is_empty() {
                     return Ok(devices);
                 }
-            }
 
             // Fallback: scan for _toadstool-edge._tcp service type via filesystem polling
             // Devices can register by creating JSON descriptor in $XDG_RUNTIME_DIR/edge-devices/
-            if let Some(devices) = self.discover_via_edge_registry().await? {
-                if !devices.is_empty() {
+            if let Some(devices) = self.discover_via_edge_registry().await?
+                && !devices.is_empty() {
                     return Ok(devices);
                 }
-            }
 
             debug!("mDNS/filesystem discovery: no edge devices found");
             Ok(Vec::new())
@@ -128,13 +122,11 @@ impl MDNSDiscovery {
 
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
-                if let Ok(content) = tokio::fs::read_to_string(&path).await {
-                    if let Ok(device) = self.parse_edge_registry_entry(&content) {
+            if path.extension().is_some_and(|e| e == "json")
+                && let Ok(content) = tokio::fs::read_to_string(&path).await
+                    && let Ok(device) = self.parse_edge_registry_entry(&content) {
                         devices.push(device);
                     }
-                }
-            }
         }
 
         if devices.is_empty() {

@@ -39,7 +39,7 @@ impl ArduinoDevice {
         })?;
 
         let output = std::process::Command::new("arduino-cli")
-            .args(&[
+            .args([
                 "compile",
                 "--fqbn",
                 "arduino:avr:uno", // Default to Uno
@@ -96,7 +96,7 @@ impl ArduinoDevice {
         })?;
 
         let output = std::process::Command::new("arduino-cli")
-            .args(&[
+            .args([
                 "upload",
                 "--fqbn",
                 "arduino:avr:uno",

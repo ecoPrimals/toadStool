@@ -69,7 +69,3 @@ all-platforms = ["raspberry-pi", "esp32"]
 http-downloads = ["reqwest"]
 # Enable C build dependencies for native bindings (only if needed)
 native-bindings = ["cc", "bindgen"]
-
-[build-dependencies]
-bindgen = { version = "0.69", optional = true }
-cc = { version = "1.0", optional = true } 

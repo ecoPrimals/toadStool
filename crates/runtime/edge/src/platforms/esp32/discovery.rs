@@ -14,8 +14,8 @@ impl ESP32Device {
         for port in serialport::available_ports()
             .map_err(|e| toadstool::error::ToadStoolError::io(e.to_string()))?
         {
-            if let serialport::SerialPortType::UsbPort(usb_info) = &port.port_type {
-                if Self::is_esp32_device(usb_info.vid, usb_info.pid) {
+            if let serialport::SerialPortType::UsbPort(usb_info) = &port.port_type
+                && Self::is_esp32_device(usb_info.vid, usb_info.pid) {
                     let chip = Self::detect_chip_variant(usb_info.vid, usb_info.pid);
                     let device = ESP32Device::new(
                         chip,
@@ -31,7 +31,6 @@ impl ESP32Device {
                     )?;
                     devices.push(device);
                 }
-            }
         }
 
         Ok(devices)

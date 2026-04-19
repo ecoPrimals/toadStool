@@ -53,7 +53,7 @@ async fn create_executor_standalone_with_false() {
 #[tokio::test]
 async fn create_executor_includes_family_id_in_instance_id() {
     temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
-        let result = create_executor("my-unique-family-123").await;
+        let result = create_executor("my-unique-family-123", &UnibinExecutionConfig::from_env()).await;
         assert!(
             result.is_ok(),
             "executor creation failed: {:?}",
@@ -93,7 +93,7 @@ async fn create_executor_distributed_with_toadstool_coordination_endpoint() {
                 ),
             ],
             async {
-                let result = create_executor("coord-family").await;
+                let result = create_executor("coord-family", &UnibinExecutionConfig::from_env()).await;
                 if let Err(e) = &result {
                     assert!(!e.to_string().is_empty());
                 }
