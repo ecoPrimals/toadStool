@@ -106,7 +106,7 @@ pub fn get_rocm_gfx_version() -> String {
     since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
-#[allow(
+#[expect(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
 )]
@@ -119,7 +119,7 @@ pub fn check_opencl_support() -> bool {
     since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
-#[allow(
+#[expect(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
 )]
@@ -132,7 +132,7 @@ pub fn get_opencl_version() -> String {
     since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
-#[allow(
+#[expect(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
 )]
@@ -145,7 +145,7 @@ pub fn get_opencl_device_type() -> String {
     since = "0.1.0",
     note = "OpenCL removed S198; use barraCuda/coralReef via IPC"
 )]
-#[allow(
+#[expect(
     dead_code,
     reason = "Legacy OpenCL API stubs retained for compatibility (S198)"
 )]

@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 /// Network metrics collector for distributed execution
 pub struct NetworkMetricsCollector {
-    #[allow(
+    #[expect(
         dead_code,
         reason = "Held for future aggregation; exercised in unit tests"
     )]

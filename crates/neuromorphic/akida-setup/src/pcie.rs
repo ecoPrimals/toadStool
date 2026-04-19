@@ -9,12 +9,12 @@ use std::process::Command;
 #[derive(Debug, Clone)]
 pub struct AkidaDevice {
     pub pcie_address: String,
-    #[allow(
+    #[expect(
         dead_code,
         reason = "populated from PCI scan; used by downstream matching"
     )]
     pub vendor_id: String,
-    #[allow(
+    #[expect(
         dead_code,
         reason = "populated from PCI scan; used by downstream matching"
     )]

@@ -42,9 +42,7 @@ impl CapabilityDiscovery {
             {
                 Ok(gpu_units) => units.extend(gpu_units),
                 Err(_) => {
-                    eprintln!(
-                        "[toadstool-runtime-universal] wgpu discovery timed out — continuing with CPU only"
-                    );
+                    tracing::warn!("wgpu discovery timed out — continuing with CPU only");
                 }
             }
         }
@@ -91,9 +89,7 @@ impl CapabilityDiscovery {
         }) {
             Ok(a) => a,
             Err(_) => {
-                eprintln!(
-                    "[toadstool-runtime-universal] wgpu adapter enumeration panicked — falling back to CPU only"
-                );
+                tracing::warn!("wgpu adapter enumeration panicked — falling back to CPU only");
                 return Vec::new();
             }
         };
@@ -142,10 +138,7 @@ impl CapabilityDiscovery {
                 }
             } else if let Ok(idx) = token.parse::<usize>() {
                 if idx < units.len() {
-                    eprintln!(
-                        "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={idx} → selected [{}]",
-                        infos[idx].1
-                    );
+                    tracing::info!(adapter_index = idx, adapter_name = %infos[idx].1, "TOADSTOOL_GPU_ADAPTER selected adapter by index");
                     let unit = units.swap_remove(idx);
                     return vec![unit];
                 }
@@ -155,18 +148,14 @@ impl CapabilityDiscovery {
                     .iter()
                     .find(|(_, n, _)| n.to_lowercase().contains(&lower))
                 {
-                    eprintln!(
-                        "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={token} → matched [{idx}] {name}"
-                    );
+                    tracing::info!(adapter_index = idx, adapter_name = %name, selector = token, "TOADSTOOL_GPU_ADAPTER matched adapter by name");
                     let unit = units.swap_remove(*idx);
                     return vec![unit];
                 }
             }
         }
 
-        eprintln!(
-            "[toadstool-runtime-universal] TOADSTOOL_GPU_ADAPTER={selector} matched no adapter — using all discovered"
-        );
+        tracing::warn!(selector = selector, "TOADSTOOL_GPU_ADAPTER matched no adapter — using all discovered");
         units
     }
 }

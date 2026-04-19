@@ -17,7 +17,7 @@ pub mod policy;
 mod state;
 
 // Re-export heartbeat constants; `MIN_HEARTBEAT_INTERVAL_SECS` is only used in `policy`.
-#[allow(
+#[expect(
     unused_imports,
     reason = "MIN_HEARTBEAT_INTERVAL_SECS re-exported for downstream use"
 )]

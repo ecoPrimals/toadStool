@@ -10,7 +10,7 @@ use toadstool::execution::RuntimeType;
 use crate::types::{PerformanceMetrics, ResourcePrediction};
 
 /// Baseline metrics for a runtime (used in model updates)
-#[allow(
+#[expect(
     dead_code,
     clippy::struct_field_names,
     reason = "Baseline metrics reserved for future model tuning; field names match domain"
