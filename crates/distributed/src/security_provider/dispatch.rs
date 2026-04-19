@@ -45,7 +45,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     fn capabilities(
         &self,
     ) -> impl Future<Output = ToadStoolResult<Vec<SecurityCapability>>> + Send + '_ {
-        async {
+        async move {
             match self {
                 SecurityProviderDispatch::UnixSocket(p) => p.capabilities().await,
                 SecurityProviderDispatch::Tcp(p) => p.capabilities().await,
@@ -61,7 +61,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     }
 
     fn metadata(&self) -> impl Future<Output = ToadStoolResult<ProviderMetadata>> + Send + '_ {
-        async {
+        async move {
             match self {
                 SecurityProviderDispatch::UnixSocket(p) => p.metadata().await,
                 SecurityProviderDispatch::Tcp(p) => p.metadata().await,
@@ -238,7 +238,7 @@ impl SecurityProvider for SecurityProviderDispatch {
     }
 
     fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_ {
-        async {
+        async move {
             match self {
                 SecurityProviderDispatch::UnixSocket(p) => p.health_check().await,
                 SecurityProviderDispatch::Tcp(p) => p.health_check().await,

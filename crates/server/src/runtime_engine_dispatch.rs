@@ -47,7 +47,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
         &mut self,
         config: RuntimeConfig,
     ) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
-        async {
+        async move {
             match self {
                 Self::Native(e) => e.initialize(config).await,
                 Self::Container(e) => e.initialize(config).await,
@@ -108,7 +108,7 @@ impl RuntimeEngine for RuntimeEngineDispatch {
     }
 
     fn shutdown(&mut self) -> impl std::future::Future<Output = ToadStoolResult<()>> + Send + '_ {
-        async {
+        async move {
             match self {
                 Self::Native(e) => e.shutdown().await,
                 Self::Container(e) => e.shutdown().await,

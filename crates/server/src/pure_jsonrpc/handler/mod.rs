@@ -191,6 +191,7 @@ impl JsonRpcHandler {
             "compute.cancel" => return self.job.compute_cancel(params).await,
             "compute.list" => return self.job.compute_list(params).await,
 
+            "compute.dispatch" => return self.dispatch.dispatch_submit(params).await,
             "compute.dispatch.submit" => return self.dispatch.dispatch_submit(params).await,
             "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,

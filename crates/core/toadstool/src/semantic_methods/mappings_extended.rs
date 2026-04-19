@@ -95,6 +95,16 @@ where
     add_mapping("shader.dispatch", "shader_dispatch");
 
     // ═══════════════════════════════════════════════════════════
+    // COMPUTE DISPATCH DOMAIN - GPU binary dispatch (PG-15 compliance)
+    //
+    // `compute.dispatch` is the bare entry point (routes to dispatch_submit).
+    // `compute.dispatch.submit` through `compute.dispatch.pipeline.status`
+    // are literal-only routes in the handler match.
+    // ═══════════════════════════════════════════════════════════
+
+    add_mapping("compute.dispatch", "dispatch_submit");
+
+    // ═══════════════════════════════════════════════════════════
     // SILICON DOMAIN - All-silicon pipeline / performance surface (S159)
     //
     // Springs report measured throughput for (op, unit, precision)

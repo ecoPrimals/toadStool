@@ -98,7 +98,7 @@ impl CompatibilityLayer for CompatibilityLayerDispatch {
     }
 
     fn initialize(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
-        async {
+        async move {
             match self {
                 Self::Linux(l) => l.initialize().await,
                 Self::MacOS(m) => m.initialize().await,
@@ -109,7 +109,7 @@ impl CompatibilityLayer for CompatibilityLayerDispatch {
     }
 
     fn shutdown(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {
-        async {
+        async move {
             match self {
                 Self::Linux(l) => l.shutdown().await,
                 Self::MacOS(m) => m.shutdown().await,
