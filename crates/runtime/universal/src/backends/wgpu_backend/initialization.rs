@@ -249,7 +249,7 @@ impl WgpuComputeUnit {
                 deterministic: false,
             },
             memory_capacity: memory_capacity as usize,
-            memory_bandwidth: bandwidth as usize,
+            memory_bandwidth: bandwidth,
             compute_throughput,
             optimal_batch_size: batch_size,
             supported_ops: vec![

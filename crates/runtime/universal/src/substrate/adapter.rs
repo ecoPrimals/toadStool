@@ -68,12 +68,12 @@ impl<S: ComputeSubstrate> SubstrateAdapter<S> {
             memory_capacity: if caps.memory_capacity_bytes > 0 {
                 caps.memory_capacity_bytes as usize
             } else {
-                8 * 1024 * 1024 * 1024
+                2 * 1024 * 1024 * 1024 // 2 GB (fits usize on 32-bit)
             },
             memory_bandwidth: if caps.memory_bandwidth_bps > 0 {
-                caps.memory_bandwidth_bps as usize
+                caps.memory_bandwidth_bps
             } else {
-                500 * 1024 * 1024 * 1024
+                500_000_000_000 // 500 GB/s fallback
             },
             compute_throughput: caps.throughput_ops_per_sec,
             optimal_batch_size: if caps.best_for_batch { 10_000 } else { 100 },

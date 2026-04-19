@@ -40,7 +40,7 @@ impl CpuBackend {
         Ok(Self {
             capabilities: UnifiedMemoryCapabilities {
                 backend_type: BackendType::Cpu,
-                max_allocation_size: 1024 * 1024 * 1024 * 4, // 4GB
+                max_allocation_size: Self::MAX_ALLOC,
                 zero_copy: true,
                 coherent: true,
                 cpu_fast_access: true,
@@ -49,6 +49,12 @@ impl CpuBackend {
             },
         })
     }
+
+    #[cfg(target_pointer_width = "64")]
+    const MAX_ALLOC: usize = 4 * 1024 * 1024 * 1024; // 4 GB
+
+    #[cfg(not(target_pointer_width = "64"))]
+    const MAX_ALLOC: usize = 512 * 1024 * 1024; // 512 MB on 32-bit
 }
 
 impl BackendInitializer for CpuBackend {

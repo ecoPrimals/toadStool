@@ -27,7 +27,7 @@ pub struct Capabilities {
     pub memory_capacity: usize,
 
     /// Memory bandwidth (bytes/sec)
-    pub memory_bandwidth: usize,
+    pub memory_bandwidth: u64,
 
     /// Compute throughput (ops/sec)
     pub compute_throughput: f64,
