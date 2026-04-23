@@ -26,7 +26,8 @@ The circular dependency concern was resolved by moving to Unix socket JSON-RPC:
 
 ## Code Pattern (for future implementation)
 
-```rust
+```rust,ignore
+// NOTE: Illustrative pseudocode — not compiled. Shows the migration pattern.
 //! Security Provider Authentication Backend
 //!
 //! Modern authentication backend that uses SecurityProvider trait via Universal Adapter.

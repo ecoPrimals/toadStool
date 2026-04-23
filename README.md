@@ -42,10 +42,10 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,818 lib-only verified S174), **~100** ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,809 lib-only verified S176), **~93** ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **42 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
 | Production stubs / test mocks | Stubs evolved to real implementations (edge USB/BT/IPv6, scheduler queuing, monitoring via sysmon+statvfs); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -247,10 +247,10 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **20,000+**, 0 failures (7,818 lib-only S175) |
+| Workspace tests | **20,000+**, 0 failures (7,809 lib-only S176) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **42 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
@@ -274,6 +274,7 @@ toadStool/
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 
 ### Recently Completed
+- **S176 (Apr 23, 2026)**: **BTSP JSON-line handshake relay** (primalSpring Phase 45c) — JSON-line BTSP auto-detection on `0x7B` first-byte path across all three connection handlers (pure JSON-RPC, tarpc, daemon). New `btsp/json_line.rs` with `relay_json_line_handshake()` (4-step BearDog IPC relay), `btsp/family_seed.rs` with `load_family_seed_for_btsp()` (env→file cascade, base64/hex/raw normalization), security socket discovery via env cascade. `PrependByte` extracted to `btsp/framing.rs` for reuse. 7,809 lib tests, 0 failures, clippy clean.
 - **S175 (Apr 21, 2026)**: **Deep debt evolution** — `NoopCryptoProvider` evolved to capability-based error guidance (matches `NoopCloudProvider` S174 pattern). 6 `eprintln!` calls migrated to `tracing` macros in `universal/capabilities.rs` (GPU adapter discovery diagnostics). 13 bare `#[allow]` evolved to `#[expect]` with reasons across distributed (gpu detection, federation, metrics), neuromorphic (pcie), management (performance). Preventive `#[allow]` with reasons kept for nvpmu (VFIO/power_manager casts) and server (handler `unused_async`). armv7 cross-arch clean. Clippy 0 warnings.
 - **S174 (Apr 20, 2026)**: **Deep debt evolution** — edge crate clippy clean (231→0 warnings: crate-level `missing_docs` allow with reason, RPITIT signature alignment, type alias extraction, `#[expect(dead_code, reason)]` on 15 fields, `x86`→`X86`, `vec![]` idiom). Server test compilation fixed (2 `create_executor` calls). Lint attributes evolved (`ffi_loader.rs`, `v4l2/types.rs`, `nvpmu`). 4 orphaned `[build-dependencies]` removed. `NoopCloudProvider` errors evolved to capability-based guidance. 7,818 lib tests, 0 failures, clippy clean.
 - **S173 (Apr 19, 2026)**: **Deep debt evolution** — runtime/edge compilation fixed (61 errors resolved: error constructor API alignment, `platform_paths` module path, `Box<dyn CommunicationProtocol>` Clone workaround, `serialport` Mutex migration, `Display` impl for `EdgePlatform`, UUID v5 feature, `Arc<Self>` borrow-escape fix). Smart-refactored 3 large specialty files into directory modules: `cpu6502.rs` (828L→`cpu6502/{mod,alu,decode,tests}.rs`), `emulator_impls.rs` (717L→`emulator_impls/{mod,mos6502,z80,tests}.rs`), `programmer_impls.rs` (712L→`programmer_impls/{mod,init,generic,eprom,tests}.rs`). `#[allow(dead_code)]` → `#[expect(dead_code, reason)]` in sandbox/proc.rs and embedded/programmers.rs. All edge tests passing (102+16+98). Clippy clean.
@@ -337,10 +338,8 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active -- 22,000+ tests (S203t); ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
-| D-S20-003 | ~~neuralSpring `evolved/` migration~~ | **RESOLVED** -- neuralSpring V89 completed; `evolved/` removed |
-| D-S18-002 | ~~cubecl transitive `dirs-sys`~~ | **RESOLVED** -- cubecl removed; dirs-sys only via wasmtime-cache (feature-gated) |
-| D-BTSP-PHASE2 | ~~BTSP on all UDS accept paths~~ | **RESOLVED** -- S198: handshake wired in `tarpc_server.rs` and `daemon/jsonrpc_server.rs` (pure JSON-RPC already had it) |
+| D-COV | Test coverage → 90% | Active -- 22,000+ tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware paths |
+| D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | Deferred — ecosystem-wide, NULL cipher operational. Phase 2 + JSON-line relay complete (S198, S176) |
 
 ### Resolved (S94b)
 
@@ -382,7 +381,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 21, 2026 — S175. **20,000+** workspace tests, 0 failures (7,818 lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 23, 2026 — S176 (BTSP JSON-line relay). **20,000+** workspace tests, 0 failures (7,809 lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!`; workspace `unsafe_code = "deny"`, **42 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **BTSP Phase 2 + JSON-line relay** (primalSpring Phase 45c). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 21, 2026 — S175
+**Last Updated**: April 23, 2026 — S176
 
 ---
 
@@ -30,21 +30,21 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S175 — April 21, 2026)
+## Current State (S176 — April 23, 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **20,000+ tests** (7,818 lib-only S175), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **20,000+ tests** (7,809 lib-only S176), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`).
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
 - **Capability-based everywhere**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers.
 - **52 production files refactored (S203c/e/g/i)** via test extraction. 6 deprecated zero-caller items removed (S203g). 25 production files remain >500 lines (pure production code — hardware drivers, type defs, crypto managers; no extractable test blocks, all <700L).
 - **TCP idle timeout (S203h)** — `TCP_IDLE_TIMEOUT_SECS` (300s configurable), `TCP_NODELAY` on all accepted streams. Resolves primalSpring benchScale exp082.
-- **BTSP Phase 2 + Auto-Detect** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully.
+- **BTSP Phase 2 + JSON-line relay (S176)** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully. JSON-line BTSP auto-detection on `0x7B` path routes `"protocol":"btsp"` to `relay_json_line_handshake()` (4-step BearDog IPC relay). Family seed loading via `load_family_seed_for_btsp()` (env→file cascade).
 - **async-trait DEPRECATED** (S203r) — fully removed and banned in `deny.toml`. All ~91 annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn), and subsequently enum dispatch + RPITIT (S203s). Zero runtime behavior change. Transitive only via axum/config/wiggle.
 - **`deny.toml` ring ban active** — ecoBin v3 compliant. `ring` absent from lockfile.
-- **49 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented with `debug_assert!` pre-conditions. Workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow]`.
+- **49 unsafe blocks (all in hw-safe/GPU/VFIO/display containment crates)**; all SAFETY-documented with `debug_assert!` pre-conditions. Workspace `unsafe_code = "deny"`, **42 crates `forbid`** + 5 hw crates with narrow `#[allow]`.
 - **Edge discovery evolved (S203m)** — USB via `/sys/bus/usb/devices/`, Bluetooth via sysfs adapter enumeration, IPv6 via `/proc/net/if_inet6`. All gracefully degrade on non-Linux.
 - **Scheduler queuing (S203m)** — `schedule_job` → `UniversalJobQueue::add_job` inserts into per-priority queues (was metadata-only). `schedule_local_job` logs post-enqueue telemetry.
 - **Hardcoding sweep (S203m–p)** — sysfs/procfs paths centralized to `platform_paths`; all `TOADSTOOL_*` env var literals interned to `socket_env` constants (~55 new in S203p). `env_overrides` subsystem fully converted.
