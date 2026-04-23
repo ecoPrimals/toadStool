@@ -153,7 +153,10 @@ impl CapabilityDiscovery {
             }
         }
 
-        tracing::warn!(selector = selector, "TOADSTOOL_GPU_ADAPTER matched no adapter — using all discovered");
+        tracing::warn!(
+            selector = selector,
+            "TOADSTOOL_GPU_ADAPTER matched no adapter — using all discovered"
+        );
         units
     }
 }

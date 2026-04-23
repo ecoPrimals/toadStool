@@ -128,10 +128,7 @@ pub fn run_verification(
             let ro = register_access
                 .as_ref()
                 .map(|r| &**r as &dyn super::RegisterAccess);
-            step_from_verification(
-                step_index,
-                &verify_register(*offset, *expected, *mask, ro),
-            )
+            step_from_verification(step_index, &verify_register(*offset, *expected, *mask, ro))
         }
         VerifyCheck::IoctlSucceeds { ioctl_nr } => verify_ioctl(step_index, card_path, *ioctl_nr),
         VerifyCheck::ComputeReadback => {

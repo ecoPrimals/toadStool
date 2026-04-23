@@ -230,55 +230,8 @@ async fn handle_ndjson_unix(
 /// BTSP length-prefixed frames start with a 4-byte BE u32 length header.
 /// For typical handshake payloads (< 2 KiB), the first byte is `0x00`.
 /// All text protocols start with printable ASCII or whitespace (>= 0x09).
-pub(super) const fn is_plaintext_protocol_byte(byte: u8) -> bool {
+pub const fn is_plaintext_protocol_byte(byte: u8) -> bool {
     byte >= 0x09
-}
-
-/// Wraps a stream, prepending a single already-consumed byte.
-///
-/// Used by the BTSP auto-detect path: we read one byte to distinguish
-/// binary (BTSP) from text (JSON-RPC), then wrap the stream so
-/// `BtspServer::accept_handshake` sees the complete frame including
-/// that first byte.
-struct PrependByte<S> {
-    first: Option<u8>,
-    inner: S,
-}
-
-impl<S: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for PrependByte<S> {
-    fn poll_read(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        if let Some(b) = self.first.take() {
-            buf.put_slice(&[b]);
-            return std::task::Poll::Ready(Ok(()));
-        }
-        std::pin::Pin::new(&mut self.inner).poll_read(cx, buf)
-    }
-}
-
-impl<S: tokio::io::AsyncWrite + Unpin> tokio::io::AsyncWrite for PrependByte<S> {
-    fn poll_write(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &[u8],
-    ) -> std::task::Poll<std::io::Result<usize>> {
-        std::pin::Pin::new(&mut self.inner).poll_write(cx, buf)
-    }
-    fn poll_flush(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        std::pin::Pin::new(&mut self.inner).poll_flush(cx)
-    }
-    fn poll_shutdown(
-        mut self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        std::pin::Pin::new(&mut self.inner).poll_shutdown(cx)
-    }
 }
 
 /// Handle an incoming connection on a BTSP-enabled socket (production mode).
@@ -310,53 +263,72 @@ pub(super) async fn handle_btsp_connection(
         return Ok(());
     }
 
-    if is_plaintext_protocol_byte(first[0]) {
+    let mut stream = if is_plaintext_protocol_byte(first[0]) {
         info!(
             target: "btsp",
             "Plain-text connection on BTSP socket (0x{:02x}), \
-             falling back to JSON-RPC for composition peer",
+             probing JSON-line BTSP or JSON-RPC",
             first[0]
         );
-        let (reader, mut writer) = stream.into_split();
-        let mut reader = BufReader::new(reader);
-        let mut first_line = String::from(first[0] as char);
-        let n2 = reader
-            .read_line(&mut first_line)
+        let first_line = btsp::read_full_line_after_first_byte(&mut stream, first[0])
             .await
             .map_err(|e| ServerError::Network(e.to_string()))?;
-        if n2 == 0 && first_line.trim().is_empty() {
+        if first_line.trim().is_empty() {
             return Ok(());
         }
         if first_line.starts_with("POST")
             || first_line.starts_with("GET")
             || first_line.starts_with("HTTP")
         {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
             return handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await;
         }
-        return handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await;
-    }
-
-    let family_seed = resolve_family_seed()?;
-
-    let mut stream = PrependByte {
-        first: Some(first[0]),
-        inner: stream,
-    };
-
-    match btsp::BtspServer::accept_handshake(&mut stream, &family_seed).await {
-        Ok(session) => {
+        if btsp::line_looks_like_btsp_client_hello(&first_line) {
+            let family_seed_b64 = btsp::family_seed::load_family_seed_for_btsp()
+                .map_err(|e| ServerError::Configuration(e.to_string()))?;
+            let sec = btsp::json_line::resolve_security_socket_path()
+                .map_err(|e| ServerError::Configuration(e.to_string()))?;
+            let sec_s = sec.to_string_lossy().into_owned();
+            let info = btsp::relay_json_line_handshake(
+                &mut stream,
+                first_line.trim_end(),
+                &family_seed_b64,
+                &sec_s,
+            )
+            .await
+            .map_err(|e| ServerError::Network(e.to_string()))?;
             info!(
-                "🔒 BTSP handshake complete: cipher={}, session_id={:02x?}",
-                session.cipher.as_str(),
-                &session.session_id[..4]
+                target: "btsp",
+                "🔒 BTSP JSON-line handshake complete: cipher={}, session_id={}",
+                info.cipher.as_str(),
+                info.session_id
             );
+            stream
+        } else {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+            return handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await;
         }
-        Err(e) => {
-            warn!("🔒 BTSP handshake rejected: {e}");
-            let _ = btsp::BtspServer::send_handshake_error(&mut stream).await;
-            return Err(ServerError::Network(format!("BTSP handshake failed: {e}")));
+    } else {
+        let family_seed = resolve_family_seed()?;
+        let mut wrapped = btsp::framing::PrependByte::new(first[0], stream);
+        match btsp::BtspServer::accept_handshake(&mut wrapped, &family_seed).await {
+            Ok(session) => {
+                info!(
+                    "🔒 BTSP handshake complete: cipher={}, session_id={:02x?}",
+                    session.cipher.as_str(),
+                    &session.session_id[..4]
+                );
+            }
+            Err(e) => {
+                warn!("🔒 BTSP handshake rejected: {e}");
+                let _ = btsp::BtspServer::send_handshake_error(&mut wrapped).await;
+                return Err(ServerError::Network(format!("BTSP handshake failed: {e}")));
+            }
         }
-    }
+        wrapped.into_inner()
+    };
 
     loop {
         match btsp::framing::read_frame(&mut stream).await {

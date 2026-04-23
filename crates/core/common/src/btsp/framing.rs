@@ -18,6 +18,71 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::types::MAX_FRAME_SIZE;
 
+/// Wraps a stream, prepending a single already-consumed byte.
+///
+/// Used by BTSP auto-detect: one byte is read to distinguish binary length-prefixed
+/// framing from text (`{` / HTTP), then the handshake reader sees the full frame.
+#[derive(Debug)]
+pub struct PrependByte<S> {
+    first: Option<u8>,
+    inner: S,
+}
+
+impl<S> PrependByte<S> {
+    /// Wrap `inner`, yielding `first` as the first byte of the read stream.
+    #[must_use]
+    pub const fn new(first: u8, inner: S) -> Self {
+        Self {
+            first: Some(first),
+            inner,
+        }
+    }
+
+    /// Unwrap the inner stream (drops any not-yet-read prepended byte).
+    #[must_use]
+    pub fn into_inner(self) -> S {
+        self.inner
+    }
+}
+
+impl<S: AsyncRead + Unpin> AsyncRead for PrependByte<S> {
+    fn poll_read(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        if let Some(b) = self.first.take() {
+            buf.put_slice(&[b]);
+            return std::task::Poll::Ready(Ok(()));
+        }
+        std::pin::Pin::new(&mut self.inner).poll_read(cx, buf)
+    }
+}
+
+impl<S: AsyncWrite + Unpin> AsyncWrite for PrependByte<S> {
+    fn poll_write(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        std::pin::Pin::new(&mut self.inner).poll_write(cx, buf)
+    }
+
+    fn poll_flush(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.inner).poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.inner).poll_shutdown(cx)
+    }
+}
+
 /// Read a single length-prefixed frame from the stream.
 ///
 /// Returns the frame payload (without the length header).

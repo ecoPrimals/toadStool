@@ -16,7 +16,10 @@ use super::types::PluginError;
 /// Owning handle for a loaded plugin shared object and its vtable.
 pub struct LoadedPlugin {
     /// Dynamic library handle; dropping it unloads the plugin (`dlclose`).
-    #[expect(dead_code, reason = "held for drop side-effect: dropping unloads the plugin via dlclose")]
+    #[expect(
+        dead_code,
+        reason = "held for drop side-effect: dropping unloads the plugin via dlclose"
+    )]
     pub library: Library,
     /// Vtable pointer returned by `plugin_init` — valid while `library` is held.
     pub vtable: *mut PluginVTable,

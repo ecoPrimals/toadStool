@@ -69,7 +69,8 @@ pub trait CloudProvider: Send + Sync {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopCloudProvider;
 
-const NOOP_MSG: &str = "no cloud provider registered; register a provider via cloud.provider.register capability";
+const NOOP_MSG: &str =
+    "no cloud provider registered; register a provider via cloud.provider.register capability";
 
 impl CloudProvider for NoopCloudProvider {
     fn name(&self) -> &'static str {

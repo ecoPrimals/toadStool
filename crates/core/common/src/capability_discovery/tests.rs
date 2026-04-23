@@ -1,7 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use super::*;
+use std::path::Path;
 use std::time::Duration;
+
+use crate::interned_strings::socket_env;
+
+/// Isolate localhost fallback from the developer machine: empty runtime dir and no socket env overrides.
+fn with_clean_localhost_fallback_env<F: FnOnce() -> R, R>(runtime: &Path, f: F) -> R {
+    let rt = runtime.to_str().expect("temp runtime path utf-8");
+    temp_env::with_vars(
+        [
+            (socket_env::XDG_RUNTIME_DIR, Some(rt)),
+            ("TOADSTOOL_LOCAL_PORT", None::<&str>),
+            (socket_env::BIOMEOS_CRYPTO_SOCKET, None::<&str>),
+            (socket_env::TOADSTOOL_SECURITY_SOCKET, None::<&str>),
+            (socket_env::LEGACY_BEARDOG_SOCKET_ENV, None::<&str>),
+            (socket_env::TOADSTOOL_SECURITY_ENDPOINT, None::<&str>),
+            (socket_env::SECURITY_URL, None::<&str>),
+            (socket_env::SECURITY_ENDPOINT, None::<&str>),
+            (socket_env::LEGACY_BEARDOG_URL, None::<&str>),
+            (socket_env::LEGACY_BEARDOG_ENDPOINT, None::<&str>),
+            (socket_env::TOADSTOOL_SECURITY_URL, None::<&str>),
+            ("SECURITY_PROVIDER_SOCKET", None::<&str>),
+            ("CRYPTO_PROVIDER_SOCKET", None::<&str>),
+            ("SECURITY_SOCKET", None::<&str>),
+        ],
+        f,
+    )
+}
 
 #[test]
 fn test_discovery_config_default() {
@@ -171,31 +198,56 @@ async fn test_find_by_capability_no_services_in_separate_thread() {
 async fn test_find_by_capability_with_localhost_fallback() {
     use crate::primal_identity::{Capability, CryptoCapability};
 
-    let config = DiscoveryConfig {
-        timeout: Duration::from_millis(100),
-        enable_localhost_fallback: true,
-        methods: vec![DiscoveryMethod::Environment],
-    };
-    let discovery = CapabilityDiscovery::with_config_async(&config)
-        .await
-        .expect("discovery");
-    let result = discovery
-        .find_by_capability(Capability::Crypto(CryptoCapability::Encryption))
-        .await;
-
-    // With fallback enabled, empty discovery returns Ok(vec![]) from try_localhost_fallback
-    match &result {
-        Ok(services) => assert!(services.is_empty()),
-        Err(e) => assert!(
-            matches!(
-                e,
-                DiscoveryError::NoServicesFound(_)
-                    | DiscoveryError::Timeout
-                    | DiscoveryError::DiscoveryFailed(_)
+    let dir = tempfile::tempdir().expect("tempdir");
+    temp_env::async_with_vars(
+        [
+            (
+                socket_env::XDG_RUNTIME_DIR,
+                Some(dir.path().to_str().expect("utf-8")),
             ),
-            "unexpected error: {e}"
-        ),
-    }
+            ("TOADSTOOL_LOCAL_PORT", None::<&str>),
+            (socket_env::BIOMEOS_CRYPTO_SOCKET, None::<&str>),
+            (socket_env::TOADSTOOL_SECURITY_SOCKET, None::<&str>),
+            (socket_env::LEGACY_BEARDOG_SOCKET_ENV, None::<&str>),
+            (socket_env::TOADSTOOL_SECURITY_ENDPOINT, None::<&str>),
+            (socket_env::SECURITY_URL, None::<&str>),
+            (socket_env::SECURITY_ENDPOINT, None::<&str>),
+            (socket_env::LEGACY_BEARDOG_URL, None::<&str>),
+            (socket_env::LEGACY_BEARDOG_ENDPOINT, None::<&str>),
+            (socket_env::TOADSTOOL_SECURITY_URL, None::<&str>),
+            ("SECURITY_PROVIDER_SOCKET", None::<&str>),
+            ("CRYPTO_PROVIDER_SOCKET", None::<&str>),
+            ("SECURITY_SOCKET", None::<&str>),
+        ],
+        async {
+            let config = DiscoveryConfig {
+                timeout: Duration::from_millis(100),
+                enable_localhost_fallback: true,
+                methods: vec![DiscoveryMethod::Environment],
+            };
+            let discovery = CapabilityDiscovery::with_config_async(&config)
+                .await
+                .expect("discovery");
+            let result = discovery
+                .find_by_capability(Capability::Crypto(CryptoCapability::Encryption))
+                .await;
+
+            // With fallback enabled, empty discovery returns Ok(vec![]) from try_localhost_fallback
+            match &result {
+                Ok(services) => assert!(services.is_empty()),
+                Err(e) => assert!(
+                    matches!(
+                        e,
+                        DiscoveryError::NoServicesFound(_)
+                            | DiscoveryError::Timeout
+                            | DiscoveryError::DiscoveryFailed(_)
+                    ),
+                    "unexpected error: {e}"
+                ),
+            }
+        },
+    )
+    .await;
 }
 
 #[test]
@@ -310,8 +362,11 @@ async fn test_capability_discovery_with_config_async_succeeds() {
 fn test_try_localhost_fallback_returns_empty() {
     use crate::primal_identity::{Capability, CryptoCapability};
 
-    let fallback = CapabilityDiscovery::try_localhost_fallback(&Capability::Crypto(
-        CryptoCapability::Encryption,
-    ));
-    assert!(fallback.is_empty());
+    let dir = tempfile::tempdir().expect("tempdir");
+    with_clean_localhost_fallback_env(dir.path(), || {
+        let fallback = CapabilityDiscovery::try_localhost_fallback(&Capability::Crypto(
+            CryptoCapability::Encryption,
+        ));
+        assert!(fallback.is_empty());
+    });
 }

@@ -19,7 +19,10 @@ pub(crate) struct ProcStatCpu {
 
 /// Errors from proc/cgroup parsing (structured; map at call site to [`toadstool::error::ToadStoolError`]).
 #[derive(Debug)]
-#[expect(dead_code, reason = "variants constructed for completeness; consumers use ToadStoolError")]
+#[expect(
+    dead_code,
+    reason = "variants constructed for completeness; consumers use ToadStoolError"
+)]
 pub(crate) enum ProcParseError {
     /// File missing or unreadable.
     Io(std::io::Error),

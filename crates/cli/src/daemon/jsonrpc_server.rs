@@ -275,30 +275,85 @@ async fn handle_tcp_connection(
 /// BTSP production path: handshake then length-prefixed JSON-RPC frames (see `BTSP_PROTOCOL_STANDARD.md`).
 #[cfg(feature = "btsp")]
 async fn handle_btsp_daemon_connection(
-    stream: UnixStream,
+    mut stream: UnixStream,
     state: ServerState,
 ) -> crate::Result<()> {
     use toadstool_common::btsp;
+    use tokio::io::AsyncReadExt;
 
-    let family_seed = resolve_daemon_family_seed()?;
-    let mut stream = stream;
-
-    match btsp::BtspServer::accept_handshake(&mut stream, &family_seed).await {
-        Ok(session) => {
-            info!(
-                "🔒 BTSP daemon handshake complete: cipher={}, session_id={:02x?}",
-                session.cipher.as_str(),
-                &session.session_id[..4]
-            );
-        }
-        Err(e) => {
-            warn!("🔒 BTSP handshake rejected (daemon JSON-RPC): {e}");
-            let _ = btsp::BtspServer::send_handshake_error(&mut stream).await;
-            return Err(crate::CliError::Other(format!(
-                "BTSP handshake failed: {e}"
-            )));
-        }
+    let mut first = [0u8; 1];
+    let n = stream.read(&mut first).await?;
+    if n == 0 {
+        return Ok(());
     }
+
+    let mut stream = if first[0] >= 0x09 {
+        let first_line = btsp::read_full_line_after_first_byte(&mut stream, first[0]).await?;
+        if first_line.trim().is_empty() {
+            return Ok(());
+        }
+        if btsp::line_looks_like_btsp_client_hello(&first_line) {
+            let family_seed_b64 = btsp::load_family_seed_for_btsp()
+                .map_err(|e| crate::CliError::InvalidConfig(e.to_string()))?;
+            let sec = btsp::resolve_security_socket_path()
+                .map_err(|e| crate::CliError::InvalidConfig(e.to_string()))?;
+            let sec_s = sec.to_string_lossy().into_owned();
+            let btsp_info = btsp::relay_json_line_handshake(
+                &mut stream,
+                first_line.trim_end(),
+                &family_seed_b64,
+                &sec_s,
+            )
+            .await
+            .map_err(|e| crate::CliError::Other(e.to_string()))?;
+            info!(
+                target: "btsp",
+                "🔒 BTSP JSON-line daemon handshake complete: cipher={}, session_id={}",
+                btsp_info.cipher.as_str(),
+                btsp_info.session_id
+            );
+            stream
+        } else {
+            let (reader, mut writer) = stream.into_split();
+            let mut reader = BufReader::new(reader);
+            let mut line = first_line;
+            loop {
+                if !line.trim().is_empty() {
+                    let response = dispatch_or_parse_error(line.as_bytes(), &state).await;
+                    let response_json = serde_json::to_string(&response)?;
+                    writer.write_all(response_json.as_bytes()).await?;
+                    writer.write_all(b"\n").await?;
+                    writer.flush().await?;
+                }
+                line.clear();
+                let n = reader.read_line(&mut line).await?;
+                if n == 0 {
+                    break;
+                }
+            }
+            return Ok(());
+        }
+    } else {
+        let family_seed = resolve_daemon_family_seed()?;
+        let mut wrapped = btsp::framing::PrependByte::new(first[0], stream);
+        match btsp::BtspServer::accept_handshake(&mut wrapped, &family_seed).await {
+            Ok(session) => {
+                info!(
+                    "🔒 BTSP daemon handshake complete: cipher={}, session_id={:02x?}",
+                    session.cipher.as_str(),
+                    &session.session_id[..4]
+                );
+            }
+            Err(e) => {
+                warn!("🔒 BTSP handshake rejected (daemon JSON-RPC): {e}");
+                let _ = btsp::BtspServer::send_handshake_error(&mut wrapped).await;
+                return Err(crate::CliError::Other(format!(
+                    "BTSP handshake failed: {e}"
+                )));
+            }
+        }
+        wrapped.into_inner()
+    };
 
     loop {
         match btsp::framing::read_frame(&mut stream).await {

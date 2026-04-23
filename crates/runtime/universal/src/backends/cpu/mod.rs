@@ -141,9 +141,13 @@ impl CpuComputeUnit {
 
         // Default estimate: 8 GB on 64-bit, 2 GB on 32-bit
         #[cfg(target_pointer_width = "64")]
-        { 8 * 1024 * 1024 * 1024 }
+        {
+            8 * 1024 * 1024 * 1024
+        }
         #[cfg(not(target_pointer_width = "64"))]
-        { 2 * 1024 * 1024 * 1024 }
+        {
+            2 * 1024 * 1024 * 1024
+        }
     }
 
     /// Estimate CPU compute throughput

@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(missing_docs, dead_code, reason = "kernel ABI structs: field names match kernel headers, padding is structural")]
+#![allow(
+    missing_docs,
+    dead_code,
+    reason = "kernel ABI structs: field names match kernel headers, padding is structural"
+)]
 //! V4L2 kernel ABI structs (`#[repr(C)]`, zero-init safe).
 
 /// V4L2 buffer type for single-plane video capture.

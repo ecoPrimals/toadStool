@@ -20,7 +20,10 @@ pub(crate) struct GenericProgrammerInner {
     pub avr: Option<&'static AvrChipInfo>,
     pub pic: Option<&'static PicChipInfo>,
     pub clock_hz: u64,
-    #[expect(dead_code, reason = "stored from config; will be used by voltage-aware programming")]
+    #[expect(
+        dead_code,
+        reason = "stored from config; will be used by voltage-aware programming"
+    )]
     pub voltage_mv: u32,
     pub connected: bool,
     pub engine: ProtocolEngine,
@@ -51,7 +54,10 @@ pub(crate) struct EpromProgrammerInner {
     pub size_bytes: u32,
     pub voltage_mv: u32,
     pub connected: bool,
-    #[expect(dead_code, reason = "stored from config; will drive actual EPROM protocol I/O")]
+    #[expect(
+        dead_code,
+        reason = "stored from config; will drive actual EPROM protocol I/O"
+    )]
     pub engine: ProtocolEngine,
 }
 

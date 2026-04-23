@@ -251,9 +251,8 @@ impl LinuxSandboxManager {
 
         let result: rustix::io::Result<()> = match mount_spec.mount_type {
             MountType::ReadWriteBind => mount_bind(&mount_spec.source, target_path),
-            MountType::ReadOnlyBind => mount_bind(&mount_spec.source, target_path).and_then(|()| {
-                mount_remount(target_path, MountFlags::RDONLY, c"")
-            }),
+            MountType::ReadOnlyBind => mount_bind(&mount_spec.source, target_path)
+                .and_then(|()| mount_remount(target_path, MountFlags::RDONLY, c"")),
             MountType::TmpFs => mount(
                 "tmpfs",
                 target_path,
