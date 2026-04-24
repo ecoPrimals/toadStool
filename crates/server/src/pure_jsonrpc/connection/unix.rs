@@ -304,12 +304,13 @@ pub(super) async fn handle_btsp_connection(
                 info.cipher.as_str(),
                 info.session_id
             );
-            stream
-        } else {
             let (reader, mut writer) = stream.into_split();
             let mut reader = BufReader::new(reader);
-            return handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await;
+            return handle_ndjson_unix(handler, &mut reader, &mut writer, String::new()).await;
         }
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        return handle_ndjson_unix(handler, &mut reader, &mut writer, first_line).await;
     } else {
         let family_seed = resolve_family_seed()?;
         let mut wrapped = btsp::framing::PrependByte::new(first[0], stream);

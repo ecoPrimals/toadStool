@@ -312,12 +312,14 @@ async fn handle_btsp_daemon_connection(
                 btsp_info.cipher.as_str(),
                 btsp_info.session_id
             );
-            stream
-        } else {
             let (reader, mut writer) = stream.into_split();
             let mut reader = BufReader::new(reader);
-            let mut line = first_line;
+            let mut line = String::new();
             loop {
+                let n = reader.read_line(&mut line).await?;
+                if n == 0 {
+                    break;
+                }
                 if !line.trim().is_empty() {
                     let response = dispatch_or_parse_error(line.as_bytes(), &state).await;
                     let response_json = serde_json::to_string(&response)?;
@@ -326,13 +328,27 @@ async fn handle_btsp_daemon_connection(
                     writer.flush().await?;
                 }
                 line.clear();
-                let n = reader.read_line(&mut line).await?;
-                if n == 0 {
-                    break;
-                }
             }
             return Ok(());
         }
+        let (reader, mut writer) = stream.into_split();
+        let mut reader = BufReader::new(reader);
+        let mut line = first_line;
+        loop {
+            if !line.trim().is_empty() {
+                let response = dispatch_or_parse_error(line.as_bytes(), &state).await;
+                let response_json = serde_json::to_string(&response)?;
+                writer.write_all(response_json.as_bytes()).await?;
+                writer.write_all(b"\n").await?;
+                writer.flush().await?;
+            }
+            line.clear();
+            let n = reader.read_line(&mut line).await?;
+            if n == 0 {
+                break;
+            }
+        }
+        return Ok(());
     } else {
         let family_seed = resolve_daemon_family_seed()?;
         let mut wrapped = btsp::framing::PrependByte::new(first[0], stream);
