@@ -9,11 +9,17 @@ use crate::execution::{
     ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
 };
 
-/// Minimal placeholder [`RuntimeEngine`] for generic orchestrator and scheduler types.
+/// Sentinel [`RuntimeEngine`] used as the default type parameter in generic
+/// orchestrator, scheduler, and platform types before real engines are registered.
 ///
-/// Used when the deployment does not register real engines yet (demos, tests, empty orchestrators).
+/// All execution methods return [`ToadStoolError::configuration`] with
+/// capability-based guidance, matching the `NoopCloudProvider` / `NoopCryptoProvider`
+/// pattern.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct StubRuntimeEngine;
+
+const ENGINE_MSG: &str =
+    "no runtime engine registered; register engines via compute.engine.register capability";
 
 impl RuntimeEngine for StubRuntimeEngine {
     fn initialize(
@@ -27,11 +33,7 @@ impl RuntimeEngine for StubRuntimeEngine {
         &self,
         _request: ExecutionRequest,
     ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
-        async {
-            Err(crate::ToadStoolError::not_found(
-                "No runtime engine registered (stub engine)",
-            ))
-        }
+        async { Err(crate::ToadStoolError::configuration(ENGINE_MSG)) }
     }
 
     fn get_capabilities(&self) -> RuntimeCapabilities {

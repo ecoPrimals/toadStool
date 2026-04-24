@@ -4,9 +4,6 @@
 #[cfg(feature = "cpu")]
 pub mod cpu;
 
-/// Deprecated OpenCL placeholder (no `ocl` dependency). See module docs.
-pub mod opencl;
-
 #[cfg(feature = "wgpu-backend")]
 pub mod wgpu_backend;
 
@@ -18,9 +15,6 @@ pub mod spirv_codegen_safety;
 
 #[cfg(feature = "cpu")]
 pub use cpu::CpuComputeUnit;
-
-#[expect(deprecated)]
-pub use opencl::OpenClComputeUnit;
 
 #[cfg(feature = "wgpu-backend")]
 pub use wgpu_backend::{

@@ -59,7 +59,6 @@ fn test_discovery_method_copy() {
 
 #[test]
 fn test_discovery_method_variants() {
-    // Test non-deprecated variants
     let auto = DiscoveryMethod::Auto;
     let mdns = DiscoveryMethod::Mdns;
     let env = DiscoveryMethod::Environment;
@@ -67,17 +66,6 @@ fn test_discovery_method_variants() {
     assert!(matches!(auto, DiscoveryMethod::Auto));
     assert!(matches!(mdns, DiscoveryMethod::Mdns));
     assert!(matches!(env, DiscoveryMethod::Environment));
-}
-
-#[test]
-#[expect(deprecated)]
-fn test_discovery_method_deprecated_variants() {
-    // Test deprecated variants still exist for backward compatibility
-    let k8s = DiscoveryMethod::Kubernetes;
-    let consul = DiscoveryMethod::Consul;
-
-    assert!(matches!(k8s, DiscoveryMethod::Kubernetes));
-    assert!(matches!(consul, DiscoveryMethod::Consul));
 }
 
 #[test]

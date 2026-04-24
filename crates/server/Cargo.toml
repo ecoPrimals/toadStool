@@ -33,7 +33,7 @@ tokio-util = { version = "0.7", features = ["codec"], optional = true }
 tokio-serde = { version = "0.9", features = ["json"], optional = true }
 
 # Base64 encoding
-base64 = "0.22"
+base64 = { workspace = true }
 
 # Async runtime and channels
 tokio = { workspace = true }
@@ -78,8 +78,7 @@ wgpu = { workspace = true, optional = true }  # EVOLVED: Pure Rust! (no renderdo
 futures = { workspace = true }
 
 [features]
-default = ["api", "gpu-discovery", "tarpc", "btsp"]
-api = []
+default = ["gpu-discovery", "tarpc", "btsp"]
 gpu-discovery = ["wgpu"]
 tarpc = ["dep:tarpc", "dep:tokio-util", "dep:tokio-serde"]
 btsp = ["toadstool-common/btsp"]

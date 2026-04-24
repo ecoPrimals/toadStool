@@ -30,9 +30,6 @@ impl Default for DiscoveryConfig {
 
 /// Discovery methods
 ///
-/// ## Evolution (Feb 15, 2026)
-///
-/// Vendor-specific methods (Kubernetes, Consul) are deprecated.
 /// Service discovery is delegated to the coordination service (comms layer).
 /// ToadStool only supports mDNS (via that layer) and environment variables.
 #[derive(Debug, Clone, Copy)]
@@ -45,14 +42,6 @@ pub enum DiscoveryMethod {
 
     /// Environment variables (self-knowledge)
     Environment,
-
-    /// Kubernetes service discovery (deprecated — use coordination service / mDNS)
-    #[deprecated(since = "0.16.0", note = "Use mDNS via coordination service instead")]
-    Kubernetes,
-
-    /// Consul service discovery (deprecated — use coordination service / mDNS)
-    #[deprecated(since = "0.16.0", note = "Use mDNS via coordination service instead")]
-    Consul,
 }
 
 /// Discovery errors

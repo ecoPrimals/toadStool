@@ -37,12 +37,6 @@ proptest = { workspace = true }
 [features]
 default = []
 
-# Telemetry (opt-in)
-telemetry = []
-
-# Testing
-testing = []
-
 # [[bench]]
 # name = "adaptive_benchmarks"
 # harness = false

@@ -68,10 +68,6 @@ default = []
 # Component model support (Phase 2 - wasmtime subprocess)
 component-model = []
 
-# ⚠️ UNSAFE FEATURE: Enable unsafe for extreme performance (DEPRECATED for wasmi)
-# wasmi is 100% safe by default, so this feature is kept for API compatibility only
-unsafe-fast-cache = []
-
 [dev-dependencies]
 toadstool-testing = { path = "../../testing" }
 tokio-test = { workspace = true }

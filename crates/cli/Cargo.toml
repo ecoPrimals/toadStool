@@ -96,7 +96,7 @@ colored = "2.0"
 # which removed: CLI uses Command::new("which"), not the crate
 
 # Encoding
-base64 = "0.22"
+base64 = { workspace = true }
 sha2 = "0.10"
 
 # barracuda removed S94b: nautilus methods are now proxied to barraCuda via

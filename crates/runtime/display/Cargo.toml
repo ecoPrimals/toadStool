@@ -69,8 +69,6 @@ toadstool-core = { path = "../../toadstool-core" }
 default = []
 # Test doubles for router / handler tests — not in default (see `#[cfg(any(test, feature = "test-mocks"))]`).
 test-mocks = []
-# Use rustix instead of linux-drm (fallback)
-rustix-backend = []
 # Enable serial transport (USB/UART) for edge device bridging
 serial-transport = ["serialport"]
 

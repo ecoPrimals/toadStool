@@ -46,10 +46,6 @@ name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
-[[licenses.clarify]]
-name = "webpki"
-expression = "ISC"
-license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 
 # ── Advisories (CVE / RUSTSEC) ────────────────────────────────────────────────
 [advisories]
@@ -57,10 +53,10 @@ version = 2
 # Block any crate with an active security advisory.
 # Exceptions may be added below with justification.
 ignore = [
-    # INFO (unmaintained): paste has no patched release; advisory suggests pastey/with_builtin_macros for dependents.
-    # We pull paste via statrs → nalgebra → simba (management analytics/performance; statrs 0.18 is latest on crates.io).
-    # Optional `jit` on toadstool-runtime-gpu also pulls wasmtime → paste; not enabled by default.
-    { id = "RUSTSEC-2024-0436", reason = "paste unmaintained (INFO); transitive via statrs→nalgebra→simba; optional gpu jit→wasmtime also uses paste — await upstream or major dep changes" },
+    # INFO (unmaintained): paste has no patched release.
+    # Transitive via: metal→wgpu-hal→wgpu (GPU compute), simba→nalgebra→statrs (analytics).
+    # Both chains are upstream-controlled; no direct dependency.
+    { id = "RUSTSEC-2024-0436", reason = "paste unmaintained (INFO); transitive via wgpu and statrs — await upstream migration to pastey" },
 ]
 
 # ── Bans ──────────────────────────────────────────────────────────────────────
@@ -91,9 +87,10 @@ deny = [
     # tungstenite WebSocket — removed in R-011; must not return
     { name = "tungstenite" },
     { name = "tokio-tungstenite" },
-    # reqwest — migrated to pure Rust Unix IPC in production (R-008)
-    # Optional on some crates (e.g. edge http-downloads); integration-tests does not depend on it.
-    # Commented out: not on the default core binary path
+    # reqwest — migrated to pure Rust Unix IPC in production (R-008).
+    # Policy: reqwest is allowed ONLY behind the optional `http-downloads` feature
+    # on toadstool-runtime-edge (excluded from workspace). No core/server/cli crate
+    # may depend on it. Commented out because it's not on the default binary path.
     #{ name = "reqwest", reason = "Use unix-jsonrpc-client instead of reqwest in core paths" },
 ]
 

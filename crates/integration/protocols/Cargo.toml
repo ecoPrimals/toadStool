@@ -11,7 +11,6 @@ categories = ["api-bindings", "network-programming"]
 
 [features]
 default = []
-networking = []
 tarpc-transport = []
 # MessagePack + length-delimited framing (`tarpc::serde_transport`) for Rust-to-Rust peers
 binary-transport = ["tarpc-transport", "dep:tokio-serde", "dep:tokio-util", "dep:futures"]

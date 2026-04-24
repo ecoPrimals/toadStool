@@ -33,7 +33,7 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 
 # Binary data encoding for artifact transfer
-base64 = "0.22"
+base64 = { workspace = true }
 
 # Cryptographic hashing (for checksums)
 sha2 = "0.10"

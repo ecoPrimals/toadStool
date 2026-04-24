@@ -30,7 +30,7 @@ zeroize = { version = "1.7", features = ["derive"] }
 # Infant discovery dependencies
 tokio = { workspace = true }
 toml = { workspace = true }
-base64 = "0.22"
+base64 = { workspace = true }
 semver = { version = "1.0.27", features = ["serde"] }
 
 # mDNS bootstrap discovery (Songbird's domain; cold-start only)

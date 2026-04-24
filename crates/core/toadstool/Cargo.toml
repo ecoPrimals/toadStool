@@ -50,7 +50,7 @@ proptest = { workspace = true, optional = true }
 toadstool-sysmon = { workspace = true }
 
 # Encoding
-base64 = "0.22"
+base64 = { workspace = true }
 
 # Security
 zeroize = { version = "1.7", features = ["derive"] }

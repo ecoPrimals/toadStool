@@ -41,9 +41,6 @@ temp-env = { version = "0.3.6", features = ["async_closure"] }
 
 [features]
 default = []
-gpu = []
-ml-optimization = []
-enterprise-features = []
 test-mocks = []  # Enable mock implementations for testing
 slow-tests = []  # Enable slow integration tests (hardware detection, NL processing)
 

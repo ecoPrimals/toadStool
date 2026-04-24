@@ -88,6 +88,9 @@ pub trait AuthBackend: Send + Sync {
 
     /// Validate a token (optional, default implementation)
     ///
+    /// The accepted issuer is read from `TOADSTOOL_AUTH_ISSUER` (capability-based),
+    /// falling back to [`well_known::BEARDOG`] for backward compatibility.
+    ///
     /// # Errors
     ///
     /// Returns an error if the token is expired, has invalid issuer/audience, or unsupported type.
@@ -98,9 +101,13 @@ pub trait AuthBackend: Send + Sync {
             ));
         }
 
-        if token.issuer != well_known::BEARDOG {
+        let expected_issuer =
+            std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_AUTH_ISSUER)
+                .unwrap_or_else(|_| well_known::BEARDOG.to_string());
+
+        if token.issuer != expected_issuer {
             return Err(ToadStoolError::runtime(format!(
-                "Invalid token issuer: {}",
+                "Invalid token issuer: {} (expected {expected_issuer})",
                 token.issuer
             )));
         }

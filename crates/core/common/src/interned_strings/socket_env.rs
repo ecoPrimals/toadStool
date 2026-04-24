@@ -20,6 +20,9 @@ pub const BIOMEOS_FAMILY_ID: &str = "BIOMEOS_FAMILY_ID";
 /// Node identity for multi-instance deployments (orchestration / logging).
 pub const TOADSTOOL_NODE_ID: &str = "TOADSTOOL_NODE_ID";
 
+/// Configurable JWT issuer for token validation (capability-based, replaces hardcoded identity).
+pub const TOADSTOOL_AUTH_ISSUER: &str = "TOADSTOOL_AUTH_ISSUER";
+
 /// Preferred: explicit crypto / security socket path (capability-based).
 pub const BIOMEOS_CRYPTO_SOCKET: &str = "BIOMEOS_CRYPTO_SOCKET";
 /// Preferred: explicit coordination socket path (capability-based).

@@ -9,8 +9,6 @@ use super::workload::Workload;
 
 #[cfg(feature = "cpu")]
 use crate::backends::CpuComputeUnit;
-#[allow(deprecated)]
-use crate::backends::OpenClComputeUnit;
 #[cfg(feature = "wgpu-backend")]
 use crate::backends::WgpuComputeUnit;
 
@@ -19,9 +17,6 @@ pub enum ComputeUnitDispatch {
     /// CPU parallel unit.
     #[cfg(feature = "cpu")]
     Cpu(CpuComputeUnit),
-    /// Deprecated OpenCL placeholder (S198).
-    #[allow(deprecated)]
-    OpenCl(OpenClComputeUnit),
     /// `wgpu` GPU discovery unit.
     #[cfg(feature = "wgpu-backend")]
     Wgpu(WgpuComputeUnit),
@@ -32,8 +27,6 @@ impl ComputeUnit for ComputeUnitDispatch {
         match self {
             #[cfg(feature = "cpu")]
             Self::Cpu(u) => u.capabilities(),
-            #[allow(deprecated)]
-            Self::OpenCl(u) => u.capabilities(),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.capabilities(),
         }
@@ -43,8 +36,6 @@ impl ComputeUnit for ComputeUnitDispatch {
         match self {
             #[cfg(feature = "cpu")]
             Self::Cpu(u) => u.name(),
-            #[allow(deprecated)]
-            Self::OpenCl(u) => u.name(),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.name(),
         }
@@ -54,8 +45,6 @@ impl ComputeUnit for ComputeUnitDispatch {
         match self {
             #[cfg(feature = "cpu")]
             Self::Cpu(u) => u.execute(workload).await,
-            #[allow(deprecated)]
-            Self::OpenCl(u) => u.execute(workload).await,
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.execute(workload).await,
         }
@@ -65,8 +54,6 @@ impl ComputeUnit for ComputeUnitDispatch {
         match self {
             #[cfg(feature = "cpu")]
             Self::Cpu(u) => u.optimal_batch_size(),
-            #[allow(deprecated)]
-            Self::OpenCl(u) => u.optimal_batch_size(),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.optimal_batch_size(),
         }
@@ -76,8 +63,6 @@ impl ComputeUnit for ComputeUnitDispatch {
         match self {
             #[cfg(feature = "cpu")]
             Self::Cpu(u) => u.estimate_duration(workload),
-            #[allow(deprecated)]
-            Self::OpenCl(u) => u.estimate_duration(workload),
             #[cfg(feature = "wgpu-backend")]
             Self::Wgpu(u) => u.estimate_duration(workload),
         }

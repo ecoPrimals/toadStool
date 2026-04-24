@@ -1,13 +1,26 @@
 # Active Technical Debt Register
 
-**Date**: April 23, 2026 — S176
+**Date**: April 2026 — S177
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
-iterations, evolving toward vendor-agnostic, capability-based solutions.
+iterations, evolving toward vendor-agnostic, capability-based solutions—
+with production stubs surfacing typed configuration errors and capability
+guidance, and auth policy driven by explicit environment configuration
+where applicable.
+
+**S177 (Deep Debt Evolution)**: Resolved **D-PROD-STUBS** (StubRuntimeEngine
+`ToadStoolError::configuration` with capability guidance; `NoopCryptoProvider`
+unchanged), **D-AUTH-OVERSTEP** (JWT issuer from `TOADSTOOL_AUTH_ISSUER` with
+BEARDOG backward-compat default), **D-STALE-FEATURES** (~20 stale feature flags
+removed across 10 crates), **D-OPENCL-DEPRECATED** (deprecated OpenCL stubs
+removed; `DiscoveryMethod::{Kubernetes,Consul}` removed from
+`capability_discovery/types.rs`). Also: workspace `base64` unified; `deny.toml`
+tightened; 7,789 lib tests, 0 failures, clippy and fmt clean.
 
 ## Active Debt
 
-Outstanding technical debt that still requires active engineering work (four items).
+Outstanding technical debt that still requires active engineering work (four
+items).
 
 ### D-HW-LEARN-VERIFY — Active (evolved)
 **Crate**: `core/hw-learn` | **File**: `applicator/verify.rs`

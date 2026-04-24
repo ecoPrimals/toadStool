@@ -58,7 +58,7 @@ pub mod unified_memory;
 // glowPlug/ember GPU implementation (hardware-agnostic lifecycle traits)
 pub mod glowplug;
 
-// Real GPU backends (no mocks): WebGPU + Vulkan in-tree; CUDA/OpenCL stubs for API compatibility.
+// Real GPU backends (no mocks): WebGPU + Vulkan in-tree; CUDA stub for API compatibility.
 pub mod backends;
 
 // Re-export main types and traits for convenience

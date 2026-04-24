@@ -33,7 +33,3 @@ workspace = true
 
 [features]
 default = []
-
-# Testing features
-testing = []
-mock-beardog = []  # Mock bearDog for testing without real service

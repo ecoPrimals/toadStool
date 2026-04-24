@@ -33,7 +33,7 @@ blake3 = { version = "1.5", default-features = false, features = ["std", "pure"]
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-base64 = "0.22"
+base64 = { workspace = true }
 
 # Logging & tracing
 tracing = { workspace = true }
@@ -54,8 +54,6 @@ tempfile = { workspace = true }
 
 [features]
 default = []
-gpu-compute = [] # Future: GPU-accelerated processing
-hardware-enclave = [] # Future: SGX/SEV support
 
 [lints]
 workspace = true

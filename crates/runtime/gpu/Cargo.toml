@@ -58,10 +58,6 @@ ash = { version = "0.37", optional = true }
 # Universal intermediate representations - Only for spirv feature
 spirv = { version = "0.3", optional = true }
 
-# CUDA support (NVIDIA-specific) — DEPRECATED S197
-# cudarc removed: CUDA dispatch is now handled by barraCuda / coralReef via IPC.
-# The `cuda` feature flag is retained as a no-op for backward compatibility.
-
 # JIT compilation and optimization - Only for jit feature
 # Aligned to cranelift 0.105 (same as wgpu transitive dep) to avoid dual-version compile overhead
 cranelift-jit = { version = "0.105", optional = true }
@@ -77,9 +73,6 @@ default = ["webgpu"]
 webgpu = ["wgpu"]
 
 # OPTIMIZATION: Vendor-specific backends (pragmatic, opt-in)
-cuda = []                  # DEPRECATED S197: CUDA dispatch via barraCuda/coralReef IPC
-# DEPRECATED S198: OpenCL dispatch via barraCuda/coralReef IPC. Feature retained as no-op for backward compat.
-opencl = []
 vulkan = ["vulkano", "ash"] # Direct Vulkan for advanced use cases
 
 # AI/ML CONVENIENCE: WebGPU (CUDA now via barraCuda IPC)
@@ -87,12 +80,6 @@ ai-ml = ["webgpu"]
 
 # MAXIMUM COMPATIBILITY: All Rust-native backends
 all-backends = ["webgpu", "vulkan"]
-
-# Platform-specific detection features (no dependencies, pure logic)
-detect-nvidia = []
-detect-amd = []
-detect-intel = []
-detect-apple = []
 
 # EVOLUTION PATH:
 # S197: cudarc removed — CUDA dispatch delegated to barraCuda/coralReef via IPC

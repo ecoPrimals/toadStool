@@ -108,11 +108,6 @@ name = "real_gpu_pool"
 path = "real_gpu_pool.rs"
 
 [[bin]]
-name = "opencl_gpu_demo"
-path = "opencl_gpu_demo.rs"
-required-features = []  # OpenCL feature is in GPU crate, not workspace
-
-[[bin]]
 name = "distributed_gpu_demo"
 path = "distributed_gpu_demo.rs"
 
@@ -153,4 +148,3 @@ temp-env = "0.3"
 default = ["pure-ecosystem"]
 pure-ecosystem = []
 full-ecosystem = ["pure-ecosystem"]
-opencl = []

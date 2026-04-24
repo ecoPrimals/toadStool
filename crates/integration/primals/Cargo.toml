@@ -35,11 +35,7 @@ mockall = "0.12"
 proptest = { workspace = true }
 
 [features]
-default = ["full"]
-full = ["security", "squirrel", "storage"]
-security = []
-squirrel = []
-storage = []
+default = []
 # Exposes `mock_primal::MockPrimal` for tests / explicit consumers — not default
 test-mocks = []
 
