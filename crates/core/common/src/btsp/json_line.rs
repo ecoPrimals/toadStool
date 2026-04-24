@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 
+use base64::Engine;
 use serde::Deserialize;
 use serde_json::Value;
 use thiserror::Error;
@@ -192,7 +193,7 @@ async fn require_str_line<S: AsyncWrite + Unpin>(
 
 /// 4-step JSON-line BTSP handshake relay:
 /// 1. Parse ClientHello from the first line (already read)
-/// 2. Call BearDog `btsp.session.create` with `family_seed` (raw passthrough)
+/// 2. Call BearDog `btsp.session.create` with `family_seed` (base64-encoded)
 /// 3. Send ServerHello as JSON line (challenge FROM BearDog, not self-generated)
 /// 4. Read ChallengeResponse JSON line from client
 /// 5. Call BearDog `btsp.session.verify` with session_token, response, client_ephemeral_pub, preferred_cipher
@@ -234,7 +235,8 @@ pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     tracing::info!(target: "btsp", "JSON-line BTSP: calling btsp.session.create");
 
     let rpc = UnixJsonRpcClient::new(security_socket);
-    let create_params = serde_json::json!({ "family_seed": family_seed });
+    let family_seed_b64 = base64::engine::general_purpose::STANDARD.encode(family_seed.as_bytes());
+    let create_params = serde_json::json!({ "family_seed": family_seed_b64 });
     let create_result: Value = match rpc.call("btsp.session.create", create_params).await {
         Ok(v) => v,
         Err(e) => {
