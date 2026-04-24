@@ -307,9 +307,16 @@ pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
         return Err(BtspJsonLineError::Protocol(msg.into()));
     };
 
-    let status = require_str_line(stream, verify_obj, "status").await?;
-    if !status.eq_ignore_ascii_case("ok") {
-        let msg = format!("verify status not ok: {status}");
+    let verified = verify_obj
+        .get("verified")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if !verified {
+        let reason = verify_obj
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let msg = format!("verify failed: {reason}");
         let _ = send_error_line(stream, &msg).await;
         return Err(BtspJsonLineError::Protocol(msg));
     }
