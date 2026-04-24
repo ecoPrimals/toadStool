@@ -192,7 +192,7 @@ async fn require_str_line<S: AsyncWrite + Unpin>(
 
 /// 4-step JSON-line BTSP handshake relay:
 /// 1. Parse ClientHello from the first line (already read)
-/// 2. Call BearDog `btsp.session.create` with `family_seed` (base64-encoded)
+/// 2. Call BearDog `btsp.session.create` with `family_seed` (raw passthrough)
 /// 3. Send ServerHello as JSON line (challenge FROM BearDog, not self-generated)
 /// 4. Read ChallengeResponse JSON line from client
 /// 5. Call BearDog `btsp.session.verify` with session_token, response, client_ephemeral_pub, preferred_cipher
@@ -250,7 +250,10 @@ pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
         return Err(BtspJsonLineError::Protocol(msg.into()));
     };
 
-    let session_token = require_str_line(stream, create_obj, "session_token").await?;
+    let session_token = match require_str(create_obj, "session_token") {
+        Ok(t) => t,
+        Err(_) => require_str_line(stream, create_obj, "session_id").await?,
+    };
     let server_ephemeral_pub = require_str_line(stream, create_obj, "server_ephemeral_pub").await?;
     let challenge = require_str_line(stream, create_obj, "challenge").await?;
 
