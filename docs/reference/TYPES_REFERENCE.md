@@ -1,7 +1,7 @@
 # ToadStool Types Reference Guide
 ## Canonical Type Definitions and Usage Patterns
 
-**Last Updated**: March 1, 2026  
+**Last Updated**: April 2026 — S177  
 **Status**: Production-Ready
 
 ---
@@ -575,15 +575,6 @@ The following modules were refactored from single-file layouts into multi-file m
 **Purpose**: Shader precision handling; compiler and polyfill logic extracted from monolithic mod.
 
 ---
-
-### 7.7 `runtime::gpu::backends::opencl_impl` (DEPRECATED S198)
-
-**Location**: `crates/runtime/gpu/src/backends/opencl_impl/`
-
-**Structure**:
-- `mod.rs` — Deprecated stub module (OpenCL removed S198)
-
-**Purpose**: OpenCL backend was removed in S198. OpenCL compute is handled by barraCuda/coralReef via IPC. The feature flag `opencl` exists as a no-op for backward compatibility. The stub returns `GpuError::BackendNotAvailable` on any operation.
 
 ---
 
