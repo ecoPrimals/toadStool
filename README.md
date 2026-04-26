@@ -45,7 +45,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo test --workspace` | **20,000+ tests, 0 failures** (7,832 lib-only verified S204), **~93** ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
 | Production stubs / test mocks | Stubs evolved to real implementations (edge USB/BT/IPv6, scheduler queuing, monitoring via sysmon+statvfs); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`** |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -237,7 +237,7 @@ toadStool/
 7. **Honest documentation** -- no aspirational claims as facts; ML stubs return `ModelNotLoaded`/`ModelBackendRequired`
 8. **Vendor-agnostic** -- WGPU/Vulkan for GPU discovery, any vendor works
 9. **Sovereign compute** -- no vendor lock-in, pure Rust core
-10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (~46 blocks, all justified; all in hw-safe/GPU/VFIO/display containment crates)
+10. **100% unsafe documentation** -- every `unsafe` block has `// SAFETY:` comments (49 blocks, all justified; all in hw-safe/GPU/VFIO/display/plugin containment crates)
 11. **Shared error tracking** -- `AtomicU64` counter across all server transports
 
 ### Quality Metrics
@@ -250,7 +250,7 @@ toadStool/
 | Workspace tests | **20,000+**, 0 failures (7,832 lib-only S204) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display containment crates); SAFETY-documented with `debug_assert!` pre-conditions; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |

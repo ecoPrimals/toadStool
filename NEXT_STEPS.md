@@ -163,7 +163,16 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S174)
+## Completed This Session (S90-S204)
+
+### Session S204: Deep Debt Evolution — Safety Docs, Constants, Dep Hygiene, Mock Isolation (Apr 26, 2026)
+- `ffi_loader.rs` SAFETY docs (13 blocks — last file without them; all 49 unsafe blocks now documented)
+- Hardcoded `toadstool-main`/`toadstool-primary` → `INSTANCE_ID`/`PRIMAL_NAME` constants; mDNS duplicate → `TOADSTOOL_SERVICE_TYPE`
+- `serde_yaml_ng` workspace-unified (5 crates); unused `humantime-serde` removed; `rustix` aligned; stale WASM comment fixed
+- `InMemoryAgentBackend` gated to test-only (`#[cfg(any(test, feature = "test-mocks"))]`)
+- Bare `#[allow]` → `#[allow(reason)]` in 10 production sites
+- `deny.toml`: stale `BSD-3-Clause-Clear` removed; `zstd-sys` ban activated; `ring` clarify documented
+- 7,832 lib tests, 0 failures, clippy clean, fmt clean
 
 ### Session S175: Deep Debt Evolution — Crypto Errors + eprintln→tracing + Lint Attr Evolution (Apr 21, 2026)
 - **`NoopCryptoProvider` capability-based errors** — all 5 error-returning methods now use `NOOP_MSG` constant with capability-based guidance (`"no crypto provider registered; register a provider via crypto.provider.register capability"`). Matches `NoopCloudProvider` pattern from S174.

@@ -5,7 +5,38 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 14, 2026 (Sessions 43-203)
+## [Unreleased] - April 26, 2026 (Sessions 43-204)
+
+### Session S204 (Apr 26, 2026) — Deep Debt Evolution: Safety Docs, Constants, Dep Hygiene, Mock Isolation, Lint Reason, Deny Cleanup
+
+#### Phase 1: Unsafe Safety Documentation
+- ADDED: `// SAFETY:` comments to all 13 unsafe blocks in `plugin_system/ffi_loader.rs` — the last file in the codebase without them. All 49 unsafe blocks across 16 files now have SAFETY documentation.
+
+#### Phase 2: Hardcoded → Capability-Based
+- EVOLVED: `instance_id()` in `universal/provider.rs` — `"toadstool-main"` → `INSTANCE_ID` constant (derived from `PRIMAL_NAME`)
+- EVOLVED: `display.get_capabilities` primal_id in `display/ipc/dispatch.rs` — `"toadstool-primary"` → `PRIMAL_NAME` constant
+- EVOLVED: mDNS browse in `discovery_engine/mod.rs` — duplicate `"_toadstool._tcp.local."` string → `TOADSTOOL_SERVICE_TYPE` constant
+
+#### Phase 3: Dependency Hygiene
+- UNIFIED: `serde_yaml_ng` to `{ workspace = true }` in 5 crates (cli, integration/primals, testing, management/performance, security/policies)
+- REMOVED: unused `humantime-serde` from CLI Cargo.toml (no imports found)
+- ALIGNED: `rustix` 1.0 → 1.1 in secure_enclave (matches workspace)
+- FIXED: stale WASM/zstd comment in CLI Cargo.toml — `toadstool-runtime-wasm` uses wasmi (pure Rust)
+
+#### Phase 4: Mock Isolation
+- GATED: `InMemoryAgentBackend`, `AgentBackendDispatch::InMemory`, `AgentDeploymentManager::with_inmemory` behind `#[cfg(any(test, feature = "test-mocks"))]` — matches existing pattern for auth/storage
+
+#### Phase 5: Lint Evolution
+- EVOLVED: bare `#[allow(...)]` → `#[allow(..., reason = "...")]` in 9 crate lib.rs files + 1 struct (`resource_metrics.rs`)
+
+#### Phase 6: deny.toml Cleanup
+- REMOVED: stale `BSD-3-Clause-Clear` license allow (no tfhe/FHE crates in tree)
+- ACTIVATED: `zstd-sys` ban (was commented out)
+- DOCUMENTED: `ring` clarify entry as defensive-only (ring banned and absent from lockfile)
+
+#### Metrics
+- 7,832 lib tests, 0 failures, clippy clean, fmt clean
+- 30 files changed, 133 insertions, 50 deletions
 
 ### Session S203i (Apr 14, 2026) — Deep Debt: Massive Test Extraction + Hardcoding Evolution
 

@@ -732,12 +732,12 @@ Canonical shapes: `health.liveness` → `{"status":"alive"}`; `health.readiness`
 
 ## S197 Resolved Debt (Transport Wiring, Fuzz Infra, Clippy, Dep Audit)
 
-### D-TARPC-PHASE3 — RESOLVED S197
+### D-TARPC-PHASE3 — RESOLVED S197 (Phase 3b → S203q)
 Wired `TRpcTransport::send_message` in `integration/protocols/transport.rs`.
 Transport resolves the target primal's Unix socket via capability-based
 discovery (`get_socket_path_for_capability`) and forwards via JSON-RPC 2.0
 (`UnixJsonRpcClient`), the universal protocol per wateringHole.
-Remaining: negotiate tarpc binary framing for Rust-to-Rust peers (Phase 3b).
+Phase 3b (binary tarpc framing) resolved S203q — see D-TARPC-PHASE3-BINARY.
 
 ### D-FUZZ-TARGETS-INIT — RESOLVED S197
 Created `fuzz/` directory with `cargo-fuzz` / `libfuzzer` infrastructure:

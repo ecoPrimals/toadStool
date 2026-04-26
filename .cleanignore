@@ -18,15 +18,11 @@ Cargo.lock
 # Source code
 src/
 crates/
-tests/
 examples/
-demos/
 showcase/
 docs/
 specs/
 scripts/
-ui/
-tools/
 
 # Keep target in gitignore but exclude from moves
 # (managed by cargo clean)
