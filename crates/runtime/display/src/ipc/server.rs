@@ -35,6 +35,7 @@
 
 use super::dispatch;
 use super::platform;
+use crate::input::InputManager;
 use crate::window::WindowManager;
 use crate::{DisplayError, Result};
 use std::net::SocketAddr;
@@ -74,19 +75,28 @@ pub enum IpcTransport {
 /// ```
 pub struct DisplayServer {
     manager: Arc<RwLock<WindowManager>>,
+    input: Arc<RwLock<InputManager>>,
     socket_path: PathBuf,
     transport: Arc<RwLock<Option<IpcTransport>>>,
 }
 
 impl DisplayServer {
-    /// Create a new display server
+    /// Create a new display server with automatic input device discovery.
     #[must_use]
     pub fn new(manager: WindowManager) -> Self {
-        // Default socket path (capability-based discovery!)
         let socket_path = platform::discover_socket_path();
+
+        let input = match InputManager::discover() {
+            Ok(im) => im,
+            Err(e) => {
+                tracing::warn!("InputManager discovery failed ({e}), events will be empty");
+                InputManager::empty()
+            }
+        };
 
         Self {
             manager: Arc::new(RwLock::new(manager)),
+            input: Arc::new(RwLock::new(input)),
             socket_path,
             transport: Arc::new(RwLock::new(None)),
         }
@@ -238,7 +248,8 @@ impl DisplayServer {
                 }
                 Ok(_) => {
                     // Process request
-                    let response = dispatch::handle_request(&line, &self.manager).await;
+                    let response =
+                        dispatch::handle_request(&line, &self.manager, &self.input).await;
 
                     // Send response
                     let response_json = serde_json::to_string(&response)
@@ -281,8 +292,8 @@ impl DisplayServer {
                     break;
                 }
                 Ok(_) => {
-                    // Process request (SAME as Unix!)
-                    let response = dispatch::handle_request(&line, &self.manager).await;
+                    let response =
+                        dispatch::handle_request(&line, &self.manager, &self.input).await;
 
                     // Send response
                     let response_json = serde_json::to_string(&response)

@@ -66,6 +66,18 @@ pub struct InputManager {
 }
 
 impl InputManager {
+    /// Create an empty input manager with no devices (fallback when discovery fails).
+    #[must_use]
+    pub fn empty() -> Self {
+        let (event_tx, event_rx) = mpsc::channel(1000);
+        Self {
+            devices: vec![],
+            shared_focus: Arc::new(RwLock::new(None)),
+            event_tx,
+            event_rx: Some(event_rx),
+        }
+    }
+
     /// Discover and initialize input devices
     ///
     /// **Self-knowledge**: Discovers own hardware at runtime!
@@ -214,19 +226,25 @@ impl InputManager {
         )
     }
 
-    /// Poll for input events
+    /// Poll for input events (non-blocking).
     ///
-    /// Non-blocking check for pending events.
+    /// Drains all pending events from the internal channel and returns them.
+    /// Returns an empty `Vec` when no events are queued. Safe to call in a
+    /// tight loop — uses `try_recv` internally.
     ///
-    /// Note: This is a simplified API. For streaming, use `subscribe_events()`.
+    /// For streaming, use `subscribe_events()` instead.
     ///
     /// # Errors
     ///
     /// Currently always returns `Ok`; reserved for future error cases.
-    pub const fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
-        // For now, return empty - real streaming happens via subscribe_events()
-        // This is here for compatibility with the old API
-        Ok(Vec::new())
+    pub fn poll_events(&mut self) -> Result<Vec<InputEvent>> {
+        let mut events = Vec::new();
+        if let Some(rx) = &mut self.event_rx {
+            while let Ok(event) = rx.try_recv() {
+                events.push(event);
+            }
+        }
+        Ok(events)
     }
 
     /// Route events to a specific window
@@ -340,5 +358,41 @@ mod tests {
             .flatten();
 
         assert!(received.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_poll_events_drains_channel() {
+        let mut manager = InputManager::empty();
+        let window = WindowId::new();
+
+        let event_a = InputEvent::KeyPress {
+            key: KeyCode::A,
+            modifiers: Modifiers::default(),
+            window,
+        };
+        let event_b = InputEvent::KeyRelease {
+            key: KeyCode::A,
+            modifiers: Modifiers::default(),
+            window,
+        };
+
+        manager.inject_event(event_a).await.unwrap();
+        manager.inject_event(event_b).await.unwrap();
+
+        let polled = manager.poll_events().unwrap();
+        assert_eq!(polled.len(), 2, "should drain both events");
+
+        let polled_again = manager.poll_events().unwrap();
+        assert!(
+            polled_again.is_empty(),
+            "channel should be empty after drain"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_empty_manager_poll_returns_empty() {
+        let mut manager = InputManager::empty();
+        let events = manager.poll_events().unwrap();
+        assert!(events.is_empty());
     }
 }

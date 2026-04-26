@@ -180,27 +180,38 @@ pub enum DisplayMethod {
         window_id: String,
     },
 
-    /// Subscribe to input events
+    /// Subscribe to input events for a window.
     #[serde(rename = "display.subscribe_input")]
     SubscribeInput {
         /// Window ID for events
         window_id: String,
     },
 
-    /// Poll for pending events
+    /// Poll for pending input events.
     #[serde(rename = "display.poll_events")]
-    PollEvents,
+    PollEvents {
+        /// Optional window filter (reserved for future use).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        window_id: Option<String>,
+    },
 
     /// Get display capabilities
     #[serde(rename = "display.get_capabilities")]
     GetCapabilities,
 
-    /// Present framebuffer (future: zero-copy)
+    /// Present pixel data to a window's framebuffer.
+    ///
+    /// Exactly one of `data` or `shm_path` must be provided.
     #[serde(rename = "display.present")]
     Present {
-        /// Window ID to present
+        /// Window ID to present to.
         window_id: String,
-        // Future: shared memory handle
+        /// Base64-encoded raw pixel data (inline mode).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        data: Option<String>,
+        /// Path to a shared memory file containing raw pixel data (zero-copy mode).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        shm_path: Option<String>,
     },
 }
 

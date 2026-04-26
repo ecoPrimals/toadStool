@@ -191,6 +191,11 @@ impl Window {
         &self.framebuffer
     }
 
+    /// Get mutable framebuffer reference (for pixel writes via `with_mapping`).
+    pub fn framebuffer_mut(&mut self) -> &mut DumbBuffer {
+        &mut self.framebuffer
+    }
+
     /// Set focus state
     const fn set_focused(&mut self, focused: bool) {
         self.focused = focused;
@@ -420,6 +425,30 @@ impl WindowManager {
     #[must_use]
     pub const fn drm(&self) -> &Arc<DrmBackend> {
         &self.drm
+    }
+
+    /// Write raw pixel data to a window's framebuffer.
+    ///
+    /// The pixel data must be in the window's native format (RGBA8888 by default).
+    /// Excess bytes are silently clamped to the buffer size.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the window is not found or the DRM mapping fails.
+    pub fn present_window(&mut self, id: WindowId, pixels: &[u8]) -> Result<()> {
+        let window = self
+            .windows
+            .get_mut(&id)
+            .ok_or(DisplayError::WindowNotFound(id))?;
+
+        window
+            .framebuffer_mut()
+            .with_mapping(self.drm.device(), |view| {
+                view.copy_from_slice(pixels);
+            })?;
+
+        tracing::trace!(window_id = %id, bytes = pixels.len(), "present_window: pixels written");
+        Ok(())
     }
 }
 

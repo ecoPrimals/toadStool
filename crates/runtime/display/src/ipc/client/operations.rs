@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Display IPC operations (windows, capabilities, endpoint metadata).
+//! Display IPC operations (windows, capabilities, presentation, input, endpoint metadata).
+
+use base64::Engine;
 
 use super::DisplayClient;
 use crate::DisplayError;
+use crate::input::InputEvent;
 use crate::ipc::types::DisplayCapabilitiesInfo;
 use crate::window::{CreateWindowRequest, WindowId, WindowInfo};
 
@@ -126,6 +129,124 @@ impl DisplayClient {
         if let Some(result) = response.result {
             serde_json::from_value(result)
                 .map_err(|e| DisplayError::IpcError(format!("Parse error: {e}")))
+        } else if let Some(error) = response.error {
+            Err(DisplayError::IpcError(format!(
+                "Server error: {}",
+                error.message
+            )))
+        } else {
+            Err(DisplayError::IpcError("Invalid response".to_string()))
+        }
+    }
+
+    /// Present raw RGBA pixel data to a window (inline base64 mode).
+    ///
+    /// The pixel data is base64-encoded and sent in the JSON-RPC request.
+    /// For large framebuffers, prefer [`present_shm`](Self::present_shm).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
+    pub async fn present(&mut self, window_id: WindowId, pixels: &[u8]) -> crate::Result<()> {
+        let data_b64 = base64::engine::general_purpose::STANDARD.encode(pixels);
+        let req = crate::ipc::types::JsonRpcRequest::new(
+            "display.present",
+            Some(serde_json::json!({
+                "window_id": window_id.as_string(),
+                "data": data_b64,
+            })),
+        );
+
+        let response = self.send_request(req).await?;
+
+        if let Some(error) = response.error {
+            Err(DisplayError::IpcError(format!(
+                "Server error: {}",
+                error.message
+            )))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Present framebuffer via shared memory path (zero-copy mode).
+    ///
+    /// The client writes raw RGBA pixel data to the given path (e.g.
+    /// `/dev/shm/toadstool-fb-{window_id}`), then calls this method.
+    /// The server reads the file and copies it to the DRM framebuffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
+    pub async fn present_shm(&mut self, window_id: WindowId, shm_path: &str) -> crate::Result<()> {
+        let req = crate::ipc::types::JsonRpcRequest::new(
+            "display.present",
+            Some(serde_json::json!({
+                "window_id": window_id.as_string(),
+                "shm_path": shm_path,
+            })),
+        );
+
+        let response = self.send_request(req).await?;
+
+        if let Some(error) = response.error {
+            Err(DisplayError::IpcError(format!(
+                "Server error: {}",
+                error.message
+            )))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Subscribe to input events for a window.
+    ///
+    /// Sets the server-side input focus to the given window so subsequent
+    /// [`poll_events`](Self::poll_events) calls return events for it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
+    pub async fn subscribe_input(&mut self, window_id: WindowId) -> crate::Result<()> {
+        let req = crate::ipc::types::JsonRpcRequest::new(
+            "display.subscribe_input",
+            Some(serde_json::json!({"window_id": window_id.as_string()})),
+        );
+
+        let response = self.send_request(req).await?;
+
+        if let Some(error) = response.error {
+            Err(DisplayError::IpcError(format!(
+                "Server error: {}",
+                error.message
+            )))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Poll for pending input events (non-blocking).
+    ///
+    /// Returns all events buffered since the last poll. Returns an empty
+    /// `Vec` when no events are queued.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the IPC request fails or the server returns an error.
+    pub async fn poll_events(&mut self) -> crate::Result<Vec<InputEvent>> {
+        let req = crate::ipc::types::JsonRpcRequest::new("display.poll_events", None);
+
+        let response = self.send_request(req).await?;
+
+        if let Some(result) = response.result {
+            let events: Vec<InputEvent> = serde_json::from_value(
+                result
+                    .get("events")
+                    .cloned()
+                    .unwrap_or(serde_json::json!([])),
+            )
+            .map_err(|e| DisplayError::IpcError(format!("Parse error: {e}")))?;
+            Ok(events)
         } else if let Some(error) = response.error {
             Err(DisplayError::IpcError(format!(
                 "Server error: {}",

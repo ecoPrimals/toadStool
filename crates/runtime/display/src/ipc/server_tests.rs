@@ -156,6 +156,7 @@ async fn test_display_server_socket_path_contains_toadstool() {
 
 #[tokio::test]
 async fn test_handle_request_with_empty_line() {
+    use crate::input::InputManager;
     use crate::ipc::dispatch;
     use tokio::sync::RwLock;
 
@@ -163,12 +164,14 @@ async fn test_handle_request_with_empty_line() {
         return;
     };
     let manager = Arc::new(RwLock::new(manager));
-    let response = dispatch::handle_request("", &manager).await;
+    let input = Arc::new(RwLock::new(InputManager::empty()));
+    let response = dispatch::handle_request("", &manager, &input).await;
     assert!(response.error.is_some() || response.result.is_none());
 }
 
 #[tokio::test]
 async fn test_handle_request_invalid_json() {
+    use crate::input::InputManager;
     use crate::ipc::dispatch;
     use tokio::sync::RwLock;
 
@@ -176,6 +179,7 @@ async fn test_handle_request_invalid_json() {
         return;
     };
     let manager = Arc::new(RwLock::new(manager));
-    let response = dispatch::handle_request("not valid json", &manager).await;
+    let input = Arc::new(RwLock::new(InputManager::empty()));
+    let response = dispatch::handle_request("not valid json", &manager, &input).await;
     assert!(response.error.is_some());
 }
