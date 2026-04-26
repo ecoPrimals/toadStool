@@ -153,6 +153,7 @@ impl AgentDeploymentManager {
 
     /// Create a new manager with in-memory test backend
     #[must_use]
+    #[cfg(any(test, feature = "test-mocks"))]
     pub fn with_inmemory(config: AgentDeploymentConfig) -> Self {
         let backend = super::super::agent_backend::InMemoryAgentBackend::new();
         Self {

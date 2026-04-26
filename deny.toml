@@ -32,7 +32,6 @@ allow = [
     "OpenSSL",
     "Zlib",
     "MPL-2.0",              # colored crate
-    "BSD-3-Clause-Clear",   # tfhe (FHE) crates
     "AGPL-3.0",             # ToadStool own crates (deprecated SPDX form)
     "AGPL-3.0-or-later",   # ToadStool own crates — canonical; scyBorg trio compat
     "LGPL-2.0-or-later",   # wgpu indirect dep (optional)
@@ -40,7 +39,9 @@ allow = [
 ]
 unused-allowed-license = "allow"
 
-# Per-crate overrides for edge cases
+# Per-crate overrides for edge cases.
+# ring: defensive clarify — ring is banned and absent from Cargo.lock (S203l),
+# but the entry prevents a license error if a transitive dep temporarily pulls it in.
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
@@ -81,9 +82,9 @@ deny = [
     # Transitive via axum (still pulled by toadstool-runtime-container), config, wiggle — wrappers
     # until upstream drops it. Verify: `cargo tree -p config -i async-trait`, `cargo tree -i axum`.
     { name = "async-trait", wrappers = ["axum", "axum-core", "config", "wiggle"] },
-    # zstd-sys — C FFI for zstd; banned in production paths
-    # toadstool-runtime-secure-enclave uses ruzstd (pure Rust); no member-specific exemption needed.
-    #{ name = "zstd-sys" },
+    # zstd-sys — C FFI for zstd; banned in production paths.
+    # toadstool-runtime-secure-enclave uses ruzstd (pure Rust); no member needs zstd-sys.
+    { name = "zstd-sys" },
     # tungstenite WebSocket — removed in R-011; must not return
     { name = "tungstenite" },
     { name = "tokio-tungstenite" },

@@ -20,8 +20,9 @@
     clippy::manual_let_else,
     clippy::map_unwrap_or,
     clippy::unreadable_literal,
-    clippy::unnecessary_wraps, // discover_cpu needs Option for cfg-gated None
+    clippy::unnecessary_wraps,
     clippy::no_effect_underscore_binding,
+    reason = "universal runtime: async_fn_in_trait for execution traits; numeric casts and pedantic lints suppressed crate-wide"
 )]
 
 //! ToadStool Universal Compute Runtime

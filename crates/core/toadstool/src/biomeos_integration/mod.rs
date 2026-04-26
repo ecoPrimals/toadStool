@@ -59,9 +59,9 @@ pub mod storage_backend_evolved;
 pub mod types;
 
 // Re-export legacy backends for backward compatibility
-pub use agent_backend::{
-    AgentBackend, AgentBackendDispatch, InMemoryAgentBackend, IntelligenceBackend,
-};
+#[cfg(any(test, feature = "test-mocks"))]
+pub use agent_backend::InMemoryAgentBackend;
+pub use agent_backend::{AgentBackend, AgentBackendDispatch, IntelligenceBackend};
 pub use agents::*;
 pub use auth::*;
 #[cfg(any(test, feature = "test-mocks"))]

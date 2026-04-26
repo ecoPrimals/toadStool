@@ -7,7 +7,8 @@
     clippy::doc_comment_double_space_linebreaks,
     clippy::similar_names,
     clippy::struct_field_names,
-    clippy::module_name_repetitions
+    clippy::module_name_repetitions,
+    reason = "pedantic lints suppressed crate-wide; server API naming is intentional"
 )]
 
 //! # `ToadStool` Server Library

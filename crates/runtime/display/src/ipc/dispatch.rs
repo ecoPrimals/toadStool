@@ -11,6 +11,7 @@ use crate::input::InputManager;
 use crate::window::{CreateWindowRequest, Size, WindowId, WindowManager};
 use crate::{DisplayError, Result};
 use std::sync::Arc;
+use toadstool_common::constants::PRIMAL_NAME;
 use tokio::sync::RwLock;
 
 /// Handle a single JSON-RPC request
@@ -171,7 +172,7 @@ async fn dispatch_method(
             }))
         }
         "display.get_capabilities" => Ok(serde_json::json!({
-            "primal_id": "toadstool-primary",
+            "primal_id": PRIMAL_NAME,
             "socket_path": platform::discover_socket_path().display().to_string(),
             "transport": "isomorphic",
             "max_windows": 16,
@@ -266,7 +267,7 @@ mod tests {
             response.error
         );
         let result = response.result.expect("success response has result");
-        assert_eq!(result["primal_id"], "toadstool-primary");
+        assert_eq!(result["primal_id"], PRIMAL_NAME);
         assert_eq!(result["max_windows"], 16);
         assert_eq!(result["isomorphic"], true);
         assert!(

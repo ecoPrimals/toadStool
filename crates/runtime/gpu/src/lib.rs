@@ -2,12 +2,10 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![allow(
-    async_fn_in_trait, // `ParallelComputeFramework`, `UnifiedMemoryBackend`, universal execution traits
+    async_fn_in_trait,
     clippy::must_use_candidate,
     clippy::cast_lossless,
-    // Trait impls require async for API consistency even when body is sync
     clippy::unused_async,
-    // Low-frequency pedantic lints; fixing would add noise without clear benefit
     clippy::struct_excessive_bools,
     clippy::unreadable_literal,
     clippy::ref_as_ptr,
@@ -22,6 +20,7 @@
     clippy::unnecessary_wraps,
     clippy::unused_self,
     clippy::needless_pass_by_value,
+    reason = "GPU runtime: async_fn_in_trait for framework traits; pedantic lints suppressed crate-wide"
 )]
 
 //! # `ToadStool` Universal GPU Compute Runtime

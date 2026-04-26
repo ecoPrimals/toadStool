@@ -12,7 +12,10 @@ use super::byob_types::ServiceSpec;
 
 /// Rolling state for delta-based CPU and I/O metrics between polls.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_field_names)]
+#[allow(
+    clippy::struct_field_names,
+    reason = "fields share `last_` prefix for delta-tracking clarity"
+)]
 pub(crate) struct ResourcePollState {
     pub last_instant: Instant,
     pub last_cpu_usage_usec: Option<u64>,

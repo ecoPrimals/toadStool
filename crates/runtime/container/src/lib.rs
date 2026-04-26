@@ -5,7 +5,8 @@
     clippy::must_use_candidate,
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,
-    clippy::missing_errors_doc
+    clippy::missing_errors_doc,
+    reason = "container runtime: numeric casts for resource limits; pedantic lints suppressed crate-wide"
 )]
 
 //! # `ToadStool` Container Runtime Engine

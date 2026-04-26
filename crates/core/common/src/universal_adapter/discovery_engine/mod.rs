@@ -218,11 +218,14 @@ impl DiscoverySource for MDnsSource {
             }
         };
 
-        let service_type = "_toadstool._tcp.local.";
-        let receiver = match mdns.browse(service_type) {
+        let receiver = match mdns.browse(crate::primal_discovery_mdns::TOADSTOOL_SERVICE_TYPE) {
             Ok(rx) => rx,
             Err(e) => {
-                tracing::debug!("mDNS browse failed for {}: {}", service_type, e);
+                tracing::debug!(
+                    "mDNS browse failed for {}: {}",
+                    crate::primal_discovery_mdns::TOADSTOOL_SERVICE_TYPE,
+                    e
+                );
                 let _ = mdns.shutdown();
                 return Ok(vec![]);
             }
@@ -263,7 +266,7 @@ impl DiscoverySource for MDnsSource {
             }
         }
 
-        let _ = mdns.stop_browse(service_type);
+        let _ = mdns.stop_browse(crate::primal_discovery_mdns::TOADSTOOL_SERVICE_TYPE);
         let _ = mdns.shutdown();
 
         tracing::debug!("mDNS discovery found {} providers", providers.len());

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-use toadstool_common::constants::PRIMAL_NAME;
+use toadstool_common::constants::{INSTANCE_ID, PRIMAL_NAME};
 use toadstool_config::env_config::EnvironmentConfig;
 
 use crate::ToadStoolResult;
@@ -42,7 +42,7 @@ impl UniversalPrimalProvider for ToadStoolPrimalProvider {
     }
 
     fn instance_id(&self) -> &'static str {
-        "toadstool-main"
+        INSTANCE_ID
     }
 
     fn context(&self) -> &PrimalContext {
@@ -185,7 +185,7 @@ mod tests {
     fn test_instance_id() {
         let context = make_context(SecurityLevel::Basic);
         let provider = ToadStoolPrimalProvider::new(context);
-        assert_eq!(provider.instance_id(), "toadstool-main");
+        assert_eq!(provider.instance_id(), INSTANCE_ID);
     }
 
     #[test]

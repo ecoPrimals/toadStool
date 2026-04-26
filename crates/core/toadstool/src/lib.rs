@@ -43,7 +43,8 @@
     clippy::manual_let_else,
     clippy::format_push_string,
     clippy::case_sensitive_file_extension_comparisons,
-    clippy::unused_async
+    clippy::unused_async,
+    reason = "pedantic lints suppressed crate-wide; fixing adds noise without safety benefit"
 )]
 
 //! # `ToadStool` Universal Compute Platform

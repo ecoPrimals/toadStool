@@ -41,13 +41,11 @@ toadstool-display = { path = "../runtime/display" }
 toadstool-config = { path = "../core/config" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-server = { path = "../server" }  # UniBin Phase 2: Server library integration (library compiles!)
-humantime-serde = "1.1"
-
 # Runtime engines
 toadstool-runtime-container = { path = "../runtime/container" }
 toadstool-runtime-native = { path = "../runtime/native" }
 # EVOLVED: toadstool-runtime-python removed — pyo3 FFI violates ecoBin v3.0
-toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: has zstd C dependency
+toadstool-runtime-wasm = { path = "../runtime/wasm", optional = true }  # Optional: pure Rust (wasmi)
 wasmi = { version = "1.0", features = ["std"], optional = true }  # For WASM execution when wasm feature enabled
 toadstool-runtime-gpu = { path = "../runtime/gpu", optional = true }
 
@@ -68,7 +66,7 @@ tracing-subscriber = { workspace = true }
 # Serialization (rc for Arc<str> zero-copy in metadata)
 serde = { workspace = true, features = ["rc"] }
 serde_json = { workspace = true }
-serde_yaml_ng = "0.10"
+serde_yaml_ng = { workspace = true }
 toml = { workspace = true }
 bytes = { workspace = true }
 

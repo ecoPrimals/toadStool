@@ -22,7 +22,7 @@ tokio = { workspace = true }
 # Serialization and configuration
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml_ng = "0.10"
+serde_yaml_ng = { workspace = true }
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 

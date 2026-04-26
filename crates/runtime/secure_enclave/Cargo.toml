@@ -45,7 +45,7 @@ thiserror = { workspace = true }
 # Memory management - Pure Rust Evolution (Feb 12, 2026)
 # OLD: libc = "0.2" (raw C bindings)
 # NEW: rustix provides safe Rust wrappers around syscalls
-rustix = { version = "1.0", features = ["mm"] }
+rustix = { version = "1.1", features = ["mm"] }
 
 [dev-dependencies]
 criterion = { workspace = true }

@@ -4,6 +4,7 @@
 //! This module defines the trait interface for agent deployment backends and
 //! provides production and test implementations using proper dependency injection.
 
+#[cfg(any(test, feature = "test-mocks"))]
 mod inmemory;
 mod intelligence;
 mod types;
@@ -15,6 +16,7 @@ use std::future::Future;
 
 use super::types::{AgentConfig, ModelConfig};
 use crate::ToadStoolResult;
+#[cfg(any(test, feature = "test-mocks"))]
 pub use inmemory::InMemoryAgentBackend;
 pub use intelligence::IntelligenceBackend;
 pub use types::{
@@ -27,6 +29,7 @@ pub enum AgentBackendDispatch {
     /// Intelligence / ML service backend (Unix JSON-RPC).
     Intelligence(IntelligenceBackend),
     /// In-memory backend for tests and local simulation.
+    #[cfg(any(test, feature = "test-mocks"))]
     InMemory(InMemoryAgentBackend),
 }
 
@@ -133,6 +136,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.initialize().await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.initialize().await,
             }
         }
@@ -145,6 +149,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.deploy_agent(config).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.deploy_agent(config).await,
             }
         }
@@ -157,6 +162,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.load_model(config).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.load_model(config).await,
             }
         }
@@ -170,6 +176,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.scale_agent(agent_name, replicas).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.scale_agent(agent_name, replicas).await,
             }
         }
@@ -182,6 +189,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.stop_agent(agent_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.stop_agent(agent_name).await,
             }
         }
@@ -194,6 +202,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.remove_agent(agent_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.remove_agent(agent_name).await,
             }
         }
@@ -206,6 +215,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.get_agent_status(agent_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.get_agent_status(agent_name).await,
             }
         }
@@ -215,6 +225,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.list_agents().await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.list_agents().await,
             }
         }
@@ -224,6 +235,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.list_models().await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.list_models().await,
             }
         }
@@ -236,6 +248,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.get_agent_resources(agent_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.get_agent_resources(agent_name).await,
             }
         }
@@ -248,6 +261,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.unload_model(model_name).await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.unload_model(model_name).await,
             }
         }
@@ -257,6 +271,7 @@ impl AgentBackend for AgentBackendDispatch {
         async move {
             match self {
                 Self::Intelligence(b) => b.health_check().await,
+                #[cfg(any(test, feature = "test-mocks"))]
                 Self::InMemory(b) => b.health_check().await,
             }
         }

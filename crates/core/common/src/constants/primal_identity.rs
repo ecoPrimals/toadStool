@@ -37,6 +37,12 @@
 /// should reference this constant.
 pub const PRIMAL_NAME: &str = "toadstool";
 
+/// Default instance identifier for this primal's primary/singleton instance.
+///
+/// Used in `UniversalPrimalProvider::instance_id()` and display capability
+/// advertisements. Must start with `PRIMAL_NAME`.
+pub const INSTANCE_ID: &str = "toadstool-main";
+
 /// Primary capability domain per `PRIMAL_SELF_KNOWLEDGE_STANDARD.md` v1.1.
 ///
 /// Socket files use the domain stem, not the primal name:
@@ -130,6 +136,11 @@ mod tests {
         assert!(capability::SERVICE_DISCOVERY.contains('.'));
         assert!(capability::NETWORK_GATEWAY.contains('.'));
         assert!(capability::STORAGE_PROVIDER.contains('.'));
+    }
+
+    #[test]
+    fn instance_id_starts_with_primal_name() {
+        assert!(INSTANCE_ID.starts_with(PRIMAL_NAME));
     }
 
     #[test]

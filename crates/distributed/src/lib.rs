@@ -40,7 +40,8 @@
     clippy::unnecessary_wraps,
     clippy::unused_async,
     clippy::unused_self,
-    clippy::zero_sized_map_values
+    clippy::zero_sized_map_values,
+    reason = "distributed crate: numeric casts for network sizes; pedantic lints suppressed crate-wide"
 )]
 #![cfg_attr(test, allow(deprecated))] // Allow deprecated items in tests during transition
 #![forbid(unsafe_code)]

@@ -13,7 +13,8 @@
     clippy::return_self_not_must_use,
     clippy::unnecessary_wraps,
     clippy::unused_async,
-    clippy::unused_self
+    clippy::unused_self,
+    reason = "orchestration: numeric casts for scheduling weights; pedantic lints suppressed crate-wide"
 )]
 
 //! Workload Orchestration System

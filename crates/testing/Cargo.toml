@@ -33,7 +33,7 @@ futures = { workspace = true }
 # Serialization for test data
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml_ng = "0.10"
+serde_yaml_ng = { workspace = true }
 bytes = { workspace = true }
 
 # Time and UUID for test data

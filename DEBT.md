@@ -1,12 +1,27 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S177
+**Date**: April 2026 — S204
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S204 (Deep Debt Evolution)**: Resolved **D-SAFETY-DOCS** (13 `// SAFETY`
+comments added to `ffi_loader.rs` — last file without them), **D-HARDCODED-IDS**
+(`toadstool-main`/`toadstool-primary` → `INSTANCE_ID`/`PRIMAL_NAME` constants;
+mDNS duplicate `"_toadstool._tcp.local."` → `TOADSTOOL_SERVICE_TYPE`),
+**D-DEP-HYGIENE** (`serde_yaml_ng` unified to `workspace = true` in 5 crates;
+unused `humantime-serde` removed from CLI; `rustix` aligned 1.0→1.1 in
+secure\_enclave; stale WASM/zstd comment corrected), **D-MOCK-ISOLATION**
+(`InMemoryAgentBackend` + `AgentBackendDispatch::InMemory` +
+`AgentDeploymentManager::with_inmemory` gated behind `#[cfg(any(test,
+feature = "test-mocks"))]`), **D-LINT-EVOLUTION** (bare `#[allow]` blocks
+in 9 crate roots + 1 struct → `#[allow(..., reason = "...")]`),
+**D-DENY-CLEANUP** (stale `BSD-3-Clause-Clear` license removed; `zstd-sys`
+ban uncommented/active; `ring` clarify documented as defensive).
+7,832 lib tests, 0 failures, clippy and fmt clean.
 
 **S177 (Deep Debt Evolution)**: Resolved **D-PROD-STUBS** (StubRuntimeEngine
 `ToadStoolError::configuration` with capability guidance; `NoopCryptoProvider`
