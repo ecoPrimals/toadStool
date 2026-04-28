@@ -27,7 +27,7 @@ toadstool-management-monitoring = { path = "../management/monitoring" }
 
 # Async runtime
 tokio = { workspace = true }
-tokio-util = { version = "0.7" }
+tokio-util = { workspace = true }
 futures = { workspace = true }
 
 # Serialization
@@ -36,12 +36,12 @@ serde_json = { workspace = true }
 # bincode removed: was declared but unused in source (RUSTSEC-2025-0141 unmaintained).
 # tarpc uses its own serde transport; if raw binary serialization is needed,
 # use postcard (pure Rust, no_std, varint) or bitcode instead.
-humantime-serde = "1.1"
+humantime-serde = { workspace = true }
 bytes = { workspace = true }
 
 # Clustering and load balancing
 base64 = { workspace = true }
-rand = "0.8"
+rand = { workspace = true }
 aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
 sha2 = { workspace = true }
@@ -84,7 +84,7 @@ required-features = ["test-mocks"]
 toadstool-testing = { path = "../testing" }
 tokio-test = "0.4"
 tempfile = { workspace = true }
-temp-env = "0.3"
+temp-env = { workspace = true }
 toml = { workspace = true }
 anyhow = "1"
 proptest = { workspace = true }

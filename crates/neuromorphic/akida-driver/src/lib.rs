@@ -39,8 +39,14 @@
 
 #![deny(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![allow(clippy::must_use_candidate)]
-#![allow(clippy::match_same_arms)]
+#![allow(
+    clippy::must_use_candidate,
+    reason = "ergonomic device API — callers choose to use or discard"
+)]
+#![allow(
+    clippy::match_same_arms,
+    reason = "explicit arm listing aids hardware register clarity"
+)]
 
 mod backend;
 pub mod backends;

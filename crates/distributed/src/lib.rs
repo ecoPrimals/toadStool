@@ -43,7 +43,13 @@
     clippy::zero_sized_map_values,
     reason = "distributed crate: numeric casts for network sizes; pedantic lints suppressed crate-wide"
 )]
-#![cfg_attr(test, allow(deprecated))] // Allow deprecated items in tests during transition
+#![cfg_attr(
+    test,
+    allow(
+        deprecated,
+        reason = "tests exercise deprecated items during migration"
+    )
+)]
 #![forbid(unsafe_code)]
 
 // Core modules

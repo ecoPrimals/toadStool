@@ -3,7 +3,10 @@
 
 //! `libloading` integration and dynamic symbol resolution for [`super::abi::PluginVTable`].
 
-#![allow(unsafe_code)]
+#![allow(
+    unsafe_code,
+    reason = "libloading FFI symbol resolution requires unsafe"
+)]
 
 use std::ffi::CStr;
 use std::path::Path;

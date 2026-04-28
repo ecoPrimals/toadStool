@@ -26,7 +26,7 @@ toadstool-common = { path = "../../core/common" }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
-temp-env = { version = "0.3", features = ["async_closure"] }
+temp-env = { workspace = true }
 
 [lints]
 workspace = true

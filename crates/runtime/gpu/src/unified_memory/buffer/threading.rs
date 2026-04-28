@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)]
-// `unsafe impl Send/Sync` — `NonNull`/raw GPU pointers are not `Send`/`Sync` by default (rust-lang/rust#48214)
+#![allow(
+    unsafe_code,
+    reason = "unsafe impl Send/Sync for UnifiedBuffer — NonNull/raw GPU pointers"
+)]
 //! [`Send`] and [`Sync`] for [`super::UnifiedBuffer`].
 //!
 //! Rust does not auto-derive [`Send`]/[`Sync`] for [`std::ptr::NonNull`] or raw pointers to

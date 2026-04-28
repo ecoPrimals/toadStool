@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // Raw pointer arithmetic for zero-copy GPU buffer access
+#![allow(
+    unsafe_code,
+    reason = "raw pointer arithmetic for zero-copy GPU buffer access"
+)]
 //! Unified buffer — zero-copy CPU/GPU accessible memory.
 //!
 //! Submodules group pointer validation, I/O, synchronization, lifecycle, and

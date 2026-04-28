@@ -4,7 +4,10 @@
 //! Split into submodules by concern:
 //! - `start` — biome/primal/service startup, workload conversion
 //! - `stop`  — graceful/force shutdown, purge, signal handling
-#![allow(deprecated)]
+#![allow(
+    deprecated,
+    reason = "lifecycle ops reference deprecated config fields during migration"
+)]
 
 mod start;
 mod stop;

@@ -1,12 +1,22 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S205
+**Date**: April 2026 — S206
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S206 (Lint Evolution + Dep Hygiene + Feature Cleanup)**: Resolved **D-LINT-FULL**
+(all ~40 bare `#[allow(...)]` in production evolved to `#[allow(..., reason = "...")]` —
+17 `unsafe_code` modules, ~23 clippy/deprecated/async-fn-in-trait allows), **D-DEP-UNIFIED**
+(`humantime-serde`, `rand`, `tokio-util`, `temp-env` unified to `{ workspace = true }` in 20+
+crate Cargo.toml files), **D-FEATURE-STALE** (GPU `spirv`/`jit`/`testing` features + deps
+removed; testing `integration-tests`/`benchmarks`/`wiremock` removed — none referenced in
+source), **D-MOCK-DEFAULT** (`test-mocks` removed from `toadstool` core default features —
+production builds no longer compile mock backends; testing crate explicitly enables it).
+7,841 lib tests, 0 failures, clippy and fmt clean.
 
 **S205 (Phase 55 — Crypto + Discovery)**: Resolved **D-PLAINTEXT-DISPATCH**
 (compute payloads now encrypted via Tower `crypto.encrypt` before dispatch,

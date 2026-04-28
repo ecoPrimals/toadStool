@@ -4,7 +4,8 @@
 #![allow(
     clippy::cast_precision_loss,
     clippy::map_unwrap_or,
-    clippy::must_use_candidate
+    clippy::must_use_candidate,
+    reason = "benchmark numeric casts; map_unwrap_or reads better for scoring; ergonomic API"
 )]
 
 //! Cross-substrate validation and benchmarking library

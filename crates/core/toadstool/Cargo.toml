@@ -34,7 +34,7 @@ bytes = { workspace = true }
 uuid = { workspace = true }
 
 # Time handling
-humantime-serde = "1.1"
+humantime-serde = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
@@ -64,14 +64,14 @@ wgpu = { workspace = true, optional = true }
 [dev-dependencies]
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
-temp-env = { version = "0.3", features = ["async_closure"] }
+temp-env = { workspace = true }
 toadstool-testing = { path = "../../testing" }
 proptest = { workspace = true }
 
 [features]
-# `test-mocks` is default so integration tests can use in-memory backends (e.g. `StorageBackendDispatch::InMemory`)
-# without passing `--features test-mocks` on every test target.
-default = ["mdns", "test-mocks"]
+# S206: test-mocks removed from default — production builds no longer compile mock backends.
+# Run `cargo test --features test-mocks` for InMemory/mock test targets.
+default = ["mdns"]
 # Real `dlopen`/`dlclose` plugin loading (`libloading`). Omit from default so unit tests
 # without `.so` fixtures keep simulated load/unload unless this feature is enabled.
 plugin-loading = ["dep:libloading"]

@@ -61,7 +61,10 @@
 
 #![deny(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![allow(clippy::multiple_crate_versions)]
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "transitive deps pull different minor versions"
+)]
 
 // Public modules
 pub mod audit;

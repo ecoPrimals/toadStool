@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Hardware register names (GRBM_STATUS, CP_MEC_*, mmRLC_*) are standard identifiers
-#![allow(clippy::doc_markdown)]
+#![allow(
+    clippy::doc_markdown,
+    reason = "hardware register names (GRBM_STATUS, CP_MEC_*) are standard identifiers"
+)]
 //! AMD amdgpu compute init canonical pattern — the gold-standard reference recipe.
 //!
 //! The amdgpu kernel driver is fully open-source, making its compute init sequence

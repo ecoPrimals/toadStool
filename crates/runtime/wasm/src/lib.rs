@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(async_fn_in_trait)]
+#![allow(
+    async_fn_in_trait,
+    reason = "all implementors are Send + Sync; no dyn dispatch"
+)]
 #![allow(
     clippy::must_use_candidate,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::missing_errors_doc
+    clippy::missing_errors_doc,
+    reason = "WASM runtime API ergonomics; numeric casts are bounds-checked"
 )]
 
 //! ToadStool - Universal Compute Platform

@@ -2,7 +2,8 @@
 #![allow(
     clippy::cast_precision_loss,
     clippy::manual_let_else,
-    clippy::unused_async
+    clippy::unused_async,
+    reason = "benchmark numeric casts; async main for uniform entry; let_else less clear here"
 )]
 //! Cross-Substrate Validation Benchmark
 //!

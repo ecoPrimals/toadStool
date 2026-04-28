@@ -21,7 +21,7 @@ uuid = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
-humantime-serde = "1.1"
+humantime-serde = { workspace = true }
 zeroize = { version = "1.7", features = ["derive"] }
 
 # EVOLVED: Pure Rust UID detection (removed libc dependency!)
@@ -49,7 +49,7 @@ tokio-test = { workspace = true }
 tokio = { workspace = true }
 proptest = { workspace = true }
 tempfile = { workspace = true }
-temp-env = { version = "0.3", features = ["async_closure"] }
+temp-env = { workspace = true }
 toadstool = { path = "../toadstool", features = ["proptest-strategies"] }
 
 [features]

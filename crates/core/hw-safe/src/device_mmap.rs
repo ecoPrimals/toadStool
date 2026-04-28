@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // Device mmap/munmap require unsafe — this is the containment zone
+#![allow(
+    unsafe_code,
+    reason = "device mmap/munmap require unsafe — containment zone"
+)]
 
 //! RAII device memory mapping for file-descriptor-based hardware regions.
 //!

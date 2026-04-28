@@ -15,7 +15,7 @@ readme = "README.md"
 
 [dependencies]
 # Core ToadStool dependencies
-toadstool = { path = "../core/toadstool" }
+toadstool = { path = "../core/toadstool", features = ["test-mocks"] }
 hw-learn = { path = "../core/hw-learn" }
 
 # Testing framework
@@ -25,7 +25,7 @@ tokio-test = "0.4"
 # Mocking and testing utilities
 mockall = "0.12"
 proptest = { workspace = true }
-wiremock = { version = "0.6", optional = true }
+# S206: wiremock removed — integration-tests feature was never used in source.
 
 # Async testing
 futures = { workspace = true }
@@ -52,7 +52,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 # Random data generation
-rand = "0.8"
+rand = { workspace = true }
 fake = { version = "2.0", features = ["derive", "uuid"] }
 
 
@@ -60,13 +60,12 @@ fake = { version = "2.0", features = ["derive", "uuid"] }
 
 [dev-dependencies]
 criterion = { workspace = true }
-temp-env = "0.3"
+temp-env = { workspace = true }
 
 [features]
 default = []
-integration-tests = ["wiremock"] # Pure Rust: removed libc (unix sockets via std)
-benchmarks = []
 slow-tests = []
+# S206: integration-tests (unused wiremock gate) and benchmarks (empty) removed — no source references.
 
 [lints]
 workspace = true

@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // NonNull::slice_from_raw_parts in trait defaults — single audit point
+#![allow(
+    unsafe_code,
+    reason = "NonNull::slice_from_raw_parts in trait defaults — single audit point"
+)]
 
 //! Shared trait for types that own a contiguous byte region.
 //!

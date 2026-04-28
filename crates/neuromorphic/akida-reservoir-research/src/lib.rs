@@ -22,7 +22,10 @@
 //!         80 NPUs per chip     Linear regression
 //! ```
 
-#![allow(clippy::must_use_candidate)]
+#![allow(
+    clippy::must_use_candidate,
+    reason = "ergonomic research API — callers choose to use or discard"
+)]
 #![allow(
     dead_code,
     reason = "research crate: components wired incrementally as experiments mature"

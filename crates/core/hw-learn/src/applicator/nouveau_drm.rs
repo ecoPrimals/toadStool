@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // DRM kernel ioctls require unsafe FFI via rustix
+#![allow(
+    unsafe_code,
+    reason = "DRM kernel ioctls require unsafe FFI via rustix"
+)]
 //! Apply recipe steps via nouveau DRM ioctls.
 //!
 //! This module uses the nouveau new UAPI (kernel 6.6+) to apply

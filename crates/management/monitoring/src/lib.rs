@@ -5,7 +5,8 @@
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation,
-    clippy::missing_errors_doc
+    clippy::missing_errors_doc,
+    reason = "metrics casts are bounds-checked; error docs tracked in NEXT_STEPS"
 )]
 
 //! `ToadStool` monitoring component

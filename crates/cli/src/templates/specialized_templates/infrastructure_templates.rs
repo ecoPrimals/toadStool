@@ -4,7 +4,7 @@
 //! Cluster orchestration and security-focused templates for multi-node
 //! distributed computing and air-gapped sovereign deployments.
 
-#![allow(deprecated)] // Module uses deprecated fields during migration
+#![allow(deprecated, reason = "module uses deprecated fields during migration")]
 
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;

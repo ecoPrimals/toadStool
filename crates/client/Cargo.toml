@@ -42,7 +42,7 @@ uuid = { workspace = true }
 
 # tarpc client (optional - for primal-to-primal RPC)
 tarpc = { workspace = true, optional = true }
-tokio-util = { version = "0.7", optional = true }
+tokio-util = { workspace = true, optional = true }
 bytes = { workspace = true, optional = true }
 toadstool-integration-protocols = { path = "../integration/protocols", optional = true }
 
@@ -52,7 +52,7 @@ tarpc = ["dep:tarpc", "dep:tokio-util", "dep:bytes", "dep:toadstool-integration-
 
 [dev-dependencies]
 tokio-test = "0.4"
-temp-env = "0.3"
+temp-env = { workspace = true }
 
 [lints]
 workspace = true

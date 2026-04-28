@@ -4,7 +4,8 @@
 #![allow(
     clippy::doc_markdown,
     clippy::cast_precision_loss,
-    clippy::missing_errors_doc
+    clippy::missing_errors_doc,
+    reason = "policy engine: technical identifiers in docs; numeric casts for scoring"
 )]
 
 //! Advanced Security Policy Management for ToadStool

@@ -36,7 +36,10 @@
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-#![allow(clippy::multiple_crate_versions)]
+#![allow(
+    clippy::multiple_crate_versions,
+    reason = "transitive deps pull different minor versions"
+)]
 
 pub mod cache;
 pub mod error;

@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // Volatile reads/writes require unsafe — this is the containment zone
+#![allow(
+    unsafe_code,
+    reason = "volatile reads/writes require unsafe — containment zone"
+)]
 
 //! Bounds-checked volatile MMIO register access.
 //!

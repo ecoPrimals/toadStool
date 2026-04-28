@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 2026 — S205 (Phase 55 — Crypto + Discovery)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | **7,841 lib-only** tests verified (20,000+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment, all SAFETY-documented) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)** | **BTSP JSON-line relay (Phase 45c)** | **Display Phase 2 (petalTongue IPC)** | **Encrypted compute dispatch (Phase 55)**
-**Latest**: S205 — Phase 55 (Crypto + Discovery): compute payloads encrypted via Tower `crypto.encrypt` before dispatch, decrypted on result return (graceful standalone fallback). `DISCOVERY_SOCKET` wired as highest-precedence tier for capability resolution. `secrets.retrieve` purpose key delegation via `SecurityClient`. **7,841 lib-only** tests, 0 failures, clippy clean, fmt clean.
+**Updated**: April 2026 — S206 (Lint Evolution + Dep Hygiene + Feature Cleanup)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | **7,841 lib-only** tests verified (20,000+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment, all SAFETY-documented) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)** | **BTSP JSON-line relay (Phase 45c)** | **Display Phase 2 (petalTongue IPC)** | **Encrypted compute dispatch (Phase 55)** | **All lint attrs with reason (S206)** | **test-mocks off by default (S206)**
+**Latest**: S206 — Lint Evolution + Dep Hygiene + Feature Cleanup: All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason)]` (17 `unsafe_code`, ~23 clippy/deprecated). `humantime-serde`, `rand`, `tokio-util`, `temp-env` unified to workspace in 20+ Cargo.toml files. GPU `spirv`/`jit`/`testing` + testing `integration-tests`/`benchmarks`/`wiremock` stale features and deps removed. `test-mocks` removed from core default features. **7,841 lib-only** tests, 0 failures, clippy clean, fmt clean.
 
 ---
 
@@ -163,7 +163,14 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S205)
+## Completed This Session (S90-S206)
+
+### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
+- **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.
+- **Dependency unification** — `humantime-serde`, `rand`, `tokio-util`, `temp-env` added to `[workspace.dependencies]` and 20+ crate Cargo.toml files updated to `{ workspace = true }`.
+- **Stale feature removal** — GPU crate: `spirv`/`jit`/`testing` features and optional deps (`spirv`, `cranelift-jit`, `wasmtime`) removed (never referenced in source). Testing crate: `integration-tests`/`benchmarks` features and `wiremock` dep removed.
+- **`test-mocks` off by default** — removed from `toadstool` core `default` features; production builds no longer compile `InMemoryAuthBackend`/`InMemoryAgentBackend`. Testing crate explicitly enables via `features = ["test-mocks"]`.
+- 7,841 lib tests, 0 failures, clippy clean, fmt clean.
 
 ### Session S205: Phase 55 — Encrypted Compute Dispatch + Discovery Socket (Apr 28, 2026)
 - **Encrypted compute dispatch** — `DispatchHandler` now optionally holds a Tower `SecurityClient`; when present (NUCLEUS composition), payloads are encrypted via `crypto.encrypt` with the `compute` purpose key before dispatch to coralReef, and results are decrypted via `crypto.decrypt` on return. Standalone mode (no BearDog) continues with plaintext dispatch.

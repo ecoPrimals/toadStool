@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // mlock/munlock require unsafe — this is the containment zone
+#![allow(
+    unsafe_code,
+    reason = "mlock/munlock require unsafe — containment zone"
+)]
 
 //! Locked (pinned) memory for DMA and security-sensitive buffers.
 //!

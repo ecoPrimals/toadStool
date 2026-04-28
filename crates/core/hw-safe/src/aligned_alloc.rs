@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // Aligned alloc/dealloc requires unsafe — this is the containment zone
+#![allow(
+    unsafe_code,
+    reason = "aligned alloc/dealloc requires unsafe — containment zone"
+)]
 
 //! Aligned heap allocation with RAII cleanup.
 //!

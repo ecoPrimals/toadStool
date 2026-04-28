@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // V4L2 ioctls are kernel FFI — this is the containment zone
+#![allow(unsafe_code, reason = "V4L2 ioctls are kernel FFI — containment zone")]
 
 //! Safe wrappers for V4L2 ioctls.
 //!

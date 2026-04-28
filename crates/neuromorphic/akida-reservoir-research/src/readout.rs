@@ -4,8 +4,10 @@
 //! Trains a simple linear layer to map reservoir states to target outputs.
 //! Uses ridge regression (fast, no backpropagation needed!).
 
-// Mathematical notation (n, l, etc.) is standard in linear algebra
-#![allow(clippy::many_single_char_names)]
+#![allow(
+    clippy::many_single_char_names,
+    reason = "mathematical notation (n, l, etc.) is standard in linear algebra"
+)]
 
 use crate::error::Result;
 use ndarray::{Array1, Array2};

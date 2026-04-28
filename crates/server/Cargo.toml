@@ -29,7 +29,7 @@ toadstool-runtime-wasm = { path = "../runtime/wasm" }
 
 # tarpc for high-performance RPC (optional per wateringHole PRIMAL_IPC_PROTOCOL)
 tarpc = { workspace = true, optional = true }
-tokio-util = { version = "0.7", features = ["codec"], optional = true }
+tokio-util = { workspace = true, optional = true }
 tokio-serde = { version = "0.9", features = ["json"], optional = true }
 
 # Base64 encoding
@@ -108,7 +108,7 @@ criterion = { workspace = true }
 hw-learn = { path = "../core/hw-learn" }
 tokio-test = "0.4"
 tempfile = { workspace = true }
-temp-env = { version = "0.3", features = ["async_closure"] }
+temp-env = { workspace = true }
 toadstool-testing = { path = "../testing" }
 proptest = { workspace = true }
 

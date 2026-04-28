@@ -55,13 +55,8 @@ wgpu = { workspace = true, optional = true, features = ["wgsl"] }
 vulkano = { version = "0.34", optional = true }
 ash = { version = "0.37", optional = true }
 
-# Universal intermediate representations - Only for spirv feature
-spirv = { version = "0.3", optional = true }
-
-# JIT compilation and optimization - Only for jit feature
-# Aligned to cranelift 0.105 (same as wgpu transitive dep) to avoid dual-version compile overhead
-cranelift-jit = { version = "0.105", optional = true }
-wasmtime = { version = "18", optional = true }
+# S206: spirv, cranelift-jit, wasmtime removed — features never wired in source.
+# SPIR-V is handled by wgpu naga internally; JIT compilation is not used.
 
 [features]
 # SOVEREIGN + PRAGMATIC DESIGN:
@@ -86,10 +81,6 @@ all-backends = ["webgpu", "vulkan"]
 # S198: ocl removed — OpenCL dispatch delegated to barraCuda/coralReef via IPC
 # ToadStool embeds WebGPU (wgpu) and Vulkan (ash/vulkano) only; vendor/OpenCL-class paths live in primals
 
-# Additional features (independent)
-spirv = ["dep:spirv"]
-jit = ["cranelift-jit", "wasmtime"]
-testing = []
 # `cargo-fuzz` / `toadstool-fuzz` enables this to call internal CPU slice construction paths.
 fuzz = []
 

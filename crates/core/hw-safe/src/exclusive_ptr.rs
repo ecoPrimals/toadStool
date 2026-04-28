@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // manual Send/Sync — see SAFETY on impls below
+#![allow(unsafe_code, reason = "manual Send/Sync — see SAFETY on impls below")]
 
 //! Thread-safe exclusively-owned memory pointer.
 //!

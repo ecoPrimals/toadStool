@@ -62,7 +62,7 @@ tokio-test = "0.4"
 criterion = { workspace = true }
 tracing-subscriber = "0.3"
 tempfile = { workspace = true }
-temp-env = { version = "0.3", features = ["async_closure"] }
+temp-env = { workspace = true }
 toadstool-core = { path = "../../toadstool-core" }
 
 

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(clippy::doc_markdown)]
+#![allow(
+    clippy::doc_markdown,
+    reason = "technical identifiers pervasive in API docs"
+)]
 
 //! # `ToadStool` Protocol Integration Layer
 //!

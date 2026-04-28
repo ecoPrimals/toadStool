@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Discovery client - RPC-based node discovery via Coordination
 
-#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+#![allow(
+    deprecated,
+    reason = "IPC addressing requires well-known names during migration"
+)]
 
 use std::sync::Arc;
 use tracing::debug;

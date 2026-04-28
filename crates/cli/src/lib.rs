@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+#![allow(
+    deprecated,
+    reason = "IPC addressing requires well-known names during migration"
+)]
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
@@ -39,7 +42,8 @@
     clippy::float_cmp,
     clippy::case_sensitive_file_extension_comparisons,
     clippy::assigning_clones,
-    clippy::needless_raw_string_hashes
+    clippy::needless_raw_string_hashes,
+    reason = "CLI crate: pedantic lints suppressed crate-wide; numeric casts bounds-checked"
 )]
 
 //! `ToadStool` CLI - Universal Compute Command Center

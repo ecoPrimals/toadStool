@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)] // mmap/munmap/mlock/munlock for huge pages — containment zone
+#![allow(
+    unsafe_code,
+    reason = "mmap/munmap/mlock/munlock for huge pages — containment zone"
+)]
 
 //! Locked huge-page memory for high-performance DMA.
 //!

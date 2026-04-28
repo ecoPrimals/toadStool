@@ -4,7 +4,8 @@
 #![allow(
     clippy::must_use_candidate,
     clippy::match_same_arms,
-    clippy::doc_markdown
+    clippy::doc_markdown,
+    reason = "ergonomic trait API; arms share intent; technical identifiers in docs"
 )]
 
 //! # Universal Primal Integration Framework

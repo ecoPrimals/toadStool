@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(unsafe_code)]
-// `unsafe impl Send/Sync` for `GpuPtr` — raw pointers are not `Send`/`Sync` by default (see rust-lang/rust#48214)
+#![allow(
+    unsafe_code,
+    reason = "unsafe impl Send/Sync for GpuPtr — raw pointers are not Send/Sync by default"
+)]
 //! Backend trait for unified memory implementations
 
 use crate::unified_memory::types::{
