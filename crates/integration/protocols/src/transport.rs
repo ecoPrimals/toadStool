@@ -306,7 +306,7 @@ impl BinaryTrpcTransport {
                     "peer binary handshake magic mismatch".to_string(),
                 ));
             }
-            let ver = u32::from_be_bytes(hdr[4..8].try_into().expect("8 bytes"));
+            let ver = u32::from_be_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]);
             if ver != HANDSHAKE_VERSION {
                 return Err(ProtocolError::Negotiation(format!(
                     "unsupported binary protocol version {ver}"

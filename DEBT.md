@@ -1,12 +1,25 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S207
+**Date**: April 2026 — S208
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S208 (Deep Debt — Unsafe Allow + Feature Hygiene + Expect→Result)**:
+Resolved **D-GLOWPLUG-ALLOW** (removed unnecessary `#[allow(unsafe_code)]`
+from `glowplug/mod.rs` — module contains no unsafe code),
+**D-CLI-FEATURES** (4 empty no-op feature flags `ecosystem`/`universal`/
+`monitoring`/`templates` removed from CLI crate; test modules ungated since
+underlying code always compiles; `gpu-ai` stale comment corrected),
+**D-EXPECT-TO-RESULT** (`InputManager::subscribe_events` evolved from panic
+to `Result`; `ProtocolEngine::build_*` methods evolved from `.expect()` to
+`Option::insert` — zero production panics; transport handshake `expect`
+replaced with array indexing), **D-EDGE-PORTS** (edge discovery port
+literals 22/80/8080 extracted to `well_known_ports` module constants).
+7,842 lib tests, 0 failures, clippy and fmt clean.
 
 **S207 (Self-Registration via DISCOVERY_SOCKET)**: Resolved **D-SELF-REGISTRATION**
 (`register_with_coordination()` evolved to `register_with_discovery()` — sends

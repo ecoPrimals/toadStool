@@ -215,15 +215,16 @@ impl InputManager {
     /// Returns a receiver for input events. Events are automatically routed
     /// to the focused window.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if called more than once (the receiver is consumed on first call).
-    pub const fn subscribe_events(&mut self) -> mpsc::Receiver<InputEvent> {
-        // Take the receiver (can only be called once)
-        // For production, we'd want to support multiple subscribers
-        self.event_rx.take().expect(
-            "subscribe_events called multiple times: InputManager has a single event receiver channel (consumed on first call); duplicate call indicates event routing setup bug",
-        )
+    /// Returns `DisplayError::InputError` if called more than once (the
+    /// receiver is consumed on first call).
+    pub fn subscribe_events(&mut self) -> Result<mpsc::Receiver<InputEvent>> {
+        self.event_rx.take().ok_or_else(|| {
+            DisplayError::InputError(
+                "subscribe_events already called: single-consumer channel exhausted".into(),
+            )
+        })
     }
 
     /// Poll for input events (non-blocking).
@@ -340,7 +341,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_subscription() {
         let mut manager = InputManager::discover().unwrap();
-        let mut events = manager.subscribe_events();
+        let mut events = manager.subscribe_events().unwrap();
 
         // Inject a test event
         let test_event = InputEvent::KeyPress {

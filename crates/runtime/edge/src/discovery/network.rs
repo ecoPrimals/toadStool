@@ -14,6 +14,13 @@ use crate::platforms::*;
 
 use super::DiscoveryMethod;
 
+/// Well-known port numbers used during edge device identification.
+mod well_known_ports {
+    pub const SSH: u16 = 22;
+    pub const HTTP: u16 = 80;
+    pub const HTTP_ALT: u16 = 8080;
+}
+
 /// Network Discovery Method
 pub struct NetworkDiscovery {
     pub(super) scan_range: Vec<IpAddr>,
@@ -151,10 +158,11 @@ impl NetworkDiscovery {
                     Ok(Ok(_))
                 );
                 if connect_ok
-                    && let Some(device) = self.identify_network_device(IpAddr::V6(ip), port).await {
-                        found.push(device);
-                        break;
-                    }
+                    && let Some(device) = self.identify_network_device(IpAddr::V6(ip), port).await
+                {
+                    found.push(device);
+                    break;
+                }
             }
         }
 
@@ -182,17 +190,12 @@ impl NetworkDiscovery {
     }
 
     async fn identify_network_device(&self, ip: IpAddr, port: u16) -> Option<Arc<dyn EdgeDevice>> {
-        // Try to identify device type based on open ports and responses
         match port {
-            22 => {
-                // SSH port - likely Linux-based edge device
+            well_known_ports::SSH => {
                 debug!("Found SSH service on {}:{}", ip, port);
-                // Could be Raspberry Pi or other Linux edge device
-                // Implementation needed for RaspberryPiDevice
                 None
             }
-            80 | 8080 => {
-                // HTTP port - could be ESP32 or other web-enabled device
+            well_known_ports::HTTP | well_known_ports::HTTP_ALT => {
                 debug!("Found HTTP service on {}:{}", ip, port);
                 None
             }

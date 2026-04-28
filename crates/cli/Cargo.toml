@@ -123,12 +123,7 @@ rustix = { version = "1.1", features = ["process"] }
 [features]
 default = ["full"]
 slow-tests = []
-full = ["ecosystem", "universal", "monitoring", "templates", "daemon", "wasm", "nautilus"]
-# EVOLVED: python feature removed — pyo3 FFI violates ecoBin v3.0. Use Squirrel IPC.
-ecosystem = []
-universal = []
-monitoring = []
-templates = []
+full = ["daemon", "wasm", "nautilus"]
 # BTSP on daemon JSON-RPC (FAMILY_ID production mode); passes through to toadstool-common
 btsp = ["toadstool-common/btsp"]
 daemon = ["btsp"]
@@ -136,7 +131,7 @@ wasm = ["dep:toadstool-runtime-wasm", "dep:wasmi"]  # Optional: WASM runtime
 
 # GPU FEATURES: Sovereign + Pragmatic
 gpu = ["toadstool-runtime-gpu"]  # WebGPU by default (pure Rust, universal)
-gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # Add CUDA for Python AI
+gpu-ai = ["gpu", "toadstool-runtime-gpu/ai-ml"]  # WebGPU + AI/ML extensions
 gpu-full = ["gpu", "toadstool-runtime-gpu/all-backends"]  # Maximum compatibility
 
 # NPU FEATURES: Neuromorphic accelerator support
@@ -146,7 +141,7 @@ npu = ["dep:akida-driver"]
 nautilus = []
 
 # PURE RUST: Build without C dependencies (no WASM, minimal features)
-pure-rust = ["ecosystem", "universal", "monitoring"]
+pure-rust = []
 
 [lints]
 workspace = true

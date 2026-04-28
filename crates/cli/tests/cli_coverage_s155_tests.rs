@@ -388,7 +388,6 @@ fn test_setup_exit_code_for_config_error() {
 // Monitoring - Types, Collectors, Metrics Store, Alerting, Dashboard
 // ============================================================================
 
-#[cfg(feature = "monitoring")]
 mod monitoring_tests {
     use super::*;
     use std::collections::HashMap;
@@ -590,7 +589,6 @@ mod monitoring_tests {
 // Templates - basic_templates, rendering (via generator)
 // ============================================================================
 
-#[cfg(feature = "templates")]
 mod template_tests {
     use super::*;
     use toadstool_cli::templates::{

@@ -1,8 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(
-    unsafe_code,
-    reason = "module itself is safe; allow needed for crate-level deny"
-)]
 
 //! GPU implementation of the glowPlug/ember hardware lifecycle traits.
 //!

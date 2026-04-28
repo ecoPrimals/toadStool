@@ -336,9 +336,7 @@ impl ProtocolEngine {
     }
 
     pub fn build_avr_connect_probe(&mut self) -> &AvrIspSequence {
-        let s = avr_isp_connect_probe_sequence();
-        self.last_avr = Some(s);
-        self.last_avr.as_ref().expect("just set")
+        self.last_avr.insert(avr_isp_connect_probe_sequence())
     }
 
     pub fn build_avr_read_flash(
@@ -347,9 +345,9 @@ impl ProtocolEngine {
         address: u32,
         length: u32,
     ) -> Result<&AvrIspSequence, EmbeddedProgrammerError> {
-        let s = avr_isp_read_flash_sequence(chip, address, length)?;
-        self.last_avr = Some(s);
-        Ok(self.last_avr.as_ref().expect("set"))
+        Ok(self
+            .last_avr
+            .insert(avr_isp_read_flash_sequence(chip, address, length)?))
     }
 
     pub fn build_avr_program_page(
@@ -358,15 +356,13 @@ impl ProtocolEngine {
         page_base: u32,
         data: &[u8],
     ) -> Result<&AvrIspSequence, EmbeddedProgrammerError> {
-        let s = avr_isp_program_page_sequence(chip, page_base, data)?;
-        self.last_avr = Some(s);
-        Ok(self.last_avr.as_ref().expect("set"))
+        Ok(self
+            .last_avr
+            .insert(avr_isp_program_page_sequence(chip, page_base, data)?))
     }
 
     pub fn build_pic_connect(&mut self) -> &[u8] {
-        let s = pic18_icsp_connect_sequence();
-        self.last_pic = Some(s);
-        self.last_pic.as_deref().expect("set")
+        self.last_pic.insert(pic18_icsp_connect_sequence())
     }
 }
 

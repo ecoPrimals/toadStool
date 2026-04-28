@@ -21,7 +21,6 @@ use std::path::PathBuf;
 // Ecosystem - Types, Discovery, ServiceType, TrustLevel
 // ============================================================================
 
-#[cfg(feature = "ecosystem")]
 mod ecosystem_tests {
     use super::*;
     use std::sync::Arc;
@@ -428,7 +427,6 @@ mod zero_config_tests {
 // Universal - Types, Manager, Operations (utilities, benchmarking, migration, detection)
 // ============================================================================
 
-#[cfg(feature = "universal")]
 mod universal_tests {
     use super::*;
     use toadstool_cli::universal::operations::{
@@ -664,7 +662,6 @@ mod universal_tests {
 // Templates - ML Science templates
 // ============================================================================
 
-#[cfg(feature = "templates")]
 mod template_ml_science_tests {
     use toadstool_cli::templates::specialized_templates::{
         create_ai_research_template, create_genomics_template, create_quantum_template,
