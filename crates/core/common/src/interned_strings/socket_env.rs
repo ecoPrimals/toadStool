@@ -109,6 +109,12 @@ pub const TOADSTOOL_STORAGE_PORT: &str = "TOADSTOOL_STORAGE_PORT";
 /// **Deprecated** (identity-based). Prefer `TOADSTOOL_COORDINATION_PORT`.
 pub const TOADSTOOL_SONGBIRD_PORT: &str = "TOADSTOOL_SONGBIRD_PORT";
 
+/// NUCLEUS discovery socket (Songbird). Highest-precedence path for `coordination`
+/// and `discovery` capability resolution — set by `composition_nucleus.sh`.
+pub const DISCOVERY_SOCKET: &str = "DISCOVERY_SOCKET";
+/// Socket directory for all primals in a NUCLEUS composition.
+pub const BIOMEOS_SOCKET_DIR: &str = "BIOMEOS_SOCKET_DIR";
+
 // Discovery bootstrap and bind hints.
 pub const TOADSTOOL_MDNS_ENABLE: &str = "TOADSTOOL_MDNS_ENABLE";
 pub const TOADSTOOL_MDNS_REQUIRE: &str = "TOADSTOOL_MDNS_REQUIRE";

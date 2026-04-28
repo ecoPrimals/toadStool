@@ -245,3 +245,39 @@ async fn test_key_management_service_unavailable() {
     let result = client.key_management(request).await;
     assert!(result.is_err());
 }
+
+// ═══════════════════════════════════════════════════════════
+// retrieve_purpose_key tests (Phase 55)
+// ═══════════════════════════════════════════════════════════
+
+#[tokio::test]
+async fn test_retrieve_purpose_key_service_unavailable() {
+    let config = SecurityConfig::default();
+    let nonexistent = std::path::PathBuf::from("/tmp/nonexistent-security-secrets.sock");
+    let client = SecurityClient::new_with_socket_path(config, nonexistent).unwrap();
+    let result = client
+        .retrieve_purpose_key("compute", Some("test-family"))
+        .await;
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("secrets.retrieve") || err.contains("failed"),
+        "error should mention secrets.retrieve: {err}"
+    );
+}
+
+#[tokio::test]
+async fn test_retrieve_purpose_key_builds_correct_key_name() {
+    let config = SecurityConfig::default();
+    let nonexistent = std::path::PathBuf::from("/tmp/nonexistent-security-keyname.sock");
+    let client = SecurityClient::new_with_socket_path(config, nonexistent).unwrap();
+    let result = client
+        .retrieve_purpose_key("compute", Some("my-family-id"))
+        .await;
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("nucleus:my-family-id:purpose:compute"),
+        "error should contain the full key name: {err}"
+    );
+}

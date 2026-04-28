@@ -4,7 +4,10 @@ use super::DispatchHandler;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 fn test_handler() -> DispatchHandler {
-    DispatchHandler::new(crate::visualization_client::create_visualization_client())
+    DispatchHandler::new(
+        crate::visualization_client::create_visualization_client(),
+        None,
+    )
 }
 
 fn submit_params(bdf: &str, dispatch_mode: &str) -> serde_json::Value {
@@ -112,7 +115,7 @@ async fn dispatch_submit_vfio_mode_without_coral_returns_failed_payload() {
     if coral.is_available().await {
         return;
     }
-    let handler = DispatchHandler::new(coral);
+    let handler = DispatchHandler::new(coral, None);
     let params = submit_params("0000:03:00.0", "vfio");
     let result = handler
         .dispatch_submit(Some(&params))
@@ -133,7 +136,7 @@ async fn dispatch_submit_drm_mode_without_coral_returns_failed_payload() {
     if coral.is_available().await {
         return;
     }
-    let handler = DispatchHandler::new(coral);
+    let handler = DispatchHandler::new(coral, None);
     let params = submit_params("0000:03:00.0", "drm");
     let result = handler
         .dispatch_submit(Some(&params))
@@ -309,6 +312,38 @@ async fn dispatch_forward_uses_nested_params_when_present() {
         .await
         .expect_err("expected transport error");
     assert_eq!(err.code, JsonRpcError::INTERNAL_ERROR);
+}
+
+// ═══════════════════════════════════════════════════════════
+// crypto dispatch path tests (Phase 55)
+// ═══════════════════════════════════════════════════════════
+
+#[tokio::test]
+async fn dispatch_submit_standalone_mode_has_no_encrypted_flag() {
+    let handler = test_handler();
+    let params = submit_params("0000:03:00.0", "passthrough");
+    let result = handler
+        .dispatch_submit(Some(&params))
+        .await
+        .expect("submit");
+    assert!(
+        result["metadata"].get("encrypted").is_none() || result["metadata"]["encrypted"] == false,
+        "standalone dispatch must not set encrypted=true"
+    );
+}
+
+#[tokio::test]
+async fn dispatch_handler_new_with_none_security_client_works() {
+    let handler = DispatchHandler::new(
+        crate::visualization_client::create_visualization_client(),
+        None,
+    );
+    let params = submit_params("0000:03:00.0", "passthrough");
+    let result = handler
+        .dispatch_submit(Some(&params))
+        .await
+        .expect("submit");
+    assert_eq!(result["domain"], "compute.dispatch");
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -530,7 +565,7 @@ async fn shader_dispatch_vfio_without_coral_returns_failed() {
     if coral.is_available().await {
         return;
     }
-    let handler = DispatchHandler::new(coral);
+    let handler = DispatchHandler::new(coral, None);
     let params = serde_json::json!({
         "binary": [1, 2, 3],
         "bdf": "0000:03:00.0",

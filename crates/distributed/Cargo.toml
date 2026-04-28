@@ -40,6 +40,7 @@ humantime-serde = "1.1"
 bytes = { workspace = true }
 
 # Clustering and load balancing
+base64 = { workspace = true }
 rand = "0.8"
 aes-gcm = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }

@@ -4,6 +4,7 @@
 async fn pipeline_submit_empty_stages_rejected() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({
         "name": "empty",
@@ -18,6 +19,7 @@ async fn pipeline_submit_empty_stages_rejected() {
 async fn pipeline_submit_single_stage_passthrough() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({
         "name": "single_stage",
@@ -43,6 +45,7 @@ async fn pipeline_submit_single_stage_passthrough() {
 async fn pipeline_submit_multi_stage_ordered() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({
         "name": "inference_pipeline",
@@ -83,6 +86,7 @@ async fn pipeline_submit_multi_stage_ordered() {
 async fn pipeline_status_returns_tracked_pipeline() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let submit_params = serde_json::json!({
         "name": "tracked",
@@ -107,6 +111,7 @@ async fn pipeline_status_returns_tracked_pipeline() {
 async fn pipeline_status_not_found() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({"pipeline_id": "nonexistent"});
     let err = handler.pipeline_status(Some(&params)).await;
@@ -117,6 +122,7 @@ async fn pipeline_status_not_found() {
 async fn pipeline_submit_cycle_rejected() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({
         "name": "cyclic",
@@ -135,6 +141,7 @@ async fn pipeline_submit_cycle_rejected() {
 async fn pipeline_submit_unsupported_method_fails() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({
         "name": "bad_method",
@@ -154,6 +161,7 @@ async fn pipeline_submit_unsupported_method_fails() {
 async fn pipeline_submit_downstream_receives_previous_results() {
     let handler = super::super::DispatchHandler::new(
         crate::visualization_client::create_visualization_client(),
+        None,
     );
     let params = serde_json::json!({
         "name": "chain",

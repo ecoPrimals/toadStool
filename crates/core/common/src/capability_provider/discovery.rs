@@ -12,10 +12,14 @@ use super::error::{CapabilityError, Result};
 use super::provider::CapabilityProvider;
 use super::serialize;
 
-/// Query discovery service for all providers of a capability
+/// Query discovery service for all providers of a capability.
+///
+/// Resolution precedence for the discovery socket:
+/// 1. `DISCOVERY_SOCKET` env var (set by NUCLEUS composition → Songbird)
+/// 2. `resolve_capability_socket_fallback("coordination", ...)` (BIOMEOS/legacy tiers)
 pub async fn query_providers(capability: Capability) -> Result<Vec<CapabilityProvider>> {
     let env = SocketPathEnv::from_env();
-    let discovery_socket = resolve_capability_socket_fallback("coordination", &env);
+    let discovery_socket = resolve_capability_socket_fallback("discovery", &env);
 
     let client = UnixJsonRpcClient::new(discovery_socket);
 

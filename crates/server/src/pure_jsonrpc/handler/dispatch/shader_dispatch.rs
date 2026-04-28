@@ -345,7 +345,7 @@ mod tests {
 
     #[tokio::test]
     async fn shader_dispatch_rejects_empty_binary_after_decode() {
-        let handler = DispatchHandler::new(create_visualization_client());
+        let handler = DispatchHandler::new(create_visualization_client(), None);
         let params = serde_json::json!({
             "binary": [],
             "bdf": "0000:00:00.0",
@@ -358,7 +358,7 @@ mod tests {
 
     #[tokio::test]
     async fn shader_dispatch_vfio_without_shader_service_returns_failed_capability_response() {
-        let handler = DispatchHandler::new(create_visualization_client());
+        let handler = DispatchHandler::new(create_visualization_client(), None);
         let params = serde_json::json!({
             "binary": [1u8],
             "bdf": "0000:00:00.0",

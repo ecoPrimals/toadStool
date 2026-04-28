@@ -489,3 +489,66 @@ fn is_btsp_required_default_family() {
     };
     assert!(!is_btsp_required(&env));
 }
+
+// ═══════════════════════════════════════════════════════════
+// DISCOVERY_SOCKET precedence tests (Phase 55)
+// ═══════════════════════════════════════════════════════════
+
+#[test]
+fn discovery_socket_takes_precedence_for_coordination() {
+    let env = SocketPathEnv {
+        discovery_socket: Some("/run/songbird.sock".to_string()),
+        biomeos_coordination_socket: Some("/run/biomeos-coord.sock".to_string()),
+        legacy_coordination_socket: Some("/run/legacy-coord.sock".to_string()),
+        ..test_env()
+    };
+    assert_eq!(
+        resolve_capability_socket_fallback("coordination", &env),
+        PathBuf::from("/run/songbird.sock")
+    );
+}
+
+#[test]
+fn discovery_socket_takes_precedence_for_discovery_capability() {
+    let env = SocketPathEnv {
+        discovery_socket: Some("/run/songbird.sock".to_string()),
+        ..test_env()
+    };
+    assert_eq!(
+        resolve_capability_socket_fallback("discovery", &env),
+        PathBuf::from("/run/songbird.sock")
+    );
+}
+
+#[test]
+fn discovery_socket_absent_falls_through_to_biomeos() {
+    let env = SocketPathEnv {
+        biomeos_coordination_socket: Some("/run/biomeos-coord.sock".to_string()),
+        ..test_env()
+    };
+    assert_eq!(
+        resolve_capability_socket_fallback("coordination", &env),
+        PathBuf::from("/run/biomeos-coord.sock")
+    );
+}
+
+#[test]
+fn discovery_socket_does_not_affect_crypto() {
+    let env = SocketPathEnv {
+        discovery_socket: Some("/run/songbird.sock".to_string()),
+        ..test_env()
+    };
+    assert_eq!(
+        resolve_capability_socket_fallback("crypto", &env),
+        PathBuf::from("/run/user/1000/biomeos/crypto.sock")
+    );
+}
+
+#[test]
+fn discovery_capability_falls_to_biomeos_dir_when_no_env() {
+    let env = test_env();
+    assert_eq!(
+        resolve_capability_socket_fallback("discovery", &env),
+        PathBuf::from("/run/user/1000/biomeos/discovery.sock")
+    );
+}

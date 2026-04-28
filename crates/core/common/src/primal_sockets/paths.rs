@@ -127,7 +127,8 @@ fn connection_hint_for_capability<'a>(cap: &str, env: &'a SocketPathEnv) -> Opti
 /// | `storage` | Object / artifact storage | `NESTGATE_*` |
 /// | `routing`, `intelligence`, `ai` | AI / MCP-style IPC | `SQUIRREL_*` |
 ///
-/// Precedence: `BIOMEOS_{CAP}_SOCKET` → `TOADSTOOL_*_SOCKET` / legacy `*_SOCKET` →
+/// Precedence: `DISCOVERY_SOCKET` (coordination/discovery only) →
+/// `BIOMEOS_{CAP}_SOCKET` → `TOADSTOOL_*_SOCKET` / legacy `*_SOCKET` →
 /// connection hints that resolve to Unix paths (`TOADSTOOL_*_ENDPOINT`, `*_ENDPOINT`, legacy `*_URL`) →
 /// `{capability}.sock` under the biomeOS runtime directory (never product-code filenames).
 #[must_use]
@@ -135,9 +136,16 @@ pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv)
     let cap = capability.to_lowercase();
     let cap = cap.as_str();
 
+    // Highest precedence: DISCOVERY_SOCKET (set by composition_nucleus.sh → Songbird).
+    if matches!(cap, "coordination" | "discovery") {
+        if let Some(ref p) = env.discovery_socket {
+            return PathBuf::from(p);
+        }
+    }
+
     if let Some(p) = match cap {
         "crypto" | "security" => env.biomeos_crypto_socket.as_ref(),
-        "coordination" => env.biomeos_coordination_socket.as_ref(),
+        "coordination" | "discovery" => env.biomeos_coordination_socket.as_ref(),
         "storage" => env.biomeos_storage_socket.as_ref(),
         "routing" | "intelligence" | "ai" => env.biomeos_routing_socket.as_ref(),
         _ => None,
@@ -148,8 +156,8 @@ pub fn resolve_capability_socket_fallback(capability: &str, env: &SocketPathEnv)
     // Legacy env field names map crypto→security, coordination, storage, intelligence sockets.
     if let Some(p) = match cap {
         "crypto" | "security" => env.legacy_security_socket.as_ref(), // legacy: BEARDOG_SOCKET
-        "coordination" => env.legacy_coordination_socket.as_ref(),    // legacy: SONGBIRD_SOCKET
-        "storage" => env.legacy_storage_socket.as_ref(),              // legacy: NESTGATE_SOCKET
+        "coordination" | "discovery" => env.legacy_coordination_socket.as_ref(), // legacy: SONGBIRD_SOCKET
+        "storage" => env.legacy_storage_socket.as_ref(), // legacy: NESTGATE_SOCKET
         "routing" | "intelligence" | "ai" => env.legacy_intelligence_socket.as_ref(), // legacy: SQUIRREL_SOCKET
         _ => None,
     } {

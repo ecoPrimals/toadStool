@@ -73,6 +73,7 @@ impl JsonRpcHandler {
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch: DispatchHandler::new(
                 crate::visualization_client::create_visualization_client(),
+                Self::try_connect_security_client(),
             ),
             hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(local_gate_id),
@@ -81,6 +82,43 @@ impl JsonRpcHandler {
             transport: TransportHandler::new(),
             silicon: SiliconHandler::new(),
             glowplug: glowplug_client::create_glowplug_client(),
+        }
+    }
+
+    /// Attempt to connect to the Tower security client (BearDog) for crypto
+    /// delegation. Returns `None` in standalone mode (no `BEARDOG_SOCKET`).
+    #[expect(
+        deprecated,
+        reason = "SecurityClient delegates to crypto.encrypt/decrypt on the wire; crypto_integration migration tracked"
+    )]
+    fn try_connect_security_client()
+    -> Option<Arc<toadstool_distributed::security::client::SecurityClient>> {
+        let socket = toadstool_common::primal_sockets::get_socket_path_for_capability("crypto");
+        if socket.exists() {
+            #[expect(
+                deprecated,
+                reason = "sync new() is used at startup; async discovery is for hot-path"
+            )]
+            match toadstool_distributed::security::client::SecurityClient::new(
+                toadstool_distributed::security::SecurityConfig::default(),
+            ) {
+                Ok(client) => {
+                    info!("Tower crypto client connected — compute payloads will be encrypted");
+                    Some(Arc::new(client))
+                }
+                Err(e) => {
+                    debug!(
+                        "Tower crypto client unavailable: {e} — standalone mode (plaintext dispatch)"
+                    );
+                    None
+                }
+            }
+        } else {
+            debug!(
+                path = %socket.display(),
+                "crypto socket absent — standalone mode (plaintext dispatch)"
+            );
+            None
         }
     }
 

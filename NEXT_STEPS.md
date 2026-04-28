@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: April 2026 — S204 (Deep Debt Evolution)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | **7,832 lib-only** tests verified (20,000+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment, all SAFETY-documented) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)** | **BTSP JSON-line relay (Phase 45c)** | **Display Phase 2 (petalTongue IPC)**
-**Latest**: S204 — Deep Debt Evolution: ffi\_loader.rs SAFETY docs (13 blocks); hardcoded IDs → constants (`INSTANCE_ID`, `PRIMAL_NAME`, `TOADSTOOL_SERVICE_TYPE`); `serde_yaml_ng` workspace unified (5 crates); unused `humantime-serde` removed; `rustix` aligned; `InMemoryAgentBackend` gated to test-only; bare `#[allow]` → `#[allow(reason)]` in 10 sites; `deny.toml` stale entries cleaned. **7,832 lib-only** tests, 0 failures, clippy clean, fmt clean.
+**Updated**: April 2026 — S205 (Phase 55 — Crypto + Discovery)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | **7,841 lib-only** tests verified (20,000+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | Zero production unwraps | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment, all SAFETY-documented) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **env centralized via config structs** | **real Linux sandbox (rustix)** | **real resource metrics (cgroup v2/proc)** | **plugin loading (libloading)** | **binary tarpc framing (MessagePack)** | **BTSP JSON-line relay (Phase 45c)** | **Display Phase 2 (petalTongue IPC)** | **Encrypted compute dispatch (Phase 55)**
+**Latest**: S205 — Phase 55 (Crypto + Discovery): compute payloads encrypted via Tower `crypto.encrypt` before dispatch, decrypted on result return (graceful standalone fallback). `DISCOVERY_SOCKET` wired as highest-precedence tier for capability resolution. `secrets.retrieve` purpose key delegation via `SecurityClient`. **7,841 lib-only** tests, 0 failures, clippy clean, fmt clean.
 
 ---
 
@@ -163,7 +163,15 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S204)
+## Completed This Session (S90-S205)
+
+### Session S205: Phase 55 — Encrypted Compute Dispatch + Discovery Socket (Apr 28, 2026)
+- **Encrypted compute dispatch** — `DispatchHandler` now optionally holds a Tower `SecurityClient`; when present (NUCLEUS composition), payloads are encrypted via `crypto.encrypt` with the `compute` purpose key before dispatch to coralReef, and results are decrypted via `crypto.decrypt` on return. Standalone mode (no BearDog) continues with plaintext dispatch.
+- **`DISCOVERY_SOCKET` wired** — new env var as highest-precedence tier for coordination/discovery capability resolution in `resolve_capability_socket_fallback()`. `SocketPathEnv` updated, `query_providers()` now resolves via `"discovery"` capability.
+- **Purpose key retrieval** — `SecurityClient::retrieve_purpose_key()` calls `secrets.retrieve("nucleus:{family}:purpose:{purpose}")` on BearDog; key cached lazily on first dispatch.
+- **`base64` dependency** added to `toadstool-distributed` (workspace unified).
+- 9 new tests: 5 discovery socket precedence, 2 purpose key retrieval, 2 encrypted dispatch path.
+- 7,841 lib tests, 0 failures, clippy clean, fmt clean.
 
 ### Session S204: Deep Debt Evolution — Safety Docs, Constants, Dep Hygiene, Mock Isolation (Apr 26, 2026)
 - `ffi_loader.rs` SAFETY docs (13 blocks — last file without them; all 49 unsafe blocks now documented)

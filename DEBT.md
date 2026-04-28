@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S204
+**Date**: April 2026 — S205
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S205 (Phase 55 — Crypto + Discovery)**: Resolved **D-PLAINTEXT-DISPATCH**
+(compute payloads now encrypted via Tower `crypto.encrypt` before dispatch,
+decrypted via `crypto.decrypt` on result — graceful standalone fallback).
+Resolved **D-DISCOVERY-SOCKET** (`DISCOVERY_SOCKET` env var wired as
+highest-precedence tier for coordination/discovery capability resolution;
+`SocketPathEnv`, `resolve_capability_socket_fallback`, `query_providers` updated).
+Added `retrieve_purpose_key()` to `SecurityClient` for BearDog `secrets.retrieve`
+purpose key delegation. 7,841 lib tests, 0 failures, clippy and fmt clean.
 
 **S204 (Deep Debt Evolution)**: Resolved **D-SAFETY-DOCS** (13 `// SAFETY`
 comments added to `ffi_loader.rs` — last file without them), **D-HARDCODED-IDS**

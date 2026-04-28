@@ -23,6 +23,9 @@ pub struct SocketPathEnv {
     pub biomeos_storage_socket: Option<String>,
     /// `BIOMEOS_ROUTING_SOCKET` explicit path for routing / MCP-style workloads
     pub biomeos_routing_socket: Option<String>,
+    /// `DISCOVERY_SOCKET` — highest-precedence override for coordination / discovery
+    /// capability resolution (set by `composition_nucleus.sh` to point at Songbird).
+    pub discovery_socket: Option<String>,
     /// Security capability socket: `TOADSTOOL_SECURITY_SOCKET`, then deprecated legacy `BEARDOG_SOCKET`
     /// (prefer `BIOMEOS_CRYPTO_SOCKET` / capability discovery; see `interned_strings::socket_env`).
     pub legacy_security_socket: Option<String>,
@@ -75,6 +78,7 @@ impl SocketPathEnv {
                 .ok(),
             biomeos_storage_socket: std::env::var(socket_env::BIOMEOS_STORAGE_SOCKET).ok(),
             biomeos_routing_socket: std::env::var(socket_env::BIOMEOS_ROUTING_SOCKET).ok(),
+            discovery_socket: std::env::var(socket_env::DISCOVERY_SOCKET).ok(),
             // Deprecated identity-based fallbacks (after `TOADSTOOL_*` / `BIOMEOS_*` capability vars).
             // Prefer `BIOMEOS_*_SOCKET` and runtime capability discovery — see `interned_strings::socket_env`.
             legacy_security_socket: std::env::var(socket_env::TOADSTOOL_SECURITY_SOCKET)

@@ -4,9 +4,130 @@ use super::DispatchHandler;
 use super::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
 use super::types::{DispatchJob, DispatchStatus};
 use crate::pure_jsonrpc::types::JsonRpcError;
+use base64::Engine;
 use std::sync::atomic::Ordering;
 
+#[expect(
+    deprecated,
+    reason = "SecurityClient delegates to crypto.encrypt/decrypt; crypto_integration migration tracked"
+)]
 impl DispatchHandler {
+    /// Lazily fetch and cache the `compute` purpose key from BearDog secrets.
+    async fn get_purpose_key(&self) -> Result<toadstool::encryption::EncryptionKey, JsonRpcError> {
+        {
+            let guard = self.cached_purpose_key.read().await;
+            if let Some(ref key) = *guard {
+                return Ok(key.clone());
+            }
+        }
+
+        let client = self.security_client.as_ref().ok_or_else(|| {
+            JsonRpcError::internal_error("security client unavailable for purpose key retrieval")
+        })?;
+
+        let key = client
+            .retrieve_purpose_key("compute", None)
+            .await
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("purpose key retrieval failed: {e}"))
+            })?;
+
+        let mut guard = self.cached_purpose_key.write().await;
+        *guard = Some(key.clone());
+        Ok(key)
+    }
+
+    /// Encrypt binary payload via Tower `crypto.encrypt`.
+    /// Returns the original bytes unchanged if no security client is present.
+    #[expect(
+        deprecated,
+        reason = "SecurityClient types are deprecated in favor of crypto_integration; wire protocol is the same"
+    )]
+    async fn encrypt_payload(&self, data: &[u8]) -> Result<Vec<u8>, JsonRpcError> {
+        let Some(ref client) = self.security_client else {
+            return Ok(data.to_vec());
+        };
+
+        let key = self.get_purpose_key().await?;
+
+        let request = toadstool_distributed::security::types::EncryptionRequest {
+            request_id: uuid::Uuid::new_v4(),
+            operation: toadstool_distributed::security::types::EncryptionOperation::Encrypt,
+            data: data.to_vec(),
+            key_id: Some(key.id.clone()),
+            algorithm: Some(key.algorithm.clone()),
+            security_level: toadstool_distributed::security::types::SecurityLevel::Enhanced,
+        };
+
+        let response = client
+            .encrypt(request)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(format!("crypto.encrypt failed: {e}")))?;
+
+        let nonce_b64 = response
+            .metadata
+            .get("nonce")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let envelope = serde_json::json!({
+            "v": 1,
+            "ct": base64::engine::general_purpose::STANDARD.encode(&response.data),
+            "n": nonce_b64,
+            "alg": response.algorithm,
+        });
+
+        serde_json::to_vec(&envelope).map_err(|e| {
+            JsonRpcError::internal_error(format!("envelope serialization failed: {e}"))
+        })
+    }
+
+    /// Decrypt result payload from Tower `crypto.decrypt`.
+    /// Returns the value unchanged if no security client is present.
+    #[expect(
+        deprecated,
+        reason = "SecurityClient types are deprecated in favor of crypto_integration; wire protocol is the same"
+    )]
+    async fn decrypt_result(
+        &self,
+        result: &serde_json::Value,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let Some(ref client) = self.security_client else {
+            return Ok(result.clone());
+        };
+
+        let Some(ct_b64) = result.get("ct").and_then(|v| v.as_str()) else {
+            return Ok(result.clone());
+        };
+
+        let ciphertext = base64::engine::general_purpose::STANDARD
+            .decode(ct_b64)
+            .map_err(|e| JsonRpcError::internal_error(format!("ciphertext base64 decode: {e}")))?;
+
+        let key = self.get_purpose_key().await?;
+
+        let request = toadstool_distributed::security::types::EncryptionRequest {
+            request_id: uuid::Uuid::new_v4(),
+            operation: toadstool_distributed::security::types::EncryptionOperation::Decrypt,
+            data: ciphertext,
+            key_id: Some(key.id.clone()),
+            algorithm: Some(key.algorithm.clone()),
+            security_level: toadstool_distributed::security::types::SecurityLevel::Enhanced,
+        };
+
+        let response = client
+            .decrypt(request)
+            .await
+            .map_err(|e| JsonRpcError::internal_error(format!("crypto.decrypt failed: {e}")))?;
+
+        Ok(serde_json::from_slice(&response.data).unwrap_or_else(|_| {
+            serde_json::Value::String(
+                base64::engine::general_purpose::STANDARD.encode(&response.data),
+            )
+        }))
+    }
+
     pub async fn dispatch_submit(
         &self,
         params: Option<&serde_json::Value>,
@@ -114,13 +235,21 @@ impl DispatchHandler {
         }
 
         if self.coral_client.is_available().await {
+            let encrypted = self.security_client.is_some();
+            let dispatch_binary = if encrypted {
+                self.encrypt_payload(&binary_bytes).await?
+            } else {
+                binary_bytes.clone()
+            };
+
             let dispatch_params = serde_json::json!({
-                "binary": binary_bytes,
+                "binary": dispatch_binary,
                 "bdf": bdf,
                 "workgroup_size": workgroup_size,
                 "buffers": buffer_descs,
                 "timeout_ms": timeout_ms,
                 "dispatch_mode": dispatch_mode,
+                "encrypted": encrypted,
             });
 
             let client = &self.coral_client;
@@ -130,17 +259,18 @@ impl DispatchHandler {
                     .await
                 {
                     Ok(result) => {
+                        let decrypted = self.decrypt_result(&result).await?;
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
-                            job.result = Some(result.clone());
+                            job.result = Some(decrypted.clone());
                         }
                         return Ok(serde_json::json!({
                             "domain": "compute.dispatch",
                             "operation": "submit",
                             "job_id": job_id,
                             "status": "completed",
-                            "output": result,
+                            "output": decrypted,
                             "error": null,
                             "metadata": {
                                 "bdf": bdf,
@@ -148,6 +278,7 @@ impl DispatchHandler {
                                 "binary_size": binary_bytes.len(),
                                 "thermal_checked": thermal.is_some(),
                                 "workgroup_size": workgroup_size,
+                                "encrypted": encrypted,
                             },
                         }));
                     }
