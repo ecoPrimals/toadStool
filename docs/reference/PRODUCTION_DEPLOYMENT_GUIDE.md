@@ -42,5 +42,5 @@ echo '{"jsonrpc":"2.0","method":"health.check","id":1}' | socat - UNIX-CONNECT:$
 ### Quality Gates
 
 - `cargo clippy --workspace --all-features -- -D warnings` (0 warnings)
-- `cargo test --workspace --all-features` (21,853 tests, 0 failures)
+- `cargo test --workspace` (20,000+ workspace / 7,841 lib-only tests, 0 failures)
 - `cargo fmt --check` (clean)
