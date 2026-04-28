@@ -147,13 +147,13 @@ pub async fn run_server_main(
         Some(Arc::clone(&error_count)),
     );
 
-    info!("Attempting registration with coordination service...");
-    match toadstool::ipc_helpers::register_with_coordination().await {
+    info!("Self-registering with discovery service...");
+    match toadstool::ipc_helpers::register_with_discovery().await {
         Ok(()) => {
-            info!("Successfully registered with coordination service");
+            info!("Successfully self-registered with discovery service");
         }
         Err(e) => {
-            warn!("Could not register with coordination service: {}", e);
+            warn!("Could not self-register with discovery service: {}", e);
             warn!("Operating in standalone mode (no discovery)");
         }
     }

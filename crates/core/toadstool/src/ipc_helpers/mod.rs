@@ -23,8 +23,13 @@ use crate::semantic_methods::SemanticMethodRegistry;
 use std::sync::OnceLock;
 use tracing::debug;
 
+#[expect(
+    deprecated,
+    reason = "re-export kept for callers migrating to register_with_discovery"
+)]
+pub use connection::register_with_coordination;
 pub use connection::{
-    find_by_capability, get_default_coordination_socket, register_with_coordination,
+    find_by_capability, get_default_coordination_socket, register_with_discovery,
 };
 
 /// Global semantic method registry (initialized once)

@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,841 lib-only verified S205), **~93** ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,842 lib-only verified S207), **~93** ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all ~40 production `#[allow]` have `reason =`** (S206) |
@@ -272,7 +272,7 @@ toadStool/
 - **Test coverage** -- pushing toward 90% target; 22,000+ tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths, specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
-- **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); next: primal self-registration with Songbird (`ipc.register`)
+- **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
 - **S206 (Apr 28, 2026)**: **Lint Evolution + Dep Hygiene + Feature Cleanup** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason)]` (17 `unsafe_code`, ~23 clippy/deprecated). `humantime-serde`, `rand`, `tokio-util`, `temp-env` unified to `{ workspace = true }` in 20+ Cargo.toml files. GPU `spirv`/`jit`/`testing` + testing `integration-tests`/`benchmarks`/`wiremock` stale features/deps removed. `test-mocks` removed from core default features (production builds no longer compile mock backends). 7,841 lib tests, 0 failures, clippy clean.

@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S206
+**Date**: April 2026 — S207
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S207 (Self-Registration via DISCOVERY_SOCKET)**: Resolved **D-SELF-REGISTRATION**
+(`register_with_coordination()` evolved to `register_with_discovery()` — sends
+`ipc.register` to Songbird via `DISCOVERY_SOCKET` with `compute.dispatch` +
+`compute.capabilities` + `unix://` endpoint. DaemonServer also self-registers.
+`find_by_capability` evolved to use `ipc.find_capability` via discovery path.
+Old functions deprecated with migration path). 7,842 lib tests, 0 failures.
 
 **S206 (Lint Evolution + Dep Hygiene + Feature Cleanup)**: Resolved **D-LINT-FULL**
 (all ~40 bare `#[allow(...)]` in production evolved to `#[allow(..., reason = "...")]` —

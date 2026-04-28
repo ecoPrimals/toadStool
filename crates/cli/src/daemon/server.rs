@@ -66,8 +66,14 @@ impl DaemonServer {
         let workload_manager = WorkloadManager::new(config.max_concurrent_workloads).await?;
         info!("✅ Workload manager initialized");
 
-        // Phase 4: Resource monitor via system metrics
-        // Phase 5: Health reporting via coordination service integration
+        // Self-register with Songbird via DISCOVERY_SOCKET (fire-and-forget)
+        match toadstool::ipc_helpers::register_with_discovery().await {
+            Ok(()) => info!("✅ Self-registered with discovery service"),
+            Err(e) => {
+                warn!("Could not self-register with discovery service: {e}");
+                warn!("Operating in standalone mode (no discovery)");
+            }
+        }
 
         info!("✅ ToadStool daemon server initialized");
 

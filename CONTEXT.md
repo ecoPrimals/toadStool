@@ -29,12 +29,13 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
   - Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET` env vars
   - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock`
 - **Peer primals**: Resolved at runtime via capability IDs and Unix-socket discovery (e.g. `capability.discover`, `resolve_capability_socket_fallback`) — not hardcoded URLs or legacy per-primal env manifests.
-- **Tests**: 20,000+ (7,841 lib-only S206, 0 failures, unlimited parallelism)
+- **Tests**: 20,000+ (7,842 lib-only S207, 0 failures, unlimited parallelism)
 - **Unsafe**: 49 blocks (all in hw-safe/GPU/VFIO/display/plugin containment, all SAFETY-documented); workspace `unsafe_code = "deny"`, 41 crates `forbid` + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; all ~40 production `#[allow]` have `reason =` (S206)
 - **async-trait**: DEPRECATED — fully removed and banned in `deny.toml` (S203r); transitive only via axum/config/wiggle
 - **deny.toml**: `ring` + `async-trait` + `zstd-sys` bans active (ecoBin v3 compliant)
 - **Display Phase 2**: `display.present`, `display.subscribe_input`, `display.poll_events` (petalTongue IPC)
 - **Encrypted compute dispatch** (Phase 55): Tower `crypto.encrypt`/`crypto.decrypt` for payloads; `DISCOVERY_SOCKET` highest-precedence capability resolution
+- **Self-registration** (S207): `ipc.register` to Songbird via `DISCOVERY_SOCKET` at startup — dynamic NUCLEUS membership without restart
 - **BTSP**: 13/13 converged — JSON-line relay + NDJSON post-handshake (primalSpring Phase 45c)
 - **Dep hygiene**: `test-mocks` off by default (S206); all workspace deps unified
 - **Monitoring**: Real host queries via `toadstool_sysmon` + `rustix::fs::statvfs`

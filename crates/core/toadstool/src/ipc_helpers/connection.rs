@@ -12,6 +12,9 @@ use tracing::{debug, info};
 use crate::{ToadStoolError, ToadStoolResult};
 use toadstool_common::constants::PRIMAL_NAME;
 use toadstool_common::constants::timeouts;
+use toadstool_common::primal_sockets::{
+    SocketPathEnv, resolve_capability_socket_fallback, resolve_toadstool_socket,
+};
 
 use super::framing;
 
@@ -35,12 +38,6 @@ fn get_runtime_dir() -> String {
         })
 }
 
-fn resolve_coordination_socket() -> String {
-    std::env::var("BIOMEOS_COORDINATION_SOCKET")
-        .or_else(|_| std::env::var("COORDINATION_SOCKET"))
-        .unwrap_or_else(|_| get_default_coordination_socket())
-}
-
 /// Default coordination-capability socket path.
 ///
 /// biomeOS convention: `$XDG_RUNTIME_DIR/biomeos/coordination.sock`
@@ -48,41 +45,42 @@ pub fn get_default_coordination_socket() -> String {
     format!("{}/biomeos/coordination.sock", get_runtime_dir())
 }
 
-/// Register ToadStool with coordination/discovery service
+/// Self-register with Songbird via `DISCOVERY_SOCKET` (preferred) or coordination fallback.
+///
+/// Sends `ipc.register` so Songbird can resolve `toadstool` by capability
+/// without the composition launcher doing it on our behalf. Fire-and-forget
+/// at the call site — if this fails the primal continues in standalone mode.
 ///
 /// # Errors
 ///
-/// Returns error if the coordination service is unreachable, JSON-RPC framing
+/// Returns error if the discovery service is unreachable, JSON-RPC framing
 /// fails, or registration is rejected.
-pub async fn register_with_coordination() -> ToadStoolResult<()> {
-    let socket_path = resolve_coordination_socket();
+pub async fn register_with_discovery() -> ToadStoolResult<()> {
+    let env = SocketPathEnv::from_env();
+    let discovery_path = resolve_capability_socket_fallback("discovery", &env);
+    let socket_path = discovery_path.to_string_lossy().to_string();
 
-    info!("Registering with coordination service at {}", socket_path);
+    info!("Self-registering with discovery service at {}", socket_path);
 
-    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
+    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(discovery_path.as_path()))
         .await
-        .map_err(|_| ToadStoolError::integration("Timeout connecting to coordination service"))?
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to discovery service"))?
         .map_err(|e| {
             ToadStoolError::integration(format!(
-                "Failed to connect to coordination service at {socket_path}: {e}"
+                "Failed to connect to discovery service at {socket_path}: {e}"
             ))
         })?;
 
-    let socket_endpoint = std::env::var("TOADSTOOL_SOCKET").unwrap_or_else(|_| {
-        let runtime_dir = get_runtime_dir();
-        format!("{runtime_dir}/biomeos/{PRIMAL_NAME}.sock")
-    });
+    let own_socket = resolve_toadstool_socket(&env);
+    let endpoint = format!("unix://{}", own_socket.display());
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
-        "method": "capability.register",
+        "method": "ipc.register",
         "params": {
-            "primal_name": PRIMAL_NAME,
-            "capabilities": [
-                "compute", "workload", "orchestration", "ai_local",
-                "gpu", "wasm", "container", "shader.dispatch"
-            ],
-            "endpoint": socket_endpoint
+            "primal_id": PRIMAL_NAME,
+            "capabilities": ["compute.dispatch", "compute.capabilities"],
+            "endpoint": endpoint
         },
         "id": 1
     });
@@ -92,37 +90,58 @@ pub async fn register_with_coordination() -> ToadStoolResult<()> {
 
     if let Some(error) = response.get("error") {
         return Err(ToadStoolError::integration(format!(
-            "Coordination service registration failed: {error}"
+            "Discovery service registration failed: {error}"
         )));
     }
 
-    info!("Successfully registered with coordination service");
+    info!("Self-registered with discovery service ({})", endpoint);
     debug!("Registration response: {:?}", response);
 
     Ok(())
 }
 
-/// Find primals by capability via coordination service
+/// Register ToadStool with coordination/discovery service.
+///
+/// Delegates to [`register_with_discovery`], which uses `DISCOVERY_SOCKET`
+/// (highest precedence, set by `composition_nucleus.sh` → Songbird) with
+/// full fallback through `resolve_capability_socket_fallback("discovery", …)`.
+///
+/// # Errors
+///
+/// Returns error if the coordination service is unreachable, JSON-RPC framing
+/// fails, or registration is rejected.
+#[deprecated(note = "use register_with_discovery — aligns with DISCOVERY_SOCKET + ipc.register")]
+pub async fn register_with_coordination() -> ToadStoolResult<()> {
+    register_with_discovery().await
+}
+
+/// Find primals by capability via discovery/coordination service
+///
+/// Uses `DISCOVERY_SOCKET` (highest precedence) with full fallback chain.
 ///
 /// # Errors
 ///
 /// Returns error if the coordination service is unreachable, the response is
 /// invalid, or the query fails.
 pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>> {
-    let socket_path = resolve_coordination_socket();
+    let env = SocketPathEnv::from_env();
+    let discovery_path = resolve_capability_socket_fallback("discovery", &env);
+    let socket_path = discovery_path.to_string_lossy().to_string();
 
     debug!("Finding primals with capability: {}", capability);
 
-    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(&socket_path))
+    let mut stream = timeout(IPC_TIMEOUT, UnixStream::connect(discovery_path.as_path()))
         .await
-        .map_err(|_| ToadStoolError::integration("Timeout connecting to coordination service"))?
+        .map_err(|_| ToadStoolError::integration("Timeout connecting to discovery service"))?
         .map_err(|e| {
-            ToadStoolError::integration(format!("Failed to connect to coordination service: {e}"))
+            ToadStoolError::integration(format!(
+                "Failed to connect to discovery service at {socket_path}: {e}"
+            ))
         })?;
 
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
-        "method": "capability.find",
+        "method": "ipc.find_capability",
         "params": {
             "capability": capability
         },

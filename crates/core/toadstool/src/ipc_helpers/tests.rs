@@ -14,23 +14,35 @@ fn test_constants() {
 }
 
 #[tokio::test]
-async fn test_register_with_coordination_graceful_failure() {
-    temp_env::async_with_vars([("BIOMEOS_COORDINATION_SOCKET", None::<&str>)], async {
-        let result = register_with_coordination().await;
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        let err_msg = format!("{err}");
-        assert!(err_msg.contains("coordination") || err_msg.contains("connection"));
-    })
+async fn test_register_with_discovery_graceful_failure() {
+    temp_env::async_with_vars(
+        [
+            ("DISCOVERY_SOCKET", None::<&str>),
+            ("BIOMEOS_COORDINATION_SOCKET", None::<&str>),
+        ],
+        async {
+            let result = register_with_discovery().await;
+            assert!(result.is_err());
+            let err = result.unwrap_err();
+            let err_msg = format!("{err}");
+            assert!(err_msg.contains("discovery") || err_msg.contains("connection"));
+        },
+    )
     .await;
 }
 
 #[tokio::test]
 async fn test_find_by_capability_graceful_failure() {
-    temp_env::async_with_vars([("BIOMEOS_COORDINATION_SOCKET", None::<&str>)], async {
-        let result = find_by_capability("crypto").await;
-        assert!(result.is_err());
-    })
+    temp_env::async_with_vars(
+        [
+            ("DISCOVERY_SOCKET", None::<&str>),
+            ("BIOMEOS_COORDINATION_SOCKET", None::<&str>),
+        ],
+        async {
+            let result = find_by_capability("crypto").await;
+            assert!(result.is_err());
+        },
+    )
     .await;
 }
 
@@ -40,15 +52,19 @@ fn test_json_rpc_request_format() {
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.register",
         "params": {
-            "primal_name": "toadstool",
-            "capabilities": ["compute"]
+            "primal_id": "toadstool",
+            "capabilities": ["compute.dispatch", "compute.capabilities"]
         },
         "id": 1
     });
     assert_eq!(request.get("jsonrpc").unwrap(), "2.0");
     assert_eq!(request.get("method").unwrap(), "ipc.register");
-    assert!(request.get("params").is_some());
-    assert_eq!(request.get("id").unwrap(), 1);
+    let params = request.get("params").unwrap();
+    assert_eq!(params.get("primal_id").unwrap(), "toadstool");
+    let caps = params.get("capabilities").unwrap().as_array().unwrap();
+    assert_eq!(caps.len(), 2);
+    assert_eq!(caps[0], "compute.dispatch");
+    assert_eq!(caps[1], "compute.capabilities");
 }
 
 #[test]
@@ -326,51 +342,91 @@ async fn spawn_mock_songbird(
 }
 
 #[tokio::test]
-async fn test_register_with_coordination_success_via_mock() {
+async fn test_register_with_discovery_success_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
-    let socket_path = dir.path().join("coordination.sock");
+    let socket_path = dir.path().join("discovery.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
 
-    temp_env::async_with_vars(
-        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
-        async {
-            let p = path_str.clone();
-            let handle = spawn_mock_songbird(&p, reply).await;
-            let result = register_with_coordination().await;
-            handle.abort();
-            assert!(result.is_ok(), "registration should succeed: {result:?}");
-        },
-    )
+    temp_env::async_with_vars([("DISCOVERY_SOCKET", Some(path_str.as_str()))], async {
+        let p = path_str.clone();
+        let handle = spawn_mock_songbird(&p, reply).await;
+        let result = register_with_discovery().await;
+        handle.abort();
+        assert!(result.is_ok(), "registration should succeed: {result:?}");
+    })
     .await;
 }
 
 #[tokio::test]
-async fn test_register_with_coordination_error_reply_via_mock() {
+async fn test_register_with_discovery_error_reply_via_mock() {
     let dir = tempfile::TempDir::new().unwrap();
-    let socket_path = dir.path().join("coordination_err.sock");
+    let socket_path = dir.path().join("discovery_err.sock");
     let path_str = socket_path.to_str().unwrap().to_string();
 
     let reply = json!({"jsonrpc": "2.0", "error": {"code": -32000, "message": "already registered"}, "id": 1});
 
-    temp_env::async_with_vars(
-        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
-        async {
-            let p = path_str.clone();
-            let handle = spawn_mock_songbird(&p, reply).await;
-            let result = register_with_coordination().await;
-            handle.abort();
-            assert!(result.is_err());
-            assert!(
-                result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("registration failed")
-            );
-        },
-    )
+    temp_env::async_with_vars([("DISCOVERY_SOCKET", Some(path_str.as_str()))], async {
+        let p = path_str.clone();
+        let handle = spawn_mock_songbird(&p, reply).await;
+        let result = register_with_discovery().await;
+        handle.abort();
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("registration failed")
+        );
+    })
     .await;
+}
+
+/// Verify the outbound `ipc.register` request contains correct method and fields.
+#[tokio::test]
+async fn test_register_with_discovery_sends_ipc_register_method() {
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    use tokio::net::UnixListener;
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let socket_path = dir.path().join("discovery_capture.sock");
+    let path_str = socket_path.to_str().unwrap().to_string();
+
+    let listener = UnixListener::bind(&socket_path).expect("bind mock socket");
+    let capture_handle = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let (read_half, mut write_half) = stream.into_split();
+        let mut reader = BufReader::new(read_half);
+        let mut line = String::new();
+        reader.read_line(&mut line).await.expect("read request");
+        let reply = json!({"jsonrpc": "2.0", "result": {"status": "registered"}, "id": 1});
+        write_half
+            .write_all(format!("{reply}\n").as_bytes())
+            .await
+            .expect("write reply");
+        write_half.flush().await.expect("flush");
+        line
+    });
+
+    temp_env::async_with_vars([("DISCOVERY_SOCKET", Some(path_str.as_str()))], async {
+        let _ = register_with_discovery().await;
+    })
+    .await;
+
+    let captured = capture_handle.await.expect("capture task");
+    let req: serde_json::Value = serde_json::from_str(&captured).expect("parse request");
+    assert_eq!(req.get("method").unwrap(), "ipc.register");
+    let params = req.get("params").unwrap();
+    assert_eq!(params.get("primal_id").unwrap(), "toadstool");
+    let caps = params.get("capabilities").unwrap().as_array().unwrap();
+    assert!(caps.contains(&json!("compute.dispatch")));
+    assert!(caps.contains(&json!("compute.capabilities")));
+    let endpoint = params.get("endpoint").unwrap().as_str().unwrap();
+    assert!(
+        endpoint.starts_with("unix://"),
+        "endpoint should start with unix://, got: {endpoint}"
+    );
 }
 
 #[tokio::test]
@@ -390,19 +446,16 @@ async fn test_find_by_capability_success_via_mock() {
         "id": 1
     });
 
-    temp_env::async_with_vars(
-        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
-        async {
-            let p = path_str.clone();
-            let handle = spawn_mock_songbird(&p, reply).await;
-            let result = find_by_capability("compute").await;
-            handle.abort();
-            assert!(result.is_ok());
-            let primals = result.unwrap();
-            assert_eq!(primals.len(), 2);
-            assert!(primals.contains(&"barracuda".to_string()));
-        },
-    )
+    temp_env::async_with_vars([("DISCOVERY_SOCKET", Some(path_str.as_str()))], async {
+        let p = path_str.clone();
+        let handle = spawn_mock_songbird(&p, reply).await;
+        let result = find_by_capability("compute").await;
+        handle.abort();
+        assert!(result.is_ok());
+        let primals = result.unwrap();
+        assert_eq!(primals.len(), 2);
+        assert!(primals.contains(&"barracuda".to_string()));
+    })
     .await;
 }
 
@@ -415,15 +468,12 @@ async fn test_find_by_capability_error_reply() {
     let reply =
         json!({"jsonrpc": "2.0", "error": {"code": -1, "message": "no capabilities"}, "id": 1});
 
-    temp_env::async_with_vars(
-        [("BIOMEOS_COORDINATION_SOCKET", Some(path_str.as_str()))],
-        async {
-            let p = path_str.clone();
-            let handle = spawn_mock_songbird(&p, reply).await;
-            let result = find_by_capability("gpu").await;
-            handle.abort();
-            assert!(result.is_err());
-        },
-    )
+    temp_env::async_with_vars([("DISCOVERY_SOCKET", Some(path_str.as_str()))], async {
+        let p = path_str.clone();
+        let handle = spawn_mock_songbird(&p, reply).await;
+        let result = find_by_capability("gpu").await;
+        handle.abort();
+        assert!(result.is_err());
+    })
     .await;
 }
