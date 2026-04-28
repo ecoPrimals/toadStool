@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,842 lib-only verified S207), **~93** ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **20,000+ tests, 0 failures** (7,842 lib-only verified S208), **~93** ignored (hardware-gated); full workspace ~3m30s |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all ~40 production `#[allow]` have `reason =`** (S206) |
@@ -247,7 +247,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **20,000+**, 0 failures (7,841 lib-only S205) |
+| Workspace tests | **20,000+**, 0 failures (7,842 lib-only S208) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -384,7 +384,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 2026 — S206 (Lint Evolution + Dep Hygiene + Feature Cleanup). **20,000+** workspace tests, 0 failures (7,841 lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204: ffi\_loader.rs gap closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **env_overrides fully interned** (socket_env). Real monitoring (sysmon + statvfs). **BTSP Phase 2 + JSON-line relay** (primalSpring Phase 45c). **Display Phase 2** (petalTongue IPC: `display.present`, `display.subscribe_input`, `display.poll_events`). **Encrypted compute dispatch** (Phase 55: Tower crypto delegation). **All lint attrs with `reason =`** (S206). **`test-mocks` off default** (S206). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: April 2026 — S208 (Deep Debt — Unsafe Allow + Feature Hygiene + Expect→Result). **20,000+** workspace tests, 0 failures (7,842 lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects** (S208). IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Encrypted compute dispatch** (Phase 55). **Display Phase 2** (petalTongue IPC). **BTSP Phase 2 + JSON-line relay**. **All lint attrs with `reason =`** (S206). **`test-mocks` off default** (S206). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

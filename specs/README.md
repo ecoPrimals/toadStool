@@ -115,13 +115,13 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 | Test coverage | Target 90%, current ~83.6% (llvm-cov) | D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
-### Key Numbers (S206)
+### Key Numbers (S208)
 
-- **20,000+ workspace / 7,841 lib-only** tests (0 failures), **~65 JSON-RPC methods**
+- **20,000+ workspace / 7,842 lib-only** tests (0 failures), **~65 JSON-RPC methods**
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
 - **VFIO interface** — BAR0, DMA, power management (nvpmu)
 - **NPU dispatch** — Akida AKD1000/1500 (kernel, VFIO, userspace)
-- **41 crates** `#![forbid(unsafe_code)]`, **6 crates** `#![deny(unsafe_code)]` — ~66 unsafe blocks (all hw containment)
+- **41 crates** `#![forbid(unsafe_code)]`, **5 crates** with narrow `#[allow(unsafe_code, reason)]` — **49 unsafe blocks** (all hw containment, all SAFETY-documented)
 - **ecoBin v3.0 certified** — pure Rust, zero C application deps
 - **Rust 2024 edition**, MSRV 1.85
 

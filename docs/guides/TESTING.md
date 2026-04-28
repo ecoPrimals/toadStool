@@ -1,12 +1,12 @@
 # Testing Guide
 
-**Last Updated**: April 28, 2026 — S206
+**Last Updated**: April 28, 2026 — S208
 
 ## Quick Status
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Lib-Only Tests** | **7,841 (S206)** | 0 failures, unlimited parallelism |
+| **Lib-Only Tests** | **7,842 (S208)** | 0 failures, unlimited parallelism |
 | **Workspace Tests** | **20,000+ (default features)** | ~93 intentional GPU/hardware ignores |
 | **Line Coverage** | **~83.6% (lib-only)** | ~185K production lines. Gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
 | **Clippy Pedantic** | **0 warnings** | Full workspace (`-D warnings`), in CI |
