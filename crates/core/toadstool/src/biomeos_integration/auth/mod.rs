@@ -136,12 +136,18 @@ impl AuthenticationManager {
             tracing::info!("Discovered crypto service via environment: {}", endpoint);
             let mut config = config;
             config.security_endpoint = endpoint;
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "discover() falls back to legacy with_security() when env endpoint found"
+            )]
             return Ok(Self::with_security(config));
         }
 
         if !config.security_endpoint.is_empty() {
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "discover() falls back to legacy with_security() when config endpoint set"
+            )]
             return Ok(Self::with_security(config));
         }
 

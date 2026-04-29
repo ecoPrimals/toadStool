@@ -134,7 +134,10 @@ impl UniversalServiceAdapter {
 
         match protocol.as_str() {
             "jsonrpc" | "unix" => self.invoke_jsonrpc(provider, request).await,
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "HTTP invoke kept for legacy providers; prefer unix/jsonrpc"
+            )]
             "http" | "https" => self.invoke_http(provider, request).await,
             "grpc" => {
                 tracing::error!(

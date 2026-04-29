@@ -32,7 +32,10 @@
 //! # }
 //! ```
 
-#![allow(clippy::must_use_candidate)]
+#![allow(
+    clippy::must_use_candidate,
+    reason = "model parser: most methods are data accessors where ignoring the return is harmless"
+)]
 
 mod error;
 mod inference;

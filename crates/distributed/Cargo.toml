@@ -82,7 +82,7 @@ required-features = ["test-mocks"]
 
 [dev-dependencies]
 toadstool-testing = { path = "../testing" }
-tokio-test = "0.4"
+tokio-test = { workspace = true }
 tempfile = { workspace = true }
 temp-env = { workspace = true }
 toml = { workspace = true }

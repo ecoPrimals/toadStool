@@ -46,9 +46,7 @@ impl ArduinoDevice {
                 sketch_path_str,
             ])
             .output()
-            .map_err(|e| {
-                ToadStoolError::execution(format!("Failed to run Arduino CLI: {}", e))
-            })?;
+            .map_err(|e| ToadStoolError::execution(format!("Failed to run Arduino CLI: {}", e)))?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
@@ -86,9 +84,8 @@ impl ArduinoDevice {
         let temp_dir = std::env::temp_dir();
         let hex_path = temp_dir.join(format!("arduino_upload_{}.hex", Uuid::new_v4()));
 
-        std::fs::write(&hex_path, compiled_code).map_err(|e| {
-            ToadStoolError::execution(format!("Failed to write hex file: {}", e))
-        })?;
+        std::fs::write(&hex_path, compiled_code)
+            .map_err(|e| ToadStoolError::execution(format!("Failed to write hex file: {}", e)))?;
 
         // Upload using Arduino CLI
         let hex_path_str = hex_path.to_str().ok_or_else(|| {

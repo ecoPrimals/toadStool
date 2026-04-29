@@ -90,7 +90,10 @@ async fn check_gpu_available() -> bool {
     }
 }
 
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "health check uses legacy EcosystemService enum for status display"
+)]
 pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
     let mut issues = vec![];
 

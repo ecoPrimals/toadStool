@@ -65,7 +65,10 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     }
 
     if let Ok(enabled) = std::env::var(socket_env::TOADSTOOL_ENABLE_GRPC) {
-        #[expect(deprecated)]
+        #[expect(
+            deprecated,
+            reason = "gRPC feature flag kept for env-var compat; prefer IPC"
+        )]
         {
             config.features.enable_grpc = parse::parse_bool(&enabled);
         }

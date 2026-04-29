@@ -44,8 +44,6 @@ tempfile = { workspace = true }
 default = ["python-subprocess"]
 python-subprocess = []
 python-embedded = ["dep:pyo3", "dep:pyo3-asyncio"]
-ai-ml = []
-squirrel-preparation = []
 
 [lints]
 workspace = true

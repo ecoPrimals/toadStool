@@ -87,7 +87,7 @@ cross-compilation = ["cross", "native-bindings"]
 # all = ["mainframe", "embedded", "industrial", "legacy-networking", "real-time", "cross-compilation"]
 
 [dev-dependencies]
-tokio-test = "0.4"
+tokio-test = { workspace = true }
 tempfile = { workspace = true }
 
 [lints]

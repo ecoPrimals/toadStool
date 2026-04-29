@@ -59,7 +59,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 # System integration
 tempfile = { workspace = true }
-sha2 = "0.10"
+sha2 = { workspace = true }
 
 [features]
 # PURE RUST: default features simplified

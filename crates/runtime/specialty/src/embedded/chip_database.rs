@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(missing_docs)]
+#![allow(
+    missing_docs,
+    reason = "chip metadata tables are self-documenting data definitions"
+)]
 //! Built-in chip metadata for ISP / ICSP validation (signatures, voltage, timing).
 
 use super::errors::EmbeddedProgrammerError;

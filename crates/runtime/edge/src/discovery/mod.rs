@@ -28,8 +28,9 @@ pub use network::NetworkDiscovery;
 pub use serial::SerialPortDiscovery;
 pub use usb::USBDiscovery;
 
-type DiscoveryFuture<'a> =
-    std::pin::Pin<Box<dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + 'a>>;
+type DiscoveryFuture<'a> = std::pin::Pin<
+    Box<dyn std::future::Future<Output = ToadStoolResult<Vec<Arc<dyn EdgeDevice>>>> + Send + 'a>,
+>;
 
 /// Device Discovery Service
 pub struct DeviceDiscoveryService {
@@ -74,7 +75,10 @@ impl DeviceDiscoveryService {
                     std::net::IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 1, 0)),
                     std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 0)),
                 ],
-                ports: vec![config.port_registry.server, config.port_registry.gpu_compute],
+                ports: vec![
+                    config.port_registry.server,
+                    config.port_registry.gpu_compute,
+                ],
                 timeout: Duration::from_secs(1),
             }),
             Box::new(USBDiscovery {
@@ -211,9 +215,7 @@ impl DeviceDiscoveryService {
     /// - No drift accumulation
     /// - More precise timing
     /// - Idiomatic Tokio pattern
-    pub fn start_continuous_discovery(
-        self: &Arc<Self>,
-    ) -> ToadStoolResult<()> {
+    pub fn start_continuous_discovery(self: &Arc<Self>) -> ToadStoolResult<()> {
         let discovery_interval = Duration::from_secs(self.config.discovery_timeout_secs);
         let service = Arc::clone(self);
 
@@ -225,9 +227,10 @@ impl DeviceDiscoveryService {
                 interval.tick().await;
 
                 if service.needs_discovery().await
-                    && let Err(e) = service.discover_devices().await {
-                        error!("Continuous discovery failed: {}", e);
-                    }
+                    && let Err(e) = service.discover_devices().await
+                {
+                    error!("Continuous discovery failed: {}", e);
+                }
             }
         });
 

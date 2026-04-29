@@ -18,7 +18,10 @@
 /// DEPRECATED S197: `cudarc` removed. CUDA via barraCuda/coralReef IPC.
 pub mod cuda_impl;
 
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "re-exports kept for callers migrating to WebGPU backends"
+)]
 pub use cuda_impl::{CudaBackend, CudaComputeResource};
 
 #[cfg(feature = "vulkan")]

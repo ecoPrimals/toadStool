@@ -26,7 +26,7 @@ use tokio::time::timeout;
 use tracing::{info, warn};
 
 // Legacy integration layer; uses deprecated EcosystemService for ServiceConnection migration
-#[expect(deprecated)]
+#[expect(deprecated, reason = "entire impl block wraps legacy EcosystemService; callers migrating to capability-based discovery")]
 impl EcosystemIntegrator {
     /// Create a new ecosystem integrator (legacy discovery layer)
     #[must_use]

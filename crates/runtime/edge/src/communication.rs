@@ -171,13 +171,10 @@ impl CommunicationProtocol for SerialProtocol {
                 let mut port = serialport::new(&address, baud)
                     .timeout(timeout)
                     .open()
-                    .map_err(|e| {
-                        ToadStoolError::runtime(format!("Serial open failed: {}", e))
-                    })?;
+                    .map_err(|e| ToadStoolError::runtime(format!("Serial open failed: {}", e)))?;
 
-                port.write_all(&message).map_err(|e| {
-                    ToadStoolError::runtime(format!("Serial write failed: {}", e))
-                })?;
+                port.write_all(&message)
+                    .map_err(|e| ToadStoolError::runtime(format!("Serial write failed: {}", e)))?;
 
                 Ok::<(), ToadStoolError>(())
             })
@@ -200,14 +197,12 @@ impl CommunicationProtocol for SerialProtocol {
                 let mut port = serialport::new(&address, baud)
                     .timeout(timeout)
                     .open()
-                    .map_err(|e| {
-                        ToadStoolError::runtime(format!("Serial open failed: {}", e))
-                    })?;
+                    .map_err(|e| ToadStoolError::runtime(format!("Serial open failed: {}", e)))?;
 
                 let mut buf = vec![0u8; 4096];
-                let n = port.read(&mut buf).map_err(|e| {
-                    ToadStoolError::runtime(format!("Serial read failed: {}", e))
-                })?;
+                let n = port
+                    .read(&mut buf)
+                    .map_err(|e| ToadStoolError::runtime(format!("Serial read failed: {}", e)))?;
 
                 buf.truncate(n);
                 Ok::<Vec<u8>, ToadStoolError>(buf)
@@ -259,9 +254,7 @@ impl CommunicationProtocol for NetworkProtocol {
             let mut stream = timeout(self.timeout, TcpStream::connect(address))
                 .await
                 .map_err(|_| ToadStoolError::runtime("TCP connect timeout".to_string()))?
-                .map_err(|e| {
-                    ToadStoolError::runtime(format!("TCP connect failed: {}", e))
-                })?;
+                .map_err(|e| ToadStoolError::runtime(format!("TCP connect failed: {}", e)))?;
 
             use tokio::io::AsyncWriteExt;
             stream
@@ -282,9 +275,7 @@ impl CommunicationProtocol for NetworkProtocol {
             let mut stream = timeout(self.timeout, TcpStream::connect(address))
                 .await
                 .map_err(|_| ToadStoolError::runtime("TCP connect timeout".to_string()))?
-                .map_err(|e| {
-                    ToadStoolError::runtime(format!("TCP connect failed: {}", e))
-                })?;
+                .map_err(|e| ToadStoolError::runtime(format!("TCP connect failed: {}", e)))?;
 
             let mut buf = vec![0u8; 4096];
             let n = timeout(self.timeout, stream.read(&mut buf))

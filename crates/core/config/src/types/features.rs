@@ -83,7 +83,7 @@ impl Default for FeatureFlags {
             enable_distributed: true,
             enable_federation: true,
             enable_graphql: false,
-            #[expect(deprecated)]
+            #[expect(deprecated, reason = "gRPC field kept for config compat; prefer IPC")]
             enable_grpc: false,
             enable_openapi: true,
             enable_auto_config: true,

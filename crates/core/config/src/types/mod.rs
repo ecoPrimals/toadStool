@@ -150,7 +150,10 @@ impl ToadStoolConfig {
             config.network.bind_address = bind_address.parse()?;
         }
 
-        #[expect(deprecated)]
+        #[expect(
+            deprecated,
+            reason = "legacy endpoint env-var override during migration"
+        )]
         if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
             .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))
         {
@@ -179,8 +182,10 @@ impl ToadStoolConfig {
             ));
         }
 
-        // Validate legacy network configuration (deprecated - use capability-based discovery)
-        #[expect(deprecated)]
+        #[expect(
+            deprecated,
+            reason = "validates legacy endpoint fields during migration"
+        )]
         if self.network.endpoints.coordination.is_empty() {
             return Err(crate::ConfigError::Invalid(
                 "Coordination service endpoint cannot be empty (use capability-based discovery instead)"

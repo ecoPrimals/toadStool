@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Auth module tests - uses `well_known` for IPC addressing in test fixtures
-#![allow(deprecated)] // Intentional: IPC addressing requires well-known names
+//! Auth module tests - uses capability domains for issuer validation
+#![allow(
+    deprecated,
+    reason = "tests exercise legacy auth APIs pending migration"
+)]
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::constants::ecosystem::{capabilities, well_known};
 use toadstool_common::constants::primal_identity::audience;
 use toadstool_common::constants::timeouts::{TIMESTAMP_VALIDATION_WINDOW, TOKEN_REFRESH_INTERVAL};
 
@@ -54,9 +57,9 @@ fn sample_token() -> AuthenticationToken {
         public_key: "pk-abc".to_string(),
         expires_at: expires,
         issued_at: now,
-        issuer: well_known::BEARDOG.to_string(),
+        issuer: capabilities::CRYPTO.to_string(),
         audience: vec![
-            well_known::SONGBIRD.to_string(),
+            capabilities::COORDINATION.to_string(),
             audience::PLATFORM_AUDIENCE.to_string(),
         ],
         scope: vec!["cross-primal".to_string()],
@@ -74,7 +77,7 @@ fn test_auth_manager_config_construction() {
 fn test_authentication_token_construction() {
     let token = sample_token();
     assert_eq!(token.id, "token-123");
-    assert_eq!(token.issuer, well_known::BEARDOG);
+    assert_eq!(token.issuer, capabilities::CRYPTO);
 }
 
 #[test]
@@ -92,7 +95,7 @@ async fn test_manager_with_inmemory_backend() {
     let result = manager.get_current_token().await;
     assert!(result.is_ok());
     let token = result.unwrap();
-    assert_eq!(token.issuer, well_known::BEARDOG);
+    assert_eq!(token.issuer, capabilities::CRYPTO);
 }
 
 #[tokio::test(flavor = "current_thread")]

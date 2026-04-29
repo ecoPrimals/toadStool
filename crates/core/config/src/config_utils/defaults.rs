@@ -155,7 +155,10 @@ pub fn get_message_broker_url() -> String {
 
 /// Get distributed storage URL from environment or default
 #[must_use]
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "legacy storage URL helper; callers migrating to capability-based discovery"
+)]
 pub fn get_distributed_storage_url() -> String {
     let loader = EnvConfigLoader::new();
     loader.get_string(

@@ -13,9 +13,15 @@ use super::DiscoveryMethod;
 
 /// mDNS Discovery Method
 pub struct MDNSDiscovery {
-    #[expect(dead_code, reason = "stored from config; will filter mDNS service names on real networks")]
+    #[expect(
+        dead_code,
+        reason = "stored from config; will filter mDNS service names on real networks"
+    )]
     pub(super) service_types: Vec<String>,
-    #[expect(dead_code, reason = "stored from config; will bound mDNS multicast wait")]
+    #[expect(
+        dead_code,
+        reason = "stored from config; will bound mDNS multicast wait"
+    )]
     pub(super) timeout: Duration,
 }
 
@@ -29,16 +35,18 @@ impl DiscoveryMethod for MDNSDiscovery {
             // Primary: filesystem-based discovery for edge devices registering via biomeOS runtime
             // Edge devices on the same host (e.g. Raspberry Pi running ToadStool) register sockets
             if let Some(devices) = self.discover_via_filesystem().await?
-                && !devices.is_empty() {
-                    return Ok(devices);
-                }
+                && !devices.is_empty()
+            {
+                return Ok(devices);
+            }
 
             // Fallback: scan for _toadstool-edge._tcp service type via filesystem polling
             // Devices can register by creating JSON descriptor in $XDG_RUNTIME_DIR/edge-devices/
             if let Some(devices) = self.discover_via_edge_registry().await?
-                && !devices.is_empty() {
-                    return Ok(devices);
-                }
+                && !devices.is_empty()
+            {
+                return Ok(devices);
+            }
 
             debug!("mDNS/filesystem discovery: no edge devices found");
             Ok(Vec::new())
@@ -124,9 +132,10 @@ impl MDNSDiscovery {
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "json")
                 && let Ok(content) = tokio::fs::read_to_string(&path).await
-                    && let Ok(device) = self.parse_edge_registry_entry(&content) {
-                        devices.push(device);
-                    }
+                && let Ok(device) = self.parse_edge_registry_entry(&content)
+            {
+                devices.push(device);
+            }
         }
 
         if devices.is_empty() {

@@ -184,7 +184,10 @@ pub use primal_capabilities::{
 pub use security_provider::ExternalTarget;
 
 // Re-export deprecated Coordination types for backward compatibility
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "re-exports kept for callers migrating to capability-based coordination"
+)]
 pub use coordination::{
     CoordinationIntegrationConfig, CoordinationJobRequest, CoordinationJobResponse,
     CoordinationNetworkDiscovery, JobCoordinator,

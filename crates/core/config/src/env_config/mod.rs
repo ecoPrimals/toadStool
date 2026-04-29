@@ -91,7 +91,10 @@ impl EnvironmentConfig {
             config.network.bind_address = addr;
         }
 
-        #[expect(deprecated)]
+        #[expect(
+            deprecated,
+            reason = "populates legacy endpoint fields from env-config during migration"
+        )]
         {
             config.network.endpoints.coordination = self.network.coordination_endpoint();
             config.network.endpoints.security = self.network.security_endpoint();

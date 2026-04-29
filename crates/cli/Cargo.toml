@@ -95,7 +95,7 @@ colored = "2.0"
 
 # Encoding
 base64 = { workspace = true }
-sha2 = "0.10"
+sha2 = { workspace = true }
 
 # barracuda removed S94b: nautilus methods are now proxied to barraCuda via
 # capability-based IPC (JSON-RPC over Unix socket). Zero library coupling.

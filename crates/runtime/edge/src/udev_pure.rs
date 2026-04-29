@@ -53,10 +53,7 @@ impl UdevParser {
         let mut devices = Vec::new();
 
         let entries = fs::read_dir(&sys_class_path).map_err(|e| {
-            ToadStoolError::runtime(format!(
-                "Failed to read /sys/class/{}: {}",
-                subsystem, e
-            ))
+            ToadStoolError::runtime(format!("Failed to read /sys/class/{}: {}", subsystem, e))
         })?;
 
         for entry in entries.flatten() {
@@ -101,14 +98,16 @@ impl UdevParser {
 
             // Try to find vendor and product IDs
             if let Ok(vendor_str) = fs::read_to_string(device_real_path.join("idVendor"))
-                && let Ok(vid) = u16::from_str_radix(vendor_str.trim(), 16) {
-                    vendor_id = Some(vid);
-                }
+                && let Ok(vid) = u16::from_str_radix(vendor_str.trim(), 16)
+            {
+                vendor_id = Some(vid);
+            }
 
             if let Ok(product_str) = fs::read_to_string(device_real_path.join("idProduct"))
-                && let Ok(pid) = u16::from_str_radix(product_str.trim(), 16) {
-                    product_id = Some(pid);
-                }
+                && let Ok(pid) = u16::from_str_radix(product_str.trim(), 16)
+            {
+                product_id = Some(pid);
+            }
         }
 
         Ok(UdevDevice {

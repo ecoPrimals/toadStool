@@ -27,7 +27,7 @@ toadstool-sysmon = { path = "../../core/sysmon" }
 futures = { workspace = true }
 
 [dev-dependencies]
-tokio-test = "0.4"
+tokio-test = { workspace = true }
 criterion = { workspace = true }
 
 [lints]

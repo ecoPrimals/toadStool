@@ -9,11 +9,6 @@
 //! (`security_connection_hint` and `resolve_capability_socket_fallback`), not direct `BEARDOG_*`
 //! env lookups — see `auth::AuthManager::discover`.
 
-#![expect(
-    deprecated,
-    reason = "IPC addressing requires well-known legacy names during migration"
-)]
-
 #[cfg(any(test, feature = "test-mocks"))]
 use std::collections::HashMap;
 use std::future::Future;
@@ -25,7 +20,7 @@ use std::time::SystemTime;
 #[cfg(any(test, feature = "test-mocks"))]
 use tokio::sync::Mutex;
 
-use toadstool_common::constants::ecosystem::well_known;
+use toadstool_common::constants::ecosystem::capabilities;
 use toadstool_common::constants::primal_identity::{PRIMAL_NAME, audience};
 
 use crate::{ToadStoolError, ToadStoolResult};
@@ -89,7 +84,7 @@ pub trait AuthBackend: Send + Sync {
     /// Validate a token (optional, default implementation)
     ///
     /// The accepted issuer is read from `TOADSTOOL_AUTH_ISSUER` (capability-based),
-    /// falling back to [`well_known::BEARDOG`] for backward compatibility.
+    /// falling back to the `"crypto"` capability domain.
     ///
     /// # Errors
     ///
@@ -103,7 +98,7 @@ pub trait AuthBackend: Send + Sync {
 
         let expected_issuer =
             std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_AUTH_ISSUER)
-                .unwrap_or_else(|_| well_known::BEARDOG.to_string());
+                .unwrap_or_else(|_| capabilities::CRYPTO.to_string());
 
         if token.issuer != expected_issuer {
             return Err(ToadStoolError::runtime(format!(
@@ -383,7 +378,7 @@ impl InMemoryAuthBackend {
             public_key: "test-public-key".to_string(),
             expires_at: SystemTime::now() + Duration::from_secs(3600),
             issued_at: SystemTime::now(),
-            issuer: well_known::BEARDOG.to_string(),
+            issuer: capabilities::CRYPTO.to_string(),
             audience: vec![
                 PRIMAL_NAME.to_string(),
                 audience::PLATFORM_AUDIENCE.to_string(),
@@ -450,7 +445,7 @@ impl AuthBackend for InMemoryAuthBackend {
                 public_key: "test-public-key".to_string(),
                 expires_at: SystemTime::now() + Duration::from_secs(3600),
                 issued_at: SystemTime::now(),
-                issuer: well_known::BEARDOG.to_string(),
+                issuer: capabilities::CRYPTO.to_string(),
                 audience: vec![
                     PRIMAL_NAME.to_string(),
                     audience::PLATFORM_AUDIENCE.to_string(),
@@ -476,7 +471,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_auth_backend_request() {
-        use toadstool_common::interned_strings::capabilities;
+        use toadstool_common::constants::ecosystem::capabilities;
         let backend = InMemoryAuthBackend::new();
         let request = TokenRequest {
             requesting_primal: "toadstool".to_string(),
@@ -489,12 +484,13 @@ mod tests {
         assert!(result.is_ok());
 
         let token = result.unwrap();
-        assert_eq!(token.issuer, well_known::BEARDOG);
+        assert_eq!(token.issuer, capabilities::CRYPTO);
         assert!(token.expires_at > SystemTime::now());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_inmemory_auth_backend_refresh() {
+        use toadstool_common::constants::ecosystem::capabilities;
         let backend = InMemoryAuthBackend::new();
         let request = TokenRefreshRequest {
             requesting_primal: "toadstool".to_string(),
@@ -506,7 +502,7 @@ mod tests {
 
         let token = result.unwrap();
         assert!(token.id.contains("refreshed"));
-        assert_eq!(token.issuer, well_known::BEARDOG);
+        assert_eq!(token.issuer, capabilities::CRYPTO);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -535,7 +531,7 @@ mod tests {
             public_key: "test-key".to_string(),
             expires_at: SystemTime::now() - Duration::from_secs(3600), // Expired!
             issued_at: SystemTime::now() - Duration::from_secs(7200),
-            issuer: well_known::BEARDOG.to_string(),
+            issuer: capabilities::CRYPTO.to_string(),
             audience: vec![PRIMAL_NAME.to_string()],
             scope: vec!["test".to_string()],
             claims: HashMap::new(),

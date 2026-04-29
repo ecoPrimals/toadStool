@@ -20,7 +20,7 @@ hw-learn = { path = "../core/hw-learn" }
 
 # Testing framework
 tokio = { workspace = true }
-tokio-test = "0.4"
+tokio-test = { workspace = true }
 
 # Mocking and testing utilities
 mockall = "0.12"

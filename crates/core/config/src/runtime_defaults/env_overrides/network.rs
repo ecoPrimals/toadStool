@@ -37,7 +37,10 @@ pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     }
 
     // Legacy endpoint overrides (deprecated - use capability-based discovery)
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "legacy endpoint env-vars kept for migration; use capability-based discovery"
+    )]
     {
         if let Ok(coordination) = std::env::var("TOADSTOOL_COORDINATION_ENDPOINT")
             .or_else(|_| std::env::var("TOADSTOOL_SONGBIRD_ENDPOINT"))

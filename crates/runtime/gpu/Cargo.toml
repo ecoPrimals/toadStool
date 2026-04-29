@@ -89,7 +89,7 @@ bytes = { workspace = true }
 tokio-test = { workspace = true }
 proptest = { workspace = true }
 criterion = { workspace = true }
-tracing-subscriber = "0.3"
+tracing-subscriber = { workspace = true }
 
 # Dev dependencies don't share features - each test runs in isolation
 

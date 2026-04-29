@@ -1,12 +1,24 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S208
+**Date**: April 2026 — S209
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S209 (Deep Debt — Lint Reason + Dep Unification + Auth Capability)**:
+Completed comprehensive lint evolution: all remaining crate-level `#![allow]`
+attrs evolved to include `reason =` (7 embedded/neuromorphic/native/testing
+crates). ~30 production `#[expect(deprecated)]` / `#[allow(deprecated)]`
+attrs upgraded with `reason =`. Workspace dependency unification: `sha2`,
+`serde_json`, `tracing`, `thiserror`, `tracing-subscriber`, `tokio-test`
+converted to `{ workspace = true }` in 23 Cargo.toml files. Auth backend
+evolved: hardcoded `well_known::BEARDOG` issuer fallback replaced with
+capability-based `capabilities::CRYPTO`. Stale feature flags removed from
+excluded `runtime/python` crate (`ai-ml`, `squirrel-preparation`).
+**7,842 lib-only** tests, 0 failures, clippy clean, fmt clean.
 
 **S208 (Deep Debt — Unsafe Allow + Feature Hygiene + Expect→Result)**:
 Resolved **D-GLOWPLUG-ALLOW** (removed unnecessary `#[allow(unsafe_code)]`

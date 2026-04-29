@@ -3,11 +3,15 @@
 //!
 //! Decimal mode (`D` flag) is not implemented for `ADC`/`SBC` (binary mode only).
 
-#![allow(missing_docs)]
+#![allow(
+    missing_docs,
+    reason = "6502 emulator internals mirror hardware register naming"
+)]
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_lossless,
-    clippy::many_single_char_names
+    clippy::many_single_char_names,
+    reason = "8-bit CPU emulation: truncation is the hardware semantics, single-char names match register conventions (A, X, Y, S, P)"
 )]
 
 const N: u8 = 0x80;

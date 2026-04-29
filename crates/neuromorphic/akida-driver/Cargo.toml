@@ -36,7 +36,7 @@ toadstool-hw-safe = { path = "../../core/hw-safe" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { workspace = true }
 criterion = { workspace = true }
 
 [features]

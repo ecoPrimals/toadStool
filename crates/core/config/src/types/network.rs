@@ -143,13 +143,25 @@ impl Default for EndpointConfig {
         });
 
         Self {
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "legacy endpoint fields populated for backward compat"
+            )]
             coordination,
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "legacy endpoint fields populated for backward compat"
+            )]
             security,
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "legacy endpoint fields populated for backward compat"
+            )]
             storage,
-            #[expect(deprecated)]
+            #[expect(
+                deprecated,
+                reason = "legacy endpoint fields populated for backward compat"
+            )]
             ai_processing,
             // Self-knowledge endpoints (still valid)
             federation: format!(

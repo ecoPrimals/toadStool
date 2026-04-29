@@ -45,9 +45,7 @@ pub fn discover_raspberry_pi_devices() -> ToadStoolResult<Vec<RaspberryPiDevice>
     }
 
     let model_str = std::fs::read_to_string(model_path)
-        .map_err(|e| {
-            ToadStoolError::io(format!("Failed to read device tree model: {}", e))
-        })?
+        .map_err(|e| ToadStoolError::io(format!("Failed to read device tree model: {}", e)))?
         .trim_end_matches('\0')
         .to_string();
 

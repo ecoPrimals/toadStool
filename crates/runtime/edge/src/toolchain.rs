@@ -21,7 +21,10 @@ use crate::platforms::EdgePlatform;
 
 /// Cross-Compilation Toolchain
 pub struct CrossCompilationToolchain {
-    #[expect(dead_code, reason = "stored from init; will be used for sysroot + target triple resolution")]
+    #[expect(
+        dead_code,
+        reason = "stored from init; will be used for sysroot + target triple resolution"
+    )]
     config: EdgeRuntimeConfig,
     toolchains: Arc<RwLock<HashMap<String, ToolchainInfo>>>,
     cache: Arc<RwLock<HashMap<String, CompilationCache>>>,
@@ -182,7 +185,10 @@ impl CrossCompilationToolchain {
                 toolchain: "arduino".to_string(),
                 output_format: OutputFormat::Hex,
             }),
-            EdgePlatform::ESP32 { chip: _, framework: _ } => Ok(CompilationTarget {
+            EdgePlatform::ESP32 {
+                chip: _,
+                framework: _,
+            } => Ok(CompilationTarget {
                 platform: platform.clone(),
                 architecture: "xtensa".to_string(),
                 toolchain: "esp32".to_string(),
@@ -307,10 +313,7 @@ impl CrossCompilationToolchain {
         // Add source and output files
         cmd.arg(&source_file);
         let output_file_str = output_file.to_str().ok_or_else(|| {
-            ToadStoolError::runtime(format!(
-                "Invalid output file path: {:?}",
-                output_file
-            ))
+            ToadStoolError::runtime(format!("Invalid output file path: {:?}", output_file))
         })?;
         cmd.args(["-o", output_file_str]);
 
@@ -326,9 +329,9 @@ impl CrossCompilationToolchain {
 
         // Execute compilation
         info!("Executing compilation command: {:?}", cmd);
-        let output = cmd.output().map_err(|e| {
-            ToadStoolError::execution(format!("Failed to execute compiler: {}", e))
-        })?;
+        let output = cmd
+            .output()
+            .map_err(|e| ToadStoolError::execution(format!("Failed to execute compiler: {}", e)))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -354,48 +357,50 @@ impl CrossCompilationToolchain {
     async fn detect_arduino_toolchain(&self) -> ToadStoolResult<Option<ToolchainInfo>> {
         // Check for Arduino CLI
         if let Ok(output) = Command::new("arduino-cli").arg("version").output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "Arduino".to_string(),
-                    target: "avr".to_string(),
-                    compiler: "avr-gcc".to_string(),
-                    linker: "avr-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-Os".to_string(),
-                        "-w".to_string(),
-                        "-ffunction-sections".to_string(),
-                        "-fdata-sections".to_string(),
-                        "-MMD".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "Arduino".to_string(),
+                target: "avr".to_string(),
+                compiler: "avr-gcc".to_string(),
+                linker: "avr-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-Os".to_string(),
+                    "-w".to_string(),
+                    "-ffunction-sections".to_string(),
+                    "-fdata-sections".to_string(),
+                    "-MMD".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         // Check for avr-gcc directly
         if let Ok(output) = Command::new("avr-gcc").arg("--version").output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "AVR-GCC".to_string(),
-                    target: "avr".to_string(),
-                    compiler: "avr-gcc".to_string(),
-                    linker: "avr-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-Os".to_string(),
-                        "-w".to_string(),
-                        "-ffunction-sections".to_string(),
-                        "-fdata-sections".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "AVR-GCC".to_string(),
+                target: "avr".to_string(),
+                compiler: "avr-gcc".to_string(),
+                linker: "avr-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-Os".to_string(),
+                    "-w".to_string(),
+                    "-ffunction-sections".to_string(),
+                    "-fdata-sections".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         debug!("Arduino toolchain not found");
         Ok(None)
@@ -405,47 +410,49 @@ impl CrossCompilationToolchain {
     async fn detect_esp32_toolchain(&self) -> ToadStoolResult<Option<ToolchainInfo>> {
         // Check for ESP-IDF
         if let Ok(output) = Command::new("idf.py").arg("--version").output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "ESP-IDF".to_string(),
-                    target: "xtensa-esp32".to_string(),
-                    compiler: "xtensa-esp32-elf-gcc".to_string(),
-                    linker: "xtensa-esp32-elf-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-O2".to_string(),
-                        "-ffunction-sections".to_string(),
-                        "-fdata-sections".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "ESP-IDF".to_string(),
+                target: "xtensa-esp32".to_string(),
+                compiler: "xtensa-esp32-elf-gcc".to_string(),
+                linker: "xtensa-esp32-elf-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-O2".to_string(),
+                    "-ffunction-sections".to_string(),
+                    "-fdata-sections".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         // Check for xtensa toolchain directly
         if let Ok(output) = Command::new("xtensa-esp32-elf-gcc")
             .arg("--version")
             .output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "Xtensa ESP32".to_string(),
-                    target: "xtensa-esp32".to_string(),
-                    compiler: "xtensa-esp32-elf-gcc".to_string(),
-                    linker: "xtensa-esp32-elf-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-O2".to_string(),
-                        "-mlongcalls".to_string(),
-                        "-mtext-section-literals".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "Xtensa ESP32".to_string(),
+                target: "xtensa-esp32".to_string(),
+                compiler: "xtensa-esp32-elf-gcc".to_string(),
+                linker: "xtensa-esp32-elf-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-O2".to_string(),
+                    "-mlongcalls".to_string(),
+                    "-mtext-section-literals".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         debug!("ESP32 toolchain not found");
         Ok(None)
@@ -457,44 +464,46 @@ impl CrossCompilationToolchain {
         if let Ok(output) = Command::new("arm-linux-gnueabihf-gcc")
             .arg("--version")
             .output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "ARM Linux".to_string(),
-                    target: "arm-linux-gnueabihf".to_string(),
-                    compiler: "arm-linux-gnueabihf-gcc".to_string(),
-                    linker: "arm-linux-gnueabihf-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-O2".to_string(),
-                        "-fPIC".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "ARM Linux".to_string(),
+                target: "arm-linux-gnueabihf".to_string(),
+                compiler: "arm-linux-gnueabihf-gcc".to_string(),
+                linker: "arm-linux-gnueabihf-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-O2".to_string(),
+                    "-fPIC".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         // Check for embedded ARM toolchain
         if let Ok(output) = Command::new("arm-none-eabi-gcc").arg("--version").output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "ARM Embedded".to_string(),
-                    target: "arm-none-eabi".to_string(),
-                    compiler: "arm-none-eabi-gcc".to_string(),
-                    linker: "arm-none-eabi-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-Os".to_string(),
-                        "-ffunction-sections".to_string(),
-                        "-fdata-sections".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "ARM Embedded".to_string(),
+                target: "arm-none-eabi".to_string(),
+                compiler: "arm-none-eabi-gcc".to_string(),
+                linker: "arm-none-eabi-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-Os".to_string(),
+                    "-ffunction-sections".to_string(),
+                    "-fdata-sections".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         debug!("ARM toolchain not found");
         Ok(None)
@@ -505,24 +514,25 @@ impl CrossCompilationToolchain {
         if let Ok(output) = Command::new("riscv64-unknown-elf-gcc")
             .arg("--version")
             .output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "RISC-V".to_string(),
-                    target: "riscv64-unknown-elf".to_string(),
-                    compiler: "riscv64-unknown-elf-gcc".to_string(),
-                    linker: "riscv64-unknown-elf-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-Os".to_string(),
-                        "-ffunction-sections".to_string(),
-                        "-fdata-sections".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "RISC-V".to_string(),
+                target: "riscv64-unknown-elf".to_string(),
+                compiler: "riscv64-unknown-elf-gcc".to_string(),
+                linker: "riscv64-unknown-elf-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-Os".to_string(),
+                    "-ffunction-sections".to_string(),
+                    "-fdata-sections".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         debug!("RISC-V toolchain not found");
         Ok(None)
@@ -531,24 +541,25 @@ impl CrossCompilationToolchain {
     /// Detect AVR toolchain
     async fn detect_avr_toolchain(&self) -> ToadStoolResult<Option<ToolchainInfo>> {
         if let Ok(output) = Command::new("avr-gcc").arg("--version").output()
-            && output.status.success() {
-                return Ok(Some(ToolchainInfo {
-                    name: "AVR".to_string(),
-                    target: "avr".to_string(),
-                    compiler: "avr-gcc".to_string(),
-                    linker: "avr-ld".to_string(),
-                    sysroot: None,
-                    flags: vec![
-                        "-c".to_string(),
-                        "-g".to_string(),
-                        "-Os".to_string(),
-                        "-ffunction-sections".to_string(),
-                        "-fdata-sections".to_string(),
-                    ],
-                    environment: HashMap::new(),
-                    is_available: true,
-                }));
-            }
+            && output.status.success()
+        {
+            return Ok(Some(ToolchainInfo {
+                name: "AVR".to_string(),
+                target: "avr".to_string(),
+                compiler: "avr-gcc".to_string(),
+                linker: "avr-ld".to_string(),
+                sysroot: None,
+                flags: vec![
+                    "-c".to_string(),
+                    "-g".to_string(),
+                    "-Os".to_string(),
+                    "-ffunction-sections".to_string(),
+                    "-fdata-sections".to_string(),
+                ],
+                environment: HashMap::new(),
+                is_available: true,
+            }));
+        }
 
         debug!("AVR toolchain not found");
         Ok(None)

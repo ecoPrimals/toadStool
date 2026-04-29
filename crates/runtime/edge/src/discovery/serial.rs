@@ -13,7 +13,10 @@ use super::DiscoveryMethod;
 
 /// Serial Port Discovery Method
 pub struct SerialPortDiscovery {
-    #[expect(dead_code, reason = "stored from config; will iterate baud rates during auto-detect")]
+    #[expect(
+        dead_code,
+        reason = "stored from config; will iterate baud rates during auto-detect"
+    )]
     pub(super) baud_rates: Vec<u32>,
     #[expect(dead_code, reason = "stored from config; will bound serial probe wait")]
     pub(super) timeout: Duration,

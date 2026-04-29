@@ -125,7 +125,10 @@ impl AgentDeploymentManager {
     ///
     /// Prefer `with_ml_service()` or `discover()` for capability-based discovery.
     #[must_use]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "wraps legacy IntelligenceBackend; callers migrating to discover()"
+    )]
     pub fn with_intelligence_service(config: AgentDeploymentConfig) -> Self {
         let backend = super::super::agent_backend::IntelligenceBackend::new(
             config.ai_processing_endpoint.clone(),

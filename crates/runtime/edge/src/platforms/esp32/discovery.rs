@@ -15,22 +15,23 @@ impl ESP32Device {
             .map_err(|e| toadstool::error::ToadStoolError::io(e.to_string()))?
         {
             if let serialport::SerialPortType::UsbPort(usb_info) = &port.port_type
-                && Self::is_esp32_device(usb_info.vid, usb_info.pid) {
-                    let chip = Self::detect_chip_variant(usb_info.vid, usb_info.pid);
-                    let device = ESP32Device::new(
-                        chip,
-                        ESP32Framework::ESPIDF,
-                        ConnectionInfo {
-                            connection_type: ConnectionType::Serial,
-                            address: port.port_name.clone(),
-                            port: None,
-                            protocol: "Serial".to_string(),
-                            authentication: None,
-                            encryption: None,
-                        },
-                    )?;
-                    devices.push(device);
-                }
+                && Self::is_esp32_device(usb_info.vid, usb_info.pid)
+            {
+                let chip = Self::detect_chip_variant(usb_info.vid, usb_info.pid);
+                let device = ESP32Device::new(
+                    chip,
+                    ESP32Framework::ESPIDF,
+                    ConnectionInfo {
+                        connection_type: ConnectionType::Serial,
+                        address: port.port_name.clone(),
+                        port: None,
+                        protocol: "Serial".to_string(),
+                        authentication: None,
+                        encryption: None,
+                    },
+                )?;
+                devices.push(device);
+            }
         }
 
         Ok(devices)

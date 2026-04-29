@@ -78,7 +78,10 @@ impl Default for ServiceMeshSource {
 }
 
 impl EndpointSource for ServiceMeshSource {
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "resolve() matches on deprecated vendor-specific mesh variants"
+    )]
     fn resolve(
         &self,
         service: &str,

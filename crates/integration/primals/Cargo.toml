@@ -30,7 +30,7 @@ toadstool-common = { path = "../../core/common" }
 toadstool-integration-storage = { path = "../storage" }
 
 [dev-dependencies]
-tokio-test = "0.4"
+tokio-test = { workspace = true }
 mockall = "0.12"
 proptest = { workspace = true }
 

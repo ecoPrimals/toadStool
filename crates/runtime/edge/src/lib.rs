@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![forbid(unsafe_code)]
-#![allow(missing_docs, reason = "edge/IoT platform types: hardware enum variants are self-documenting by name")]
+#![allow(
+    missing_docs,
+    reason = "edge/IoT platform types: hardware enum variants are self-documenting by name"
+)]
 
 //! # ToadStool Edge/IoT Runtime Engine
 //!
@@ -105,7 +108,10 @@ pub struct EdgeRuntimeEngine {
     /// Cross-compilation toolchain
     toolchain: Arc<CrossCompilationToolchain>,
     /// Communication manager
-    #[expect(dead_code, reason = "held for lifecycle; protocols accessed via discovery + deployment")]
+    #[expect(
+        dead_code,
+        reason = "held for lifecycle; protocols accessed via discovery + deployment"
+    )]
     communication: Arc<CommunicationManager>,
     /// Deployment coordinator
     deployment: Arc<DeploymentCoordinator>,
@@ -353,9 +359,7 @@ impl RuntimeEngine for EdgeRuntimeEngine {
         )
     }
 
-    fn get_metrics(
-        &self,
-    ) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
+    fn get_metrics(&self) -> impl Future<Output = ToadStoolResult<RuntimeMetrics>> + Send + '_ {
         Box::pin(async {
             let executions = self.active_executions.read().await;
             let mut total_cpu = 0.0;
@@ -415,12 +419,13 @@ impl RuntimeEngine for EdgeRuntimeEngine {
                 info!("Stopping execution: {} on device: {}", id, handle.device_id);
                 if let Ok(devices) = self.devices.try_read()
                     && let Some(device) = devices.get(&handle.device_id)
-                        && let Err(e) = device.stop_execution(id).await {
-                            warn!(
-                                "Failed to stop execution {} on device {}: {}",
-                                id, handle.device_id, e
-                            );
-                        }
+                    && let Err(e) = device.stop_execution(id).await
+                {
+                    warn!(
+                        "Failed to stop execution {} on device {}: {}",
+                        id, handle.device_id, e
+                    );
+                }
             }
 
             let mut devices = self.devices.write().await;

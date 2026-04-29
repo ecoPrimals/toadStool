@@ -24,7 +24,7 @@ serde_yaml_ng = { workspace = true }
 toml = { workspace = true }
 
 # Security and cryptography
-sha2 = "0.10"
+sha2 = { workspace = true }
 uuid = { workspace = true }
 
 # Collections and utilities

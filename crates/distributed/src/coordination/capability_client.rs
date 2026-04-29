@@ -300,6 +300,9 @@ pub struct ClientStats {
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
+#[allow(
+    deprecated,
+    reason = "tests exercise legacy coordination client pending migration"
+)]
 #[path = "capability_client_tests.rs"]
 mod tests;

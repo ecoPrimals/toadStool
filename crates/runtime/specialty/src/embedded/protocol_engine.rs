@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-#![allow(missing_docs)]
+#![allow(
+    missing_docs,
+    reason = "ISP/ICSP protocol engines are self-documenting byte-sequence builders"
+)]
 //! Protocol engines emit byte sequences for ISP/ICSP/parallel programming without performing I/O.
 
 use super::chip_database::{AvrChipInfo, PicChipInfo};

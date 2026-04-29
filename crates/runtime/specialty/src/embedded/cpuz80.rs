@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Minimal Zilog Z80 emulator (single-byte opcodes + selected `0xED` block).
 
-#![allow(missing_docs)]
-#![allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
+#![allow(
+    missing_docs,
+    reason = "Z80 emulator internals mirror hardware register naming"
+)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_lossless,
+    reason = "8-bit CPU emulation: truncation is the hardware semantics"
+)]
 
 /// Z80 CPU with 64 KiB RAM.
 #[derive(Debug, Clone)]

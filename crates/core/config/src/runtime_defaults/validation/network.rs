@@ -4,7 +4,10 @@ use crate::ToadStoolConfig;
 use crate::runtime_defaults::{ConfigError, ConfigResult};
 
 pub(super) fn validate(config: &ToadStoolConfig) -> ConfigResult<()> {
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "validates legacy endpoint fields during migration to capability-based"
+    )]
     {
         if config.network.endpoints.coordination.is_empty() {
             return Err(ConfigError::Invalid(

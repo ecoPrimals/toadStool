@@ -32,7 +32,10 @@ pub struct CudaBackend {
     _private: (),
 }
 
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "stub impl kept for API compat; callers migrating to WebGPU backends"
+)]
 impl CudaBackend {
     /// Always returns an error directing callers to barraCuda/coralReef.
     #[deprecated(

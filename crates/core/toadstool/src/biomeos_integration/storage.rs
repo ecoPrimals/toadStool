@@ -47,7 +47,10 @@ pub struct StorageProvisioningConfig {
     pub replication_factor: u32,
 }
 
-#[expect(deprecated)]
+#[expect(
+    deprecated,
+    reason = "Default needed for backward-compat constructors; use with_storage_service()"
+)]
 impl Default for StorageProvisioningConfig {
     fn default() -> Self {
         Self {
@@ -95,7 +98,10 @@ impl StorageProvisioningManager {
         since = "0.3.0",
         note = "Use with_storage_service() for capability-based discovery"
     )]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "wraps legacy SocketStorageBackend::new; callers migrating to with_storage_service()"
+    )]
     pub fn with_storage_ext(config: StorageProvisioningConfig) -> Self {
         let backend = super::storage_backend::SocketStorageBackend::new(
             config.storage_endpoint.clone(),

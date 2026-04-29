@@ -3,7 +3,10 @@
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
-#![allow(clippy::no_effect_underscore_binding)]
+#![allow(
+    clippy::no_effect_underscore_binding,
+    reason = "async trait impls use _prefixed params for forward-compat"
+)]
 
 mod capabilities;
 mod engine;
