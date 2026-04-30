@@ -2,6 +2,7 @@
 //! JSON newline BTSP handshake relay via BearDog JSON-RPC.
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use base64::Engine;
 use serde::Deserialize;
@@ -10,6 +11,8 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::ToadStoolError;
+use crate::constants::timeouts;
+use crate::interned_strings::socket_env;
 use crate::unix_jsonrpc::UnixJsonRpcClient;
 
 use super::types::BtspCipher;
@@ -41,12 +44,30 @@ pub enum BtspJsonLineError {
     /// Protocol violation (version, missing field, etc.).
     #[error("BTSP JSON-line protocol: {0}")]
     Protocol(String),
+
+    /// Handshake or RPC call exceeded its timeout budget.
+    #[error("BTSP JSON-line timeout: {0}")]
+    Timeout(String),
 }
 
 impl From<ToadStoolError> for BtspJsonLineError {
     fn from(value: ToadStoolError) -> Self {
         Self::Rpc(value.to_string())
     }
+}
+
+fn handshake_timeout() -> Duration {
+    std::env::var(socket_env::BTSP_HANDSHAKE_TIMEOUT_SECS)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map_or(timeouts::BTSP_HANDSHAKE_TIMEOUT, Duration::from_secs)
+}
+
+fn rpc_timeout() -> Duration {
+    std::env::var(socket_env::BTSP_RPC_TIMEOUT_SECS)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map_or(timeouts::BTSP_RPC_TIMEOUT, Duration::from_secs)
 }
 
 /// Check if a JSON line looks like a BTSP ClientHello.
@@ -199,8 +220,34 @@ async fn require_str_line<S: AsyncWrite + Unpin>(
 /// 5. Call BearDog `btsp.session.verify` with session_token, response, client_ephemeral_pub, preferred_cipher
 /// 6. Send HandshakeComplete JSON line
 ///
+/// The entire handshake is bounded by `BTSP_HANDSHAKE_TIMEOUT` (default 5s,
+/// override via `BTSP_HANDSHAKE_TIMEOUT_SECS`). Each BearDog RPC call is
+/// individually bounded by `BTSP_RPC_TIMEOUT` (default 3s, override via
+/// `BTSP_RPC_TIMEOUT_SECS`).
+///
 /// On error at any step, sends an error JSON line and returns `Err`.
 pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: &mut S,
+    first_line: &str,
+    family_seed: &str,
+    security_socket: &str,
+) -> Result<BtspSessionInfo, BtspJsonLineError> {
+    let budget = handshake_timeout();
+    let Ok(result) = tokio::time::timeout(
+        budget,
+        relay_json_line_handshake_inner(stream, first_line, family_seed, security_socket),
+    )
+    .await
+    else {
+        let msg = format!("BTSP handshake exceeded {budget:?} budget");
+        tracing::warn!(target: "btsp", "{msg}");
+        let _ = send_error_line(stream, &msg).await;
+        return Err(BtspJsonLineError::Timeout(msg));
+    };
+    result
+}
+
+async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
     stream: &mut S,
     first_line: &str,
     family_seed: &str,
@@ -235,9 +282,13 @@ pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     tracing::info!(target: "btsp", "JSON-line BTSP: calling btsp.session.create");
 
     let rpc = UnixJsonRpcClient::new(security_socket);
+    let rpc_budget = rpc_timeout();
     let family_seed_b64 = base64::engine::general_purpose::STANDARD.encode(family_seed.as_bytes());
     let create_params = serde_json::json!({ "family_seed": family_seed_b64 });
-    let create_result: Value = match rpc.call("btsp.session.create", create_params).await {
+    let create_result: Value = match rpc
+        .call_with_timeout("btsp.session.create", create_params, rpc_budget)
+        .await
+    {
         Ok(v) => v,
         Err(e) => {
             let msg = e.to_string();
@@ -297,7 +348,10 @@ pub async fn relay_json_line_handshake<S: AsyncRead + AsyncWrite + Unpin>(
         "client_ephemeral_pub": hello.client_ephemeral_pub,
         "preferred_cipher": cr.preferred_cipher,
     });
-    let verify_result: Value = match rpc.call("btsp.session.verify", verify_params).await {
+    let verify_result: Value = match rpc
+        .call_with_timeout("btsp.session.verify", verify_params, rpc_budget)
+        .await
+    {
         Ok(v) => v,
         Err(e) => {
             let msg = e.to_string();

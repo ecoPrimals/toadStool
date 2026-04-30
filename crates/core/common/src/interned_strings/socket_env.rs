@@ -127,6 +127,10 @@ pub const TOADSTOOL_TCP_BIND_ADDRESS: &str = "TOADSTOOL_TCP_BIND_ADDRESS";
 /// Idle timeout (seconds) for Pure JSON-RPC TCP connections.
 pub const TOADSTOOL_TCP_IDLE_TIMEOUT_SECS: &str = "TOADSTOOL_TCP_IDLE_TIMEOUT_SECS";
 pub const TOADSTOOL_STANDALONE: &str = "TOADSTOOL_STANDALONE";
+/// Override total BTSP handshake timeout (seconds). Default: 5.
+pub const BTSP_HANDSHAKE_TIMEOUT_SECS: &str = "BTSP_HANDSHAKE_TIMEOUT_SECS";
+/// Override per-RPC timeout for BearDog calls during BTSP (seconds). Default: 3.
+pub const BTSP_RPC_TIMEOUT_SECS: &str = "BTSP_RPC_TIMEOUT_SECS";
 
 pub const TOADSTOOL_PORT: &str = "TOADSTOOL_PORT";
 pub const TOADSTOOL_REQUEST_TIMEOUT: &str = "TOADSTOOL_REQUEST_TIMEOUT";

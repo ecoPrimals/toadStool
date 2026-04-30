@@ -128,6 +128,23 @@ pub const VERIFICATION_PHASE_TIMEOUT: Duration = Duration::from_secs(5);
 pub const ZERO_CONFIG_TARGET: Duration = Duration::from_secs(60);
 
 // ============================================================================
+// BTSP Handshake Timeouts (PG-46)
+// ============================================================================
+
+/// Total BTSP handshake budget (5 seconds).
+///
+/// Covers the full 4-step JSON-line relay including both BearDog RPCs.
+/// Clients using <10s read timeouts previously hit empty responses because
+/// the handshake had no upper bound. Override via `BTSP_HANDSHAKE_TIMEOUT_SECS`.
+pub const BTSP_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Per-RPC timeout for BearDog calls during BTSP handshake (3 seconds).
+///
+/// Applied individually to `btsp.session.create` and `btsp.session.verify`.
+/// Override via `BTSP_RPC_TIMEOUT_SECS`.
+pub const BTSP_RPC_TIMEOUT: Duration = Duration::from_secs(3);
+
+// ============================================================================
 // Authentication Timeouts
 // ============================================================================
 

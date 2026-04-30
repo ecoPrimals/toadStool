@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S209
+**Date**: April 2026 — S210
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S210 (PG-46: BTSP Handshake Timeout)**:
+Added bounded timeouts to JSON-line BTSP handshake relay. Total handshake
+budget: 5s default (`BTSP_HANDSHAKE_TIMEOUT_SECS`). Per-BearDog-RPC budget:
+3s default (`BTSP_RPC_TIMEOUT_SECS`). `UnixJsonRpcClient::call_with_timeout`
+added. `BtspJsonLineError::Timeout` variant for clear error reporting.
+Resolves PG-46 (short-timeout reads returning empty responses due to
+unbounded handshake latency). **7,842 lib-only** tests, 0 failures.
 
 **S209 (Deep Debt — Lint Reason + Dep Unification + Auth Capability)**:
 Completed comprehensive lint evolution: all remaining crate-level `#![allow]`

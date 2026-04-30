@@ -174,6 +174,29 @@ impl UnixJsonRpcClient {
             .ok_or_else(|| ToadStoolError::network("JSON-RPC response missing result"))
     }
 
+    /// Call JSON-RPC method with a wall-clock timeout.
+    ///
+    /// Wraps [`call`](Self::call) in `tokio::time::timeout`.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the timeout elapses or the inner call fails.
+    pub async fn call_with_timeout(
+        &self,
+        method: &str,
+        params: Value,
+        timeout: std::time::Duration,
+    ) -> ToadStoolResult<Value> {
+        tokio::time::timeout(timeout, self.call(method, params))
+            .await
+            .map_err(|_| {
+                ToadStoolError::network(format!(
+                    "RPC call {method} to {} timed out after {timeout:?}",
+                    self.socket_path.display()
+                ))
+            })?
+    }
+
     /// Call JSON-RPC method and deserialize response
     ///
     /// ## Type Safety
