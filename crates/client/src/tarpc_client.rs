@@ -305,7 +305,10 @@ mod tests {
     }
 
     #[tokio::test]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "tests deprecated ToadStoolTarpcClient::connect API"
+    )]
     async fn test_client_tcp_connection_no_server() {
         let addr: SocketAddr = "127.0.0.1:1".parse().expect("valid addr");
         let result = ToadStoolTarpcClient::connect(addr).await;

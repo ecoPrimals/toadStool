@@ -260,7 +260,10 @@ pub fn validate_migration(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
+#[allow(
+    deprecated,
+    reason = "tests exercise deprecated MigrationRecommendation/MigrationTarget APIs"
+)]
 mod tests {
     use super::*;
     use crate::workload_migration::{MigrationRecommendation, MigrationTarget};

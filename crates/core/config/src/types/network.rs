@@ -256,18 +256,22 @@ mod tests {
     use super::*;
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "tests backward compatibility with deprecated fields"
+    )]
     fn test_default_network_config() {
-        // Tests backward compatibility with deprecated fields
         let config = NetworkConfig::default();
         assert!(!config.endpoints.coordination.is_empty());
         assert!(config.connection.max_retries > 0);
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "tests backward compatibility with deprecated fields"
+    )]
     fn test_endpoint_config_defaults() {
-        // Tests backward compatibility with deprecated fields
         let config = EndpointConfig::default();
         assert!(config.coordination.contains("http"));
         assert!(config.security.contains("http"));

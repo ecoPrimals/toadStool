@@ -1,12 +1,28 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S212
+**Date**: April 2026 — S213
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S213 (Deep Debt — Lint Reason Sweep + Capability-Based Names + Orchestrator Resilience)**:
+Completed three-phase deep debt evolution:
+- **Phase 1**: Added `reason = "..."` to all remaining bare `#[allow]`/`#[expect]`
+  attributes across 12 files (network config, service mesh, mdns, monitoring
+  collection, validation, ecosystem discovery, ecosystem types, interned strings,
+  tarpc client, server config). Workspace now fully lint-reason compliant.
+- **Phase 2**: Evolved GPU backend stubs from hardcoded primal names
+  (`barraCuda`/`coralReef`) to capability-based discovery language
+  (`gpu.dispatch.cuda` capability provider). Doc comments, deprecation notes,
+  and error messages all reference capability URIs instead of specific primals.
+- **Phase 3**: Evolved `WorkloadOrchestrator` lock handling from `expect("lock
+  poisoned")` panics to proper `Result<_, OrchestrationError::LockPoisoned>`
+  returns. `register_substrate`, `num_substrates`, and `stats` now return
+  `Result`. All production `expect("lock poisoned")` eliminated from
+  orchestrator code path. 0 failures, clippy clean, fmt clean.
 
 **S212 (Coverage Push — 83.6% → 90% target)**:
 Targeted coverage expansion across 10 previously-untested production files.

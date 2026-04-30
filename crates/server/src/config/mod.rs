@@ -287,7 +287,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::float_cmp)] // exact defaults in test
+    #[allow(clippy::float_cmp, reason = "exact defaults in test")]
     fn test_health_check_config_default() {
         let config = HealthCheckConfig::default();
         assert!(config.check_runtime_engines);

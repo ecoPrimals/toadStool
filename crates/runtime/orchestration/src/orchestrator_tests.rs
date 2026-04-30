@@ -43,7 +43,7 @@ async fn test_orchestrator_creation() {
     let orchestrator = WorkloadOrchestrator::<MockSubstrate>::discover()
         .await
         .unwrap();
-    assert_eq!(orchestrator.num_substrates(), 0);
+    assert_eq!(orchestrator.num_substrates().unwrap(), 0);
 }
 
 #[tokio::test]
@@ -57,8 +57,8 @@ async fn test_register_substrate() {
         substrate_type: SubstrateType::Cpu,
     });
 
-    orchestrator.register_substrate(substrate);
-    assert_eq!(orchestrator.num_substrates(), 1);
+    orchestrator.register_substrate(substrate).unwrap();
+    assert_eq!(orchestrator.num_substrates().unwrap(), 1);
 }
 
 #[tokio::test]
@@ -130,7 +130,7 @@ async fn test_orchestrator_stats() {
     let orchestrator = WorkloadOrchestrator::<MockSubstrate>::discover()
         .await
         .unwrap();
-    let stats = orchestrator.stats();
+    let stats = orchestrator.stats().unwrap();
     assert_eq!(stats.substrates_available, 0);
     assert_eq!(stats.total_executions, 0);
 }

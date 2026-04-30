@@ -75,7 +75,10 @@ mod integrator_tests {
     use super::*;
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "tests deprecated EcosystemService/ServiceEndpoint types"
+    )]
     fn test_service_endpoint_deserialize_roundtrip() {
         let endpoint = ServiceEndpoint {
             service_type: EcosystemService::Discovery,

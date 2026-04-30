@@ -73,7 +73,10 @@ mod tests {
     }
 
     #[test]
-    #[expect(path_statements)]
+    #[expect(
+        path_statements,
+        reason = "verifies MDNSSource unit struct can be named"
+    )]
     fn test_mdns_source_default() {
         MDNSSource;
     }

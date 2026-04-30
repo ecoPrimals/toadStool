@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests deprecated protocol string constants")]
     fn test_protocols() {
         assert_eq!(protocols::HTTP, "http");
         assert_eq!(protocols::GRPC, "grpc");

@@ -131,28 +131,28 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
     fn test_service_mesh_source_with_consul_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Consul);
         assert!(matches!(source.mesh_type, ServiceMeshType::Consul));
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
     fn test_service_mesh_source_with_etcd_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Etcd);
         assert!(matches!(source.mesh_type, ServiceMeshType::Etcd));
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
     fn test_service_mesh_source_with_kubernetes_deprecated() {
         let source = ServiceMeshSource::with_type(ServiceMeshType::Kubernetes);
         assert!(matches!(source.mesh_type, ServiceMeshType::Kubernetes));
     }
 
     #[tokio::test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests deprecated ServiceMeshType variants")]
     async fn test_service_mesh_deprecated_returns_none() {
         let consul = ServiceMeshSource::with_type(ServiceMeshType::Consul);
         let etcd = ServiceMeshSource::with_type(ServiceMeshType::Etcd);

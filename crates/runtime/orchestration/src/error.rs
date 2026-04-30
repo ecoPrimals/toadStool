@@ -29,4 +29,8 @@ pub enum OrchestrationError {
     /// Resource quota exceeded.
     #[error("Quota exceeded: {0}")]
     QuotaExceeded(String),
+
+    /// Internal lock was poisoned by a prior panic.
+    #[error("Internal lock poisoned: {0}")]
+    LockPoisoned(String),
 }

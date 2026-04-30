@@ -445,7 +445,10 @@ url = "http://127.0.0.1:8082"
     }
 
     #[tokio::test]
-    #[expect(deprecated)]
+    #[expect(
+        deprecated,
+        reason = "tests deprecated EcosystemService/ServiceEndpoint types"
+    )]
     async fn test_verify_service_unreachable_returns_false() {
         use crate::ecosystem::types::*;
         use std::sync::Arc;

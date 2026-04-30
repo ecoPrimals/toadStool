@@ -49,17 +49,26 @@ impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
         }
     }
 
-    /// Register a substrate
-    pub fn register_substrate(&self, substrate: Arc<S>) {
+    /// Register a substrate.
+    ///
+    /// Returns an error only if the internal lock was poisoned by a prior panic.
+    pub fn register_substrate(&self, substrate: Arc<S>) -> Result<(), OrchestrationError> {
         self.substrates
             .write()
-            .expect("lock poisoned")
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?
             .push(substrate);
+        Ok(())
     }
 
-    /// Get number of available substrates
-    pub fn num_substrates(&self) -> usize {
-        self.substrates.read().expect("lock poisoned").len()
+    /// Get number of available substrates.
+    ///
+    /// Returns an error only if the internal lock was poisoned by a prior panic.
+    pub fn num_substrates(&self) -> Result<usize, OrchestrationError> {
+        Ok(self
+            .substrates
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?
+            .len())
     }
 
     /// Execute a workload on optimal substrate
@@ -81,7 +90,6 @@ impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
             .await
             .map_err(|e| OrchestrationError::Substrate(e.to_string()))?;
 
-        // Record performance
         let duration = start.elapsed();
         let result = WorkloadResult {
             substrate_name: substrate.name().to_string(),
@@ -91,10 +99,9 @@ impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
             power_consumed_mw: output.metadata.power_consumed_mw,
         };
 
-        // Update history
         self.history
             .write()
-            .expect("lock poisoned")
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?
             .record(substrate.substrate_type(), &result);
 
         Ok(result)
@@ -126,13 +133,19 @@ impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
         reason = "drop order is intentional"
     )] // selected is from policy using substrates/history
     fn select_substrate(&self, request: &WorkloadRequest) -> Result<Arc<S>, OrchestrationError> {
-        let substrates = self.substrates.read().expect("lock poisoned");
+        let substrates = self
+            .substrates
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?;
 
         if substrates.is_empty() {
             return Err(OrchestrationError::NoSubstrates);
         }
 
-        let history = self.history.read().expect("lock poisoned");
+        let history = self
+            .history
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?;
         let selected = self.policy.select(&substrates, request, &history)?;
 
         Ok(selected)
@@ -147,8 +160,14 @@ impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
         &self,
         request: &WorkloadRequest,
     ) -> Result<Vec<Arc<S>>, OrchestrationError> {
-        let substrates = self.substrates.read().expect("lock poisoned");
-        let history = self.history.read().expect("lock poisoned");
+        let substrates = self
+            .substrates
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?;
+        let history = self
+            .history
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?;
 
         let mut ranked = self.policy.rank_all(&substrates, request, &history)?;
         ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -194,14 +213,19 @@ impl<S: ComputeSubstrate> WorkloadOrchestrator<S> {
         })
     }
 
-    /// Get performance statistics
-    pub fn stats(&self) -> OrchestratorStats {
-        let history = self.history.read().expect("lock poisoned");
-        OrchestratorStats {
+    /// Get performance statistics.
+    ///
+    /// Returns an error only if an internal lock was poisoned by a prior panic.
+    pub fn stats(&self) -> Result<OrchestratorStats, OrchestrationError> {
+        let history = self
+            .history
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(e.to_string()))?;
+        Ok(OrchestratorStats {
             total_executions: history.total_executions(),
-            substrates_available: self.num_substrates(),
+            substrates_available: self.num_substrates()?,
             average_duration_ms: history.average_duration().as_secs_f64() * 1000.0,
-        }
+        })
     }
 }
 

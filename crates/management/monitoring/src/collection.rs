@@ -193,7 +193,10 @@ impl Default for SystemResourceMonitor {
 
 #[cfg(test)]
 mod tests {
-    #[expect(unused_imports)]
+    #[expect(
+        unused_imports,
+        reason = "wildcard import used selectively by individual tests"
+    )]
     use super::*;
     use crate::{MonitoringConfig, MonitoringGranularity, SystemResourceMonitor, ThresholdAction};
     use std::time::Duration;

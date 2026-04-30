@@ -54,7 +54,7 @@
 //!     // Discover all available substrates
 //!     let orchestrator = WorkloadOrchestrator::discover().await?;
 //!     
-//!     println!("Available substrates: {}", orchestrator.num_substrates());
+//!     println!("Available substrates: {}", orchestrator.num_substrates()?);
 //!     
 //!     // Execute workload with automatic substrate selection
 //!     let workload = WorkloadRequest::new()
