@@ -17,7 +17,7 @@
 
 **Transferred.** barraCuda owns precision strategy (f64/df64/f32 validation, shader
 selection, `df64_rewrite` as default). toadStool serves hardware capabilities.
-Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md`.
+Handoff: `infra/wateringHole/handoffs/` (S93 handoff fossilized to ecoPrimals-level wateringHole).
 
 ### ~~P1: NpuDispatch Trait~~ ✅ RESOLVED (S94b)
 

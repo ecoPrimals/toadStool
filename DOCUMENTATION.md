@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: April 2026 — S211
+**Last Updated**: April 2026 — S213
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S211 — April 2026)
+## Current State (S213 — April 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **20,000+ tests** (7,842 lib-only S211), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **22,000+ tests** (7,842+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`).
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
@@ -44,9 +44,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **BTSP Phase 2 + JSON-line relay (S176)** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully. JSON-line BTSP auto-detection on `0x7B` path routes `"protocol":"btsp"` to `relay_json_line_handshake()` (4-step BearDog IPC relay). Family seed loading via `load_family_seed_for_btsp()` (env→file cascade).
 - **async-trait DEPRECATED** (S203r) — fully removed and banned in `deny.toml`. All ~91 annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn), and subsequently enum dispatch + RPITIT (S203s). Zero runtime behavior change. Transitive only via axum/config/wiggle.
 - **`deny.toml` ring ban active** — ecoBin v3 compliant. `ring` absent from lockfile.
-- **49 unsafe blocks (all in hw-safe/GPU/VFIO/display/plugin containment crates)**; all SAFETY-documented (S204: ffi\_loader.rs gap closed). Workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. All production `#[expect]` have `reason =` (S211).
+- **49 unsafe blocks (all in hw-safe/GPU/VFIO/display/plugin containment crates)**; all SAFETY-documented (S204: ffi\_loader.rs gap closed). Workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. All lint attrs have `reason =` (S211+S213).
 - **Encrypted compute dispatch (S205)** — payloads encrypted via Tower `crypto.encrypt` before dispatch, decrypted on result return. `DISCOVERY_SOCKET` wired as highest-precedence capability resolution tier.
 - **Dep hygiene (S206)** — `humantime-serde`, `rand`, `tokio-util`, `temp-env` unified to workspace. GPU `spirv`/`jit`/`testing` stale features removed. `test-mocks` removed from core default features.
+- **Coverage push (S212)** — ~100 new inline tests across 10 previously-untested files (server handlers, CLI collectors, platform monitoring, auto_config, distributed security). 1,004 new test lines.
+- **Orchestrator resilience (S213)** — lock poisoning panics evolved to `Result<_, OrchestrationError::LockPoisoned>`. GPU stubs evolved to capability-based URIs.
 - **Edge discovery evolved (S203m)** — USB via `/sys/bus/usb/devices/`, Bluetooth via sysfs adapter enumeration, IPv6 via `/proc/net/if_inet6`. All gracefully degrade on non-Linux.
 - **Scheduler queuing (S203m)** — `schedule_job` → `UniversalJobQueue::add_job` inserts into per-priority queues (was metadata-only). `schedule_local_job` logs post-enqueue telemetry.
 - **Hardcoding sweep (S203m–p)** — sysfs/procfs paths centralized to `platform_paths`; all `TOADSTOOL_*` env var literals interned to `socket_env` constants (~55 new in S203p). `env_overrides` subsystem fully converted.

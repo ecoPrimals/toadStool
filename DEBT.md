@@ -1788,7 +1788,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 |----|-------------|----------|-------|
 | D-NPU | ~~NpuDispatch trait~~ | **RESOLVED S94** | `toadstool-core::npu_dispatch` — generic `NpuDispatch` trait + `AkidaNpuDispatch` adapter |
 | D-RING | ~~ring C FFI in dev-deps~~ | **RESOLVED S97** | `reqwest` removed from integration-tests; `zstd` → `ruzstd` (pure Rust) |
-| D-COV | Test coverage → 90% | Medium | **~84-85% line coverage** (185K lines, llvm-cov). **21,514 tests passing** (S191). Target 90%. Remaining gaps: hardware-dependent paths (V4L2/VFIO), specialty runtimes. Push ongoing. |
+| D-COV | Test coverage → 90% | Medium | **~83.6% line coverage** (185K lines, llvm-cov). **22,000+ tests** (S213). Target 90%. Remaining gaps: hardware-dependent paths (VFIO, DRM, V4L2, akida), specialty runtimes. S212: +100 tests across 10 files. |
 | D-DOCS | ~~Fill missing_docs warnings~~ | **RESOLVED S159** | All 694+ missing doc warnings filled across 58 crates. `clippy --workspace -D warnings` passes. |
 | D-SOV | ~~Sovereignty: primal-name → capability~~ | **RESOLVED S94b** | All production callers migrated to `get_socket_path_for_capability()`. Deprecated definitions retained for fallback only. |
 | D-WC | ~~Wildcard re-exports remaining~~ | **RESOLVED S132** | 4 high-traffic crates narrowed to explicit exports (constants, distributed, ipc, universal_adapter). Remaining wildcards justified (15+ items all used, or private submodule re-exports). |
@@ -1811,7 +1811,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | `SecretString` type | `toadstool_common::secret_string` — zeroize-on-drop, `Debug`/`Display`/`Serialize` all emit `[REDACTED]`. `resolve_credential()` async chain: env → keyring → BearDog. |
 | Cloud credential structs | `AWSCredentials.secret_access_key`, `AzureCredentials.client_secret`, `GCPCredentials.service_account_key`, `AuthMethod::Token.token`, `AuthMethod::BearDogAuth.credentials` — all migrated from `String` to `SecretString`. |
 | `.gitignore` hardening | `*.env`, `.env.*`, `*-secrets/`, `api-keys*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `credentials.json` — all blocked. |
-| CI secret scan | `secret-scan` job in `ci.yml` — regex scan for `sk-*`, `hf_*`, `ghp_*`, `AKIA*`, private keys in all tracked files. |
+| CI secret scan | GitHub native secret scanning (auto-revoke). Lean CI (`ci.yml`) does not include a custom scan job — GitHub's built-in scanning handles pattern detection. |
 | Doc PII cleanup | `/home/eastgate` → `$TOADSTOOL_SRC` in production guide. `postgresql://user:pass@...` → env-var references in docs/examples. |
 
 **Remaining git history**: The revoked HF token persists in git history (commits `2b437462`, `9abfaac5`). Token is revoked. Scrubbing requires `git filter-repo` + force-push. Decision: accept fossil until next major rebase, since token is dead and file is deleted from working tree.
@@ -1821,7 +1821,7 @@ dependencies, works on every GPU, ships with the crate, testable in CI without h
 | ID | Description | Notes |
 |----|-------------|-------|
 | D-CD | ComputeDispatch migration (~139 remaining) | Lives in barraCuda crate |
-| D-DF64 | DF64 as default precision path | barraCuda owns precision strategy. Handoff: `wateringHole/handoffs/TOADSTOOL_S93_DF64_HANDOFF_MAR03_2026.md` |
+| D-DF64 | DF64 as default precision path | barraCuda owns precision strategy. S93 handoff fossilized to ecoPrimals-level wateringHole. |
 | W-001 | f64 transcendental polyfills (28 functions) | Architecturally solved; sovereign solution |
 | W-003 | NAK compiler 149x performance gap | Phases 1+4 done; Titan V hw validation pending |
 | — | DF64 transcendental coverage (COMPLETE S71) | 15 functions in `df64_transcendentals.wgsl` |

@@ -5,7 +5,86 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 26, 2026 (Sessions 43-204)
+## [Unreleased] - April 30, 2026 (Sessions 43-213)
+
+### Session S213 (Apr 30, 2026) — Deep Debt: Lint Reason Sweep + Capability-Based Names + Orchestrator Resilience
+
+- EVOLVED: All remaining bare `#[allow]`/`#[expect]` attrs given `reason = "..."` across 12 files (network config, service mesh, mdns, monitoring collection, validation, ecosystem discovery/types, interned strings, tarpc client, server config)
+- EVOLVED: GPU backend stubs from hardcoded primal names (`barraCuda`/`coralReef`) to capability-based discovery language (`gpu.dispatch.cuda` capability URIs) in cuda_impl/mod.rs and backends/mod.rs
+- EVOLVED: `WorkloadOrchestrator` lock handling from `expect("lock poisoned")` panics to `Result<_, OrchestrationError::LockPoisoned>` returns — `register_substrate`, `num_substrates`, `stats` now return `Result`
+- ADDED: `OrchestrationError::LockPoisoned` variant
+- 0 failures, clippy clean, fmt clean
+
+### Session S212 (Apr 30, 2026) — Coverage Push: primalSpring Phase 56c Audit Response
+
+- ADDED: ~100 new inline `#[cfg(test)]` tests across 10 previously-untested production files
+- COVERED: server identity/capability/discovery handlers (8 tests)
+- COVERED: server job handler error paths, gate routing, list/cancel (16 tests)
+- COVERED: CLI metrics collectors + dispatch enum (15 tests)
+- COVERED: monitoring platform Linux proc parsers + live-process metrics (8 tests)
+- COVERED: auto_config platform detection (Linux/macOS/Windows/unknown + HW scaling, 12 tests)
+- COVERED: auto_config config generation (small/large HW, security, history cap, 8 tests)
+- COVERED: auto_config NL templates + fallback chains (8 tests)
+- COVERED: auto_config config builder (chaining, defaults, full build, 4 tests)
+- COVERED: distributed security_provider dispatch via mock (full lifecycle, 7 tests)
+- COVERED: distributed crypto_dispatch (provider identity + capabilities, 2 tests)
+- FIXED: Rust 2024 keyword collision (`gen` → `cg` in generation.rs tests)
+- 1,004 new test lines across 10 files. 0 failures, clippy clean, fmt clean
+
+### Session S211 (Apr 30, 2026) — Deep Debt: Lint Reason + Dep Unification + Feature Cleanup + hw-safe Expect→Result
+
+- EVOLVED: All remaining production `#[expect]` attrs to include `reason = "..."` (~30 sites across 25 files)
+- UNIFIED: `tokio`, `serde`, `uuid` in `runtime/edge` and `tokio` dev-dep in `akida-driver` to `{ workspace = true }`
+- REMOVED: Stale feature flags `pure-rust` (cli), `industrial`, `embedded-hw` (specialty)
+- EVOLVED: hw-safe `expect()` → `Result`: `HugePageMemory` and `DeviceMmap` null-pointer post-mmap checks now return `NullPointer` error
+- 7,842 lib-only tests, 0 failures, clippy clean, fmt clean
+
+### Session S210 (Apr 29, 2026) — PG-46: BTSP Handshake Timeout
+
+- ADDED: Bounded timeouts to JSON-line BTSP handshake relay (5s total, 3s per-RPC)
+- ADDED: `UnixJsonRpcClient::call_with_timeout`
+- ADDED: `BtspJsonLineError::Timeout` variant for clear error reporting
+- Resolves PG-46 (short-timeout reads returning empty responses)
+- 7,842 lib-only tests, 0 failures
+
+### Session S209 (Apr 29, 2026) — Deep Debt: Lint Reason + Dep Unification + Auth Capability
+
+- EVOLVED: All crate-level `#![allow]` attrs to include `reason =` (7 embedded/neuromorphic/native/testing crates)
+- EVOLVED: ~30 production `#[expect(deprecated)]`/`#[allow(deprecated)]` attrs with `reason =`
+- UNIFIED: `sha2`, `serde_json`, `tracing`, `thiserror`, `tracing-subscriber`, `tokio-test` to `{ workspace = true }` in 23 Cargo.toml files
+- EVOLVED: Auth backend hardcoded `well_known::BEARDOG` issuer → capability-based `capabilities::CRYPTO`
+- 7,842 lib-only tests, 0 failures, clippy clean, fmt clean
+
+### Session S208 (Apr 28, 2026) — Deep Debt: Unsafe Allow + Feature Hygiene + Expect→Result
+
+- REMOVED: Unnecessary `#[allow(unsafe_code)]` from `glowplug/mod.rs` (no unsafe code in module)
+- REMOVED: 4 empty no-op feature flags from CLI crate (`ecosystem`/`universal`/`monitoring`/`templates`)
+- EVOLVED: `InputManager::subscribe_events` from panic to `Result`
+- EVOLVED: `ProtocolEngine::build_*` methods from `.expect()` to `Option::insert`
+- EXTRACTED: Edge discovery port literals to `well_known_ports` module constants
+- 7,842 lib-only tests, 0 failures, clippy clean, fmt clean
+
+### Session S207 (Apr 28, 2026) — Self-Registration via DISCOVERY_SOCKET
+
+- EVOLVED: `register_with_coordination()` → `register_with_discovery()` — sends `ipc.register` to Songbird via `DISCOVERY_SOCKET`
+- ADDED: `find_by_capability` uses `ipc.find_capability` via discovery path
+- DEPRECATED: `register_with_coordination()` with migration path
+- 7,842 lib tests, 0 failures
+
+### Session S206 (Apr 28, 2026) — Lint Evolution + Dep Hygiene + Feature Cleanup
+
+- EVOLVED: All ~40 bare `#[allow(...)]` in production to `#[allow(..., reason = "...")]`
+- UNIFIED: `humantime-serde`, `rand`, `tokio-util`, `temp-env` to `{ workspace = true }` in 20+ Cargo.toml files
+- REMOVED: GPU `spirv`/`jit`/`testing` features + deps; testing `integration-tests`/`benchmarks`/`wiremock`
+- EVOLVED: `test-mocks` removed from `toadstool` core default features
+- 7,841 lib tests, 0 failures, clippy and fmt clean
+
+### Session S205 (Apr 28, 2026) — Phase 55: Encrypted Compute Dispatch + Discovery Socket
+
+- ADDED: Compute payloads encrypted via Tower `crypto.encrypt` before dispatch, decrypted on result return
+- ADDED: `DISCOVERY_SOCKET` env var as highest-precedence tier for capability resolution
+- ADDED: `retrieve_purpose_key()` to `SecurityClient` for BearDog `secrets.retrieve`
+- 7,841 lib tests, 0 failures, clippy and fmt clean
 
 ### Session S204 (Apr 26, 2026) — Deep Debt Evolution: Safety Docs, Constants, Dep Hygiene, Mock Isolation, Lint Reason, Deny Cleanup
 
