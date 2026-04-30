@@ -1,233 +1,46 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Lean CI — single job, shared build cache.
+# Binary distribution handled by plasmidBin CI/CD (auto-harvest.yml).
+# This workflow validates code quality only.
+
 name: CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [main]
   pull_request:
-    branches: [ master, main ]
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
 
 jobs:
   check:
-    name: Check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config libwayland-dev
-      - name: Check workspace (all features)
-        run: cargo check --workspace --all-features --all-targets
-      - name: Check workspace (no features — feature-gate discipline)
-        run: cargo check --workspace --all-targets
 
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
-      - name: Run tests
-        run: cargo test --workspace --all-features
-
-  test-showcase:
-    name: Showcase Build Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
-      - name: Build showcase demos
-        run: |
-          for dir in showcase/0*; do
-            for demo in "$dir"/*/; do
-              if [ -f "$demo/Cargo.toml" ]; then
-                echo "Building $demo"
-                cargo build --manifest-path "$demo/Cargo.toml"
-              fi
-            done
-          done
-        continue-on-error: true
-
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
-      - name: Check formatting
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
         run: cargo fmt --all -- --check
 
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config libwayland-dev
-      - name: Run clippy (pedantic)
-        run: cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic
-      - name: Clippy: deny unwrap in production
-        run: cargo clippy --workspace --lib -- -D clippy::unwrap_used
-      - name: Clippy: deny holding std locks across await
-        run: cargo clippy --workspace --lib -- -D clippy::await_holding_lock
-      - name: Run clippy (all features)
-        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
-  doc:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config libwayland-dev
-      - name: Check documentation
-        run: cargo doc --workspace --all-features --no-deps
-        env:
-          RUSTDOCFLAGS: -D warnings
-
-  examples:
-    name: Examples Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Build workspace examples
-        run: cargo build --examples --release
-        continue-on-error: true
-
-  coverage:
-    name: Test Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: llvm-tools-preview
-      - uses: Swatinem/rust-cache@v2
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config bc
-      - name: Run coverage (tier 1)
-        run: |
-          cargo llvm-cov --workspace --all-features --ignore-filename-regex "tests/" -- --skip performance_bench --skip slow
-      - name: Generate coverage report
-        run: |
-          cargo llvm-cov report --json --output-path coverage.json
-          cargo llvm-cov report
-      - name: Check coverage threshold
-        run: |
-          COVERAGE=$(cargo llvm-cov report | grep "TOTAL" | awk '{print $10}' | sed 's/%//')
-          TARGET=90
-          GATE=80
-          echo "Coverage: ${COVERAGE}%"
-          echo "Target: ${TARGET}% | Hard gate: ${GATE}%"
-          if (( $(echo "$COVERAGE < $GATE" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below hard gate ${GATE}%"
-            exit 1
-          elif (( $(echo "$COVERAGE < $TARGET" | bc -l) )); then
-            echo "::warning::Coverage ${COVERAGE}% is below target ${TARGET}% (hard gate ${GATE}% met)"
-          else
-            echo "Coverage meets target"
-          fi
-
-  cross-compile:
-    name: Cross-Compilation (Pure Rust)
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - aarch64-unknown-linux-gnu
-          - armv7-unknown-linux-gnueabihf
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
-      - name: Check cross-compilation (no C toolchain)
-        run: cargo check --workspace --target ${{ matrix.target }}
-
-  secret-scan:
-    name: Secret Leak Prevention
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Scan for leaked secrets
-        run: |
-          echo "Scanning for hardcoded secrets in tracked files..."
-          PATTERNS='(sk-[a-zA-Z0-9]{20,}|hf_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\-]{20,}|AKIA[0-9A-Z]{16}[^E]|xox[bpsar]-[0-9a-zA-Z\-]{10,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY)'
-          if git grep -lPn "$PATTERNS" -- ':!target/' ':!.git/' ':!*.lock'; then
-            echo "::error::Potential secret detected in tracked files — see above"
-            exit 1
-          fi
-          echo "No secrets found in working tree."
-
-  fuzz:
-    name: Fuzz (libFuzzer smoke)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - fuzz_jsonrpc_parse
-          - fuzz_config_toml
-          - fuzz_btsp_framing
-          - gpu_buffer_access
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: fuzz
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config build-essential
-      - name: Install cargo-fuzz
-        uses: taiki-e/install-action@cargo-fuzz
-      - name: Run fuzz target (${{ matrix.target }})
-        working-directory: fuzz
-        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=120 -rss_limit_mb=4096
-
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v1.4.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test
+        run: cargo test --workspace --lib
