@@ -16,13 +16,15 @@ Cargo.lock
 *.sh
 
 # Source code
-src/
 crates/
 examples/
 showcase/
+benches/
 docs/
 specs/
 scripts/
+infra/
+fuzz/
 
 # Keep target in gitignore but exclude from moves
 # (managed by cargo clean)

@@ -115,7 +115,7 @@ toadStool picks the row. coralReef compiles for it. Springs never see the table.
 | Test coverage | Target 90%, current ~83.6% (llvm-cov) | D-COV |
 | Mocks in production | 0 (all `#[cfg(test)]` gated) | ✅ |
 
-### Key Numbers (S209)
+### Key Numbers (S211)
 
 - **20,000+ workspace / 7,842 lib-only** tests (0 failures), **~65 JSON-RPC methods**
 - **3 hardware transports** — Display (DRM), Capture (V4L2), Serial
