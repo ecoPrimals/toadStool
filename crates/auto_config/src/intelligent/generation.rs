@@ -200,3 +200,146 @@ impl ConfigGenerator {
         debug!("Configuration snapshot stored for learning");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn small_hw() -> SystemCapabilities {
+        SystemCapabilities {
+            cpu_cores: 4.0,
+            memory_gb: 8.0,
+            storage_gb: 100.0,
+            gpu_count: 0,
+            ..Default::default()
+        }
+    }
+
+    fn large_hw() -> SystemCapabilities {
+        SystemCapabilities {
+            cpu_cores: 16.0,
+            memory_gb: 64.0,
+            storage_gb: 2000.0,
+            gpu_count: 2,
+            ..Default::default()
+        }
+    }
+
+    fn linux_platform() -> PlatformConfig {
+        PlatformConfig {
+            platform_name: "linux".to_string(),
+            supported_features: {
+                let mut s = std::collections::HashSet::new();
+                s.insert(super::super::detection::PlatformSupport::Sandboxing);
+                s
+            },
+            optimizations: Vec::new(),
+        }
+    }
+
+    fn empty_ecosystem() -> DiscoveredServices {
+        DiscoveredServices {
+            discovered_services: std::collections::HashMap::new(),
+            discovery_summary: crate::ecosystem::DiscoverySummary::default(),
+            discovery_timestamp: std::time::SystemTime::now(),
+        }
+    }
+
+    #[test]
+    fn config_generator_default() {
+        let cg = ConfigGenerator::default();
+        assert!(cg.config_history.is_empty());
+    }
+
+    #[tokio::test]
+    async fn generate_config_small_hardware() {
+        let mut cg = ConfigGenerator::new();
+        let hints = UsageHints::default();
+        let config = cg
+            .generate_optimal_config(&small_hw(), &linux_platform(), &empty_ecosystem(), &hints)
+            .await
+            .unwrap();
+        assert!(config.runtime.max_concurrent_executions >= 1);
+        assert!(config.runtime.gpu.is_none());
+    }
+
+    #[tokio::test]
+    async fn generate_config_large_hardware_enables_gpu() {
+        let mut cg = ConfigGenerator::new();
+        let hints = UsageHints::default();
+        let config = cg
+            .generate_optimal_config(&large_hw(), &linux_platform(), &empty_ecosystem(), &hints)
+            .await
+            .unwrap();
+        assert!(config.runtime.gpu.is_some());
+        assert!(config.runtime.max_concurrent_executions > 4);
+    }
+
+    #[tokio::test]
+    async fn security_settings_respect_platform_sandboxing() {
+        let mut cg = ConfigGenerator::new();
+        let hints = UsageHints::default();
+        let config = cg
+            .generate_optimal_config(&small_hw(), &linux_platform(), &empty_ecosystem(), &hints)
+            .await
+            .unwrap();
+        assert!(config.security.sandbox.enabled);
+        assert!(config.security.auth.enabled);
+    }
+
+    #[tokio::test]
+    async fn stores_config_snapshots() {
+        let mut cg = ConfigGenerator::new();
+        let hints = UsageHints::default();
+        for _ in 0..3 {
+            cg.generate_optimal_config(&small_hw(), &linux_platform(), &empty_ecosystem(), &hints)
+                .await
+                .unwrap();
+        }
+        assert_eq!(cg.config_history.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn config_history_capped_at_10() {
+        let mut cg = ConfigGenerator::new();
+        let hints = UsageHints::default();
+        for _ in 0..12 {
+            cg.generate_optimal_config(&small_hw(), &linux_platform(), &empty_ecosystem(), &hints)
+                .await
+                .unwrap();
+        }
+        assert_eq!(cg.config_history.len(), 10);
+    }
+
+    #[test]
+    fn apply_container_optimization() {
+        let cg = ConfigGenerator::new();
+        let mut config = ToadStoolConfig::default();
+        let mut platform = linux_platform();
+        platform
+            .optimizations
+            .push(super::super::detection::PlatformOptimization {
+                optimization_type: "containers".to_string(),
+                description: "test".to_string(),
+                performance_gain: 0.1,
+            });
+        cg.apply_platform_optimizations(&mut config, &platform);
+        assert_eq!(config.runtime.container.runtime, "containerd");
+    }
+
+    #[test]
+    fn apply_wasm_optimization() {
+        let cg = ConfigGenerator::new();
+        let mut config = ToadStoolConfig::default();
+        let mut platform = linux_platform();
+        platform
+            .optimizations
+            .push(super::super::detection::PlatformOptimization {
+                optimization_type: "wasm".to_string(),
+                description: "test".to_string(),
+                performance_gain: 0.1,
+            });
+        cg.apply_platform_optimizations(&mut config, &platform);
+        assert_eq!(config.runtime.wasm.max_memory, 1024 * 1024 * 1024);
+    }
+}

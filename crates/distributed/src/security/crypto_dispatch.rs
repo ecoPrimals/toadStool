@@ -238,3 +238,35 @@ impl toadstool::encryption::CryptoProvider for DistributedCryptoProvider {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use toadstool::encryption::CryptoProvider;
+
+    fn make_provider() -> DistributedCryptoProvider {
+        use crate::security::SecurityConfig;
+        let config = SecurityConfig::default();
+        #[expect(
+            deprecated,
+            reason = "SecurityClient::new uses deprecated SecurityConfig; test helper"
+        )]
+        let client = SecurityClient::new(config).unwrap();
+        DistributedCryptoProvider::Security(Arc::new(client))
+    }
+
+    #[test]
+    fn provider_id_is_crypto_capability() {
+        let p = make_provider();
+        assert_eq!(p.provider_id(), capabilities::CRYPTO);
+    }
+
+    #[test]
+    fn capabilities_include_expected_algorithms() {
+        let p = make_provider();
+        let caps = p.capabilities();
+        assert!(caps.algorithms.contains(&"chacha20poly1305".to_string()));
+        assert!(caps.algorithms.contains(&"aes-256-gcm".to_string()));
+        assert!(!caps.hardware_backed);
+    }
+}

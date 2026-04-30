@@ -243,3 +243,121 @@ impl MetricsCollector for MetricsCollectorDispatch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn system_collector_name() {
+        let c = SystemMetricsCollector::new();
+        assert_eq!(c.name(), "system");
+    }
+
+    #[test]
+    fn system_collector_default() {
+        let c = SystemMetricsCollector::default();
+        assert_eq!(c.name(), "system");
+    }
+
+    #[test]
+    fn system_collector_capabilities() {
+        let c = SystemMetricsCollector::new();
+        let caps = c.capabilities();
+        assert!(caps.contains(&"cpu".to_string()));
+        assert!(caps.contains(&"memory".to_string()));
+        assert!(caps.contains(&"storage".to_string()));
+    }
+
+    #[test]
+    fn system_collector_collect_returns_metrics() {
+        let c = SystemMetricsCollector::new();
+        let batch = c.collect().unwrap();
+        assert_eq!(batch.source, "system");
+        assert!(!batch.metrics.is_empty());
+        let names: Vec<&str> = batch.metrics.iter().map(|m| m.name.as_str()).collect();
+        assert!(names.contains(&"cpu_usage_percent"));
+    }
+
+    #[test]
+    fn process_collector_name() {
+        let c = ProcessMetricsCollector::new();
+        assert_eq!(c.name(), "process");
+    }
+
+    #[test]
+    fn process_collector_default() {
+        let c = ProcessMetricsCollector::default();
+        assert_eq!(c.name(), "process");
+    }
+
+    #[test]
+    fn process_collector_capabilities() {
+        let c = ProcessMetricsCollector::new();
+        let caps = c.capabilities();
+        assert!(caps.contains(&"processes".to_string()));
+    }
+
+    #[test]
+    fn process_collector_collect_returns_metrics() {
+        let c = ProcessMetricsCollector::new();
+        let batch = c.collect().unwrap();
+        assert_eq!(batch.source, "process");
+        let names: Vec<&str> = batch.metrics.iter().map(|m| m.name.as_str()).collect();
+        assert!(names.contains(&"process_count"));
+    }
+
+    #[test]
+    fn network_collector_name() {
+        let c = NetworkMetricsCollector::new();
+        assert_eq!(c.name(), "network");
+    }
+
+    #[test]
+    fn network_collector_default() {
+        let c = NetworkMetricsCollector::default();
+        assert_eq!(c.name(), "network");
+    }
+
+    #[test]
+    fn network_collector_capabilities() {
+        let c = NetworkMetricsCollector::new();
+        let caps = c.capabilities();
+        assert!(caps.contains(&"network".to_string()));
+        assert!(caps.contains(&"throughput".to_string()));
+    }
+
+    #[test]
+    fn network_collector_collect_returns_metrics() {
+        let c = NetworkMetricsCollector::new();
+        let batch = c.collect().unwrap();
+        assert_eq!(batch.source, "network");
+        let names: Vec<&str> = batch.metrics.iter().map(|m| m.name.as_str()).collect();
+        assert!(names.contains(&"network_rx_bytes_per_sec"));
+        assert!(names.contains(&"network_tx_bytes_per_sec"));
+    }
+
+    #[test]
+    fn dispatch_system_delegates() {
+        let d = MetricsCollectorDispatch::System(SystemMetricsCollector::new());
+        assert_eq!(d.name(), "system");
+        assert!(!d.capabilities().is_empty());
+        assert!(d.collect().is_ok());
+    }
+
+    #[test]
+    fn dispatch_process_delegates() {
+        let d = MetricsCollectorDispatch::Process(ProcessMetricsCollector::new());
+        assert_eq!(d.name(), "process");
+        assert!(!d.capabilities().is_empty());
+        assert!(d.collect().is_ok());
+    }
+
+    #[test]
+    fn dispatch_network_delegates() {
+        let d = MetricsCollectorDispatch::Network(NetworkMetricsCollector::new());
+        assert_eq!(d.name(), "network");
+        assert!(!d.capabilities().is_empty());
+        assert!(d.collect().is_ok());
+    }
+}

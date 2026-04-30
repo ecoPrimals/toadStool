@@ -224,3 +224,181 @@ pub struct PlatformOptimization {
     /// Expected performance improvement (0.0 to 1.0).
     pub performance_gain: f64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn linux_info() -> PlatformInfo {
+        PlatformInfo {
+            os_name: "linux".to_string(),
+            os_version: "6.1".to_string(),
+            architecture: "x86_64".to_string(),
+        }
+    }
+
+    fn macos_info() -> PlatformInfo {
+        PlatformInfo {
+            os_name: "macos".to_string(),
+            os_version: "14.0".to_string(),
+            architecture: "aarch64".to_string(),
+        }
+    }
+
+    fn windows_info() -> PlatformInfo {
+        PlatformInfo {
+            os_name: "windows".to_string(),
+            os_version: "11".to_string(),
+            architecture: "x86_64".to_string(),
+        }
+    }
+
+    fn small_hw() -> SystemCapabilities {
+        SystemCapabilities {
+            cpu_cores: 4.0,
+            memory_gb: 8.0,
+            ..Default::default()
+        }
+    }
+
+    fn large_hw() -> SystemCapabilities {
+        SystemCapabilities {
+            cpu_cores: 16.0,
+            memory_gb: 64.0,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn platform_info_detect_returns_valid() {
+        let info = PlatformInfo::detect();
+        assert!(!info.os_name.is_empty());
+        assert!(!info.architecture.is_empty());
+    }
+
+    #[test]
+    fn platform_optimizer_default() {
+        let opt = PlatformOptimizer::default();
+        assert!(!opt.platform_info.os_name.is_empty());
+    }
+
+    #[test]
+    fn linux_platform_supports_containers() {
+        let opt = PlatformOptimizer {
+            platform_info: linux_info(),
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        assert!(config.supports_containers());
+        assert!(config.supports_sandboxing());
+        assert!(config.supports_process_isolation());
+        assert!(config.supports_network_isolation());
+    }
+
+    #[test]
+    fn linux_platform_optimizations() {
+        let opt = PlatformOptimizer {
+            platform_info: linux_info(),
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        let types: Vec<&str> = config
+            .optimizations
+            .iter()
+            .map(|o| o.optimization_type.as_str())
+            .collect();
+        assert!(types.contains(&"memory_mapping"));
+        assert!(types.contains(&"async_io"));
+    }
+
+    #[test]
+    fn macos_platform_features() {
+        let opt = PlatformOptimizer {
+            platform_info: macos_info(),
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        assert!(!config.supports_containers());
+        assert!(config.supports_sandboxing());
+        assert!(config.supports_process_isolation());
+        assert!(!config.supports_network_isolation());
+    }
+
+    #[test]
+    fn macos_platform_optimizations() {
+        let opt = PlatformOptimizer {
+            platform_info: macos_info(),
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        let types: Vec<&str> = config
+            .optimizations
+            .iter()
+            .map(|o| o.optimization_type.as_str())
+            .collect();
+        assert!(types.contains(&"vector_instructions"));
+    }
+
+    #[test]
+    fn windows_platform_features() {
+        let opt = PlatformOptimizer {
+            platform_info: windows_info(),
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        assert!(!config.supports_containers());
+        assert!(config.supports_sandboxing());
+    }
+
+    #[test]
+    fn large_hardware_adds_parallel_and_buffer_opts() {
+        let opt = PlatformOptimizer {
+            platform_info: linux_info(),
+        };
+        let config = opt.optimize_for_platform(&large_hw()).unwrap();
+        let types: Vec<&str> = config
+            .optimizations
+            .iter()
+            .map(|o| o.optimization_type.as_str())
+            .collect();
+        assert!(types.contains(&"parallel_compilation"));
+        assert!(types.contains(&"large_buffer"));
+    }
+
+    #[test]
+    fn small_hardware_no_parallel_opt() {
+        let opt = PlatformOptimizer {
+            platform_info: linux_info(),
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        let types: Vec<&str> = config
+            .optimizations
+            .iter()
+            .map(|o| o.optimization_type.as_str())
+            .collect();
+        assert!(!types.contains(&"parallel_compilation"));
+        assert!(!types.contains(&"large_buffer"));
+    }
+
+    #[test]
+    fn unknown_platform_generic_only() {
+        let opt = PlatformOptimizer {
+            platform_info: PlatformInfo {
+                os_name: "freebsd".to_string(),
+                os_version: "14".to_string(),
+                architecture: "x86_64".to_string(),
+            },
+        };
+        let config = opt.optimize_for_platform(&small_hw()).unwrap();
+        assert!(config.supported_features.is_empty());
+    }
+
+    #[test]
+    fn platform_config_supports_method() {
+        let mut config = PlatformConfig {
+            platform_name: "test".to_string(),
+            supported_features: std::collections::HashSet::new(),
+            optimizations: Vec::new(),
+        };
+        assert!(!config.supports(&PlatformSupport::Containers));
+        config
+            .supported_features
+            .insert(PlatformSupport::Containers);
+        assert!(config.supports(&PlatformSupport::Containers));
+    }
+}

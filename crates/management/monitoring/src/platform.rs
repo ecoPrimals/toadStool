@@ -416,3 +416,82 @@ fn parse_powershell_value(output: &str, field: &str) -> Result<f64, ResourceMoni
         field
     )))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn total_system_memory_is_positive() {
+        let mem = total_system_memory_bytes();
+        assert!(mem > 0.0);
+    }
+
+    #[cfg(target_os = "linux")]
+    mod linux_tests {
+        use super::*;
+
+        #[test]
+        fn parse_proc_status_vm_rss() {
+            let status = "Name:\ttest\nVmRSS:\t 12345 kB\nVmSize:\t 99999 kB\n";
+            let val = parse_proc_status_value(status, "VmRSS").unwrap();
+            assert!((val - 12345.0).abs() < f64::EPSILON);
+        }
+
+        #[test]
+        fn parse_proc_status_missing_field() {
+            let status = "Name:\ttest\n";
+            let err = parse_proc_status_value(status, "VmRSS");
+            assert!(err.is_err());
+        }
+
+        #[test]
+        fn parse_proc_io_read_bytes() {
+            let io = "rchar: 123\nwchar: 456\nread_bytes: 789\nwrite_bytes: 101112\n";
+            let val = parse_proc_io_value(io, "read_bytes").unwrap();
+            assert_eq!(val, 789);
+        }
+
+        #[test]
+        fn parse_proc_io_write_bytes() {
+            let io = "rchar: 123\nwchar: 456\nread_bytes: 789\nwrite_bytes: 101112\n";
+            let val = parse_proc_io_value(io, "write_bytes").unwrap();
+            assert_eq!(val, 101_112);
+        }
+
+        #[test]
+        fn parse_proc_io_missing_field() {
+            let io = "rchar: 123\n";
+            let err = parse_proc_io_value(io, "write_bytes");
+            assert!(err.is_err());
+        }
+
+        #[tokio::test]
+        async fn get_platform_metrics_for_current_process() {
+            let pid = std::process::id();
+            let config = MonitoringConfig::default();
+            let result = get_platform_metrics(pid, &config).await;
+            assert!(result.is_ok(), "metrics for own pid should succeed");
+            let m = result.unwrap();
+            assert!(m.memory.used_bytes > 0);
+        }
+
+        #[tokio::test]
+        async fn get_platform_metrics_invalid_pid_fails() {
+            let config = MonitoringConfig::default();
+            let result = get_platform_metrics(u32::MAX, &config).await;
+            assert!(result.is_err());
+        }
+
+        #[tokio::test]
+        async fn get_platform_metrics_with_network() {
+            let pid = std::process::id();
+            let config = MonitoringConfig {
+                enable_network_monitoring: true,
+                ..Default::default()
+            };
+            let result = get_platform_metrics(pid, &config).await;
+            assert!(result.is_ok());
+        }
+    }
+}

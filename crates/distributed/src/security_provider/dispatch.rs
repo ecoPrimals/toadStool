@@ -253,3 +253,94 @@ impl SecurityProvider for SecurityProviderDispatch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::provider::MockSecurityProvider;
+    use super::*;
+
+    fn mock_dispatch() -> SecurityProviderDispatch {
+        SecurityProviderDispatch::Mock(MockSecurityProvider::new())
+    }
+
+    #[tokio::test]
+    async fn mock_capabilities_returns_defaults() {
+        let d = mock_dispatch();
+        let caps = d.capabilities().await.unwrap();
+        assert!(caps.contains(&SecurityCapability::SymmetricEncryption));
+        assert!(caps.contains(&SecurityCapability::DigitalSignatures));
+    }
+
+    #[tokio::test]
+    async fn mock_metadata_returns_valid() {
+        let d = mock_dispatch();
+        let meta = d.metadata().await.unwrap();
+        assert_eq!(meta.provider_type, "mock");
+        assert_eq!(meta.provider_version, "1.0.0");
+    }
+
+    #[tokio::test]
+    async fn mock_encrypt_decrypt_roundtrip() {
+        let d = mock_dispatch();
+        let plaintext = b"hello world";
+        let encrypted = d.encrypt(plaintext, None).await.unwrap();
+        assert_ne!(encrypted.ciphertext, plaintext);
+
+        let decrypted = d
+            .decrypt(&encrypted.ciphertext, &encrypted.metadata)
+            .await
+            .unwrap();
+        assert_eq!(decrypted.plaintext, plaintext);
+    }
+
+    #[tokio::test]
+    async fn mock_sign_verify_roundtrip() {
+        let d = mock_dispatch();
+        let data = b"test data";
+        let sig = d.sign(data, None).await.unwrap();
+        assert!(!sig.signature.is_empty());
+
+        let verify = d.verify(data, &sig.signature, &sig.key_id).await.unwrap();
+        assert!(matches!(verify, VerificationResult::Valid));
+    }
+
+    #[tokio::test]
+    async fn mock_create_validate_permission() {
+        use super::super::types::{ExternalTarget, PermissionScope, ResourceLimits};
+        let d = mock_dispatch();
+        let request = PermissionRequest {
+            requester_id: "test-subject".to_string(),
+            target: ExternalTarget::ExternalTool {
+                tool_name: "test-tool".to_string(),
+                api_endpoints: vec!["http://localhost".to_string()],
+                feature_set: vec!["read".to_string()],
+            },
+            scope: PermissionScope {
+                operations: vec!["read".to_string()],
+                resource_limits: ResourceLimits::default(),
+                geo_restrictions: Vec::new(),
+            },
+            validity_duration: std::time::Duration::from_secs(3600),
+            delegation_info: None,
+        };
+        let perm = d.create_permission(request).await.unwrap();
+        assert!(!perm.permission_id.is_nil());
+
+        let result = d.validate_permission(&perm).await.unwrap();
+        assert_eq!(result, PermissionValidationResult::Valid);
+    }
+
+    #[tokio::test]
+    async fn mock_revoke_permission() {
+        let d = mock_dispatch();
+        let id = uuid::Uuid::new_v4();
+        d.revoke_permission(&id, "test reason").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn mock_health_check() {
+        let d = mock_dispatch();
+        let health = d.health_check().await.unwrap();
+        assert_eq!(health, ProviderHealth::Healthy);
+    }
+}

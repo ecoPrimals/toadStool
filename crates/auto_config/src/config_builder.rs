@@ -160,3 +160,52 @@ impl Default for ConfigBuilder {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builder_default_values() {
+        let b = ConfigBuilder::new();
+        assert!(b.enable_hardware_detection);
+        assert!(b.enable_ecosystem_discovery);
+        assert!(b.enable_performance_optimization);
+        assert!(b.enable_usage_learning);
+        assert_eq!(b.discovery_timeout, std::time::Duration::from_secs(30));
+    }
+
+    #[test]
+    fn builder_default_trait() {
+        let b = ConfigBuilder::default();
+        assert!(b.enable_hardware_detection);
+    }
+
+    #[test]
+    fn builder_chain_disables_all() {
+        let b = ConfigBuilder::new()
+            .with_hardware_detection(false)
+            .with_ecosystem_discovery(false)
+            .with_performance_optimization(false)
+            .with_usage_learning(false)
+            .with_discovery_timeout(std::time::Duration::from_secs(5));
+        assert!(!b.enable_hardware_detection);
+        assert!(!b.enable_ecosystem_discovery);
+        assert!(!b.enable_performance_optimization);
+        assert!(!b.enable_usage_learning);
+        assert_eq!(b.discovery_timeout, std::time::Duration::from_secs(5));
+    }
+
+    #[tokio::test]
+    async fn build_with_all_disabled() {
+        let config = ConfigBuilder::new()
+            .with_hardware_detection(false)
+            .with_ecosystem_discovery(false)
+            .with_performance_optimization(false)
+            .with_usage_learning(false)
+            .build()
+            .await
+            .unwrap();
+        assert!(config.security.auth.enabled);
+    }
+}

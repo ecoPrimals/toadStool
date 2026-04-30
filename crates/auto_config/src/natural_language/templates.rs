@@ -235,3 +235,81 @@ pub fn get_template(
             }
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_templates_has_all_keys() {
+        let t = create_templates();
+        assert!(t.contains_key("machine_learning"));
+        assert!(t.contains_key("web_development"));
+        assert!(t.contains_key("data_processing"));
+        assert!(t.contains_key("gaming"));
+        assert!(t.contains_key("general_purpose"));
+        assert_eq!(t.len(), 5);
+    }
+
+    #[test]
+    fn ml_template_requires_gpu() {
+        let t = create_templates();
+        let ml = &t["machine_learning"];
+        assert!(ml.resource_preferences.requires_gpu);
+        assert!(
+            ml.runtime_preferences
+                .enabled_runtimes
+                .contains(&RuntimeType::Gpu)
+        );
+        assert!(ml.explicit_preferences.use_gpu == Some(true));
+    }
+
+    #[test]
+    fn web_dev_template_no_gpu() {
+        let t = create_templates();
+        let web = &t["web_development"];
+        assert!(!web.resource_preferences.requires_gpu);
+        assert!(
+            web.runtime_preferences
+                .enabled_runtimes
+                .contains(&RuntimeType::Container)
+        );
+    }
+
+    #[test]
+    fn data_processing_template_high_memory() {
+        let t = create_templates();
+        let dp = &t["data_processing"];
+        assert!(dp.resource_preferences.memory_intensive);
+        assert!(dp.runtime_preferences.python_memory_limit_gb > 16.0);
+    }
+
+    #[test]
+    fn gaming_template_max_gpu() {
+        let t = create_templates();
+        let g = &t["gaming"];
+        assert!(g.runtime_preferences.gpu_memory_fraction > 0.9);
+        assert!(g.resource_preferences.requires_gpu);
+    }
+
+    #[test]
+    fn get_template_existing() {
+        let t = create_templates();
+        let ml = get_template(&t, "machine_learning");
+        assert_eq!(ml.name, "Machine Learning");
+    }
+
+    #[test]
+    fn get_template_unknown_falls_back_to_general() {
+        let t = create_templates();
+        let fallback = get_template(&t, "nonexistent");
+        assert_eq!(fallback.name, "General Purpose");
+    }
+
+    #[test]
+    fn get_template_empty_map_uses_ultimate_fallback() {
+        let empty: HashMap<String, ConfigurationTemplate> = HashMap::new();
+        let fallback = get_template(&empty, "anything");
+        assert_eq!(fallback.name, "default");
+    }
+}

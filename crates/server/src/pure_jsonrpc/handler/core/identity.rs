@@ -173,3 +173,97 @@ pub(crate) async fn identity_get(
         "socket_name": format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn empty_registry() -> SemanticMethodRegistry {
+        SemanticMethodRegistry::default()
+    }
+
+    #[test]
+    fn test_all_callable_methods_includes_direct_routes() {
+        let reg = empty_registry();
+        let methods = all_callable_methods(&reg);
+        assert!(methods.contains(&"capabilities.list"));
+        assert!(methods.contains(&"health.liveness"));
+        assert!(methods.contains(&"identity.get"));
+    }
+
+    #[test]
+    fn test_all_callable_methods_sorted() {
+        let reg = empty_registry();
+        let methods = all_callable_methods(&reg);
+        let mut sorted = methods.clone();
+        sorted.sort_unstable();
+        assert_eq!(methods, sorted);
+    }
+
+    #[tokio::test]
+    async fn test_capabilities_list_structure() {
+        let reg = empty_registry();
+        let result = capabilities_list(&reg, "0.1.0").await.unwrap();
+        assert_eq!(result["primal"], PRIMAL_NAME);
+        assert_eq!(result["version"], "0.1.0");
+        assert_eq!(result["protocol"], "jsonrpc-2.0");
+        assert!(result["methods"].is_array());
+        assert!(result["provided_capabilities"].is_array());
+        assert!(result["consumed_capabilities"].is_array());
+        assert!(result["cost_estimates"].is_object());
+        assert!(result["operation_dependencies"].is_object());
+        let transport = result["transport"].as_array().unwrap();
+        assert!(transport.iter().any(|t| t == "uds"));
+        assert!(transport.iter().any(|t| t == "tcp"));
+    }
+
+    #[tokio::test]
+    async fn test_capabilities_list_provided_types() {
+        let reg = empty_registry();
+        let result = capabilities_list(&reg, "0.1.0").await.unwrap();
+        let provided = result["provided_capabilities"].as_array().unwrap();
+        let types: Vec<&str> = provided.iter().filter_map(|c| c["type"].as_str()).collect();
+        assert!(types.contains(&"compute"));
+        assert!(types.contains(&PRIMAL_NAME));
+        assert!(types.contains(&"gpu"));
+        assert!(types.contains(&"gate"));
+        assert!(types.contains(&"transport"));
+        assert!(types.contains(&"shader"));
+        assert!(types.contains(&"ember"));
+    }
+
+    #[tokio::test]
+    async fn test_discover_capabilities_structure() {
+        let reg = empty_registry();
+        let result = discover_capabilities(&reg, "0.1.0").await.unwrap();
+        assert_eq!(result["primal"], PRIMAL_NAME);
+        assert_eq!(result["version"], "0.1.0");
+        let caps = result["node_capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "compute"));
+        assert!(caps.iter().any(|c| c == "gpu"));
+        assert!(caps.iter().any(|c| c == "wasm"));
+    }
+
+    #[tokio::test]
+    async fn test_identity_get_structure() {
+        let reg = empty_registry();
+        let result = identity_get("0.1.0", &reg).await.unwrap();
+        assert_eq!(result["primal"], PRIMAL_NAME);
+        assert_eq!(result["version"], "0.1.0");
+        assert_eq!(result["domain"], "compute");
+        assert_eq!(result["license"], "AGPL-3.0-or-later");
+        assert_eq!(result["protocol"], "JSON-RPC 2.0");
+        assert_eq!(result["transport"], "unix-socket");
+        let caps = result["capabilities"].as_array().unwrap();
+        assert!(caps.iter().any(|c| c == "compute"));
+    }
+
+    #[tokio::test]
+    async fn test_identity_get_socket_name() {
+        let reg = empty_registry();
+        let result = identity_get("0.1.0", &reg).await.unwrap();
+        let sock = result["socket_name"].as_str().unwrap();
+        assert!(sock.ends_with(".sock"));
+        assert!(sock.contains("compute"));
+    }
+}

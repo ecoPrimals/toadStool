@@ -1,12 +1,26 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S211
+**Date**: April 2026 — S212
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S212 (Coverage Push — 83.6% → 90% target)**:
+Targeted coverage expansion across 10 previously-untested production files.
+Added inline `#[cfg(test)]` modules with ~100 new tests covering: server
+identity/capability/discovery handlers, job handler error paths and gate
+routing, CLI metrics collectors (system/process/network dispatch), platform
+monitoring Linux proc parsers and live-process metrics, auto_config platform
+detection (Linux/macOS/Windows/unknown + hardware scaling), config generation
+(small/large hardware, security, history cap, optimizations), NL template
+construction and fallback chains, config builder chaining and full build,
+distributed security provider dispatch via mock (encrypt/decrypt roundtrip,
+sign/verify, permission lifecycle, health), crypto_dispatch provider identity
+and capabilities. **1,004 new test lines across 10 files**. 0 failures,
+clippy clean, fmt clean.
 
 **S211 (Deep Debt — Lint Reason + Dep Unification + Feature Cleanup + hw-safe Expect→Result)**:
 Completed comprehensive lint evolution: all remaining production `#[expect]`
