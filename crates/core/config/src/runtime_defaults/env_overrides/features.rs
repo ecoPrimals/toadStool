@@ -6,7 +6,10 @@ use super::parse;
 use crate::{BackendCacheConfig, MetricsConfig, ToadStoolConfig};
 use toadstool_common::interned_strings::socket_env;
 
-#[expect(clippy::unnecessary_wraps)] // Result type required for ? in apply_env_overrides chain
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "Result return required for ? in apply_env_overrides chain"
+)]
 pub(super) fn apply(config: &mut ToadStoolConfig) -> ConfigResult<()> {
     if let Ok(enabled) = std::env::var(socket_env::TOADSTOOL_ENABLE_METRICS) {
         config.metrics = if parse::parse_bool(&enabled) {

@@ -165,7 +165,10 @@ impl ToadStoolConfig {
         info!("    Auto-Config: {}", self.features.enable_auto_config);
         info!("    Debug: {}", self.features.enable_debug);
         info!("  External Services (LEGACY - use capability-based discovery):");
-        #[expect(deprecated)]
+        #[expect(
+            deprecated,
+            reason = "logging legacy endpoint fallbacks for diagnostics"
+        )]
         {
             info!(
                 "    Coordination (fallback): {}",

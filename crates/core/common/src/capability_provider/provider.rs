@@ -81,8 +81,10 @@ impl CapabilityProvider {
         let client = {
             let mut client_lock = self.client.write().await;
 
-            #[expect(clippy::option_if_let_else)]
-            // map_or_else would cause borrow conflict with mutation
+            #[expect(
+                clippy::option_if_let_else,
+                reason = "map_or_else would cause borrow conflict with mutation"
+            )]
             if let Some(c) = client_lock.as_ref() {
                 c.clone()
             } else {

@@ -112,7 +112,10 @@ impl SecurityClient {
         since = "0.3.0",
         note = "Use new_async() for capability-based discovery"
     )]
-    #[expect(deprecated)] // new() uses deprecated SecurityConfig; migration in progress
+    #[expect(
+        deprecated,
+        reason = "new() uses deprecated SecurityConfig; migration in progress"
+    )]
     pub fn new(config: SecurityConfig) -> ToadStoolResult<Self> {
         let socket_path = get_socket_path_for_capability("crypto");
         let rpc_client = UnixJsonRpcClient::new(socket_path);

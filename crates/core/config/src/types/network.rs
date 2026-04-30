@@ -51,7 +51,7 @@ impl Default for NetworkConfig {
             fallback.parse().unwrap_or_else(|_| {
                 // Last resort: LOCALHOST_IPV4:BIND_FALLBACK_PORT is guaranteed valid by IP spec
                 // This expect is justified: it's a compile-time constant that must be valid
-                #[expect(clippy::expect_used)]
+                #[expect(clippy::expect_used, reason = "compile-time constants must parse; panicking on invalid constants is correct")]
                 format!("{LOCALHOST_IPV4}:{BIND_FALLBACK_PORT}").parse().expect(
                     "Constants LOCALHOST_IPV4:BIND_FALLBACK_PORT must parse - language guarantee",
                 )

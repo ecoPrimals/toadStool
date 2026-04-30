@@ -564,7 +564,10 @@ impl Default for CpuComputeResource {
             // If we cannot create even a single-threaded thread pool, the system is fundamentally
             // broken and cannot execute compute tasks. Panicking here is appropriate as it's
             // a catastrophic system failure, not a recoverable error.
-            #[expect(clippy::expect_used)]
+            #[expect(
+                clippy::expect_used,
+                reason = "catastrophic: even single-threaded rayon pool creation failed"
+            )]
             let thread_pool = rayon::ThreadPoolBuilder::new()
                 .num_threads(1)
                 .thread_name(|_| "toadstool-cpu-fallback".to_string())

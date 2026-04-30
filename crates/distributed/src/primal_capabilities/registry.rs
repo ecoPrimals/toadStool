@@ -353,7 +353,10 @@ impl ProviderRegistry {
     }
 
     /// Prune registrations whose socket files no longer exist.
-    #[expect(clippy::needless_collect)] // Collect required: cannot mutate self.providers while iterating
+    #[expect(
+        clippy::needless_collect,
+        reason = "cannot mutate self.providers while iterating"
+    )]
     pub fn prune_stale(&mut self) -> Vec<ProviderRegistration> {
         let stale_keys: Vec<String> = self
             .providers

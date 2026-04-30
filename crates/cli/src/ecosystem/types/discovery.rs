@@ -23,7 +23,10 @@ pub struct DiscoveryResult {
 
 /// Service discovered during a scan
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[expect(deprecated)] // Using ServiceType during migration period
+#[expect(
+    deprecated,
+    reason = "ServiceType used during migration to capability-based discovery"
+)]
 pub struct DiscoveredService {
     /// Capability type (discovery, crypto, storage, compute)
     pub service_type: ServiceType,
@@ -57,7 +60,10 @@ pub enum ServiceType {
     Generic,
 }
 
-#[expect(deprecated)] // ServiceType impl; deprecated during migration to capability-based discovery
+#[expect(
+    deprecated,
+    reason = "ServiceType impl deprecated during migration to capability-based discovery"
+)]
 impl ServiceType {
     /// Map to capability name
     pub const fn to_capability(&self) -> &'static str {

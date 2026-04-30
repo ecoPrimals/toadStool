@@ -29,7 +29,10 @@ mod connection;
 pub mod discovery;
 
 // Public re-exports
-#[expect(deprecated)] // Re-exporting deprecated EcosystemService for backward compatibility
+#[expect(
+    deprecated,
+    reason = "re-exporting deprecated EcosystemService for backward compatibility"
+)]
 pub use types::{
     BearDogPermission, CryptoVerificationContext, DiscoveredService, DiscoveryResult,
     EcosystemIntegrator, EcosystemService, NestGateMount, SecurityPermission, ServiceEndpoint,

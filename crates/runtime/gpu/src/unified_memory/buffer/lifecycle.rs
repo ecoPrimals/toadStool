@@ -49,7 +49,10 @@ impl UnifiedBuffer {
         );
         assert!(size > 0, "Buffer size cannot be zero");
 
-        #[expect(clippy::expect_used)] // infallible: assert above guarantees cpu_ptr >= 4096
+        #[expect(
+            clippy::expect_used,
+            reason = "infallible: assert above guarantees cpu_ptr >= 4096"
+        )]
         let cpu_ptr_nonnull =
             NonNull::new(cpu_ptr).expect("CPU pointer cannot be null at buffer creation");
 

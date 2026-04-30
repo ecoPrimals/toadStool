@@ -15,7 +15,10 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use super::capability_types::{CapabilityInfo, CapabilityType, HealthStatus, ServiceEndpoint};
-#[expect(deprecated)] // Protocol compatibility: platform path convention
+#[expect(
+    deprecated,
+    reason = "protocol compatibility: platform path convention"
+)]
 use crate::constants::ecosystem::well_known::BIOMEOS;
 use crate::constants::network::{HTTP_PROTOCOL, UNIX_SOCKET_URL_PREFIX};
 use crate::interned_strings::socket_env;
@@ -516,7 +519,7 @@ impl LocalRegistrySource {
 }
 
 impl DiscoverySource for LocalRegistrySource {
-    #[expect(deprecated)] // BIOMEOS used for platform path convention
+    #[expect(deprecated, reason = "BIOMEOS used for platform path convention")]
     async fn discover(&self) -> ToadStoolResult<Vec<CapabilityInfo>> {
         let env = PathEnv::from_env();
         let paths = PlatformPaths::new(&env);

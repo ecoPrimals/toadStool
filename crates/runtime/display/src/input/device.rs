@@ -79,7 +79,10 @@ pub enum DeviceCapability {
 /// println!("Opened: {}", device.name());
 /// # Ok::<(), toadstool_display::DisplayError>(())
 /// ```
-#[expect(clippy::struct_field_names)] // device_type and evdev_device are standard evdev terminology
+#[expect(
+    clippy::struct_field_names,
+    reason = "device_type and evdev_device are standard evdev terminology"
+)]
 pub struct Device {
     path: PathBuf,
     name: String,

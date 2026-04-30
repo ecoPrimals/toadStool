@@ -31,6 +31,9 @@ pub enum DeviceMmapError {
     /// The mmap syscall failed.
     #[error("device mmap failed: {0}")]
     MmapFailed(std::io::Error),
+    /// mmap succeeded but returned a null pointer.
+    #[error("device mmap returned null pointer")]
+    NullPointer,
 }
 
 /// RAII memory-mapped device region.
@@ -91,7 +94,7 @@ impl DeviceMmap {
         }
         .map_err(|e| DeviceMmapError::MmapFailed(e.into()))?;
 
-        let ptr = NonNull::new(raw.cast()).expect("mmap returned non-null on success");
+        let ptr = NonNull::new(raw.cast()).ok_or(DeviceMmapError::NullPointer)?;
         tracing::debug!(size, offset, "device mmap region created");
         Ok(Self {
             ptr: ExclusivePtr::new(ptr),

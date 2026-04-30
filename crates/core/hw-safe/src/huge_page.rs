@@ -59,6 +59,9 @@ pub enum HugePageError {
     /// `mlock` failed (e.g. `RLIMIT_MEMLOCK` exceeded).
     #[error("mlock failed: {0}")]
     MlockFailed(std::io::Error),
+    /// `mmap_anonymous` succeeded but returned a null pointer.
+    #[error("mmap_anonymous returned null pointer")]
+    NullPointer,
 }
 
 /// RAII huge-page memory — `mmap_anonymous` + `MAP_HUGETLB` + `mlock`.
@@ -104,7 +107,7 @@ impl HugePageMemory {
         }
         .map_err(|e| HugePageError::MmapFailed(e.into()))?;
 
-        let ptr = NonNull::new(raw.cast::<u8>()).expect("mmap_anonymous returned null after Ok");
+        let ptr = NonNull::new(raw.cast::<u8>()).ok_or(HugePageError::NullPointer)?;
 
         // SAFETY: `ptr`/`aligned_size` describe the mapping returned above; rustix `mlock` requires
         // the range to be valid to read (it is).

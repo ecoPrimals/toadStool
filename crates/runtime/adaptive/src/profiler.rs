@@ -140,7 +140,10 @@ impl RuntimeProfiler {
     /// once `RuntimeProfiler` holds an executor reference. Current implementation returns
     /// conservative model-based estimates without sleeping. The `Result` return and `&self`
     /// receiver preserve the API surface for the real-gpu-executor evolution.
-    #[expect(clippy::unnecessary_wraps)]
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "Result return preserves API surface for real GPU executor evolution"
+    )]
     fn benchmark_workgroup(
         &self,
         op_type: OpType,
@@ -191,8 +194,10 @@ impl RuntimeProfiler {
             clippy::cast_possible_truncation,
             reason = "truncation acceptable for this conversion"
         )]
-        #[expect(clippy::cast_sign_loss)]
-        // Result is always positive and within u64 range (simulation timing)
+        #[expect(
+            clippy::cast_sign_loss,
+            reason = "simulation timing: result is always positive and within u64 range"
+        )]
         {
             (f64::from(base_time) * size_factor * workgroup_penalty) as u64
         }

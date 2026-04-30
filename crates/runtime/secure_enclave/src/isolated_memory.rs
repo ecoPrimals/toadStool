@@ -33,7 +33,10 @@ fn map_lock_error(e: LockError) -> Error {
 
 /// Best-effort: exclude region from core dumps (`MADV_DONTDUMP`).
 #[cfg(target_os = "linux")]
-#[expect(unsafe_code)] // rustix `madvise` is `unsafe` — pointer is our live `LockedMemory` allocation
+#[expect(
+    unsafe_code,
+    reason = "rustix madvise is unsafe; pointer is our live LockedMemory allocation"
+)]
 fn madvise_linux_dontdump(ptr: std::ptr::NonNull<u8>, len: usize) {
     use rustix::mm::{Advice, madvise};
     use std::ffi::c_void;

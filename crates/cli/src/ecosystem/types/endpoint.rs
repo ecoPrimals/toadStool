@@ -7,7 +7,10 @@ use std::sync::Arc;
 
 /// Discovered ecosystem service endpoint
 #[derive(Debug, Clone)]
-#[expect(deprecated)] // ServiceEndpoint still uses EcosystemService for backward compatibility
+#[expect(
+    deprecated,
+    reason = "ServiceEndpoint uses deprecated EcosystemService for backward compatibility"
+)]
 pub struct ServiceEndpoint {
     /// Service capability type (discovery, crypto, storage)
     pub service_type: EcosystemService,
@@ -45,7 +48,10 @@ impl<'de> Deserialize<'de> for ServiceEndpoint {
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
-        #[expect(deprecated)] // EcosystemService is deprecated but still used for backward compat
+        #[expect(
+            deprecated,
+            reason = "EcosystemService is deprecated but still used for backward compat"
+        )]
         struct ServiceEndpointHelper {
             service_type: EcosystemService,
             address: SocketAddr,
@@ -88,7 +94,7 @@ pub enum EcosystemService {
     Unknown(String),
 }
 
-#[expect(deprecated)] // Implementation of deprecated EcosystemService
+#[expect(deprecated, reason = "implementation of deprecated EcosystemService")]
 impl EcosystemService {
     /// Capability string for this service type
     pub(crate) fn name(&self) -> &str {

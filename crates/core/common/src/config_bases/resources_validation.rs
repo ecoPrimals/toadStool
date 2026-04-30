@@ -72,7 +72,7 @@ mod humantime_serde_optional {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::Duration;
 
-    #[expect(clippy::ref_option)] // Required by serde derive macro
+    #[expect(clippy::ref_option, reason = "required by serde derive macro")]
     pub fn serialize<S>(value: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

@@ -70,8 +70,10 @@ pub struct EncryptionMetadata {
     pub encrypted_at: i64,
 }
 
-// Unix epoch seconds fit in i64 for realistic dates
-#[expect(clippy::cast_possible_wrap)]
+#[expect(
+    clippy::cast_possible_wrap,
+    reason = "Unix epoch seconds fit in i64 for realistic dates"
+)]
 fn unix_timestamp_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

@@ -95,7 +95,10 @@ impl<T> MemoryPool<T> {
     }
 
     /// Get pool statistics
-    #[expect(clippy::future_not_send)] // MemoryPool<T> not Sync when T: !Send; design constraint
+    #[expect(
+        clippy::future_not_send,
+        reason = "MemoryPool<T> not Sync when T: !Send; design constraint"
+    )]
     pub async fn get_stats(&self) -> PoolStats {
         self.stats.read().await.clone()
     }

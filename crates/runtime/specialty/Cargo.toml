@@ -73,12 +73,9 @@ default = ["embedded-placeholder-impls"]
 # Optional: trait impls for embedded programmer/emulator types (`ProgrammerInterface`, `EmbeddedEmulator`).
 # Disable for minimal builds that do not register placeholder adapters (see `embedded::adapters`).
 embedded-placeholder-impls = []
-# Reserved for future real embedded hardware adapters (gates placeholder impls).
-embedded-hw = []
 # mainframe = ["ibm-mq", "cobol-parser", "jcl-parser"]  # Missing dependencies
 # embedded = ["cortex-m", "bindgen"]  # Missing dependencies
 serial-transport = ["serialport"]
-industrial = []  # ["ethercat", "canbus", "profinet"] - dependencies not on crates.io
 # legacy-networking = ["netbios", "ipx", "decnet"]  # Missing dependencies
 # real-time = ["real-time-for-the-masses", "vxworks-sys", "qnx-sys"]  # Missing dependencies
 # C build dependencies for native bindings (ecoBin: opt-in)

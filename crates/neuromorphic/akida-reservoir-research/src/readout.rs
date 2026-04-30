@@ -129,7 +129,10 @@ impl ReadoutTrainer {
     /// 3. Solve L^T W = Y by backward substitution
     ///
     /// This is numerically stable for symmetric positive definite matrices.
-    #[expect(clippy::needless_pass_by_value)] // Ownership needed for error fallback
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "ownership needed for error fallback"
+    )]
     fn solve_ridge(xt_x_reg: Array2<f64>, xt_y: Array2<f64>) -> Array2<f64> {
         let n = xt_x_reg.nrows();
         let n_rhs = xt_y.ncols();

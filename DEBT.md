@@ -1,12 +1,23 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S210
+**Date**: April 2026 — S211
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S211 (Deep Debt — Lint Reason + Dep Unification + Feature Cleanup + hw-safe Expect→Result)**:
+Completed comprehensive lint evolution: all remaining production `#[expect]`
+attributes evolved to include `reason = "..."` (~30 sites across 25 files).
+Workspace dependency unification: `tokio`, `serde`, `uuid` in `runtime/edge`
+and `tokio` dev-dep in `akida-driver` converted to `{ workspace = true }`.
+Stale feature flags removed: `pure-rust` (cli), `industrial`, `embedded-hw`
+(specialty). hw-safe `expect()` calls evolved to `Result`: `HugePageMemory`
+and `DeviceMmap` null-pointer post-mmap checks now return `NullPointer` error
+variant instead of panicking. **7,842 lib-only** tests, 0 failures, clippy
+clean, fmt clean.
 
 **S210 (PG-46: BTSP Handshake Timeout)**:
 Added bounded timeouts to JSON-line BTSP handshake relay. Total handshake

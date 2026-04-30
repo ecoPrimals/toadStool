@@ -84,7 +84,10 @@ impl LatencyMetrics {
             clippy::cast_possible_truncation,
             reason = "truncation acceptable for this conversion"
         )]
-        #[expect(clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_sign_loss,
+            reason = "variance sqrt is always non-negative"
+        )]
         let std_dev_nanos = variance.sqrt().round() as u64;
 
         // Percentiles (integer math to avoid casts)

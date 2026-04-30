@@ -19,6 +19,6 @@ pub use pricing::{CloudCostModel, PricingTier};
 pub use types::{CostError, CostEstimate, CostLineItem};
 
 // Constants (re-exported for public API compatibility)
-#[expect(unused_imports)]
+#[expect(unused_imports, reason = "re-exported for public API compatibility")]
 /// Conversion and pricing constants for cost estimation.
 pub use types::{BYTES_PER_GB, DAYS_PER_MONTH, HOURS_PER_DAY, SPOT_DISCOUNT_FACTOR};

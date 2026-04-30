@@ -235,8 +235,7 @@ impl EcosystemIntegrator {
                     .context(format!("Invalid endpoint: {endpoint}"))?;
 
                 // Store connection (capability-based, not hardcoded)
-                // ServiceConnection requires deprecated EcosystemService enum during migration
-                #[expect(deprecated)]
+                #[expect(deprecated, reason = "ServiceConnection uses deprecated EcosystemService during migration")]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
                         service_type: EcosystemService::Discovery,
@@ -338,8 +337,7 @@ impl EcosystemIntegrator {
                     .context(format!("Invalid endpoint: {endpoint}"))?;
 
                 // Store connection (capability-based, not hardcoded)
-                // ServiceConnection requires deprecated EcosystemService enum during migration
-                #[expect(deprecated)]
+                #[expect(deprecated, reason = "ServiceConnection uses deprecated EcosystemService during migration")]
                 let connection = ServiceConnection {
                     endpoint: ServiceEndpoint {
                         service_type: EcosystemService::Storage,

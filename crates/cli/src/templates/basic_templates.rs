@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
 
-#[expect(deprecated)] // Protocol compatibility: default PKI image
+#[expect(deprecated, reason = "protocol compatibility: default PKI image")]
 use toadstool_common::constants::ecosystem::well_known::BEARDOG;
 
 use crate::{

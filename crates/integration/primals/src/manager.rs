@@ -178,7 +178,10 @@ impl PrimalIntegrationManager {
     }
 
     /// Visit a Primal during topological sort
-    #[expect(clippy::self_only_used_in_recursion)]
+    #[expect(
+        clippy::self_only_used_in_recursion,
+        reason = "recursive DFS traversal: self carries the dependency graph context"
+    )]
     fn visit_primal(
         &self,
         primal_name: &str,
