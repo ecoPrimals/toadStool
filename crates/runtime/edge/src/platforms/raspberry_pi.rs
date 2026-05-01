@@ -210,24 +210,24 @@ mod tests {
     #[test]
     fn test_discover_raspberry_pi_probes_hardware() {
         let result = discover_raspberry_pi_devices();
-        // On non-Pi systems, should return Err with meaningful message
-        if result.is_err() {
-            let err = result.unwrap_err();
-            assert!(
-                err.to_string().contains("Raspberry Pi")
-                    || err.to_string().contains("raspberry_pi"),
-                "Error should mention Raspberry Pi: {}",
-                err
-            );
-        } else {
-            let devices = result.unwrap();
-            assert!(!devices.is_empty());
-            assert!(
-                devices[0]
-                    .get_info()
-                    .capabilities
-                    .contains(&"gpio".to_string())
-            );
+        match result {
+            Err(err) => {
+                assert!(
+                    err.to_string().contains("Raspberry Pi")
+                        || err.to_string().contains("raspberry_pi"),
+                    "Error should mention Raspberry Pi: {}",
+                    err
+                );
+            }
+            Ok(devices) => {
+                assert!(!devices.is_empty());
+                assert!(
+                    devices[0]
+                        .get_info()
+                        .capabilities
+                        .contains(&"gpio".to_string())
+                );
+            }
         }
     }
 

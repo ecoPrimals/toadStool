@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::coordination_integration::types::{
     CoordinationResponse, HealthCheckRequest, LoadBalancingRequest, LoadBalancingStrategy,
     NodeInfo, ServiceRegistration,

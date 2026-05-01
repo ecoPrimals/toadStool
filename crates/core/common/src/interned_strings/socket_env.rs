@@ -129,8 +129,13 @@ pub const TOADSTOOL_TCP_IDLE_TIMEOUT_SECS: &str = "TOADSTOOL_TCP_IDLE_TIMEOUT_SE
 pub const TOADSTOOL_STANDALONE: &str = "TOADSTOOL_STANDALONE";
 /// Override total BTSP handshake timeout (seconds). Default: 5.
 pub const BTSP_HANDSHAKE_TIMEOUT_SECS: &str = "BTSP_HANDSHAKE_TIMEOUT_SECS";
-/// Override per-RPC timeout for BearDog calls during BTSP (seconds). Default: 3.
+/// Override per-RPC timeout for BearDog calls during BTSP (seconds). Default: 2.
 pub const BTSP_RPC_TIMEOUT_SECS: &str = "BTSP_RPC_TIMEOUT_SECS";
+
+/// Override Unix socket file mode (octal, e.g. "0660"). Default: 0600.
+/// Set to "0660" for group-accessible sockets when biomeOS/primalSpring
+/// runs as the same group but different user.
+pub const TOADSTOOL_SOCKET_MODE: &str = "TOADSTOOL_SOCKET_MODE";
 
 pub const TOADSTOOL_PORT: &str = "TOADSTOOL_PORT";
 pub const TOADSTOOL_REQUEST_TIMEOUT: &str = "TOADSTOOL_REQUEST_TIMEOUT";

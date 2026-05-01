@@ -13,7 +13,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use crate::ToadStoolError;
 use crate::constants::timeouts;
 use crate::interned_strings::socket_env;
-use crate::unix_jsonrpc::UnixJsonRpcClient;
+use crate::unix_jsonrpc::ConnectedJsonRpcClient;
 
 use super::types::BtspCipher;
 
@@ -253,6 +253,7 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
     family_seed: &str,
     security_socket: &str,
 ) -> Result<BtspSessionInfo, BtspJsonLineError> {
+    let t0 = std::time::Instant::now();
     tracing::info!(target: "btsp", "JSON-line BTSP: parsing ClientHello");
 
     let hello: JsonLineClientHello = match serde_json::from_str(first_line.trim()) {
@@ -279,12 +280,25 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
         return Err(BtspJsonLineError::Protocol(msg));
     }
 
+    // Single BearDog connection for both RPCs (SOURDOUGH_BTSP_RELAY_PATTERN §Part 2).
+    let t_connect = std::time::Instant::now();
+    let mut rpc = ConnectedJsonRpcClient::connect(security_socket)
+        .await
+        .map_err(|e| {
+            BtspJsonLineError::Rpc(format!("BearDog connect to {security_socket}: {e}"))
+        })?;
+    tracing::debug!(
+        target: "btsp",
+        elapsed_ms = t_connect.elapsed().as_millis() as u64,
+        "BearDog connected"
+    );
+
     tracing::info!(target: "btsp", "JSON-line BTSP: calling btsp.session.create");
 
-    let rpc = UnixJsonRpcClient::new(security_socket);
     let rpc_budget = rpc_timeout();
     let family_seed_b64 = base64::engine::general_purpose::STANDARD.encode(family_seed.as_bytes());
     let create_params = serde_json::json!({ "family_seed": family_seed_b64 });
+    let t_create = std::time::Instant::now();
     let create_result: Value = match rpc
         .call_with_timeout("btsp.session.create", create_params, rpc_budget)
         .await
@@ -293,9 +307,14 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
         Err(e) => {
             let msg = e.to_string();
             let _ = send_error_line(stream, &msg).await;
-            return Err(e.into());
+            return Err(BtspJsonLineError::from(e));
         }
     };
+    tracing::debug!(
+        target: "btsp",
+        elapsed_ms = t_create.elapsed().as_millis() as u64,
+        "btsp.session.create completed"
+    );
 
     let Some(create_obj) = create_result.as_object() else {
         let msg = "btsp.session.create result must be object";
@@ -348,6 +367,7 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
         "client_ephemeral_pub": hello.client_ephemeral_pub,
         "preferred_cipher": cr.preferred_cipher,
     });
+    let t_verify = std::time::Instant::now();
     let verify_result: Value = match rpc
         .call_with_timeout("btsp.session.verify", verify_params, rpc_budget)
         .await
@@ -356,9 +376,14 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
         Err(e) => {
             let msg = e.to_string();
             let _ = send_error_line(stream, &msg).await;
-            return Err(e.into());
+            return Err(BtspJsonLineError::from(e));
         }
     };
+    tracing::debug!(
+        target: "btsp",
+        elapsed_ms = t_verify.elapsed().as_millis() as u64,
+        "btsp.session.verify completed"
+    );
 
     let Some(verify_obj) = verify_result.as_object() else {
         let msg = "btsp.session.verify result must be object";
@@ -400,7 +425,13 @@ async fn relay_json_line_handshake_inner<S: AsyncRead + AsyncWrite + Unpin>(
     stream.write_all(&done).await?;
     stream.flush().await?;
 
-    tracing::info!(target: "btsp", session_id = %session_id, ?cipher, "JSON-line BTSP: handshake complete");
+    tracing::info!(
+        target: "btsp",
+        session_id = %session_id,
+        ?cipher,
+        total_ms = t0.elapsed().as_millis() as u64,
+        "JSON-line BTSP: handshake complete"
+    );
 
     Ok(BtspSessionInfo { session_id, cipher })
 }

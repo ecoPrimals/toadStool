@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
 use crate::security_provider::provider::{EncryptionOptions, SigningOptions};
 use crate::security_provider::types::{

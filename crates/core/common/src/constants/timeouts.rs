@@ -138,11 +138,13 @@ pub const ZERO_CONFIG_TARGET: Duration = Duration::from_secs(60);
 /// the handshake had no upper bound. Override via `BTSP_HANDSHAKE_TIMEOUT_SECS`.
 pub const BTSP_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Per-RPC timeout for BearDog calls during BTSP handshake (3 seconds).
+/// Per-RPC timeout for BearDog calls during BTSP handshake (2 seconds).
 ///
 /// Applied individually to `btsp.session.create` and `btsp.session.verify`.
+/// Both RPCs share a single BearDog connection (PG-46 fix), so 2s per call
+/// fits comfortably within the 5s handshake budget.
 /// Override via `BTSP_RPC_TIMEOUT_SECS`.
-pub const BTSP_RPC_TIMEOUT: Duration = Duration::from_secs(3);
+pub const BTSP_RPC_TIMEOUT: Duration = Duration::from_secs(2);
 
 // ============================================================================
 // Authentication Timeouts

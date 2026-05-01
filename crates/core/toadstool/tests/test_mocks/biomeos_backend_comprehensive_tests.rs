@@ -62,7 +62,7 @@ fn test_auth_backend_trait_validate_token_valid() {
         public_key: "test-public-key".to_string(),
         expires_at: SystemTime::now() + Duration::from_secs(3600),
         issued_at: SystemTime::now(),
-        issuer: "beardog".to_string(),
+        issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
@@ -82,7 +82,7 @@ fn test_auth_backend_trait_validate_token_expired() {
         public_key: "test-public-key".to_string(),
         expires_at: SystemTime::now() - Duration::from_secs(3600), // Expired
         issued_at: SystemTime::now() - Duration::from_secs(7200),
-        issuer: "beardog".to_string(),
+        issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
@@ -126,7 +126,7 @@ fn test_auth_backend_trait_validate_token_invalid_type() {
         public_key: "test-public-key".to_string(),
         expires_at: SystemTime::now() + Duration::from_secs(3600),
         issued_at: SystemTime::now(),
-        issuer: "beardog".to_string(),
+        issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
@@ -148,7 +148,7 @@ fn test_auth_backend_trait_validate_token_bearer_type() {
         public_key: "test-public-key".to_string(),
         expires_at: SystemTime::now() + Duration::from_secs(3600),
         issued_at: SystemTime::now(),
-        issuer: "beardog".to_string(),
+        issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
@@ -168,7 +168,7 @@ fn test_auth_backend_trait_validate_token_ed25519_type() {
         public_key: "test-public-key".to_string(),
         expires_at: SystemTime::now() + Duration::from_secs(3600),
         issued_at: SystemTime::now(),
-        issuer: "beardog".to_string(),
+        issuer: "crypto".to_string(),
         audience: vec!["toadstool".to_string()],
         scope: vec!["cross-primal".to_string()],
         claims: std::collections::HashMap::new(),
@@ -217,7 +217,7 @@ async fn test_inmemory_auth_backend_token_request_fields() {
     assert!(token.token.contains("toadstool"));
     assert_eq!(token.public_key, "test-public-key");
     assert!(token.expires_at > SystemTime::now());
-    assert_eq!(token.issuer, "beardog");
+    assert_eq!(token.issuer, "crypto");
     assert!(
         token.audience.contains(&"toadstool".to_string())
             || token.audience.contains(&"biomeos".to_string())
@@ -240,7 +240,7 @@ async fn test_inmemory_auth_backend_refresh_token_fields() {
     assert!(token.id.contains("toadstool"));
     assert_eq!(token.token_type, "Bearer");
     assert!(token.token.contains("refreshed"));
-    assert_eq!(token.issuer, "beardog");
+    assert_eq!(token.issuer, "crypto");
     assert!(token.expires_at > SystemTime::now());
 }
 

@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn system_collector_default() {
-        let c = SystemMetricsCollector::default();
+        let c = SystemMetricsCollector;
         assert_eq!(c.name(), "system");
     }
 
@@ -275,8 +275,13 @@ mod tests {
         let batch = c.collect().unwrap();
         assert_eq!(batch.source, "system");
         assert!(!batch.metrics.is_empty());
-        let names: Vec<&str> = batch.metrics.iter().map(|m| m.name.as_str()).collect();
-        assert!(names.contains(&"cpu_usage_percent"));
+        assert!(
+            batch
+                .metrics
+                .iter()
+                .map(|m| m.name.as_str())
+                .any(|x| x == "cpu_usage_percent")
+        );
     }
 
     #[test]
@@ -287,7 +292,7 @@ mod tests {
 
     #[test]
     fn process_collector_default() {
-        let c = ProcessMetricsCollector::default();
+        let c = ProcessMetricsCollector;
         assert_eq!(c.name(), "process");
     }
 
@@ -303,8 +308,13 @@ mod tests {
         let c = ProcessMetricsCollector::new();
         let batch = c.collect().unwrap();
         assert_eq!(batch.source, "process");
-        let names: Vec<&str> = batch.metrics.iter().map(|m| m.name.as_str()).collect();
-        assert!(names.contains(&"process_count"));
+        assert!(
+            batch
+                .metrics
+                .iter()
+                .map(|m| m.name.as_str())
+                .any(|x| x == "process_count")
+        );
     }
 
     #[test]
@@ -315,7 +325,7 @@ mod tests {
 
     #[test]
     fn network_collector_default() {
-        let c = NetworkMetricsCollector::default();
+        let c = NetworkMetricsCollector;
         assert_eq!(c.name(), "network");
     }
 

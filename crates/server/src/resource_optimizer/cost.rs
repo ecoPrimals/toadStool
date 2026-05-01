@@ -113,7 +113,7 @@ mod tests {
         assert_eq!(improved.current_duration_secs, 100);
         assert_eq!(improved.optimized_duration_secs, 100);
         assert_eq!(improved.time_savings_secs, 0);
-        assert_eq!(improved.speedup_factor, 1.0);
+        assert!((improved.speedup_factor - 1.0).abs() < f32::EPSILON);
     }
 
     #[test]

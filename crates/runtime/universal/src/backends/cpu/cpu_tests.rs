@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::*;
 
 fn make_workload(op: OperationType, input: WorkloadData) -> Workload {

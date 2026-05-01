@@ -55,7 +55,7 @@ pub mod unix_jsonrpc_client; // NEW: JSON-RPC 2.0 over unix sockets (pure Rust!)
 
 /// Alias for [`unix_jsonrpc_client`] (BearDog / security IPC naming in phase handoffs).
 pub mod unix_jsonrpc {
-    pub use super::unix_jsonrpc_client::UnixJsonRpcClient;
+    pub use super::unix_jsonrpc_client::{ConnectedJsonRpcClient, UnixJsonRpcClient};
 }
 
 // Re-export commonly used types

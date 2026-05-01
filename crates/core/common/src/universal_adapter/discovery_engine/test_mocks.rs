@@ -39,7 +39,7 @@ impl DiscoverySource for DedupMockSource {
         ])
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "mock"
     }
 }
@@ -53,7 +53,7 @@ impl DiscoverySource for FailingMockSource {
         Err(ToadStoolError::configuration("config error".to_string()))
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "failing"
     }
 }
@@ -67,7 +67,7 @@ impl DiscoverySource for SlowMockSource {
         std::future::pending::<ToadStoolResult<Vec<CapabilityInfo>>>().await
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "slow"
     }
 }
@@ -90,7 +90,7 @@ impl DiscoverySource for OkMockSource {
         }])
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "ok"
     }
 }
@@ -104,7 +104,7 @@ impl DiscoverySource for FailingMixedMockSource {
         Err(ToadStoolError::configuration("fail".to_string()))
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "fail"
     }
 }
@@ -127,7 +127,7 @@ impl DiscoverySource for FastOkMockSource {
         }])
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "fast"
     }
 }

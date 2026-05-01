@@ -162,7 +162,7 @@ mod tests {
     fn register_node_inserts_and_lists_node() {
         let mut reg = NodeRegistry::new();
         let node = sample_registration("n1", NodeType::ToadStool);
-        reg.register_node(node.clone()).unwrap();
+        reg.register_node(node).unwrap();
         assert_eq!(reg.get_all_nodes().len(), 1);
         assert_eq!(reg.get_active_nodes().len(), 1);
         assert!(reg.get_node(&"n1".to_string()).is_some());
@@ -171,8 +171,8 @@ mod tests {
     #[test]
     fn get_nodes_by_types_filters_matching_kinds_only() {
         let mut reg = NodeRegistry::new();
-        reg.register_node(sample_registration("t", NodeType::ToadStool));
-        reg.register_node(sample_registration("s", NodeType::Storage));
+        let _ = reg.register_node(sample_registration("t", NodeType::ToadStool));
+        let _ = reg.register_node(sample_registration("s", NodeType::Storage));
         let ts = reg.get_nodes_by_types(&[NodeType::ToadStool]);
         assert_eq!(ts.len(), 1);
         assert_eq!(ts[0].node_id, "t");
@@ -181,10 +181,10 @@ mod tests {
     #[test]
     fn update_node_health_false_removes_node() {
         let mut reg = NodeRegistry::new();
-        reg.register_node(sample_registration("gone", NodeType::ToadStool));
+        let _ = reg.register_node(sample_registration("gone", NodeType::ToadStool));
         reg.update_node_health(&"gone".to_string(), false);
         assert!(reg.get_node(&"gone".to_string()).is_none());
-        assert!(reg.health_timestamps.get("gone").is_none());
+        assert!(!reg.health_timestamps.contains_key("gone"));
     }
 
     #[test]
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn get_healthy_nodes_respects_max_age() {
         let mut reg = NodeRegistry::new();
-        reg.register_node(sample_registration("fresh", NodeType::ToadStool));
+        let _ = reg.register_node(sample_registration("fresh", NodeType::ToadStool));
         assert_eq!(reg.get_healthy_nodes(Duration::from_secs(3600)).len(), 1);
 
         std::thread::sleep(Duration::from_millis(150));

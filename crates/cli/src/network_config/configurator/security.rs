@@ -239,7 +239,7 @@ mod tests {
     fn validate_cross_primal_security_rejects_empty_authorization_model_when_enabled() {
         let mut c = OrchestrationNetworkConfigurator::new();
         c.config.cross_primal_security.enabled = true;
-        c.config.cross_primal_security.authorization.model = "".to_string();
+        c.config.cross_primal_security.authorization.model = String::new();
         assert!(c.validate_cross_primal_security_config().is_err());
     }
 
@@ -268,7 +268,7 @@ mod tests {
             .cross_primal_security
             .authentication
             .security
-            .endpoint = "".to_string();
+            .endpoint = String::new();
         assert!(c.validate_cross_primal_security_config().is_err());
     }
 
@@ -315,7 +315,7 @@ mod tests {
     fn validate_network_policies_rejects_empty_default_policy_when_enabled() {
         let mut c = OrchestrationNetworkConfigurator::new();
         c.config.network_policies.enabled = true;
-        c.config.network_policies.default_policy = "".to_string();
+        c.config.network_policies.default_policy = String::new();
         assert!(c.validate_network_policies_config().is_err());
     }
 
@@ -325,7 +325,7 @@ mod tests {
             .config
             .network_policies;
         base.ingress_rules.push(IngressRule {
-            name: "".to_string(),
+            name: String::new(),
             from: vec![],
             ports: vec![],
             action: "allow".to_string(),
@@ -400,7 +400,7 @@ mod tests {
             .config
             .network_policies;
         base.service_mesh_policies.push(ServiceMeshPolicy {
-            name: "".to_string(),
+            name: String::new(),
             policy_type: "traffic".to_string(),
             selector: HashMap::new(),
             config: HashMap::new(),

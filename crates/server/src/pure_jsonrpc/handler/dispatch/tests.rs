@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+use std::sync::Arc;
+
 use super::DispatchHandler;
 use crate::pure_jsonrpc::types::JsonRpcError;
 
 fn test_handler() -> DispatchHandler {
     DispatchHandler::new(
-        crate::visualization_client::create_visualization_client(),
+        Arc::new(crate::visualization_client::VisualizationClient::unavailable()),
         None,
     )
 }

@@ -11,8 +11,8 @@ use std::borrow::Cow;
 
 use toadstool_core::hardware::{HardwareDevice, HardwareError, HardwareManager, HardwareType};
 use toadstool_core::hardware_transport::{
-    FRAME_HEADER_SIZE, TransportDirection, TransportError, TransportInfo, TransportMedium,
-    decode_frame, encode_frame,
+    FRAME_HEADER_SIZE, TransportDirection, TransportError, TransportMedium, decode_frame,
+    encode_frame,
 };
 use toadstool_core::npu_controller::{
     ControllerError, ParameterSuggestion, ProxyFeature, ProxyFeatureSet, SafetyClamp,

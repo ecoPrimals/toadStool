@@ -1,12 +1,32 @@
 # Active Technical Debt Register
 
-**Date**: April 2026 — S213
+**Date**: May 2026 — S214
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S214 (PG-46 Fix: BTSP Connection Reuse + Phase 3 Assessment + Debris Cleanup)**:
+Resolved PG-46 (slow initial socket response) via three changes:
+- **Connection reuse**: Added `ConnectedJsonRpcClient` — both BearDog RPCs
+  (`btsp.session.create` + `btsp.session.verify`) now share a single UDS
+  connection per `SOURDOUGH_BTSP_RELAY_PATTERN.md` §Part 2. Eliminates
+  one full connect/handshake cycle.
+- **Timeout alignment**: Reduced `BTSP_RPC_TIMEOUT` from 3s to 2s so both
+  RPCs fit within the 5s handshake budget (was 3+3=6s > 5s envelope).
+- **Timing instrumentation**: Added `Instant`-based tracing for BearDog
+  connect, `session.create`, `session.verify`, and total handshake duration.
+- **Configurable socket permissions**: `TOADSTOOL_SOCKET_MODE` env var
+  (default 0600, set to 0660 for group-accessible deployments).
+BTSP Phase 3 assessment: ECDH X25519 key exchange implemented; cipher
+negotiation partial (no AES-256-GCM in `BtspCipher` enum); stream
+wrapping not implemented (SessionKeys unused post-handshake). Phase 3
+blocked on sourDough reference AEAD adapter.
+Debris cleanup: removed orphan bench files, unused `rmp-serde` workspace
+dep, stale WebSocket doc references, unified `temp-env` to workspace dep.
+**22,423 tests**, 0 failures, clippy clean, fmt clean.
 
 **S213 (Deep Debt — Lint Reason Sweep + Capability-Based Names + Orchestrator Resilience)**:
 Completed three-phase deep debt evolution:

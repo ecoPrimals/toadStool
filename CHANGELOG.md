@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - April 30, 2026 (Sessions 43-213)
+## [Unreleased] - May 1, 2026 (Sessions 43-214)
+
+### Session S214 (May 1, 2026) — PG-46 Fix: BTSP Connection Reuse + Phase 3 Assessment + Debris Cleanup
+
+- FIXED: PG-46 slow initial socket response — `ConnectedJsonRpcClient` reuses single BearDog UDS connection for both `btsp.session.create` and `btsp.session.verify` RPCs (was opening 2 separate connections per handshake)
+- EVOLVED: `BTSP_RPC_TIMEOUT` from 3s to 2s — both RPCs now fit within 5s handshake budget (was 3+3=6s > 5s envelope race)
+- ADDED: `ConnectedJsonRpcClient` type in `unix_jsonrpc_client.rs` — persistent UDS connection for sequential RPC calls per `SOURDOUGH_BTSP_RELAY_PATTERN.md`
+- ADDED: Timing instrumentation in BTSP JSON-line relay (`Instant`-based tracing for connect, create, verify, total)
+- ADDED: `TOADSTOOL_SOCKET_MODE` env var for configurable Unix socket permissions (default 0600)
+- REMOVED: Orphan bench files (`crates/testing/benches/hot_paths.rs`, `crates/runtime/secure_enclave/benches/performance.rs`) — no `[[bench]]` targets
+- REMOVED: Unused `rmp-serde` workspace dependency
+- FIXED: Stale WebSocket references in server and client crate doc headers
+- FIXED: `examples/Cargo.toml` `temp-env` pinned version → `{ workspace = true }`
+- ASSESSED: BTSP Phase 3 readiness — ECDH X25519 implemented; cipher negotiation partial (no AES-GCM); stream wrapping not yet implemented
+- 22,423 tests, 0 failures, clippy clean, fmt clean
 
 ### Session S213 (Apr 30, 2026) — Deep Debt: Lint Reason Sweep + Capability-Based Names + Orchestrator Resilience
 

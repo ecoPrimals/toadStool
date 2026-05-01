@@ -190,9 +190,11 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[expect(clippy::unwrap_used)]
+    #[expect(clippy::expect_used)]
     pub fn get(&self) -> &T {
-        self.resource.as_ref().unwrap()
+        self.resource
+            .as_ref()
+            .expect("TestScope::get: inner resource already consumed via into_inner")
     }
 
     /// Get mutable reference to the test resource
@@ -200,9 +202,11 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[expect(clippy::unwrap_used)]
+    #[expect(clippy::expect_used)]
     pub fn get_mut(&mut self) -> &mut T {
-        self.resource.as_mut().unwrap()
+        self.resource
+            .as_mut()
+            .expect("TestScope::get_mut: inner resource already consumed via into_inner")
     }
 
     /// Consume the scope and return the inner resource
@@ -210,9 +214,11 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until this method is called.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[expect(clippy::unwrap_used)]
+    #[expect(clippy::expect_used)]
     pub fn into_inner(mut self) -> T {
-        self.resource.take().unwrap()
+        self.resource
+            .take()
+            .expect("TestScope::into_inner: inner resource already consumed")
     }
 }
 

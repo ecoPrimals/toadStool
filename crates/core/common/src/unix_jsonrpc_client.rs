@@ -245,6 +245,115 @@ impl UnixJsonRpcClient {
     }
 }
 
+/// A pre-connected Unix JSON-RPC client that reuses a single stream for
+/// multiple sequential RPC calls.
+///
+/// Per `SOURDOUGH_BTSP_RELAY_PATTERN.md`: during BTSP relay, both
+/// `btsp.session.create` and `btsp.session.verify` must use the **same**
+/// BearDog connection. Opening a new connection per call adds latency
+/// (PG-46: slow initial socket response).
+pub struct ConnectedJsonRpcClient {
+    reader: BufReader<tokio::net::unix::OwnedReadHalf>,
+    writer: tokio::net::unix::OwnedWriteHalf,
+    next_id: std::sync::atomic::AtomicU64,
+}
+
+impl ConnectedJsonRpcClient {
+    /// Open a persistent connection to a Unix socket.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the socket connection fails.
+    pub async fn connect(socket_path: impl AsRef<Path>) -> ToadStoolResult<Self> {
+        let stream = UnixStream::connect(socket_path.as_ref())
+            .await
+            .map_err(|e| {
+                ToadStoolError::network(format!(
+                    "Failed to connect to {}: {e}",
+                    socket_path.as_ref().display()
+                ))
+            })?;
+        let (reader, writer) = stream.into_split();
+        Ok(Self {
+            reader: BufReader::new(reader),
+            writer,
+            next_id: std::sync::atomic::AtomicU64::new(1),
+        })
+    }
+
+    /// Call a JSON-RPC method on the already-connected stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if serialization, I/O, or the remote JSON-RPC call fails.
+    pub async fn call(&mut self, method: &str, params: Value) -> ToadStoolResult<Value> {
+        let id = self
+            .next_id
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        let request = JsonRpcRequest {
+            jsonrpc: Cow::Borrowed(crate::constants::jsonrpc::VERSION),
+            id,
+            method: Cow::Borrowed(method),
+            params,
+        };
+
+        let request_json = serde_json::to_string(&request)
+            .map_err(|e| ToadStoolError::network(format!("Failed to serialize request: {e}")))?;
+
+        self.writer
+            .write_all(request_json.as_bytes())
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Failed to send request: {e}")))?;
+        self.writer
+            .write_all(b"\n")
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Failed to send newline: {e}")))?;
+        self.writer
+            .flush()
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Failed to flush: {e}")))?;
+
+        let mut response_line = String::new();
+        self.reader
+            .read_line(&mut response_line)
+            .await
+            .map_err(|e| ToadStoolError::network(format!("Failed to read response: {e}")))?;
+
+        let response: JsonRpcResponse = serde_json::from_slice(response_line.as_bytes())
+            .map_err(|e| ToadStoolError::network(format!("Invalid JSON-RPC response: {e}")))?;
+
+        if let Some(error) = response.error {
+            return Err(ToadStoolError::execution(format!(
+                "JSON-RPC error (code {}): {}",
+                error.code, error.message
+            )));
+        }
+
+        response
+            .result
+            .ok_or_else(|| ToadStoolError::network("JSON-RPC response missing result"))
+    }
+
+    /// Call a JSON-RPC method with a wall-clock timeout on the connected stream.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the timeout elapses or the inner call fails.
+    pub async fn call_with_timeout(
+        &mut self,
+        method: &str,
+        params: Value,
+        timeout: std::time::Duration,
+    ) -> ToadStoolResult<Value> {
+        tokio::time::timeout(timeout, self.call(method, params))
+            .await
+            .map_err(|_| {
+                ToadStoolError::network(format!("RPC call {method} timed out after {timeout:?}",))
+            })?
+    }
+}
+
 #[cfg(test)]
 #[path = "unix_jsonrpc_client_tests.rs"]
 mod tests;

@@ -59,11 +59,10 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use toadstool_runtime_universal::{ComputeError, UniversalRuntime};
+//! use toadstool_runtime_universal::{ComputeError, ComputeUnit, UniversalRuntime};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), ComputeError> {
-//!     // Discover all available compute units
 //!     let runtime = UniversalRuntime::discover().await?;
 //!     
 //!     println!("Available compute units: {}", runtime.num_units());

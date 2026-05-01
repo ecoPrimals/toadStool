@@ -259,8 +259,10 @@ mod tests {
     }
 
     fn engine_with_resource_limits(limits: ContainerResourceLimits) -> ContainerRuntimeEngine {
-        let mut config = ContainerRuntimeConfig::default();
-        config.resource_limits = limits;
+        let config = ContainerRuntimeConfig {
+            resource_limits: limits,
+            ..Default::default()
+        };
         let mut engine = test_engine();
         engine.config = config;
         engine

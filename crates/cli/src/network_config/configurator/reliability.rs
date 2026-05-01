@@ -241,7 +241,7 @@ mod tests {
         c.config.health_monitoring.enabled = true;
         c.config.health_monitoring.endpoints = vec![HealthEndpoint {
             name: "a".to_string(),
-            url: "".to_string(),
+            url: String::new(),
             health_check: HttpHealthCheckConfig::default(),
         }];
         assert!(c.validate_health_monitoring_config().is_err());
@@ -251,8 +251,10 @@ mod tests {
     fn validate_health_monitoring_rejects_empty_health_check_path() {
         let mut c = OrchestrationNetworkConfigurator::new();
         c.config.health_monitoring.enabled = true;
-        let mut hc = HttpHealthCheckConfig::default();
-        hc.path = "".to_string();
+        let hc = HttpHealthCheckConfig {
+            path: String::new(),
+            ..Default::default()
+        };
         c.config.health_monitoring.endpoints = vec![HealthEndpoint {
             name: "svc".to_string(),
             url: "http://localhost/health".to_string(),
@@ -265,8 +267,10 @@ mod tests {
     fn validate_health_monitoring_rejects_invalid_expected_http_status() {
         let mut c = OrchestrationNetworkConfigurator::new();
         c.config.health_monitoring.enabled = true;
-        let mut hc = HttpHealthCheckConfig::default();
-        hc.expected_status = 99;
+        let hc = HttpHealthCheckConfig {
+            expected_status: 99,
+            ..Default::default()
+        };
         c.config.health_monitoring.endpoints = vec![HealthEndpoint {
             name: "svc".to_string(),
             url: "http://localhost/health".to_string(),

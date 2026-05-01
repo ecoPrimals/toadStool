@@ -298,6 +298,8 @@ impl DispatchHandler {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
                                 "binary_size": binary_bytes.len(),
+                                "thermal_checked": thermal.is_some(),
+                                "workgroup_size": workgroup_size,
                             },
                         }));
                     }

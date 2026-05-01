@@ -18,8 +18,8 @@
 //!
 //! ## Features
 //!
-//! - **JSON-RPC Server**: JSON-RPC 2.0 workload submission and status monitoring
-//! - **WebSocket Server**: Real-time event streaming and notifications  
+//! - **JSON-RPC Server**: JSON-RPC 2.0 workload submission and status monitoring (Unix sockets + TCP)
+//! - **BTSP Handshake**: Binary Transparent Socket Protocol for authenticated IPC
 //! - **Runtime Engine Integration**: Support for Native, WASM, Container, Python, GPU runtimes
 //! - **Load Balancing**: Intelligent workload distribution across available resources
 //! - **Resource Management**: CPU, memory, storage, and GPU resource tracking
@@ -35,10 +35,8 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create server configuration
-//!     let config = ServerConfig::default()
-//!         .bind_address(format!("0.0.0.0:{}", toadstool_config::ports::server_port()))
-//!         .enable_api(true);
+//!     // Create server with default config (Unix socket at $XDG_RUNTIME_DIR/biomeos/compute.sock)
+//!     let config = ServerConfig::default();
 //!     
 //!     // Create server instance
 //!     let mut server = ToadStoolServer::new(config).await?;
@@ -46,7 +44,7 @@
 //!     // Register runtime engines
 //!     server.register_runtime_engine("native", Box::new(NativeRuntimeEngine::new())).await?;
 //!     
-//!     // Start the server
+//!     // Start the server (JSON-RPC over Unix socket + optional TCP)
 //!     server.start().await?;
 //!     
 //!     Ok(())

@@ -61,15 +61,22 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
+        let mode =
+            std::env::var(toadstool_common::interned_strings::socket_env::TOADSTOOL_SOCKET_MODE)
+                .ok()
+                .and_then(|s| {
+                    u32::from_str_radix(s.trim_start_matches("0o").trim_start_matches('0'), 8).ok()
+                })
+                .unwrap_or(0o600);
         let mut perms = tokio::fs::metadata(&socket_path)
             .await
             .map_err(|e| ServerError::Internal(e.to_string()))?
             .permissions();
-        perms.set_mode(0o600);
+        perms.set_mode(mode);
         tokio::fs::set_permissions(&socket_path, perms)
             .await
             .map_err(|e| ServerError::Internal(e.to_string()))?;
-        info!("Set JSON-RPC socket permissions to 0600");
+        info!("Set JSON-RPC socket permissions to {mode:04o}");
     }
 
     let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();

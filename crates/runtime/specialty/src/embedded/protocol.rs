@@ -132,7 +132,7 @@ mod tests {
         assert!(avr_signature_known(sig));
         assert!(validate_avr_chip_signature(sig, "avr").is_ok());
         // ATmega328 (non-P) — distinct signature in chip database.
-        let sig328 = 0x1E9514u32;
+        let sig328 = 0x001E_9514_u32;
         assert!(avr_signature_known(sig328));
     }
 

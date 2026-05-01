@@ -122,7 +122,7 @@ mod tests {
         register(&mut |semantic, implementation| {
             aliases.insert(semantic.to_string(), implementation.to_string());
         });
-        assert!(aliases.get("not.a.registered.method").is_none());
+        assert!(!aliases.contains_key("not.a.registered.method"));
     }
 
     #[test]

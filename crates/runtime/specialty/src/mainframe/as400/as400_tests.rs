@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 use super::super::types::{
     COBOLCompiler, DCLProcessor, DatasetManager, Field5250, Field5250Attributes, Field5250Type,
     IFSFile, IFSFileAttributes, IFSManager, JCLGenerator, MainframeJob, RPGCompiler, Terminal3270,

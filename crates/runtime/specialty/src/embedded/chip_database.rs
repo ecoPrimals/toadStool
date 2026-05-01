@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn attiny85_user_example() {
-        let raw = 0x1E930Bu32;
+        let raw = 0x001E_930B_u32;
         let c = avr_by_signature(DeviceSignature::from_u32(raw)).expect("tiny85");
         assert_eq!(c.name, "ATtiny85");
     }

@@ -14,7 +14,6 @@
 //! ## Features
 //!
 //! - **JSON-RPC Client**: JSON-RPC 2.0 workload submission and status monitoring
-//! - **`WebSocket` Client**: Real-time event streaming and notifications
 //! - **Ecosystem Integration**: Direct integration with coordination, security, and storage services
 //! - **Load Balancing**: Automatic discovery and load balancing across ToadStool nodes
 //! - **Retry Logic**: Configurable retry policies for resilient execution

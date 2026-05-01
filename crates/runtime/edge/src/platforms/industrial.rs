@@ -184,18 +184,19 @@ mod tests {
     #[test]
     fn test_discover_industrial_probes_hardware() {
         let result = discover_industrial_devices();
-        // On systems without industrial subsystems, should return Err with meaningful message
-        if result.is_err() {
-            let err = result.unwrap_err();
-            assert!(
-                err.to_string().contains("Industrial") || err.to_string().contains("industrial"),
-                "Error should mention Industrial: {}",
-                err
-            );
-        } else {
-            let devices = result.unwrap();
-            assert!(!devices.is_empty());
-            assert!(!devices[0].get_info().capabilities.is_empty());
+        match result {
+            Err(err) => {
+                assert!(
+                    err.to_string().contains("Industrial")
+                        || err.to_string().contains("industrial"),
+                    "Error should mention Industrial: {}",
+                    err
+                );
+            }
+            Ok(devices) => {
+                assert!(!devices.is_empty());
+                assert!(!devices[0].get_info().capabilities.is_empty());
+            }
         }
     }
 

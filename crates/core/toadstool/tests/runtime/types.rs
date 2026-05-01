@@ -16,7 +16,7 @@ use toadstool::{RuntimeMetrics, ToadStoolError, ToadStoolResult};
 // ============================================================================
 
 #[derive(Debug, Clone)]
-struct MockRuntimeEngine {
+pub struct MockRuntimeEngine {
     supports: Vec<String>,
     should_fail: bool,
 }

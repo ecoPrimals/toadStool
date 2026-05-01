@@ -59,18 +59,18 @@ pub fn arb_resource_requirements() -> impl Strategy<Value = ResourceRequirements
                 let mut r = ResourceRequirements::default();
                 r.cpu.min_cores = min_cores;
                 r.cpu.max_cores = max_cores;
-                r.cpu.architecture = arch.map(String::from);
+                r.cpu.architecture = arch;
                 r.memory.min_bytes = min_mem;
                 r.memory.max_bytes = max_mem;
                 r.storage.min_bytes = min_st;
                 r.storage.max_bytes = max_st;
-                r.storage.storage_type = storage_type.map(String::from);
+                r.storage.storage_type = storage_type;
                 r.gpu =
                     gpu.map(
                         |(min_units, max_units, gpu_type, min_memory_bytes)| GpuRequirements {
                             min_units,
                             max_units,
-                            gpu_type: gpu_type.map(String::from),
+                            gpu_type,
                             min_memory_bytes,
                         },
                     );

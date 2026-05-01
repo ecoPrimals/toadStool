@@ -34,9 +34,9 @@ fn arb_gpu_arch() -> impl Strategy<Value = GpuArch> {
     )
         .prop_map(|(vendor, generation, chip, compute_class)| GpuArch {
             vendor,
-            generation: generation.to_string(),
-            chip: chip.to_string(),
-            compute_class: compute_class.to_string(),
+            generation,
+            chip,
+            compute_class,
         })
 }
 
@@ -82,7 +82,7 @@ fn arb_verify_check() -> impl Strategy<Value = VerifyCheck> {
         ("[A-Za-z0-9]{1,12}", any::<u64>(), any::<u64>()).prop_map(
             |(aperture, offset, sentinel)| {
                 VerifyCheck::MemoryAccessible {
-                    aperture: aperture.to_string(),
+                    aperture,
                     offset,
                     sentinel,
                 }
@@ -129,7 +129,7 @@ pub fn arb_init_recipe() -> impl Strategy<Value = InitRecipe> {
                     target_arch,
                     steps,
                     confidence,
-                    description: description.to_string(),
+                    description,
                 }
             },
         )

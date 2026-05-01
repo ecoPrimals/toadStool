@@ -263,7 +263,11 @@ mod tests {
         let reg = empty_registry();
         let result = identity_get("0.1.0", &reg).await.unwrap();
         let sock = result["socket_name"].as_str().unwrap();
-        assert!(sock.ends_with(".sock"));
+        assert!(
+            std::path::Path::new(sock)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
+        );
         assert!(sock.contains("compute"));
     }
 }

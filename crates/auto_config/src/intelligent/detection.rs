@@ -327,12 +327,13 @@ mod tests {
             platform_info: macos_info(),
         };
         let config = opt.optimize_for_platform(&small_hw()).unwrap();
-        let types: Vec<&str> = config
-            .optimizations
-            .iter()
-            .map(|o| o.optimization_type.as_str())
-            .collect();
-        assert!(types.contains(&"vector_instructions"));
+        assert!(
+            config
+                .optimizations
+                .iter()
+                .map(|o| o.optimization_type.as_str())
+                .any(|x| x == "vector_instructions")
+        );
     }
 
     #[test]

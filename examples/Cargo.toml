@@ -141,7 +141,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 # Test utilities
-temp-env = "0.3"
+temp-env = { workspace = true }
 
 
 [features]

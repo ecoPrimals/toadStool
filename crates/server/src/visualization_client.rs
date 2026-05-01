@@ -38,6 +38,15 @@ impl VisualizationClient {
         }
     }
 
+    /// Creates a client that is explicitly unavailable (no discovery attempted).
+    /// Used in tests that require deterministic behavior regardless of the host environment.
+    #[cfg(test)]
+    pub fn unavailable() -> Self {
+        let cell = OnceCell::new();
+        cell.set(None).expect("fresh OnceCell");
+        Self { inner: cell }
+    }
+
     /// Attempt to discover a shader compiler via capability-based discovery.
     ///
     /// Per `wateringHole/CAPABILITY_BASED_DISCOVERY_STANDARD.md`, toadStool
@@ -183,8 +192,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_client_not_available_without_compiler() {
-        let client = VisualizationClient::new();
-        assert!(!client.is_available().await);
+        temp_env::async_with_vars(
+            [
+                ("XDG_RUNTIME_DIR", Some("/nonexistent/test/path")),
+                ("TOADSTOOL_SHADER_COMPILER_ADDR", None::<&str>),
+            ],
+            async {
+                let client = VisualizationClient::new();
+                assert!(!client.is_available().await);
+            },
+        )
+        .await;
     }
 
     #[test]

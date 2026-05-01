@@ -227,7 +227,7 @@ mod tests {
         let mut c = OrchestrationNetworkConfigurator::new();
         c.config.traffic_management.enabled = true;
         c.config.traffic_management.blue_green.enabled = true;
-        c.config.traffic_management.blue_green.switch_strategy = "".to_string();
+        c.config.traffic_management.blue_green.switch_strategy = String::new();
         assert!(c.validate_traffic_management_config().is_err());
     }
 

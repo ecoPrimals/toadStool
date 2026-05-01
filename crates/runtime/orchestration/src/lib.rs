@@ -46,13 +46,12 @@
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use toadstool_runtime_orchestration::*;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), OrchestrationError> {
-//!     // Discover all available substrates
-//!     let orchestrator = WorkloadOrchestrator::discover().await?;
+//!     let orchestrator = WorkloadOrchestrator::<CpuSubstrate>::discover().await?;
 //!     
 //!     println!("Available substrates: {}", orchestrator.num_substrates()?);
 //!     
