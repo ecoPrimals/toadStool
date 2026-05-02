@@ -46,3 +46,29 @@ pub fn detect_linux_distribution() -> ToadStoolResult<String> {
     }
     Ok("linux".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn command_exists_finds_sh() {
+        assert!(command_exists("sh"));
+    }
+
+    #[test]
+    fn command_exists_rejects_nonexistent() {
+        assert!(!command_exists("__surely_not_a_real_binary_xyz_99__"));
+    }
+
+    #[test]
+    fn detect_linux_distribution_returns_nonempty() {
+        let distro = detect_linux_distribution().unwrap();
+        assert!(!distro.is_empty());
+    }
+
+    #[test]
+    fn python_package_exists_rejects_garbage() {
+        assert!(!python_package_exists("__no_such_package_xyz_42__"));
+    }
+}

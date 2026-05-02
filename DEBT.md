@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S216
+**Date**: May 2026 — S217
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S217 (Deep Debt — Flaky Test Fix + Orphan Module Recovery + Coverage Expansion)**:
+Fixed long-standing flaky `primal_sockets` env-var race condition by wrapping
+convenience API tests in `temp_env::with_vars`. Recovered 6 orphaned source
+modules in `integration-primals` crate (error types, JSON-RPC client,
+orchestrator, service manager, manifest, registry) — wired into module tree
+with `allow(missing_docs)` for incremental doc completion. Added 35+ new
+inline tests across 5 previously-untested modules. All workspace tests
+(22,429+) pass with 0 failures.
 
 **S216 (Deep Debt — Production Stub Evolution + Dependency Hygiene + Lock Safety)**:
 Comprehensive deep-debt sweep across all dimensions:

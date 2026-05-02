@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::error::{PrimalError, PrimalResult};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use tracing::debug;
 
 /// Client for interacting with primals via Unix socket JSON-RPC
@@ -29,7 +28,7 @@ impl PrimalClient {
     /// Create a new primal client for the given Unix socket path
     ///
     /// The endpoint should be a path to a Unix domain socket (e.g. `/run/toadstool/socket`).
-    pub fn new(endpoint: impl AsRef<Path>) -> Self {
+    pub fn new(endpoint: impl Into<std::path::PathBuf>) -> Self {
         Self {
             rpc_client: toadstool_common::unix_jsonrpc_client::UnixJsonRpcClient::new(endpoint),
         }
@@ -68,14 +67,8 @@ impl PrimalClient {
         // Parse result into PrimalResponse if it's an object with success/data/error
         let response = if let Some(obj) = result.as_object() {
             PrimalResponse {
-                success: obj
-                    .get("success")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(true),
-                data: obj
-                    .get("data")
-                    .cloned()
-                    .unwrap_or(serde_json::Value::Null),
+                success: obj.get("success").and_then(|v| v.as_bool()).unwrap_or(true),
+                data: obj.get("data").cloned().unwrap_or(serde_json::Value::Null),
                 error: obj
                     .get("error")
                     .and_then(|v| v.as_str())
@@ -112,5 +105,65 @@ impl PrimalClient {
         }
 
         Ok(response.success)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn primal_client_new_stores_path() {
+        let client = PrimalClient::new("/tmp/test.sock");
+        assert_eq!(
+            client.rpc_client.socket_path(),
+            std::path::Path::new("/tmp/test.sock")
+        );
+    }
+
+    #[test]
+    fn primal_request_roundtrips_serde() {
+        let req = PrimalRequest {
+            action: "compute.dispatch".to_string(),
+            payload: serde_json::json!({"input": [1, 2, 3]}),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let back: PrimalRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.action, "compute.dispatch");
+        assert_eq!(back.payload["input"], serde_json::json!([1, 2, 3]));
+    }
+
+    #[test]
+    fn primal_response_roundtrips_serde() {
+        let resp = PrimalResponse {
+            success: false,
+            data: serde_json::json!({"status": "error"}),
+            error: Some("timeout".to_string()),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let back: PrimalResponse = serde_json::from_str(&json).unwrap();
+        assert!(!back.success);
+        assert_eq!(back.error.as_deref(), Some("timeout"));
+    }
+
+    #[tokio::test]
+    async fn send_request_to_nonexistent_socket_returns_error() {
+        let client = PrimalClient::new("/tmp/__no_such_socket_primal_test__.sock");
+        let req = PrimalRequest {
+            action: "test.ping".to_string(),
+            payload: serde_json::json!({}),
+        };
+        let err = client.send_request(req).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("No such file") || msg.contains("connect") || msg.contains("unavailable"),
+            "unexpected error: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn health_check_to_nonexistent_socket_returns_error() {
+        let client = PrimalClient::new("/tmp/__no_such_socket_health_test__.sock");
+        assert!(client.health_check().await.is_err());
     }
 }

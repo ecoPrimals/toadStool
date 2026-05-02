@@ -115,3 +115,92 @@ impl PrimalOrchestrator {
         self.primals.get(primal_id).map(|p| p.as_ref())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn manifest(name: &str, version: &str) -> BiomeManifest {
+        BiomeManifest {
+            name: name.to_string(),
+            version: version.to_string(),
+            description: Some("test".to_string()),
+            primals: HashMap::new(),
+            storage: None,
+            agents: None,
+            security: None,
+            services: vec![],
+            networking: None,
+            resources: None,
+            federation: None,
+            health_checks: vec![],
+        }
+    }
+
+    #[test]
+    fn default_creates_empty_orchestrator() {
+        let orch = PrimalOrchestrator::default();
+        assert!(orch.primals.is_empty());
+        assert!(orch.deployment_endpoint.is_none());
+    }
+
+    #[test]
+    fn with_deployment_endpoint_sets_endpoint() {
+        let orch = PrimalOrchestrator::new().with_deployment_endpoint("/tmp/deploy.sock");
+        assert_eq!(
+            orch.deployment_endpoint.as_deref(),
+            Some("/tmp/deploy.sock")
+        );
+    }
+
+    #[test]
+    fn validate_manifest_rejects_empty_name() {
+        let m = manifest("", "1.0");
+        let err = PrimalOrchestrator::validate_manifest(&m).unwrap_err();
+        assert!(err.to_string().contains("name"));
+    }
+
+    #[test]
+    fn validate_manifest_rejects_empty_version() {
+        let m = manifest("my-biome", "");
+        let err = PrimalOrchestrator::validate_manifest(&m).unwrap_err();
+        assert!(err.to_string().contains("version"));
+    }
+
+    #[test]
+    fn validate_manifest_accepts_valid() {
+        let m = manifest("my-biome", "1.0.0");
+        assert!(PrimalOrchestrator::validate_manifest(&m).is_ok());
+    }
+
+    #[tokio::test]
+    async fn deploy_biome_fails_without_endpoint() {
+        let orch = PrimalOrchestrator::new();
+        let m = manifest("test-biome", "1.0.0");
+        let err = orch.deploy_biome(m).await.unwrap_err();
+        assert!(err.to_string().contains("endpoint"));
+    }
+
+    #[tokio::test]
+    async fn deploy_biome_validates_manifest_first() {
+        let orch = PrimalOrchestrator::new().with_deployment_endpoint("/tmp/deploy.sock");
+        let m = manifest("", "1.0.0");
+        let err = orch.deploy_biome(m).await.unwrap_err();
+        assert!(err.to_string().contains("name"));
+    }
+
+    #[tokio::test]
+    async fn register_and_get_primal() {
+        use crate::mock_primal::MockPrimal;
+        let mut orch = PrimalOrchestrator::new();
+        let mock = MockPrimal {
+            name: "test-primal".to_string(),
+            should_fail: false,
+        };
+        orch.register_primal("test".to_string(), Box::new(mock))
+            .await
+            .unwrap();
+        assert!(orch.get_primal("test").await.is_some());
+        assert!(orch.get_primal("nonexistent").await.is_none());
+    }
+}

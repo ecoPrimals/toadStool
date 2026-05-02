@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use serde::{Deserialize, Serialize};
 
-
-use crate::error::PrimalResult;
-
 /// Primal capability descriptor (replaces hardcoded enum)
 ///
 /// Instead of enumerating primal names, we describe primals by their capabilities.
@@ -27,12 +24,12 @@ impl PrimalDescriptor {
             type_hint: None,
         }
     }
-    
+
     /// Check if this primal has a specific capability
     pub fn has_capability(&self, capability: &str) -> bool {
         self.capabilities.iter().any(|c| c == capability)
     }
-    
+
     /// Get a display name for this primal
     pub fn display_name(&self) -> &str {
         &self.id

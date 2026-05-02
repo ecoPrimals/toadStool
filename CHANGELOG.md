@@ -5,7 +5,22 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 2, 2026 (Sessions 43-216)
+## [Unreleased] - May 2, 2026 (Sessions 43-217)
+
+### Session S217 (May 2, 2026) — Deep Debt: Flaky Test Fix + Orphan Module Recovery + Coverage Expansion
+
+- FIXED: Flaky `primal_sockets::get_socket_path_for_capability_*` tests — wrapped convenience API tests in `temp_env::with_vars` to isolate from `DISCOVERY_SOCKET` / `BIOMEOS_*_SOCKET` env pollution during parallel workspace runs
+- RECOVERED: 6 orphaned modules in `integration-primals` wired into module tree — `error.rs` (PrimalError types), `client.rs` (Unix JSON-RPC client), `orchestrator.rs` (biome deployment), `services.rs` (ServiceManager), `manifest/` (rich BiomeManifest), `types/` (PrimalRegistry)
+- ADDED: 35+ new inline tests across 5 previously-untested modules:
+  - `orchestrator.rs`: manifest validation, endpoint config, deploy error paths, register/get primal (7 tests)
+  - `types/registration.rs`: registry CRUD, serde roundtrips, overwrite semantics (7 tests)
+  - `client.rs`: constructor, serde roundtrips, error classification on missing sockets (5 tests)
+  - `cloud_provider_trait/registry.rs`: provider registration, lookup, listing (5 tests)
+  - `substrate_detection/probe.rs`: command existence, distro detection, package probing (4 tests)
+- FIXED: `client.rs` type error (`AsRef<Path>` → `Into<PathBuf>` for `UnixJsonRpcClient::new`)
+- FIXED: `manifest/config.rs` missing `HealthCheckConfig` re-export from `config_bases`
+- CLEANED: Removed unused `PrimalResult` import from `types/primal.rs`
+- 22,429+ tests, 0 failures, clippy clean, fmt clean
 
 ### Session S216 (May 2, 2026) — Deep Debt: Production Stub Evolution + Dependency Hygiene + Lock Safety
 

@@ -114,9 +114,9 @@ impl From<ToadStoolError> for PrimalError {
             ToadStoolError::Security(_) => PrimalError::Authentication {
                 message: error.to_string(),
             },
-            ToadStoolError::Integration(IntegrationError::ServiceUnavailable { service, .. }) => {
-                PrimalError::ServiceUnavailable { service }
-            }
+            ToadStoolError::Integration(IntegrationError::ServiceUnavailable {
+                service, ..
+            }) => PrimalError::ServiceUnavailable { service },
             ToadStoolError::Integration(_) => PrimalError::Integration {
                 primal: "unknown".to_string(),
                 message: error.to_string(),

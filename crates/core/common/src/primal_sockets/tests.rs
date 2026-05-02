@@ -317,43 +317,95 @@ fn get_family_id_returns_string() {
 
 #[test]
 fn get_socket_path_for_capability_crypto_is_path() {
-    let path = get_socket_path_for_capability("crypto");
-    assert!(path.to_string_lossy().contains("crypto"));
+    temp_env::with_vars(
+        [
+            ("DISCOVERY_SOCKET", None::<&str>),
+            ("BIOMEOS_CRYPTO_SOCKET", None::<&str>),
+            ("BEARDOG_SOCKET", None::<&str>),
+        ],
+        || {
+            let path = get_socket_path_for_capability("crypto");
+            assert!(path.to_string_lossy().contains("crypto"));
+        },
+    );
 }
 
 #[test]
 fn get_socket_path_for_capability_coordination_is_path() {
-    let path = get_socket_path_for_capability("coordination");
-    assert!(path.to_string_lossy().contains("coordination"));
+    temp_env::with_vars(
+        [
+            ("DISCOVERY_SOCKET", None::<&str>),
+            ("BIOMEOS_COORDINATION_SOCKET", None::<&str>),
+            ("SONGBIRD_SOCKET", None::<&str>),
+        ],
+        || {
+            let path = get_socket_path_for_capability("coordination");
+            assert!(path.to_string_lossy().contains("coordination"));
+        },
+    );
 }
 
 #[test]
 fn get_socket_path_for_capability_storage_is_path() {
-    let path = get_socket_path_for_capability("storage");
-    assert!(path.to_string_lossy().contains("storage"));
+    temp_env::with_vars(
+        [
+            ("DISCOVERY_SOCKET", None::<&str>),
+            ("BIOMEOS_STORAGE_SOCKET", None::<&str>),
+            ("NESTGATE_SOCKET", None::<&str>),
+        ],
+        || {
+            let path = get_socket_path_for_capability("storage");
+            assert!(path.to_string_lossy().contains("storage"));
+        },
+    );
 }
 
 #[test]
 fn get_routing_socket_path_is_path() {
-    let path = get_routing_socket_path();
-    assert!(path.to_string_lossy().contains("routing"));
+    temp_env::with_vars(
+        [
+            ("DISCOVERY_SOCKET", None::<&str>),
+            ("BIOMEOS_ROUTING_SOCKET", None::<&str>),
+            ("SQUIRREL_SOCKET", None::<&str>),
+        ],
+        || {
+            let path = get_routing_socket_path();
+            assert!(path.to_string_lossy().contains("routing"));
+        },
+    );
 }
 
 #[test]
 fn get_toadstool_socket_path_is_path() {
-    let path = get_toadstool_socket_path();
-    assert!(
-        path.to_string_lossy().contains("compute"),
-        "Self-Knowledge v1.1: domain-based name, got: {}",
-        path.display()
+    temp_env::with_vars(
+        [
+            ("TOADSTOOL_SOCKET", None::<&str>),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+        ],
+        || {
+            let path = get_toadstool_socket_path();
+            assert!(
+                path.to_string_lossy().contains("compute"),
+                "Self-Knowledge v1.1: domain-based name, got: {}",
+                path.display()
+            );
+        },
     );
 }
 
 #[test]
 fn get_nucleus_socket_path_is_path() {
-    let path = get_nucleus_socket_path();
-    let s = path.to_string_lossy();
-    assert!(s.contains("nucleus") || s.contains("biomeos"));
+    temp_env::with_vars(
+        [
+            ("BIOMEOS_NUCLEUS_SOCKET", None::<&str>),
+            ("BIOMEOS_SOCKET_PATH", None::<&str>),
+        ],
+        || {
+            let path = get_nucleus_socket_path();
+            let s = path.to_string_lossy();
+            assert!(s.contains("nucleus") || s.contains("biomeos"));
+        },
+    );
 }
 
 #[test]

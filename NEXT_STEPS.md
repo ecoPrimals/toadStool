@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S215 (BTSP Phase 3: Encrypted Channel)
+**Updated**: May 2026 — S217 (Deep Debt: Flaky Test Fix + Orphan Recovery + Coverage)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,429 workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **49 unsafe blocks** (all in hw containment, all SAFETY-documented) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)**
-**Latest**: S215 — BTSP Phase 3 implemented: `btsp.negotiate` server handler + ChaCha20-Poly1305 encrypted framing on all JSON-RPC paths (server + daemon). Key derivation via HKDF-SHA256 with directional info strings matching primalSpring client. Null cipher graceful fallback preserved. 22,429 tests, 0 failures.
+**Latest**: S217 — Fixed flaky `primal_sockets` env-var race. Recovered 6 orphaned `integration-primals` modules into module tree. Added 35+ new tests across 5 untested modules. S216 evolved MQ stub, ResourceOrchestrator lock safety, dependency hygiene. 22,429+ tests, 0 failures.
 
 ---
 

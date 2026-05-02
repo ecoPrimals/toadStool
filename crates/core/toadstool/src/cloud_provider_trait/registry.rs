@@ -47,3 +47,47 @@ impl<P: CloudProvider> Default for CloudProviderRegistry<P> {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cloud_provider_trait::provider::NoopCloudProvider;
+
+    #[test]
+    fn registry_default_is_empty() {
+        let reg = CloudProviderRegistry::<NoopCloudProvider>::default();
+        assert!(reg.available_providers().is_empty());
+    }
+
+    #[test]
+    fn register_and_get_provider() {
+        let mut reg = CloudProviderRegistry::new();
+        reg.register(Box::new(NoopCloudProvider));
+        assert!(reg.has_provider("noop"));
+        assert!(reg.get("noop").is_some());
+        assert_eq!(reg.get("noop").unwrap().name(), "noop");
+    }
+
+    #[test]
+    fn get_nonexistent_returns_none() {
+        let reg = CloudProviderRegistry::<NoopCloudProvider>::new();
+        assert!(reg.get("nonexistent").is_none());
+        assert!(!reg.has_provider("nonexistent"));
+    }
+
+    #[test]
+    fn available_providers_lists_all() {
+        let mut reg = CloudProviderRegistry::new();
+        reg.register(Box::new(NoopCloudProvider));
+        let names = reg.available_providers();
+        assert_eq!(names, vec!["noop"]);
+    }
+
+    #[test]
+    fn register_overwrites_existing() {
+        let mut reg = CloudProviderRegistry::new();
+        reg.register(Box::new(NoopCloudProvider));
+        reg.register(Box::new(NoopCloudProvider));
+        assert_eq!(reg.available_providers().len(), 1);
+    }
+}

@@ -50,14 +50,14 @@ impl ServiceManager {
         // - ToadStool knows only itself
         // - Other primals are discovered at runtime by what they do (capability)
         // - No hardcoded primal names or locations
-        
+
         let config = toadstool_config::env_config::EnvironmentConfig::from_env();
         let host = &config.network.bind_address;
-        
+
         // Self-knowledge: Use OUR OWN port for OUR service endpoint
         // We don't need to know about Coordination - discovery handles that
         let port = config.network.toadstool_port;
-        
+
         let service_info = ServiceInfo {
             service_id: service_id.clone(),
             service_type,

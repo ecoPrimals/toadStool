@@ -28,12 +28,44 @@ use std::pin::Pin;
 
 use toadstool::ToadStoolResult;
 
+#[allow(
+    missing_docs,
+    reason = "wired in S217; docs will be added incrementally"
+)]
+pub mod error;
+#[allow(
+    missing_docs,
+    reason = "wired in S217; docs will be added incrementally"
+)]
+pub mod types;
+
 mod health;
 mod integration_manifest;
 mod manager;
+#[allow(
+    missing_docs,
+    reason = "wired in S217; docs will be added incrementally"
+)]
+pub mod manifest;
 mod messaging;
 mod primal_types;
 mod service;
+
+#[allow(
+    missing_docs,
+    reason = "wired in S217; docs will be added incrementally"
+)]
+pub mod client;
+#[allow(
+    missing_docs,
+    reason = "wired in S217; docs will be added incrementally"
+)]
+pub mod orchestrator;
+#[allow(
+    missing_docs,
+    reason = "wired in S217; docs will be added incrementally"
+)]
+pub mod services;
 
 // Re-exports for backward compatibility - all public types accessible from crate root
 pub use health::{HealthCheck, HealthCheckStatus, HealthStatus};

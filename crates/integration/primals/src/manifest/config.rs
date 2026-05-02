@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+pub use toadstool_common::config_bases::HealthCheckConfig;
 use toadstool_common::config_bases::HttpHealthCheckConfig;
 
 /// Configuration for a primal
@@ -10,7 +11,7 @@ pub struct PrimalConfig {
     pub endpoint: String,
     pub capabilities: Vec<String>,
     pub settings: HashMap<String, serde_json::Value>,
-    
+
     /// Health check configuration (using base pattern)
     #[serde(flatten)]
     pub health_check: Option<HttpHealthCheckConfig>,
@@ -74,14 +75,14 @@ pub struct ServiceConfig {
     pub image: String,
     pub ports: Vec<u16>,
     pub environment: HashMap<String, String>,
-    
+
     /// Resource configuration (using base pattern)
     #[serde(flatten)]
     pub resources: ServiceResourcesConfig,
 }
 
 /// Service resources configuration
-/// 
+///
 /// Uses base resource pattern with service-specific extensions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceResourcesConfig {
