@@ -65,7 +65,8 @@ fn test_quota_enforcement_max_workloads() {
             max_concurrent_workloads: 1,
             ..Default::default()
         },
-    );
+    )
+    .unwrap();
 
     let req = test_request("tenant-a", 3);
     let _alloc1 = orch.allocate(&req).unwrap();
@@ -82,7 +83,8 @@ fn test_quota_enforcement_max_vram() {
             max_vram_bytes: 500_000_000,
             ..Default::default()
         },
-    );
+    )
+    .unwrap();
 
     let req = test_request("tenant-a", 3);
     let result = orch.allocate(&req);
@@ -94,12 +96,12 @@ fn test_release_frees_resources() {
     let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
     let alloc = orch.allocate(&test_request("hotspring", 3)).unwrap();
 
-    let usage = orch.tenant_usage("hotspring").unwrap();
+    let usage = orch.tenant_usage("hotspring").unwrap().unwrap();
     assert_eq!(usage.active_workloads, 1);
 
-    orch.release("hotspring", alloc.device_index);
+    orch.release("hotspring", alloc.device_index).unwrap();
 
-    let usage = orch.tenant_usage("hotspring").unwrap();
+    let usage = orch.tenant_usage("hotspring").unwrap().unwrap();
     assert_eq!(usage.active_workloads, 0);
 }
 
@@ -111,13 +113,13 @@ fn test_deployment_model_default() {
 #[test]
 fn test_device_count() {
     let orch = ResourceOrchestrator::new(DeploymentModel::LocalDirect, two_gpu_devices());
-    assert_eq!(orch.device_count(), 2);
+    assert_eq!(orch.device_count().unwrap(), 2);
 }
 
 #[test]
 fn test_all_usage_empty() {
     let orch = ResourceOrchestrator::new(DeploymentModel::LocalDirect, two_gpu_devices());
-    assert!(orch.all_usage().is_empty());
+    assert!(orch.all_usage().unwrap().is_empty());
 }
 
 #[test]

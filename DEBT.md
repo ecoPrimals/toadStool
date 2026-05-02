@@ -1,12 +1,29 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S215
+**Date**: May 2026 — S216
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S216 (Deep Debt — Production Stub Evolution + Dependency Hygiene + Lock Safety)**:
+Comprehensive deep-debt sweep across all dimensions:
+- **Production stubs**: Message queue coordination transport evolved from
+  fabricated `Success` to proper `NotSupported` error. No remaining synthetic
+  success paths in production code.
+- **Lock safety**: `ResourceOrchestrator` all 12 `.expect("lock poisoned")`
+  calls evolved to `Result<_, OrchestrationError::LockPoisoned>`. Both
+  `WorkloadOrchestrator` (S213) and `ResourceOrchestrator` (S216) now use
+  recoverable error handling for lock poisoning.
+- **Dependency hygiene**: `tar` advisory fixed (0.4.44→0.4.45), yanked
+  `drm` 0.14.2 resolved to 0.14.1, `deny.toml` stale skip entries removed.
+  `ring` confirmed absent from dependency tree. All four `cargo deny check`
+  gates pass clean.
+- **Audit**: No production files >800 LOC. All 49 unsafe blocks are legitimate
+  hw containment. All hardcoded paths are env-configurable. All `Box<dyn Trait>`
+  usages are open-by-design (runtime registration). Zero clippy warnings.
 
 **S215 (BTSP Phase 3: Encrypted Channel — ChaCha20-Poly1305)**:
 Implemented BTSP Phase 3 server-side `btsp.negotiate` handler and encrypted

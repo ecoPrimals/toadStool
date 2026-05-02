@@ -11,9 +11,6 @@ use super::types::{
     SubTaskStatus, ToadStoolCoordinationIntegration,
 };
 
-/// Placeholder ETA for message-queue coordination responses until the broker reports real timings.
-pub const DEFAULT_ESTIMATED_COMPLETION_SECS: u64 = 420;
-
 impl ToadStoolCoordinationIntegration {
     /// Submit subtask to Coordination for execution on specific nodes
     pub(super) async fn submit_subtask_to_coordination(
@@ -105,28 +102,16 @@ impl ToadStoolCoordinationIntegration {
         _request: CoordinationJobRequest,
         queue_name: &str,
     ) -> ToadStoolResult<CoordinationJobResponse> {
-        debug!("Submitting job via message queue: {}", queue_name);
+        warn!(
+            "Message queue submission not implemented for queue: {} — use JSON-RPC over Unix socket instead",
+            queue_name
+        );
 
-        // In a real implementation, this would:
-        // 1. Connect to message broker (RabbitMQ, Apache Kafka, etc.)
-        // 2. Serialize the job request
-        // 3. Publish to the specified queue
-        // 4. Wait for acknowledgment or response queue
-        // ✅ MODERNIZED: No fake work
-        // NOTE: Message queue integration for async workloads
-        // Current: Synchronous communication sufficient
-        // Future: RabbitMQ/Kafka integration for high-throughput scenarios
-        // Priority: P3 (advanced scaling)
-
-        Ok(CoordinationJobResponse::Success {
-            job_id: uuid::Uuid::new_v4(),
-            status: "queued".to_owned(),
-            message: "Job submitted successfully to message queue".to_owned(),
-            estimated_completion: Some(
-                SystemTime::now()
-                    + std::time::Duration::from_secs(DEFAULT_ESTIMATED_COMPLETION_SECS),
-            ),
-        })
+        Err(ToadStoolError::not_supported(
+            "Message queue job submission not implemented. Use JSON-RPC over Unix socket via \
+             the coordination service client. Message queue integration (RabbitMQ/Kafka) is a \
+             future scaling target (P3).",
+        ))
     }
 }
 
@@ -143,7 +128,7 @@ mod tests {
     use super::super::types::{
         CapacityConfig, ConnectionHealth, CoordinationConnection, CoordinationTransport,
         GrpcProtocolConfig, HttpProtocolConfig, MessageQueueProtocolConfig, ProtocolConfig,
-        SubTask, SubTaskStatus, ToadStoolCoordinationIntegration,
+        SubTask, ToadStoolCoordinationIntegration,
     };
     use crate::universal::{UniversalScheduler, UniversalSchedulerConfig};
     use toadstool_common::constants::network::LOCALHOST_IPV4;
@@ -254,44 +239,44 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn submit_subtask_message_queue_returns_success() {
+    async fn submit_subtask_message_queue_returns_not_supported() {
         let integration = integration_with_protocol(CoordinationTransport::MessageQueue).await;
-        let subtask = sample_subtask();
-        let subtask_id = subtask.id;
-        let handle = integration
-            .submit_subtask_to_coordination(subtask, vec!["n1".to_string()])
+        let err = integration
+            .submit_subtask_to_coordination(sample_subtask(), vec!["n1".to_string()])
             .await
-            .expect("message queue path should succeed");
-        assert_eq!(handle.subtask_id, subtask_id);
-        assert_eq!(handle.target_nodes, vec!["n1".to_string()]);
-        assert!(matches!(handle.status, SubTaskStatus::Submitted));
-        assert!(!handle.coordination_job_id.is_nil());
+            .expect_err("message queue submission must be rejected");
+        assert!(
+            matches!(
+                err,
+                ToadStoolError::System(SystemError::NotSupported { .. })
+            ),
+            "expected NotSupported, got {err:?}"
+        );
+        assert!(
+            err.to_string().contains("Message queue"),
+            "message should mention message queue: {err}"
+        );
     }
 
     #[tokio::test]
-    async fn mq_submit_response_status_roundtrips_serde() {
+    async fn coordination_job_response_roundtrips_serde() {
         use super::super::types::CoordinationJobResponse;
         let resp = CoordinationJobResponse::Success {
             job_id: Uuid::new_v4(),
             status: "queued".to_owned(),
-            message: "Job submitted successfully to message queue".to_owned(),
+            message: "Job submitted via coordination".to_owned(),
             estimated_completion: Some(
-                std::time::SystemTime::now()
-                    + std::time::Duration::from_secs(super::DEFAULT_ESTIMATED_COMPLETION_SECS),
+                std::time::SystemTime::now() + std::time::Duration::from_secs(60),
             ),
         };
         let json = serde_json::to_string(&resp).expect("serde");
         let back: CoordinationJobResponse = serde_json::from_str(&json).expect("de");
         match back {
             CoordinationJobResponse::Success {
-                status,
-                message,
-                estimated_completion,
-                ..
+                status, message, ..
             } => {
                 assert_eq!(status, "queued");
-                assert!(message.contains("message queue"));
-                assert!(estimated_completion.is_some());
+                assert!(message.contains("coordination"));
             }
             CoordinationJobResponse::Error { .. } => panic!("unexpected variant"),
         }

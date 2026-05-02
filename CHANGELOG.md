@@ -5,7 +5,23 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 2, 2026 (Sessions 43-215)
+## [Unreleased] - May 2, 2026 (Sessions 43-216)
+
+### Session S216 (May 2, 2026) — Deep Debt: Production Stub Evolution + Dependency Hygiene + Lock Safety
+
+- EVOLVED: Message queue coordination transport from fabricated `Success` response to proper `NotSupported` error — no more synthetic success in production code
+- EVOLVED: `ResourceOrchestrator` all 12 `.expect("lock poisoned")` calls to `Result<_, OrchestrationError::LockPoisoned>` — `register_tenant`, `release`, `tenant_usage`, `all_usage`, `device_count` now return `Result`
+- REMOVED: Dead `DEFAULT_ESTIMATED_COMPLETION_SECS` constant (was only used by removed MQ stub)
+- FIXED: Advisory `RUSTSEC` for `tar 0.4.44` — updated to `0.4.45`
+- FIXED: Yanked `drm 0.14.2` — downgraded to `0.14.1` (non-yanked)
+- CLEANED: `deny.toml` stale skip entries (naga, wgpu) — both resolved to single versions
+- VERIFIED: `ring` not in dependency tree (no C FFI crypto in graph)
+- VERIFIED: `cargo deny check` — all four gates (advisories, bans, licenses, sources) pass clean
+- VERIFIED: All `Box<dyn Trait>` usages are open-by-design traits (runtime registration) — enum dispatch not appropriate
+- VERIFIED: All unsafe code (49 blocks) is legitimate hardware containment with SAFETY docs
+- VERIFIED: All hardcoded paths are env-configurable or legitimate kernel-standard paths
+- VERIFIED: No production files >800 LOC
+- 22,429+ tests, clippy clean, fmt clean, zero warnings
 
 ### Session S215 (May 2, 2026) — BTSP Phase 3: Encrypted Channel (ChaCha20-Poly1305)
 

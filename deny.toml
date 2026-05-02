@@ -97,10 +97,7 @@ deny = [
 
 # Skip duplicate version check for crates where multiple major versions
 # coexist by design (e.g. wgpu requires specific sub-crate versions).
-skip = [
-    { name = "wgpu", reason = "Multi-version wgpu is intentional for vendor-specific backends" },
-    { name = "naga", reason = "wgpu dep" },
-]
+skip = []
 
 # skip-tree: skip ban traversal for subtrees rooted at a workspace crate (e.g. when a banned dep is
 # confined to one member). Empty as of 2026-04: toadstool-integration-tests has no reqwest/ring

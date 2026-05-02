@@ -147,16 +147,26 @@ impl ResourceOrchestrator {
     }
 
     /// Register a tenant with resource quotas.
-    pub fn register_tenant(&self, tenant_id: &str, quota: TenantQuota) {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OrchestrationError::LockPoisoned`] if an internal lock was
+    /// poisoned by a prior panic.
+    pub fn register_tenant(
+        &self,
+        tenant_id: &str,
+        quota: TenantQuota,
+    ) -> Result<(), OrchestrationError> {
         self.quotas
             .write()
-            .expect("lock poisoned")
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("quotas: {e}")))?
             .insert(tenant_id.to_string(), quota);
         self.usage
             .write()
-            .expect("lock poisoned")
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("usage: {e}")))?
             .entry(tenant_id.to_string())
             .or_default();
+        Ok(())
     }
 
     /// Request resource allocation for a tenant.
@@ -177,9 +187,17 @@ impl ResourceOrchestrator {
     }
 
     /// Release a device allocation for a tenant.
-    pub fn release(&self, tenant_id: &str, device_index: u32) {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OrchestrationError::LockPoisoned`] if an internal lock was
+    /// poisoned by a prior panic.
+    pub fn release(&self, tenant_id: &str, device_index: u32) -> Result<(), OrchestrationError> {
         {
-            let mut devices = self.devices.write().expect("lock poisoned");
+            let mut devices = self
+                .devices
+                .write()
+                .map_err(|e| OrchestrationError::LockPoisoned(format!("devices: {e}")))?;
             if let Some(dev) = devices.iter_mut().find(|d| d.index == device_index)
                 && dev.current_tenant.as_deref() == Some(tenant_id)
             {
@@ -188,27 +206,44 @@ impl ResourceOrchestrator {
             }
         }
 
-        let mut usage = self.usage.write().expect("lock poisoned");
+        let mut usage = self
+            .usage
+            .write()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("usage: {e}")))?;
         if let Some(tenant_usage) = usage.get_mut(tenant_id) {
             tenant_usage.device_allocations.remove(&device_index);
             tenant_usage.active_workloads = tenant_usage.active_workloads.saturating_sub(1);
         }
+        Ok(())
     }
 
     /// Get current usage for a tenant.
-    #[must_use]
-    pub fn tenant_usage(&self, tenant_id: &str) -> Option<TenantUsage> {
-        self.usage
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OrchestrationError::LockPoisoned`] if an internal lock was
+    /// poisoned by a prior panic.
+    pub fn tenant_usage(&self, tenant_id: &str) -> Result<Option<TenantUsage>, OrchestrationError> {
+        Ok(self
+            .usage
             .read()
-            .expect("lock poisoned")
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("usage: {e}")))?
             .get(tenant_id)
-            .cloned()
+            .cloned())
     }
 
     /// Get all tenant usage stats.
-    #[must_use]
-    pub fn all_usage(&self) -> HashMap<String, TenantUsage> {
-        self.usage.read().expect("lock poisoned").clone()
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OrchestrationError::LockPoisoned`] if an internal lock was
+    /// poisoned by a prior panic.
+    pub fn all_usage(&self) -> Result<HashMap<String, TenantUsage>, OrchestrationError> {
+        Ok(self
+            .usage
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("usage: {e}")))?
+            .clone())
     }
 
     /// Current deployment model.
@@ -218,9 +253,17 @@ impl ResourceOrchestrator {
     }
 
     /// Number of managed devices.
-    #[must_use]
-    pub fn device_count(&self) -> usize {
-        self.devices.read().expect("lock poisoned").len()
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OrchestrationError::LockPoisoned`] if an internal lock was
+    /// poisoned by a prior panic.
+    pub fn device_count(&self) -> Result<usize, OrchestrationError> {
+        Ok(self
+            .devices
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("devices: {e}")))?
+            .len())
     }
 
     // --- allocation strategies ---
@@ -229,7 +272,10 @@ impl ResourceOrchestrator {
         &self,
         request: &ResourceRequest,
     ) -> Result<ResourceAllocation, OrchestrationError> {
-        let devices = self.devices.read().expect("lock poisoned");
+        let devices = self
+            .devices
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("devices: {e}")))?;
         let device = if request.preferred_devices.is_empty() {
             devices.iter().max_by_key(|d| d.free_vram_bytes())
         } else {
@@ -263,7 +309,10 @@ impl ResourceOrchestrator {
     ) -> Result<ResourceAllocation, OrchestrationError> {
         self.check_quota(request)?;
 
-        let mut devices = self.devices.write().expect("lock poisoned");
+        let mut devices = self
+            .devices
+            .write()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("devices: {e}")))?;
         let device = devices
             .iter_mut()
             .filter(|d| {
@@ -286,7 +335,10 @@ impl ResourceOrchestrator {
 
         drop(devices);
 
-        let mut usage = self.usage.write().expect("lock poisoned");
+        let mut usage = self
+            .usage
+            .write()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("usage: {e}")))?;
         let tenant_usage = usage.entry(request.tenant_id.clone()).or_default();
         tenant_usage.device_allocations.insert(idx, allocated);
         tenant_usage.active_workloads += 1;
@@ -313,12 +365,18 @@ impl ResourceOrchestrator {
         reason = "drop order is intentional"
     )] // need both quotas and usage for check
     fn check_quota(&self, request: &ResourceRequest) -> Result<(), OrchestrationError> {
-        let quotas = self.quotas.read().expect("lock poisoned");
+        let quotas = self
+            .quotas
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("quotas: {e}")))?;
         let Some(quota) = quotas.get(&request.tenant_id) else {
             return Ok(());
         };
 
-        let usage = self.usage.read().expect("lock poisoned");
+        let usage = self
+            .usage
+            .read()
+            .map_err(|e| OrchestrationError::LockPoisoned(format!("usage: {e}")))?;
         let current = usage.get(&request.tenant_id);
 
         if let Some(current) = current {
