@@ -18,6 +18,7 @@ pub mod client;
 pub mod family_seed;
 pub mod framing;
 pub mod json_line;
+pub mod phase3;
 pub mod server;
 pub mod types;
 
@@ -25,10 +26,11 @@ pub use client::{BtspClient, BtspSession};
 pub use family_seed::{BtspFamilySeedError, load_family_seed_for_btsp};
 pub use framing::{BtspFrameReader, BtspFrameWriter, PrependByte};
 pub use json_line::{
-    BtspJsonLineError, BtspSessionInfo, line_looks_like_btsp_client_hello,
+    BtspJsonLineError, BtspSessionInfo, NegotiateOutcome, line_looks_like_btsp_client_hello,
     read_full_line_after_first_byte, read_line_suffix, relay_json_line_handshake,
-    resolve_security_socket_path,
+    resolve_security_socket_path, try_handle_negotiate,
 };
+pub use phase3::{NegotiateParams, NegotiateResponse, Phase3Error, Phase3SessionKeys};
 pub use server::BtspServer;
 pub use types::{
     BtspCipher, ChallengeResponse, ClientHello, HandshakeComplete, HandshakeError, ServerHello,

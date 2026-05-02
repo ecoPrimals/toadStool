@@ -292,7 +292,7 @@ pub(super) async fn handle_btsp_connection(
             return handle_http_keepalive_unix(handler, &mut reader, &mut writer, first_line).await;
         }
         if btsp::line_looks_like_btsp_client_hello(&first_line) {
-            let family_seed_b64 = btsp::family_seed::load_family_seed_for_btsp()
+            let family_seed = btsp::family_seed::load_family_seed_for_btsp()
                 .map_err(|e| ServerError::Configuration(e.to_string()))?;
             let sec = btsp::json_line::resolve_security_socket_path()
                 .map_err(|e| ServerError::Configuration(e.to_string()))?;
@@ -300,7 +300,7 @@ pub(super) async fn handle_btsp_connection(
             let info = btsp::relay_json_line_handshake(
                 &mut stream,
                 first_line.trim_end(),
-                &family_seed_b64,
+                &family_seed,
                 &sec_s,
             )
             .await
@@ -313,7 +313,8 @@ pub(super) async fn handle_btsp_connection(
             );
             let (reader, mut writer) = stream.into_split();
             let mut reader = BufReader::new(reader);
-            return handle_ndjson_unix(handler, &mut reader, &mut writer, String::new()).await;
+            return handle_post_handshake_session(handler, &mut reader, &mut writer, &family_seed)
+                .await;
         }
         let (reader, mut writer) = stream.into_split();
         let mut reader = BufReader::new(reader);
@@ -413,6 +414,79 @@ pub(super) async fn handle_btsp_connection(
     if let Err(e) = stream.shutdown().await {
         warn!(target: "btsp", "shutdown after BTSP-disabled close: {e}");
     }
+    Ok(())
+}
+
+/// After a JSON-line BTSP handshake, read the first NDJSON line and check for
+/// `btsp.negotiate` (Phase 3 cipher upgrade). If the client negotiates ChaCha20-Poly1305,
+/// switch to encrypted length-prefixed framing. Otherwise continue with NDJSON.
+#[cfg(feature = "btsp")]
+async fn handle_post_handshake_session(
+    handler: Arc<JsonRpcHandler>,
+    reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
+    writer: &mut tokio::net::unix::OwnedWriteHalf,
+    family_seed: &str,
+) -> ServerResult<()> {
+    use toadstool_common::btsp;
+
+    let mut first_line = String::new();
+    let n = reader
+        .read_line(&mut first_line)
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?;
+    if n == 0 {
+        return Ok(());
+    }
+
+    match btsp::try_handle_negotiate(&first_line, writer, family_seed)
+        .await
+        .map_err(|e| ServerError::Network(e.to_string()))?
+    {
+        btsp::NegotiateOutcome::Negotiated(keys) => {
+            handle_encrypted_session(handler, reader, writer, keys).await
+        }
+        btsp::NegotiateOutcome::NullCipher => {
+            handle_ndjson_unix(handler, reader, writer, String::new()).await
+        }
+        btsp::NegotiateOutcome::NotNegotiate => {
+            handle_ndjson_unix(handler, reader, writer, first_line).await
+        }
+    }
+}
+
+/// Serve JSON-RPC over BTSP Phase 3 encrypted framing.
+///
+/// Each request/response pair uses length-prefixed encrypted frames:
+/// `[4B len BE u32][12B nonce][ciphertext + Poly1305 tag]`
+#[cfg(feature = "btsp")]
+async fn handle_encrypted_session(
+    handler: Arc<JsonRpcHandler>,
+    reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
+    writer: &mut tokio::net::unix::OwnedWriteHalf,
+    keys: toadstool_common::btsp::Phase3SessionKeys,
+) -> ServerResult<()> {
+    use toadstool_common::btsp::framing;
+
+    info!(target: "btsp", "BTSP Phase 3: entering encrypted session loop");
+
+    loop {
+        match framing::read_encrypted_frame(reader, &keys).await {
+            Ok(plaintext) => {
+                let response_body = process_request(&handler, &plaintext).await?;
+                if let Err(e) = framing::write_encrypted_frame(writer, &keys, &response_body).await
+                {
+                    warn!(target: "btsp", "Phase 3 encrypted write error: {e}");
+                    break;
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => {
+                warn!(target: "btsp", "Phase 3 encrypted read error: {e}");
+                break;
+            }
+        }
+    }
+
     Ok(())
 }
 

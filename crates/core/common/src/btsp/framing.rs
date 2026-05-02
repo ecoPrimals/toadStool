@@ -181,6 +181,49 @@ impl<W: AsyncWrite + Unpin> BtspFrameWriter<W> {
     }
 }
 
+/// Read an encrypted frame: `[4B len BE u32][len bytes: nonce + ciphertext + tag]`.
+///
+/// Decrypts the payload using the provided session keys and returns the plaintext.
+///
+/// # Errors
+///
+/// - `UnexpectedEof` if the stream closes before a complete frame.
+/// - `InvalidData` if the frame exceeds `MAX_FRAME_SIZE` or decryption fails.
+pub async fn read_encrypted_frame<R: AsyncRead + Unpin>(
+    reader: &mut R,
+    keys: &super::phase3::Phase3SessionKeys,
+) -> io::Result<Vec<u8>> {
+    let encrypted = read_frame(reader).await?;
+    keys.decrypt(&encrypted).map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("BTSP Phase 3 decrypt: {e}"),
+        )
+    })
+}
+
+/// Write an encrypted frame: `[4B len BE u32][12B nonce][ciphertext + tag]`.
+///
+/// Encrypts the plaintext using the provided session keys and writes the frame.
+///
+/// # Errors
+///
+/// - `InvalidData` if encryption fails or the frame exceeds `MAX_FRAME_SIZE`.
+/// - I/O errors from the underlying stream.
+pub async fn write_encrypted_frame<W: AsyncWrite + Unpin>(
+    writer: &mut W,
+    keys: &super::phase3::Phase3SessionKeys,
+    plaintext: &[u8],
+) -> io::Result<()> {
+    let encrypted = keys.encrypt(plaintext).map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("BTSP Phase 3 encrypt: {e}"),
+        )
+    })?;
+    write_frame(writer, &encrypted).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

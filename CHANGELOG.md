@@ -5,7 +5,23 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 1, 2026 (Sessions 43-214)
+## [Unreleased] - May 2, 2026 (Sessions 43-215)
+
+### Session S215 (May 2, 2026) — BTSP Phase 3: Encrypted Channel (ChaCha20-Poly1305)
+
+- ADDED: `btsp/phase3.rs` — `Phase3SessionKeys` with HKDF-SHA256 key derivation, ChaCha20-Poly1305 encrypt/decrypt, `NegotiateParams`/`NegotiateResponse` types
+- ADDED: `btsp.negotiate` JSON-RPC handler in `json_line.rs` — `try_handle_negotiate()` parses negotiate request, derives session keys, returns cipher + server_nonce
+- ADDED: `NegotiateOutcome` enum for clean plaintext→encrypted transition signaling
+- ADDED: Encrypted frame read/write in `framing.rs` — `read_encrypted_frame()` / `write_encrypted_frame()` wrapping length-prefixed AEAD frames
+- ADDED: `handle_post_handshake_session()` in server Unix handler — intercepts first post-handshake line for Phase 3 upgrade
+- ADDED: `handle_encrypted_session()` — server loop over encrypted length-prefixed frames
+- ADDED: `daemon_encrypted_loop()` in daemon JSON-RPC server — Phase 3 encrypted session for daemon mode
+- ADDED: 7 unit tests for Phase 3 (key derivation roundtrip, encrypt/decrypt roundtrip, tamper detection, short input rejection, deterministic handshake key, nonce non-zero)
+- EVOLVED: Server + daemon BTSP paths from hardcoded NDJSON-after-handshake to negotiate-aware (encrypted or null cipher fallback)
+- Wire format: `[4B len BE u32][12B AEAD nonce][ciphertext + 16B Poly1305 tag]`
+- Key derivation: `HKDF-SHA256(ikm=handshake_key, salt=client_nonce||server_nonce, info="btsp-session-v1-c2s"/"btsp-session-v1-s2c")`
+- Compatible with primalSpring Phase 3 client (`negotiate_phase3()`) — null cipher graceful fallback preserved
+- 22,429 tests, 0 failures, clippy clean, fmt clean
 
 ### Session S214 (May 1, 2026) — PG-46 Fix: BTSP Connection Reuse + Phase 3 Assessment + Debris Cleanup
 

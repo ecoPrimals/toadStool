@@ -293,7 +293,7 @@ async fn handle_btsp_daemon_connection(
             return Ok(());
         }
         if btsp::line_looks_like_btsp_client_hello(&first_line) {
-            let family_seed_b64 = btsp::load_family_seed_for_btsp()
+            let family_seed = btsp::load_family_seed_for_btsp()
                 .map_err(|e| crate::CliError::InvalidConfig(e.to_string()))?;
             let sec = btsp::resolve_security_socket_path()
                 .map_err(|e| crate::CliError::InvalidConfig(e.to_string()))?;
@@ -301,7 +301,7 @@ async fn handle_btsp_daemon_connection(
             let btsp_info = btsp::relay_json_line_handshake(
                 &mut stream,
                 first_line.trim_end(),
-                &family_seed_b64,
+                &family_seed,
                 &sec_s,
             )
             .await
@@ -314,6 +314,33 @@ async fn handle_btsp_daemon_connection(
             );
             let (reader, mut writer) = stream.into_split();
             let mut reader = BufReader::new(reader);
+
+            // Phase 3: check first line for btsp.negotiate
+            let mut first_rpc_line = String::new();
+            let n = reader.read_line(&mut first_rpc_line).await?;
+            if n == 0 {
+                return Ok(());
+            }
+            match btsp::try_handle_negotiate(&first_rpc_line, &mut writer, &family_seed)
+                .await
+                .map_err(|e| crate::CliError::Other(e.to_string()))?
+            {
+                btsp::NegotiateOutcome::Negotiated(keys) => {
+                    return daemon_encrypted_loop(&mut reader, &mut writer, &state, keys).await;
+                }
+                btsp::NegotiateOutcome::NullCipher => {}
+                btsp::NegotiateOutcome::NotNegotiate => {
+                    if !first_rpc_line.trim().is_empty() {
+                        let response =
+                            dispatch_or_parse_error(first_rpc_line.as_bytes(), &state).await;
+                        let response_json = serde_json::to_string(&response)?;
+                        writer.write_all(response_json.as_bytes()).await?;
+                        writer.write_all(b"\n").await?;
+                        writer.flush().await?;
+                    }
+                }
+            }
+
             let mut line = String::new();
             loop {
                 let n = reader.read_line(&mut line).await?;
@@ -431,6 +458,41 @@ fn resolve_daemon_family_seed() -> crate::Result<Vec<u8>> {
     Err(crate::CliError::InvalidConfig(
         "BTSP requires FAMILY_SEED env var or .family.seed file in biomeOS directory".to_string(),
     ))
+}
+
+/// Daemon loop over BTSP Phase 3 encrypted frames.
+#[cfg(feature = "btsp")]
+async fn daemon_encrypted_loop(
+    reader: &mut BufReader<tokio::net::unix::OwnedReadHalf>,
+    writer: &mut tokio::net::unix::OwnedWriteHalf,
+    state: &ServerState,
+    keys: toadstool_common::btsp::Phase3SessionKeys,
+) -> crate::Result<()> {
+    use toadstool_common::btsp::framing;
+
+    info!(target: "btsp", "BTSP Phase 3: daemon entering encrypted session loop");
+
+    loop {
+        match framing::read_encrypted_frame(reader, &keys).await {
+            Ok(plaintext) => {
+                let response = dispatch_or_parse_error(&plaintext, state).await;
+                let response_json = serde_json::to_string(&response)?;
+                if let Err(e) =
+                    framing::write_encrypted_frame(writer, &keys, response_json.as_bytes()).await
+                {
+                    warn!(target: "btsp", "Phase 3 daemon encrypted write error: {e}");
+                    break;
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => {
+                warn!(target: "btsp", "Phase 3 daemon encrypted read error: {e}");
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Handle a single client connection
