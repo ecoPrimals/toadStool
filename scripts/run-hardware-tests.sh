@@ -187,7 +187,7 @@ run_coverage() {
     cargo llvm-cov clean
 
     echo -e "${CYAN}Running standard tests with coverage...${NC}"
-    cargo llvm-cov --workspace --no-report -- --skip performance 2>&1 \
+    cargo llvm-cov --workspace --no-report -- --skip performance_bench --skip slow 2>&1 \
         | grep -E "test result" || true
 
     if $HAS_AMD || $HAS_NVIDIA; then

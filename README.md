@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | April 2026
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,000+ tests, 0 failures** (7,842+ lib-only), **~93** ignored (hardware-gated); full workspace ~3m30s |
+| `cargo test --workspace` | **22,429+ tests, 0 failures** (7,842+ lib-only), **~222** ignored (hardware-gated); full workspace ~6m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |

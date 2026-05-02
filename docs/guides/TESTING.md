@@ -1,13 +1,13 @@
 # Testing Guide
 
-**Last Updated**: April 30, 2026 — S211
+**Last Updated**: May 2, 2026 — S217
 
 ## Quick Status
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Lib-Only Tests** | **7,842 (S211)** | 0 failures, unlimited parallelism |
-| **Workspace Tests** | **20,000+ (default features)** | ~93 intentional GPU/hardware ignores |
+| **Lib-Only Tests** | **7,842+ (S217)** | 0 failures, unlimited parallelism |
+| **Workspace Tests** | **22,429+ (default features)** | ~222 intentional GPU/hardware ignores |
 | **Line Coverage** | **~83.6% (lib-only)** | ~185K production lines. Gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
 | **Clippy Pedantic** | **0 warnings** | Full workspace (`-D warnings`), in CI |
 | **BarraCuda Tests** | Separate primal | Budded to `ecoPrimals/barraCuda/` (S93) |
@@ -22,7 +22,7 @@ cargo test --workspace
 cargo test -p toadstool-server
 
 # With coverage
-cargo llvm-cov --workspace --ignore-filename-regex "tests/" -- --skip performance
+cargo llvm-cov --workspace --ignore-filename-regex "tests/" -- --skip performance_bench --skip slow
 
 # Coverage report
 cargo llvm-cov report
