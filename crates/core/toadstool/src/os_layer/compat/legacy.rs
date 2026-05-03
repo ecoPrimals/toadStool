@@ -79,7 +79,13 @@ impl CompatibilityLayer for LegacyCompatibilityLayer {
         &self,
         _request: ExecutionRequest,
     ) -> impl Future<Output = ToadStoolResult<ExecutionResponse>> + Send + '_ {
-        async move { Ok(ExecutionResponse::default()) }
+        async move {
+            Err(crate::error::ToadStoolError::not_supported(
+                "Legacy compatibility execution not implemented. \
+                 Use capability-based execution dispatch via the compute.execute \
+                 JSON-RPC method instead.",
+            ))
+        }
     }
 
     fn initialize(&mut self) -> impl Future<Output = ToadStoolResult<()>> + Send + '_ {

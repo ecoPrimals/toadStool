@@ -169,17 +169,21 @@ fn is_android() -> bool {
     false
 }
 
-/// Get `XDG_RUNTIME_DIR` or fallback
+/// Get `XDG_RUNTIME_DIR` or fallback.
 ///
-/// **Deep Debt**: Pure Rust UID detection (evolved from `toadstool_common`)
+/// Resolution order:
+/// 1. `XDG_RUNTIME_DIR` (standard)
+/// 2. `/run/user/{uid}` via pure-Rust UID detection
+/// 3. `BIOMEOS_RUNTIME_DIR` env override
+/// 4. `/tmp/biomeos-runtime` (last resort)
 fn get_runtime_dir() -> String {
-    std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| {
-        // Pure Rust UID fallback (no unsafe libc!)
-        toadstool_common::uid_detector::get_user_id().map_or_else(
-            |_| "/tmp/biomeos-runtime".to_string(),
-            |uid| format!("/run/user/{uid}"),
-        )
-    })
+    if let Ok(dir) = std::env::var("XDG_RUNTIME_DIR") {
+        return dir;
+    }
+    if let Ok(uid) = toadstool_common::uid_detector::get_user_id() {
+        return format!("/run/user/{uid}");
+    }
+    std::env::var("BIOMEOS_RUNTIME_DIR").unwrap_or_else(|_| "/tmp/biomeos-runtime".to_string())
 }
 
 // ============================================================================

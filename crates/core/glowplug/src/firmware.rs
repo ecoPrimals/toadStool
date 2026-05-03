@@ -100,3 +100,47 @@ impl FirmwareInterface for NoFirmwareInterface {
         "none"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_firmware_interface_is_always_responsive() {
+        let fw = NoFirmwareInterface;
+        assert!(fw.is_responsive());
+    }
+
+    #[test]
+    fn no_firmware_interface_probe_succeeds() {
+        let fw = NoFirmwareInterface;
+        let status = fw.probe_status().expect("infallible");
+        assert!(format!("{status:?}").contains("NoFirmware"));
+    }
+
+    #[test]
+    fn no_firmware_interface_send_command_succeeds() {
+        let fw = NoFirmwareInterface;
+        fw.send_command(()).expect("infallible");
+    }
+
+    #[test]
+    fn no_firmware_interface_has_no_version() {
+        let fw = NoFirmwareInterface;
+        assert!(fw.firmware_version().is_none());
+    }
+
+    #[test]
+    fn no_firmware_interface_engine_name() {
+        let fw = NoFirmwareInterface;
+        assert_eq!(fw.engine_name(), "none");
+    }
+
+    #[test]
+    fn no_firmware_serde_roundtrip() {
+        let status = NoFirmware;
+        let json = serde_json::to_string(&status).unwrap();
+        let back: NoFirmware = serde_json::from_str(&json).unwrap();
+        assert!(format!("{back:?}").contains("NoFirmware"));
+    }
+}

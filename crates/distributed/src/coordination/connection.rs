@@ -85,25 +85,24 @@ impl CoordinationConnection {
                         .trim_start_matches("file://");
                     return Self::probe_unix_socket(path).await;
                 }
-                if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
-                    Ok(())
-                } else {
-                    Err(ToadStoolError::runtime(format!(
-                        "Invalid gRPC endpoint: {endpoint:?}"
-                    )))
-                }
+                Err(ToadStoolError::not_supported(format!(
+                    "gRPC TCP health check not implemented for {endpoint:?}: \
+                     use Unix socket (unix://…) for coordination IPC. \
+                     TCP gRPC requires protocol-level probing not available in uniBin."
+                )))
             }
             CoordinationTransport::MessageQueue => {
-                // Message queue brokers are assumed healthy if reachable; a full
-                // broker ping would require protocol-specific frames. Accept as-is
-                // unless the endpoint is explicitly a Unix socket we can probe.
                 if let Some(path) = endpoint
                     .strip_prefix("unix://")
                     .or_else(|| endpoint.strip_prefix("file://"))
                 {
                     Self::probe_unix_socket(path).await
                 } else {
-                    Ok(())
+                    Err(ToadStoolError::not_supported(format!(
+                        "Message queue health check not implemented for {endpoint:?}: \
+                         use Unix socket (unix://…) for coordination IPC. \
+                         Broker-specific probing (AMQP/Kafka) is a future scaling target."
+                    )))
                 }
             }
         }
@@ -192,7 +191,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_http_endpoint() {
+    async fn test_connection_grpc_tcp_endpoint_rejected() {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_GRPC_ENDPOINT_9999.to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::GRPC),
@@ -202,12 +201,11 @@ mod tests {
 
         let conn = CoordinationConnection::new(config).await.unwrap();
         assert_eq!(conn.active_endpoint, TEST_GRPC_ENDPOINT_9999);
-        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
-        assert!(conn.auth_token.is_none());
+        assert_eq!(conn.health_status, ConnectionHealth::Degraded);
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_https_endpoint() {
+    async fn test_connection_grpc_https_endpoint_rejected() {
         let config = CoordinationConnectionConfig {
             endpoints: vec!["https://coordination.example.com:443".to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::GRPC),
@@ -216,11 +214,11 @@ mod tests {
         };
 
         let conn = CoordinationConnection::new(config).await.unwrap();
-        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+        assert_eq!(conn.health_status, ConnectionHealth::Degraded);
     }
 
     #[tokio::test]
-    async fn test_connection_message_queue_endpoint() {
+    async fn test_connection_message_queue_tcp_endpoint_rejected() {
         let config = CoordinationConnectionConfig {
             endpoints: vec![TEST_AMQP_ENDPOINT.to_string()],
             protocol_config: base_protocol_config(CoordinationTransport::MessageQueue),
@@ -229,7 +227,7 @@ mod tests {
         };
 
         let conn = CoordinationConnection::new(config).await.unwrap();
-        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+        assert_eq!(conn.health_status, ConnectionHealth::Degraded);
         assert_eq!(conn.active_endpoint, TEST_AMQP_ENDPOINT);
     }
 
@@ -294,7 +292,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_connection_grpc_invalid_endpoint_then_valid() {
+    async fn test_connection_grpc_all_tcp_endpoints_degrade() {
         let config = CoordinationConnectionConfig {
             endpoints: vec![
                 "invalid-endpoint".to_string(),
@@ -306,8 +304,7 @@ mod tests {
         };
 
         let conn = CoordinationConnection::new(config).await.unwrap();
-        assert_eq!(conn.active_endpoint, TEST_HTTP_ENDPOINT_9000);
-        assert_eq!(conn.health_status, ConnectionHealth::Healthy);
+        assert_eq!(conn.health_status, ConnectionHealth::Degraded);
     }
 
     #[tokio::test]

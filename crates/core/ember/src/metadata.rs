@@ -162,4 +162,58 @@ mod tests {
         a.merge(&b);
         assert_eq!(a.get("key").unwrap(), &serde_json::json!("new"));
     }
+
+    #[test]
+    fn remove_missing_key_does_not_bump_generation() {
+        let mut store = MetadataStore::new();
+        store.set("present", serde_json::json!(1));
+        let before = store.generation();
+        assert!(store.remove("absent").is_none());
+        assert_eq!(store.generation(), before);
+    }
+
+    #[test]
+    fn set_replacing_existing_key_bumps_generation() {
+        let mut store = MetadataStore::new();
+        store.set("k", serde_json::json!("first"));
+        let before = store.generation();
+        let prev = store.set("k", serde_json::json!("second"));
+        assert_eq!(prev.unwrap(), serde_json::json!("first"));
+        assert_eq!(store.generation(), before + 1);
+    }
+
+    #[test]
+    fn iter_returns_sorted_keys() {
+        let mut store = MetadataStore::new();
+        store.set("z", serde_json::json!(3));
+        store.set("a", serde_json::json!(1));
+        store.set("m", serde_json::json!(2));
+        let keys: Vec<&str> = store.iter().map(|(k, _)| k).collect();
+        assert_eq!(keys, ["a", "m", "z"]);
+    }
+
+    #[test]
+    fn merge_with_empty_bumps_generation() {
+        let mut store = MetadataStore::new();
+        store.set("x", serde_json::json!(1));
+        let before = store.generation();
+        let empty = MetadataStore::new();
+        store.merge(&empty);
+        assert_eq!(store.generation(), before + 1);
+        assert_eq!(store.len(), 1);
+    }
+
+    #[test]
+    fn default_matches_new() {
+        let a = MetadataStore::new();
+        let b = MetadataStore::default();
+        assert_eq!(a.len(), b.len());
+        assert_eq!(a.generation(), b.generation());
+    }
+
+    #[test]
+    fn restore_rejects_malformed_json() {
+        let bad = serde_json::json!("not-a-metadata-store");
+        assert!(MetadataStore::restore(&bad).is_err());
+    }
 }

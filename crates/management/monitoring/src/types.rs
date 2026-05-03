@@ -126,6 +126,9 @@ pub enum ResourceMonitorError {
         /// Threshold exceeded
         threshold: f64,
     },
+    /// Internal lock was poisoned by a panicking thread
+    #[error("Monitoring lock poisoned: {0}")]
+    LockPoisoned(String),
     /// Other error
     #[error("Other error: {0}")]
     Other(String),

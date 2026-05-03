@@ -18,7 +18,7 @@ impl ResourceMonitor for SystemResourceMonitor {
     fn start_monitoring(&self, workload_id: &str) -> ToadStoolResult<()> {
         self.monitored_workloads
             .lock()
-            .expect("monitored_workloads mutex poisoned")
+            .map_err(|e| ResourceMonitorError::LockPoisoned(format!("monitored_workloads: {e}")))?
             .insert(workload_id.to_string());
         debug!("Starting monitoring for workload: {}", workload_id);
         Ok(())
@@ -29,7 +29,7 @@ impl ResourceMonitor for SystemResourceMonitor {
         let workload_id = workload_id.to_string();
         self.monitored_workloads
             .lock()
-            .expect("monitored_workloads mutex poisoned")
+            .map_err(|e| ResourceMonitorError::LockPoisoned(format!("monitored_workloads: {e}")))?
             .remove(&workload_id);
 
         let process_map = Arc::clone(&self.process_map);

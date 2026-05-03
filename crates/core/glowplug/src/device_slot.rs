@@ -112,3 +112,117 @@ impl<H: ResourceHandle, P> DeviceSlot<H, P> {
         &mut self.journal
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::health::HealthStatus;
+    use crate::personality::Unbound;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use toadstool_ember::journal::JournalEvent;
+
+    #[derive(Debug)]
+    struct StubHandle(AtomicBool);
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("stub")]
+    struct StubErr;
+
+    impl toadstool_ember::ResourceHandle for StubHandle {
+        type Error = StubErr;
+        fn handle_type(&self) -> &'static str {
+            "stub"
+        }
+        fn is_alive(&self) -> bool {
+            self.0.load(Ordering::Relaxed)
+        }
+        fn release(&mut self) -> Result<(), Self::Error> {
+            self.0.store(false, Ordering::Relaxed);
+            Ok(())
+        }
+        fn reacquire(&mut self) -> Result<bool, Self::Error> {
+            self.0.store(true, Ordering::Relaxed);
+            Ok(true)
+        }
+    }
+
+    fn stub_held() -> HeldResource<StubHandle> {
+        HeldResource::new(StubHandle(AtomicBool::new(true)))
+    }
+
+    #[test]
+    fn new_slot_has_no_held_resource() {
+        let slot: DeviceSlot<StubHandle, Unbound> =
+            DeviceSlot::new(DeviceId::Platform("test".into()), Unbound);
+        assert!(slot.held().is_none());
+        assert_eq!(slot.health(), &HealthStatus::Unknown);
+        assert!(slot.journal().is_empty());
+    }
+
+    #[test]
+    fn with_held_stores_resource() {
+        let slot = DeviceSlot::with_held(
+            DeviceId::PciBdf("0000:01:00.0".into()),
+            Unbound,
+            stub_held(),
+        );
+        assert!(slot.held().is_some());
+        assert!(slot.held().unwrap().is_alive());
+    }
+
+    #[test]
+    fn set_and_take_held() {
+        let mut slot: DeviceSlot<StubHandle, Unbound> =
+            DeviceSlot::new(DeviceId::Serial("SN1".into()), Unbound);
+        assert!(slot.held().is_none());
+
+        slot.set_held(stub_held());
+        assert!(slot.held().is_some());
+
+        let taken = slot.take_held();
+        assert!(taken.is_some());
+        assert!(slot.held().is_none());
+    }
+
+    #[test]
+    fn set_personality() {
+        let mut slot: DeviceSlot<StubHandle, String> =
+            DeviceSlot::new(DeviceId::UsbPath("1-2".into()), "host".to_string());
+        assert_eq!(slot.personality(), "host");
+
+        slot.set_personality("gadget".to_string());
+        assert_eq!(slot.personality(), "gadget");
+    }
+
+    #[test]
+    fn set_health() {
+        let mut slot: DeviceSlot<StubHandle, Unbound> =
+            DeviceSlot::new(DeviceId::Platform("x".into()), Unbound);
+        slot.set_health(HealthStatus::Healthy);
+        assert_eq!(slot.health(), &HealthStatus::Healthy);
+        assert!(slot.health().is_usable());
+    }
+
+    #[test]
+    fn journal_records_events() {
+        let mut slot: DeviceSlot<StubHandle, Unbound> =
+            DeviceSlot::new(DeviceId::Platform("j".into()), Unbound);
+        slot.journal_mut()
+            .record(JournalEvent::Acquired, Some("test".into()));
+        assert_eq!(slot.journal().len(), 1);
+    }
+
+    #[test]
+    fn id_accessor() {
+        let id = DeviceId::PciBdf("0000:02:00.0".into());
+        let slot: DeviceSlot<StubHandle, Unbound> = DeviceSlot::new(id.clone(), Unbound);
+        assert_eq!(slot.id(), &id);
+    }
+
+    #[test]
+    fn held_mut_allows_release() {
+        let mut slot = DeviceSlot::with_held(DeviceId::Platform("m".into()), Unbound, stub_held());
+        slot.held_mut().unwrap().release().expect("release");
+        assert!(!slot.held().unwrap().is_alive());
+    }
+}

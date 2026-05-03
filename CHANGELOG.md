@@ -5,7 +5,38 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 3, 2026 (Sessions 43-218)
+## [Unreleased] - May 3, 2026 (Sessions 43-219)
+
+### Session S219 (May 3, 2026) — Deep Debt: Production Stubs + Lock Safety + Coverage Expansion
+
+Comprehensive deep debt sweep addressing all remaining production stubs, lock panics,
+hardcoding, and thin test coverage in foundational crates.
+
+#### Production stub evolution (3 stubs → typed errors)
+
+- **`CoordinationConnection::test_endpoint_health`** — gRPC TCP and MessageQueue non-Unix
+  health checks evolved from silent `Ok(())` to `ToadStoolError::not_supported` with
+  migration guidance. Only Unix socket probing returns success.
+- **`LegacyCompatibilityLayer::execute_with_compatibility`** — evolved from returning
+  `Ok(ExecutionResponse::default())` (silent fake success) to `Err(not_supported)` with
+  guidance to use capability-based execution dispatch.
+- **Monitoring `reporting.rs`** — 2 `Mutex::lock().expect("poisoned")` calls evolved to
+  `map_err(|e| ResourceMonitorError::LockPoisoned(...))` with new error variant.
+
+#### Hardcoding evolution
+
+- **`/tmp/biomeos-runtime` fallback** — made configurable via `BIOMEOS_RUNTIME_DIR` env
+  var. Resolution order: `XDG_RUNTIME_DIR` → `/run/user/{uid}` → `BIOMEOS_RUNTIME_DIR` →
+  `/tmp/biomeos-runtime` (last resort).
+
+#### Test coverage expansion (+98 tests)
+
+- **`toadstool-ember`** (26 new tests): `HeldResource` lifecycle (10), `LendState`/
+  `LendReceipt` (5), `MetadataStore` edge cases (6), `SwapJournal` serde + filtering (5)
+- **`toadstool-glowplug`** (45 new tests): `DeviceId` all variants (7), `DeviceSlot`
+  state machine (9), `HealthStatus` usability + serde (8), `Unbound` personality (7),
+  `NoFirmwareInterface` null object (6), `SwapOrchestrator`/`SwapObservation` (8)
+- **22,538 tests**, 0 failures, clippy clean, fmt clean
 
 ### Session S218 (May 3, 2026) — BTSP Phase 3 Transport Switch Verification
 

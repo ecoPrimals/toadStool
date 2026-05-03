@@ -81,3 +81,43 @@ impl fmt::Display for Unbound {
         write!(f, "unbound")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unbound_name() {
+        assert_eq!(Unbound.name(), "unbound");
+    }
+
+    #[test]
+    fn unbound_no_direct_access() {
+        assert!(!Unbound.provides_direct_access());
+    }
+
+    #[test]
+    fn unbound_no_driver_module() {
+        assert!(Unbound.driver_module().is_none());
+    }
+
+    #[test]
+    fn unbound_no_capabilities() {
+        assert!(Unbound.capabilities().is_empty());
+    }
+
+    #[test]
+    fn unbound_display() {
+        assert_eq!(Unbound.to_string(), "unbound");
+    }
+
+    #[test]
+    fn unbound_debug() {
+        assert_eq!(format!("{Unbound:?}"), "Unbound");
+    }
+
+    #[test]
+    fn unbound_equality() {
+        assert_eq!(Unbound, Unbound);
+    }
+}

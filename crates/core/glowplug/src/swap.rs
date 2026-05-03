@@ -119,3 +119,108 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         self.quiescence_timeout
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct MockExecutor;
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("mock swap error")]
+    struct MockSwapErr;
+
+    impl SwapExecutor for MockExecutor {
+        type Error = MockSwapErr;
+
+        async fn execute_swap(
+            &self,
+            device: &DeviceId,
+            target_personality: &str,
+        ) -> Result<SwapObservation, Self::Error> {
+            Ok(SwapObservation {
+                device_id: device.short_label(),
+                from: "unbound".into(),
+                to: target_personality.into(),
+                success: true,
+                duration: Duration::from_millis(50),
+                error: None,
+                detail: None,
+            })
+        }
+
+        async fn release(&self, _device: &DeviceId) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn orchestrator_default_timeout() {
+        let orch = SwapOrchestrator::new(MockExecutor);
+        assert_eq!(orch.quiescence_timeout(), Duration::from_secs(5));
+    }
+
+    #[test]
+    fn orchestrator_custom_timeout() {
+        let orch =
+            SwapOrchestrator::new(MockExecutor).with_quiescence_timeout(Duration::from_secs(10));
+        assert_eq!(orch.quiescence_timeout(), Duration::from_secs(10));
+    }
+
+    #[test]
+    fn orchestrator_executor_accessible() {
+        let orch = SwapOrchestrator::new(MockExecutor);
+        assert!(format!("{:?}", orch.executor()).contains("MockExecutor"));
+    }
+
+    #[tokio::test]
+    async fn mock_executor_swap_succeeds() {
+        let exec = MockExecutor;
+        let device = DeviceId::PciBdf("0000:01:00.0".into());
+        let obs = exec.execute_swap(&device, "vfio").await.expect("swap");
+        assert!(obs.success);
+        assert_eq!(obs.to, "vfio");
+    }
+
+    #[tokio::test]
+    async fn mock_executor_release_succeeds() {
+        let exec = MockExecutor;
+        let device = DeviceId::UsbPath("1-2".into());
+        exec.release(&device).await.expect("release");
+    }
+
+    #[test]
+    fn swap_observation_serde_roundtrip() {
+        let obs = SwapObservation {
+            device_id: "pci:0000:01:00.0".into(),
+            from: "nouveau".into(),
+            to: "vfio".into(),
+            success: true,
+            duration: Duration::from_millis(123),
+            error: None,
+            detail: Some(serde_json::json!({"bar0_ok": true})),
+        };
+        let json = serde_json::to_string(&obs).expect("serialize");
+        let back: SwapObservation = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.device_id, "pci:0000:01:00.0");
+        assert!(back.success);
+        assert!(back.error.is_none());
+        assert!(back.detail.is_some());
+    }
+
+    #[test]
+    fn swap_observation_failure() {
+        let obs = SwapObservation {
+            device_id: "usb:1-2".into(),
+            from: "host".into(),
+            to: "gadget".into(),
+            success: false,
+            duration: Duration::from_secs(1),
+            error: Some("device busy".into()),
+            detail: None,
+        };
+        assert!(!obs.success);
+        assert_eq!(obs.error.as_deref(), Some("device busy"));
+    }
+}

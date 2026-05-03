@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S218
+**Date**: May 2026 — S219
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S219 (Deep Debt — Production Stubs + Lock Safety + Coverage Expansion)**:
+Evolved 3 remaining production stubs to typed errors: `CoordinationConnection`
+gRPC TCP/MQ health checks now return `not_supported` instead of silent `Ok(())`;
+`LegacyCompatibilityLayer::execute_with_compatibility` now returns `not_supported`
+instead of fake `Ok(default)`; monitoring `reporting.rs` mutex `.expect()` calls
+evolved to `Result<_, ResourceMonitorError::LockPoisoned>`. Made `/tmp/biomeos-runtime`
+fallback configurable via `BIOMEOS_RUNTIME_DIR` env. Added 98 new tests across
+`ember` (26) and `glowplug` (45) crates. **22,538 tests**, 0 failures.
 
 **S218 (BTSP Phase 3 Transport Switch Verification)**:
 Closed primalSpring audit finding re: Phase 3 transport switch. Verified

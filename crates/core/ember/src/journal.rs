@@ -157,4 +157,80 @@ mod tests {
         let releases = journal.events_of_type(&JournalEvent::Released);
         assert_eq!(releases.len(), 2);
     }
+
+    #[test]
+    fn latest_on_empty_journal_is_none() {
+        let journal = SwapJournal::new();
+        assert!(journal.latest().is_none());
+        assert!(journal.is_empty());
+        assert_eq!(journal.len(), 0);
+    }
+
+    #[test]
+    fn events_of_type_with_different_payloads_match_by_discriminant() {
+        let mut journal = SwapJournal::new();
+        journal.record(
+            JournalEvent::SwapStarted {
+                target: "vfio".into(),
+            },
+            None,
+        );
+        journal.record(
+            JournalEvent::SwapStarted {
+                target: "nouveau".into(),
+            },
+            None,
+        );
+        journal.record(JournalEvent::Released, None);
+
+        let swaps = journal.events_of_type(&JournalEvent::SwapStarted {
+            target: String::new(),
+        });
+        assert_eq!(swaps.len(), 2);
+    }
+
+    #[test]
+    fn entries_returns_all_in_order() {
+        let mut journal = SwapJournal::new();
+        journal.record(JournalEvent::Acquired, Some("first".into()));
+        journal.record(JournalEvent::Released, Some("second".into()));
+        let entries = journal.entries();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].detail.as_deref(), Some("first"));
+        assert_eq!(entries[1].detail.as_deref(), Some("second"));
+    }
+
+    #[test]
+    fn journal_serde_roundtrip() {
+        let mut journal = SwapJournal::new();
+        journal.record(JournalEvent::Acquired, None);
+        journal.record(
+            JournalEvent::Lent {
+                borrower: "peer".into(),
+            },
+            Some("test lend".into()),
+        );
+        journal.record(JournalEvent::Reclaimed, None);
+
+        let json = serde_json::to_string(&journal).expect("serialize");
+        let back: SwapJournal = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.len(), 3);
+        assert!(matches!(
+            &back.entries()[1].event,
+            JournalEvent::Lent { borrower } if borrower == "peer"
+        ));
+    }
+
+    #[test]
+    fn record_preserves_detail() {
+        let mut journal = SwapJournal::new();
+        journal.record(
+            JournalEvent::HealthChanged {
+                status: "degraded".into(),
+            },
+            Some("thermal throttle".into()),
+        );
+        let entry = journal.latest().unwrap();
+        assert_eq!(entry.detail.as_deref(), Some("thermal throttle"));
+    }
 }

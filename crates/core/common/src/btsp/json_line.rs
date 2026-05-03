@@ -712,8 +712,7 @@ mod tests {
         assert!(matches!(outcome, NegotiateOutcome::NullCipher));
 
         let resp_str = String::from_utf8_lossy(&response_buf);
-        let resp: serde_json::Value =
-            serde_json::from_str(resp_str.trim()).expect("valid JSON");
+        let resp: serde_json::Value = serde_json::from_str(resp_str.trim()).expect("valid JSON");
         assert_eq!(resp["result"]["cipher"], "null");
     }
 

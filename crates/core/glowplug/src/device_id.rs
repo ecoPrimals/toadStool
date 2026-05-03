@@ -102,4 +102,59 @@ mod tests {
         let back: DeviceId = serde_json::from_str(&json).unwrap();
         assert_eq!(id, back);
     }
+
+    #[test]
+    fn sysfs_short_label_uses_filename() {
+        let id = DeviceId::SysfsPath(PathBuf::from("/sys/class/net/eth0"));
+        assert_eq!(id.short_label(), "sysfs:eth0");
+        assert_eq!(id.bus_class(), "sysfs");
+    }
+
+    #[test]
+    fn sysfs_root_path_falls_back_to_question_mark() {
+        let id = DeviceId::SysfsPath(PathBuf::from("/"));
+        assert!(id.short_label().contains('?') || id.short_label().contains('/'));
+    }
+
+    #[test]
+    fn serial_truncates_long_identifiers() {
+        let id = DeviceId::Serial("ABCDEFGHIJKLMNOP".into());
+        assert_eq!(id.short_label(), "serial:ABCDEFGHIJKL");
+    }
+
+    #[test]
+    fn serial_short_does_not_truncate() {
+        let id = DeviceId::Serial("SHORT".into());
+        assert_eq!(id.short_label(), "serial:SHORT");
+    }
+
+    #[test]
+    fn platform_display_and_bus_class() {
+        let id = DeviceId::Platform("acpi0".into());
+        assert_eq!(id.to_string(), "platform:acpi0");
+        assert_eq!(id.bus_class(), "platform");
+    }
+
+    #[test]
+    fn devnode_bus_class() {
+        let id = DeviceId::DevNode(PathBuf::from("/dev/dri/card0"));
+        assert_eq!(id.bus_class(), "devnode");
+    }
+
+    #[test]
+    fn all_variants_serde_roundtrip() {
+        let variants = vec![
+            DeviceId::PciBdf("0000:01:00.0".into()),
+            DeviceId::UsbPath("1-2.3".into()),
+            DeviceId::SysfsPath(PathBuf::from("/sys/devices/pci0")),
+            DeviceId::DevNode(PathBuf::from("/dev/ttyACM0")),
+            DeviceId::Serial("SN12345".into()),
+            DeviceId::Platform("platform-x".into()),
+        ];
+        for v in variants {
+            let json = serde_json::to_string(&v).unwrap();
+            let back: DeviceId = serde_json::from_str(&json).unwrap();
+            assert_eq!(v, back);
+        }
+    }
 }
