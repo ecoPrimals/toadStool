@@ -221,11 +221,20 @@ mod tests {
     #[test]
     fn test_capability_to_biomeos_fallback_storage() {
         use crate::primal_identity::{Capability, StorageCapability};
-        let path =
-            capability_to_biomeos_fallback(&Capability::Storage(StorageCapability::ObjectStorage));
-        assert!(path.is_ok());
-        let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("storage"));
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_SOCKET", None::<&str>),
+                ("BIOMEOS_STORAGE_SOCKET", None::<&str>),
+            ],
+            || {
+                let path = capability_to_biomeos_fallback(&Capability::Storage(
+                    StorageCapability::ObjectStorage,
+                ));
+                assert!(path.is_ok());
+                let path = path.expect("path");
+                assert!(path.to_string_lossy().contains("storage"));
+            },
+        );
     }
 
     #[test]
@@ -242,22 +251,38 @@ mod tests {
     #[test]
     fn test_capability_to_biomeos_fallback_compute() {
         use crate::primal_identity::{Capability, ComputeCapability};
-        let path = capability_to_biomeos_fallback(&Capability::Compute(
-            ComputeCapability::NativeExecution,
-        ));
-        assert!(path.is_ok());
-        let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("compute"));
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_SOCKET", None::<&str>),
+                ("BIOMEOS_COMPUTE_SOCKET", None::<&str>),
+            ],
+            || {
+                let path = capability_to_biomeos_fallback(&Capability::Compute(
+                    ComputeCapability::NativeExecution,
+                ));
+                assert!(path.is_ok());
+                let path = path.expect("path");
+                assert!(path.to_string_lossy().contains("compute"));
+            },
+        );
     }
 
     #[test]
     fn test_capability_to_biomeos_fallback_coordination() {
         use crate::primal_identity::{Capability, CoordinationCapability};
-        let path = capability_to_biomeos_fallback(&Capability::Coordination(
-            CoordinationCapability::ServiceDiscovery,
-        ));
-        assert!(path.is_ok());
-        let path = path.expect("path");
-        assert!(path.to_string_lossy().contains("coordination"));
+        temp_env::with_vars(
+            [
+                ("DISCOVERY_SOCKET", None::<&str>),
+                ("BIOMEOS_COORDINATION_SOCKET", None::<&str>),
+            ],
+            || {
+                let path = capability_to_biomeos_fallback(&Capability::Coordination(
+                    CoordinationCapability::ServiceDiscovery,
+                ));
+                assert!(path.is_ok());
+                let path = path.expect("path");
+                assert!(path.to_string_lossy().contains("coordination"));
+            },
+        );
     }
 }

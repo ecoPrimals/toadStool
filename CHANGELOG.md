@@ -5,7 +5,44 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 2, 2026 (Sessions 43-217)
+## [Unreleased] - May 3, 2026 (Sessions 43-218)
+
+### Session S218 (May 3, 2026) — BTSP Phase 3 Transport Switch Verification
+
+Closes primalSpring downstream audit finding: "Phase 3 transport switch verification —
+verify that after `btsp.negotiate`, the connection transitions to encrypted frame I/O
+for subsequent messages."
+
+**Verification result**: Transport switch logic confirmed correct. After `btsp.negotiate`
+returns `Negotiated(keys)`, both server (`unix.rs`) and daemon (`jsonrpc_server.rs`)
+exclusively use `read_encrypted_frame`/`write_encrypted_frame` for all subsequent I/O.
+The negotiate JSON-RPC response is the last NDJSON message; no NDJSON fallback exists
+inside the encrypted loop. No interop gap in the code path.
+
+#### New tests (15 total)
+
+- `framing::encrypted_frame_round_trip` — server→client encrypted frame write+read
+- `framing::encrypted_frame_directional_keys` — bidirectional encrypted request/response
+- `framing::encrypted_frame_wrong_keys_rejects` — wrong keys yield `InvalidData`
+- `framing::encrypted_frame_multiple_round_trips` — sequential encrypted frames
+- `json_line::negotiate_chacha20_returns_negotiated_with_keys` — negotiate success path
+- `json_line::negotiate_null_cipher_when_unsupported` — AES-256-GCM falls back to null
+- `json_line::negotiate_not_negotiate_for_other_methods` — non-negotiate lines pass through
+- `json_line::negotiate_not_negotiate_for_empty_line` — empty lines pass through
+- `json_line::negotiate_null_cipher_when_no_client_nonce` — missing nonce → null fallback
+- `json_line::negotiate_preferred_cipher_hyphen_variant` — `chacha20-poly1305` accepted
+- `json_line::negotiate_preferred_cipher_underscore_variant` — `chacha20_poly1305` accepted
+- `json_line::negotiate_then_encrypted_frame_exchange` — **full E2E**: negotiate → derive
+  client keys from response → encrypted request → server decrypt → encrypted response →
+  client decrypt. Verifies key symmetry, wire format, and complete transport switch.
+
+#### Other changes
+
+- `NegotiateOutcome` — manual `Debug` impl (redacts keys, avoids leaking secret material)
+- `try_handle_negotiate` doc comment — documented BufReader pipelining hazard
+- `primal_sockets::discovery` — wrapped 3 `capability_to_biomeos_fallback` tests in
+  `temp_env::with_vars` to fix env-var race condition (same pattern as S217 fix)
+- 22,440+ tests, 0 failures, clippy clean, fmt clean
 
 ### Session S217 (May 2, 2026) — Deep Debt: Flaky Test Fix + Orphan Module Recovery + Coverage Expansion
 

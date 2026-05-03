@@ -295,4 +295,150 @@ mod tests {
         let err = read_frame(&mut cursor).await.unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
     }
+
+    #[tokio::test]
+    async fn encrypted_frame_round_trip() {
+        let sender = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[42u8; 32],
+            &[1u8; 32],
+            &[2u8; 32],
+            true,
+        )
+        .expect("sender derive");
+        let receiver = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[42u8; 32],
+            &[1u8; 32],
+            &[2u8; 32],
+            false,
+        )
+        .expect("receiver derive");
+
+        let plaintext = b"encrypted BTSP Phase 3 payload";
+        let mut buf = Vec::new();
+        write_encrypted_frame(&mut buf, &sender, plaintext)
+            .await
+            .expect("write");
+
+        assert!(
+            buf.len() > 4 + plaintext.len(),
+            "ciphertext should be larger than plaintext"
+        );
+
+        let mut cursor = io::Cursor::new(buf);
+        let decrypted = read_encrypted_frame(&mut cursor, &receiver)
+            .await
+            .expect("read");
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[tokio::test]
+    async fn encrypted_frame_directional_keys() {
+        let server_keys = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[99u8; 32],
+            &[3u8; 32],
+            &[4u8; 32],
+            true,
+        )
+        .expect("server derive");
+        let client_keys = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[99u8; 32],
+            &[3u8; 32],
+            &[4u8; 32],
+            false,
+        )
+        .expect("client derive");
+
+        let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"id\":1}";
+        let mut wire = Vec::new();
+        write_encrypted_frame(&mut wire, &client_keys, request)
+            .await
+            .expect("client write");
+
+        let mut cursor = io::Cursor::new(wire);
+        let server_read = read_encrypted_frame(&mut cursor, &server_keys)
+            .await
+            .expect("server read");
+        assert_eq!(server_read, request);
+
+        let response = b"{\"jsonrpc\":\"2.0\",\"result\":{\"status\":\"alive\"},\"id\":1}";
+        let mut wire2 = Vec::new();
+        write_encrypted_frame(&mut wire2, &server_keys, response)
+            .await
+            .expect("server write");
+
+        let mut cursor2 = io::Cursor::new(wire2);
+        let client_read = read_encrypted_frame(&mut cursor2, &client_keys)
+            .await
+            .expect("client read");
+        assert_eq!(client_read, response);
+    }
+
+    #[tokio::test]
+    async fn encrypted_frame_wrong_keys_rejects() {
+        let keys_a = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[10u8; 32],
+            &[1u8; 32],
+            &[2u8; 32],
+            true,
+        )
+        .expect("derive a");
+        let keys_b = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[20u8; 32],
+            &[1u8; 32],
+            &[2u8; 32],
+            true,
+        )
+        .expect("derive b");
+
+        let mut wire = Vec::new();
+        write_encrypted_frame(&mut wire, &keys_a, b"secret")
+            .await
+            .expect("write");
+
+        let mut cursor = io::Cursor::new(wire);
+        let err = read_encrypted_frame(&mut cursor, &keys_b)
+            .await
+            .unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+    }
+
+    #[tokio::test]
+    async fn encrypted_frame_multiple_round_trips() {
+        let server = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[77u8; 32],
+            &[5u8; 32],
+            &[6u8; 32],
+            true,
+        )
+        .expect("server derive");
+        let client = crate::btsp::phase3::Phase3SessionKeys::derive(
+            &[77u8; 32],
+            &[5u8; 32],
+            &[6u8; 32],
+            false,
+        )
+        .expect("client derive");
+
+        let messages: &[&[u8]] = &[
+            b"{\"jsonrpc\":\"2.0\",\"method\":\"compute.execute\",\"id\":1}",
+            b"{\"jsonrpc\":\"2.0\",\"result\":{\"ok\":true},\"id\":1}",
+            b"",
+            b"a]single[byte",
+        ];
+
+        let mut wire = Vec::new();
+        for msg in messages {
+            write_encrypted_frame(&mut wire, &server, msg)
+                .await
+                .expect("write");
+        }
+
+        let mut cursor = io::Cursor::new(wire);
+        for expected in messages {
+            let got = read_encrypted_frame(&mut cursor, &client)
+                .await
+                .expect("read");
+            assert_eq!(got.as_slice(), *expected);
+        }
+    }
 }

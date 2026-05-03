@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S217
+**Date**: May 2026 — S218
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S218 (BTSP Phase 3 Transport Switch Verification)**:
+Closed primalSpring audit finding re: Phase 3 transport switch. Verified
+that after `btsp.negotiate` succeeds, both server and daemon exclusively
+use encrypted framing — no NDJSON fallback in the encrypted loop. Added
+15 new tests including full E2E negotiate→encrypted frame exchange.
+Documented BufReader pipelining hazard. Fixed 3 more flaky `primal_sockets`
+discovery tests with `temp_env` isolation. **22,440+ tests**, 0 failures.
 
 **S217 (Deep Debt — Flaky Test Fix + Orphan Module Recovery + Coverage Expansion)**:
 Fixed long-standing flaky `primal_sockets` env-var race condition by wrapping

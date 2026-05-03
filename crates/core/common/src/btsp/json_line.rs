@@ -453,12 +453,39 @@ pub enum NegotiateOutcome {
     NotNegotiate,
 }
 
+impl std::fmt::Debug for NegotiateOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Negotiated(_) => f.write_str("Negotiated(<keys redacted>)"),
+            Self::NullCipher => f.write_str("NullCipher"),
+            Self::NotNegotiate => f.write_str("NotNegotiate"),
+        }
+    }
+}
+
 /// Try to handle a line as a `btsp.negotiate` JSON-RPC request.
 ///
 /// If the line is a valid `btsp.negotiate` request and we can support the requested
 /// cipher, derives Phase 3 session keys and sends the negotiate response.
 ///
 /// The `family_seed` is the raw family seed string (same as used for handshake).
+///
+/// # Transport switch protocol
+///
+/// On `Ok(Negotiated(keys))`, the negotiate JSON-RPC response has already been
+/// flushed as the **last NDJSON message** on the connection. The caller MUST
+/// immediately switch to encrypted length-prefixed framing via
+/// [`super::framing::read_encrypted_frame`] / [`super::framing::write_encrypted_frame`]
+/// for all subsequent I/O.
+///
+/// **BufReader pipelining hazard**: if the peer sends additional bytes after the
+/// `btsp.negotiate\n` line before waiting for the response, those bytes will sit
+/// in the `BufReader` internal buffer and be interpreted as the length prefix of
+/// the first encrypted frame — typically causing a decrypt failure or oversized
+/// frame rejection. Well-behaved clients (primalSpring) wait for the negotiate
+/// response before sending encrypted frames, so this is not a concern in normal
+/// operation, but protocol fuzzers or misbehaving clients will see immediate
+/// connection termination rather than silent data corruption.
 ///
 /// # Returns
 ///
@@ -621,5 +648,259 @@ mod tests {
         ));
         assert!(!line_looks_like_btsp_client_hello("not json"));
         assert!(!line_looks_like_btsp_client_hello(""));
+    }
+
+    #[tokio::test]
+    async fn negotiate_chacha20_returns_negotiated_with_keys() {
+        use base64::Engine;
+        let client_nonce = super::super::phase3::generate_negotiate_nonce();
+        let client_nonce_b64 = base64::engine::general_purpose::STANDARD.encode(client_nonce);
+
+        let negotiate_line = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "btsp.negotiate",
+            "params": {
+                "session_id": "test-session-1",
+                "ciphers": ["chacha20-poly1305"],
+                "client_nonce": client_nonce_b64,
+            },
+            "id": 42
+        })
+        .to_string();
+
+        let family_seed = "test-family-seed-for-negotiate";
+        let mut response_buf: Vec<u8> = Vec::new();
+
+        let outcome = try_handle_negotiate(&negotiate_line, &mut response_buf, family_seed)
+            .await
+            .expect("negotiate should succeed");
+
+        assert!(
+            matches!(outcome, NegotiateOutcome::Negotiated(_)),
+            "expected Negotiated, got {outcome:?}",
+        );
+
+        let resp_str = String::from_utf8_lossy(&response_buf);
+        let resp: serde_json::Value =
+            serde_json::from_str(resp_str.trim()).expect("response should be valid JSON");
+        assert_eq!(resp["id"], 42);
+        assert_eq!(resp["result"]["cipher"], "chacha20-poly1305");
+        assert!(
+            resp["result"]["server_nonce"].is_string(),
+            "server_nonce should be present"
+        );
+    }
+
+    #[tokio::test]
+    async fn negotiate_null_cipher_when_unsupported() {
+        let negotiate_line = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "btsp.negotiate",
+            "params": {
+                "session_id": "test-session-2",
+                "ciphers": ["aes-256-gcm"],
+            },
+            "id": 7
+        })
+        .to_string();
+
+        let mut response_buf: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate(&negotiate_line, &mut response_buf, "seed")
+            .await
+            .expect("negotiate should succeed");
+
+        assert!(matches!(outcome, NegotiateOutcome::NullCipher));
+
+        let resp_str = String::from_utf8_lossy(&response_buf);
+        let resp: serde_json::Value =
+            serde_json::from_str(resp_str.trim()).expect("valid JSON");
+        assert_eq!(resp["result"]["cipher"], "null");
+    }
+
+    #[tokio::test]
+    async fn negotiate_not_negotiate_for_other_methods() {
+        let line = r#"{"jsonrpc":"2.0","method":"health.liveness","id":1}"#;
+        let mut buf: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate(line, &mut buf, "seed")
+            .await
+            .expect("should succeed");
+        assert!(matches!(outcome, NegotiateOutcome::NotNegotiate));
+        assert!(
+            buf.is_empty(),
+            "no response should be written for non-negotiate"
+        );
+    }
+
+    #[tokio::test]
+    async fn negotiate_not_negotiate_for_empty_line() {
+        let mut buf: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate("", &mut buf, "seed")
+            .await
+            .expect("should succeed");
+        assert!(matches!(outcome, NegotiateOutcome::NotNegotiate));
+    }
+
+    #[tokio::test]
+    async fn negotiate_null_cipher_when_no_client_nonce() {
+        let negotiate_line = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "btsp.negotiate",
+            "params": {
+                "session_id": "test-session-3",
+                "ciphers": ["chacha20-poly1305"],
+            },
+            "id": 9
+        })
+        .to_string();
+
+        let mut response_buf: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate(&negotiate_line, &mut response_buf, "seed")
+            .await
+            .expect("should succeed");
+        assert!(matches!(outcome, NegotiateOutcome::NullCipher));
+    }
+
+    #[tokio::test]
+    async fn negotiate_preferred_cipher_hyphen_variant() {
+        use base64::Engine;
+        let nonce = super::super::phase3::generate_negotiate_nonce();
+        let nonce_b64 = base64::engine::general_purpose::STANDARD.encode(nonce);
+
+        let line = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "btsp.negotiate",
+            "params": {
+                "session_id": "s4",
+                "ciphers": [],
+                "preferred_cipher": "chacha20-poly1305",
+                "client_nonce": nonce_b64,
+            },
+            "id": 10
+        })
+        .to_string();
+
+        let mut buf: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate(&line, &mut buf, "family-seed")
+            .await
+            .expect("should succeed");
+        assert!(matches!(outcome, NegotiateOutcome::Negotiated(_)));
+    }
+
+    #[tokio::test]
+    async fn negotiate_preferred_cipher_underscore_variant() {
+        use base64::Engine;
+        let nonce = super::super::phase3::generate_negotiate_nonce();
+        let nonce_b64 = base64::engine::general_purpose::STANDARD.encode(nonce);
+
+        let line = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "btsp.negotiate",
+            "params": {
+                "session_id": "s5",
+                "ciphers": [],
+                "preferred_cipher": "chacha20_poly1305",
+                "client_nonce": nonce_b64,
+            },
+            "id": 11
+        })
+        .to_string();
+
+        let mut buf: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate(&line, &mut buf, "family-seed")
+            .await
+            .expect("should succeed");
+        assert!(matches!(outcome, NegotiateOutcome::Negotiated(_)));
+    }
+
+    /// Full E2E: negotiate → derive client keys → encrypted frame exchange.
+    ///
+    /// Simulates the complete Phase 3 transport switch: the server handles
+    /// `btsp.negotiate`, both sides derive keys, and subsequent messages use
+    /// encrypted framing exclusively.
+    #[tokio::test]
+    async fn negotiate_then_encrypted_frame_exchange() {
+        use super::super::framing;
+        use super::super::phase3;
+        use base64::Engine;
+
+        let family_seed = "e2e-test-family-seed";
+        let client_nonce = phase3::generate_negotiate_nonce();
+        let client_nonce_b64 = base64::engine::general_purpose::STANDARD.encode(client_nonce);
+
+        let negotiate_req = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "btsp.negotiate",
+            "params": {
+                "session_id": "e2e-session",
+                "ciphers": ["chacha20-poly1305"],
+                "client_nonce": client_nonce_b64,
+            },
+            "id": 100
+        })
+        .to_string();
+
+        // --- Server side: handle negotiate ---
+        let mut server_response: Vec<u8> = Vec::new();
+        let outcome = try_handle_negotiate(&negotiate_req, &mut server_response, family_seed)
+            .await
+            .expect("negotiate");
+
+        let server_keys = match outcome {
+            NegotiateOutcome::Negotiated(keys) => keys,
+            other => panic!("expected Negotiated, got {other:?}"),
+        };
+
+        // --- Client side: parse response, derive keys ---
+        let resp_str = String::from_utf8_lossy(&server_response);
+        let resp: serde_json::Value = serde_json::from_str(resp_str.trim()).expect("parse");
+        let server_nonce_b64 = resp["result"]["server_nonce"]
+            .as_str()
+            .expect("server_nonce");
+        let server_nonce = base64::engine::general_purpose::STANDARD
+            .decode(server_nonce_b64)
+            .expect("decode nonce");
+
+        let handshake_key = phase3::derive_handshake_key(family_seed.as_bytes()).expect("hk");
+        let client_keys =
+            phase3::Phase3SessionKeys::derive(&handshake_key, &client_nonce, &server_nonce, false)
+                .expect("client derive");
+
+        // --- Verify key symmetry ---
+        assert_eq!(
+            server_keys.encrypt_key, client_keys.decrypt_key,
+            "server encrypt = client decrypt"
+        );
+        assert_eq!(
+            server_keys.decrypt_key, client_keys.encrypt_key,
+            "server decrypt = client encrypt"
+        );
+
+        // --- Client sends encrypted JSON-RPC request ---
+        let request = b"{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"id\":1}";
+        let mut wire = Vec::new();
+        framing::write_encrypted_frame(&mut wire, &client_keys, request)
+            .await
+            .expect("client write");
+
+        // --- Server reads and decrypts ---
+        let mut cursor = std::io::Cursor::new(wire);
+        let server_plaintext = framing::read_encrypted_frame(&mut cursor, &server_keys)
+            .await
+            .expect("server read");
+        assert_eq!(server_plaintext, request);
+
+        // --- Server sends encrypted response ---
+        let response = b"{\"jsonrpc\":\"2.0\",\"result\":{\"status\":\"alive\"},\"id\":1}";
+        let mut wire2 = Vec::new();
+        framing::write_encrypted_frame(&mut wire2, &server_keys, response)
+            .await
+            .expect("server write");
+
+        // --- Client reads and decrypts ---
+        let mut cursor2 = std::io::Cursor::new(wire2);
+        let client_plaintext = framing::read_encrypted_frame(&mut cursor2, &client_keys)
+            .await
+            .expect("client read");
+        assert_eq!(client_plaintext, response);
     }
 }
