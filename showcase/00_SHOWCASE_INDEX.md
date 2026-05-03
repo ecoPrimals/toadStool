@@ -7,16 +7,16 @@
 ## Learning Path
 
 ```
-Level 00: Local Primal           "What can toadStool do on its own?"
+Level 00: Local Primal           "What can toadStool do on its own?"        [ACTIVE]
     |
     v
-Level 01: Shader Pipeline        "How does shader compilation work?"
+Level 01: Shader Pipeline        "How does shader compilation work?"        [ARCHIVED S169 — see coralReef]
     |
     v
-Level 02: Compute Patterns       "How do toadStool, barraCuda, and coralReef work together?"
+Level 02: Compute Patterns       "How do primals work together?"            [ARCHIVED S169 — see barraCuda]
     |
     v
-Level 03: Ecosystem Integration  "How does compute fit into the full ecosystem?"
+Level 03: Ecosystem Integration  "How does compute fit into the ecosystem?" [ACTIVE]
 ```
 
 ---

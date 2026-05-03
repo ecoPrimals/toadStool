@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S217
+**Last Updated**: May 2026 — S219
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S217 — May 2026)
+## Current State (S219 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **22,429+ tests** (7,842+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **22,538 tests** (7,842+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"alive"}`, `health.readiness` → ready+version, `health.check` full envelope, `capabilities.list`, `identity.get`).
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
@@ -51,7 +51,9 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **BTSP Phase 3 (S215)** — `btsp.negotiate` server handler + ChaCha20-Poly1305 encrypted framing on all JSON-RPC paths. HKDF-SHA256 key derivation matching primalSpring client wire format. Null cipher graceful fallback.
 - **Lock safety (S213+S216)** — All orchestrator lock poisoning panics evolved to `Result<_, OrchestrationError::LockPoisoned>` (`WorkloadOrchestrator` S213, `ResourceOrchestrator` S216). GPU stubs evolved to capability-based URIs.
 - **Dependency hygiene (S216)** — Advisory-free (`tar` 0.4.45, `drm` 0.14.1 non-yanked). `cargo deny check` all four gates pass clean (advisories, bans, licenses, sources). `ring` absent from lockfile.
-- **Flaky test fix (S217)** — `primal_sockets` convenience API tests isolated with `temp_env::with_vars` — zero env-var race conditions in parallel workspace runs.
+- **Deep debt: stubs + lock safety + coverage (S219)** — 3 remaining production stubs evolved to typed errors (coordination gRPC/MQ, legacy compat, monitoring mutex). `/tmp/biomeos-runtime` configurable via `BIOMEOS_RUNTIME_DIR`. 98 new tests across ember/glowplug crates.
+- **BTSP Phase 3 transport switch verified (S218)** — Closed primalSpring audit: negotiate→encrypted framing transition confirmed correct. 15 new E2E tests. BufReader pipelining hazard documented. NegotiateOutcome key redaction.
+- **Flaky test fix (S217+S218)** — `primal_sockets` convenience API tests isolated with `temp_env::with_vars` — zero env-var race conditions in parallel workspace runs. 6 additional discovery tests wrapped.
 - **Orphan module recovery (S217)** — 6 dead-code modules in `integration-primals` wired into module tree (error, client, orchestrator, services, manifest, types). 35+ new tests.
 - **Edge discovery evolved (S203m)** — USB via `/sys/bus/usb/devices/`, Bluetooth via sysfs adapter enumeration, IPv6 via `/proc/net/if_inet6`. All gracefully degrade on non-Linux.
 - **Scheduler queuing (S203m)** — `schedule_job` → `UniversalJobQueue::add_job` inserts into per-priority queues (was metadata-only). `schedule_local_job` logs post-enqueue telemetry.

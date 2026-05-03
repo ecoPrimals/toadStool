@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,429+ tests, 0 failures** (7,842+ lib-only), **~222** ignored (hardware-gated); full workspace ~6m |
+| `cargo test --workspace` | **22,538 tests, 0 failures** (7,842+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -247,9 +247,9 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **22,000+**, 0 failures (7,842+ lib-only) |
+| Workspace tests | **22,538**, 0 failures (7,842+ lib-only) |
 | Lib-only line coverage | ~83.6% |
-| Full workspace test time | ~3m30s (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
+| Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
 | Production panics/unwraps | 0 blind `unwrap()`; infallible `expect()` only |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
@@ -269,12 +269,17 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 22,000+ tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 22,538 tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S219 (May 3, 2026)**: **Deep Debt — Production Stubs + Lock Safety + Coverage** — 3 remaining production stubs evolved to typed errors (coordination health, legacy compat, monitoring mutex). `/tmp/biomeos-runtime` fallback configurable via `BIOMEOS_RUNTIME_DIR` env. 98 new tests across ember/glowplug crates. 22,538 tests.
+- **S218 (May 3, 2026)**: **BTSP Phase 3 Transport Switch Verification** — Closed primalSpring audit finding: verified negotiate→encrypted framing transition. 15 new E2E tests incl. full negotiate→encrypted frame exchange.
+- **S216-S217 (May 2, 2026)**: **Deep Debt — Flaky Tests + Orphan Recovery + Coverage** — MQ transport stub→`not_supported`. `ResourceOrchestrator` 12 `.expect("poisoned")`→`Result`. Flaky `primal_sockets` tests fixed. 6 orphaned `integration-primals` modules recovered. 35+ new tests.
+- **S215 (May 2, 2026)**: **BTSP Phase 3: Encrypted Channel (ChaCha20-Poly1305)** — Server-side `btsp.negotiate` + encrypted framing. HKDF-SHA256 directional key derivation. primalSpring wire-compatible.
+- **S214 (May 1, 2026)**: **PG-46 Socket Reuse + BTSP Phase 3 Assessment** — `ConnectedJsonRpcClient` for Unix stream reuse. BTSP Phase 3 readiness audit. `BTSP_RPC_TIMEOUT` reduced to 2s.
 - **S213 (Apr 30, 2026)**: **Deep Debt — Lint Reason Sweep + Capability Names + Orchestrator Resilience** — All remaining bare `#[allow]`/`#[expect]` attrs given `reason=` (12 files). GPU stubs evolved from hardcoded primal names to `gpu.dispatch.cuda` capability URIs. `WorkloadOrchestrator` lock handling evolved from `expect("lock poisoned")` to `Result<_, OrchestrationError::LockPoisoned>`.
 - **S212 (Apr 30, 2026)**: **Coverage Push — primalSpring Phase 56c Audit** — ~100 new inline tests across 10 previously-untested files (server handlers, CLI collectors, platform monitoring, auto_config detection/generation/templates, distributed security dispatch + crypto). 1,004 new test lines.
 - **S211 (Apr 30, 2026)**: **Deep Debt — Lint Reason + Dep Unification + Feature Cleanup + hw-safe Expect→Result** — All remaining production `#[expect]` given `reason=` (~30 sites/25 files). `tokio`/`serde`/`uuid` workspace-unified in edge/akida. Stale features removed. hw-safe `expect()`→`Result` (HugePageMemory, DeviceMmap).
@@ -346,8 +351,8 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 22,000+ tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
-| D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | Deferred — ecosystem-wide, NULL cipher operational. Phase 2 + JSON-line relay complete (S198, S176) |
+| D-COV | Test coverage → 90% | Active — 22,538 tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
 
@@ -389,7 +394,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: April 2026 — S213 (Deep Debt — Lint Reason Sweep + Capability Names + Orchestrator Resilience). **22,000+** workspace tests, 0 failures (7,842+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects** (orchestrator lock-panic-free S213). IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **async-trait DEPRECATED** — fully removed, banned in `deny.toml`. **All lint attrs with `reason =`** (S211+S213). **Workspace deps fully unified** (S211). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Encrypted compute dispatch** (Phase 55). **Display Phase 2** (petalTongue IPC). **BTSP Phase 2 + JSON-line relay** (bounded timeouts, S210). **`test-mocks` off default** (S206). **GPU stubs capability-based** (`gpu.dispatch.cuda` URIs, S213). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S219 (Deep Debt — Production Stubs + Lock Safety + Coverage). **22,538** workspace tests, 0 failures (7,842+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 
