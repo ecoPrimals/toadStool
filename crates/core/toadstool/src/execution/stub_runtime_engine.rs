@@ -60,3 +60,65 @@ impl RuntimeEngine for StubRuntimeEngine {
         async { Ok(()) }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::WorkloadType;
+
+    #[tokio::test]
+    async fn execute_returns_configuration_error() {
+        let engine = StubRuntimeEngine;
+        let request = ExecutionRequest::default();
+        let result = engine.execute(request).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("no runtime engine registered"));
+        assert!(err.contains("compute.engine.register"));
+    }
+
+    #[tokio::test]
+    async fn initialize_succeeds() {
+        let mut engine = StubRuntimeEngine;
+        engine.initialize(RuntimeConfig::default()).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn shutdown_succeeds() {
+        let mut engine = StubRuntimeEngine;
+        engine.shutdown().await.unwrap();
+    }
+
+    #[test]
+    fn supports_no_workload_types() {
+        let engine = StubRuntimeEngine;
+        assert!(!engine.supports_workload(&WorkloadType::Native));
+        assert!(!engine.supports_workload(&WorkloadType::Container));
+    }
+
+    #[test]
+    fn capabilities_are_empty() {
+        let engine = StubRuntimeEngine;
+        let caps = engine.get_capabilities();
+        assert!(caps.supported_workloads.is_empty());
+        assert_eq!(caps.max_concurrent_executions, Some(0));
+        assert!(caps.supported_architectures.is_empty());
+        assert!(caps.platform_features.is_empty());
+        assert_eq!(caps.version, "stub");
+    }
+
+    #[tokio::test]
+    async fn get_metrics_returns_defaults() {
+        let engine = StubRuntimeEngine;
+        let metrics = engine.get_metrics().await.unwrap();
+        assert!(metrics.cpu.usage_percent.abs() < f64::EPSILON);
+        assert_eq!(metrics.memory.used_bytes, 0);
+    }
+
+    #[test]
+    fn copy_and_debug() {
+        let a = StubRuntimeEngine;
+        let b = a;
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+    }
+}

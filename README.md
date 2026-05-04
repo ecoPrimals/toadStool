@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,538 tests, 0 failures** (7,842+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **22,560 tests, 0 failures** (7,864+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **49 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -275,6 +275,7 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S220 (May 4, 2026)**: **primalSpring Phase 58 Audit Response — Coverage Push + Stub Evolution** — Responded to 4-item audit. Phase 3 encryption confirmed RESOLVED (S215+S218). +22 tests (wasm/metrics, stub_runtime_engine, os_layer/manager, container/engine). `OSLayerManager` fallback evolved from synthetic success to `not_supported`. 22,560 tests.
 - **S219 (May 3, 2026)**: **Deep Debt — Production Stubs + Lock Safety + Coverage** — 3 remaining production stubs evolved to typed errors (coordination health, legacy compat, monitoring mutex). `/tmp/biomeos-runtime` fallback configurable via `BIOMEOS_RUNTIME_DIR` env. 98 new tests across ember/glowplug crates. 22,538 tests.
 - **S218 (May 3, 2026)**: **BTSP Phase 3 Transport Switch Verification** — Closed primalSpring audit finding: verified negotiate→encrypted framing transition. 15 new E2E tests incl. full negotiate→encrypted frame exchange.
 - **S216-S217 (May 2, 2026)**: **Deep Debt — Flaky Tests + Orphan Recovery + Coverage** — MQ transport stub→`not_supported`. `ResourceOrchestrator` 12 `.expect("poisoned")`→`Result`. Flaky `primal_sockets` tests fixed. 6 orphaned `integration-primals` modules recovered. 35+ new tests.
@@ -351,7 +352,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 22,538 tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 22,560 tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -394,7 +395,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S219 (Deep Debt — Production Stubs + Lock Safety + Coverage). **22,538** workspace tests, 0 failures (7,842+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S220 (primalSpring Phase 58 Audit Response). **22,560** workspace tests, 0 failures (7,864+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **49 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

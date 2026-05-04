@@ -77,3 +77,71 @@ impl Default for MetricsCollector {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_collector_starts_at_zero() {
+        let m = MetricsCollector::new();
+        assert_eq!(m.total_executions(), 0);
+        assert_eq!(m.successful_executions(), 0);
+        assert_eq!(m.failed_executions(), 0);
+        assert_eq!(m.average_execution_time_us(), 0);
+    }
+
+    #[test]
+    fn default_matches_new() {
+        let m = MetricsCollector::default();
+        assert_eq!(m.total_executions(), 0);
+    }
+
+    #[test]
+    fn record_success_increments_counters() {
+        let m = MetricsCollector::new();
+        m.record_success(100);
+        assert_eq!(m.total_executions(), 1);
+        assert_eq!(m.successful_executions(), 1);
+        assert_eq!(m.failed_executions(), 0);
+        assert_eq!(m.average_execution_time_us(), 100);
+    }
+
+    #[test]
+    fn record_failure_increments_counters() {
+        let m = MetricsCollector::new();
+        m.record_failure();
+        assert_eq!(m.total_executions(), 1);
+        assert_eq!(m.successful_executions(), 0);
+        assert_eq!(m.failed_executions(), 1);
+    }
+
+    #[test]
+    fn average_computed_over_total_executions() {
+        let m = MetricsCollector::new();
+        m.record_success(200);
+        m.record_success(400);
+        m.record_failure();
+        assert_eq!(m.total_executions(), 3);
+        assert_eq!(m.successful_executions(), 2);
+        assert_eq!(m.failed_executions(), 1);
+        assert_eq!(m.average_execution_time_us(), 200);
+    }
+
+    #[test]
+    fn average_with_zero_time_succeeds() {
+        let m = MetricsCollector::new();
+        m.record_success(0);
+        assert_eq!(m.average_execution_time_us(), 0);
+    }
+
+    #[test]
+    fn multiple_failures_do_not_affect_time() {
+        let m = MetricsCollector::new();
+        m.record_failure();
+        m.record_failure();
+        m.record_failure();
+        assert_eq!(m.total_executions(), 3);
+        assert_eq!(m.average_execution_time_us(), 0);
+    }
+}

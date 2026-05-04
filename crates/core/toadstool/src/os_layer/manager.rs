@@ -3,18 +3,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
 use crate::os_layer::compat::{
     LegacyCompatibilityLayer, LinuxCompatibilityLayer, MacOSCompatibilityLayer,
     WindowsCompatibilityLayer,
 };
-use crate::{
-    ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeMetrics,
-    RuntimeType, ToadStoolResult, UniversalJob,
-};
+use crate::{ExecutionRequest, ExecutionResponse, ToadStoolResult, UniversalJob};
 use tracing::info;
 
 // Re-export the canonical `CompatibilityLayer` trait and dispatch enum from compat.
@@ -188,19 +183,10 @@ impl OSLayerManager {
             }
         }
 
-        // Fallback to default execution
-        Ok(ExecutionResponse {
-            execution_id: Uuid::new_v4(),
-            status: ExecutionStatus::Success,
-            output: ExecutionOutput {
-                stdout: Some("Default OS layer execution".to_string()),
-                ..Default::default()
-            },
-            metrics: RuntimeMetrics::default(),
-            duration: Duration::from_millis(100),
-            runtime_used: RuntimeType::Native,
-            warnings: Vec::new(),
-        })
+        Err(crate::ToadStoolError::not_supported(
+            "No compatibility layer can handle this request. \
+             Use capability-based execution dispatch via compute.execute instead.",
+        ))
     }
 
     /// Get platform information
@@ -300,5 +286,92 @@ mod tests {
         let manager = OSLayerManager::new(config);
         let info = manager.get_platform_info();
         assert!(!info.os.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_initialize_registers_layers_when_enabled() {
+        let config = OSLayerConfig::default();
+        let manager = OSLayerManager::new(config);
+        manager.initialize().await.unwrap();
+        let layers = manager.compatibility_layers.read().await;
+        assert!(layers.contains_key("linux"));
+        assert!(layers.contains_key("windows"));
+        assert!(layers.contains_key("macos"));
+        assert!(layers.contains_key("legacy"));
+    }
+
+    #[tokio::test]
+    async fn test_initialize_disabled_registers_nothing() {
+        let config = OSLayerConfig {
+            enabled: false,
+            ..OSLayerConfig::default()
+        };
+        let manager = OSLayerManager::new(config);
+        manager.initialize().await.unwrap();
+        let layers = manager.compatibility_layers.read().await;
+        assert!(layers.is_empty());
+    }
+
+    fn test_job() -> UniversalJob {
+        use crate::universal::types::{NetworkLocation, PrimalContext, SecurityLevel};
+        use std::time::SystemTime;
+        UniversalJob {
+            id: uuid::Uuid::nil(),
+            job_type: crate::UniversalJobType::Native {
+                executable: "echo".to_string(),
+                args: vec![],
+                env: std::collections::HashMap::new(),
+            },
+            priority: crate::universal::jobs::JobPriority::Normal,
+            resources: crate::resources::ResourceRequirements::default(),
+            timeout: None,
+            created_at: SystemTime::now(),
+            context: PrimalContext {
+                user_id: "test".to_string(),
+                device_id: "test".to_string(),
+                session_id: "test".to_string(),
+                network_location: NetworkLocation {
+                    ip_address: "127.0.0.1".to_string(),
+                    subnet: None,
+                    network_id: None,
+                    geo_location: None,
+                },
+                security_level: SecurityLevel::Standard,
+                metadata: std::collections::HashMap::new(),
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn test_execute_with_no_matching_layer_returns_error() {
+        let config = OSLayerConfig {
+            enabled: false,
+            ..OSLayerConfig::default()
+        };
+        let manager = OSLayerManager::new(config);
+        manager.initialize().await.unwrap();
+
+        let request = ExecutionRequest::default();
+        let result = manager.execute_with_os_layer(&test_job(), request).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("No compatibility layer"));
+    }
+
+    #[tokio::test]
+    async fn test_execute_routes_through_matching_layer() {
+        let manager = OSLayerManager::new(OSLayerConfig::default());
+        manager.initialize().await.unwrap();
+
+        let request = ExecutionRequest::default();
+        let result = manager.execute_with_os_layer(&test_job(), request).await;
+        // A layer handled it (didn't fall through to the "No compatibility layer" error)
+        if let Err(e) = &result {
+            let msg = e.to_string();
+            assert!(
+                !msg.contains("No compatibility layer"),
+                "expected a layer to handle the request, got fallthrough: {msg}"
+            );
+        }
     }
 }

@@ -395,4 +395,57 @@ mod tests {
         assert_eq!(caps.platform_features.get("network_isolation"), Some(&true));
         assert_eq!(caps.platform_features.get("docker_support"), Some(&false));
     }
+
+    #[tokio::test]
+    async fn initialize_without_docker_succeeds() {
+        let mut engine = test_engine();
+        engine
+            .initialize(toadstool::execution::RuntimeConfig::default())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn execute_non_container_workload_returns_validation_error() {
+        let engine = test_engine();
+        let request = ExecutionRequest::default();
+        let result = engine.execute(request).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("Invalid workload type") || err.contains("Docker feature not enabled"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn get_metrics_returns_valid_timing() {
+        let engine = test_engine();
+        let metrics = engine.get_metrics().await.unwrap();
+        assert!(metrics.cpu.usage_percent.abs() < f64::EPSILON);
+        assert_eq!(metrics.memory.used_bytes, 0);
+        assert_eq!(metrics.network.bytes_sent, 0);
+        assert_eq!(metrics.storage.used_bytes, 0);
+        assert!(metrics.timing.end_time.is_some());
+    }
+
+    #[tokio::test]
+    async fn shutdown_clears_active_containers() {
+        let mut engine = test_engine();
+        {
+            let mut containers = engine.active_containers.write().await;
+            containers.insert(
+                Uuid::new_v4(),
+                crate::ContainerHandle {
+                    container_id: "test-123".to_string(),
+                    _image: "alpine:latest".to_string(),
+                    _start_time: std::time::Instant::now(),
+                    _config: ContainerRuntimeConfig::default(),
+                },
+            );
+        }
+        assert_eq!(engine.active_containers.read().await.len(), 1);
+        engine.shutdown().await.unwrap();
+        assert!(engine.active_containers.read().await.is_empty());
+    }
 }

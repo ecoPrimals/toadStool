@@ -1,12 +1,23 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S219
+**Date**: May 2026 — S220
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S220 (primalSpring Phase 58 Audit Response — Coverage Push + Stub Evolution)**:
+Responded to primalSpring Phase 58 debt handoff (4 items for toadStool).
+Item 1 (Phase 3 transport encryption HIGH) confirmed **RESOLVED** in S215+S218 —
+all 6 verification checks pass (negotiate→AEAD→encrypted framing, server+daemon).
+Item 2 (coverage push MEDIUM) addressed: +22 new tests across 4 modules
+(`wasm/metrics` 7 tests, `stub_runtime_engine` 7 tests, `os_layer/manager` 4 tests,
+`container/engine` 4 tests). Evolved `OSLayerManager::execute_with_os_layer` fallback
+from synthetic success to `ToadStoolError::not_supported`. Items 3–4 (display.composite,
+transport.bridge LOW) confirmed as unimplemented future features needing spec first.
+**22,560 tests**, 0 failures, clippy clean.
 
 **S219 (Deep Debt — Production Stubs + Lock Safety + Coverage Expansion)**:
 Evolved 3 remaining production stubs to typed errors: `CoordinationConnection`
