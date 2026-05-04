@@ -440,7 +440,7 @@ toadStool (interface)          coralReef (transport)
 
 ### Remaining Phase 5 Gaps (toadStool side)
 
-See `../SOVEREIGN_COMPUTE_GAPS.md` for full tracker.
+See `../DEBT.md` for active gap tracking (sovereign compute gaps fossilized as `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/TOADSTOOL_SOVEREIGN_COMPUTE_GAPS_S166.md`).
 
 - Multi-arch register classification (AMD, Intel alongside NVIDIA)
 - Unified PCI discovery (single scanner for GPU + NPU)

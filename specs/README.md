@@ -164,7 +164,7 @@ gap closure, performance surface database. See `ALL_SILICON_PIPELINE.md`.
 | **[BARRACUDA_PRIMAL_BUDDING.md](./BARRACUDA_PRIMAL_BUDDING.md)** | barraCuda budding — fully untangled, zero cross-deps | **Mar 3** | ✅ Phase 5 Complete |
 | **[ARCHITECTURE_DEMARCATION.md](./ARCHITECTURE_DEMARCATION.md)** | 4-layer chain: barraCuda → coralReef → toadStool + songBird (wire) | **Mar 12** | 🔄 Active |
 
-**Tracker**: [`../SOVEREIGN_COMPUTE_GAPS.md`](../SOVEREIGN_COMPUTE_GAPS.md) — remaining work before proceeding
+**Tracker**: Fossilized as `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/TOADSTOOL_SOVEREIGN_COMPUTE_GAPS_S166.md` — remaining gaps tracked in [`../DEBT.md`](../DEBT.md)
 
 ### Performance & Evolution
 
@@ -376,10 +376,10 @@ to complete implementations. External C dependencies evolve to pure Rust.
 
 - **Immediate work:** `../NEXT_STEPS.md`
 - **Debt register:** `../DEBT.md`
-- **Sovereign gaps:** `../SOVEREIGN_COMPUTE_GAPS.md`
+- **Sovereign gaps:** Fossilized — `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/TOADSTOOL_SOVEREIGN_COMPUTE_GAPS_S166.md`
 - **Architecture docs:** `docs/architecture/`
 - **Hardware traits:** `crates/toadstool-core/src/` (NpuDispatch, NpuParameterController)
 - **GPU backends:** `crates/runtime/universal/src/backends/`
 - **Tests:** `cargo test --workspace`
-- **Leverage guide:** `wateringHole/TOADSTOOL_LEVERAGE_GUIDE.md`
-- **All-silicon plan:** `wateringHole/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING.md`
+- **Leverage guide:** Fossilized — `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/TOADSTOOL_LEVERAGE_GUIDE_S166.md`
+- **All-silicon plan:** Fossilized — `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/GPU_FIXED_FUNCTION_SCIENCE_REPURPOSING_S166.md`
