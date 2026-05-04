@@ -212,3 +212,167 @@ async fn route_nautilus(method: &str, params: &Value) -> Result<Value, JsonRpcEr
             data: None,
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::time::Instant;
+
+    async fn test_state() -> ServerState {
+        let wm = Arc::new(
+            super::super::workload_manager::WorkloadManager::new(2)
+                .await
+                .expect("create workload manager"),
+        );
+        ServerState {
+            start_time: Instant::now(),
+            workload_manager: wm,
+        }
+    }
+
+    fn rpc(method: &str, params: Value) -> JsonRpcRequest {
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params,
+            id: Some(json!(1)),
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_jsonrpc_version_returns_error() {
+        let state = test_state().await;
+        let req = JsonRpcRequest {
+            jsonrpc: "1.0".to_string(),
+            method: "daemon.health".to_string(),
+            params: json!(null),
+            id: Some(json!(1)),
+        };
+        let resp = handle_request(req, &state).await;
+        assert!(resp.error.is_some());
+        let err = resp.error.unwrap();
+        assert_eq!(
+            err.code,
+            super::super::jsonrpc_server::error_codes::INVALID_REQUEST
+        );
+        assert!(err.message.contains("2.0"));
+    }
+
+    #[tokio::test]
+    async fn identity_get_returns_primal_info() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("identity.get", json!(null)), &state).await;
+        assert!(resp.error.is_none());
+        let result = resp.result.unwrap();
+        assert_eq!(result["primal"], toadstool_common::constants::PRIMAL_NAME);
+        assert_eq!(result["protocol"], "JSON-RPC 2.0");
+        assert_eq!(result["transport"], "unix-socket");
+    }
+
+    #[tokio::test]
+    async fn health_returns_ok_status() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("daemon.health", json!(null)), &state).await;
+        assert!(resp.error.is_none());
+        let result = resp.result.unwrap();
+        assert_eq!(result["status"], "ok");
+        assert!(result["uptime_secs"].is_number());
+    }
+
+    #[tokio::test]
+    async fn health_aliases_all_work() {
+        let state = test_state().await;
+        for method in ["health.liveness", "health.readiness", "health.check"] {
+            let resp = handle_request(rpc(method, json!(null)), &state).await;
+            assert!(resp.error.is_none(), "method {method} failed");
+            assert_eq!(resp.result.unwrap()["status"], "ok");
+        }
+    }
+
+    #[tokio::test]
+    async fn metrics_returns_workload_counts() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("daemon.metrics", json!(null)), &state).await;
+        assert!(resp.error.is_none());
+        let result = resp.result.unwrap();
+        assert!(result["uptime_secs"].is_number());
+        assert_eq!(result["workloads"]["queued"], 0);
+        assert_eq!(result["workloads"]["running"], 0);
+    }
+
+    #[tokio::test]
+    async fn get_workload_missing_id_returns_invalid_params() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("daemon.get_workload", json!({})), &state).await;
+        assert!(resp.error.is_some());
+        let err = resp.error.unwrap();
+        assert_eq!(
+            err.code,
+            super::super::jsonrpc_server::error_codes::INVALID_PARAMS
+        );
+    }
+
+    #[tokio::test]
+    async fn get_workload_not_found() {
+        let state = test_state().await;
+        let resp = handle_request(
+            rpc("daemon.get_workload", json!({"id": "nonexistent"})),
+            &state,
+        )
+        .await;
+        assert!(resp.error.is_some());
+        let err = resp.error.unwrap();
+        assert_eq!(
+            err.code,
+            super::super::jsonrpc_server::error_codes::WORKLOAD_NOT_FOUND
+        );
+    }
+
+    #[tokio::test]
+    async fn delete_workload_missing_id_returns_invalid_params() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("daemon.delete_workload", json!({})), &state).await;
+        assert!(resp.error.is_some());
+        assert_eq!(
+            resp.error.unwrap().code,
+            super::super::jsonrpc_server::error_codes::INVALID_PARAMS
+        );
+    }
+
+    #[tokio::test]
+    async fn unknown_method_returns_method_not_found() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("nonexistent.method", json!(null)), &state).await;
+        assert!(resp.error.is_some());
+        assert_eq!(
+            resp.error.unwrap().code,
+            super::super::jsonrpc_server::error_codes::METHOD_NOT_FOUND
+        );
+    }
+
+    #[tokio::test]
+    async fn list_workloads_empty() {
+        let state = test_state().await;
+        let resp = handle_request(rpc("daemon.list_workloads", json!(null)), &state).await;
+        assert!(resp.error.is_none());
+        let result = resp.result.unwrap();
+        assert_eq!(result["count"], 0);
+        assert!(result["workloads"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn submit_workload_invalid_params() {
+        let state = test_state().await;
+        let resp = handle_request(
+            rpc("daemon.submit_workload", json!("not-an-object")),
+            &state,
+        )
+        .await;
+        assert!(resp.error.is_some());
+        assert_eq!(
+            resp.error.unwrap().code,
+            super::super::jsonrpc_server::error_codes::INVALID_PARAMS
+        );
+    }
+}

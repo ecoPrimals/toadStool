@@ -28,8 +28,10 @@ pub struct GpuInfo {
     pub supports_cuda: bool,
     /// Legacy field retained for serde compatibility.
     ///
-    /// DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC. Always `false`.
-    #[deprecated(note = "DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC")]
+    /// DEPRECATED S198: OpenCL removed — use `gpu.dispatch.opencl` capability provider via IPC. Always `false`.
+    #[deprecated(
+        note = "DEPRECATED S198: OpenCL removed — use gpu.dispatch.opencl capability provider via IPC"
+    )]
     pub supports_opencl: bool,
 }
 

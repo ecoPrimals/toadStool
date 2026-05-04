@@ -132,8 +132,8 @@ impl UniversalGpuEngine {
                 ))
             }
             GpuFramework::OpenCl => Err(ToadStoolError::configuration(
-                "OpenCL framework removed from this crate (S198). Use barraCuda/coralReef via IPC, \
-                 or WebGPU/Vulkan for in-tree GPU compute.",
+                "OpenCL framework removed from this crate (S198). Use gpu.dispatch.opencl \
+                 capability provider via IPC, or WebGPU/Vulkan for in-tree GPU compute.",
             )),
             _ => {
                 // For other frameworks, use fallback implementation

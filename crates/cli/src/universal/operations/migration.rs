@@ -233,12 +233,14 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
     }
 
     async fn verify_migration_success(&self, plan: &MigrationPlan) -> Result<bool> {
-        info!(
-            "🔍 Verifying migration: {} → {}",
-            plan.source_platform, plan.target_platform
+        tracing::warn!(
+            source = %plan.source_platform,
+            target = %plan.target_platform,
+            "Migration verification not implemented: \
+             target platform health checks require platform-specific probing. \
+             Implement platform.health.check capability for automated verification."
         );
-        // Simplified verification - in reality would check target health
-        Ok(true)
+        Ok(false)
     }
 
     // Helper methods implementation

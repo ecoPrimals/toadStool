@@ -251,7 +251,7 @@ impl UniversalUnifiedMemory {
                 }
             }
             BackendType::OpenCL => Err(ToadStoolError::runtime(
-                "OpenCL unified memory removed (S198): use barraCuda/coralReef via IPC.",
+                "OpenCL unified memory removed (S198): use gpu.dispatch.opencl capability provider via IPC.",
             )),
             BackendType::WebGpu => {
                 #[cfg(feature = "webgpu")]

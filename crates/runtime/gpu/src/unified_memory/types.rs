@@ -151,7 +151,7 @@ pub enum BackendType {
     /// Vulkan backend
     Vulkan,
 
-    /// OpenCL-class backend (not implemented in-tree; use barraCuda/coralReef). **DEPRECATED S198** stub for config/serialization.
+    /// OpenCL-class backend (not implemented in-tree; use `gpu.dispatch.opencl` capability provider). **DEPRECATED S198** stub for config/serialization.
     OpenCL,
 
     /// `WebGPU` backend

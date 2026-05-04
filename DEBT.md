@@ -1,12 +1,30 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S220
+**Date**: May 2026 — S221
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S221 (Deep Debt — Capability Names + Dep Hygiene + Stub Evolution + Coverage)**:
+Comprehensive deep-debt sweep:
+- **Hardcoded primal names**: All `barraCuda/coralReef` references in error
+  messages, deprecation attrs, and docs across 10 files evolved to capability-based
+  language (`gpu.dispatch.opencl capability provider`).
+- **Dependency hygiene**: `reqwest` upgraded 0.12→0.13 on edge crate (aws-lc-rs
+  replaces ring as default rustls crypto provider). `ring` no longer in resolved
+  workspace dependency graph.
+- **Production stub**: `OSLayerManager::execute_with_os_layer` fallback evolved
+  from synthetic success to `not_supported` (S220). `verify_migration_success`
+  evolved from always-true to honest `false` with warning (was dead code).
+- **Unsafe audit reconciliation**: Literal `unsafe {` block count is **46** (not
+  49 from S216 — S215/S218 likely removed 3 during BTSP refactors). All 46 are
+  kernel FFI / mmap / ioctl / volatile MMIO / plugin loading. All SAFETY-documented.
+  None have safe-Rust replacements without performance loss.
+- **Coverage push**: +20 new tests — daemon routes (11), zero_config configuration (9).
+  **22,580 tests**, 0 failures.
 
 **S220 (primalSpring Phase 58 Audit Response — Coverage Push + Stub Evolution)**:
 Responded to primalSpring Phase 58 debt handoff (4 items for toadStool).
@@ -58,8 +76,8 @@ Comprehensive deep-debt sweep across all dimensions:
   `drm` 0.14.2 resolved to 0.14.1, `deny.toml` stale skip entries removed.
   `ring` confirmed absent from dependency tree. All four `cargo deny check`
   gates pass clean.
-- **Audit**: No production files >800 LOC. All 49 unsafe blocks are legitimate
-  hw containment. All hardcoded paths are env-configurable. All `Box<dyn Trait>`
+- **Audit**: No production files >800 LOC (except `btsp/json_line.rs` 905L, added
+  S218). All 46 unsafe blocks are legitimate hw/FFI containment. All hardcoded paths are env-configurable. All `Box<dyn Trait>`
   usages are open-by-design (runtime registration). Zero clippy warnings.
 
 **S215 (BTSP Phase 3: Encrypted Channel — ChaCha20-Poly1305)**:

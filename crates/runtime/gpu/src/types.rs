@@ -15,9 +15,9 @@ pub enum GpuFramework {
     WebGpu,
     /// Vulkan compute (cross-platform, high-performance)
     Vulkan,
-    /// Serialization / discovery only: OpenCL-class GPUs are handled by barraCuda/coralReef (not embedded here).
+    /// Serialization / discovery only: OpenCL-class GPUs use the `gpu.dispatch.opencl` capability provider via IPC.
     ///
-    /// **DEPRECATED S198:** direct OpenCL support was removed from this crate; use barraCuda/coralReef via IPC.
+    /// **DEPRECATED S198:** direct OpenCL support was removed from this crate; use `gpu.dispatch.opencl` capability provider via IPC.
     OpenCl,
     /// NVIDIA CUDA (NVIDIA-specific, high-performance)
     Cuda,
@@ -259,10 +259,10 @@ impl Default for DeviceUsage {
 /// Framework-specific device handles.
 #[derive(Debug)]
 pub enum FrameworkHandle {
-    /// DEPRECATED S198: OpenCL removed. Use barraCuda/coralReef via IPC.
+    /// DEPRECATED S198: OpenCL removed. Use `gpu.dispatch.opencl` capability provider via IPC.
     #[deprecated(
         since = "0.2.0",
-        note = "OpenCL removed — use barraCuda/coralReef via IPC"
+        note = "OpenCL removed — use gpu.dispatch.opencl capability provider via IPC"
     )]
     OpenCl,
     /// Vulkan device.

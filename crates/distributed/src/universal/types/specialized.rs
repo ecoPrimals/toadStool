@@ -58,7 +58,9 @@ pub enum SpecializedArchitecture {
         memory_gb: u32,
     },
     /// OpenCL compute (serde-compatible; not surfaced by detection).
-    #[deprecated(note = "DEPRECATED S198: OpenCL removed — use barraCuda/coralReef via IPC")]
+    #[deprecated(
+        note = "DEPRECATED S198: OpenCL removed — use gpu.dispatch.opencl capability provider via IPC"
+    )]
     OpenCL {
         /// OpenCL version.
         version: String,

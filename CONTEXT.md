@@ -29,8 +29,8 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
   - Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET` env vars
   - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock`
 - **Peer primals**: Resolved at runtime via capability IDs and Unix-socket discovery (e.g. `capability.discover`, `resolve_capability_socket_fallback`) — not hardcoded URLs or legacy per-primal env manifests.
-- **Tests**: 22,560 (7,864+ lib-only, 0 failures, unlimited parallelism)
-- **Unsafe**: 49 blocks (all in hw-safe/GPU/VFIO/display/plugin containment, all SAFETY-documented); workspace `unsafe_code = "deny"`, 41 crates `forbid` + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; all lint attrs have `reason =` (S211+S213)
+- **Tests**: 22,580 (7,884+ lib-only, 0 failures, unlimited parallelism)
+- **Unsafe**: 46 blocks (all in hw-safe/GPU/VFIO/display/plugin containment, all SAFETY-documented; reconciled S221); workspace `unsafe_code = "deny"`, 41 crates `forbid` + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; all lint attrs have `reason =` (S211+S213)
 - **async-trait**: DEPRECATED — fully removed and banned in `deny.toml` (S203r); transitive only via axum/config/wiggle
 - **deny.toml**: `ring` + `async-trait` + `zstd-sys` bans active (ecoBin v3 compliant)
 - **Display Phase 2**: `display.present`, `display.subscribe_input`, `display.poll_events` (petalTongue IPC)

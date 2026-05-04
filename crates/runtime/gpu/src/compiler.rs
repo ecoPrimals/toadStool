@@ -72,7 +72,7 @@ impl UniversalKernelCompiler {
     ) -> ToadStoolResult<Arc<CompiledKernel>> {
         if matches!(target_framework, GpuFramework::OpenCl) {
             return Err(toadstool::error::ToadStoolError::runtime(
-                "OpenCL kernel compilation removed (S198): use barraCuda/coralReef via IPC.",
+                "OpenCL kernel compilation removed (S198): use gpu.dispatch.opencl capability provider via IPC.",
             ));
         }
         let cache_key = self.generate_cache_key(kernel_source, &format, &target_framework, device);

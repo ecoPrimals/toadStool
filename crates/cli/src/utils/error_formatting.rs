@@ -80,7 +80,7 @@ pub fn get_error_suggestion(error: &dyn std::error::Error) -> Option<Cow<'static
 
     if error_str.contains("gpu") {
         return Some(Cow::Borrowed(
-            "💡 Check GPU drivers (e.g. nvidia-smi), Vulkan/wgpu, or barraCuda/coralReef IPC for external GPU compute.",
+            "💡 Check GPU drivers (e.g. nvidia-smi), Vulkan/wgpu, or gpu.dispatch capability provider via IPC for external GPU compute.",
         ));
     }
 
