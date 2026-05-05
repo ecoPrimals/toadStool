@@ -86,6 +86,11 @@ impl NativeRuntimeEngine {
             }
         };
 
+        let workload_working_dir = match &request.workload {
+            WorkloadSpec::Native { working_dir, .. } => working_dir.clone(),
+            _ => None,
+        };
+
         let mut command = TokioCommand::new(&executable_path);
         command.args(&args);
         command.stdout(Stdio::piped());
@@ -95,7 +100,11 @@ impl NativeRuntimeEngine {
             command.env(key, value);
         }
 
-        command = security::apply_security_context(command, &request.security_context);
+        command = security::apply_security_context(
+            command,
+            &request.security_context,
+            workload_working_dir.as_deref(),
+        );
 
         if let Some(monitor) = &self.resource_monitor {
             monitor.start_monitoring(&request.execution_id.to_string())?;

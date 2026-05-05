@@ -451,6 +451,7 @@ fn test_resource_spec_clone_debug() {
 fn test_security_spec_with_isolation() {
     let spec = SecuritySpec {
         isolation: Some("strict".to_string()),
+        trusted_directories: None,
     };
 
     assert_eq!(spec.isolation, Some("strict".to_string()));
@@ -458,7 +459,10 @@ fn test_security_spec_with_isolation() {
 
 #[test]
 fn test_security_spec_without_isolation() {
-    let spec = SecuritySpec { isolation: None };
+    let spec = SecuritySpec {
+        isolation: None,
+        trusted_directories: None,
+    };
 
     assert!(spec.isolation.is_none());
 }
@@ -470,6 +474,7 @@ fn test_security_spec_different_isolation_levels() {
     for level in levels {
         let spec = SecuritySpec {
             isolation: Some(level.to_string()),
+            trusted_directories: None,
         };
         assert_eq!(spec.isolation, Some(level.to_string()));
     }
@@ -479,6 +484,7 @@ fn test_security_spec_different_isolation_levels() {
 fn test_security_spec_clone() {
     let spec1 = SecuritySpec {
         isolation: Some("strict".to_string()),
+        trusted_directories: None,
     };
 
     let spec2 = spec1.clone();
@@ -489,6 +495,7 @@ fn test_security_spec_clone() {
 fn test_security_spec_debug() {
     let spec = SecuritySpec {
         isolation: Some("strict".to_string()),
+        trusted_directories: None,
     };
 
     let debug_str = format!("{spec:?}");
@@ -500,6 +507,7 @@ fn test_security_spec_debug() {
 fn test_security_spec_empty_string() {
     let spec = SecuritySpec {
         isolation: Some(String::new()),
+        trusted_directories: None,
     };
 
     assert_eq!(spec.isolation, Some(String::new()));

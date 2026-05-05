@@ -83,7 +83,7 @@ pub(super) fn convert_to_workload_spec(
             input_data: _,
             output_data_keys: _,
         } => {
-            // DEPRECATED S198: OpenCL removed — external GPU dispatch uses Vulkan/wgpu or barraCuda/coralReef via IPC.
+            // DEPRECATED S198: OpenCL removed — external GPU dispatch uses Vulkan/wgpu or gpu.dispatch capability provider via IPC.
             // Workload file `source` is treated as CUDA source for this legacy path.
             Ok(WorkloadSpec::Gpu {
                 program: toadstool::workload::GpuProgramSource::Cuda {
@@ -110,9 +110,45 @@ pub(super) fn convert_resource_requirements(
 }
 
 /// Convert security spec to ToadStool SecurityContext.
-pub(super) fn convert_security_context(_security: &Option<SecuritySpec>) -> SecurityContext {
-    // Use standard isolation for now
-    SecurityContext::for_isolation_level(IsolationLevel::Standard)
+///
+/// Parses the `isolation` string to an `IsolationLevel` (default: `Standard`)
+/// and wires `trusted_directories` into `filesystem_security.allowed_write_paths`
+/// so the native runtime can honour `working_dir` under Basic/Standard isolation.
+pub(super) fn convert_security_context(security: &Option<SecuritySpec>) -> SecurityContext {
+    let (level, trusted) = match security {
+        Some(spec) => {
+            let level = spec
+                .isolation
+                .as_deref()
+                .map(parse_isolation_level)
+                .unwrap_or(IsolationLevel::Standard);
+            let trusted = spec.trusted_directories.clone().unwrap_or_default();
+            (level, trusted)
+        }
+        None => (IsolationLevel::Standard, Vec::new()),
+    };
+    let mut ctx = SecurityContext::for_isolation_level(level);
+    if !trusted.is_empty() {
+        ctx.filesystem_security.allowed_write_paths = trusted;
+    }
+    ctx
+}
+
+fn parse_isolation_level(s: &str) -> IsolationLevel {
+    match s.to_ascii_lowercase().as_str() {
+        "none" => IsolationLevel::None,
+        "basic" => IsolationLevel::Basic,
+        "standard" => IsolationLevel::Standard,
+        "enhanced" => IsolationLevel::Enhanced,
+        "maximum" | "max" => IsolationLevel::Maximum,
+        _ => {
+            tracing::warn!(
+                isolation = s,
+                "Unknown isolation level, defaulting to Standard"
+            );
+            IsolationLevel::Standard
+        }
+    }
 }
 
 #[cfg(test)]
@@ -270,17 +306,55 @@ mod tests {
     #[test]
     fn test_convert_security_context_none() {
         let context = convert_security_context(&None);
-        assert!(!format!("{:?}", context).is_empty());
+        assert_eq!(context.isolation_level, IsolationLevel::Standard);
     }
 
     #[test]
     fn test_convert_security_context_with_isolation() {
         let spec = Some(SecuritySpec {
-            isolation: Some("container".to_string()),
+            isolation: Some("basic".to_string()),
+            trusted_directories: None,
         });
-
         let context = convert_security_context(&spec);
-        assert!(!format!("{:?}", context).is_empty());
+        assert_eq!(context.isolation_level, IsolationLevel::Basic);
+    }
+
+    #[test]
+    fn test_convert_security_context_with_trusted_dirs() {
+        let spec = Some(SecuritySpec {
+            isolation: Some("standard".to_string()),
+            trusted_directories: Some(vec!["/opt/workloads".to_string()]),
+        });
+        let context = convert_security_context(&spec);
+        assert_eq!(context.isolation_level, IsolationLevel::Standard);
+        assert!(
+            context
+                .filesystem_security
+                .allowed_write_paths
+                .contains(&"/opt/workloads".to_string())
+        );
+    }
+
+    #[test]
+    fn test_convert_security_unknown_isolation_defaults_standard() {
+        let spec = Some(SecuritySpec {
+            isolation: Some("container".to_string()),
+            trusted_directories: None,
+        });
+        let context = convert_security_context(&spec);
+        assert_eq!(context.isolation_level, IsolationLevel::Standard);
+    }
+
+    #[test]
+    fn test_parse_isolation_levels() {
+        assert_eq!(parse_isolation_level("none"), IsolationLevel::None);
+        assert_eq!(parse_isolation_level("basic"), IsolationLevel::Basic);
+        assert_eq!(parse_isolation_level("standard"), IsolationLevel::Standard);
+        assert_eq!(parse_isolation_level("enhanced"), IsolationLevel::Enhanced);
+        assert_eq!(parse_isolation_level("maximum"), IsolationLevel::Maximum);
+        assert_eq!(parse_isolation_level("max"), IsolationLevel::Maximum);
+        assert_eq!(parse_isolation_level("STANDARD"), IsolationLevel::Standard);
+        assert_eq!(parse_isolation_level("bogus"), IsolationLevel::Standard);
     }
 
     #[test]

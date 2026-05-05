@@ -154,6 +154,7 @@ fn test_resource_spec_partial() {
 fn test_security_spec_with_isolation() {
     let security = SecuritySpec {
         isolation: Some("strict".to_string()),
+        trusted_directories: None,
     };
 
     assert_eq!(security.isolation, Some("strict".to_string()));
@@ -161,7 +162,10 @@ fn test_security_spec_with_isolation() {
 
 #[test]
 fn test_security_spec_no_isolation() {
-    let security = SecuritySpec { isolation: None };
+    let security = SecuritySpec {
+        isolation: None,
+        trusted_directories: None,
+    };
 
     assert!(security.isolation.is_none());
 }

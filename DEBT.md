@@ -1,12 +1,33 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S221
+**Date**: May 2026 — S222
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S222 (primalSpring ironGate Audit — Sandbox + Env Expansion + Specs + Discovery)**:
+Responded to primalSpring ironGate provenance pipeline audit (3 gaps for toadStool):
+- **Gap 2 — Sandbox `working_dir` override**: `apply_security_context` now accepts
+  workload `working_dir`. For `None` isolation, always honoured. For `Basic`/`Standard`,
+  honoured if path is under `temp_dir()` or in `trusted_directories`
+  (`SecuritySpec.trusted_directories` → `filesystem_security.allowed_write_paths`).
+  Enhanced/Maximum ignore it. Previously `/tmp` was hardcoded for Standard.
+- **Gap 8 — Env var expansion in TOMLs**: `load_workload_file` now runs
+  `expand_env_vars` on raw content before deserialization. Handles `${VAR}`,
+  `$VAR`, and `$$` escape. `$HOME`, `${WETSPRING_DIR}` etc. expand correctly.
+- **`display.composite` spec**: Added JSON-RPC method table, design constraints,
+  prerequisites to `DISPLAY_BACKEND_SPEC.md` (PG-42 follow-on).
+- **`transport.bridge` spec**: Added JSON-RPC method table, design constraints,
+  prerequisites to `HARDWARE_TRANSPORT_SPEC.md` (PG-42 follow-on).
+- **Discovery hierarchy**: Documented primalSpring 5-tier escalation in
+  `primal_sockets/paths.rs` and `CONTEXT.md`.
+- **`convert_security_context` wired**: Now parses `SecuritySpec.isolation` string
+  to `IsolationLevel` (was hardcoded `Standard`).
+- **Coverage push**: +26 new tests (9 security resolve, 8 isolation parse/trusted,
+  7 env expansion, 1 E2E TOML, 1 trusted dir). **22,821 tests**, 0 failures.
 
 **S221 (Deep Debt — Capability Names + Dep Hygiene + Stub Evolution + Coverage)**:
 Comprehensive deep-debt sweep:

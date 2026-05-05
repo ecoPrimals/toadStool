@@ -265,3 +265,45 @@ Found: 2 transports (1 display, 1 capture, 0 serial)
 | `thiserror`   | Error types              | Yes       |
 
 *`serialport` used with `default-features = false` to avoid libudev-sys; pure Rust enumeration (less detail).
+
+---
+
+## Future: `transport.bridge` Cross-Transport Bridging (PG-42 Follow-on)
+
+**Status**: Spec only — zero implementation (confirmed S220)
+
+### Motivation
+
+The existing `TransportRouter` connects a single Rx to a single Tx of the
+same medium type. `transport.bridge` would enable cross-medium routing:
+e.g. capture (V4L2 Rx) → network stream (TCP Tx), or serial Rx → display
+Tx, without the client needing to know the underlying hardware path.
+
+### Proposed JSON-RPC Methods
+
+| Method | Description |
+|--------|-------------|
+| `transport.bridge.create` | Create a bridge: `{ source: transport_id, sink: transport_id, codec?: ... }` |
+| `transport.bridge.destroy` | Tear down a bridge by ID |
+| `transport.bridge.list` | List active bridges with throughput stats |
+| `transport.bridge.status` | Health / backpressure / dropped-frame stats for a bridge |
+
+### Design Constraints
+
+- **Codec layer**: Cross-medium bridges may need transcoding (e.g. raw
+  V4L2 → H.264 for network). The bridge spec should support pluggable
+  codec stages without mandating any specific codec.
+- **Backpressure**: Source-faster-than-sink must be handled (ring buffer
+  with configurable drop policy: drop-oldest, block, or error).
+- **Capability-based**: Bridges are discovered via `capabilities.list` →
+  `transport.bridge`. The bridge itself advertises the source/sink
+  transport types it supports.
+- **Lifecycle**: Bridges are tied to the lifetime of both endpoints. If
+  either endpoint is removed (e.g. USB unplug), the bridge tears down
+  cleanly with a notification to the client.
+
+### Prerequisites
+
+- `HardwareTransport` trait evolution to support heterogeneous Rx/Tx pairing
+- Async streaming pipeline (tokio channels or similar)
+- Optional codec crate integration (feature-gated)

@@ -104,6 +104,9 @@ pub struct ResourceSpec {
 /// Security settings for workload execution
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct SecuritySpec {
-    /// Isolation level (e.g. process, container, sandbox)
+    /// Isolation level: "none", "basic", "standard", "enhanced", "maximum"
     pub isolation: Option<String>,
+    /// Directories the workload is allowed to use as `working_dir` even under
+    /// Basic/Standard isolation (acts as an allowlist beyond temp_dir).
+    pub trusted_directories: Option<Vec<String>>,
 }

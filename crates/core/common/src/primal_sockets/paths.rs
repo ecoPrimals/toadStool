@@ -1,5 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Pure socket path resolution (no env access - inject `SocketPathEnv`)
+//! Pure socket path resolution (no env access — inject `SocketPathEnv`).
+//!
+//! ## Discovery Escalation Hierarchy (primalSpring cross-cutting standard)
+//!
+//! primalSpring discovers composition members in this order:
+//!
+//! 1. **Songbird `ipc.resolve`** — coordination plane returns socket paths
+//! 2. **biomeOS Neural API** — `capability.discover` on the NUCLEUS socket
+//! 3. **UDS filesystem convention** — `{capability}.sock` under biomeOS runtime dir
+//! 4. **Socket registry / manifests** — `registry.json` under XDG config
+//! 5. **TCP probing** — well-known ports from `tolerances`
+//!
+//! toadStool's `resolve_capability_socket_fallback` implements tiers 1–4
+//! (tier 1 via `DISCOVERY_SOCKET`, tier 2 via `BIOMEOS_*_SOCKET`, tier 3 via
+//! filesystem convention, tier 4 via connection hints). TCP probing (tier 5)
+//! is not used for local IPC — toadStool prefers Unix domain sockets.
+//!
+//! No primal is required to support all tiers. If Songbird can resolve a
+//! socket path, tier 1 gives the highest-fidelity routing with cross-gate
+//! capability.
 
 use std::path::PathBuf;
 

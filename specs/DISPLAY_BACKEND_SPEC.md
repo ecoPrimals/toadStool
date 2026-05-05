@@ -659,3 +659,44 @@ pub enum DisplayError {
 
 **Status**: Phase 1 Complete  
 **Next**: Phase 2 — modesetting, page flip, petalTongue integration
+
+---
+
+## Future: `display.composite` Multi-Layer Compositing (PG-42 Follow-on)
+
+**Status**: Spec only — zero implementation (confirmed S220)
+
+### Motivation
+
+GUI primals (petalTongue) need to composite multiple visual layers (panels,
+overlays, cursors, video surfaces) into a single scanout framebuffer.
+Currently `display.framebuffer.*` exposes a single-buffer write path.
+`display.composite` would enable multi-layer compositing without the GUI
+primal needing direct hardware access.
+
+### Proposed JSON-RPC Methods
+
+| Method | Description |
+|--------|-------------|
+| `display.composite.create_layer` | Create a named layer with z-order, opacity, blend mode |
+| `display.composite.update_layer` | Update layer content (buffer handle + damage rect) |
+| `display.composite.remove_layer` | Remove a layer by ID |
+| `display.composite.commit` | Atomically compose all layers and present to scanout |
+| `display.composite.list_layers` | List active layers with metadata |
+
+### Design Constraints
+
+- **Atomic commit**: All layer updates for a frame are committed atomically
+  via DRM atomic modesetting (`drmModeAtomicCommit`). No partial frames.
+- **Zero-copy where possible**: Layer buffers are dma-buf handles shared via
+  IPC, not pixel copies.
+- **Capability-based**: Clients discover compositing via
+  `capabilities.list` → `display.composite`.
+- **Isolation**: petalTongue supplies buffer handles; toadStool owns the
+  hardware planes and compositing order.
+
+### Prerequisites
+
+- Phase 2 modesetting + page flip pipeline
+- DRM atomic API support in `toadstool-display`
+- Multi-plane hardware enumeration (overlay/cursor planes beyond primary)
