@@ -5,7 +5,9 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+use tokio::time::Instant;
 
 use tokio::sync::RwLock;
 use tracing::error;
@@ -232,12 +234,12 @@ mod tests {
         assert!(!ids.is_banned("good").await);
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn expired_ban_is_cleared() {
         let ids = IntrusionDetectionSystem::new(strict_config());
         ids.ban_client("temp", Duration::from_millis(1), "test")
             .await;
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        tokio::time::advance(Duration::from_millis(5)).await;
         assert!(!ids.is_banned("temp").await);
     }
 }

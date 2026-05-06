@@ -208,11 +208,11 @@ mod tests {
     fn reacquire_resets_held_since_on_success() {
         let mut held = HeldResource::new(MockHandle::new());
         held.release().expect("release");
-        std::thread::sleep(std::time::Duration::from_millis(5));
         let ok = held.reacquire().expect("reacquire");
         assert!(ok);
         assert!(held.is_alive());
-        assert!(held.held_duration() < std::time::Duration::from_secs(1));
+        // Timer was just reset — duration must be near-zero.
+        assert!(held.held_duration() < std::time::Duration::from_millis(100));
     }
 
     #[test]

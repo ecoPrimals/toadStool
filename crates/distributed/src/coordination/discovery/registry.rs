@@ -200,7 +200,11 @@ mod tests {
         let _ = reg.register_node(sample_registration("fresh", NodeType::ToadStool));
         assert_eq!(reg.get_healthy_nodes(Duration::from_secs(3600)).len(), 1);
 
-        std::thread::sleep(Duration::from_millis(150));
+        // Backdate the health timestamp so the node appears stale — no sleep needed.
+        let node_id = "fresh".to_string();
+        if let Some(ts) = reg.health_timestamps.get_mut(&node_id) {
+            *ts = Instant::now() - Duration::from_millis(200);
+        }
         assert_eq!(reg.get_healthy_nodes(Duration::from_secs(3600)).len(), 1);
         assert!(reg.get_healthy_nodes(Duration::from_millis(50)).is_empty());
     }

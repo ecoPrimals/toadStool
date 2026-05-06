@@ -20,8 +20,8 @@ pub async fn register_with_discovery(
         service_info.id
     );
 
-    // Note: Capability files are written by each primal in /tmp/ecoPrimals/discovery/
-    // See: crates/server/src/capabilities.rs for self-knowledge + announcement pattern
+    // Capability-based: peers discovered via resolve_capability_socket_fallback
+    // and ipc.find_capability on the coordination socket (see primal_sockets/).
 
     Ok(())
 }
@@ -40,8 +40,7 @@ pub async fn discover_from_registry(
         service_name
     );
 
-    // Note: Capability files can be read from /tmp/ecoPrimals/discovery/
-    // See: crates/server/src/capabilities.rs for find_peer_with() and find_all_peers()
+    // Capability resolution via resolve_capability_socket_fallback (see primal_sockets/).
 
     Ok(Vec::new())
 }

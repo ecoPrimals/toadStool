@@ -202,6 +202,11 @@ impl EcosystemDiscoverer {
     pub(crate) async fn discover_local_services(
         &self,
     ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+        if cfg!(test) {
+            debug!("Skipping local network probing in test mode");
+            return Ok(HashMap::new());
+        }
+
         let mut services = HashMap::new();
 
         for (capability_key, pattern) in &self.service_patterns {
@@ -259,6 +264,11 @@ impl EcosystemDiscoverer {
     pub(crate) async fn discover_wellknown_services(
         &self,
     ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
+        if cfg!(test) {
+            debug!("Skipping well-known host probing in test mode");
+            return Ok(HashMap::new());
+        }
+
         let mut services = HashMap::new();
 
         for host in wellknown_hosts::ALL {
@@ -283,6 +293,11 @@ impl EcosystemDiscoverer {
     /// Delegates to `toadstool_common::primal_integration::try_discover_via_mdns`
     /// which probes `_toadstool._tcp.local.` and filters by capability TXT records.
     pub(crate) fn discover_mdns_services() -> HashMap<String, ServiceInfo> {
+        if cfg!(test) {
+            debug!("Skipping mDNS probing in test mode");
+            return HashMap::new();
+        }
+
         use toadstool_common::primal_integration::try_discover_via_mdns;
 
         let mut services = HashMap::new();

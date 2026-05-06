@@ -19,9 +19,9 @@ use toadstool_config::defaults::network::{
 use toadstool_config::env_config::EnvironmentConfig;
 
 /// TCP connect timeout for `probe_service`. Production uses 2s; tests use a
-/// short value so discovery probes fail fast under `cargo test`.
+/// minimal value so discovery probes fail fast under `cargo test`.
 const TCP_PROBE_CONNECT_TIMEOUT: Duration = if cfg!(test) {
-    Duration::from_millis(100)
+    Duration::from_millis(5)
 } else {
     Duration::from_secs(2)
 };

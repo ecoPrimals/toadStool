@@ -150,3 +150,135 @@ pub(crate) fn generate_warnings(
 
     warnings
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn estimate(cpu: u32, mem: u64, gpu: u64, storage: u64) -> ResourceEstimate {
+        ResourceEstimate {
+            graph_id: "test".to_string(),
+            cpu_cores: cpu,
+            memory_bytes: mem,
+            gpu_memory_bytes: gpu,
+            storage_bytes: storage,
+            network_bandwidth_mbps: 0,
+            estimated_duration: std::time::Duration::from_secs(1),
+            max_parallelism: 1,
+            critical_path_length: 1,
+            node_estimates: std::collections::HashMap::new(),
+            warnings: Vec::new(),
+        }
+    }
+
+    fn caps(cpu: u32, mem: u64, gpu: u64, gpu_total: u64, storage: u64) -> SystemCapabilities {
+        SystemCapabilities {
+            total_cpu_cores: cpu,
+            available_cpu_cores: cpu,
+            total_memory_bytes: mem,
+            available_memory_bytes: mem,
+            total_gpu_memory_bytes: gpu_total,
+            available_gpu_memory_bytes: gpu,
+            total_storage_bytes: storage,
+            available_storage_bytes: storage,
+            network_bandwidth_mbps: 1000,
+            gpu_count: if gpu_total > 0 { 1 } else { 0 },
+            gpu_types: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn no_gaps_when_capacity_sufficient() {
+        let gaps = identify_gaps(&estimate(4, 8_000, 0, 1_000), &caps(8, 16_000, 0, 0, 2_000));
+        assert!(gaps.is_empty());
+    }
+
+    #[test]
+    fn cpu_gap_detected() {
+        let gaps = identify_gaps(&estimate(8, 1_000, 0, 100), &caps(4, 2_000, 0, 0, 200));
+        assert_eq!(gaps.len(), 1);
+        assert_eq!(gaps[0].resource_type, "cpu_cores");
+        assert_eq!(gaps[0].shortage, 4);
+    }
+
+    #[test]
+    fn memory_gap_detected() {
+        let gb = 1024 * 1024 * 1024;
+        let gaps = identify_gaps(&estimate(1, 16 * gb, 0, 100), &caps(2, 8 * gb, 0, 0, 200));
+        assert_eq!(gaps.len(), 1);
+        assert_eq!(gaps[0].resource_type, "memory");
+    }
+
+    #[test]
+    fn gpu_gap_with_no_gpu_suggests_cpu_fallback() {
+        let gb = 1024 * 1024 * 1024;
+        let gaps = identify_gaps(&estimate(1, 1_000, 4 * gb, 100), &caps(2, 2_000, 0, 0, 200));
+        assert_eq!(gaps.len(), 1);
+        assert_eq!(gaps[0].resource_type, "gpu_memory");
+        assert!(gaps[0].suggestion.contains("No GPU"));
+    }
+
+    #[test]
+    fn gpu_gap_with_insufficient_gpu_suggests_quantization() {
+        let gb = 1024 * 1024 * 1024;
+        let gaps = identify_gaps(
+            &estimate(1, 1_000, 8 * gb, 100),
+            &caps(2, 2_000, 4 * gb, 8 * gb, 200),
+        );
+        assert_eq!(gaps.len(), 1);
+        assert!(gaps[0].suggestion.contains("quantization"));
+    }
+
+    #[test]
+    fn storage_gap_detected() {
+        let gb = 1024 * 1024 * 1024;
+        let gaps = identify_gaps(&estimate(1, 100, 0, 50 * gb), &caps(2, 200, 0, 0, 10 * gb));
+        assert_eq!(gaps.len(), 1);
+        assert_eq!(gaps[0].resource_type, "storage");
+    }
+
+    #[test]
+    fn multiple_gaps() {
+        let gb = 1024 * 1024 * 1024;
+        let gaps = identify_gaps(
+            &estimate(8, 16 * gb, 0, 50 * gb),
+            &caps(4, 8 * gb, 0, 0, 10 * gb),
+        );
+        assert_eq!(gaps.len(), 3);
+    }
+
+    #[test]
+    fn no_warnings_when_usage_low() {
+        let warnings =
+            generate_warnings(&estimate(2, 4_000, 0, 500), &caps(10, 16_000, 0, 0, 2_000));
+        assert!(warnings.is_empty());
+    }
+
+    #[test]
+    fn cpu_warning_at_75_percent() {
+        let warnings = generate_warnings(&estimate(3, 100, 0, 100), &caps(4, 1_000, 0, 0, 1_000));
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("CPU"));
+    }
+
+    #[test]
+    fn memory_warning_at_80_percent() {
+        let warnings = generate_warnings(&estimate(1, 800, 0, 100), &caps(10, 1_000, 0, 0, 1_000));
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("memory"));
+    }
+
+    #[test]
+    fn storage_warning_at_85_percent() {
+        let warnings = generate_warnings(&estimate(1, 100, 0, 850), &caps(10, 1_000, 0, 0, 1_000));
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("storage"));
+    }
+
+    #[test]
+    fn no_gpu_warning_when_no_gpu() {
+        let warnings =
+            generate_warnings(&estimate(1, 100, 500, 100), &caps(10, 1_000, 0, 0, 1_000));
+        assert!(warnings.is_empty());
+    }
+}

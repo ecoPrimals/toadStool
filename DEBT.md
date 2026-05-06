@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S222
+**Date**: May 2026 — S223
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S223 (Deep Debt — json_line.rs Smart Refactor + Coverage + Stale Comments)**:
+Smart-refactored `btsp/json_line.rs` (905 LOC → 478 + 255 relay.rs + 189 negotiate.rs);
+zero files >800 LOC in production code. Production `unwrap()` audit: confirmed zero
+production unwraps (all in tests/docs). Fixed stale hardcoded `/tmp/ecoPrimals/discovery/`
+comments in `integration/protocols/src/client/discovery.rs` → capability-based language.
+Added 12 inline tests to `server/src/resource_validator/analysis.rs` (`identify_gaps` +
+`generate_warnings`). All quality gates green.
 
 **S222 (primalSpring ironGate Audit — Sandbox + Env Expansion + Specs + Discovery)**:
 Responded to primalSpring ironGate provenance pipeline audit (3 gaps for toadStool):

@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn two_receipts_differ() {
         let a = LendReceipt::new("x");
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        // Nanosecond timestamp resolution guarantees distinct tokens without sleep.
         let b = LendReceipt::new("x");
         assert_ne!(a.token, b.token);
     }
