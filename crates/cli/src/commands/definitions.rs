@@ -215,6 +215,10 @@ pub enum Commands {
         #[arg(long)]
         register: bool,
 
+        /// TCP bind address as host:port (default: 127.0.0.1; overrides --port)
+        #[arg(long)]
+        bind: Option<String>,
+
         /// JSON-RPC TCP port (0 = OS-assigned; enables cross-host access alongside Unix socket)
         #[arg(long, default_value_t = toadstool_config::defaults::network::API_PORT)]
         port: u16,
@@ -253,6 +257,10 @@ pub enum Commands {
         /// Register with biomeOS capability registry
         #[arg(long)]
         register: bool,
+
+        /// TCP bind address as host:port (default: 127.0.0.1; overrides --port)
+        #[arg(long)]
+        bind: Option<String>,
 
         /// JSON-RPC TCP port (0 = OS-assigned; enables cross-host access alongside Unix socket)
         #[arg(long, default_value_t = toadstool_config::defaults::network::API_PORT)]

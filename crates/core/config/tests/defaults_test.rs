@@ -148,7 +148,7 @@ fn test_timeouts_discovery_interval_and_keepalive() {
 
 #[test]
 fn test_network_bind_address_default() {
-    assert_eq!(network::BIND_ADDRESS_DEFAULT, "0.0.0.0");
+    assert_eq!(network::BIND_ADDRESS_DEFAULT, "127.0.0.1");
 }
 
 #[test]

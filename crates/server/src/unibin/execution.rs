@@ -55,7 +55,7 @@ impl UnibinExecutionConfig {
     #[must_use]
     pub fn from_env() -> Self {
         let bind_host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
-            .unwrap_or_else(|_| toadstool_common::constants::network::BIND_ALL_IPV4.into());
+            .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.into());
         let tcp_bind_address = std::env::var(socket_env::TOADSTOOL_TCP_BIND_ADDRESS).ok();
         let use_distributed = std::env::var(socket_env::TOADSTOOL_STANDALONE)
             .map(|v| v != "1" && v.to_lowercase() != "true")

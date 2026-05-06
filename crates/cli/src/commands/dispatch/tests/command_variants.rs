@@ -247,6 +247,7 @@ fn test_up_biome_options_construction() {
 fn test_commands_server_variant() {
     let cmd = Commands::Server {
         register: true,
+        bind: None,
         port: 8080,
         socket: None,
         config: None,

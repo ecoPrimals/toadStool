@@ -177,6 +177,7 @@ fn cli_context_from_transport_status() {
 fn cli_context_from_server_command() {
     let cli = make_cli(Commands::Server {
         register: true,
+        bind: None,
         port: 8084,
         socket: Some(PathBuf::from("/tmp/test.sock")),
         config: None,
@@ -192,6 +193,7 @@ fn cli_context_from_server_command() {
 fn cli_context_from_daemon_command() {
     let cli = make_cli(Commands::Daemon {
         register: false,
+        bind: None,
         port: 9090,
         socket: None,
         config: Some(PathBuf::from("/etc/toadstool/config.toml")),

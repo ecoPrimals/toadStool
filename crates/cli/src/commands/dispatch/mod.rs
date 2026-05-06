@@ -148,6 +148,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
 
         Commands::Server {
             register,
+            bind,
             port,
             socket,
             config,
@@ -157,6 +158,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         }
         | Commands::Daemon {
             register,
+            bind,
             port,
             socket,
             config,
@@ -177,6 +179,9 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
                 "   Register: {}",
                 if *register { "enabled" } else { "disabled" }
             );
+            if let Some(b) = bind {
+                info!("   Bind: {}", b);
+            }
             info!("   Port: {}", port);
             if let Some(sock) = socket {
                 info!("   Socket: {}", sock.display());
@@ -192,7 +197,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
                 info!("   Family ID: {}", fid);
             }
 
-            server::run_server_daemon(family_id.clone(), Some(*port)).await?;
+            server::run_server_daemon(family_id.clone(), bind.clone(), Some(*port)).await?;
         }
 
         Commands::Execute {

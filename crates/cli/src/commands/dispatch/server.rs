@@ -8,10 +8,17 @@ use tracing::info;
 use crate::{CliError, Result};
 
 /// Run ToadStool in server/daemon mode (UniBin compliant)
-pub async fn run_server_daemon(family_id: Option<String>, port: Option<u16>) -> Result<()> {
+///
+/// `bind_override` is an explicit `host:port` from `--bind` that takes precedence
+/// over `--port` and `TOADSTOOL_BIND_ADDRESS`.
+pub async fn run_server_daemon(
+    family_id: Option<String>,
+    bind_override: Option<String>,
+    port: Option<u16>,
+) -> Result<()> {
     info!("🚀 Starting ToadStool server (UniBin mode)...");
 
-    toadstool_server::run_server_main(family_id, port)
+    toadstool_server::run_server_main(family_id, bind_override, port)
         .await
         .map_err(|e| CliError::Other(format!("Server failed: {e}")))?;
 
@@ -80,7 +87,7 @@ mod tests {
         temp_env::async_with_vars([("TOADSTOOL_STANDALONE", Some("1"))], async {
             let result = tokio::time::timeout(
                 Duration::from_millis(80),
-                super::run_server_daemon(Some("test-family-id".to_string()), None),
+                super::run_server_daemon(Some("test-family-id".to_string()), None, None),
             )
             .await;
 

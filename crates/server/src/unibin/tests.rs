@@ -291,7 +291,7 @@ async fn run_server_main_fails_when_socket_path_unavailable() {
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
         async {
-            let result = super::run_server_main(None, None).await;
+            let result = super::run_server_main(None, None, None).await;
             assert!(
                 result.is_err(),
                 "run_server_main should fail when socket path unavailable"
@@ -413,7 +413,7 @@ async fn run_server_main_refuses_family_plus_insecure() {
             ("BIOMEOS_INSECURE", Some("1")),
         ],
         async {
-            let result = run_server_main(None, None).await;
+            let result = run_server_main(None, None, None).await;
             assert!(result.is_err(), "must refuse when FAMILY_ID + INSECURE");
             let err = result.unwrap_err().to_string();
             assert!(
@@ -438,6 +438,36 @@ fn insecure_guard_allows_dev_mode_via_api() {
             assert!(
                 toadstool_common::primal_sockets::check_insecure_guard().is_ok(),
                 "guard should not fire without FAMILY_ID"
+            );
+        },
+    );
+}
+
+// ─── PG-55: --bind flag + localhost default ───
+
+#[test]
+fn unibin_config_defaults_to_localhost_not_all_interfaces() {
+    temp_env::with_vars(
+        [("TOADSTOOL_BIND_ADDRESS", None::<&str>)],
+        || {
+            let cfg = UnibinExecutionConfig::from_env();
+            assert_eq!(
+                cfg.bind_host, "127.0.0.1",
+                "default bind should be loopback, not 0.0.0.0 (PG-55)"
+            );
+        },
+    );
+}
+
+#[test]
+fn unibin_config_respects_env_override() {
+    temp_env::with_vars(
+        [("TOADSTOOL_BIND_ADDRESS", Some("0.0.0.0"))],
+        || {
+            let cfg = UnibinExecutionConfig::from_env();
+            assert_eq!(
+                cfg.bind_host, "0.0.0.0",
+                "env override should allow all-interfaces when explicitly set"
             );
         },
     );

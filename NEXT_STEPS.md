@@ -1,8 +1,8 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S223 (Deep Debt — Smart Refactor + Sleep Elimination + Test Speed)
+**Updated**: May 2026 — S224 (PG-55: --bind Flag + Localhost Default)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,833 workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)**
-**Latest**: S223 — Deep debt: smart-refactored btsp/json_line.rs (905→478+255+189 LOC), eliminated 4 test sleeps (deterministic time), auto_config test speedup 10s→0.24s (mDNS/DNS skip in tests), confirmed zero production unwrap(), +12 tests. 22,833 tests, 0 failures.
+**Latest**: S224 — PG-55: `--bind host:port` flag on `server`/`daemon` subcommands (follows barraCuda pattern). TCP bind default changed from `0.0.0.0` (all interfaces) to `127.0.0.1` (loopback only). `TOADSTOOL_BIND_ADDRESS` env override preserved. +5 tests. 22,838 tests, 0 failures.
 
 ---
 

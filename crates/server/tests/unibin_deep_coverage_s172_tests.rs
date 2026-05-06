@@ -337,7 +337,7 @@ async fn unibin_s172_run_server_main_fails_when_runtime_parent_is_file() {
             ("TOADSTOOL_STANDALONE", Some("1")),
         ],
         async {
-            let result = toadstool_server::run_server_main(None, None).await;
+            let result = toadstool_server::run_server_main(None, None, None).await;
             assert!(
                 result.is_err(),
                 "expected error when biomeos cannot be created"

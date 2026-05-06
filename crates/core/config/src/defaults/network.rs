@@ -28,12 +28,13 @@
 //!
 //! **Philosophy**: Know yourself, discover others at runtime.
 
-/// Default bind address (listen on all interfaces).
-/// Use for server bind addresses. Override via `TOADSTOOL_BIND_ADDRESS`.
-pub const BIND_ADDRESS_DEFAULT: &str = "0.0.0.0";
+/// Default bind address (loopback only — not exposed on LAN).
+/// Override via `TOADSTOOL_BIND_ADDRESS` or `--bind` CLI flag.
+/// Use `0.0.0.0` explicitly when cross-host access is intended.
+pub const BIND_ADDRESS_DEFAULT: &str = "127.0.0.1";
 
-/// Loopback address for local connections (e.g. client connecting to localhost).
-/// Do NOT use for server binding; use `BIND_ADDRESS_DEFAULT` instead.
+/// Loopback address for local connections.
+/// Same as `BIND_ADDRESS_DEFAULT` (both default to loopback for security).
 pub const LOCALHOST: &str = "127.0.0.1";
 
 // ═══════════════════════════════════════════════════════════════════════════

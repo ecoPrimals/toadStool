@@ -79,6 +79,8 @@ pub enum ShutdownSignal {
 
 /// Run ToadStool in server/daemon mode
 ///
+/// `bind_override` is an explicit `host:port` from `--bind` (takes precedence over
+/// `--port` and `TOADSTOOL_BIND_ADDRESS`).
 /// `tcp_port` enables newline-delimited JSON-RPC on the given TCP port (UniBin `--port`).
 ///
 /// # Errors
@@ -86,6 +88,7 @@ pub enum ShutdownSignal {
 /// Returns [`ServerError`] if socket path resolution, executor creation, or server startup fails.
 pub async fn run_server_main(
     family_id_override: Option<String>,
+    bind_override: Option<String>,
     tcp_port: Option<u16>,
 ) -> Result<(), ServerError> {
     info!(
@@ -132,7 +135,25 @@ pub async fn run_server_main(
     let socket_path = format::get_socket_path(&family_id, &node_id)?;
     info!("✅ Final socket path: {:?}", socket_path);
 
-    let unibin_config = execution::UnibinExecutionConfig::from_env();
+    let mut unibin_config = execution::UnibinExecutionConfig::from_env();
+
+    // --bind host:port overrides both bind_host and tcp_port
+    let tcp_port = if let Some(ref bind) = bind_override {
+        if let Some((host, port_str)) = bind.rsplit_once(':') {
+            if let Ok(port) = port_str.parse::<u16>() {
+                host.clone_into(&mut unibin_config.bind_host);
+                Some(port)
+            } else {
+                unibin_config.bind_host.clone_from(bind);
+                tcp_port
+            }
+        } else {
+            unibin_config.bind_host.clone_from(bind);
+            tcp_port
+        }
+    } else {
+        tcp_port
+    };
 
     info!("Initializing compute executor...");
     let executor = execution::create_executor(&family_id, &unibin_config).await?;

@@ -48,7 +48,6 @@ fn test_server_command_with_register() {
 
 #[test]
 fn test_server_command_with_custom_port() {
-    // Test server command with custom port
     let args = vec!["toadstool", "server", "--port", "9090"];
     let cli = Cli::parse_from(args);
 
@@ -56,6 +55,42 @@ fn test_server_command_with_custom_port() {
         assert_eq!(port, 9090);
     } else {
         panic!("Expected Server command");
+    }
+}
+
+#[test]
+fn test_server_bind_flag_parsed() {
+    let args = vec!["toadstool", "server", "--bind", "192.168.1.5:9400"];
+    let cli = Cli::parse_from(args);
+
+    if let Commands::Server { bind, .. } = cli.command {
+        assert_eq!(bind, Some("192.168.1.5:9400".to_string()));
+    } else {
+        panic!("Expected Server command");
+    }
+}
+
+#[test]
+fn test_server_bind_default_is_none() {
+    let args = vec!["toadstool", "server"];
+    let cli = Cli::parse_from(args);
+
+    if let Commands::Server { bind, .. } = cli.command {
+        assert!(bind.is_none(), "--bind should default to None");
+    } else {
+        panic!("Expected Server command");
+    }
+}
+
+#[test]
+fn test_daemon_bind_flag_parsed() {
+    let args = vec!["toadstool", "daemon", "--bind", "0.0.0.0:8080"];
+    let cli = Cli::parse_from(args);
+
+    if let Commands::Daemon { bind, .. } = cli.command {
+        assert_eq!(bind, Some("0.0.0.0:8080".to_string()));
+    } else {
+        panic!("Expected Daemon command");
     }
 }
 
@@ -138,6 +173,7 @@ fn test_server_command_all_options() {
 
     if let Commands::Server {
         register,
+        bind: _,
         port,
         socket,
         config,
@@ -218,6 +254,7 @@ fn test_daemon_command_all_options() {
 
     if let Commands::Daemon {
         register,
+        bind: _,
         port,
         socket,
         config,
