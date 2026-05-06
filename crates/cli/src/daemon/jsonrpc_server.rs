@@ -272,7 +272,7 @@ async fn handle_tcp_connection(
     Ok(())
 }
 
-/// BTSP production path: handshake then length-prefixed JSON-RPC frames (see `BTSP_PROTOCOL_STANDARD.md`).
+/// BTSP production path: handshake then length-prefixed JSON-RPC frames (see `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md`).
 #[cfg(feature = "btsp")]
 async fn handle_btsp_daemon_connection(
     mut stream: UnixStream,

@@ -14,7 +14,7 @@ use crate::types::{PerformanceMetrics, ResourcePrediction};
     clippy::struct_field_names,
     reason = "Baseline metrics reserved for future model tuning; field names match domain"
 )]
-#[allow(dead_code)]
+#[allow(dead_code, reason = "reserved for future ML-based runtime model tuning")]
 #[derive(Clone)]
 pub(super) struct BaselineMetrics {
     pub(super) avg_execution_time: Duration,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Unix domain socket listener and per-connection handling for Pure JSON-RPC.
 //!
-//! Supports two modes per `BTSP_PROTOCOL_STANDARD.md`:
+//! Supports two modes per `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md`:
 //! - **Development** (no `FAMILY_ID`): NDJSON / HTTP hybrid
 //! - **Production** (`FAMILY_ID` set): Auto-detects per-connection — BTSP
 //!   binary clients get the full handshake + length-prefixed frames; plain-text
@@ -252,7 +252,7 @@ pub const fn is_plaintext_protocol_byte(byte: u8) -> bool {
 ///   `CompositionContext`) that send newline-delimited JSON-RPC can reach
 ///   compute capabilities without implementing BTSP client framing.
 ///
-/// Per `BTSP_PROTOCOL_STANDARD.md`: BTSP handshake is still enforced for
+/// Per `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md`: BTSP handshake is still enforced for
 /// binary-framed clients. Plain-text fallback relies on Unix socket permissions
 /// (0600) for access control.
 #[cfg(feature = "btsp")]

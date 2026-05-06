@@ -93,7 +93,7 @@ pub fn validate_insecure_guard(env: &SocketPathEnv) -> Result<(), String> {
             "BTSP security conflict: FAMILY_ID={family_id:?} (production) \
              with BIOMEOS_INSECURE=1 (development). These are mutually exclusive. \
              Either unset BIOMEOS_INSECURE for production, or unset FAMILY_ID for development. \
-             See BTSP_PROTOCOL_STANDARD.md §Compliance Checklist."
+             See ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md §Compliance Checklist."
         ));
     }
 

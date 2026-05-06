@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! BTSP protocol types per `BTSP_PROTOCOL_STANDARD.md` v1.0.0.
+//! BTSP protocol types per `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md` v1.0.0.
 
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;

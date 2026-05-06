@@ -5,7 +5,7 @@
 //! Production connections authenticate via BTSP first; plaintext is
 //! negotiated after secure nucleation, not default.
 //!
-//! Reference: `wateringHole/BTSP_PROTOCOL_STANDARD.md` v1.0.0
+//! Reference: `ecoPrimals/infra/wateringHole/BTSP_PROTOCOL_STANDARD.md` v1.0.0
 //!
 //! ## Phases
 //!
