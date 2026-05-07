@@ -37,6 +37,7 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 - **Display Phase 2**: `display.present`, `display.subscribe_input`, `display.poll_events` (petalTongue IPC)
 - **Encrypted compute dispatch** (Phase 55): Tower `crypto.encrypt`/`crypto.decrypt` for payloads; `DISCOVERY_SOCKET` highest-precedence capability resolution
 - **Self-registration** (S207): `ipc.register` to Songbird via `DISCOVERY_SOCKET` at startup — dynamic NUCLEUS membership without restart
+- **Health probes**: `health.liveness` returns `{"status":"starting"}` before dispatcher is ready, `{"status":"alive"}` after; `health.readiness` returns `{"status":"starting"}` / `{"status":"ready"}`. Callers should use **>= 3 second** probe timeouts (PG-62, S225)
 - **BTSP**: Phase 3 encrypted channel (ChaCha20-Poly1305, S215); transport switch verified (S218); 13/13 converged JSON-line relay + NDJSON post-handshake (primalSpring Phase 45c); PG-46 resolved (connection-reused handshake, S214)
 - **Dep hygiene**: `test-mocks` off by default (S206); all workspace deps unified
 - **Monitoring**: Real host queries via `toadstool_sysmon` + `rustix::fs::statvfs`

@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S226 (Deep Debt Audit — Workspace Clippy Clean)
+**Updated**: May 2026 — S227 (Doc Cleanup + Handoff Hygiene)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843 workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)**
-**Latest**: S226 — Deep debt audit: workspace `cargo clippy -- -D warnings` zero errors. 8 clippy errors in integration-primals fixed (unused_async, redundant closures, debug formatting). Bare `allow(dead_code)` given reason. `deny.toml` ring comment corrected.
-**Previous**: S225 — PG-62: `health.liveness` fast-path returns `{"status":"starting"}` during initialization, `{"status":"alive"}` once ready. Discovery registration moved after listener spawn. Recommended caller timeout: ≥3s. BearDog `crypto.sign_contract` (PG-60+) tracked for Phase 60+. +5 tests. 22,843 tests, 0 failures.
+**Latest**: S227 — Doc cleanup: README Recently Completed consolidated (S90–S198, S203*, S173–S176, S207–S213 archived to summary lines). S226 handoff created. Stale test counts/session refs fixed across root docs. CONTEXT.md updated with PG-62 health probe info.
+**Previous**: S226 — Deep debt audit: workspace `cargo clippy -- -D warnings` zero errors. S225 — PG-62: `health.liveness` fast-path (starting→alive). 22,843 tests, 0 failures.
 
 ---
 
@@ -34,7 +34,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **22,833 tests** (0 failures). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **22,843 tests** (0 failures). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -104,7 +104,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **`anyhow` → `thiserror`** -- fully eliminated from all ~30 workspace crates
 - [x] **`manual_jsonrpc` → `pure_jsonrpc`** -- full migration, unibin uses pure_jsonrpc
 - [x] **GPU Lanczos kernel** -- `lanczos_iteration_f64.wgsl` + `lanczos_eigensolver()` dispatch
-- [x] **rust-version** -- bumped 1.75 → 1.80 (LazyLock stable)
+- [x] **rust-version** -- bumped 1.75 → 1.85 (edition 2024, MSRV 1.85)
 - [x] **Production stubs** -- 15+ stubs evolved to real implementations or proper errors
 - [x] **Dead code documented** -- all `#[allow(dead_code)]` annotated with justification
 - [x] **Unidirectional streaming** -- ring_buffer + unidirectional + stateful + pipeline
@@ -131,7 +131,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 22,000+ tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 22,843 tests; ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -151,7 +151,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - [x] **SubstrateType expansion** -- 4→8 variants: IntegratedGpu, Npu, Tpu, Fpga, Dsp, Quantum (S96)
 - [x] **God file splits (round 3)** -- dispatch.rs, detection.rs, engine.rs, protocols/lib.rs, specialized_templates.rs (S96)
 - [x] **BTSP Phase 2 (S198)** -- handshake on all UDS accept paths (tarpc + daemon JSON-RPC servers)
-- [x] **Health triad shapes (S198)** -- liveness / readiness / check JSON-RPC responses aligned
+- [x] **Health triad shapes (S198+S225)** -- liveness (`starting`→`alive`), readiness (`starting`→`ready`), check (full envelope); PG-62 fast-path (S225)
 - [x] **musl-static release binary (S198)** -- ~11MB x86_64 PIE stripped, validated
 - [x] **API orphan resolved** -- crates/api/ ByobApi extracted to container crate (S96)
 - [x] **V4L2 unsafe docs** -- All SAFETY comments on unsafe blocks (S96)
@@ -165,7 +165,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S206)
+## Completed This Session (S90-S227)
 
 ### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
 - **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.
@@ -290,7 +290,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 ### Session S198: TS-01, BTSP Phase 2, Health Triad, OpenCL Deprecation, musl (Apr 9, 2026)
 - **TS-01 RESOLVED**: coralReef / shader-compiler discovery in `visualization_client.rs` — unified `capability.discover` (removed `CORALREEF_SOCKET`/`URL`, `coralreef-core.json`, coralreef directory scan).
 - **BTSP Phase 2 WIRED**: Handshake enforced on all UDS accept paths (`tarpc_server.rs`, `daemon/jsonrpc_server.rs`; pure JSON-RPC already had it).
-- **Health triad**: `health.liveness` → `{"status":"alive"}`; `health.readiness` → `{"status":"ready","version":...}`; `health.check` → full envelope.
+- **Health triad**: `health.liveness` → `{"status":"starting"}` / `{"status":"alive"}` (PG-62 fast-path, S225); `health.readiness` → `{"status":"starting"}` / `{"status":"ready","version":...}`; `health.check` → full envelope. Callers should use **≥3s** probe timeout.
 - **OpenCL deprecated**: `ocl` removed; OpenCL code paths stubbed; `GpuFramework::OpenCl` deprecated.
 - **Refactors**: Six large files → module dirs (handler/core, tarpc_server, interned_strings, ecosystem/types, storage, cloud_provider_trait), all <500 lines.
 - **Discovery**: `SocketPathEnv` hints + `resolve_capability_socket_fallback` for primal socket resolution.
@@ -313,7 +313,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 - **S191 (Apr 8, 2026)**: Wire Standard L3 `cost_estimates` (55+ methods, energy/time/compute model) and `operation_dependencies` (20+ chains) added to `capabilities.list`. Last 4 user-visible primal names removed. Stale root `biome.yaml` deleted. Fresh audit: 0 production TODOs, 0 user-facing primal names, all unsafe in containment, all mocks gated. 21,514 tests, 0 failures.
 
 ### Session S190: Wire Standard L2 Compliance (Apr 8, 2026)
-- **S190 (Apr 8, 2026)**: `health.liveness` → `"status": "alive"`, `capabilities.list` → wire envelope, `identity.get` → `domain` + `license`. Separated `compute.capabilities` from `capabilities.list`.
+- **S190 (Apr 8, 2026)**: `health.liveness` initial shape (evolved to `starting`/`alive` in S225 PG-62), `capabilities.list` → wire envelope, `identity.get` → `domain` + `license`. Separated `compute.capabilities` from `capabilities.list`.
 
 ### Session S189: GAP-MATRIX-05 + Debris (Apr 7, 2026)
 - **S189 (Apr 7, 2026)**: Server mode docs rewritten (67 methods, 11 namespaces). Deleted stale `biome-production.yaml`. Un-ignored sys-crate test. Fixed broken doc links.
