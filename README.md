@@ -155,6 +155,18 @@ Callers probing `health.liveness` should use a timeout of **≥3 seconds** (reco
 | `health.readiness` | `{"status":"starting","version":"..."}` | `{"status":"ready","version":"..."}` |
 | `health.check` | Full envelope (always `"alive"`) | Full envelope |
 
+### Dispatch Timeouts
+
+`compute.dispatch.submit` and `shader.dispatch` accept an optional `timeout_ms` parameter. Defaults:
+
+| Constant | Value | Override |
+|----------|-------|----------|
+| `DISPATCH_DEFAULT_TIMEOUT` | 5,000 ms | `timeout_ms` in request params |
+| `WORKLOAD_EXECUTION_TIMEOUT` | 300 s (5 min) | `TOADSTOOL_EXECUTION_TIMEOUT` env |
+| `TCP_IDLE_TIMEOUT` | 300 s | `TOADSTOOL_TCP_IDLE_TIMEOUT_SECS` env |
+
+For GPU workloads, callers should set `timeout_ms` proportional to expected computation time. The 5s default is appropriate for small shader dispatches; large GPU jobs should pass explicit timeouts.
+
 ### JSON-RPC Methods (~65 direct + semantic registry; S186+)
 
 Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ intelligence service), **`shader.compile.*`** (→ visualization service), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ orchestration and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in visualization service).
@@ -353,7 +365,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S227 (Doc Cleanup + Handoff Hygiene). **22,843** workspace tests, 0 failures (7,896+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S228 (primalSpring Audit Response — zero open gaps). **22,843** workspace tests, 0 failures (7,896+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S227 (Doc Cleanup + Handoff Hygiene)
+**Updated**: May 2026 — S228 (primalSpring Audit Response — zero open gaps)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843 workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)**
-**Latest**: S227 — Doc cleanup: README Recently Completed consolidated (S90–S198, S203*, S173–S176, S207–S213 archived to summary lines). S226 handoff created. Stale test counts/session refs fixed across root docs. CONTEXT.md updated with PG-62 health probe info.
-**Previous**: S226 — Deep debt audit: workspace `cargo clippy -- -D warnings` zero errors. S225 — PG-62: `health.liveness` fast-path (starting→alive). 22,843 tests, 0 failures.
+**Latest**: S228 — primalSpring audit response: toadStool gap (short timeout sensitivity) confirmed RESOLVED (PG-62, S225). Dispatch timeout documentation added to README (`DISPATCH_DEFAULT_TIMEOUT` 5s, `WORKLOAD_EXECUTION_TIMEOUT` 300s, override guidance). Zero open gaps.
+**Previous**: S227 — Doc cleanup: README consolidated. S226 — Clippy clean. S225 — PG-62 fast-path. 22,843 tests, 0 failures.
 
 ---
 
@@ -165,7 +165,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S227)
+## Completed This Session (S90-S228)
 
 ### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
 - **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.
