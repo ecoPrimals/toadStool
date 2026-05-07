@@ -1,8 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S225 (PG-62: Health Liveness Fast-Path + Startup Reorder)
+**Updated**: May 2026 — S226 (Deep Debt Audit — Workspace Clippy Clean)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843 workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)**
-**Latest**: S225 — PG-62: `health.liveness` fast-path returns `{"status":"starting"}` during initialization, `{"status":"alive"}` once ready. Discovery registration moved after listener spawn. Recommended caller timeout: ≥3s. BearDog `crypto.sign_contract` (PG-60+) tracked for Phase 60+. +5 tests. 22,843 tests, 0 failures.
+**Latest**: S226 — Deep debt audit: workspace `cargo clippy -- -D warnings` zero errors. 8 clippy errors in integration-primals fixed (unused_async, redundant closures, debug formatting). Bare `allow(dead_code)` given reason. `deny.toml` ring comment corrected.
+**Previous**: S225 — PG-62: `health.liveness` fast-path returns `{"status":"starting"}` during initialization, `{"status":"alive"}` once ready. Discovery registration moved after listener spawn. Recommended caller timeout: ≥3s. BearDog `crypto.sign_contract` (PG-60+) tracked for Phase 60+. +5 tests. 22,843 tests, 0 failures.
 
 ---
 

@@ -38,7 +38,7 @@ impl ServiceManager {
         }
     }
 
-    pub async fn start_service(
+    pub fn start_service(
         &mut self,
         service_id: String,
         service_type: String,
@@ -68,7 +68,7 @@ impl ServiceManager {
         Ok(())
     }
 
-    pub async fn stop_service(&mut self, service_id: &str) -> PrimalResult<()> {
+    pub fn stop_service(&mut self, service_id: &str) -> PrimalResult<()> {
         if let Some(service) = self.services.get_mut(service_id) {
             service.status = ServiceStatus::Stopped;
         }

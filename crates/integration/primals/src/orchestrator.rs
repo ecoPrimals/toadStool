@@ -95,14 +95,16 @@ impl PrimalOrchestrator {
             .data
             .get("deployment_id")
             .or_else(|| response.data.get("id"))
-            .and_then(|v| v.as_str())
-            .map(std::string::ToString::to_string)
-            .unwrap_or_else(|| format!("deployed-{}", manifest.name));
+            .and_then(serde_json::Value::as_str)
+            .map_or_else(
+                || format!("deployed-{}", manifest.name),
+                std::string::ToString::to_string,
+            );
 
         Ok(deployment_id)
     }
 
-    pub async fn register_primal(
+    pub fn register_primal(
         &mut self,
         primal_id: String,
         primal: Box<dyn PrimalIntegration>,
@@ -111,8 +113,8 @@ impl PrimalOrchestrator {
         Ok(())
     }
 
-    pub async fn get_primal(&self, primal_id: &str) -> Option<&dyn PrimalIntegration> {
-        self.primals.get(primal_id).map(|p| p.as_ref())
+    pub fn get_primal(&self, primal_id: &str) -> Option<&dyn PrimalIntegration> {
+        self.primals.get(primal_id).map(std::convert::AsRef::as_ref)
     }
 }
 
@@ -198,9 +200,8 @@ mod tests {
             should_fail: false,
         };
         orch.register_primal("test".to_string(), Box::new(mock))
-            .await
             .unwrap();
-        assert!(orch.get_primal("test").await.is_some());
-        assert!(orch.get_primal("nonexistent").await.is_none());
+        assert!(orch.get_primal("test").is_some());
+        assert!(orch.get_primal("nonexistent").is_none());
     }
 }

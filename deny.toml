@@ -74,8 +74,9 @@ deny = [
     # OpenSSL — use rustls + aws-lc-rs / *ring* instead
     { name = "openssl" },
     { name = "openssl-sys" },
-    # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives
-    # License clarified in [[licenses.clarify]]; verified absent from Cargo.lock (S203l).
+    # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives.
+    # License clarified in [[licenses.clarify]]; not in resolved workspace graph
+    # (stale lockfile entry may persist from older resolves — `cargo tree -i ring` returns empty).
     { name = "ring" },
     # async-trait — proc macro for dyn-safe async traits; fully evolved to manual
     # Pin<Box<dyn Future>> and native AFIT (S203r). No workspace crate depends on it directly.
