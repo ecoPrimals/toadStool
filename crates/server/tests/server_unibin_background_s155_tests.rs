@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{RwLock, broadcast};
@@ -204,6 +205,7 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     ));
 
     let result = start_servers_with_fallback(

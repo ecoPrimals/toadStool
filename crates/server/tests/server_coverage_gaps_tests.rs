@@ -8,6 +8,7 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use toadstool_server::GraphValidationError;
 use toadstool_server::cross_gate::{GateGpuInfo, JobRouter, RoutingReason};
@@ -41,6 +42,7 @@ async fn test_compute_submit_transform_job_type() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!({
         "transform": {
@@ -64,6 +66,7 @@ async fn test_compute_submit_custom_job_type() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!({
         "custom": {
@@ -87,6 +90,7 @@ async fn test_compute_submit_inference_with_params() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!({
         "inference": {
@@ -117,6 +121,7 @@ async fn test_compute_status_invalid_uuid_format() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!({ "job_id": "not-a-valid-uuid" });
     let request = mk_request("compute.status", Some(params), 1);
@@ -135,6 +140,7 @@ async fn test_compute_result_invalid_uuid_format() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!({ "job_id": "garbage" });
     let request = mk_request("compute.result", Some(params), 1);
@@ -153,6 +159,7 @@ async fn test_compute_cancel_invalid_uuid_format() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!({ "job_id": 12345 });
     let request = mk_request("compute.cancel", Some(params), 1);
@@ -173,6 +180,7 @@ async fn test_query_status_params_not_string() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
     let params = serde_json::json!(42);
     let request = mk_request("toadstool.query_status", Some(params), 1);

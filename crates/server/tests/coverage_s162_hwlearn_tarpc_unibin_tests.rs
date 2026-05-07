@@ -6,6 +6,7 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use toadstool_server::pure_jsonrpc::{JsonRpcHandler, JsonRpcRequest};
 use toadstool_server::{StandaloneExecutor, WorkloadExecutorDispatch};
@@ -17,6 +18,7 @@ fn test_handler() -> JsonRpcHandler {
         )),
         "test-s162-hw".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     )
 }
 

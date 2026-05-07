@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use super::JsonRpcHandler;
 use crate::pure_jsonrpc::types::{JsonRpcError, JsonRpcRequest};
@@ -10,7 +11,7 @@ fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(crate::tarpc_server::WorkloadExecutorDispatch::Standalone(
         crate::tarpc_server::StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
+    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)))
 }
 
 fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
@@ -63,6 +64,49 @@ async fn test_health_triad_liveness_readiness_check() {
     let r = check.result.expect("check");
     assert!(r["healthy"].as_bool().unwrap());
     assert_eq!(r["status"], "alive");
+}
+
+/// PG-62: health.liveness returns "starting" when the readiness flag is false.
+#[tokio::test]
+async fn test_health_liveness_returns_starting_before_ready() {
+    use std::sync::atomic::Ordering;
+
+    let ready = Arc::new(AtomicBool::new(false));
+    let executor = Arc::new(crate::tarpc_server::WorkloadExecutorDispatch::Standalone(
+        crate::tarpc_server::StandaloneExecutor::new(),
+    ));
+    let handler = JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::clone(&ready));
+
+    let live = handler
+        .handle_request(&mk_request("health.liveness", None, 20))
+        .await;
+    assert!(live.error.is_none());
+    let r = live.result.expect("liveness starting");
+    assert_eq!(r["status"], "starting");
+
+    let rdns = handler
+        .handle_request(&mk_request("health.readiness", None, 21))
+        .await;
+    assert!(rdns.error.is_none());
+    let r = rdns.result.expect("readiness starting");
+    assert_eq!(r["status"], "starting");
+
+    ready.store(true, Ordering::Release);
+
+    let live = handler
+        .handle_request(&mk_request("health.liveness", None, 22))
+        .await;
+    assert!(live.error.is_none());
+    let r = live.result.expect("liveness alive");
+    assert_eq!(r["status"], "alive");
+
+    let rdns = handler
+        .handle_request(&mk_request("health.readiness", None, 23))
+        .await;
+    assert!(rdns.error.is_none());
+    let r = rdns.result.expect("readiness ready");
+    assert_eq!(r["status"], "ready");
+    assert_eq!(r["version"], "test-1.0.0");
 }
 
 #[tokio::test]

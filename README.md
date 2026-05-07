@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,838 tests, 0 failures** (7,896+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **22,843 tests, 0 failures** (7,896+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -144,6 +144,16 @@ HDMI Tx    V4L2 Rx    Serial     TransportRouter
 - **Self-knowledge principle**: ToadStool only knows its own identity (`PRIMAL_NAME`); external primals are discovered via capability, not name
 - **Storage service integration** -- real JSON-RPC `storage.artifact.store`/`retrieve` with graceful fallback
 - **Real-time events**: `compute.status` JSON-RPC polling or biomeOS/coordination service for event streaming
+
+### Health Probe Timeouts (PG-62)
+
+Callers probing `health.liveness` should use a timeout of **≥3 seconds** (recommended: 5s for composition startup). During initialization, `health.liveness` returns `{"status":"starting"}` until the server is fully ready (discovery registered, biomeOS scanned), then transitions to `{"status":"alive"}`. The socket accepts connections immediately upon listener bind — before executor initialization completes — so callers receive a fast response even during cold start. If BTSP handshake is required, add its budget (5s default, overridable via `BTSP_HANDSHAKE_TIMEOUT_SECS`).
+
+| Probe | During init | After ready |
+|-------|-------------|-------------|
+| `health.liveness` | `{"status":"starting"}` | `{"status":"alive"}` |
+| `health.readiness` | `{"status":"starting","version":"..."}` | `{"status":"ready","version":"..."}` |
+| `health.check` | Full envelope (always `"alive"`) | Full envelope |
 
 ### JSON-RPC Methods (~67 dynamically built; S186)
 
@@ -247,7 +257,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **22,833**, 0 failures (7,896+ lib-only) |
+| Workspace tests | **22,843**, 0 failures (7,896+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -269,12 +279,14 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 22,833 tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 22,843 tests; ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S225 (May 7, 2026)**: **PG-62 — Health Liveness Fast-Path + Startup Reorder** — `health.liveness` now returns `{"status":"starting"}` during initialization and `{"status":"alive"}` once fully ready (via `Arc<AtomicBool>` readiness flag). `health.readiness` likewise returns `"starting"` → `"ready"`. Discovery registration + biomeOS scan moved **after** listener spawn so the socket accepts connections immediately. Recommended caller timeout: **≥3 seconds** (documented). BearDog cross-family `crypto.sign_contract` (PG-60+) tracked for Phase 60+. +5 tests. 22,843 tests.
+- **S224 (May 7, 2026)**: **PG-55 — `--bind` Flag + Localhost Default (Security)** — Added `--bind host:port` CLI flag to `server`/`daemon` subcommands. Default TCP bind changed from `0.0.0.0` to `127.0.0.1`. Priority: CLI `--bind` > `TOADSTOOL_BIND_ADDRESS` env > localhost default. +5 tests. 22,838 tests.
 - **S223 (May 6, 2026)**: **Deep Debt — Smart Refactor + Sleep Elimination + Test Speed** — Smart-refactored `btsp/json_line.rs` (905→478 LOC + `relay.rs` 255 + `negotiate.rs` 189; zero files >800 LOC). Eliminated 4 test sleeps: `thread::sleep` → deterministic time manipulation (backdated timestamps, `tokio::time::pause`). Evolved `intrusion.rs` to `tokio::time::Instant` for testable time. Fixed `auto_config` ecosystem discovery blocking 10s on mDNS daemon startup/shutdown and DNS resolution in tests — `cfg!(test)` early-returns skip network I/O (237 tests: 10.02s→0.24s, 41x speedup). Confirmed zero production `unwrap()`. Stale `/tmp/ecoPrimals/discovery/` comments evolved to capability-based language. +12 tests (resource_validator/analysis). 22,833 tests.
 - **S222 (May 5, 2026)**: **primalSpring ironGate Audit — Sandbox + Env Expansion + Specs + Discovery** — Gap 2: sandbox `working_dir` override via `trusted_directories` (was hardcoded `/tmp`). Gap 8: `${VAR}`/`$VAR` env expansion in workload TOMLs. `display.composite` + `transport.bridge` specs added (PG-42). Discovery hierarchy documented. `convert_security_context` now parses isolation level. +26 tests. 22,821 tests.
 - **S221 (May 4, 2026)**: **Deep Debt — Capability Names + Dep Hygiene + Stub Evolution + Coverage** — All `barraCuda/coralReef` primal names in errors/deprecations evolved to capability-based language. reqwest 0.12→0.13 (ring→aws-lc-rs). `verify_migration_success` dead code fixed. Unsafe count reconciled 49→46. +20 tests (daemon routes 11, zero_config config 9). 22,580 tests.
@@ -355,7 +367,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 22,833 tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 22,843 tests; ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -398,7 +410,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S224 (PG-55: --bind Flag + Localhost Default). **22,838** workspace tests, 0 failures (7,884+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S225 (PG-62: Health Liveness Fast-Path + Startup Reorder). **22,843** workspace tests, 0 failures (7,884+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **BTSP Phase 3 encrypted channel** (ChaCha20-Poly1305, S215; transport switch verified S218). **PG-46 resolved** (socket reuse, S214). **Self-registration** with Songbird via `DISCOVERY_SOCKET` (S207). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

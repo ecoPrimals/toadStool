@@ -7,7 +7,7 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use toadstool::ExecutionStatus;
 use toadstool::RuntimeType;
@@ -30,6 +30,7 @@ async fn test_invalid_jsonrpc_version_increments_error_count() {
         )),
         "1.0.0".to_string(),
         Some(Arc::clone(&error_count)),
+        Arc::new(AtomicBool::new(true)),
     );
 
     let request = JsonRpcRequest {
@@ -51,6 +52,7 @@ async fn test_request_with_null_id_preserves_null_in_response() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     );
 
     let request = JsonRpcRequest {
@@ -205,6 +207,7 @@ async fn test_method_not_found_increments_error_count() {
         )),
         "1.0.0".to_string(),
         Some(Arc::clone(&error_count)),
+        Arc::new(AtomicBool::new(true)),
     );
 
     let request = JsonRpcRequest {

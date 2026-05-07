@@ -10,6 +10,7 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use toadstool_server::pure_jsonrpc::{JsonRpcError, JsonRpcHandler, JsonRpcRequest};
 use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
@@ -18,7 +19,7 @@ fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
+    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)))
 }
 
 fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {

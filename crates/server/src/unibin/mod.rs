@@ -19,7 +19,7 @@ pub use format::{
 };
 
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tracing::{error, info, warn};
 
 /// Exit codes following uniBin/ecoBin standard
@@ -160,6 +160,8 @@ pub async fn run_server_main(
     let version = env!("CARGO_PKG_VERSION").to_string();
 
     let error_count = Arc::new(AtomicU64::new(0));
+    // PG-62: readiness flag — health.liveness returns "starting" until this is set
+    let ready = Arc::new(AtomicBool::new(false));
 
     // Pass &version to server (borrow), move version to handler
     let server = ToadStoolTarpcServer::new(
@@ -167,45 +169,6 @@ pub async fn run_server_main(
         Arc::clone(&executor),
         Some(Arc::clone(&error_count)),
     );
-
-    info!("Self-registering with discovery service...");
-    match toadstool::ipc_helpers::register_with_discovery().await {
-        Ok(()) => {
-            info!("Successfully self-registered with discovery service");
-        }
-        Err(e) => {
-            warn!("Could not self-register with discovery service: {}", e);
-            warn!("Operating in standalone mode (no discovery)");
-        }
-    }
-
-    // Scan biomeOS socket directory for stale sockets and discovered primals
-    // (groundSpring V99 adaptive discovery pattern).
-    let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
-    if biomeos_dir.exists() {
-        let mut discovered = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().and_then(|e| e.to_str()) == Some("sock")
-                    && let Some(name) = path.file_stem().and_then(|s| s.to_str())
-                {
-                    discovered.push(name.to_string());
-                }
-            }
-        }
-        if discovered.is_empty() {
-            info!("🔍 biomeOS socket dir exists but no primals discovered");
-        } else {
-            info!(
-                "🔍 Discovered {} primal socket(s): {}",
-                discovered.len(),
-                discovered.join(", ")
-            );
-        }
-    } else {
-        info!("🔍 biomeOS socket dir not found (standalone mode)");
-    }
 
     info!("🔌 Starting IPC servers (isomorphic mode)...");
 
@@ -253,6 +216,7 @@ pub async fn run_server_main(
         Arc::clone(&executor),
         version,
         Some(Arc::clone(&error_count)),
+        Arc::clone(&ready),
     ));
 
     let socket_path_for_server = socket_path.clone();
@@ -274,6 +238,49 @@ pub async fn run_server_main(
             Err(e) => error!("❌ Server error: {}", e),
         }
     });
+
+    // PG-62: discovery registration and biomeOS scan run AFTER listeners are
+    // spawned so that health.liveness is reachable during initialization.
+    // Callers see {"status":"starting"} until ready flag is set below.
+    info!("Self-registering with discovery service...");
+    match toadstool::ipc_helpers::register_with_discovery().await {
+        Ok(()) => {
+            info!("Successfully self-registered with discovery service");
+        }
+        Err(e) => {
+            warn!("Could not self-register with discovery service: {}", e);
+            warn!("Operating in standalone mode (no discovery)");
+        }
+    }
+
+    let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+    if biomeos_dir.exists() {
+        let mut discovered = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&biomeos_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("sock")
+                    && let Some(name) = path.file_stem().and_then(|s| s.to_str())
+                {
+                    discovered.push(name.to_string());
+                }
+            }
+        }
+        if discovered.is_empty() {
+            info!("🔍 biomeOS socket dir exists but no primals discovered");
+        } else {
+            info!(
+                "🔍 Discovered {} primal socket(s): {}",
+                discovered.len(),
+                discovered.join(", ")
+            );
+        }
+    } else {
+        info!("🔍 biomeOS socket dir not found (standalone mode)");
+    }
+
+    ready.store(true, Ordering::Release);
+    info!("✅ Server fully initialized — health.liveness → alive");
 
     info!("Ready for shutdown (Ctrl+C or SIGTERM)");
     let shutdown_signal = execution::wait_for_shutdown_signal().await;

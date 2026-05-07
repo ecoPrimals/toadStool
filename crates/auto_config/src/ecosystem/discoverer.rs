@@ -293,12 +293,12 @@ impl EcosystemDiscoverer {
     /// Delegates to `toadstool_common::primal_integration::try_discover_via_mdns`
     /// which probes `_toadstool._tcp.local.` and filters by capability TXT records.
     pub(crate) fn discover_mdns_services() -> HashMap<String, ServiceInfo> {
+        use toadstool_common::primal_integration::try_discover_via_mdns;
+
         if cfg!(test) {
             debug!("Skipping mDNS probing in test mode");
             return HashMap::new();
         }
-
-        use toadstool_common::primal_integration::try_discover_via_mdns;
 
         let mut services = HashMap::new();
 

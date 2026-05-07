@@ -102,15 +102,28 @@ mod tests {
 
     #[tokio::test]
     async fn health_liveness_is_minimal_alive() {
-        let v = health_liveness().await.expect("ok");
+        let v = health_liveness(true).await.expect("ok");
         assert_eq!(v, serde_json::json!({ "status": "alive" }));
     }
 
     #[tokio::test]
+    async fn health_liveness_starting_before_ready() {
+        let v = health_liveness(false).await.expect("ok");
+        assert_eq!(v, serde_json::json!({ "status": "starting" }));
+    }
+
+    #[tokio::test]
     async fn health_readiness_includes_ready_and_version() {
-        let v = health_readiness("v-ready-1").await.expect("ok");
+        let v = health_readiness("v-ready-1", true).await.expect("ok");
         assert_eq!(v["status"], "ready");
         assert_eq!(v["version"], "v-ready-1");
+    }
+
+    #[tokio::test]
+    async fn health_readiness_starting_before_ready() {
+        let v = health_readiness("v-start-1", false).await.expect("ok");
+        assert_eq!(v["status"], "starting");
+        assert_eq!(v["version"], "v-start-1");
     }
 
     #[tokio::test]

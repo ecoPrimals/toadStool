@@ -2,6 +2,7 @@
 //! Tests for pure JSON-RPC connection handling (`process_request`, TCP, Unix).
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, UnixStream};
@@ -16,7 +17,7 @@ fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-conn-1.0.0".to_string(), None)
+    JsonRpcHandler::new(executor, "test-conn-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)))
 }
 
 #[tokio::test]

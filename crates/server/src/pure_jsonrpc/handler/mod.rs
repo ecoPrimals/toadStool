@@ -17,7 +17,7 @@ mod workload;
 
 use std::borrow::Cow;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use toadstool::semantic_methods::SemanticMethodRegistry;
 use tracing::{debug, error, info};
 
@@ -42,6 +42,9 @@ pub struct JsonRpcHandler {
     version: Arc<str>,
     start_time: std::time::Instant,
     error_count: Arc<AtomicU64>,
+    /// PG-62 fast-path: set to `true` once the server is fully initialized.
+    /// `health.liveness` returns `"starting"` until this is set.
+    ready: Arc<AtomicBool>,
     semantic_registry: SemanticMethodRegistry,
     dispatch: DispatchHandler,
     hw_learn: HwLearnHandler,
@@ -57,10 +60,13 @@ impl JsonRpcHandler {
     /// Create new handler with executor.
     ///
     /// Pass `error_count` to share the counter with other servers for unified monitoring.
+    /// Pass `ready` to share the readiness flag — `health.liveness` returns `"starting"`
+    /// until this flag is set to `true` (PG-62 fast-path).
     pub fn new(
         executor: Arc<crate::tarpc_server::WorkloadExecutorDispatch>,
         version: impl Into<Arc<str>>,
         error_count: Option<Arc<AtomicU64>>,
+        ready: Arc<AtomicBool>,
     ) -> Self {
         let local_gate_id = std::env::var("TOADSTOOL_GATE_ID")
             .or_else(|_| std::env::var("HOSTNAME"))
@@ -70,6 +76,7 @@ impl JsonRpcHandler {
             version: version.into(),
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
+            ready,
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch: DispatchHandler::new(
                 crate::visualization_client::create_visualization_client(),
@@ -189,8 +196,16 @@ impl JsonRpcHandler {
             "toadstool.health" | "health.check" => {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
             }
-            "health.liveness" => return core::health_liveness().await,
-            "health.readiness" => return core::health_readiness(self.version.as_ref()).await,
+            "health.liveness" => {
+                return core::health_liveness(self.ready.load(Ordering::Relaxed)).await;
+            }
+            "health.readiness" => {
+                return core::health_readiness(
+                    self.version.as_ref(),
+                    self.ready.load(Ordering::Relaxed),
+                )
+                .await;
+            }
             "identity.get" => {
                 return core::identity_get(&self.version, &self.semantic_registry).await;
             }

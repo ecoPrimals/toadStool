@@ -2,6 +2,7 @@
 //! JSON-RPC handler throughput benchmarks (parse → dispatch → serialize).
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use criterion::black_box;
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -17,6 +18,7 @@ fn jsonrpc_handler() -> JsonRpcHandler {
         )),
         Arc::<str>::from("bench-1.0.0"),
         None,
+        Arc::new(AtomicBool::new(true)),
     )
 }
 

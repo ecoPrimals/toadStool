@@ -13,6 +13,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use toadstool_server::pure_jsonrpc::*;
 use toadstool_server::rpc_types::{ResourceRequirements, WorkloadPriority};
 use toadstool_server::tarpc_server::{StandaloneExecutor, WorkloadExecutorDispatch};
@@ -21,7 +22,7 @@ fn test_handler() -> JsonRpcHandler {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None)
+    JsonRpcHandler::new(executor, "test-1.0.0".to_string(), None, Arc::new(AtomicBool::new(true)))
 }
 
 fn mk_request(method: &str, params: Option<serde_json::Value>, id: i32) -> JsonRpcRequest<'static> {
@@ -378,7 +379,7 @@ async fn test_health_error_count_incremented() {
     let executor = Arc::new(WorkloadExecutorDispatch::Standalone(
         StandaloneExecutor::new(),
     ));
-    let handler = JsonRpcHandler::new(executor, "1.0".to_string(), Some(error_count));
+    let handler = JsonRpcHandler::new(executor, "1.0".to_string(), Some(error_count), Arc::new(AtomicBool::new(true)));
 
     let bad_request = mk_request("unknown.method", None, 1);
     let _ = handler.handle_request(&bad_request).await;

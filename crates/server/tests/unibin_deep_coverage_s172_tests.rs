@@ -12,6 +12,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use toadstool_server::pure_jsonrpc::JsonRpcHandler;
 use toadstool_server::tarpc_server::{
@@ -222,6 +223,7 @@ async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
         )),
         "1.0.0".to_string(),
         None,
+        Arc::new(AtomicBool::new(true)),
     ));
     let result = start_servers_with_fallback(
         server,
