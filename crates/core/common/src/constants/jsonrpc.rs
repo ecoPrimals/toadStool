@@ -31,16 +31,15 @@ pub mod error_codes {
     /// Server error range end
     pub const SERVER_ERROR_RANGE_END: i32 = -32000;
 
-    // Application-specific error codes (within server error range)
+    // ── Ecosystem-standard auth codes (METHOD_GATE_STANDARD v1.0) ──
 
-    /// Workload not found
-    pub const WORKLOAD_NOT_FOUND: i32 = -32000;
+    /// Unauthorized: caller has no identity/token (-32000 per ecosystem standard)
+    pub const UNAUTHORIZED: i32 = -32000;
 
-    /// Workload submission failed
-    pub const WORKLOAD_SUBMIT_FAILED: i32 = -32001;
+    /// Permission denied: caller authenticated but lacks method access (-32001 per ecosystem standard)
+    pub const PERMISSION_DENIED: i32 = -32001;
 
-    /// Workload deletion failed
-    pub const WORKLOAD_DELETE_FAILED: i32 = -32002;
+    // ── toadStool-specific application codes ──
 
     /// Capability not available
     pub const CAPABILITY_NOT_AVAILABLE: i32 = -32003;
@@ -48,9 +47,12 @@ pub mod error_codes {
     /// Resource exhausted
     pub const RESOURCE_EXHAUSTED: i32 = -32004;
 
-    /// Authentication required (caller has no identity/token)
-    pub const AUTH_REQUIRED: i32 = -32005;
+    /// Workload not found
+    pub const WORKLOAD_NOT_FOUND: i32 = -32010;
 
-    /// Permission denied (caller authenticated but lacks access to method/resource)
-    pub const PERMISSION_DENIED: i32 = -32006;
+    /// Workload submission failed
+    pub const WORKLOAD_SUBMIT_FAILED: i32 = -32011;
+
+    /// Workload deletion failed
+    pub const WORKLOAD_DELETE_FAILED: i32 = -32012;
 }

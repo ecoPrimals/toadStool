@@ -65,7 +65,7 @@ impl MethodGate {
     ///
     /// In `Permissive` mode this always returns `Ok(())`.
     /// In `Enforcing` mode, `Protected` methods are rejected with
-    /// `PERMISSION_DENIED` (-32006). Future: caller context / token
+    /// `PERMISSION_DENIED` (-32001, ecosystem standard). Future: caller context / token
     /// verification will refine this to per-caller decisions.
     pub fn check(&self, method: &str) -> Result<(), JsonRpcError> {
         let visibility = classify_method(method);

@@ -139,16 +139,16 @@ impl JsonRpcError {
         }
     }
 
-    /// Authentication required (-32005): caller has no identity/token.
+    /// Unauthorized (-32000): caller has no identity/token (ecosystem standard).
     pub fn unauthorized(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            code: toadstool_common::constants::jsonrpc::error_codes::AUTH_REQUIRED,
+            code: toadstool_common::constants::jsonrpc::error_codes::UNAUTHORIZED,
             message: msg.into(),
             data: None,
         }
     }
 
-    /// Permission denied (-32006): caller authenticated but lacks access.
+    /// Permission denied (-32001): caller authenticated but lacks access (ecosystem standard).
     pub fn permission_denied(method: &str) -> Self {
         Self {
             code: toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED,
