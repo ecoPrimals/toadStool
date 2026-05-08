@@ -81,7 +81,10 @@ impl JsonRpcHandler {
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             ready,
-            gate: method_gate::MethodGate::permissive(),
+            gate: match std::env::var("TOADSTOOL_AUTH_MODE").as_deref() {
+                Ok("enforced" | "enforcing") => method_gate::MethodGate::new(method_gate::GateMode::Enforcing),
+                _ => method_gate::MethodGate::permissive(),
+            },
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch: DispatchHandler::new(
                 crate::visualization_client::create_visualization_client(),
