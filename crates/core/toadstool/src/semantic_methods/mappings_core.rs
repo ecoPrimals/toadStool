@@ -92,6 +92,14 @@ where
     add_mapping("security.sandbox.create", "create_sandbox");
     add_mapping("security.sandbox.destroy", "destroy_sandbox");
     add_mapping("security.sandbox.status", "get_sandbox_status");
+
+    // ═══════════════════════════════════════════════════════════
+    // AUTH DOMAIN - Pre-dispatch capability gate introspection (JH-0)
+    // ═══════════════════════════════════════════════════════════
+
+    add_mapping("auth.check", "auth_check");
+    add_mapping("auth.mode", "auth_mode");
+    add_mapping("auth.peer_info", "auth_peer_info");
 }
 
 #[cfg(test)]

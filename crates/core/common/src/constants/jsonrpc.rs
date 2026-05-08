@@ -48,6 +48,9 @@ pub mod error_codes {
     /// Resource exhausted
     pub const RESOURCE_EXHAUSTED: i32 = -32004;
 
-    /// Authentication required
+    /// Authentication required (caller has no identity/token)
     pub const AUTH_REQUIRED: i32 = -32005;
+
+    /// Permission denied (caller authenticated but lacks access to method/resource)
+    pub const PERMISSION_DENIED: i32 = -32006;
 }

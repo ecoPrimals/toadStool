@@ -173,3 +173,41 @@ async fn test_shader_dispatch_routes_and_returns_domain() {
     assert!(result["job_id"].as_str().is_some());
     assert_eq!(result["metadata"]["binary_size"], 4);
 }
+
+#[tokio::test]
+async fn test_auth_check_returns_allowed_permissive() {
+    let handler = test_handler();
+    let params = serde_json::json!({"method": "compute.dispatch.submit"});
+    let request = mk_request("auth.check", Some(params), 1);
+    let response = handler.handle_request(&request).await;
+
+    assert!(response.error.is_none());
+    let result = response.result.expect("result");
+    assert_eq!(result["allowed"], true);
+    assert_eq!(result["visibility"], "protected");
+    assert_eq!(result["mode"], "permissive");
+    assert_eq!(result["method"], "compute.dispatch.submit");
+}
+
+#[tokio::test]
+async fn test_auth_mode_returns_permissive() {
+    let handler = test_handler();
+    let request = mk_request("auth.mode", None, 1);
+    let response = handler.handle_request(&request).await;
+
+    assert!(response.error.is_none());
+    let result = response.result.expect("result");
+    assert_eq!(result["mode"], "permissive");
+}
+
+#[tokio::test]
+async fn test_auth_peer_info_returns_unknown() {
+    let handler = test_handler();
+    let request = mk_request("auth.peer_info", None, 1);
+    let response = handler.handle_request(&request).await;
+
+    assert!(response.error.is_none());
+    let result = response.result.expect("result");
+    assert_eq!(result["transport"], "unknown");
+    assert_eq!(result["authenticated"], false);
+}

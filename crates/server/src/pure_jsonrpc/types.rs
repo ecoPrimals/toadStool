@@ -138,6 +138,24 @@ impl JsonRpcError {
             data: None,
         }
     }
+
+    /// Authentication required (-32005): caller has no identity/token.
+    pub fn unauthorized(msg: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            code: toadstool_common::constants::jsonrpc::error_codes::AUTH_REQUIRED,
+            message: msg.into(),
+            data: None,
+        }
+    }
+
+    /// Permission denied (-32006): caller authenticated but lacks access.
+    pub fn permission_denied(method: &str) -> Self {
+        Self {
+            code: toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED,
+            message: Cow::Owned(format!("Permission denied: {method}")),
+            data: None,
+        }
+    }
 }
 
 fn serialize_arc_str<S>(v: &Arc<str>, s: S) -> Result<S::Ok, S::Error>

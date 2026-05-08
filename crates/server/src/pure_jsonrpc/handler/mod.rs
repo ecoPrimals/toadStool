@@ -6,10 +6,12 @@
 //! before dispatch, enabling both legacy `toadstool.*` names and the
 //! standard `{domain}.{operation}` naming convention.
 
+mod auth;
 mod core;
 mod dispatch;
 mod hw_learn;
 mod job;
+pub mod method_gate;
 mod resources;
 mod silicon;
 mod transport;
@@ -45,6 +47,8 @@ pub struct JsonRpcHandler {
     /// PG-62 fast-path: set to `true` once the server is fully initialized.
     /// `health.liveness` returns `"starting"` until this is set.
     ready: Arc<AtomicBool>,
+    /// JH-0 pre-dispatch capability gate. Ships permissive (all calls allowed).
+    gate: method_gate::MethodGate,
     semantic_registry: SemanticMethodRegistry,
     dispatch: DispatchHandler,
     hw_learn: HwLearnHandler,
@@ -77,6 +81,7 @@ impl JsonRpcHandler {
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             ready,
+            gate: method_gate::MethodGate::permissive(),
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch: DispatchHandler::new(
                 crate::visualization_client::create_visualization_client(),
@@ -179,6 +184,7 @@ impl JsonRpcHandler {
     /// Route a method name to its handler.
     ///
     /// Resolution order:
+    /// 0. Pre-dispatch gate check (JH-0: permissive default, enforcing future).
     /// 1. Direct literal match (backward-compatible `toadstool.*` and `compute.*` names).
     /// 2. Semantic registry lookup: `{domain}.{operation}` → implementation name → handler.
     async fn handle_method(
@@ -186,7 +192,15 @@ impl JsonRpcHandler {
         method: &str,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
+        // JH-0: pre-dispatch capability gate
+        self.gate.check(method)?;
+
         match method {
+            // Auth introspection — always public per JH-0 standard
+            "auth.check" => return auth::auth_check(&self.gate, params),
+            "auth.mode" => return auth::auth_mode(&self.gate),
+            "auth.peer_info" => return auth::auth_peer_info(),
+
             "toadstool.submit_workload" => return self.workload.submit_workload(params).await,
             "toadstool.query_status" => return self.job.query_status(params).await,
             "toadstool.cancel_workload" => return self.workload.cancel_workload(params).await,
@@ -359,6 +373,9 @@ impl JsonRpcHandler {
             "performance_surface_query" => self.silicon.query(params).await,
             "performance_surface_list" => self.silicon.list().await,
             "route_multi_unit" => self.silicon.route_multi_unit(params).await,
+            "auth_check" => auth::auth_check(&self.gate, params),
+            "auth_mode" => auth::auth_mode(&self.gate),
+            "auth_peer_info" => auth::auth_peer_info(),
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }
