@@ -2,8 +2,8 @@
 
 **Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
 
-**Status**: Active | **Updated**: April 13, 2026 -- S203g
-**License**: AGPL-3.0-only
+**Status**: Active | **Updated**: May 2026 — S233
+**License**: AGPL-3.0-or-later
 
 ---
 
@@ -14,7 +14,7 @@
 ```bash
 cd showcase/00-local-primal
 ./01-hello-compute/demo.sh          # 30s  - Health, version, capabilities
-./02-hardware-discovery/demo.sh     # 60s  - CPU, GPU, NPU substrate probing
+./02-hardware-discovery/demo.sh     # 60s  - CPU, memory, disk, network probing
 ./03-workload-lifecycle/demo.sh     # 60s  - Submit, status, result, cancel
 ./04-resource-management/demo.sh    # 30s  - Resource estimation and optimization
 ./05-gpu-job-queue/demo.sh          # 60s  - GPU dispatch and queue management
@@ -38,7 +38,7 @@ APIs directly and runs on any machine with Rust installed.
 | Demo | Time | What It Shows |
 |------|------|---------------|
 | 01-hello-compute | 30s | Health check, version, capability enumeration |
-| 02-hardware-discovery | 60s | CPU/GPU/NPU substrate probing via /proc + wgpu |
+| 02-hardware-discovery | 60s | CPU/memory/disk/network substrate probing via toadstool_sysmon |
 | 03-workload-lifecycle | 60s | Full compute.submit -> status -> result -> cancel |
 | 04-resource-management | 30s | Resource estimation, validation, optimization suggestions |
 | 05-gpu-job-queue | 60s | GPU job dispatch, queue management, capabilities |

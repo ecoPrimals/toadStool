@@ -38,10 +38,13 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 - **Encrypted compute dispatch** (Phase 55): Tower `crypto.encrypt`/`crypto.decrypt` for payloads; `DISCOVERY_SOCKET` highest-precedence capability resolution
 - **Self-registration** (S207): `ipc.register` to Songbird via `DISCOVERY_SOCKET` at startup — dynamic NUCLEUS membership without restart
 - **Health probes**: `health.liveness` returns `{"status":"starting"}` before dispatcher is ready, `{"status":"alive"}` after; `health.readiness` returns `{"status":"starting"}` / `{"status":"ready"}`. Callers should use **>= 3 second** probe timeouts (PG-62, S225)
+- **MethodGate JH-0** (S229): Pre-dispatch capability gate. Methods classified Public/Protected. `GateMode::Permissive` (default) or `GateMode::Enforcing` (via `TOADSTOOL_AUTH_MODE` env var). Error codes: `-32000 UNAUTHORIZED`, `-32001 PERMISSION_DENIED` (ecosystem standard). `auth.check`, `auth.mode`, `auth.peer_info` introspection methods
+- **JH-2 Resource Envelope Enforcement** (S231–S232): `ResourceEnvelope` (`mem_mb`, `cpu_cores`, `max_timeout_ms`, `method_allowlist`) enforced at all dispatch paths. Pipeline stages inherit `CallerContext`
 - **BTSP**: Phase 3 encrypted channel (ChaCha20-Poly1305, S215); transport switch verified (S218); 13/13 converged JSON-line relay + NDJSON post-handshake (primalSpring Phase 45c); PG-46 resolved (connection-reused handshake, S214)
 - **Dep hygiene**: `test-mocks` off by default (S206); all workspace deps unified
 - **Monitoring**: Real host queries via `toadstool_sysmon` + `rustix::fs::statvfs`
-- **Config**: All `TOADSTOOL_*` env vars interned to `socket_env` constants
+- **Logging**: All production code uses `tracing` (structured logging standard); `eprintln!` retained only in standalone CLI binaries and test code
+- **Config**: All `TOADSTOOL_*` env vars interned to `socket_env` constants. `TOADSTOOL_AUTH_MODE` controls gate mode
 
 ## Not Included
 

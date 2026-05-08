@@ -122,7 +122,7 @@ fn list_devices() -> Result<()> {
             }
         }
         Err(e) => {
-            eprintln!("Error: {}", e);
+            tracing::error!(error = %e, "NPU device discovery failed");
             std::process::exit(1);
         }
     }

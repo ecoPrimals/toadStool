@@ -88,7 +88,7 @@ impl PerformanceTestManager {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Benchmark iteration {i} failed: {e}");
+                    tracing::warn!(iteration = i, error = %e, "benchmark iteration failed");
                 }
             }
         }

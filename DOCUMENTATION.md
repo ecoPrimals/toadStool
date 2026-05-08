@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S227
+**Last Updated**: May 2026 — S233
 
 ---
 
@@ -30,15 +30,17 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S227 — May 2026)
+## Current State (S233 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **22,843 tests** (7,896+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
-- **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"starting"|"alive"}` with PG-62 fast-path, `health.readiness` → `"starting"|"ready"`+version, `health.check` full envelope, `capabilities.list`, `identity.get`). **Recommended caller timeout: ≥3 seconds** for health probes during startup.
+- **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f, `auth.check`/`auth.mode`/`auth.peer_info` S229). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"starting"|"alive"}` with PG-62 fast-path, `health.readiness` → `"starting"|"ready"`+version, `health.check` full envelope, `capabilities.list`, `identity.get`). **Recommended caller timeout: ≥3 seconds** for health probes during startup.
+- **MethodGate JH-0** (S229) — Pre-dispatch capability gate. All methods classified Public/Protected. `GateMode::Permissive` (default) / `GateMode::Enforcing` (via `TOADSTOOL_AUTH_MODE` env var). Error codes: `-32000 UNAUTHORIZED`, `-32001 PERMISSION_DENIED` (ecosystem standard).
+- **JH-2 Resource Envelope Enforcement** (S231–S232) — `ResourceEnvelope` (mem_mb, cpu_cores, max_timeout_ms, method_allowlist) enforced at all 3 dispatch entry points: `compute.dispatch.submit`, `shader.dispatch`, `compute.dispatch.pipeline.submit`. Pipeline internal stages inherit `CallerContext`.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
-- **Capability-based everywhere**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers.
+- **Capability-based everywhere**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers. All production logging via `tracing` (Tier 3 `eprintln!` migrated S233).
 - **52 production files refactored (S203c/e/g/i)** via test extraction. 6 deprecated zero-caller items removed (S203g). 25 production files remain >500 lines (pure production code — hardware drivers, type defs, crypto managers; no extractable test blocks, all <700L).
 - **TCP idle timeout (S203h)** — `TCP_IDLE_TIMEOUT_SECS` (300s configurable), `TCP_NODELAY` on all accepted streams. Resolves primalSpring benchScale exp082.
 - **BTSP Phase 2 + JSON-line relay (S176)** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully. JSON-line BTSP auto-detection on `0x7B` path routes `"protocol":"btsp"` to `relay_json_line_handshake()` (4-step BearDog IPC relay). Family seed loading via `load_family_seed_for_btsp()` (env→file cascade).
@@ -130,6 +132,8 @@ docs/
   guides/                  -- Deployment and usage guides
   architecture/            -- Design documents and ADRs
   reference/               -- API reference, constants
+  daemon/                  -- Daemon mode user guide
+  debt/                    -- Debt tracking details
 specs/                     -- Technical specifications
 ```
 

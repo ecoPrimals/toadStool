@@ -201,6 +201,24 @@ async fn test_auth_mode_returns_permissive() {
 }
 
 #[tokio::test]
+async fn test_auth_mode_enforcing_gate() {
+    use super::method_gate::{GateMode, MethodGate};
+
+    let gate = MethodGate::new(GateMode::Enforcing);
+    let result = super::auth::auth_mode(&gate).unwrap();
+    assert_eq!(result["mode"], "enforcing");
+}
+
+#[tokio::test]
+async fn test_enforcing_gate_denies_anonymous_protected_method() {
+    use super::method_gate::{GateMode, MethodGate};
+
+    let gate = MethodGate::new(GateMode::Enforcing);
+    let err = gate.check("compute.dispatch.submit").unwrap_err();
+    assert_eq!(err.code, -32000);
+}
+
+#[tokio::test]
 async fn test_auth_peer_info_returns_unknown() {
     let handler = test_handler();
     let request = mk_request("auth.peer_info", None, 1);

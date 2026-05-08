@@ -76,15 +76,25 @@ impl JsonRpcHandler {
             .or_else(|_| std::env::var("HOSTNAME"))
             .or_else(|_| toadstool_sysmon::system::hostname().ok_or(std::env::VarError::NotPresent))
             .unwrap_or_else(|_| String::from("local"));
+
+        let gate = match std::env::var("TOADSTOOL_AUTH_MODE")
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "enforcing" | "enforced" => {
+                info!("MethodGate mode: enforcing (via TOADSTOOL_AUTH_MODE)");
+                method_gate::MethodGate::new(method_gate::GateMode::Enforcing)
+            }
+            _ => method_gate::MethodGate::permissive(),
+        };
+
         Self {
             version: version.into(),
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             ready,
-            gate: match std::env::var("TOADSTOOL_AUTH_MODE").as_deref() {
-                Ok("enforced" | "enforcing") => method_gate::MethodGate::new(method_gate::GateMode::Enforcing),
-                _ => method_gate::MethodGate::permissive(),
-            },
+            gate,
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch: DispatchHandler::new(
                 crate::visualization_client::create_visualization_client(),
