@@ -54,20 +54,22 @@ pub fn auth_mode(gate: &MethodGate) -> Result<serde_json::Value, JsonRpcError> {
 
 /// `auth.peer_info` — return what the server knows about the caller.
 ///
-/// Currently returns minimal info (no caller context is threaded yet).
-/// JH-2 will add token/identity fields once BearDog ships ionic tokens.
+/// Returns caller identity and resource envelope when an ionic token
+/// is present (JH-2). Without a token, returns anonymous defaults.
 ///
-/// Returns: `{"transport": "unknown", "authenticated": false}`
+/// Returns: `{"transport": "unknown", "authenticated": false, ...}`
 #[expect(
     clippy::unnecessary_wraps,
     reason = "Result return required for JSON-RPC handler dispatch consistency"
 )]
-pub fn auth_peer_info() -> Result<serde_json::Value, JsonRpcError> {
+pub fn auth_peer_info(
+    ctx: &super::method_gate::CallerContext,
+) -> Result<serde_json::Value, JsonRpcError> {
     Ok(serde_json::json!({
         "transport": "unknown",
-        "authenticated": false,
-        "token": null,
-        "identity": null,
+        "authenticated": ctx.identity.is_some(),
+        "identity": ctx.identity,
+        "envelope": ctx.envelope,
     }))
 }
 
@@ -124,11 +126,29 @@ mod tests {
     }
 
     #[test]
-    fn auth_peer_info_returns_unknown() {
-        let result = auth_peer_info().unwrap();
+    fn auth_peer_info_anonymous() {
+        let ctx = super::super::method_gate::CallerContext::anonymous();
+        let result = auth_peer_info(&ctx).unwrap();
         assert_eq!(result["transport"], "unknown");
         assert_eq!(result["authenticated"], false);
-        assert!(result["token"].is_null());
         assert!(result["identity"].is_null());
+        assert!(result["envelope"].is_null());
+    }
+
+    #[test]
+    fn auth_peer_info_with_identity() {
+        let ctx = super::super::method_gate::CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(super::super::method_gate::ResourceEnvelope {
+                mem_mb: Some(8192),
+                cpu_cores: Some(4),
+                method_allowlist: vec!["compute.dispatch.submit".into()],
+            }),
+        };
+        let result = auth_peer_info(&ctx).unwrap();
+        assert_eq!(result["authenticated"], true);
+        assert_eq!(result["identity"], "did:key:z6Mk_test");
+        assert_eq!(result["envelope"]["mem_mb"], 8192);
+        assert_eq!(result["envelope"]["cpu_cores"], 4);
     }
 }

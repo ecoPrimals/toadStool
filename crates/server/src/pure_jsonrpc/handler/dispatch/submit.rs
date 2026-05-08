@@ -3,9 +3,42 @@
 use super::DispatchHandler;
 use super::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
 use super::types::{DispatchJob, DispatchStatus};
+use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use base64::Engine;
 use std::sync::atomic::Ordering;
+
+/// Enforce resource envelope limits on a dispatch request (JH-2).
+///
+/// When the caller has a token with a [`ResourceEnvelope`], this checks:
+/// - `binary_size` against `mem_mb` (rough heuristic: binary ≤ envelope mem)
+/// - Future: `cpu_cores`, `timeout_ms` against envelope bounds
+///
+/// Returns `Ok(())` if no envelope is present or all checks pass.
+pub(super) fn enforce_envelope(
+    ctx: &CallerContext,
+    binary_size: usize,
+    _timeout_ms: u64,
+) -> Result<(), JsonRpcError> {
+    let Some(ref env) = ctx.envelope else {
+        return Ok(());
+    };
+
+    if let Some(mem_mb) = env.mem_mb {
+        let binary_mb = (binary_size as u64).saturating_add(1024 * 1024 - 1) / (1024 * 1024);
+        if binary_mb > mem_mb {
+            return Err(JsonRpcError {
+                code: toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,
+                message: std::borrow::Cow::Owned(format!(
+                    "Binary size ({binary_mb} MB) exceeds token envelope mem_mb ({mem_mb} MB)"
+                )),
+                data: None,
+            });
+        }
+    }
+
+    Ok(())
+}
 
 #[expect(
     deprecated,
@@ -132,6 +165,16 @@ impl DispatchHandler {
         &self,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
+        self.dispatch_submit_with_context(params, &CallerContext::anonymous())
+            .await
+    }
+
+    /// Submit with full caller context for JH-2 envelope enforcement.
+    pub async fn dispatch_submit_with_context(
+        &self,
+        params: Option<&serde_json::Value>,
+        ctx: &CallerContext,
+    ) -> Result<serde_json::Value, JsonRpcError> {
         let p = params.ok_or_else(|| {
             JsonRpcError::invalid_params(
                 "Expected { binary, bdf?, workgroup_size?, buffers?, dispatch_mode?, timeout_ms? }",
@@ -184,6 +227,8 @@ impl DispatchHandler {
             .unwrap_or(
                 toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
             );
+
+        enforce_envelope(ctx, binary_bytes.len(), timeout_ms)?;
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {

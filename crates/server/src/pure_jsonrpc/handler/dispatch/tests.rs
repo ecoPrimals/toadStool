@@ -639,3 +639,136 @@ async fn shader_dispatch_job_trackable_via_status_and_result() {
         .expect("result");
     assert_eq!(got["job_id"], job_id);
 }
+
+// ═══════════════════════════════════════════════════════════
+// JH-2: Resource envelope enforcement tests
+// ═══════════════════════════════════════════════════════════
+
+mod envelope_tests {
+    use super::*;
+    use crate::pure_jsonrpc::handler::method_gate::{CallerContext, ResourceEnvelope};
+    use super::super::submit::enforce_envelope;
+
+    #[test]
+    fn no_envelope_always_passes() {
+        let ctx = CallerContext::anonymous();
+        assert!(enforce_envelope(&ctx, 1024 * 1024 * 100, 5000).is_ok());
+    }
+
+    #[test]
+    fn envelope_without_mem_limit_passes() {
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                mem_mb: None,
+                cpu_cores: Some(4),
+                method_allowlist: vec![],
+            }),
+        };
+        assert!(enforce_envelope(&ctx, 1024 * 1024 * 500, 5000).is_ok());
+    }
+
+    #[test]
+    fn envelope_mem_limit_allows_within_bounds() {
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                mem_mb: Some(100),
+                cpu_cores: None,
+                method_allowlist: vec![],
+            }),
+        };
+        assert!(enforce_envelope(&ctx, 50 * 1024 * 1024, 5000).is_ok());
+    }
+
+    #[test]
+    fn envelope_mem_limit_rejects_over_bounds() {
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                mem_mb: Some(10),
+                cpu_cores: None,
+                method_allowlist: vec![],
+            }),
+        };
+        let err = enforce_envelope(&ctx, 20 * 1024 * 1024, 5000).unwrap_err();
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED
+        );
+        assert!(err.message.contains("exceeds token envelope"));
+    }
+
+    #[test]
+    fn envelope_mem_limit_boundary_exact() {
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                mem_mb: Some(1),
+                cpu_cores: None,
+                method_allowlist: vec![],
+            }),
+        };
+        assert!(enforce_envelope(&ctx, 1024 * 1024, 5000).is_ok());
+        assert!(enforce_envelope(&ctx, 1024 * 1024 + 1, 5000).is_err());
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_with_context_no_envelope_succeeds() {
+        let handler = test_handler();
+        let params = submit_params("0000:01:00.0", "passthrough");
+        let ctx = CallerContext::anonymous();
+        let result = handler
+            .dispatch_submit_with_context(Some(&params), &ctx)
+            .await
+            .expect("should succeed without envelope");
+        assert!(result["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_with_context_envelope_allows() {
+        let handler = test_handler();
+        let params = submit_params("0000:01:00.0", "passthrough");
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                mem_mb: Some(100),
+                cpu_cores: None,
+                method_allowlist: vec![],
+            }),
+        };
+        let result = handler
+            .dispatch_submit_with_context(Some(&params), &ctx)
+            .await
+            .expect("3-byte binary is well within 100 MB envelope");
+        assert!(result["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_with_context_envelope_rejects() {
+        let handler = test_handler();
+        let mut large_binary = vec![0u8; 2 * 1024 * 1024];
+        large_binary[0] = 1;
+        let params = serde_json::json!({
+            "binary": large_binary,
+            "bdf": "0000:01:00.0",
+            "dispatch_mode": "passthrough",
+        });
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                mem_mb: Some(1),
+                cpu_cores: None,
+                method_allowlist: vec![],
+            }),
+        };
+        let err = handler
+            .dispatch_submit_with_context(Some(&params), &ctx)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED
+        );
+    }
+}

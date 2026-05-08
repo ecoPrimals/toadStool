@@ -184,7 +184,7 @@ impl JsonRpcHandler {
     /// Route a method name to its handler.
     ///
     /// Resolution order:
-    /// 0. Pre-dispatch gate check (JH-0: permissive default, enforcing future).
+    /// 0. Pre-dispatch gate check (JH-0/JH-2: permissive default, enforcing future).
     /// 1. Direct literal match (backward-compatible `toadstool.*` and `compute.*` names).
     /// 2. Semantic registry lookup: `{domain}.{operation}` → implementation name → handler.
     async fn handle_method(
@@ -192,14 +192,17 @@ impl JsonRpcHandler {
         method: &str,
         params: Option<&serde_json::Value>,
     ) -> Result<serde_json::Value, JsonRpcError> {
-        // JH-0: pre-dispatch capability gate
-        self.gate.check(method)?;
+        // JH-2: extract caller context from request (anonymous until BearDog JH-1 ships)
+        let caller_ctx = method_gate::CallerContext::anonymous();
+
+        // JH-0/JH-2: pre-dispatch capability gate with caller context
+        self.gate.check_with_context(method, &caller_ctx)?;
 
         match method {
             // Auth introspection — always public per JH-0 standard
             "auth.check" => return auth::auth_check(&self.gate, params),
             "auth.mode" => return auth::auth_mode(&self.gate),
-            "auth.peer_info" => return auth::auth_peer_info(),
+            "auth.peer_info" => return auth::auth_peer_info(&caller_ctx),
 
             "toadstool.submit_workload" => return self.workload.submit_workload(params).await,
             "toadstool.query_status" => return self.job.query_status(params).await,
@@ -375,7 +378,7 @@ impl JsonRpcHandler {
             "route_multi_unit" => self.silicon.route_multi_unit(params).await,
             "auth_check" => auth::auth_check(&self.gate, params),
             "auth_mode" => auth::auth_mode(&self.gate),
-            "auth_peer_info" => auth::auth_peer_info(),
+            "auth_peer_info" => auth::auth_peer_info(&method_gate::CallerContext::anonymous()),
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }

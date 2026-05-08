@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S229 (JH-0 MethodGate adoption — pre-dispatch capability gate)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843 workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)**
-**Latest**: S229 — JH-0 MethodGate adoption: pre-dispatch capability gate per primalSpring ecosystem standard. All methods classified Public/Protected. 3 `auth.*` methods. Permissive default. JH-2 resource envelope tracked (blocked on BearDog JH-1). +21 tests.
-**Previous**: S228 — Audit response (zero gaps). S227 — Doc cleanup. S226 — Clippy clean. S225 — PG-62 fast-path. 22,843+ tests, 0 failures.
+**Updated**: May 2026 — S231 (JH-2 resource envelope enforcement at dispatch)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 resource envelope enforcement (S231)**
+**Latest**: S231 — JH-2 resource envelope enforcement: `ResourceEnvelope` (mem_mb, cpu_cores, method_allowlist), `CallerContext`, `enforce_envelope()` at `compute.dispatch.submit`. Gate `check_with_context()` enforces method allowlists. Permissive-by-default. Full enforcement when BearDog JH-1 ships. +17 tests.
+**Previous**: S230 — Error code alignment (-32000/-32001). S229 — JH-0 MethodGate. S228 — Audit response. S227 — Doc cleanup. S226 — Clippy. S225 — PG-62. 22,843+ tests.
 
 ---
 
@@ -165,7 +165,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S229)
+## Completed This Session (S90-S231)
 
 ### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
 - **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.

@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Pre-dispatch capability gate (JH-0 ecosystem standard)
+//! Pre-dispatch capability gate (JH-0 / JH-2 ecosystem standard)
 //!
 //! Classifies every JSON-RPC method as [`MethodVisibility::Public`] or
 //! [`MethodVisibility::Protected`] and gates dispatch based on the current
 //! [`GateMode`]. Ships in [`GateMode::Permissive`] (all calls allowed)
 //! per the primalSpring `METHOD_GATE_STANDARD.md` adoption guide.
 //!
-//! When [`GateMode::Enforcing`] is activated (future, requires BearDog
-//! ionic tokens — JH-1/JH-2), protected methods will require a valid
-//! caller token with sufficient resource envelope.
+//! JH-2 adds [`ResourceEnvelope`] enforcement: ionic tokens carry resource
+//! limits (`mem_mb`, `cpu_cores`, `method_allowlist`) that are checked at
+//! dispatch time. When no token is present and the gate is permissive,
+//! dispatch proceeds without limits (backward compatible).
 
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -35,12 +36,63 @@ pub enum GateMode {
     Enforcing,
 }
 
+/// Resource limits carried in an ionic token (JH-2).
+///
+/// When present, `compute.dispatch.submit` enforces that the requested
+/// resources fall within these bounds. Fields are optional — `None` means
+/// "unlimited for this dimension".
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourceEnvelope {
+    /// Maximum memory in MB the token grants for a single dispatch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mem_mb: Option<u64>,
+    /// Maximum CPU cores the token grants.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu_cores: Option<u32>,
+    /// Methods this token is allowed to call. Empty means "all methods allowed".
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub method_allowlist: Vec<String>,
+}
+
+impl ResourceEnvelope {
+    /// Check whether the envelope allows calling `method`.
+    ///
+    /// An empty allowlist means "all methods permitted".
+    pub fn allows_method(&self, method: &str) -> bool {
+        self.method_allowlist.is_empty() || self.method_allowlist.iter().any(|m| m == method)
+    }
+}
+
+/// Caller identity and resource context extracted from a request (JH-2).
+///
+/// Threaded through the dispatch path so that handlers can enforce
+/// per-caller resource limits. `None` fields mean "no token / unknown".
+#[derive(Debug, Clone, Default)]
+pub struct CallerContext {
+    /// Caller identity (e.g. DID from ionic token). `None` = anonymous.
+    pub identity: Option<String>,
+    /// Resource envelope from the ionic token. `None` = no token presented.
+    pub envelope: Option<ResourceEnvelope>,
+}
+
+impl CallerContext {
+    /// Anonymous caller with no token (permissive-mode default).
+    pub fn anonymous() -> Self {
+        Self::default()
+    }
+
+    /// Whether this caller presented a token with an envelope.
+    pub fn has_envelope(&self) -> bool {
+        self.envelope.is_some()
+    }
+}
+
 /// Pre-dispatch capability gate.
 ///
 /// Sits between request parsing and method routing. In `Permissive` mode
-/// every call passes through. In `Enforcing` mode, protected methods are
-/// rejected unless the caller provides valid credentials (not yet wired —
-/// blocked on BearDog JH-1 ionic token infrastructure).
+/// every call passes through. In `Enforcing` mode, protected methods
+/// require valid credentials and the caller's [`ResourceEnvelope`]
+/// constraints are checked.
 pub struct MethodGate {
     mode: GateMode,
 }
@@ -61,27 +113,62 @@ impl MethodGate {
         self.mode
     }
 
-    /// Check whether a method call should be allowed.
+    /// Check whether a method call should be allowed (JH-0 basic check).
     ///
     /// In `Permissive` mode this always returns `Ok(())`.
     /// In `Enforcing` mode, `Protected` methods are rejected with
-    /// `PERMISSION_DENIED` (-32001, ecosystem standard). Future: caller context / token
-    /// verification will refine this to per-caller decisions.
+    /// `PERMISSION_DENIED` (-32001, ecosystem standard).
     pub fn check(&self, method: &str) -> Result<(), JsonRpcError> {
+        self.check_with_context(method, &CallerContext::anonymous())
+    }
+
+    /// Check method access with full caller context (JH-2).
+    ///
+    /// In `Enforcing` mode:
+    /// - Anonymous callers are rejected on `Protected` methods with `UNAUTHORIZED`.
+    /// - Callers with a token are checked against their envelope's `method_allowlist`.
+    ///
+    /// In `Permissive` mode: always allowed unless the token itself restricts the method.
+    pub fn check_with_context(
+        &self,
+        method: &str,
+        ctx: &CallerContext,
+    ) -> Result<(), JsonRpcError> {
         let visibility = classify_method(method);
 
         trace!(
             method,
             ?visibility,
             mode = ?self.mode,
+            has_identity = ctx.identity.is_some(),
+            has_envelope = ctx.has_envelope(),
             "method gate check"
         );
 
         match self.mode {
-            GateMode::Permissive => Ok(()),
+            GateMode::Permissive => {
+                if let Some(ref env) = ctx.envelope
+                    && !env.allows_method(method)
+                {
+                    return Err(JsonRpcError::permission_denied(method));
+                }
+                Ok(())
+            }
             GateMode::Enforcing => match visibility {
                 MethodVisibility::Public => Ok(()),
-                MethodVisibility::Protected => Err(JsonRpcError::permission_denied(method)),
+                MethodVisibility::Protected => {
+                    if ctx.identity.is_none() {
+                        return Err(JsonRpcError::unauthorized(
+                            "Authentication required for protected method",
+                        ));
+                    }
+                    if let Some(ref env) = ctx.envelope
+                        && !env.allows_method(method)
+                    {
+                        return Err(JsonRpcError::permission_denied(method));
+                    }
+                    Ok(())
+                }
             },
         }
     }
@@ -148,13 +235,13 @@ mod tests {
     }
 
     #[test]
-    fn enforcing_mode_denies_protected() {
+    fn enforcing_mode_denies_anonymous_on_protected() {
         let gate = MethodGate::new(GateMode::Enforcing);
 
         let err = gate.check("compute.dispatch.submit").unwrap_err();
         assert_eq!(
             err.code,
-            toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED
+            toadstool_common::constants::jsonrpc::error_codes::UNAUTHORIZED
         );
 
         assert!(gate.check("shader.dispatch").is_err());
@@ -162,6 +249,59 @@ mod tests {
         assert!(gate.check("compute.hardware.observe").is_err());
         assert!(gate.check("gate.update").is_err());
         assert!(gate.check("transport.open").is_err());
+    }
+
+    #[test]
+    fn enforcing_mode_allows_authenticated_caller() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope::default()),
+        };
+        assert!(gate
+            .check_with_context("compute.dispatch.submit", &ctx)
+            .is_ok());
+    }
+
+    #[test]
+    fn enforcing_mode_denies_method_not_in_allowlist() {
+        let gate = MethodGate::new(GateMode::Enforcing);
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                method_allowlist: vec!["shader.dispatch".into()],
+                ..ResourceEnvelope::default()
+            }),
+        };
+        let err = gate
+            .check_with_context("compute.dispatch.submit", &ctx)
+            .unwrap_err();
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED
+        );
+    }
+
+    #[test]
+    fn permissive_mode_still_enforces_allowlist_from_token() {
+        let gate = MethodGate::permissive();
+        let ctx = CallerContext {
+            identity: Some("did:key:z6Mk_test".into()),
+            envelope: Some(ResourceEnvelope {
+                method_allowlist: vec!["shader.dispatch".into()],
+                ..ResourceEnvelope::default()
+            }),
+        };
+        let err = gate
+            .check_with_context("compute.dispatch.submit", &ctx)
+            .unwrap_err();
+        assert_eq!(
+            err.code,
+            toadstool_common::constants::jsonrpc::error_codes::PERMISSION_DENIED
+        );
+        assert!(gate
+            .check_with_context("shader.dispatch", &ctx)
+            .is_ok());
     }
 
     #[test]
@@ -237,5 +377,55 @@ mod tests {
             serde_json::to_string(&GateMode::Enforcing).unwrap(),
             "\"enforcing\""
         );
+    }
+
+    #[test]
+    fn resource_envelope_allows_method_empty_allowlist() {
+        let env = ResourceEnvelope::default();
+        assert!(env.allows_method("anything"));
+    }
+
+    #[test]
+    fn resource_envelope_allows_method_in_list() {
+        let env = ResourceEnvelope {
+            method_allowlist: vec![
+                "compute.dispatch.submit".into(),
+                "shader.dispatch".into(),
+            ],
+            ..ResourceEnvelope::default()
+        };
+        assert!(env.allows_method("compute.dispatch.submit"));
+        assert!(env.allows_method("shader.dispatch"));
+        assert!(!env.allows_method("compute.cancel"));
+    }
+
+    #[test]
+    fn resource_envelope_serde_roundtrip() {
+        let env = ResourceEnvelope {
+            mem_mb: Some(4096),
+            cpu_cores: Some(8),
+            method_allowlist: vec!["compute.dispatch.submit".into()],
+        };
+        let json = serde_json::to_value(&env).unwrap();
+        assert_eq!(json["mem_mb"], 4096);
+        assert_eq!(json["cpu_cores"], 8);
+        let back: ResourceEnvelope = serde_json::from_value(json).unwrap();
+        assert_eq!(env, back);
+    }
+
+    #[test]
+    fn resource_envelope_serde_skips_none_fields() {
+        let env = ResourceEnvelope::default();
+        let json = serde_json::to_value(&env).unwrap();
+        assert!(json.get("mem_mb").is_none());
+        assert!(json.get("cpu_cores").is_none());
+        assert!(json.get("method_allowlist").is_none());
+    }
+
+    #[test]
+    fn caller_context_anonymous_has_no_envelope() {
+        let ctx = CallerContext::anonymous();
+        assert!(ctx.identity.is_none());
+        assert!(!ctx.has_envelope());
     }
 }
