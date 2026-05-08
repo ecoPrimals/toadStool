@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S231 (JH-2 resource envelope enforcement at dispatch)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 resource envelope enforcement (S231)**
-**Latest**: S231 — JH-2 resource envelope enforcement: `ResourceEnvelope` (mem_mb, cpu_cores, method_allowlist), `CallerContext`, `enforce_envelope()` at `compute.dispatch.submit`. Gate `check_with_context()` enforces method allowlists. Permissive-by-default. Full enforcement when BearDog JH-1 ships. +17 tests.
-**Previous**: S230 — Error code alignment (-32000/-32001). S229 — JH-0 MethodGate. S228 — Audit response. S227 — Doc cleanup. S226 — Clippy. S225 — PG-62. 22,843+ tests.
+**Updated**: May 2026 — S232 (JH-2 complete — full envelope enforcement across all dispatch paths)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 full envelope enforcement (S232)**
+**Latest**: S232 — JH-2 Phase 2: cpu_cores enforcement (workgroup threads ≤ cores × 1024), max_timeout_ms enforcement, CallerContext threaded through shader.dispatch + pipeline.submit (stages no longer bypass). ResourceEnvelope gains max_timeout_ms. **JH-2 toadStool: COMPLETE**. +7 tests (774 server total).
+**Previous**: S231 — JH-2 Phase 1 (mem + allowlist). S230 — Error codes. S229 — JH-0. S228-S225 — audit/docs/clippy/PG-62.
 
 ---
 
@@ -165,7 +165,7 @@ names directly. Deprecated API definitions retained for backward compatibility o
 
 ---
 
-## Completed This Session (S90-S231)
+## Completed This Session (S90-S232)
 
 ### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
 - **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.

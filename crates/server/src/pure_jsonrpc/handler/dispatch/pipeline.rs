@@ -14,6 +14,7 @@ use tracing::warn;
 use super::DispatchHandler;
 use super::dag::{parse_edges, topological_sort};
 use super::types::{PipelineJob, PipelineStageRequest, PipelineStageResult, PipelineStatus};
+use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use std::sync::atomic::Ordering;
 
@@ -36,9 +37,29 @@ impl DispatchHandler {
     ///   "edges": [["tokenize", "attention"], ["attention", "ffn"]]
     /// }
     /// ```
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "production code uses pipeline_submit_with_context; tests use this convenience wrapper"
+        )
+    )]
     pub async fn pipeline_submit(
         &self,
         params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        self.pipeline_submit_with_context(params, &CallerContext::anonymous())
+            .await
+    }
+
+    /// Context-aware pipeline submit for JH-2 envelope enforcement.
+    ///
+    /// Each internal stage inherits the caller's context, so envelope
+    /// limits apply per-stage (not just at the outer pipeline level).
+    pub async fn pipeline_submit_with_context(
+        &self,
+        params: Option<&serde_json::Value>,
+        ctx: &CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
         let p = params.ok_or_else(|| {
             JsonRpcError::invalid_params(
@@ -149,7 +170,7 @@ impl DispatchHandler {
 
             let start = std::time::Instant::now();
             let result = self
-                .execute_stage_method(&stage.method, &stage_params)
+                .execute_stage_method(&stage.method, &stage_params, ctx)
                 .await;
             let elapsed_ms = start.elapsed().as_millis() as u64;
 
@@ -282,14 +303,21 @@ impl DispatchHandler {
     }
 
     /// Dispatch a stage to the appropriate internal handler by method name.
+    ///
+    /// Forwards `CallerContext` so each stage enforces envelope limits (JH-2).
     async fn execute_stage_method(
         &self,
         method: &str,
         params: &serde_json::Value,
+        ctx: &CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
         match method {
-            "compute.dispatch.submit" => self.dispatch_submit(Some(params)).await,
-            "shader.dispatch" => self.shader_dispatch(Some(params)).await,
+            "compute.dispatch.submit" => {
+                self.dispatch_submit_with_context(Some(params), ctx).await
+            }
+            "shader.dispatch" => {
+                self.shader_dispatch_with_context(Some(params), ctx).await
+            }
             _ => Err(JsonRpcError::invalid_params(format!(
                 "Unsupported pipeline stage method: {method} \
                  (supported: compute.dispatch.submit, shader.dispatch)"

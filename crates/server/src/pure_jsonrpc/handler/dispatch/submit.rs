@@ -11,14 +11,16 @@ use std::sync::atomic::Ordering;
 /// Enforce resource envelope limits on a dispatch request (JH-2).
 ///
 /// When the caller has a token with a [`ResourceEnvelope`], this checks:
-/// - `binary_size` against `mem_mb` (rough heuristic: binary ≤ envelope mem)
-/// - Future: `cpu_cores`, `timeout_ms` against envelope bounds
+/// - `binary_size` against `mem_mb` (binary rounded up to MB ≤ envelope limit)
+/// - `workgroup_total` against `cpu_cores` (total threads ≤ core limit × 1024)
+/// - `timeout_ms` against `max_timeout_ms`
 ///
 /// Returns `Ok(())` if no envelope is present or all checks pass.
 pub(super) fn enforce_envelope(
     ctx: &CallerContext,
     binary_size: usize,
-    _timeout_ms: u64,
+    workgroup_total: u64,
+    timeout_ms: u64,
 ) -> Result<(), JsonRpcError> {
     let Some(ref env) = ctx.envelope else {
         return Ok(());
@@ -27,17 +29,40 @@ pub(super) fn enforce_envelope(
     if let Some(mem_mb) = env.mem_mb {
         let binary_mb = (binary_size as u64).saturating_add(1024 * 1024 - 1) / (1024 * 1024);
         if binary_mb > mem_mb {
-            return Err(JsonRpcError {
-                code: toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,
-                message: std::borrow::Cow::Owned(format!(
-                    "Binary size ({binary_mb} MB) exceeds token envelope mem_mb ({mem_mb} MB)"
-                )),
-                data: None,
-            });
+            return Err(resource_exhausted(format!(
+                "Binary size ({binary_mb} MB) exceeds token envelope mem_mb ({mem_mb} MB)"
+            )));
         }
     }
 
+    if let Some(cpu_cores) = env.cpu_cores {
+        let thread_cap = u64::from(cpu_cores) * 1024;
+        if workgroup_total > thread_cap {
+            return Err(resource_exhausted(format!(
+                "Workgroup total ({workgroup_total} threads) exceeds token envelope \
+                 cpu_cores ({cpu_cores}) \u{00d7} 1024 = {thread_cap} thread cap"
+            )));
+        }
+    }
+
+    if let Some(max_timeout) = env.max_timeout_ms
+        && timeout_ms > max_timeout
+    {
+        return Err(resource_exhausted(format!(
+            "Requested timeout ({timeout_ms} ms) exceeds token envelope \
+             max_timeout_ms ({max_timeout} ms)"
+        )));
+    }
+
     Ok(())
+}
+
+fn resource_exhausted(msg: String) -> JsonRpcError {
+    JsonRpcError {
+        code: toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,
+        message: std::borrow::Cow::Owned(msg),
+        data: None,
+    }
 }
 
 #[expect(
@@ -161,6 +186,13 @@ impl DispatchHandler {
         }))
     }
 
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "production code uses dispatch_submit_with_context; tests use this convenience wrapper"
+        )
+    )]
     pub async fn dispatch_submit(
         &self,
         params: Option<&serde_json::Value>,
@@ -228,7 +260,9 @@ impl DispatchHandler {
                 toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
             );
 
-        enforce_envelope(ctx, binary_bytes.len(), timeout_ms)?;
+        let workgroup_total =
+            u64::from(workgroup_size[0]) * u64::from(workgroup_size[1]) * u64::from(workgroup_size[2]);
+        enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {

@@ -9,7 +9,9 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use super::DispatchHandler;
 use super::routing::{detect_dispatch_mode, resolve_dispatch_bdf};
+use super::submit::enforce_envelope;
 use super::types::{DispatchJob, DispatchStatus};
+use crate::pure_jsonrpc::handler::method_gate::CallerContext;
 use crate::pure_jsonrpc::types::JsonRpcError;
 use std::sync::atomic::Ordering;
 
@@ -21,9 +23,26 @@ impl DispatchHandler {
     /// - **Pipeline chaining**: `{ "compile_result": { "binary": [...], "arch": "sm89" } }`
     ///
     /// Auto-detects binary encoding: base64 string or JSON array of u8 numbers.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "production code uses shader_dispatch_with_context; tests use this convenience wrapper"
+        )
+    )]
     pub async fn shader_dispatch(
         &self,
         params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        self.shader_dispatch_with_context(params, &CallerContext::anonymous())
+            .await
+    }
+
+    /// Context-aware shader dispatch for JH-2 envelope enforcement.
+    pub async fn shader_dispatch_with_context(
+        &self,
+        params: Option<&serde_json::Value>,
+        ctx: &CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
         let p = params.ok_or_else(|| {
             JsonRpcError::invalid_params(
@@ -77,6 +96,10 @@ impl DispatchHandler {
             .unwrap_or(
                 toadstool_common::constants::timeouts::DISPATCH_DEFAULT_TIMEOUT.as_millis() as u64,
             );
+
+        let workgroup_total =
+            u64::from(workgroup_size[0]) * u64::from(workgroup_size[1]) * u64::from(workgroup_size[2]);
+        enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let job = DispatchJob {

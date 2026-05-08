@@ -142,6 +142,7 @@ mod tests {
             envelope: Some(super::super::method_gate::ResourceEnvelope {
                 mem_mb: Some(8192),
                 cpu_cores: Some(4),
+                max_timeout_ms: Some(30_000),
                 method_allowlist: vec!["compute.dispatch.submit".into()],
             }),
         };

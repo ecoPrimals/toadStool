@@ -38,8 +38,8 @@ pub enum GateMode {
 
 /// Resource limits carried in an ionic token (JH-2).
 ///
-/// When present, `compute.dispatch.submit` enforces that the requested
-/// resources fall within these bounds. Fields are optional — `None` means
+/// When present, dispatch handlers enforce that the requested resources
+/// fall within these bounds. Fields are optional — `None` means
 /// "unlimited for this dimension".
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourceEnvelope {
@@ -49,6 +49,9 @@ pub struct ResourceEnvelope {
     /// Maximum CPU cores the token grants.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cpu_cores: Option<u32>,
+    /// Maximum timeout in milliseconds the token permits per dispatch.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_timeout_ms: Option<u64>,
     /// Methods this token is allowed to call. Empty means "all methods allowed".
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub method_allowlist: Vec<String>,
@@ -404,11 +407,13 @@ mod tests {
         let env = ResourceEnvelope {
             mem_mb: Some(4096),
             cpu_cores: Some(8),
+            max_timeout_ms: Some(30_000),
             method_allowlist: vec!["compute.dispatch.submit".into()],
         };
         let json = serde_json::to_value(&env).unwrap();
         assert_eq!(json["mem_mb"], 4096);
         assert_eq!(json["cpu_cores"], 8);
+        assert_eq!(json["max_timeout_ms"], 30_000);
         let back: ResourceEnvelope = serde_json::from_value(json).unwrap();
         assert_eq!(env, back);
     }

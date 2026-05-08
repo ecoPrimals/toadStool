@@ -261,8 +261,18 @@ impl JsonRpcHandler {
             "compute.cancel" => return self.job.compute_cancel(params).await,
             "compute.list" => return self.job.compute_list(params).await,
 
-            "compute.dispatch" => return self.dispatch.dispatch_submit(params).await,
-            "compute.dispatch.submit" => return self.dispatch.dispatch_submit(params).await,
+            "compute.dispatch" => {
+                return self
+                    .dispatch
+                    .dispatch_submit_with_context(params, &caller_ctx)
+                    .await;
+            }
+            "compute.dispatch.submit" => {
+                return self
+                    .dispatch
+                    .dispatch_submit_with_context(params, &caller_ctx)
+                    .await;
+            }
             "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
             "compute.dispatch.forward" => return self.dispatch.dispatch_forward(params).await,
@@ -270,7 +280,10 @@ impl JsonRpcHandler {
                 return self.dispatch.dispatch_capabilities(params).await;
             }
             "compute.dispatch.pipeline.submit" => {
-                return self.dispatch.pipeline_submit(params).await;
+                return self
+                    .dispatch
+                    .pipeline_submit_with_context(params, &caller_ctx)
+                    .await;
             }
             "compute.dispatch.pipeline.status" => {
                 return self.dispatch.pipeline_status(params).await;
@@ -310,7 +323,12 @@ impl JsonRpcHandler {
                 return self.hw_learn.hw_learn_vfio_devices(params).await;
             }
 
-            "shader.dispatch" => return self.dispatch.shader_dispatch(params).await,
+            "shader.dispatch" => {
+                return self
+                    .dispatch
+                    .shader_dispatch_with_context(params, &caller_ctx)
+                    .await;
+            }
 
             "ember.list" => return Ok(self.ember_list()),
             "ember.status" => return Ok(self.ember_status()),
@@ -335,7 +353,9 @@ impl JsonRpcHandler {
 
         if let Some(impl_name) = self.semantic_registry.resolve(method) {
             debug!("Semantic resolve: {} → {}", method, impl_name);
-            return self.dispatch_by_impl_name(impl_name, params).await;
+            return self
+                .dispatch_by_impl_name(impl_name, params, &caller_ctx)
+                .await;
         }
 
         Err(JsonRpcError::method_not_found(method))
@@ -345,6 +365,7 @@ impl JsonRpcHandler {
         &self,
         impl_name: &str,
         params: Option<&serde_json::Value>,
+        ctx: &method_gate::CallerContext,
     ) -> Result<serde_json::Value, JsonRpcError> {
         match impl_name {
             "execute_workload" | "submit_workload" => self.workload.submit_workload(params).await,
@@ -353,12 +374,24 @@ impl JsonRpcHandler {
             "list_workloads" => self.job.list_workloads(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
             "check_health" => core::health(&self.version, self.start_time, &self.error_count).await,
-            "dispatch_submit" => self.dispatch.dispatch_submit(params).await,
+            "dispatch_submit" => {
+                self.dispatch
+                    .dispatch_submit_with_context(params, ctx)
+                    .await
+            }
             "dispatch_status" => self.dispatch.dispatch_status(params).await,
             "dispatch_result" => self.dispatch.dispatch_result(params).await,
             "dispatch_capabilities" => self.dispatch.dispatch_capabilities(params).await,
-            "shader_dispatch" => self.dispatch.shader_dispatch(params).await,
-            "pipeline_submit" => self.dispatch.pipeline_submit(params).await,
+            "shader_dispatch" => {
+                self.dispatch
+                    .shader_dispatch_with_context(params, ctx)
+                    .await
+            }
+            "pipeline_submit" => {
+                self.dispatch
+                    .pipeline_submit_with_context(params, ctx)
+                    .await
+            }
             "pipeline_status" => self.dispatch.pipeline_status(params).await,
             "toadstool_provenance" => Self::toadstool_provenance().await,
             "gpu_info" => core::gpu_info().await,
@@ -378,7 +411,7 @@ impl JsonRpcHandler {
             "route_multi_unit" => self.silicon.route_multi_unit(params).await,
             "auth_check" => auth::auth_check(&self.gate, params),
             "auth_mode" => auth::auth_mode(&self.gate),
-            "auth_peer_info" => auth::auth_peer_info(&method_gate::CallerContext::anonymous()),
+            "auth_peer_info" => auth::auth_peer_info(ctx),
             _ => Err(JsonRpcError::method_not_found(impl_name)),
         }
     }
