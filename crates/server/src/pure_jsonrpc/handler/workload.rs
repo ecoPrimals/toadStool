@@ -18,6 +18,14 @@ impl WorkloadHandler {
         Self { executor }
     }
 
+    /// Submit a compute workload for execution.
+    ///
+    /// **IPC contract**: All string fields (paths, identifiers, metadata values)
+    /// must be fully resolved before submission. The server does **not** perform
+    /// `${VAR}`/`$VAR` environment variable expansion — that is a CLI-only
+    /// convenience in `load_workload_file`. IPC callers must send pre-resolved
+    /// values. This prevents ambiguity about whose environment applies in
+    /// cross-primal composition.
     pub(super) async fn submit_workload(
         &self,
         params: Option<&serde_json::Value>,

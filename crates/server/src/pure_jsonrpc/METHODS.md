@@ -16,6 +16,7 @@ queuing, status polling, and cancellation.
 | Method | Params | Returns | Notes |
 |---|---|---|---|
 | `toadstool.submit_workload` | `JsonWorkloadSubmission` | `WorkloadResult` | Submit a compute workload |
+| `compute.execute` | `JsonWorkloadSubmission` | `WorkloadResult` | Alias for `toadstool.submit_workload` |
 | `toadstool.query_status` | `"<workload_id>"` | `Job` | Poll workload status by UUID string |
 | `toadstool.cancel_workload` | `"<workload_id>"` | `{"success": true}` | Cancel by UUID string |
 | `toadstool.list_workloads` | none | `{"jobs": [...], "counts": {...}}` | List all workloads |
@@ -69,3 +70,28 @@ implementation names. This enables callers using the wateringHole
 > **Note**: `toadstool.query_status` and `compute.status` return different
 > response shapes — the former is a `WorkloadResult`, the latter is a `GpuJob`.
 > Use the namespace that matches how the job was submitted.
+
+---
+
+## IPC Contract: Pre-Resolved Values
+
+All JSON-RPC methods expect **pre-resolved** parameter values. The server does
+**not** perform `${VAR}` / `$VAR` environment variable expansion on any string
+fields — paths, identifiers, metadata values, or BDF addresses must be fully
+resolved by the caller before submission.
+
+Environment variable expansion is a **CLI-only** convenience provided by
+`load_workload_file` for locally-authored workload TOML/JSON specs. This
+separation is intentional: in cross-primal composition, the server's process
+environment differs from the caller's, and implicit expansion would create
+ambiguity about whose environment applies.
+
+| Path | Env expansion? |
+|------|----------------|
+| CLI `toadstool execute <file.toml>` | **Yes** — expands `${VAR}` in file text before parse |
+| JSON-RPC `compute.execute` / `toadstool.submit_workload` | **No** — pre-resolved only |
+| JSON-RPC `compute.dispatch.submit` | **No** — pre-resolved only |
+| JSON-RPC `compute.dispatch.pipeline.submit` | **No** — pre-resolved only |
+
+Graph specs and composition callers should use absolute paths or pre-expand
+variables on the client side before sending structured JSON-RPC requests.

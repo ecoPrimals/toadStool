@@ -202,6 +202,10 @@ impl DispatchHandler {
     }
 
     /// Submit with full caller context for JH-2 envelope enforcement.
+    ///
+    /// **IPC contract**: All param values (BDF addresses, buffer references) must
+    /// be pre-resolved by the caller. No `${VAR}` expansion is performed —
+    /// env expansion is a CLI-only convenience for local workload files.
     pub async fn dispatch_submit_with_context(
         &self,
         params: Option<&serde_json::Value>,
