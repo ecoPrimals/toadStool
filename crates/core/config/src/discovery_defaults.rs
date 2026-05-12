@@ -26,6 +26,12 @@
 use std::time::Duration;
 use toadstool_common::constants::network::{DEFAULT_HOSTNAME, HTTP_PROTOCOL};
 
+const DISCOVERY_TIMEOUT_SECS: u64 = 5;
+const DISCOVERY_REFRESH_SECS: u64 = 30;
+const DISCOVERY_CACHE_TTL_SECS: u64 = 300;
+const DISCOVERY_MAX_RETRIES: u32 = 3;
+const DISCOVERY_RETRY_DELAY_SECS: u64 = 1;
+
 /// Discovery configuration with sensible defaults
 #[derive(Debug, Clone)]
 pub struct DiscoveryDefaults {
@@ -48,11 +54,11 @@ pub struct DiscoveryDefaults {
 impl Default for DiscoveryDefaults {
     fn default() -> Self {
         Self {
-            discovery_timeout: Duration::from_secs(5),
-            refresh_interval: Duration::from_secs(30),
-            cache_ttl: Duration::from_secs(300), // 5 minutes
-            max_retries: 3,
-            retry_delay: Duration::from_secs(1),
+            discovery_timeout: Duration::from_secs(DISCOVERY_TIMEOUT_SECS),
+            refresh_interval: Duration::from_secs(DISCOVERY_REFRESH_SECS),
+            cache_ttl: Duration::from_secs(DISCOVERY_CACHE_TTL_SECS),
+            max_retries: DISCOVERY_MAX_RETRIES,
+            retry_delay: Duration::from_secs(DISCOVERY_RETRY_DELAY_SECS),
         }
     }
 }

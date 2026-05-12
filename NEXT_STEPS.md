@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S235 (Wave 8 Compute Trio foundation)
+**Updated**: May 2026 — S236 (deep debt: magic numbers, match exhaustiveness, test refactor)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 full envelope enforcement (S232)** | **DF-2 resolved: TOADSTOOL_AUTH_MODE env var (S233)** | **IPC contract: pre-resolved values (S234)** | **Wave 8 trio IPC contract + Gate 2 capabilities (S235)**
-**Latest**: S235 — Wave 8 Compute Trio foundation. BrainChip vendor ID fixed (0x1E7C canonical). `compute.dispatch.submit` accepts `binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, returns `timing`. `dispatch_capabilities` returns `gpu_count`, `architectures`, `vfio_status` for Gate 2. Absorption roadmap documented (Phases A-D).
-**Previous**: S234 — IPC contract. S233 — DF-2 fix. S232 — JH-2 Phase 2. S231 — JH-2 Phase 1. S230 — Error codes. S229 — JH-0.
+**Latest**: S236 — Deep debt sweep: magic numbers extracted to named constants (discovery/config defaults), `unreachable!()` in nvpmu/dma.rs eliminated via exhaustive match, dispatch/tests.rs (1020L) smart-refactored into 4 submodules (core_dispatch, shader, envelope, trio_contract). 72 dispatch tests, clippy clean.
+**Previous**: S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract. S233 — DF-2 fix. S232 — JH-2 Phase 2. S231 — JH-2 Phase 1. S230 — Error codes. S229 — JH-0.
 
 ---
 

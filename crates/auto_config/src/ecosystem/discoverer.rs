@@ -26,6 +26,8 @@ pub struct EcosystemDiscoverer {
 }
 
 impl EcosystemDiscoverer {
+    const DEFAULT_TIMEOUT_SECS: u64 = 30;
+
     /// Create a new ecosystem discoverer (capability-based)
     #[must_use]
     pub fn new() -> Self {
@@ -115,7 +117,7 @@ impl EcosystemDiscoverer {
 
         Self {
             service_patterns,
-            _discovery_timeout: Duration::from_secs(30),
+            _discovery_timeout: Duration::from_secs(Self::DEFAULT_TIMEOUT_SECS),
             last_discovery: None,
         }
     }

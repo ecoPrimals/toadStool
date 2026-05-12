@@ -142,13 +142,17 @@ pub struct DiscoveryConfig {
     pub enable_ipv6: bool,
 }
 
+const DEFAULT_DISCOVERY_INTERVAL_SECS: u64 = 30;
+const DEFAULT_SERVICE_TIMEOUT_SECS: u64 = 300;
+const DEFAULT_MAX_SERVICES: usize = 100;
+
 impl Default for DiscoveryConfig {
     fn default() -> Self {
         Self {
             method: DiscoveryMethod::default(),
-            discovery_interval: Duration::from_secs(30),
-            service_timeout: Duration::from_secs(300), // 5 minutes
-            max_services: 100,
+            discovery_interval: Duration::from_secs(DEFAULT_DISCOVERY_INTERVAL_SECS),
+            service_timeout: Duration::from_secs(DEFAULT_SERVICE_TIMEOUT_SECS),
+            max_services: DEFAULT_MAX_SERVICES,
             enable_ipv6: true,
         }
     }

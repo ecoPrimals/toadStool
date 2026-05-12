@@ -205,15 +205,10 @@ impl DmaAllocator {
             ));
         }
 
-        match page_size {
-            HugePageSize::Standard => return self.allocate(size),
-            HugePageSize::Huge2M | HugePageSize::Huge1G => {}
-        }
-
         let hw_page_size = match page_size {
+            HugePageSize::Standard => return self.allocate(size),
             HugePageSize::Huge2M => huge_page::HugePageSize::Huge2M,
             HugePageSize::Huge1G => huge_page::HugePageSize::Huge1G,
-            HugePageSize::Standard => unreachable!(),
         };
 
         let hp_mem = HugePageMemory::new(size, hw_page_size)
