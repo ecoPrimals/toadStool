@@ -173,30 +173,20 @@ impl BenchmarkResult {
         }
     }
 
-    /// Print summary to stdout
+    /// Log benchmark summary via structured `tracing`.
     pub fn print_summary(&self) {
-        println!("\n=== {} ===", self.benchmark.description());
-        println!("Accuracy:     {:.2}%", self.accuracy * 100.0);
-        println!("Throughput:   {:.1} inf/s", self.throughput);
-        println!(
-            "Mean latency: {:.3} ms",
-            self.mean_latency.as_secs_f64() * 1000.0
+        tracing::info!(
+            benchmark = %self.benchmark.description(),
+            accuracy_pct = format_args!("{:.2}", self.accuracy * 100.0),
+            throughput_inf_per_s = format_args!("{:.1}", self.throughput),
+            mean_latency_ms = format_args!("{:.3}", self.mean_latency.as_secs_f64() * 1000.0),
+            p95_latency_ms = format_args!("{:.3}", self.p95_latency.as_secs_f64() * 1000.0),
+            p99_latency_ms = format_args!("{:.3}", self.p99_latency.as_secs_f64() * 1000.0),
+            mean_power_mw = self.mean_power_mw,
+            energy_per_inference_uj = self.energy_per_inference_uj,
+            samples = self.num_samples,
+            "benchmark result"
         );
-        println!(
-            "P95 latency:  {:.3} ms",
-            self.p95_latency.as_secs_f64() * 1000.0
-        );
-        println!(
-            "P99 latency:  {:.3} ms",
-            self.p99_latency.as_secs_f64() * 1000.0
-        );
-        if let Some(power) = self.mean_power_mw {
-            println!("Mean power:   {power:.1} mW");
-        }
-        if let Some(energy) = self.energy_per_inference_uj {
-            println!("Energy/inf:   {energy:.1} uJ");
-        }
-        println!("Samples:      {}", self.num_samples);
     }
 }
 

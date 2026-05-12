@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S239
+**Date**: May 2026 — S240
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S240 (Deep Debt Sweep — Test Refactor, println→tracing, Constants)**:
+Smart-refactored `execution/tests.rs` (831L) into 4-submodule `tests/`
+directory mirroring production structure. Migrated `neurobench-runner`
+`println!` to `tracing::info!`. Extracted `DiscoveryEngine` inline timeout
+to `DEFAULT_DISCOVERY_TIMEOUT_SECS`. Full audit confirmed: zero production
+mocks, zero TODO/FIXME, zero `unreachable!()`, all unsafe SAFETY-documented,
+`StubRuntimeEngine` is correct sentinel, deprecated `CudaBackend` properly
+annotated. 8,278 tests, zero clippy warnings.
 
 **S239 (Wave 8 Phase B — glowplug absorption)**:
 Absorbed `coral-glowplug`'s sovereign boot lifecycle, swap orchestration,

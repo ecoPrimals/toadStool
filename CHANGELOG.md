@@ -5,7 +5,33 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-239)
+## [Unreleased] - May 12, 2026 (Sessions 43-240)
+
+### Session S240 (May 12, 2026) — Deep Debt Sweep: Test Refactor, println→tracing, Hardcoded Constants
+
+Comprehensive audit and cleanup across the workspace. Smart-refactored the last
+remaining >800-line production test file, migrated remaining `println!` to
+structured `tracing`, and extracted inline magic numbers to named constants.
+
+#### Changes
+
+- **Smart refactor `execution/tests.rs`**: Split 831-line monolithic test file
+  into `tests/` directory with 4 submodules (`native.rs`, `wasm.rs`, `primal.rs`,
+  `biome_os.rs`) + shared `mod.rs` helpers. Mirrors production module structure.
+  All 17 execution tests pass unchanged
+- **neurobench-runner println→tracing**: `BenchmarkResult::print_summary()` now
+  uses `tracing::info!` with structured fields (accuracy, throughput, latency
+  percentiles, power, energy, samples) instead of raw `println!`
+- **DiscoveryEngine named constant**: Extracted inline `Duration::from_secs(5)`
+  timeout to `DEFAULT_DISCOVERY_TIMEOUT_SECS` constant in both `with_defaults()`
+  and `new()` constructors
+- **Audit confirmations**: All `btsp/framing.rs` `.expect()` calls are
+  `#[cfg(test)]`-only. `StubRuntimeEngine` is architecturally correct sentinel
+  (not a mock). Deprecated `CudaBackend` stubs properly annotated. Zero
+  production `unreachable!()`. Zero production TODO/FIXME/HACK/XXX. All 46
+  `unsafe` blocks have SAFETY comments and are correctly contained in hw
+  boundary crates
+- **Tests**: 8,278 lib-only passing, zero clippy warnings, zero new debt
 
 ### Session S239 (May 12, 2026) — Wave 8 Phase B: Glowplug Absorption
 

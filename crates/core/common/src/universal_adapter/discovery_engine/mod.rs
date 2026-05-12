@@ -47,6 +47,9 @@ struct RegistryServiceEntry {
     metadata: HashMap<String, String>,
 }
 
+/// Default discovery timeout in seconds.
+const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 5;
+
 /// Discovery engine that finds capability providers
 pub struct DiscoveryEngine {
     sources: Vec<DiscoverySourceDispatch>,
@@ -68,7 +71,7 @@ impl DiscoveryEngine {
         sources.insert(0, DiscoverySourceDispatch::Mdns(MDnsSource::new()));
         Ok(Self {
             sources,
-            timeout: Duration::from_secs(5),
+            timeout: Duration::from_secs(DEFAULT_DISCOVERY_TIMEOUT_SECS),
         })
     }
 
@@ -80,7 +83,7 @@ impl DiscoveryEngine {
     pub fn new(sources: Vec<DiscoverySourceDispatch>) -> ToadStoolResult<Self> {
         Ok(Self {
             sources,
-            timeout: Duration::from_secs(5),
+            timeout: Duration::from_secs(DEFAULT_DISCOVERY_TIMEOUT_SECS),
         })
     }
 
