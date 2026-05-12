@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S239 (Wave 8 Phase B: glowplug absorption)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase B: glowplug absorbed (S239)** | **SwapOrchestrator 7-step lifecycle (S239)** | **SysfsSwapExecutor production impl (S239)** | **EmberClient → toadStool-internal (S239)** | **GpuPersonality unified (NvidiaOracle + Akida) (S239)**
-**Latest**: S239 — Wave 8 Phase B glowplug absorption. BootResult/BootStep/StepStatus types absorbed. SwapOrchestrator execute_boot() implemented (7-step lifecycle). SysfsSwapExecutor replaces EmberClient cross-process IPC. GpuPersonality unified with NvidiaOracle + Akida variants. GlowPlugClient uses SwapOrchestrator internally. Capabilities updated to Phase B.
-**Previous**: S238 — Deep debt: magic numbers, JH-2 audit. S237 — Wave 8 Phase A ember absorption. S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract.
+**Updated**: May 2026 — S240 (Deep Debt Sweep: test refactor, println→tracing, constants)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures; 8,278+ lib-only) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase B: glowplug absorbed (S239)** | **All production files <800 lines (S240)**
+**Latest**: S240 — Deep debt sweep. Smart-refactored execution/tests.rs (831L→4 submodules mirroring production structure). neurobench-runner println!→tracing::info!. DiscoveryEngine timeout→named constant. Full audit: zero production mocks, zero TODO/FIXME, all unsafe SAFETY-documented. 8,278 tests, zero clippy warnings.
+**Previous**: S239 — Wave 8 Phase B glowplug absorption. S238 — Deep debt: magic numbers, JH-2 audit. S237 — Wave 8 Phase A ember absorption. S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2.
 
 ---
 
@@ -199,7 +199,7 @@ after Phase D.
 
 ---
 
-## Completed Sessions (S90-S238)
+## Completed Sessions (S90-S240)
 
 ### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
 - **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.

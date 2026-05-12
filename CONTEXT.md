@@ -32,6 +32,7 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 - **Discovery hierarchy** (primalSpring cross-cutting): Songbird `ipc.resolve` → biomeOS `capability.discover` → UDS filesystem convention → socket registry → TCP probing. toadStool implements tiers 1–4; TCP probing (tier 5) not used for local IPC
 - **Wave 8 Compute Trio** (S235–S239): `compute.dispatch.submit` trio-standard IPC contract (`binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, `timing` response). `dispatch_capabilities` returns `gpu_count`, `architectures`, `vfio_status`, `ember.held_devices`, `ember.phase` for Gate 2. **Phase A: coral-ember absorbed** (S237) — vendor lifecycle, observation types, ring metadata, sysfs abstraction, `VfioResourceHandle` wired into dispatch. **Phase B: glowplug absorbed** (S239) — `SwapOrchestrator` 7-step lifecycle, `SysfsSwapExecutor` replaces `EmberClient`, `GpuPersonality` unified (NvidiaOracle + Akida), `GlowPlugClient` wraps orchestrator. Phases C-D pending
 - **IPC Contract** (S234): JSON-RPC methods accept "pre-resolved only" values — `${VAR}`/`$VAR` expansion is CLI-only (`load_workload_file`)
+- **S240 Deep Debt Audit**: Zero production mocks, zero TODO/FIXME/HACK/XXX, zero production `unreachable!()`, all 46 unsafe blocks SAFETY-documented, all production files <800 lines. `StubRuntimeEngine` is correct sentinel. Deprecated `CudaBackend` properly annotated
 - **Tests**: 22,843+ (8,278+ lib-only, 0 failures, unlimited parallelism)
 - **Unsafe**: 46 blocks (all in hw-safe/GPU/VFIO/display/plugin containment, all SAFETY-documented; reconciled S221); workspace `unsafe_code = "deny"`, 41 crates `forbid` + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; all lint attrs have `reason =` (S211+S213)
 - **async-trait**: DEPRECATED — fully removed and banned in `deny.toml` (S203r); transitive only via axum/config/wiggle
@@ -45,7 +46,7 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
 - **BTSP**: Phase 3 encrypted channel (ChaCha20-Poly1305, S215); transport switch verified (S218); 13/13 converged JSON-line relay + NDJSON post-handshake (primalSpring Phase 45c); PG-46 resolved (connection-reused handshake, S214)
 - **Dep hygiene**: `test-mocks` off by default (S206); all workspace deps unified
 - **Monitoring**: Real host queries via `toadstool_sysmon` + `rustix::fs::statvfs`
-- **Logging**: All production code uses `tracing` (structured logging standard); `eprintln!` retained only in standalone CLI binaries and test code (S233)
+- **Logging**: All production code uses `tracing` (structured logging standard); `println!`/`eprintln!` retained only in standalone CLI binaries and test code (S233, S240)
 - **Config**: All `TOADSTOOL_*` env vars interned to `socket_env` constants. `TOADSTOOL_AUTH_MODE` controls gate mode. Discovery/config defaults use named constants (S236, S238). 20+ duplicated magic numbers consolidated into `common::defaults` module and per-struct constants (S238)
 
 ## Not Included

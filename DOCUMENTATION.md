@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S239
+**Last Updated**: May 2026 — S240
 
 ---
 
@@ -30,13 +30,15 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S238 — May 2026)
+## Current State (S240 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **22,843 tests** (7,896+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **22,843 tests** (8,278+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f, `auth.check`/`auth.mode`/`auth.peer_info` S229). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"starting"|"alive"}` with PG-62 fast-path, `health.readiness` → `"starting"|"ready"`+version, `health.check` full envelope, `capabilities.list`, `identity.get`). **Recommended caller timeout: ≥3 seconds** for health probes during startup.
 - **Wave 8 Phase A: coral-ember absorbed** (S237) — Vendor lifecycle (NVIDIA/AMD/Intel/BrainChip/Generic), observation types, ring metadata, sysfs abstraction, error types absorbed into `toadstool-ember`. `VfioResourceHandle` — first production `ResourceHandle` implementation. Device pool wired into `compute.dispatch.submit` path. 90 ember tests.
+- **Wave 8 Phase B: glowplug absorbed** (S239) — `SwapOrchestrator` 7-step lifecycle, `SysfsSwapExecutor` replaces `EmberClient` cross-process IPC, `GpuPersonality` unified (NvidiaOracle + Akida), `GlowPlugClient` wraps orchestrator internally. 62 new glowplug tests.
+- **S240 Deep Debt Sweep** — Smart-refactored `execution/tests.rs` (831L→4 submodules). `neurobench-runner` `println!`→`tracing`. `DiscoveryEngine` hardcoded timeout→named constant. Full audit: zero production mocks/TODO/FIXME/unreachable!(), all unsafe SAFETY-documented.
 - **MethodGate JH-0** (S229) — Pre-dispatch capability gate. All methods classified Public/Protected. `GateMode::Permissive` (default) / `GateMode::Enforcing` (via `TOADSTOOL_AUTH_MODE` env var). Error codes: `-32000 UNAUTHORIZED`, `-32001 PERMISSION_DENIED` (ecosystem standard).
 - **JH-2 Resource Envelope Enforcement — FULLY RESOLVED** (S231–S232, audited S238) — `ResourceEnvelope` (mem_mb, cpu_cores, max_timeout_ms, method_allowlist) enforced at all 3 dispatch entry points: `compute.dispatch.submit`, `shader.dispatch`, `compute.dispatch.pipeline.submit`. Pipeline internal stages inherit `CallerContext`. All 3 dimensions confirmed enforced.
 - **Magic number consolidation** (S236, S238) — All distributed subsystem config defaults extracted to named constants. Container port/resource/image defaults likewise. Zero bare magic literals in config defaults.
