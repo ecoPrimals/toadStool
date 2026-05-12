@@ -133,6 +133,10 @@ pub trait MigrationOps {
 }
 
 /// Implementation of migration operations
+impl crate::universal::UniversalComputeManager {
+    const DEFAULT_MIGRATION_ESTIMATE_SECS: u64 = 60;
+}
+
 impl MigrationOps for crate::universal::UniversalComputeManager {
     async fn create_migration_plan(&self, source: &str, target: &str) -> Result<MigrationPlan> {
         // Analyze source and target platforms to create migration plan
@@ -141,7 +145,7 @@ impl MigrationOps for crate::universal::UniversalComputeManager {
             target_platform: target.to_string(),
             workload_id: "workload-1".to_string(),
             migration_type: MigrationType::ColdMigration,
-            estimated_duration: Duration::from_secs(60),
+            estimated_duration: Duration::from_secs(Self::DEFAULT_MIGRATION_ESTIMATE_SECS),
             risks: vec!["Data loss".to_string(), "Downtime".to_string()],
             requirements: vec!["Target platform availability".to_string()],
             cleanup_source: false,

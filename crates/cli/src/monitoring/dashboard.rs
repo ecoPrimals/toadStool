@@ -170,8 +170,11 @@ pub fn collect_biome_status() -> Result<Vec<BiomeStatusSummary>> {
     reason = "precision loss acceptable for this conversion"
 )]
 pub fn collect_resource_usage() -> Result<SystemResourceUsage> {
+    const CPU_SAMPLE_WINDOW_MS: u64 = 100;
+
     let cpu_percent = f64::from(
-        toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(100)).unwrap_or(0.0),
+        toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(CPU_SAMPLE_WINDOW_MS))
+            .unwrap_or(0.0),
     );
 
     let mem = toadstool_sysmon::memory_info().map_err(|e| crate::CliError::Other(e.to_string()))?;

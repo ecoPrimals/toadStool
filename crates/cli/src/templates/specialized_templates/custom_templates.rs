@@ -3,8 +3,6 @@
 //!
 //! Allows users to define custom biome configurations via CustomTemplateSpec.
 
-#![allow(deprecated, reason = "module uses deprecated fields during migration")]
-
 use std::collections::HashMap;
 
 use super::super::basic_templates::TemplateComponents;

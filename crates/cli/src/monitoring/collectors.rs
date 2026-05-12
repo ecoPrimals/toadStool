@@ -42,11 +42,14 @@ impl MetricsCollector for SystemMetricsCollector {
         reason = "precision loss acceptable for this conversion"
     )]
     fn collect(&self) -> Result<MetricBatch> {
+        const CPU_SAMPLE_WINDOW_MS: u64 = 50;
+
         let timestamp = std::time::SystemTime::now();
         let mut metrics = Vec::new();
 
         let cpu_usage =
-            toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0);
+            toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(CPU_SAMPLE_WINDOW_MS))
+                .unwrap_or(0.0);
         metrics.push(Metric {
             name: "cpu_usage_percent".to_string(),
             value: MetricValue::Gauge(f64::from(cpu_usage)),

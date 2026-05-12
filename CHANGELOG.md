@@ -5,7 +5,31 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-248)
+## [Unreleased] - May 12, 2026 (Sessions 43-249)
+
+### Session S249 (May 12, 2026) — Deep Debt: Duration Constants + Deprecated Cleanup
+
+Full-spectrum deep debt audit and cleanup. Extracted ~55 Duration literal constants
+across CLI network configurator defaults (35 constants covering proxy timeouts, mTLS
+rotation, service discovery, connection pooling, retry, DNS, audit retention, canary/
+blue-green/traffic, health monitoring, circuit breaker), monitoring alerting rules (4
+constants), daemon config defaults (4 constants), ecosystem discovery/registry/adapters,
+executor lifecycle/display, ember AMD hwmon polling, and nvpmu power manager PMC
+settle/poll timers.
+
+Removed 3 vestigial `#[allow(deprecated)]` attributes from CLI specialized template
+modules (infrastructure, custom, ML/science) — deprecated usage had already been
+migrated, so the suppression was dead. Confirmed all unsafe blocks in hw-safe, nvpmu,
+and display are legitimate hardware FFI with SAFETY documentation. No production files
+over 800 lines, all mocks properly test-gated, no `todo!()`/`panic!()` in production,
+no `println!` regressions, `cuda` feature fully removed from code.
+
+#### Changes
+
+- **Duration constants**: Extracted ~55 hardcoded `Duration` literals into named
+  constants across 14 production files
+- **Deprecated cleanup**: Removed dead `#[allow(deprecated)]` from 3 CLI template files
+- **Code quality**: Zero clippy warnings (`-D warnings`), 8,704 tests passing
 
 ### Session S248 (May 12, 2026) — Phase C Batch 4: VFIO Foundation Absorption + Deep Debt
 

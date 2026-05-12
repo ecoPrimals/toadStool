@@ -96,7 +96,9 @@ impl FederationOps for crate::universal::UniversalComputeManager {
         // Start background task for heartbeat monitoring
         let addr_clone = *addr;
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+            const PEER_HEARTBEAT_INTERVAL_SECS: u64 = 30;
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_secs(PEER_HEARTBEAT_INTERVAL_SECS));
 
             loop {
                 interval.tick().await;

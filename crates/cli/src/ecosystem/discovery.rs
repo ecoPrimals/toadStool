@@ -18,6 +18,8 @@ use crate::{CliContextExt, Result};
 use tokio::time::timeout;
 use tracing::{debug, info, warn};
 
+const DISCOVERY_SCAN_TIMEOUT_SECS: u64 = 2;
+
 use super::types::*;
 
 /// Discover service by capability using environment variables
@@ -243,7 +245,7 @@ async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpo
     };
 
     let discovered = mdns
-        .discover_by_capability(capability_category, Duration::from_secs(2))
+        .discover_by_capability(capability_category, Duration::from_secs(DISCOVERY_SCAN_TIMEOUT_SECS))
         .await
         .unwrap_or_default();
 
@@ -305,7 +307,7 @@ async fn discover_via_mdns(capability_category: &str) -> Result<Vec<ServiceEndpo
 pub async fn verify_service(service: &ServiceEndpoint) -> Result<bool> {
     // Try to connect with a longer timeout for verification
     match timeout(
-        Duration::from_secs(2),
+        Duration::from_secs(DISCOVERY_SCAN_TIMEOUT_SECS),
         tokio::net::TcpStream::connect(&service.address),
     )
     .await

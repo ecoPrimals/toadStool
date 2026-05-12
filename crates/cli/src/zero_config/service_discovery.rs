@@ -30,10 +30,12 @@ pub struct ServiceDiscovery {
 }
 
 impl ServiceDiscovery {
+    const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 2;
+
     /// Create new service discovery coordinator
     pub const fn new() -> Self {
         Self {
-            discovery_timeout: Duration::from_secs(2),
+            discovery_timeout: Duration::from_secs(Self::DEFAULT_DISCOVERY_TIMEOUT_SECS),
         }
     }
 

@@ -95,9 +95,10 @@ impl VendorLifecycle for AmdVega20Lifecycle {
         }
 
         if target_driver == "amdgpu" {
+            const HWMON_POLL_INTERVAL_SECS: u64 = 1;
             let hwmon_path = sysfs::pci_device_path(bdf, "hwmon");
             for attempt in 0..5 {
-                std::thread::sleep(std::time::Duration::from_secs(1));
+                std::thread::sleep(std::time::Duration::from_secs(HWMON_POLL_INTERVAL_SECS));
                 if let Ok(entries) = std::fs::read_dir(&hwmon_path)
                     && entries
                         .flatten()

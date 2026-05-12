@@ -157,8 +157,11 @@ impl InputManager {
         tx: mpsc::Sender<InputEvent>,
         shared_focus: Arc<RwLock<Option<WindowId>>>,
     ) -> Result<()> {
+        const INPUT_POLL_INTERVAL_MS: u64 = 10;
+
         let mut parser = EventParser::new();
-        let mut poll_interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
+        let mut poll_interval =
+            tokio::time::interval(tokio::time::Duration::from_millis(INPUT_POLL_INTERVAL_MS));
         poll_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
         // Read events in a blocking loop (inside tokio::spawn_blocking for now)

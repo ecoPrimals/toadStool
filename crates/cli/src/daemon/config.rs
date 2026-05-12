@@ -123,17 +123,22 @@ impl DaemonConfig {
 
 impl Default for DaemonConfig {
     fn default() -> Self {
+        const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
+        const RESOURCE_MONITOR_INTERVAL_SECS: u64 = 30;
+        const HEARTBEAT_INTERVAL_SECS: u64 = 30;
+        const HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
+
         Self {
             port: toadstool_config::ports::daemon_port(),
             register_with_biomeos: false,
             socket_path: None,
             config_file: None,
             max_concurrent_workloads: 10,
-            default_workload_timeout: Duration::from_secs(3600), // 1 hour
-            resource_monitor_interval: Duration::from_secs(30),
-            heartbeat_interval: Duration::from_secs(30),
+            default_workload_timeout: Duration::from_secs(DEFAULT_WORKLOAD_TIMEOUT_SECS),
+            resource_monitor_interval: Duration::from_secs(RESOURCE_MONITOR_INTERVAL_SECS),
+            heartbeat_interval: Duration::from_secs(HEARTBEAT_INTERVAL_SECS),
             biomeos_socket: None,
-            health_check_interval: Duration::from_secs(10),
+            health_check_interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
         }
     }
 }

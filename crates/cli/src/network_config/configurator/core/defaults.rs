@@ -24,6 +24,60 @@ const DEFAULT_PROXY_CONCURRENCY: u32 = 2;
 const DEFAULT_SIDECAR_IMAGE: &str = "toadstool/service-mesh-proxy:latest";
 const RFC1918_RANGES: &[&str] = &["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
 
+// --- Duration defaults by domain ---
+
+// Proxy / inter-service timeouts
+const PROXY_CONNECTION_TIMEOUT_SECS: u64 = 10;
+const PROXY_REQUEST_TIMEOUT_SECS: u64 = 30;
+const INTERSERVICE_READ_TIMEOUT_SECS: u64 = 60;
+const INTERSERVICE_WRITE_TIMEOUT_SECS: u64 = 60;
+
+// mTLS / security
+const MTLS_ROTATION_INTERVAL_SECS: u64 = 3600;
+const TOKEN_CLOCK_SKEW_SECS: u64 = 300;
+
+// Service discovery
+const DISCOVERY_REFRESH_INTERVAL_SECS: u64 = 30;
+const DISCOVERY_CACHE_TTL_SECS: u64 = 300;
+
+// Connection pooling
+const POOL_IDLE_TIMEOUT_SECS: u64 = 300;
+const POOL_CONNECTION_LIFETIME_SECS: u64 = 3600;
+
+// Retry
+const RETRY_BASE_DELAY_MS: u64 = 100;
+const RETRY_MAX_DELAY_SECS: u64 = 30;
+
+// DNS
+const DNS_RESOLUTION_TIMEOUT_SECS: u64 = 5;
+const DNS_CACHE_TTL_SECS: u64 = 300;
+const DNS_NEGATIVE_TTL_SECS: u64 = 60;
+
+// Audit log retention
+const AUDIT_RETENTION_DAYS: u64 = 30;
+
+// Canary / blue-green / traffic
+const CANARY_LATENCY_P99_MS: u64 = 500;
+const CANARY_EVALUATION_PERIOD_SECS: u64 = 300;
+const ROLLBACK_LATENCY_P99_SECS: u64 = 1;
+const ROLLBACK_EVALUATION_PERIOD_SECS: u64 = 60;
+const PROMOTION_INTERVAL_SECS: u64 = 300;
+const PROMOTION_ROLLBACK_TIMEOUT_SECS: u64 = 30;
+const BLUE_GREEN_VALIDATION_SECS: u64 = 300;
+const BLUE_GREEN_ROLLBACK_TIMEOUT_SECS: u64 = 30;
+const RATE_LIMIT_WINDOW_SECS: u64 = 60;
+
+// Health monitoring
+const HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
+const HEALTH_CHECK_TIMEOUT_SECS: u64 = 5;
+const STICKY_SESSION_TIMEOUT_SECS: u64 = 3600;
+const METRICS_SCRAPE_INTERVAL_SECS: u64 = 15;
+
+// Circuit breaker
+const CIRCUIT_BREAKER_TIMEOUT_SECS: u64 = 60;
+const CIRCUIT_BREAKER_HALF_OPEN_SECS: u64 = 30;
+const CIRCUIT_BREAKER_RESET_SECS: u64 = 300;
+
 /// Default DNS search suffixes for the orchestration resolver stack.
 ///
 /// Used when building [`OrchestrationNetworkConfig`] defaults. Override the full list via
@@ -129,10 +183,10 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                     admin_port: DEFAULT_PROXY_ADMIN_PORT,
                     concurrency: DEFAULT_PROXY_CONCURRENCY,
                     timeouts: TimeoutConfig {
-                        connection_timeout: Duration::from_secs(10),
-                        request_timeout: Duration::from_secs(30),
-                        read_timeout: Duration::from_secs(30),
-                        write_timeout: Duration::from_secs(30),
+                        connection_timeout: Duration::from_secs(PROXY_CONNECTION_TIMEOUT_SECS),
+                        request_timeout: Duration::from_secs(PROXY_REQUEST_TIMEOUT_SECS),
+                        read_timeout: Duration::from_secs(PROXY_REQUEST_TIMEOUT_SECS),
+                        write_timeout: Duration::from_secs(PROXY_REQUEST_TIMEOUT_SECS),
                     },
                 },
                 telemetry: TelemetryConfig {
@@ -148,7 +202,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                 ca_cert: std::env::var("TOADSTOOL_CA_CERT").unwrap_or_default(),
                 service_cert: std::env::var("TOADSTOOL_SERVICE_CERT").unwrap_or_default(),
                 private_key: std::env::var("TOADSTOOL_SERVICE_KEY").unwrap_or_default(),
-                rotation_interval: Duration::from_secs(3600),
+                rotation_interval: Duration::from_secs(MTLS_ROTATION_INTERVAL_SECS),
                 verification_mode: "strict".to_string(),
             },
             service_discovery: ServiceDiscoveryConfig {
@@ -167,8 +221,8 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         enabled: true,
                     },
                 ],
-                refresh_interval: Duration::from_secs(30),
-                cache_ttl: Duration::from_secs(300),
+                refresh_interval: Duration::from_secs(DISCOVERY_REFRESH_INTERVAL_SECS),
+                cache_ttl: Duration::from_secs(DISCOVERY_CACHE_TTL_SECS),
                 health_check_integration: true,
             },
             inter_service: InterServiceConfig {
@@ -177,21 +231,21 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                     enabled: true,
                     max_connections_per_host: 100,
                     max_idle_connections: 10,
-                    idle_timeout: Duration::from_secs(300),
-                    connection_lifetime: Duration::from_secs(3600),
+                    idle_timeout: Duration::from_secs(POOL_IDLE_TIMEOUT_SECS),
+                    connection_lifetime: Duration::from_secs(POOL_CONNECTION_LIFETIME_SECS),
                 },
                 retry: RetryConfig {
                     max_retries: 3,
-                    base_delay: Duration::from_millis(100),
-                    max_delay: Duration::from_secs(30),
+                    base_delay: Duration::from_millis(RETRY_BASE_DELAY_MS),
+                    max_delay: Duration::from_secs(RETRY_MAX_DELAY_SECS),
                     backoff_multiplier: 2.0,
                     jitter_percent: 0.1,
                 },
                 timeouts: TimeoutConfig {
-                    connection_timeout: Duration::from_secs(10),
-                    request_timeout: Duration::from_secs(30),
-                    read_timeout: Duration::from_secs(60),
-                    write_timeout: Duration::from_secs(60),
+                    connection_timeout: Duration::from_secs(PROXY_CONNECTION_TIMEOUT_SECS),
+                    request_timeout: Duration::from_secs(PROXY_REQUEST_TIMEOUT_SECS),
+                    read_timeout: Duration::from_secs(INTERSERVICE_READ_TIMEOUT_SECS),
+                    write_timeout: Duration::from_secs(INTERSERVICE_WRITE_TIMEOUT_SECS),
                 },
             },
         },
@@ -201,13 +255,13 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             search_domains: default_orchestration_dns_search_domains(),
             // Use environment-aware service domains instead of hardcoded values
             service_domains: ServiceDomainsConfig::from_env(),
-            resolution_timeout: Duration::from_secs(5),
+            resolution_timeout: Duration::from_secs(DNS_RESOLUTION_TIMEOUT_SECS),
             cache: DnsCacheConfig {
                 base: CacheConfig {
                     enabled: true,
-                    ttl: Duration::from_secs(300),
+                    ttl: Duration::from_secs(DNS_CACHE_TTL_SECS),
                     max_entries: 1000,
-                    negative_ttl: Duration::from_secs(60),
+                    negative_ttl: Duration::from_secs(DNS_NEGATIVE_TTL_SECS),
                 },
             },
         },
@@ -220,7 +274,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                     validate_audience: true,
                     validate_expiration: true,
                     validate_signature: true,
-                    clock_skew: Duration::from_secs(300),
+                    clock_skew: Duration::from_secs(TOKEN_CLOCK_SKEW_SECS),
                 },
                 certificate_validation: CertificateValidationConfig {
                     validate_chain: true,
@@ -292,7 +346,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                     enabled: true,
                 }],
                 retention: RetentionPolicy {
-                    duration: Duration::from_secs(30 * 24 * 3600), // 30 days
+                    duration: Duration::from_secs(AUDIT_RETENTION_DAYS * 24 * 3600),
                     compression: true,
                     archive_location: None,
                 },
@@ -344,35 +398,35 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                 percentage: 5,
                 success_criteria: SuccessCriteria {
                     success_rate: 0.99,
-                    latency_p99: Duration::from_millis(500),
+                    latency_p99: Duration::from_millis(CANARY_LATENCY_P99_MS),
                     error_rate: 0.01,
-                    evaluation_period: Duration::from_secs(300),
+                    evaluation_period: Duration::from_secs(CANARY_EVALUATION_PERIOD_SECS),
                 },
                 rollback_criteria: RollbackCriteria {
                     error_rate: 0.05,
-                    latency_p99: Duration::from_secs(1),
-                    evaluation_period: Duration::from_secs(60),
+                    latency_p99: Duration::from_secs(ROLLBACK_LATENCY_P99_SECS),
+                    evaluation_period: Duration::from_secs(ROLLBACK_EVALUATION_PERIOD_SECS),
                     automatic_rollback: true,
                 },
                 automation: AutomationConfig {
                     enabled: true,
-                    promotion_interval: Duration::from_secs(300),
+                    promotion_interval: Duration::from_secs(PROMOTION_INTERVAL_SECS),
                     max_promotion_steps: 5,
-                    rollback_timeout: Duration::from_secs(30),
+                    rollback_timeout: Duration::from_secs(PROMOTION_ROLLBACK_TIMEOUT_SECS),
                 },
             },
             blue_green: BlueGreenConfig {
                 enabled: true,
                 switch_strategy: "instant".to_string(),
-                validation_period: Duration::from_secs(300),
-                rollback_timeout: Duration::from_secs(30),
+                validation_period: Duration::from_secs(BLUE_GREEN_VALIDATION_SECS),
+                rollback_timeout: Duration::from_secs(BLUE_GREEN_ROLLBACK_TIMEOUT_SECS),
             },
             rate_limiting: RateLimitingConfig {
                 enabled: true,
                 global_limit: Some(RateLimit {
                     requests_per_second: 1000,
                     burst_size: 2000,
-                    window_size: Duration::from_secs(60),
+                    window_size: Duration::from_secs(RATE_LIMIT_WINDOW_SECS),
                 }),
                 service_limits: HashMap::new(),
                 user_limits: HashMap::new(),
@@ -390,8 +444,8 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             health_check: HttpHealthCheckConfig {
                 base: HealthCheckConfig {
                     enabled: true,
-                    interval: Duration::from_secs(30),
-                    timeout: Duration::from_secs(5),
+                    interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
+                    timeout: Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS),
                     healthy_threshold: 2,
                     unhealthy_threshold: 3,
                     retry_count: 3,
@@ -410,7 +464,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                     secure: true,
                     http_only: true,
                 }),
-                timeout: Duration::from_secs(3600),
+                timeout: Duration::from_secs(STICKY_SESSION_TIMEOUT_SECS),
             },
             backends: vec![],
         },
@@ -418,13 +472,13 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             enabled: true,
             failure_threshold: 5,
             success_threshold: 3,
-            timeout: Duration::from_secs(60),
-            half_open_timeout: Duration::from_secs(30),
-            reset_timeout: Duration::from_secs(300),
+            timeout: Duration::from_secs(CIRCUIT_BREAKER_TIMEOUT_SECS),
+            half_open_timeout: Duration::from_secs(CIRCUIT_BREAKER_HALF_OPEN_SECS),
+            reset_timeout: Duration::from_secs(CIRCUIT_BREAKER_RESET_SECS),
         },
         health_monitoring: HealthMonitoringConfig {
             enabled: true,
-            interval: Duration::from_secs(30),
+            interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
             // Health endpoints now constructed dynamically from service domains + env ports
             endpoints: {
                 let domains = ServiceDomainsConfig::from_env();
@@ -442,8 +496,8 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         health_check: HttpHealthCheckConfig {
                             base: HealthCheckConfig {
                                 enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
+                                interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
+                                timeout: Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS),
                                 healthy_threshold: 2,
                                 unhealthy_threshold: 3,
                                 retry_count: 3,
@@ -459,8 +513,8 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         health_check: HttpHealthCheckConfig {
                             base: HealthCheckConfig {
                                 enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
+                                interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
+                                timeout: Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS),
                                 healthy_threshold: 2,
                                 unhealthy_threshold: 3,
                                 retry_count: 3,
@@ -476,8 +530,8 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         health_check: HttpHealthCheckConfig {
                             base: HealthCheckConfig {
                                 enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
+                                interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
+                                timeout: Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS),
                                 healthy_threshold: 2,
                                 unhealthy_threshold: 3,
                                 retry_count: 3,
@@ -496,8 +550,8 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
                         health_check: HttpHealthCheckConfig {
                             base: HealthCheckConfig {
                                 enabled: true,
-                                interval: Duration::from_secs(30),
-                                timeout: Duration::from_secs(5),
+                                interval: Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS),
+                                timeout: Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS),
                                 healthy_threshold: 2,
                                 unhealthy_threshold: 3,
                                 retry_count: 3,
@@ -526,7 +580,7 @@ pub(super) fn orchestration_default_network_config() -> OrchestrationNetworkConf
             metrics: MetricsConfig {
                 enabled: true,
                 endpoint: "/metrics".to_string(),
-                interval: Duration::from_secs(15),
+                interval: Duration::from_secs(METRICS_SCRAPE_INTERVAL_SECS),
                 exporters: vec![MetricsExporter {
                     exporter_type: "prometheus".to_string(),
                     config: {

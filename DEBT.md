@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S248
+**Date**: May 2026 — S249
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S249 (Deep Debt: Duration Constants + Deprecated Cleanup)**:
+Full-spectrum audit and cleanup. Extracted ~55 Duration constants across CLI
+network defaults, alerting, daemon, ecosystem, executor, display, ember, nvpmu.
+Removed 3 dead `#[allow(deprecated)]` from template modules. Confirmed: no files
+>800L, all mocks test-gated, no prod `panic!`/`todo!`, all unsafe documented.
+8,704 tests, zero clippy warnings.
 
 **S248 (Phase C Batch 4 — VFIO Foundation Absorption + Deep Debt)**:
 Absorbed 40 VFIO files into `toadstool-cylinder`: kernel ABI, ioctl wrappers,

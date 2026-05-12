@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
+
 use toadstool_common::constants::ecosystem::well_known;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::fs;
@@ -187,7 +189,7 @@ impl BiomeExecutor {
             runtime_hint: Some(RuntimeType::Native),
             resources: ResourceRequirements::default(),
             security_context: SecurityContext::default(),
-            timeout: Some(Duration::from_secs(3600)),
+            timeout: Some(Duration::from_secs(DEFAULT_WORKLOAD_TIMEOUT_SECS)),
             environment: environment.clone(),
             input_data: ExecutionInput::default(),
             callback_config: None,
@@ -226,7 +228,7 @@ impl BiomeExecutor {
             runtime_hint: Some(RuntimeType::Native),
             resources: ResourceRequirements::default(),
             security_context: SecurityContext::default(),
-            timeout: Some(Duration::from_secs(3600)),
+            timeout: Some(Duration::from_secs(DEFAULT_WORKLOAD_TIMEOUT_SECS)),
             environment: service_env,
             input_data: ExecutionInput::default(),
             callback_config: None,

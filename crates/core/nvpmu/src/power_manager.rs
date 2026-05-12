@@ -189,6 +189,9 @@ impl<R: RegisterAccess> PowerManager<R> {
     ///
     /// Returns error if register writes fail or the GPU doesn't warm.
     pub fn warm(&mut self) -> Result<()> {
+        const PMC_SETTLE_DEADLINE_MS: u64 = 50;
+        const PMC_POLL_INTERVAL_US: u64 = 100;
+
         let state = self.current_state()?;
         match state {
             GpuPowerState::Warm | GpuPowerState::Sovereign => return Ok(()),
@@ -213,7 +216,7 @@ impl<R: RegisterAccess> PowerManager<R> {
 
         // Poll until PMC readback matches the warm value (faster than a fixed delay when
         // the hardware settles early); cap total wait at 50ms with 100µs sleeps.
-        let deadline = Instant::now() + Duration::from_millis(50);
+        let deadline = Instant::now() + Duration::from_millis(PMC_SETTLE_DEADLINE_MS);
         let pmc_readback = loop {
             let readback = self
                 .regs
@@ -225,7 +228,7 @@ impl<R: RegisterAccess> PowerManager<R> {
             if Instant::now() >= deadline {
                 break readback;
             }
-            std::thread::sleep(Duration::from_micros(100));
+            std::thread::sleep(Duration::from_micros(PMC_POLL_INTERVAL_US));
         };
 
         if pmc_readback == registers::PMC_ENABLE_GATED

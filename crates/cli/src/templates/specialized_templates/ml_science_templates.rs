@@ -4,8 +4,6 @@
 //! Data science and research workflow templates that extend the base science template
 //! with domain-specific tools (PyTorch, Qiskit, Bioconductor, OpenCV).
 
-#![allow(deprecated, reason = "module uses deprecated fields during migration")]
-
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
 

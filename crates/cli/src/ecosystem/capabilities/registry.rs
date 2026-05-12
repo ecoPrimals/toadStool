@@ -57,11 +57,13 @@ pub struct CapabilityRegistry {
 }
 
 impl CapabilityRegistry {
+    const DEFAULT_PROVIDER_TTL_SECS: u64 = 300;
+
     /// Create a new capability registry
     pub fn new() -> Self {
         Self {
             providers: Arc::new(RwLock::new(HashMap::new())),
-            provider_ttl: Duration::from_secs(300), // 5 minutes
+            provider_ttl: Duration::from_secs(Self::DEFAULT_PROVIDER_TTL_SECS),
             auto_cleanup: true,
         }
     }

@@ -58,11 +58,13 @@ pub struct UniversalServiceAdapter {
 }
 
 impl UniversalServiceAdapter {
+    const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
+
     /// Create a new universal service adapter
     pub const fn new(resolver: Arc<CapabilityResolver>) -> Self {
         Self {
             resolver,
-            timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(Self::DEFAULT_REQUEST_TIMEOUT_SECS),
             enable_logging: false,
         }
     }
