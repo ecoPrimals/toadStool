@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S236
+**Last Updated**: May 2026 — S238
 
 ---
 
@@ -30,14 +30,16 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S236 — May 2026)
+## Current State (S238 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
 - **22,843 tests** (7,896+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f, `auth.check`/`auth.mode`/`auth.peer_info` S229). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"starting"|"alive"}` with PG-62 fast-path, `health.readiness` → `"starting"|"ready"`+version, `health.check` full envelope, `capabilities.list`, `identity.get`). **Recommended caller timeout: ≥3 seconds** for health probes during startup.
+- **Wave 8 Phase A: coral-ember absorbed** (S237) — Vendor lifecycle (NVIDIA/AMD/Intel/BrainChip/Generic), observation types, ring metadata, sysfs abstraction, error types absorbed into `toadstool-ember`. `VfioResourceHandle` — first production `ResourceHandle` implementation. Device pool wired into `compute.dispatch.submit` path. 90 ember tests.
 - **MethodGate JH-0** (S229) — Pre-dispatch capability gate. All methods classified Public/Protected. `GateMode::Permissive` (default) / `GateMode::Enforcing` (via `TOADSTOOL_AUTH_MODE` env var). Error codes: `-32000 UNAUTHORIZED`, `-32001 PERMISSION_DENIED` (ecosystem standard).
-- **JH-2 Resource Envelope Enforcement** (S231–S232) — `ResourceEnvelope` (mem_mb, cpu_cores, max_timeout_ms, method_allowlist) enforced at all 3 dispatch entry points: `compute.dispatch.submit`, `shader.dispatch`, `compute.dispatch.pipeline.submit`. Pipeline internal stages inherit `CallerContext`.
+- **JH-2 Resource Envelope Enforcement — FULLY RESOLVED** (S231–S232, audited S238) — `ResourceEnvelope` (mem_mb, cpu_cores, max_timeout_ms, method_allowlist) enforced at all 3 dispatch entry points: `compute.dispatch.submit`, `shader.dispatch`, `compute.dispatch.pipeline.submit`. Pipeline internal stages inherit `CallerContext`. All 3 dimensions confirmed enforced.
+- **Magic number consolidation** (S236, S238) — All distributed subsystem config defaults extracted to named constants. Container port/resource/image defaults likewise. Zero bare magic literals in config defaults.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary, biomeOS routes here) + `compute-tarpc.sock` (tarpc hot-path). Override: `TOADSTOOL_SOCKET` / `TOADSTOOL_TARPC_SOCKET`. Family: `compute-{fid}.sock` / `compute-{fid}-tarpc.sock`.
 - **Pipeline dispatch** — `compute.dispatch.pipeline.submit` + `.status` for ordered multi-stage workloads (DAG, topological sort, result forwarding). Resolves neuralSpring PG-05.
 - **Capability-based everywhere**: 0 production hardcoded primal names, 0 production mocks, 0 production unwraps, 0 TODOs/FIXMEs. All primal references use `PRIMAL_NAME` constant or capability identifiers. All production logging via `tracing` (Tier 3 `eprintln!` migrated S233).
@@ -45,14 +47,14 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **TCP idle timeout (S203h)** — `TCP_IDLE_TIMEOUT_SECS` (300s configurable), `TCP_NODELAY` on all accepted streams. Resolves primalSpring benchScale exp082.
 - **BTSP Phase 2 + JSON-line relay (S176)** — Handshake enforced on every UDS accept path; auto-detects plain-text clients (primalSpring) and degrades gracefully. JSON-line BTSP auto-detection on `0x7B` path routes `"protocol":"btsp"` to `relay_json_line_handshake()` (4-step BearDog IPC relay). Family seed loading via `load_family_seed_for_btsp()` (env→file cascade).
 - **async-trait DEPRECATED** (S203r) — fully removed and banned in `deny.toml`. All ~91 annotations evolved to manual `Pin<Box<dyn Future>>` (dyn-dispatched) or native AFIT (non-dyn), and subsequently enum dispatch + RPITIT (S203s). Zero runtime behavior change. Transitive only via axum/config/wiggle.
-- **`deny.toml` ring ban active** — ecoBin v3 compliant. `ring` absent from lockfile.
+- **`deny.toml` ring ban active** — ecoBin v3 compliant. `ring` present only as conditional transitive dep via quinn-proto/rustls-webpki (not on default build path).
 - **46 unsafe blocks (all in hw-safe/GPU/VFIO/display/plugin containment crates)**; all SAFETY-documented (S204: ffi\_loader.rs gap closed, S221: count reconciled 49→46). Workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. All lint attrs have `reason =` (S211+S213).
 - **Encrypted compute dispatch (S205)** — payloads encrypted via Tower `crypto.encrypt` before dispatch, decrypted on result return. `DISCOVERY_SOCKET` wired as highest-precedence capability resolution tier.
 - **Dep hygiene (S206)** — `humantime-serde`, `rand`, `tokio-util`, `temp-env` unified to workspace. GPU `spirv`/`jit`/`testing` stale features removed. `test-mocks` removed from core default features.
 - **Coverage push (S212)** — ~100 new inline tests across 10 previously-untested files (server handlers, CLI collectors, platform monitoring, auto_config, distributed security). 1,004 new test lines.
 - **BTSP Phase 3 (S215)** — `btsp.negotiate` server handler + ChaCha20-Poly1305 encrypted framing on all JSON-RPC paths. HKDF-SHA256 key derivation matching primalSpring client wire format. Null cipher graceful fallback.
 - **Lock safety (S213+S216)** — All orchestrator lock poisoning panics evolved to `Result<_, OrchestrationError::LockPoisoned>` (`WorkloadOrchestrator` S213, `ResourceOrchestrator` S216). GPU stubs evolved to capability-based URIs.
-- **Dependency hygiene (S216)** — Advisory-free (`tar` 0.4.45, `drm` 0.14.1 non-yanked). `cargo deny check` all four gates pass clean (advisories, bans, licenses, sources). `ring` absent from lockfile.
+- **Dependency hygiene (S216)** — Advisory-free (`tar` 0.4.45, `drm` 0.14.1 non-yanked). `cargo deny check` all four gates pass clean (advisories, bans, licenses, sources). `ring` banned; present only as conditional transitive dep via quinn-proto/rustls-webpki.
 - **Deep debt: stubs + lock safety + coverage (S219)** — 3 remaining production stubs evolved to typed errors (coordination gRPC/MQ, legacy compat, monitoring mutex). `/tmp/biomeos-runtime` configurable via `BIOMEOS_RUNTIME_DIR`. 98 new tests across ember/glowplug crates.
 - **BTSP Phase 3 transport switch verified (S218)** — Closed primalSpring audit: negotiate→encrypted framing transition confirmed correct. 15 new E2E tests. BufReader pipelining hazard documented. NegotiateOutcome key redaction.
 - **Flaky test fix (S217+S218)** — `primal_sockets` convenience API tests isolated with `temp_env::with_vars` — zero env-var race conditions in parallel workspace runs. 6 additional discovery tests wrapped.

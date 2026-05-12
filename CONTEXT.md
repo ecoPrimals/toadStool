@@ -30,23 +30,23 @@ ToadStool is the **Layer 0** hardware substrate that other primals and springs d
   - Family: `compute-{family_id}.sock` / `compute-{family_id}-tarpc.sock`
 - **Peer primals**: Resolved at runtime via capability IDs and Unix-socket discovery (e.g. `capability.discover`, `resolve_capability_socket_fallback`) — not hardcoded URLs or legacy per-primal env manifests
 - **Discovery hierarchy** (primalSpring cross-cutting): Songbird `ipc.resolve` → biomeOS `capability.discover` → UDS filesystem convention → socket registry → TCP probing. toadStool implements tiers 1–4; TCP probing (tier 5) not used for local IPC
-- **Wave 8 Compute Trio** (S235): `compute.dispatch.submit` trio-standard IPC contract (`binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, `timing` response). `dispatch_capabilities` returns `gpu_count`, `architectures`, `vfio_status` for Gate 2. Diesel engine absorption roadmap (Phases A-D)
+- **Wave 8 Compute Trio** (S235–S237): `compute.dispatch.submit` trio-standard IPC contract (`binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, `timing` response). `dispatch_capabilities` returns `gpu_count`, `architectures`, `vfio_status`, `ember.held_devices`, `ember.phase` for Gate 2. **Phase A: coral-ember absorbed** (S237) — vendor lifecycle, observation types, ring metadata, sysfs abstraction, `VfioResourceHandle` wired into dispatch. Phases B-D pending
 - **IPC Contract** (S234): JSON-RPC methods accept "pre-resolved only" values — `${VAR}`/`$VAR` expansion is CLI-only (`load_workload_file`)
 - **Tests**: 22,843 (7,896+ lib-only, 0 failures, unlimited parallelism)
 - **Unsafe**: 46 blocks (all in hw-safe/GPU/VFIO/display/plugin containment, all SAFETY-documented; reconciled S221); workspace `unsafe_code = "deny"`, 41 crates `forbid` + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; all lint attrs have `reason =` (S211+S213)
 - **async-trait**: DEPRECATED — fully removed and banned in `deny.toml` (S203r); transitive only via axum/config/wiggle
-- **deny.toml**: `ring` + `async-trait` + `zstd-sys` bans active (ecoBin v3 compliant)
+- **deny.toml**: `ring` + `async-trait` + `zstd-sys` bans active (ecoBin v3 compliant). `ring` present only as conditional transitive dep via quinn-proto/rustls-webpki (not on default build path)
 - **Display Phase 2**: `display.present`, `display.subscribe_input`, `display.poll_events` (petalTongue IPC)
 - **Encrypted compute dispatch** (Phase 55): Tower `crypto.encrypt`/`crypto.decrypt` for payloads; `DISCOVERY_SOCKET` highest-precedence capability resolution
 - **Self-registration** (S207): `ipc.register` to Songbird via `DISCOVERY_SOCKET` at startup — dynamic NUCLEUS membership without restart
 - **Health probes**: `health.liveness` returns `{"status":"starting"}` before dispatcher is ready, `{"status":"alive"}` after; `health.readiness` returns `{"status":"starting"}` / `{"status":"ready"}`. Callers should use **>= 3 second** probe timeouts (PG-62, S225)
 - **MethodGate JH-0** (S229): Pre-dispatch capability gate. Methods classified Public/Protected. `GateMode::Permissive` (default) or `GateMode::Enforcing` (via `TOADSTOOL_AUTH_MODE` env var). Error codes: `-32000 UNAUTHORIZED`, `-32001 PERMISSION_DENIED` (ecosystem standard). `auth.check`, `auth.mode`, `auth.peer_info` introspection methods
-- **JH-2 Resource Envelope Enforcement** (S231–S232): `ResourceEnvelope` (`mem_mb`, `cpu_cores`, `max_timeout_ms`, `method_allowlist`) enforced at all dispatch paths. Pipeline stages inherit `CallerContext`
+- **JH-2 Resource Envelope Enforcement — FULLY RESOLVED** (S231–S232, audited S238): `ResourceEnvelope` (`mem_mb`, `cpu_cores`, `max_timeout_ms`, `method_allowlist`) enforced at all dispatch paths (`submit`, `shader.dispatch`, pipeline stages). Pipeline stages inherit `CallerContext`. All 3 dimensions confirmed enforced
 - **BTSP**: Phase 3 encrypted channel (ChaCha20-Poly1305, S215); transport switch verified (S218); 13/13 converged JSON-line relay + NDJSON post-handshake (primalSpring Phase 45c); PG-46 resolved (connection-reused handshake, S214)
 - **Dep hygiene**: `test-mocks` off by default (S206); all workspace deps unified
 - **Monitoring**: Real host queries via `toadstool_sysmon` + `rustix::fs::statvfs`
 - **Logging**: All production code uses `tracing` (structured logging standard); `eprintln!` retained only in standalone CLI binaries and test code (S233)
-- **Config**: All `TOADSTOOL_*` env vars interned to `socket_env` constants. `TOADSTOOL_AUTH_MODE` controls gate mode. Discovery/config defaults use named constants (S236)
+- **Config**: All `TOADSTOOL_*` env vars interned to `socket_env` constants. `TOADSTOOL_AUTH_MODE` controls gate mode. Discovery/config defaults use named constants (S236, S238). 20+ duplicated magic numbers consolidated into `common::defaults` module and per-struct constants (S238)
 
 ## Not Included
 

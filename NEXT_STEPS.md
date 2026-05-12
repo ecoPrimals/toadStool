@@ -110,7 +110,7 @@ three components that toadStool will absorb from coralReef:
 
 toadStool already has matching trait surfaces: `ResourceHandle` (ember), `DevicePersonality`
 (glowplug personality), `SwapOrchestrator` (glowplug lifecycle), `DeviceSlot` (cylinder state).
-All currently have test mock implementations only.
+Phase A shipped production `VfioResourceHandle` (S237); remaining phases have test mock implementations.
 
 | Phase | Scope | LOC | Key deliverable | Status |
 |-------|-------|-----|-----------------|--------|
@@ -199,7 +199,7 @@ after Phase D.
 
 ---
 
-## Completed This Session (S90-S232)
+## Completed Sessions (S90-S238)
 
 ### Session S206: Lint Evolution + Dep Hygiene + Feature Cleanup (Apr 28, 2026)
 - **Lint evolution** — All ~40 production bare `#[allow(...)]` evolved to `#[allow(..., reason = "...")]`: 17 `unsafe_code` module allows in hw-safe/gpu/display/plugin crates, plus ~23 clippy/deprecated/async_fn_in_trait allows across auto_config, cli, distributed, integration, management, neuromorphic, runtime, security crates.

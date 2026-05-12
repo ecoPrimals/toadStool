@@ -137,8 +137,8 @@ Comprehensive deep-debt sweep across all dimensions:
   recoverable error handling for lock poisoning.
 - **Dependency hygiene**: `tar` advisory fixed (0.4.44→0.4.45), yanked
   `drm` 0.14.2 resolved to 0.14.1, `deny.toml` stale skip entries removed.
-  `ring` confirmed absent from dependency tree. All four `cargo deny check`
-  gates pass clean.
+  `ring` banned; conditional transitive dep via quinn-proto/rustls-webpki only.
+  All four `cargo deny check` gates pass clean.
 - **Audit**: No production files >800 LOC (except `btsp/json_line.rs` 905L, added
   S218). All 46 unsafe blocks are legitimate hw/FFI containment. All hardcoded paths are env-configurable. All `Box<dyn Trait>`
   usages are open-by-design (runtime registration). Zero clippy warnings.

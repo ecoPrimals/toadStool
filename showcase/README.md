@@ -2,7 +2,7 @@
 
 **Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
 
-**Status**: Active | **Updated**: May 2026 — S233
+**Status**: Active | **Updated**: May 2026 — S238
 **License**: AGPL-3.0-or-later
 
 ---
