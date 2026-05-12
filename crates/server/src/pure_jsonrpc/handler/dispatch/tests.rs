@@ -36,6 +36,10 @@ async fn dispatch_capabilities_returns_expected_structure() {
     assert!(result["output"]["drm_gpus"].as_array().is_some());
     assert!(result["output"]["total_dispatch_count"].as_u64().is_some());
     assert!(result["output"]["shader_compiler_available"].is_boolean());
+    assert!(result["output"]["gpu_count"].is_u64());
+    assert!(result["output"]["architectures"].as_array().is_some());
+    assert!(result["output"]["vfio_status"]["available"].is_boolean());
+    assert!(result["output"]["vfio_status"]["device_count"].is_u64());
 }
 
 #[tokio::test]
@@ -832,6 +836,185 @@ mod envelope_tests {
         assert_eq!(
             err.code,
             toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED
+        );
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Wave 8 trio-standard IPC contract tests
+// ═══════════════════════════════════════════════════════════
+
+mod trio_contract_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn dispatch_submit_accepts_binary_b64() {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let handler = test_handler();
+        let binary_data = vec![0xDE, 0xAD, 0xBE, 0xEF];
+        let params = serde_json::json!({
+            "binary_b64": STANDARD.encode(&binary_data),
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+        });
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("binary_b64 should be accepted");
+        assert_eq!(result["domain"], "compute.dispatch");
+        assert_eq!(result["metadata"]["binary_size"], binary_data.len());
+        assert!(result["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_binary_b64_preferred_over_binary() {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let handler = test_handler();
+        let preferred = vec![0xCA, 0xFE];
+        let params = serde_json::json!({
+            "binary_b64": STANDARD.encode(&preferred),
+            "binary": [1, 2, 3],
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+        });
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("binary_b64 should take precedence");
+        assert_eq!(result["metadata"]["binary_size"], 2);
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_invalid_binary_b64_returns_error() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "binary_b64": "!!!invalid-base64!!!",
+            "bdf": "0000:03:00.0",
+        });
+        let err = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect_err("invalid base64 should fail");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(err.message.contains("base64"));
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_accepts_dispatch_dims() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "binary": [1, 2, 3],
+            "bdf": "0000:03:00.0",
+            "dispatch_dims": [64, 4, 2],
+            "dispatch_mode": "passthrough",
+        });
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("dispatch_dims should be accepted");
+        assert_eq!(
+            result["metadata"]["workgroup_size"],
+            serde_json::json!([64, 4, 2])
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_dispatch_dims_preferred_over_workgroup_size() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "binary": [1, 2, 3],
+            "bdf": "0000:03:00.0",
+            "dispatch_dims": [32, 1, 1],
+            "workgroup_size": [128, 2, 4],
+            "dispatch_mode": "passthrough",
+        });
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("dispatch_dims should take precedence");
+        assert_eq!(
+            result["metadata"]["workgroup_size"],
+            serde_json::json!([32, 1, 1])
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_response_includes_timing() {
+        let handler = test_handler();
+        let params = submit_params("0000:03:00.0", "passthrough");
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("submit");
+        let timing = &result["timing"];
+        assert!(
+            timing["dispatch_ms"].is_u64(),
+            "timing.dispatch_ms should be present"
+        );
+        assert!(
+            timing["readback_ms"].is_u64(),
+            "timing.readback_ms should be present"
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_accepts_shader_info() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "binary": [1, 2, 3],
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+            "shader_info": {
+                "gprs": 32,
+                "shared_memory": 16384,
+                "barriers": 1,
+                "workgroup": [256, 1, 1],
+                "wave_size": 32,
+            },
+        });
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("shader_info should be accepted");
+        assert_eq!(result["metadata"]["shader_info"]["gprs"], 32);
+        assert_eq!(result["metadata"]["shader_info"]["wave_size"], 32);
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_buffers_with_data_b64_decoded() {
+        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        let handler = test_handler();
+        let buf_data = vec![0x01, 0x02, 0x03, 0x04];
+        let params = serde_json::json!({
+            "binary": [1, 2, 3],
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+            "buffers": [
+                { "binding": 0, "data_b64": STANDARD.encode(&buf_data), "size": 4, "usage": "storage" },
+                { "binding": 1, "size": 64, "usage": "uniform" },
+            ],
+        });
+        let result = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect("buffers with data_b64 should be accepted");
+        assert!(result["job_id"].as_str().is_some());
+    }
+
+    #[tokio::test]
+    async fn dispatch_submit_no_binary_or_binary_b64_returns_error() {
+        let handler = test_handler();
+        let params = serde_json::json!({
+            "bdf": "0000:03:00.0",
+            "dispatch_mode": "passthrough",
+        });
+        let err = handler
+            .dispatch_submit(Some(&params))
+            .await
+            .expect_err("missing both binary fields should fail");
+        assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+        assert!(
+            err.message.contains("binary") || err.message.contains("binary_b64")
         );
     }
 }

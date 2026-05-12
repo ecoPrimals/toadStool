@@ -57,6 +57,73 @@ pub(super) fn enforce_envelope(
     Ok(())
 }
 
+/// Resolve the binary payload from either `binary_b64` (base64, preferred) or
+/// `binary` (JSON u8 array, legacy).
+fn resolve_binary_param(p: &serde_json::Value) -> Result<Vec<u8>, JsonRpcError> {
+    if let Some(b64) = p.get("binary_b64").and_then(|v| v.as_str()) {
+        return base64::engine::general_purpose::STANDARD
+            .decode(b64)
+            .map_err(|e| {
+                JsonRpcError::invalid_params(format!("binary_b64 base64 decode error: {e}"))
+            });
+    }
+
+    if let Some(arr) = p.get("binary").and_then(|v| v.as_array()) {
+        return Ok(arr.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect());
+    }
+
+    Err(JsonRpcError::invalid_params(
+        "Missing 'binary' (u8 array) or 'binary_b64' (base64 string)",
+    ))
+}
+
+/// Resolve workgroup/dispatch dimensions from `dispatch_dims` (trio standard)
+/// or `workgroup_size` (legacy), defaulting to [256, 1, 1].
+fn resolve_workgroup_size(p: &serde_json::Value) -> [u32; 3] {
+    let dims = p
+        .get("dispatch_dims")
+        .or_else(|| p.get("workgroup_size"))
+        .and_then(|v| v.as_array());
+
+    dims.map_or([256, 1, 1], |arr| {
+        let x = arr
+            .first()
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(256) as u32;
+        let y = arr.get(1).and_then(serde_json::Value::as_u64).unwrap_or(1) as u32;
+        let z = arr.get(2).and_then(serde_json::Value::as_u64).unwrap_or(1) as u32;
+        [x, y, z]
+    })
+}
+
+/// Resolve buffer descriptors. Accepts trio-standard `buffers[]` with `data_b64`
+/// fields — decodes them to `data` (u8 arrays) for downstream consumption.
+fn resolve_buffers(p: &serde_json::Value) -> serde_json::Value {
+    let Some(buffers) = p.get("buffers").and_then(|v| v.as_array()) else {
+        return serde_json::json!([]);
+    };
+
+    let resolved: Vec<serde_json::Value> = buffers
+        .iter()
+        .map(|buf| {
+            if let Some(b64) = buf.get("data_b64").and_then(|v| v.as_str()) {
+                let mut out = buf.clone();
+                if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(b64) {
+                    out["data"] = serde_json::json!(decoded);
+                    if let Some(obj) = out.as_object_mut() {
+                        obj.remove("data_b64");
+                    }
+                }
+                out
+            } else {
+                buf.clone()
+            }
+        })
+        .collect();
+
+    serde_json::json!(resolved)
+}
+
 fn resource_exhausted(msg: String) -> JsonRpcError {
     JsonRpcError {
         code: toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,
@@ -213,22 +280,18 @@ impl DispatchHandler {
     ) -> Result<serde_json::Value, JsonRpcError> {
         let p = params.ok_or_else(|| {
             JsonRpcError::invalid_params(
-                "Expected { binary, bdf?, workgroup_size?, buffers?, dispatch_mode?, timeout_ms? }",
+                "Expected { binary|binary_b64, bdf?, workgroup_size|dispatch_dims?, \
+                 buffers?, shader_info?, dispatch_mode?, timeout_ms? }",
             )
         })?;
 
-        let binary = p.get("binary").and_then(|v| v.as_array()).ok_or_else(|| {
-            JsonRpcError::invalid_params("Missing 'binary' array (compiled GPU binary bytes)")
-        })?;
-
-        let binary_bytes: Vec<u8> = binary
-            .iter()
-            .map(|v| v.as_u64().unwrap_or(0) as u8)
-            .collect();
+        let binary_bytes = resolve_binary_param(p)?;
 
         if binary_bytes.is_empty() {
             return Err(JsonRpcError::invalid_params("binary must not be empty"));
         }
+
+        let shader_info = p.get("shader_info").cloned();
 
         let bdf = resolve_dispatch_bdf(p)?;
         let dispatch_mode = detect_dispatch_mode(p, &bdf);
@@ -242,20 +305,9 @@ impl DispatchHandler {
             )));
         }
 
-        let workgroup_size =
-            p.get("workgroup_size")
-                .and_then(|v| v.as_array())
-                .map_or([256, 1, 1], |arr| {
-                    let x = arr
-                        .first()
-                        .and_then(serde_json::Value::as_u64)
-                        .unwrap_or(256) as u32;
-                    let y = arr.get(1).and_then(serde_json::Value::as_u64).unwrap_or(1) as u32;
-                    let z = arr.get(2).and_then(serde_json::Value::as_u64).unwrap_or(1) as u32;
-                    [x, y, z]
-                });
+        let workgroup_size = resolve_workgroup_size(p);
 
-        let buffer_descs = p.get("buffers").cloned().unwrap_or(serde_json::json!([]));
+        let buffer_descs = resolve_buffers(p);
 
         let timeout_ms = p
             .get("timeout_ms")
@@ -269,11 +321,12 @@ impl DispatchHandler {
         enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
         let job_id = uuid::Uuid::new_v4().to_string();
+        let submit_instant = std::time::Instant::now();
         let job = DispatchJob {
             id: job_id.clone(),
             bdf: bdf.clone(),
             status: DispatchStatus::Submitted,
-            submitted_at: std::time::Instant::now(),
+            submitted_at: submit_instant,
             binary_size: binary_bytes.len(),
             result: None,
         };
@@ -295,6 +348,7 @@ impl DispatchHandler {
         let needs_coral = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
         if needs_coral && !self.coral_client.is_available().await {
+            let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = DispatchStatus::Failed(
@@ -308,6 +362,7 @@ impl DispatchHandler {
                 "status": "failed",
                 "output": null,
                 "error": "visualization service not available — sovereign dispatch requires shader compiler driver",
+                "timing": { "dispatch_ms": dispatch_ms, "readback_ms": 0 },
                 "metadata": {
                     "bdf": bdf,
                     "dispatch_mode": dispatch_mode,
@@ -325,7 +380,7 @@ impl DispatchHandler {
                 binary_bytes.clone()
             };
 
-            let dispatch_params = serde_json::json!({
+            let mut dispatch_params = serde_json::json!({
                 "binary": dispatch_binary,
                 "bdf": bdf,
                 "workgroup_size": workgroup_size,
@@ -334,15 +389,22 @@ impl DispatchHandler {
                 "dispatch_mode": dispatch_mode,
                 "encrypted": encrypted,
             });
+            if let Some(ref si) = shader_info {
+                dispatch_params["shader_info"] = si.clone();
+            }
 
             let client = &self.coral_client;
             if let Some(inner) = client.client_ref().await {
+                let pre_dispatch = std::time::Instant::now();
                 match inner
                     .call("compute.dispatch.execute", dispatch_params)
                     .await
                 {
                     Ok(result) => {
+                        let dispatch_ms = pre_dispatch.elapsed().as_millis() as u64;
+                        let readback_start = std::time::Instant::now();
                         let decrypted = self.decrypt_result(&result).await?;
+                        let readback_ms = readback_start.elapsed().as_millis() as u64;
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Completed;
@@ -355,6 +417,7 @@ impl DispatchHandler {
                             "status": "completed",
                             "output": decrypted,
                             "error": null,
+                            "timing": { "dispatch_ms": dispatch_ms, "readback_ms": readback_ms },
                             "metadata": {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
@@ -362,10 +425,12 @@ impl DispatchHandler {
                                 "thermal_checked": thermal.is_some(),
                                 "workgroup_size": workgroup_size,
                                 "encrypted": encrypted,
+                                "shader_info": shader_info,
                             },
                         }));
                     }
                     Err(e) => {
+                        let dispatch_ms = pre_dispatch.elapsed().as_millis() as u64;
                         let mut jobs = self.jobs.write().await;
                         if let Some(job) = jobs.get_mut(&job_id) {
                             job.status = DispatchStatus::Failed(e.to_string());
@@ -377,6 +442,7 @@ impl DispatchHandler {
                             "status": "failed",
                             "output": null,
                             "error": e.to_string(),
+                            "timing": { "dispatch_ms": dispatch_ms, "readback_ms": 0 },
                             "metadata": {
                                 "bdf": bdf,
                                 "dispatch_mode": dispatch_mode,
@@ -390,6 +456,7 @@ impl DispatchHandler {
             }
         }
 
+        let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
         Ok(serde_json::json!({
             "domain": "compute.dispatch",
             "operation": "submit",
@@ -397,12 +464,14 @@ impl DispatchHandler {
             "status": "submitted",
             "output": null,
             "error": null,
+            "timing": { "dispatch_ms": dispatch_ms, "readback_ms": 0 },
             "metadata": {
                 "bdf": bdf,
                 "dispatch_mode": dispatch_mode,
                 "binary_size": binary_bytes.len(),
                 "thermal_checked": thermal.is_some(),
                 "workgroup_size": workgroup_size,
+                "shader_info": shader_info,
             },
         }))
     }

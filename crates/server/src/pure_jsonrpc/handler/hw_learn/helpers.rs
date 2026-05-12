@@ -74,7 +74,7 @@ pub(super) fn vendor_name(id: u16) -> &'static str {
         0x10de => "NVIDIA",
         0x1002 => "AMD",
         0x8086 => "Intel",
-        0x1e64 => "Brainchip",
+        0x1E7C => "BrainChip",
         _ => "Unknown",
     }
 }

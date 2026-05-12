@@ -33,7 +33,7 @@ use std::path::{Path, PathBuf};
 pub struct PciDevice {
     /// PCI Bus-Device-Function address (e.g. "0000:65:00.0").
     pub bdf: String,
-    /// PCI vendor ID (e.g. 0x10de for NVIDIA, 0x1e96 for Brainchip).
+    /// PCI vendor ID (e.g. 0x10de for NVIDIA, 0x1E7C for BrainChip).
     pub vendor_id: u16,
     /// PCI device ID.
     pub device_id: u16,
@@ -172,7 +172,7 @@ pub mod vendors {
     /// NVIDIA Corporation (GPUs, Tegra)
     pub const NVIDIA: u16 = 0x10de;
     /// BrainChip Inc. (Akida NPU)
-    pub const BRAINCHIP: u16 = 0x1e96;
+    pub const BRAINCHIP: u16 = 0x1E7C;
     /// Advanced Micro Devices (GPUs, CPUs)
     pub const AMD: u16 = 0x1002;
     /// Intel Corporation (GPUs, CPUs, FPGAs)
@@ -187,14 +187,14 @@ mod tests {
     fn empty_filter_matches_anything() {
         let filter = PciFilter::default();
         assert!(filter.matches(0x10de, 0x1D81, 0x0003_0200));
-        assert!(filter.matches(0x1e96, 0x0001, 0x0000_0000));
+        assert!(filter.matches(0x1E7C, 0x0001, 0x0000_0000));
     }
 
     #[test]
     fn vendor_filter() {
         let filter = PciFilter::vendor(0x10de);
         assert!(filter.matches(0x10de, 0x1D81, 0x0003_0200));
-        assert!(!filter.matches(0x1e96, 0x0001, 0x0000_0000));
+        assert!(!filter.matches(0x1E7C, 0x0001, 0x0000_0000));
     }
 
     #[test]
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn vendor_constants() {
         assert_eq!(vendors::NVIDIA, 0x10de);
-        assert_eq!(vendors::BRAINCHIP, 0x1e96);
+        assert_eq!(vendors::BRAINCHIP, 0x1E7C);
         assert_eq!(vendors::AMD, 0x1002);
         assert_eq!(vendors::INTEL, 0x8086);
     }

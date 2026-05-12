@@ -95,3 +95,59 @@ ambiguity about whose environment applies.
 
 Graph specs and composition callers should use absolute paths or pre-expand
 variables on the client side before sending structured JSON-RPC requests.
+
+---
+
+## `compute.dispatch.submit` — Trio-Standard IPC Contract (S235)
+
+Accepts both legacy and trio-standard parameter formats (backward-compatible).
+
+### Request params
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `binary_b64` | string (base64) | One of `binary_b64` or `binary` | **Preferred** — base64-encoded compiled binary |
+| `binary` | array (u8) | One of `binary_b64` or `binary` | Legacy — JSON u8 array |
+| `bdf` | string | No | PCI BDF address (e.g. `"0000:03:00.0"`) |
+| `dispatch_dims` | array [x,y,z] | No | **Preferred** — dispatch dimensions |
+| `workgroup_size` | array [x,y,z] | No | Legacy — fallback if `dispatch_dims` absent |
+| `shader_info` | object | No | `{ gprs, shared_memory, barriers, workgroup, wave_size }` |
+| `buffers` | array | No | `[{ binding, data_b64?, data?, size, usage }]` — `data_b64` auto-decoded |
+| `dispatch_mode` | string | No | `"vfio"`, `"drm"`, or `"passthrough"` |
+| `timeout_ms` | u64 | No | Default: 30s |
+
+When both `binary_b64` and `binary` are present, `binary_b64` takes precedence.
+When both `dispatch_dims` and `workgroup_size` are present, `dispatch_dims` takes precedence.
+Buffer entries with `data_b64` are auto-decoded; the `data_b64` field is replaced with `data`.
+
+### Response
+
+```json
+{
+  "domain": "compute.dispatch",
+  "operation": "submit",
+  "job_id": "<uuid>",
+  "status": "submitted|completed|failed",
+  "output": ...,
+  "error": null,
+  "timing": { "dispatch_ms": 42, "readback_ms": 5 },
+  "metadata": { "bdf": "...", "binary_size": 1024, "workgroup_size": [256,1,1], "shader_info": ... }
+}
+```
+
+### `compute.dispatch.capabilities` — Gate 2 Hardware Info
+
+Returns hardware inventory including architecture detection.
+
+```json
+{
+  "output": {
+    "gpu_count": 2,
+    "architectures": ["sm75", "sm80"],
+    "vfio_status": { "available": true, "device_count": 1 },
+    "vfio_gpus": [{ "pci_slot": "...", "vendor": "Nvidia", "device_id": "0x1e04", "architecture": "sm75" }],
+    "drm_gpus": [{ "pci_slot": "...", "vendor": "Amd", "driver": "amdgpu", "card_index": 1, "architecture": "rdna3" }],
+    ...
+  }
+}
+```

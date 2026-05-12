@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S234 (IPC env var expansion contract documented)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 full envelope enforcement (S232)** | **DF-2 resolved: TOADSTOOL_AUTH_MODE env var (S233)** | **IPC contract: pre-resolved values (S234)**
-**Latest**: S234 — IPC env var expansion contract documented. JSON-RPC methods are "pre-resolved only" — `${VAR}` expansion is CLI-only (`load_workload_file`). `compute.execute` added to METHODS.md. Code-level doc comments on `submit_workload` and `dispatch_submit_with_context`.
-**Previous**: S233 — DF-2 fix (TOADSTOOL_AUTH_MODE). S232 — JH-2 Phase 2. S231 — JH-2 Phase 1. S230 — Error codes. S229 — JH-0.
+**Updated**: May 2026 — S235 (Wave 8 Compute Trio foundation)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 full envelope enforcement (S232)** | **DF-2 resolved: TOADSTOOL_AUTH_MODE env var (S233)** | **IPC contract: pre-resolved values (S234)** | **Wave 8 trio IPC contract + Gate 2 capabilities (S235)**
+**Latest**: S235 — Wave 8 Compute Trio foundation. BrainChip vendor ID fixed (0x1E7C canonical). `compute.dispatch.submit` accepts `binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, returns `timing`. `dispatch_capabilities` returns `gpu_count`, `architectures`, `vfio_status` for Gate 2. Absorption roadmap documented (Phases A-D).
+**Previous**: S234 — IPC contract. S233 — DF-2 fix. S232 — JH-2 Phase 2. S231 — JH-2 Phase 1. S230 — Error codes. S229 — JH-0.
 
 ---
 
@@ -93,6 +93,40 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | barraCuda budding Phases 1-4 | barraCuda team | API audit, SemVer 1.0, Springs rewire |
 | ComputeDispatch migration (D-CD) | barraCuda team | 144/280+ done; ~139 remaining; lives in barraCuda crate |
 | `crypto.sign_contract` (PG-60+) | BearDog team | Cross-family ionic bond contract signing — expose as JSON-RPC method (proposer, acceptor, capabilities, duration). primalSpring `bonding::ionic_rpc` ready to consume. Phase 60+, no urgency. |
+
+---
+
+### Wave 8: Compute Trio — Diesel Engine Absorption Roadmap (S235)
+
+toadStool is the **WHERE** primal (hardware domain). The coral diesel engine model has
+three components that toadStool will absorb from coralReef:
+
+- **ember** = VFIO fd holder (glow plug filament) — holds device fds open across process
+  restarts via `SCM_RIGHTS`, prevents kernel PM resets
+- **glowplug** = device lifecycle orchestrator (glow plug controller) — discover,
+  personality-swap, sovereign boot, health monitor
+- **cylinder** = per-device subprocess (combustion chamber) — one ember socket per
+  device, manages dispatch lifecycle
+
+toadStool already has matching trait surfaces: `ResourceHandle` (ember), `DevicePersonality`
+(glowplug personality), `SwapOrchestrator` (glowplug lifecycle), `DeviceSlot` (cylinder state).
+All currently have test mock implementations only.
+
+| Phase | Scope | LOC | Key deliverable |
+|-------|-------|-----|-----------------|
+| **A: ember** | `HeldDevice` (VFIO fd holding, `SCM_RIGHTS`, BAR0 held access) → `ResourceHandle` | ~9k | First production `ResourceHandle` impl; extends existing `nvpmu` BAR0/VFIO |
+| **B: glowplug** | `sovereign_boot` → `SwapOrchestrator` 7-step; `EmberClient` becomes toadStool-internal; `GpuPersonality` unifies with `DevicePersonality`; `coralctl` → CLI | ~18k | Device lifecycle owned by toadStool |
+| **C: cylinder + coral-driver** | Per-device subprocess generalized (GPU + NPU + HSM); VFIO channel, GPFIFO/pushbuf, DRM ioctl → `hw-safe` containment zone | ~15k | Universal per-device dispatch subprocess |
+| **D: local dispatch** | `dispatch_submit_with_context` executes locally via absorbed driver layer instead of forwarding to `coral_client` | ~2k | Gate 4 E2E sovereign compute path |
+
+**Foundation (S235, DONE)**: BrainChip vendor ID fixed (`0x1E7C` canonical). `compute.dispatch.submit`
+trio IPC contract (`binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, `timing`
+response). `dispatch_capabilities` returns `gpu_count`, `architectures`, `vfio_status` for Gate 2.
+
+**Boundary with coralReef**: `shader.compile.*` methods (WGSL→SASS/AMDIL) remain in coralReef (HOW/compiler
+domain). toadStool serves `compute.dispatch.*` (WHERE/hardware domain). barraCuda serves math
+kernels (WHAT/math domain). hotSpring's `GlowplugClient::dispatch()` flow becomes toadStool-native
+after Phase D.
 
 ---
 
