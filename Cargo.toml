@@ -10,6 +10,7 @@ members = [
     "crates/core/hw-learn",
     "crates/core/nvpmu",
     "crates/core/sysmon",
+    "crates/core/cylinder",    # Phase C: coral-driver hardware absorption (May 12, 2026)
     "crates/core/toadstool",
     "crates/toadstool-core",  # NEW: Hardware infrastructure layer (Feb 8, 2026) 🍄
     "crates/auto_config",  # Re-enabled for zero-touch demo
@@ -114,6 +115,7 @@ uuid = { version = "1.7", features = ["v4", "serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 thiserror = "2.0"
+rustix = "1.1.4"
 regex = "1.10"
 
 # Configuration

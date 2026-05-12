@@ -25,6 +25,14 @@ use toadstool_common::config_bases::{HealthCheckConfig, RetryConfig};
 
 use crate::types::GpuFramework;
 
+const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 10;
+const DEFAULT_MAX_EXECUTION_TIME_SECS: u64 = 300;
+const DEFAULT_MONITORING_INTERVAL_SECS: u64 = 1;
+const DEFAULT_METRICS_RETENTION_SECS: u64 = 3600;
+const DEFAULT_REBALANCE_INTERVAL_SECS: u64 = 30;
+const DEFAULT_CACHE_TTL_SECS: u64 = 86400;
+const DEFAULT_CHECKPOINT_INTERVAL_SECS: u64 = 60;
+
 /// Configuration for the universal GPU runtime
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UniversalGpuConfig {
@@ -67,7 +75,7 @@ impl Default for GpuDiscoveryConfig {
                 GpuFramework::Rocm,          // AMD optimization
                 GpuFramework::DirectCompute, // Windows optimization
             ],
-            discovery_timeout: Duration::from_secs(10),
+            discovery_timeout: Duration::from_secs(DEFAULT_DISCOVERY_TIMEOUT_SECS),
             auto_fallback: true,
             min_requirements: super::types::DeviceRequirements::minimal(),
         }
@@ -144,7 +152,7 @@ pub struct ExecutionConfig {
 impl Default for ExecutionConfig {
     fn default() -> Self {
         Self {
-            max_execution_time: Duration::from_secs(300), // 5 minutes
+            max_execution_time: Duration::from_secs(DEFAULT_MAX_EXECUTION_TIME_SECS),
             retry_enabled: true,
             retries: RetryConfig::default(),
             fault_tolerance: FaultToleranceConfig::default(),
@@ -174,8 +182,8 @@ impl Default for MonitoringConfig {
             profiling_enabled: true,
             memory_tracking: true,
             power_monitoring: false, // May not be available on all platforms
-            monitoring_interval: Duration::from_secs(1),
-            metrics_retention: Duration::from_secs(3600), // 1 hour
+            monitoring_interval: Duration::from_secs(DEFAULT_MONITORING_INTERVAL_SECS),
+            metrics_retention: Duration::from_secs(DEFAULT_METRICS_RETENTION_SECS),
         }
     }
 }
@@ -252,7 +260,7 @@ impl Default for LoadBalancingConfig {
         Self {
             enabled: true,
             algorithm: LoadBalancingAlgorithm::WeightedRoundRobin,
-            rebalance_interval: Duration::from_secs(30),
+            rebalance_interval: Duration::from_secs(DEFAULT_REBALANCE_INTERVAL_SECS),
             load_threshold: 0.8, // 80% utilization
         }
     }
@@ -304,7 +312,7 @@ impl Default for CachingConfig {
         Self {
             enabled: true,
             cache_size_mb: 1024,                   // 1GB
-            cache_ttl: Duration::from_secs(86400), // 24 hours
+            cache_ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECS),
             cache_path: None,                      // Use system temp directory
         }
     }
@@ -366,7 +374,7 @@ impl Default for FaultToleranceConfig {
         Self {
             auto_failover: true,
             checkpointing_enabled: false, // Disabled by default due to overhead
-            checkpoint_interval: Duration::from_secs(60),
+            checkpoint_interval: Duration::from_secs(DEFAULT_CHECKPOINT_INTERVAL_SECS),
             health_check: HealthCheckConfig::default(),
         }
     }

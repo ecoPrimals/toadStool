@@ -1,0 +1,29 @@
+[package]
+name = "toadstool-cylinder"
+version = "0.1.0"
+edition.workspace = true
+authors = ["ToadStool Contributors"]
+description = "Sovereign hardware driver layer — DRM/VFIO ioctl dispatch (Phase C absorption from coral-driver)"
+license.workspace = true
+repository.workspace = true
+keywords = ["gpu", "drm", "vfio", "hardware", "driver"]
+categories = ["hardware-support", "os::linux-apis"]
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }
+rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[features]
+default = []
+vfio = []
+test-utils = []
+
+[lints]
+workspace = true

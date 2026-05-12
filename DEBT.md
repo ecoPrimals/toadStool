@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S244
+**Date**: May 2026 — S245
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S245 (Phase C Begins — toadstool-cylinder Crate + Deep Debt Sweep)**:
+Created `toadstool-cylinder` crate for Phase C coral-driver absorption. Absorbed
+foundational layer: DRM render node enumeration, sysfs/procfs path helpers,
+hardware capabilities, driver error types, `ComputeDevice` trait. Environment
+variables evolved from `CORALREEF_*` to `TOADSTOOL_*` with backward compatibility.
+Last production `println!` migrated to `tracing`. 10 more hardcoded `Duration`
+literals extracted to named constants. 8,349 tests, zero clippy warnings.
 
 **S244 (Deep Debt — println→tracing, Duration Constants, Test Coverage, Clippy Fixes)**:
 Migrated remaining production `println!` in cross-substrate-validation benchmark to

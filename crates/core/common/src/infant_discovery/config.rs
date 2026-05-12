@@ -3,6 +3,10 @@
 
 use std::time::Duration;
 
+const DEFAULT_CACHE_TTL_SECS: u64 = 300;
+const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_RETRY_DELAY_SECS: u64 = 1;
+
 /// Service discovery engine configuration
 #[derive(Debug, Clone)]
 pub struct ServiceDiscoveryConfig {
@@ -26,10 +30,10 @@ impl Default for ServiceDiscoveryConfig {
     fn default() -> Self {
         Self {
             enable_cache: true,
-            cache_ttl: Duration::from_secs(300),
-            default_timeout: Duration::from_secs(30),
+            cache_ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECS),
+            default_timeout: Duration::from_secs(DEFAULT_DISCOVERY_TIMEOUT_SECS),
             retry_attempts: 3,
-            retry_delay: Duration::from_secs(1),
+            retry_delay: Duration::from_secs(DEFAULT_RETRY_DELAY_SECS),
         }
     }
 }

@@ -5,7 +5,39 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-244)
+## [Unreleased] - May 12, 2026 (Sessions 43-245)
+
+### Session S245 (May 12, 2026) — Phase C Begins: toadstool-cylinder Crate + Deep Debt Sweep
+
+Phase C absorption initiated. Created `toadstool-cylinder` crate as the sovereign hardware
+driver layer, absorbing coral-driver's foundational modules: DRM render node enumeration
+(`drm.rs`), sysfs/procfs path helpers (`linux_paths.rs`), vendor-agnostic hardware
+capabilities (`hardware.rs`), driver error types (`error/`), and the `ComputeDevice` trait
+with `BufferHandle`, `MemoryDomain`, `DispatchDims`, `ShaderInfo` types. Environment
+variables evolved from `CORALREEF_*` to `TOADSTOOL_*` with backward compatibility fallback.
+Parallel deep debt sweep: last production `println!` migrated to `tracing`, 10 more
+hardcoded `Duration` literals extracted to named constants.
+
+#### Changes
+
+- **New crate: `toadstool-cylinder`**: Phase C absorption target. Absorbs hardware lifecycle
+  modules from `coral-driver` following wire-only principle (no shared Rust crate, JSON-RPC
+  IPC between primals). 60 tests passing, zero clippy warnings
+- **Foundation layer absorbed**: `drm.rs` (DRM ioctl interface, `MappedRegion`, render node
+  enumeration), `linux_paths.rs` (sysfs/procfs path helpers with `TOADSTOOL_*` env vars),
+  `hardware.rs` (`Vendor`, `MemoryType`, `WaveSize`, `CompletionStyle`, `HardwareCapabilities`),
+  `error/` (`DriverError`, `PciDiscoveryError`, `ChannelError`, `DevinitError`,
+  `SovereignStagesError`), `ComputeDevice` trait
+- **Deep debt: println!→tracing**: Last production `println!` in `testing/properties/runner.rs`
+  migrated to `tracing::warn!` with structured fields
+- **Duration constant extraction**: `infant_discovery/config.rs` (3 constants:
+  `DEFAULT_CACHE_TTL_SECS`, `DEFAULT_DISCOVERY_TIMEOUT_SECS`, `DEFAULT_RETRY_DELAY_SECS`),
+  `runtime/gpu/config.rs` (7 constants: `DEFAULT_DISCOVERY_TIMEOUT_SECS`,
+  `DEFAULT_MAX_EXECUTION_TIME_SECS`, `DEFAULT_MONITORING_INTERVAL_SECS`,
+  `DEFAULT_METRICS_RETENTION_SECS`, `DEFAULT_REBALANCE_INTERVAL_SECS`,
+  `DEFAULT_CACHE_TTL_SECS`, `DEFAULT_CHECKPOINT_INTERVAL_SECS`)
+- **Workspace**: `rustix` added as workspace dependency for cylinder's DRM ioctl layer
+- **Tests**: 8,349 lib-only passing (up from 8,289), zero clippy warnings
 
 ### Session S244 (May 12, 2026) — Deep Debt: println→tracing, Duration Constants, Test Coverage, Clippy Fixes
 

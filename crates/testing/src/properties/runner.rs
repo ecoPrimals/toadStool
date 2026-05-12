@@ -66,7 +66,7 @@ impl PropertyTestRunner {
                 }
                 Err(error) => {
                     if self.config.verbose {
-                        println!("Property failure on input: {input:?}");
+                        tracing::warn!(?input, %error, "property failure");
                     }
 
                     // Attempt to shrink the failing input
@@ -85,7 +85,7 @@ impl PropertyTestRunner {
             // Check timeout
             if start_time.elapsed() > self.config.timeout {
                 if self.config.verbose {
-                    println!("Property test timed out after {test_cases_run} test cases");
+                    tracing::warn!(test_cases_run, "property test timed out");
                 }
                 break;
             }
