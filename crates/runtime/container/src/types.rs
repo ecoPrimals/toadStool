@@ -102,13 +102,17 @@ pub struct RegistryConfig {
     pub pull_timeout: Duration,
 }
 
+impl RegistryConfig {
+    const DEFAULT_PULL_TIMEOUT_SECS: u64 = 300;
+}
+
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
             default_registry: "docker.io".to_string(),
             registries: HashMap::new(),
             pull_policy: ImagePullPolicy::IfNotPresent,
-            pull_timeout: Duration::from_secs(300),
+            pull_timeout: Duration::from_secs(Self::DEFAULT_PULL_TIMEOUT_SECS),
         }
     }
 }

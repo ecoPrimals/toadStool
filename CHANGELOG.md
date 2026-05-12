@@ -5,7 +5,49 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-247)
+## [Unreleased] - May 12, 2026 (Sessions 43-248)
+
+### Session S248 (May 12, 2026) — Phase C Batch 4: VFIO Foundation Absorption + Deep Debt
+
+Phase C VFIO absorption. Absorbed 40 files from `coral-driver/src/vfio/` into
+`toadstool-cylinder`: kernel ABI types (`repr(C)` structs, VFIO/iommufd ioctls),
+VFIO ioctl wrappers (group/device/container ops), DMA buffer allocation with
+IOMMU mapping, PCI sysfs discovery (`PciDeviceInfo`, config space parse, power
+management D0-D3 transitions), device open/mmap/BAR mapping, BAR0 cartography
+(register classification, region scanning), fork-isolated MMIO reads/writes,
+MSI/MSI-X IRQ setup, vendor GPU metal identification (AMD Vega, NVIDIA Volta),
+memory topology, sovereign init types, ember client/gate for fd passing.
+
+Resolved the single `gsp` dependency: `RegisterAccess` trait and `ApplyError`
+enum recreated locally in `vfio/device/mapped_bar.rs` (identical interface,
+no coupling to coralReef's firmware module). `HBM2TrainingError` variant in
+`SovereignStagesError` simplified to `String` wrapper (training module stays
+in coralReef for now).
+
+Parallel deep debt sweep: ~10 more Duration constants extracted across edge
+discovery, server statistics, container registry, monitoring reporting, and
+orchestration policy.
+
+#### Changes
+
+- **Phase C Batch 4 — VFIO foundation**: `types.rs` (kernel ABI structs, ioctl
+  opcodes), `ioctl.rs` (VFIO ioctl wrappers), `dma.rs` (DmaBuffer, IOMMU mapping),
+  `cache_ops.rs` (x86 cache flush/fence), `isolation.rs` (fork-isolated MMIO),
+  `irq.rs` (MSI/MSI-X eventfd), `pci_config.rs` (PM capability shim)
+- **Phase C Batch 4 — PCI discovery**: 7 files — sysfs PCI enumerate, config space
+  parse, power management (D0/D3 transitions), device info, vendor detection
+- **Phase C Batch 4 — Device layer**: 7 files — `VfioDevice`, `MappedBar` (with
+  local `RegisterAccess` trait), `DmaBackend`, bus master, device open, runtime
+- **Phase C Batch 4 — BAR/Vendor**: `bar_cartography.rs` (register classification),
+  `gpu_vendor.rs` (GpuMetal trait), `amd_metal.rs` (Vega), `nv_metal/` (Volta detection)
+- **Phase C Batch 4 — Memory + Init**: `memory/` (topology, regions, core), `sovereign_types.rs`,
+  `sysfs_bar0.rs`, `ember_client.rs`, `ember_gate.rs`
+- **gsp boundary resolved**: `RegisterAccess`/`ApplyError` recreated locally in cylinder,
+  decoupling VFIO device layer from coralReef's GSP firmware module
+- **Duration constant extraction**: edge discovery (4 timeouts), server stats interval,
+  container pull timeout, monitoring CPU sample window, orchestration policy sentinel,
+  Arduino serial read timeout
+- **Tests**: 8,704 lib-only passing (up from 8,583), 415 cylinder tests, zero clippy warnings
 
 ### Session S247 (May 12, 2026) — Phase C Batch 3: NVIDIA Backend Absorption + Deep Debt
 

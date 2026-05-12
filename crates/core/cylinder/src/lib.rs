@@ -100,6 +100,9 @@ pub mod amd;
 #[cfg(target_os = "linux")]
 pub mod nv;
 
+#[cfg(all(target_os = "linux", feature = "vfio"))]
+pub mod vfio;
+
 pub use error::{ChannelError, DevinitError, DriverError, DriverResult, PciDiscoveryError};
 pub use hardware::{CompletionStyle, HardwareCapabilities, MemoryType, Vendor, WaveSize};
 

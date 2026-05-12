@@ -89,7 +89,8 @@ impl SelectionPolicy {
         substrates: &[Arc<S>],
         history: &PerformanceHistory,
     ) -> Result<Arc<S>, OrchestrationError> {
-        let no_history = std::time::Duration::from_secs(999);
+        const NO_HISTORY_SENTINEL_SECS: u64 = 999;
+        let no_history = std::time::Duration::from_secs(NO_HISTORY_SENTINEL_SECS);
         let mut best_idx = 0;
         let mut best_duration = history
             .average_duration_for(substrates[0].substrate_type())

@@ -235,6 +235,7 @@ pub enum DevinitError {
 #[cfg(feature = "vfio")]
 impl DevinitError {
     /// Wrap an [`std::io::Error`] with path and operation.
+    #[allow(dead_code, reason = "used by devinit modules absorbed in later Phase C batch")]
     pub(crate) fn vbios_resource_io(
         operation: &'static str,
         path: impl Into<String>,
@@ -407,9 +408,8 @@ pub enum SovereignStagesError {
     },
 
     /// HBM2 typestate pipeline failed.
-    #[cfg(all(target_os = "linux", feature = "vfio"))]
-    #[error(transparent)]
-    Hbm2Training(#[from] crate::vfio::channel::hbm2_training::Hbm2TrainingError),
+    #[error("HBM2 training failed: {0}")]
+    Hbm2Training(String),
     /// VBIOS / PMU devinit for GDDR5 cold training failed.
     #[error(transparent)]
     Devinit(#[from] DevinitError),
@@ -509,6 +509,7 @@ pub enum SovereignStagesError {
 
 impl SovereignStagesError {
     /// Bridges `DriverResult`/`DriverError` from GR/FECS helpers into this enum.
+    #[allow(dead_code, reason = "used by sovereign init modules absorbed in later Phase C batch")]
     #[cfg(all(target_os = "linux", feature = "vfio"))]
     pub(crate) fn vfio_compute(err: DriverError) -> Self {
         Self::VfioCompute(Box::new(err))

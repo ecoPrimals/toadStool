@@ -15,9 +15,10 @@ use tokio::time::interval;
 
 /// Statistics collection background task
 pub(super) async fn run<E: RuntimeEngine>(state: ServerState<E>) {
-    debug!("Starting statistics collection task");
+    const STATS_COLLECTION_INTERVAL_SECS: u64 = 60;
 
-    let mut interval = interval(Duration::from_secs(60)); // Collect stats every minute
+    debug!("Starting statistics collection task");
+    let mut interval = interval(Duration::from_secs(STATS_COLLECTION_INTERVAL_SECS));
 
     loop {
         interval.tick().await;

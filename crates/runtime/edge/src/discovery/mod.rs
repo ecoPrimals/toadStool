@@ -61,6 +61,11 @@ pub trait DiscoveryMethod: Send + Sync {
 }
 
 impl DeviceDiscoveryService {
+    const SERIAL_DISCOVERY_TIMEOUT_SECS: u64 = 2;
+    const NETWORK_DISCOVERY_TIMEOUT_SECS: u64 = 1;
+    const BT_SCAN_DURATION_SECS: u64 = 10;
+    const MDNS_DISCOVERY_TIMEOUT_SECS: u64 = 5;
+
     /// Create a new device discovery service
     pub async fn new(config: &EdgeRuntimeConfig) -> ToadStoolResult<Self> {
         info!("Initializing device discovery service");
@@ -68,7 +73,7 @@ impl DeviceDiscoveryService {
         let discovery_methods: Vec<Box<dyn DiscoveryMethod>> = vec![
             Box::new(SerialPortDiscovery {
                 baud_rates: vec![9600, 115200, 57600, 38400, 19200],
-                timeout: Duration::from_secs(2),
+                timeout: Duration::from_secs(Self::SERIAL_DISCOVERY_TIMEOUT_SECS),
             }),
             Box::new(NetworkDiscovery {
                 scan_range: vec![
@@ -79,7 +84,7 @@ impl DeviceDiscoveryService {
                     config.port_registry.server,
                     config.port_registry.gpu_compute,
                 ],
-                timeout: Duration::from_secs(1),
+                timeout: Duration::from_secs(Self::NETWORK_DISCOVERY_TIMEOUT_SECS),
             }),
             Box::new(USBDiscovery {
                 vendor_filters: vec![
@@ -92,7 +97,7 @@ impl DeviceDiscoveryService {
                 product_filters: vec![],
             }),
             Box::new(BluetoothDiscovery {
-                scan_duration: Duration::from_secs(10),
+                scan_duration: Duration::from_secs(Self::BT_SCAN_DURATION_SECS),
                 device_types: vec!["ESP32".to_string(), "Arduino".to_string()],
             }),
             Box::new(MDNSDiscovery {
@@ -102,7 +107,7 @@ impl DeviceDiscoveryService {
                     "_raspberry-pi._tcp".to_string(),
                     "_toadstool-edge._tcp".to_string(),
                 ],
-                timeout: Duration::from_secs(5),
+                timeout: Duration::from_secs(Self::MDNS_DISCOVERY_TIMEOUT_SECS),
             }),
         ];
 

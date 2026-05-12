@@ -144,6 +144,8 @@ fn statvfs_root_available_bytes() -> u64 {
 /// Returns `(total_cpu_cores, total_memory_bytes, available_memory_bytes, available_storage_bytes, cpu_usage_percent)`.
 /// Designed to run on a blocking thread pool via `spawn_blocking`.
 pub(crate) fn collect_host_resource_snapshot() -> (usize, u64, u64, u64, f64) {
+    const CPU_SAMPLE_WINDOW_MS: u64 = 100;
+
     let total_cpu_cores = cpu_count().max(1);
 
     let (total_memory_bytes, available_memory_bytes) = if let Ok(m) = memory_info() {
@@ -152,8 +154,7 @@ pub(crate) fn collect_host_resource_snapshot() -> (usize, u64, u64, u64, f64) {
         let (_, t, a) = read_system_info();
         (t, a)
     };
-
-    let sample = Duration::from_millis(100);
+    let sample = Duration::from_millis(CPU_SAMPLE_WINDOW_MS);
     let cpu_usage_percent = match cpu_usage(sample) {
         Ok(p) => f64::from(p),
         Err(_) => match load_average() {
