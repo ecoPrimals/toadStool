@@ -1,12 +1,31 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S233
+**Date**: May 2026 — S236
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S236 (Deep Debt — Magic Numbers + Match Safety + Test Refactor)**:
+Extracted 9 magic numbers in `DiscoveryDefaults`, `DiscoveryConfig`, and
+`EcosystemDiscoverer` to named constants. Eliminated `unreachable!()` in
+`nvpmu/dma.rs` via exhaustive match with early return. Smart-refactored
+`dispatch/tests.rs` (1020 LOC monolith) into `tests/` directory with 4
+submodules (core_dispatch, shader, envelope, trio_contract). 72 dispatch
+tests pass, clippy clean workspace-wide.
+
+**S235 (Wave 8 Compute Trio Foundation)**:
+BrainChip vendor ID fixed (0x1E7C canonical). `compute.dispatch.submit`
+trio-standard IPC contract: `binary_b64`, `shader_info`, `dispatch_dims`,
+buffer `data_b64`; responses include `timing`. `dispatch_capabilities`
+returns `gpu_count`, `architectures`, `vfio_status`. +9 tests.
+
+**S234 (IPC Env Var Expansion Contract)**:
+Documented JSON-RPC methods as "pre-resolved only". `${VAR}`/`$VAR`
+expansion is CLI-only (`load_workload_file`). Added `compute.execute` to
+METHODS.md.
 
 **S223 (Deep Debt — json_line.rs Smart Refactor + Coverage + Stale Comments)**:
 Smart-refactored `btsp/json_line.rs` (905 LOC → 478 + 255 relay.rs + 189 negotiate.rs);

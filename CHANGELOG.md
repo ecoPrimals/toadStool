@@ -5,7 +5,61 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 3, 2026 (Sessions 43-219)
+## [Unreleased] - May 11, 2026 (Sessions 43-236)
+
+### Session S236 (May 11, 2026) — Deep Debt: Magic Numbers + Match Safety + Test Refactor
+
+Extracted magic numbers in discovery/config defaults to named constants.
+Eliminated `unreachable!()` in `nvpmu/dma.rs` via exhaustive match with early
+return. Smart-refactored `dispatch/tests.rs` (1020 LOC) into `tests/` directory
+with 4 responsibility-scoped submodules.
+
+#### Changes
+
+- **Magic numbers**: `DiscoveryDefaults` (5 constants), `DiscoveryConfig` (3 constants),
+  `EcosystemDiscoverer::DEFAULT_TIMEOUT_SECS` — raw numeric literals replaced with named
+  constants for all discovery timeouts, intervals, retry counts, and limits
+- **Match safety**: `nvpmu/dma.rs` `allocate_huge()` — replaced two-pass match (guard +
+  value with `unreachable!()`) with single exhaustive match where `Standard` returns early
+- **Test refactor**: `dispatch/tests.rs` split into `tests/mod.rs` + 4 submodules:
+  `core_dispatch.rs` (capabilities, submit, status, result, forward, crypto),
+  `shader.rs` (binary formats, compile_result, readback, job tracking),
+  `envelope.rs` (JH-2 resource envelope enforcement),
+  `trio_contract.rs` (Wave 8 IPC contract: binary_b64, dispatch_dims, shader_info, timing)
+- 72 dispatch tests pass, clippy clean workspace-wide
+
+### Session S235 (May 11, 2026) — Wave 8 Compute Trio Foundation
+
+BrainChip vendor ID corrected. Trio-standard IPC contract for `compute.dispatch.submit`.
+Gate 2 hardware capabilities for `dispatch_capabilities`. Absorption roadmap documented.
+
+#### Changes
+
+- **Vendor ID fix**: `BRAINCHIP` constant corrected from `0x1e96` to `0x1E7C` (canonical)
+  in `pci_discovery.rs` and `hw_learn/helpers.rs`
+- **IPC contract**: `compute.dispatch.submit` accepts `binary_b64` (base64, preferred),
+  `shader_info`, `dispatch_dims`, buffer `data_b64`; responses include
+  `timing { dispatch_ms, readback_ms }`
+- **Gate 2 capabilities**: `dispatch_capabilities` returns `gpu_count`, `architectures`
+  (deduplicated list e.g. `["sm75", "rdna3"]`), `vfio_status { available, device_count }`,
+  per-GPU `architecture` field
+- **`gpu_architecture()` helper**: Maps (vendor, device_id) to compute architecture strings
+- **Absorption roadmap**: Phases A-D (ember, glowplug, cylinder, local dispatch) documented
+  in NEXT_STEPS.md
+- +9 trio contract tests, +1 updated capabilities test
+
+### Session S234 (May 11, 2026) — IPC Env Var Expansion Contract
+
+Documented JSON-RPC methods as "pre-resolved only" — `${VAR}`/`$VAR` expansion
+is CLI-only (`load_workload_file`). IPC callers must send fully resolved values.
+
+#### Changes
+
+- **Contract documentation**: METHODS.md updated with trio-standard IPC contract details
+- **`compute.execute`**: Added missing method to METHODS.md (was undocumented)
+- **Code-level docs**: `submit_workload` and `dispatch_submit_with_context` annotated
+  with pre-resolved value contract
+- **README**: IPC contract section added
 
 ### Session S219 (May 3, 2026) — Deep Debt: Production Stubs + Lock Safety + Coverage Expansion
 
