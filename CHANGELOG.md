@@ -5,7 +5,35 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-242)
+## [Unreleased] - May 12, 2026 (Sessions 43-243)
+
+### Session S243 (May 12, 2026) — Vestigial Cleanup: Legacy swap_device Removal, Capabilities Enhancement, Phase C Readiness
+
+Removed legacy synchronous `swap_device()` from `GlowPlugClient` (zero external
+callers — orchestrator is the sole production path). Evolved `reacquire()` to use
+`SwapOrchestrator`. Added `render_node` and `device_id` to DRM GPU output in
+`compute.dispatch.capabilities` for Phase C readiness. Removed stale `cuda` keyword
+from GPU crate manifest. Dead code cleanup: `EmberSwapResult`, `find_driver_unbind_path`.
+
+#### Changes
+
+- **Legacy `swap_device()` removed**: `GlowPlugClient::swap_device()` (synchronous
+  sysfs writes) had zero callers from JSON-RPC handlers. `reacquire()` evolved from
+  calling legacy sync path to using `swap_device_orchestrated()` (full 7-step lifecycle).
+  Dead code removed: `EmberSwapResult` struct, `find_driver_unbind_path` helper
+- **`compute.dispatch.capabilities` enhanced**: DRM GPU objects now include `render_node`
+  (e.g. `/dev/dri/renderD128`) and `device_id` fields — prepares for Phase C where
+  coralReef's `enumerate_render_nodes()` cuts over to toadStool IPC
+- **`cuda` keyword removed**: Stale `"cuda"` removed from `toadstool-runtime-gpu`
+  Cargo.toml keywords (replaced with `"hardware"`). Zero `cfg(feature = "cuda")` gates
+  remain in any `.rs` file
+- **`SwapExecutor` visibility confirmed**: `pub trait SwapExecutor` with `pub use` from
+  crate root — correct for downstream test mocking. No changes needed
+- **Phase C recon complete**: coral-driver source tree mapped (100+ files: vfio/, amd/,
+  nv/, drm.rs, hardware.rs, error.rs). Dependencies: bytemuck, rustix, serde, thiserror,
+  tracing. No dependency on coral-reef compiler crate. gsp/ and intel/ confirmed as
+  coralReef-retained modules
+- **Tests**: 8,285 lib-only passing, zero clippy warnings
 
 ### Session S242 (May 12, 2026) — Deep Debt: println→tracing, Magic Constants, Coverage, Dependency Cleanup
 

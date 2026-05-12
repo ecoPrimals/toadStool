@@ -66,8 +66,10 @@ impl DispatchHandler {
                 serde_json::json!({
                     "pci_slot": g.pci_slot,
                     "vendor": format!("{:?}", g.vendor),
+                    "device_id": format!("{:#06x}", g.device_id),
                     "driver": g.driver,
                     "card_index": g.card_index,
+                    "render_node": g.render_node().to_string_lossy(),
                     "architecture": gpu_architecture(g.vendor, g.device_id),
                 })
             })

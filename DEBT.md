@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S242
+**Date**: May 2026 — S243
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S243 (Vestigial Cleanup — Legacy swap_device Removal, Capabilities Enhancement, Phase C Readiness)**:
+Removed legacy `swap_device()` from `GlowPlugClient` (zero external callers, orchestrator
+is production path). Evolved `reacquire()` to async orchestrator. Added `render_node` +
+`device_id` to DRM GPU capabilities output (Phase C readiness for coralReef IPC cutover).
+Removed stale `cuda` keyword. Dead code: `EmberSwapResult`, `find_driver_unbind_path`.
+Phase C recon: coral-driver tree mapped (100+ files), no coral-reef dependency confirmed,
+gsp/intel retained by coralReef. 8,285 tests, zero clippy warnings.
 
 **S242 (Deep Debt — println→tracing, Magic Constants, ContiguousBytes Coverage, Dep Cleanup)**:
 Migrated last library `println!` (`auto_config SystemSummary::display()`) to structured

@@ -6,7 +6,7 @@ description = "ToadStool Universal GPU Compute Runtime - If it has parallel comp
 license.workspace = true
 repository.workspace = true
 readme = "README.md"
-keywords = ["gpu", "compute", "cuda", "webgpu", "vulkan"]
+keywords = ["gpu", "compute", "webgpu", "vulkan", "hardware"]
 categories = ["hardware-support", "science"]
 
 [dependencies]

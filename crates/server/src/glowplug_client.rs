@@ -5,9 +5,9 @@
 //! former `coral-ember` proxy — toadStool IS the hardware primal and
 //! owns the ember subsystem directly.
 //!
-//! Provides `ember.list`, `ember.status`, `ember.swap`, and
-//! `ember.reacquire` operations for GPU passthrough and driver
-//! personality management.
+//! Provides `ember.list` and `ember.status` JSON-RPC operations for GPU
+//! passthrough and driver personality management. Device lifecycle swaps
+//! use [`SwapOrchestrator`] exclusively (legacy synchronous path removed S243).
 //!
 //! ## Architecture
 //!
@@ -38,15 +38,6 @@ pub struct EmberStatus {
     pub devices: Vec<String>,
     /// Daemon uptime in seconds.
     pub uptime_secs: u64,
-}
-
-/// Swap result from `ember.swap`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EmberSwapResult {
-    /// BDF of the swapped device.
-    pub bdf: String,
-    /// New personality after swap (e.g. `"vfio"`, `"nouveau"`, `"unbound"`).
-    pub personality: String,
 }
 
 /// Reacquire result from `ember.reacquire`.
@@ -121,48 +112,17 @@ impl GlowPlugClient {
             .await
     }
 
-    /// Request a driver swap for a device (legacy synchronous path).
-    ///
-    /// Uses direct sysfs writes. Prefer [`swap_device_orchestrated`] for
-    /// lifecycle-managed swaps with quiescence and health checks.
-    pub fn swap_device(&self, bdf: &str, target: &str) -> Option<EmberSwapResult> {
-        debug!(bdf, target, "ember.swap: requesting personality swap");
-
-        let unbind_path = find_driver_unbind_path(bdf);
-
-        // Unbind current driver
-        if let Some(ref unbind) = unbind_path
-            && std::fs::write(unbind, bdf).is_err()
-        {
-            tracing::warn!(bdf, "unbind failed (device may not be bound)");
-        }
-
-        // Set driver override and bind
-        if target != "unbound" {
-            let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
-            if let Err(e) = std::fs::write(&override_path, target) {
-                tracing::warn!(bdf, target, error = %e, "driver_override write failed");
-                return None;
-            }
-
-            let bind_path = format!("/sys/bus/pci/drivers/{target}/bind");
-            if let Err(e) = std::fs::write(&bind_path, bdf) {
-                tracing::warn!(bdf, target, error = %e, "driver bind failed");
-            }
-        }
-
-        Some(EmberSwapResult {
+    /// Reacquire a device (rebind to vfio-pci via orchestrated lifecycle).
+    pub async fn reacquire(&self, bdf: &str) -> EmberReacquireResult {
+        let result = self.swap_device_orchestrated(bdf, "vfio-pci").await;
+        debug!(
+            bdf,
+            success = result.success,
+            "ember.reacquire via orchestrator"
+        );
+        EmberReacquireResult {
             bdf: bdf.to_string(),
-            personality: target.to_string(),
-        })
-    }
-
-    /// Reacquire a device (rebind to vfio-pci after a swap).
-    pub fn reacquire(&self, bdf: &str) -> Option<EmberReacquireResult> {
-        self.swap_device(bdf, "vfio-pci")?;
-        Some(EmberReacquireResult {
-            bdf: bdf.to_string(),
-        })
+        }
     }
 
     /// Access the underlying swap orchestrator.
@@ -212,14 +172,6 @@ fn discover_gpu_bdfs() -> Vec<String> {
     bdfs
 }
 
-/// Find the driver unbind path for a device (if currently bound).
-fn find_driver_unbind_path(bdf: &str) -> Option<String> {
-    let driver_link = format!("/sys/bus/pci/devices/{bdf}/driver");
-    let driver = std::fs::read_link(&driver_link).ok()?;
-    let driver_name = driver.file_name()?.to_str()?;
-    Some(format!("/sys/bus/pci/drivers/{driver_name}/unbind"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,13 +216,6 @@ mod tests {
         let status: EmberStatus = serde_json::from_str(json).unwrap();
         assert_eq!(status.uptime_secs, 3600);
         assert_eq!(status.devices.len(), 1);
-    }
-
-    #[test]
-    fn ember_swap_result_deserialization() {
-        let json = r#"{"bdf":"0000:01:00.0","personality":"nouveau"}"#;
-        let result: EmberSwapResult = serde_json::from_str(json).unwrap();
-        assert_eq!(result.personality, "nouveau");
     }
 
     #[test]
