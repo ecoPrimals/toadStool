@@ -5,7 +5,34 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-245)
+## [Unreleased] - May 12, 2026 (Sessions 43-246)
+
+### Session S246 (May 12, 2026) — Phase C Batch 2: MMIO + AMD Backend Absorption + Deep Debt
+
+Phase C absorption continues. Absorbed MMIO foundation (`mmio.rs` volatile register access,
+`mmio_region.rs` RAII mmap wrapper) and the complete AMD GPU backend (6 modules: `mod.rs`
+AmdDevice with ComputeDevice trait impl, `ioctl.rs` pure Rust DRM ioctl definitions,
+`pm4.rs` PM4 command buffer construction, `gem.rs` GEM buffer management, `generation.rs`
+per-generation profiles GFX9-12, `shader_binary.rs` ELF format detection). Parallel deep
+debt sweep: 6 more hardcoded Duration literals extracted to named constants across 4 files
+(config defaults, discovery engine, GPU scheduler, performance predictor). Full audit
+confirmed: zero production files >800L, all 46 unsafe blocks SAFETY-documented, all
+production mocks gated behind `test-mocks` feature, zero production println/eprintln.
+
+#### Changes
+
+- **Phase C Batch 2 — MMIO foundation**: `mmio.rs` (VolatilePtr<T> for safe volatile
+  register access), `mmio_region.rs` (MmioRegion RAII wrapper with bounds-checked u32
+  read/write). Both modules are `pub(crate)` — used by VFIO/NV backends in future batches
+- **Phase C Batch 2 — AMD backend absorbed**: Complete amdgpu DRM backend (6 files, ~2800
+  lines). `AmdDevice` implements `ComputeDevice` trait. Pure Rust ioctl definitions for
+  GEM create/mmap/VA, context management, BO list, CS submit, fence wait, HW IP query.
+  PM4 command buffer generation for GFX9-12. AMDGPU ELF shader binary detection and
+  metadata extraction. Per-generation profiles (GCN5 Vega, RDNA2, RDNA3, RDNA4)
+- **Duration constant extraction**: `config_utils/defaults.rs` (3 constants),
+  `discovery_engine/mod.rs` (2 constants), `gpu/scheduler.rs` (1 constant),
+  `performance/implementation/mod.rs` (2 constants)
+- **Tests**: 8,430 lib-only passing (up from 8,349), 141 cylinder tests, zero clippy warnings
 
 ### Session S245 (May 12, 2026) — Phase C Begins: toadstool-cylinder Crate + Deep Debt Sweep
 

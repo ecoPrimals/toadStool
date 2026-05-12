@@ -90,9 +90,10 @@ impl DiscoveryEngine {
     /// Create discovery engine with no sources (for testing or manual source addition).
     #[must_use]
     pub fn empty() -> Self {
+        const EMPTY_DISCOVERY_TIMEOUT_SECS: u64 = 1;
         Self {
             sources: vec![],
-            timeout: Duration::from_secs(1),
+            timeout: Duration::from_secs(EMPTY_DISCOVERY_TIMEOUT_SECS),
         }
     }
 
@@ -241,7 +242,8 @@ impl DiscoverySource for MDnsSource {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            match receiver.recv_timeout(Duration::from_millis(100)) {
+            const MDNS_POLL_INTERVAL: Duration = Duration::from_millis(100);
+            match receiver.recv_timeout(MDNS_POLL_INTERVAL) {
                 Ok(event) => {
                     if let ServiceEvent::ServiceResolved(info) = event {
                         let txt: HashMap<String, String> = info

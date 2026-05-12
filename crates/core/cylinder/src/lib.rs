@@ -88,9 +88,14 @@
 pub mod error;
 pub mod hardware;
 pub mod linux_paths;
+pub(crate) mod mmio;
+pub(crate) mod mmio_region;
 
 #[cfg(target_os = "linux")]
 pub mod drm;
+
+#[cfg(target_os = "linux")]
+pub mod amd;
 
 pub use error::{ChannelError, DevinitError, DriverError, DriverResult, PciDiscoveryError};
 pub use hardware::{CompletionStyle, HardwareCapabilities, MemoryType, Vendor, WaveSize};

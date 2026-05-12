@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S245
+**Date**: May 2026 — S246
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S246 (Phase C Batch 2 — MMIO + AMD Backend Absorption + Deep Debt)**:
+Absorbed MMIO foundation modules (VolatilePtr, MmioRegion) and complete AMD GPU
+backend (6 modules: AmdDevice, ioctl, PM4, GEM, generation profiles, shader binary
+format) into `toadstool-cylinder`. 6 more hardcoded Duration literals extracted.
+Full audit: zero production files >800L, all unsafe blocks documented, all mocks
+behind test-feature gates. 8,430 tests, zero clippy warnings.
 
 **S245 (Phase C Begins — toadstool-cylinder Crate + Deep Debt Sweep)**:
 Created `toadstool-cylinder` crate for Phase C coral-driver absorption. Absorbed

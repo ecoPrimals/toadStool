@@ -286,8 +286,9 @@ impl UniversalComputeScheduler {
         // Check cache first, release lock before await
         {
             let cache = self.utilization_cache.read().await;
+            const UTILIZATION_CACHE_TTL: Duration = Duration::from_secs(1);
             if let Some((utilization, timestamp)) = cache.get(&resource_id)
-                && timestamp.elapsed() < Duration::from_secs(1)
+                && timestamp.elapsed() < UTILIZATION_CACHE_TTL
             {
                 return *utilization;
             }

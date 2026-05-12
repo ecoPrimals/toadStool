@@ -11,6 +11,10 @@ use crate::env_config::EnvConfigLoader;
 use super::network;
 use super::paths;
 
+const DEFAULT_EXECUTION_TIMEOUT_SECS: u64 = 300;
+const DEFAULT_METRICS_INTERVAL_SECS: u64 = 10;
+const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
+
 /// Get worker threads from environment or default
 #[must_use]
 pub fn get_worker_threads() -> u32 {
@@ -38,7 +42,7 @@ pub fn get_max_concurrent_executions() -> u32 {
 #[must_use]
 pub fn get_execution_timeout() -> Duration {
     let loader = EnvConfigLoader::new();
-    loader.get_duration("EXECUTION_TIMEOUT_SECS", Duration::from_secs(300))
+    loader.get_duration("EXECUTION_TIMEOUT_SECS", Duration::from_secs(DEFAULT_EXECUTION_TIMEOUT_SECS))
 }
 
 /// Get max CPU usage from environment or default
@@ -66,14 +70,14 @@ pub fn get_max_storage_usage() -> u64 {
 #[must_use]
 pub fn get_metrics_interval() -> Duration {
     let loader = EnvConfigLoader::new();
-    loader.get_duration("METRICS_INTERVAL_SECS", Duration::from_secs(10))
+    loader.get_duration("METRICS_INTERVAL_SECS", Duration::from_secs(DEFAULT_METRICS_INTERVAL_SECS))
 }
 
 /// Get health check interval from environment or default
 #[must_use]
 pub fn get_health_check_interval() -> Duration {
     let loader = EnvConfigLoader::new();
-    loader.get_duration("HEALTH_CHECK_INTERVAL_SECS", Duration::from_secs(30))
+    loader.get_duration("HEALTH_CHECK_INTERVAL_SECS", Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS))
 }
 
 /// Get log level from environment or default

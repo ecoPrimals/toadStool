@@ -131,6 +131,9 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         &self,
         _workload: &WorkloadSpec,
     ) -> ToadStoolResult<ResourcePrediction> {
+        const MIN_EXECUTION_TIME: Duration = Duration::from_secs(1);
+        const DEFAULT_PREDICTION_EXECUTION_SECS: u64 = 10;
+
         let models = self.prediction_models.read().await;
         if let Some((_, model)) = models.iter().max_by_key(|(_, m)| m.sample_count())
             && model.sample_count() > 0
@@ -143,7 +146,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
         if let Some((_, runtime_stats)) = stats.iter().next() {
             return Ok(ResourcePrediction {
                 timestamp: SystemTime::now(),
-                execution_time: runtime_stats.avg_execution_time.max(Duration::from_secs(1)),
+                execution_time: runtime_stats.avg_execution_time.max(MIN_EXECUTION_TIME),
                 memory_mb: runtime_stats.avg_memory_usage.max(1.0),
                 cpu_percent: runtime_stats.avg_cpu_usage.clamp(0.0, 100.0),
                 confidence: 50.0,
@@ -154,7 +157,7 @@ impl PerformanceOptimizer for IntelligentPerformanceOptimizer {
 
         Ok(ResourcePrediction {
             timestamp: SystemTime::now(),
-            execution_time: Duration::from_secs(10),
+            execution_time: Duration::from_secs(DEFAULT_PREDICTION_EXECUTION_SECS),
             memory_mb: 256.0,
             cpu_percent: 50.0,
             confidence: 20.0,
