@@ -4,6 +4,11 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
+const DEFAULT_HEALTH_CHECK_TIMEOUT_SECS: u64 = 10;
+const DEFAULT_HEALTH_CHECK_RETRIES: u32 = 3;
+const DEFAULT_STARTUP_GRACE_PERIOD_SECS: u64 = 30;
+
 /// Health check configuration for biome services.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiomeHealthCheckConfig {
@@ -20,10 +25,10 @@ pub struct BiomeHealthCheckConfig {
 impl Default for BiomeHealthCheckConfig {
     fn default() -> Self {
         Self {
-            interval: Duration::from_secs(30),
-            timeout: Duration::from_secs(10),
-            retries: 3,
-            initial_delay: Duration::from_secs(30),
+            interval: Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS),
+            timeout: Duration::from_secs(DEFAULT_HEALTH_CHECK_TIMEOUT_SECS),
+            retries: DEFAULT_HEALTH_CHECK_RETRIES,
+            initial_delay: Duration::from_secs(DEFAULT_STARTUP_GRACE_PERIOD_SECS),
         }
     }
 }

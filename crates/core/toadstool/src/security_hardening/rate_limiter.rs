@@ -14,6 +14,8 @@ use crate::ToadStoolResult;
 
 use super::config::RateLimitingConfig;
 
+const SECS_PER_DAY: u64 = 86_400;
+
 /// Rate limiter
 pub struct RateLimiter {
     /// Configuration
@@ -90,7 +92,7 @@ impl RateLimiter {
             .retain(|&time| now.duration_since(time) < self.config.sliding_window);
 
         // Check daily reset
-        if now.duration_since(client_data.last_reset) > Duration::from_secs(86400) {
+        if now.duration_since(client_data.last_reset) > Duration::from_secs(SECS_PER_DAY) {
             client_data.daily_requests = 0;
             client_data.last_reset = now;
         }

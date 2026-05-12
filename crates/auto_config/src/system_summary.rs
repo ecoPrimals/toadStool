@@ -51,23 +51,23 @@ impl SystemSummary {
         }
     }
 
-    /// Pretty print the system summary
+    /// Log the system summary via structured `tracing`.
     pub fn display(&self) {
-        println!("🖥️  System Summary:");
-        println!("   CPU: {}", self.cpu_info);
-        println!("   Memory: {}", self.memory_info);
-        println!("   GPU: {}", self.gpu_info);
-        println!("   Storage: {}", self.storage_info);
-        println!("   Performance: {}", self.performance_class);
-        println!(
-            "   Ecosystem Services: {}",
-            if self.ecosystem_services.is_empty() {
-                "None".to_string()
-            } else {
-                self.ecosystem_services.join(", ")
-            }
+        let services = if self.ecosystem_services.is_empty() {
+            "None".to_string()
+        } else {
+            self.ecosystem_services.join(", ")
+        };
+        tracing::info!(
+            cpu = %self.cpu_info,
+            memory = %self.memory_info,
+            gpu = %self.gpu_info,
+            storage = %self.storage_info,
+            performance = %self.performance_class,
+            ecosystem_services = %services,
+            optimal_runtimes = %self.optimal_runtimes.join(", "),
+            "system summary"
         );
-        println!("   Optimal Runtimes: {}", self.optimal_runtimes.join(", "));
     }
 }
 

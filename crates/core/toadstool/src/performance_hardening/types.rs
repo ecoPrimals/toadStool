@@ -8,6 +8,14 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use toadstool_common::constants::timeouts;
 
+const DEFAULT_CLEANUP_INTERVAL_SECS: u64 = 60;
+const DEFAULT_AGGREGATION_WINDOW_SECS: u64 = 60;
+const DEFAULT_BASE_SAMPLING_INTERVAL_MS: u64 = 100;
+const DEFAULT_BATCH_TIMEOUT_MS: u64 = 100;
+const DEFAULT_CONNECTION_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 300;
+const DEFAULT_POOL_HEALTH_CHECK_INTERVAL_SECS: u64 = 60;
+
 /// Performance hardening configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceHardeningConfig {
@@ -70,12 +78,12 @@ pub struct OptimizedMonitoringConfig {
 impl Default for OptimizedMonitoringConfig {
     fn default() -> Self {
         Self {
-            base_sampling_interval: Duration::from_millis(100),
+            base_sampling_interval: Duration::from_millis(DEFAULT_BASE_SAMPLING_INTERVAL_MS),
             adaptive_sampling: true,
             high_load_multiplier: 0.5,
             low_load_multiplier: 2.0,
             batch_size: 10,
-            aggregation_window: Duration::from_secs(60),
+            aggregation_window: Duration::from_secs(DEFAULT_AGGREGATION_WINDOW_SECS),
         }
     }
 }
@@ -125,7 +133,7 @@ impl Default for CachingConfig {
         Self {
             max_size: 1000,
             default_ttl: timeouts::DEFAULT_CACHE_TTL,
-            cleanup_interval: Duration::from_secs(60),
+            cleanup_interval: Duration::from_secs(DEFAULT_CLEANUP_INTERVAL_SECS),
             hit_rate_threshold: 0.8,
         }
     }
@@ -148,7 +156,7 @@ impl Default for AsyncOptimizationConfig {
     fn default() -> Self {
         Self {
             batch_size: 50,
-            batch_timeout: Duration::from_millis(100),
+            batch_timeout: Duration::from_millis(DEFAULT_BATCH_TIMEOUT_MS),
             concurrency_limit: 100,
             queue_size_limit: 1000,
         }
@@ -179,9 +187,9 @@ impl Default for PerformanceConnectionPoolConfig {
         Self {
             initial_size: 10,
             max_size: 100,
-            connection_timeout: Duration::from_secs(30),
-            idle_timeout: Duration::from_secs(300),
-            health_check_interval: Duration::from_secs(60),
+            connection_timeout: Duration::from_secs(DEFAULT_CONNECTION_TIMEOUT_SECS),
+            idle_timeout: Duration::from_secs(DEFAULT_IDLE_TIMEOUT_SECS),
+            health_check_interval: Duration::from_secs(DEFAULT_POOL_HEALTH_CHECK_INTERVAL_SECS),
         }
     }
 }

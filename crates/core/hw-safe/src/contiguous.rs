@@ -97,3 +97,64 @@ pub unsafe trait ContiguousBytes {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestRegion {
+        data: Vec<u8>,
+    }
+
+    impl TestRegion {
+        fn new(data: Vec<u8>) -> Self {
+            Self { data }
+        }
+    }
+
+    // SAFETY: Vec<u8> guarantees a valid, contiguous allocation for its length.
+    unsafe impl ContiguousBytes for TestRegion {
+        fn raw_ptr(&self) -> NonNull<u8> {
+            NonNull::new(self.data.as_ptr().cast_mut()).unwrap_or(NonNull::dangling())
+        }
+
+        fn raw_len(&self) -> usize {
+            self.data.len()
+        }
+    }
+
+    #[test]
+    fn as_bytes_returns_correct_content() {
+        let region = TestRegion::new(vec![0xDE, 0xAD, 0xBE, 0xEF]);
+        let bytes = region.as_bytes();
+        assert_eq!(bytes, &[0xDE, 0xAD, 0xBE, 0xEF]);
+    }
+
+    #[test]
+    fn as_bytes_mut_allows_modification() {
+        let mut region = TestRegion::new(vec![0, 0, 0, 0]);
+        let bytes = region.as_bytes_mut();
+        bytes[0] = 0xFF;
+        bytes[3] = 0x42;
+        assert_eq!(region.data, &[0xFF, 0, 0, 0x42]);
+    }
+
+    #[test]
+    fn empty_region_returns_empty_slice() {
+        let region = TestRegion::new(vec![]);
+        assert!(region.as_bytes().is_empty());
+    }
+
+    #[test]
+    fn empty_region_mut_returns_empty_slice() {
+        let mut region = TestRegion::new(vec![]);
+        assert!(region.as_bytes_mut().is_empty());
+    }
+
+    #[test]
+    fn raw_len_matches_as_bytes_len() {
+        let region = TestRegion::new(vec![1; 1024]);
+        assert_eq!(region.raw_len(), 1024);
+        assert_eq!(region.as_bytes().len(), 1024);
+    }
+}

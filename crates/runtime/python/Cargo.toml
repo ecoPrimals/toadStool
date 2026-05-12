@@ -29,9 +29,9 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 futures = { workspace = true }
 
-# Python integration (optional — ecoBin builds use subprocess-only path)
-pyo3 = { workspace = true, optional = true }
-pyo3-asyncio = { workspace = true, features = ["tokio-runtime"], optional = true }
+# EVOLVED: pyo3/pyo3-asyncio removed from workspace deps (ecoBin v3.0).
+# Python embedded feature is dormant — ecoBin builds use subprocess-only path.
+# Squirrel MCP owns embedded Python integration via IPC.
 
 # EVOLVED: sysinfo removed (Mar 9, 2026) — replaced by toadstool-sysmon
 # EVOLVED: nix dependency removed (Feb 14, 2026) - unused, prefer rustix
@@ -43,7 +43,7 @@ tempfile = { workspace = true }
 [features]
 default = ["python-subprocess"]
 python-subprocess = []
-python-embedded = ["dep:pyo3", "dep:pyo3-asyncio"]
+# python-embedded feature dormant — pyo3 deps removed per ecoBin v3.0
 
 [lints]
 workspace = true

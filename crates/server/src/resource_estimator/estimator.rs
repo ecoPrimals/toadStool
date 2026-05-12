@@ -12,6 +12,16 @@ use crate::graph_types::{ExecutionGraph, GraphNode};
 
 use super::types::{EstimationError, NodeEstimate, ResourceEstimate};
 
+const DEFAULT_CPU_CORES: u32 = 2;
+const DEFAULT_MEMORY_BYTES: u64 = 1024 * 1024 * 1024;
+const DEFAULT_ESTIMATE_DURATION_SECS: u64 = 30;
+
+const ESTIMATE_GPU_COMPUTE_SECS: u64 = 60;
+const ESTIMATE_NEURAL_COMPUTE_SECS: u64 = 120;
+const ESTIMATE_CPU_COMPUTE_SECS: u64 = 30;
+const ESTIMATE_STORAGE_SECS: u64 = 10;
+const ESTIMATE_NETWORK_SECS: u64 = 5;
+
 /// Resource estimator
 ///
 /// Analyzes execution graphs and produces resource estimates.
@@ -36,9 +46,9 @@ impl ResourceEstimator {
     /// Create a new resource estimator with sensible defaults
     pub fn new() -> Self {
         Self {
-            default_cpu_cores: 2,
-            default_memory_bytes: 1024 * 1024 * 1024, // 1GB
-            default_duration: Duration::from_secs(30),
+            default_cpu_cores: DEFAULT_CPU_CORES,
+            default_memory_bytes: DEFAULT_MEMORY_BYTES,
+            default_duration: Duration::from_secs(DEFAULT_ESTIMATE_DURATION_SECS),
         }
     }
 
@@ -221,11 +231,11 @@ impl ResourceEstimator {
         }
 
         match node.operation.as_str() {
-            "gpu_compute" => Duration::from_secs(60),
-            "neural_compute" => Duration::from_secs(120),
-            "cpu_compute" => Duration::from_secs(30),
-            "storage" => Duration::from_secs(10),
-            "network" => Duration::from_secs(5),
+            "gpu_compute" => Duration::from_secs(ESTIMATE_GPU_COMPUTE_SECS),
+            "neural_compute" => Duration::from_secs(ESTIMATE_NEURAL_COMPUTE_SECS),
+            "cpu_compute" => Duration::from_secs(ESTIMATE_CPU_COMPUTE_SECS),
+            "storage" => Duration::from_secs(ESTIMATE_STORAGE_SECS),
+            "network" => Duration::from_secs(ESTIMATE_NETWORK_SECS),
             _ => self.default_duration,
         }
     }

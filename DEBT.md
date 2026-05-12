@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S241
+**Date**: May 2026 — S242
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S242 (Deep Debt — println→tracing, Magic Constants, ContiguousBytes Coverage, Dep Cleanup)**:
+Migrated last library `println!` (`auto_config SystemSummary::display()`) to structured
+`tracing::info!`. Extracted 20+ hardcoded `Duration` literals to named constants across
+`biomeos_integration`, `runtime_discovery`, `security_hardening`, `performance_hardening`,
+and `server/resource_estimator`. Added 5 direct `ContiguousBytes` tests for hw-safe
+coverage gap. Cleaned orphan `pyo3` workspace refs in Python crate Cargo.toml (workspace
+deps already removed per ecoBin v3.0). 8,286 tests, zero clippy warnings.
 
 **S241 (Deprecated Stub Removal + Coverage Expansion + Phase C Planning)**:
 Removed deprecated `cuda_impl` entirely (zero callers). Enhanced `SwapOrchestrator`

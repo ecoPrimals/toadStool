@@ -5,7 +5,35 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-241)
+## [Unreleased] - May 12, 2026 (Sessions 43-242)
+
+### Session S242 (May 12, 2026) — Deep Debt: println→tracing, Magic Constants, Coverage, Dependency Cleanup
+
+Comprehensive sweep: migrated last `println!` in library code to structured
+`tracing`, extracted 20+ hardcoded `Duration` literals to named constants across
+core crates, added direct `ContiguousBytes` tests for hw-safe coverage gap,
+cleaned orphan pyo3 workspace refs in Python crate manifest.
+
+#### Changes
+
+- **auto_config `SystemSummary::display()` → `tracing::info!`**: Last remaining
+  `println!` in library code (outside CLI/bin) migrated to structured tracing
+  with cpu, memory, gpu, storage, performance, services fields
+- **Magic constant extraction**: 20+ raw `Duration::from_secs/millis` literals
+  replaced with named constants across:
+  - `biomeos_integration/types/resources.rs` — health check defaults
+  - `runtime_discovery/config.rs` — discovery interval/timeout
+  - `security_hardening/rate_limiter.rs` — `SECS_PER_DAY`
+  - `performance_hardening/types.rs` — cleanup, sampling, timeout, pool defaults
+  - `server/resource_estimator/estimator.rs` — per-operation duration estimates
+- **ContiguousBytes direct tests**: 5 new tests for hw-safe's unsafe trait:
+  `as_bytes_returns_correct_content`, `as_bytes_mut_allows_modification`,
+  `empty_region_returns_empty_slice`, `empty_region_mut_returns_empty_slice`,
+  `raw_len_matches_as_bytes_len`
+- **Python crate Cargo.toml**: Removed orphan `pyo3 = { workspace = true }` and
+  `pyo3-asyncio = { workspace = true }` refs (workspace deps already deleted per
+  ecoBin v3.0); dormant `python-embedded` feature documented
+- **Tests**: 8,286 lib-only passing (+5 hw-safe), zero clippy warnings
 
 ### Session S241 (May 12, 2026) — Deprecated Stub Removal, Coverage Expansion, Phase C Planning
 

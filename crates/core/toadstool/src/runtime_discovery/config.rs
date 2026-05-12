@@ -5,6 +5,10 @@
 
 use std::time::Duration;
 
+const DEFAULT_DISCOVERY_INTERVAL_SECS: u64 = 30;
+const DEFAULT_SERVICE_TIMEOUT_SECS: u64 = 300;
+const DEFAULT_MAX_SERVICES: usize = 1000;
+
 /// Discovery configuration
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
@@ -29,9 +33,9 @@ impl Default for DiscoveryConfig {
         Self {
             enable_mdns: true,
             enable_dns_sd: true,
-            discovery_interval: Duration::from_secs(30),
-            service_timeout: Duration::from_secs(300), // 5 minutes
-            max_services: 1000,
+            discovery_interval: Duration::from_secs(DEFAULT_DISCOVERY_INTERVAL_SECS),
+            service_timeout: Duration::from_secs(DEFAULT_SERVICE_TIMEOUT_SECS),
+            max_services: DEFAULT_MAX_SERVICES,
         }
     }
 }
