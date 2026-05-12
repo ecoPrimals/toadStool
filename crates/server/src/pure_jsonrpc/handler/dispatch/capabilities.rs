@@ -113,7 +113,12 @@ impl DispatchHandler {
                 "total_dispatch_count": self.dispatch_count.load(Ordering::Relaxed),
                 "ember": {
                     "held_devices": self.held_device_count().await,
-                    "phase": "A",
+                    "phase": "B",
+                },
+                "glowplug": {
+                    "orchestrator": "SwapOrchestrator<SysfsSwapExecutor>",
+                    "lifecycle_steps": 7,
+                    "personalities": ["vfio", "nouveau", "nvidia", "nvidia-open", "nvidia-oracle", "amdgpu", "xe", "i915", "akida", "unbound"],
                 },
             },
             "error": null,

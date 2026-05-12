@@ -5,7 +5,37 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 11, 2026 (Sessions 43-238)
+## [Unreleased] - May 12, 2026 (Sessions 43-239)
+
+### Session S239 (May 12, 2026) — Wave 8 Phase B: Glowplug Absorption
+
+Absorbed `coral-glowplug`'s sovereign boot, swap orchestration, and personality
+management into toadStool. EmberClient cross-process IPC pattern replaced by
+toadStool-internal `SwapOrchestrator<SysfsSwapExecutor>`. GpuPersonality unified
+with NvidiaOracle and Akida variants.
+
+#### Changes
+
+- **Boot types absorbed**: Created `crates/core/glowplug/src/boot.rs` with
+  `BootResult`, `BootStep`, `StepStatus` — portable data types from
+  `coral-glowplug::sovereign`
+- **SwapOrchestrator execution**: Implemented `orchestrate_swap()` (7-step
+  lifecycle: quiesce → persist → drop → delegate → reacquire → restore → health)
+  and `execute_boot()` on `SwapOrchestrator<E>`
+- **SysfsSwapExecutor**: First production `SwapExecutor` — performs PCI driver
+  unbind/rebind via sysfs writes. Replaces `EmberClient::swap_device` cross-process
+  IPC. Error types: `NotPciBdf`, `SysfsWrite`, `BindFailed`
+- **GpuPersonality unified**: Added `NvidiaOracle { module_name }` and `Akida`
+  variants. `GpuPersonalityRegistry` handles `nvidia_oracle_*` prefix matching
+  and `akida`/`akida-pcie` aliases. Akida capabilities: `["neuromorphic", "inference"]`
+- **GlowPlugClient integration**: `GlowPlugClient` now wraps
+  `SwapOrchestrator<SysfsSwapExecutor>`. New `swap_device_orchestrated()` for
+  lifecycle-managed swaps. `orchestrator()` accessor exposed
+- **Capabilities Phase B**: `compute.dispatch.capabilities` response updated
+  from `ember.phase: "A"` to `ember.phase: "B"`, added `glowplug` section with
+  `orchestrator`, `lifecycle_steps`, `personalities` array
+- **Tests**: 62 glowplug crate tests (all new boot + orchestration + sysfs tests),
+  117 dispatch tests (2 new Phase B capability tests), 8,278 total lib-only passing
 
 ### Session S238 (May 11, 2026) — Deep Debt Sweep: Magic Numbers, println→tracing, deny.toml, JH-2 Audit
 

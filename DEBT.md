@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S238
+**Date**: May 2026 — S239
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S239 (Wave 8 Phase B — glowplug absorption)**:
+Absorbed `coral-glowplug`'s sovereign boot lifecycle, swap orchestration,
+and personality management. `SwapOrchestrator` now implements the full 7-step
+lifecycle (`orchestrate_swap`, `execute_boot`). `SysfsSwapExecutor` replaces
+`EmberClient` cross-process IPC. `GpuPersonality` unified with `NvidiaOracle`
+and `Akida` variants. `GlowPlugClient` wraps `SwapOrchestrator` internally.
+Capabilities updated to Phase B. 62 new glowplug tests, 2 new Phase B
+capability tests.
 
 **S238 (Deep Debt — Magic Numbers, println→tracing, deny.toml, JH-2 Audit)**:
 Consolidated 20+ duplicated magic numbers across `distributed/`, `container/`,

@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S238 (Deep debt: magic numbers, println→tracing, deny.toml, JH-2 audit)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase A: coral-ember absorbed (S237)** | **VfioResourceHandle wired into dispatch (S237)** | **JH-2 FULLY RESOLVED (S238)** | **20+ magic numbers extracted (S238)**
-**Latest**: S238 — Deep debt: 20+ magic numbers extracted to named constants across distributed/container/edge/host_config. println→tracing in akida-models. deny.toml stale comments fixed. JH-2 envelope enforcement audited and confirmed complete.
-**Previous**: S237 — Wave 8 Phase A ember absorption. S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract.
+**Updated**: May 2026 — S239 (Wave 8 Phase B: glowplug absorption)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase B: glowplug absorbed (S239)** | **SwapOrchestrator 7-step lifecycle (S239)** | **SysfsSwapExecutor production impl (S239)** | **EmberClient → toadStool-internal (S239)** | **GpuPersonality unified (NvidiaOracle + Akida) (S239)**
+**Latest**: S239 — Wave 8 Phase B glowplug absorption. BootResult/BootStep/StepStatus types absorbed. SwapOrchestrator execute_boot() implemented (7-step lifecycle). SysfsSwapExecutor replaces EmberClient cross-process IPC. GpuPersonality unified with NvidiaOracle + Akida variants. GlowPlugClient uses SwapOrchestrator internally. Capabilities updated to Phase B.
+**Previous**: S238 — Deep debt: magic numbers, JH-2 audit. S237 — Wave 8 Phase A ember absorption. S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract.
 
 ---
 
@@ -115,7 +115,7 @@ Phase A shipped production `VfioResourceHandle` (S237); remaining phases have te
 | Phase | Scope | LOC | Key deliverable | Status |
 |-------|-------|-----|-----------------|--------|
 | **A: ember** | `HeldDevice` → `ResourceHandle` + vendor lifecycle + observation + ring_meta | ~9k | First production `ResourceHandle` impl; device pool in dispatch | **S237 DONE** |
-| **B: glowplug** | `sovereign_boot` → `SwapOrchestrator` 7-step; `EmberClient` becomes toadStool-internal; `GpuPersonality` unifies with `DevicePersonality`; `coralctl` → CLI | ~18k | Device lifecycle owned by toadStool | PENDING |
+| **B: glowplug** | `sovereign_boot` → `SwapOrchestrator` 7-step; `EmberClient` becomes toadStool-internal; `GpuPersonality` unifies with `DevicePersonality`; `coralctl` → CLI | ~18k | Device lifecycle owned by toadStool | **S239 DONE** |
 | **C: cylinder + coral-driver** | Per-device subprocess generalized (GPU + NPU + HSM); VFIO channel, GPFIFO/pushbuf, DRM ioctl → `hw-safe` containment zone | ~15k | Universal per-device dispatch subprocess | PENDING |
 | **D: local dispatch** | `dispatch_submit_with_context` executes locally via absorbed driver layer instead of forwarding to `coral_client` | ~2k | Gate 4 E2E sovereign compute path | PENDING |
 

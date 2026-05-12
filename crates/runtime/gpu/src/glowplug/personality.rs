@@ -10,6 +10,9 @@ use std::fmt;
 use toadstool_glowplug::personality::{DevicePersonality, PersonalityRegistry};
 
 /// GPU driver personality — what driver/mode a GPU is operating in.
+///
+/// Unified from `coral-glowplug::Personality` — covers all vendor
+/// driver modes encountered across NVIDIA, AMD, Intel, and BrainChip.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GpuPersonality {
     /// VFIO passthrough — direct hardware access, no kernel driver.
@@ -20,12 +23,19 @@ pub enum GpuPersonality {
     Nvidia,
     /// NVIDIA open kernel modules.
     NvidiaOpen,
+    /// NVIDIA oracle module (custom/experimental kernel module).
+    NvidiaOracle {
+        /// The specific oracle module name (e.g. "nvidia_oracle_v2").
+        module_name: String,
+    },
     /// AMD GPU driver.
     Amdgpu,
     /// Intel Xe driver (modern).
     Xe,
     /// Intel i915 driver (legacy).
     I915,
+    /// BrainChip Akida neuromorphic accelerator.
+    Akida,
     /// No driver bound.
     Unbound,
 }
@@ -37,9 +47,11 @@ impl DevicePersonality for GpuPersonality {
             Self::Nouveau => "nouveau",
             Self::Nvidia => "nvidia",
             Self::NvidiaOpen => "nvidia-open",
+            Self::NvidiaOracle { .. } => "nvidia-oracle",
             Self::Amdgpu => "amdgpu",
             Self::Xe => "xe",
             Self::I915 => "i915",
+            Self::Akida => "akida",
             Self::Unbound => "unbound",
         }
     }
@@ -52,11 +64,12 @@ impl DevicePersonality for GpuPersonality {
         match self {
             Self::Vfio => Some("vfio-pci"),
             Self::Nouveau => Some("nouveau"),
-            Self::Nvidia => Some("nvidia"),
-            Self::NvidiaOpen => Some("nvidia"),
+            Self::Nvidia | Self::NvidiaOpen => Some("nvidia"),
+            Self::NvidiaOracle { module_name } => Some(module_name.as_str()),
             Self::Amdgpu => Some("amdgpu"),
             Self::Xe => Some("xe"),
             Self::I915 => Some("i915"),
+            Self::Akida => Some("akida-pcie"),
             Self::Unbound => None,
         }
     }
@@ -64,9 +77,12 @@ impl DevicePersonality for GpuPersonality {
     fn capabilities(&self) -> &[&str] {
         match self {
             Self::Vfio => &["compute", "dma", "passthrough"],
-            Self::Nouveau | Self::Nvidia | Self::NvidiaOpen => &["compute", "display", "video"],
+            Self::Nouveau | Self::Nvidia | Self::NvidiaOpen | Self::NvidiaOracle { .. } => {
+                &["compute", "display", "video"]
+            }
             Self::Amdgpu => &["compute", "display", "video"],
             Self::Xe | Self::I915 => &["compute", "display"],
+            Self::Akida => &["neuromorphic", "inference"],
             Self::Unbound => &[],
         }
     }
@@ -99,9 +115,11 @@ impl PersonalityRegistry for GpuPersonalityRegistry {
             "nouveau",
             "nvidia",
             "nvidia-open",
+            "nvidia-oracle",
             "amdgpu",
             "xe",
             "i915",
+            "akida",
             "unbound",
         ]
     }
@@ -112,9 +130,15 @@ impl PersonalityRegistry for GpuPersonalityRegistry {
             "nouveau" => Some(GpuPersonality::Nouveau),
             "nvidia" => Some(GpuPersonality::Nvidia),
             "nvidia-open" => Some(GpuPersonality::NvidiaOpen),
+            n if n.starts_with("nvidia_oracle") || n == "nvidia-oracle" => {
+                Some(GpuPersonality::NvidiaOracle {
+                    module_name: n.to_string(),
+                })
+            }
             "amdgpu" => Some(GpuPersonality::Amdgpu),
             "xe" => Some(GpuPersonality::Xe),
             "i915" => Some(GpuPersonality::I915),
+            "akida" | "akida-pcie" => Some(GpuPersonality::Akida),
             "unbound" | "" => Some(GpuPersonality::Unbound),
             _ => None,
         }
@@ -129,7 +153,24 @@ mod tests {
     fn personality_names() {
         assert_eq!(GpuPersonality::Vfio.name(), "vfio");
         assert_eq!(GpuPersonality::Nouveau.name(), "nouveau");
+        assert_eq!(GpuPersonality::Akida.name(), "akida");
         assert_eq!(GpuPersonality::Unbound.name(), "unbound");
+    }
+
+    #[test]
+    fn nvidia_oracle_name_and_module() {
+        let p = GpuPersonality::NvidiaOracle {
+            module_name: "nvidia_oracle_v2".into(),
+        };
+        assert_eq!(p.name(), "nvidia-oracle");
+        assert_eq!(p.driver_module(), Some("nvidia_oracle_v2"));
+    }
+
+    #[test]
+    fn akida_capabilities() {
+        let caps = GpuPersonality::Akida.capabilities();
+        assert!(caps.contains(&"neuromorphic"));
+        assert!(caps.contains(&"inference"));
     }
 
     #[test]
@@ -139,6 +180,20 @@ mod tests {
             let p = registry.create(name).expect(name);
             assert_eq!(p.name(), name);
         }
+    }
+
+    #[test]
+    fn registry_oracle_prefix() {
+        let registry = GpuPersonalityRegistry::linux();
+        let p = registry.create("nvidia_oracle_v3").expect("oracle");
+        assert_eq!(p.name(), "nvidia-oracle");
+    }
+
+    #[test]
+    fn registry_akida_aliases() {
+        let registry = GpuPersonalityRegistry::linux();
+        assert!(registry.create("akida").is_some());
+        assert!(registry.create("akida-pcie").is_some());
     }
 
     #[test]
@@ -152,10 +207,25 @@ mod tests {
     fn vfio_provides_direct_access() {
         assert!(GpuPersonality::Vfio.provides_direct_access());
         assert!(!GpuPersonality::Nouveau.provides_direct_access());
+        assert!(!GpuPersonality::Akida.provides_direct_access());
     }
 
     #[test]
     fn display_format() {
         assert_eq!(GpuPersonality::Amdgpu.to_string(), "gpu:amdgpu");
+        assert_eq!(GpuPersonality::Akida.to_string(), "gpu:akida");
+    }
+
+    #[test]
+    fn all_variants_have_driver_module_or_none() {
+        let registry = GpuPersonalityRegistry::linux();
+        for name in registry.supported() {
+            let p = registry.create(name).unwrap();
+            if name == "unbound" {
+                assert!(p.driver_module().is_none());
+            } else {
+                assert!(p.driver_module().is_some(), "{name} should have a driver module");
+            }
+        }
     }
 }

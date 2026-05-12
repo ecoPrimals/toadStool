@@ -174,7 +174,7 @@ async fn dispatch_submit_no_binary_or_binary_b64_returns_error() {
     );
 }
 
-// ── Phase A: ember device lifecycle integration ──
+// ── Phase A+B: ember device lifecycle integration ──
 
 #[tokio::test]
 async fn dispatch_submit_acquires_device_handle() {
@@ -234,9 +234,43 @@ async fn capabilities_includes_ember_info() {
         .await
         .expect("capabilities");
     let ember = &result["output"]["ember"];
-    assert_eq!(ember["phase"], "A");
+    assert_eq!(ember["phase"], "B");
     assert!(
         ember["held_devices"].is_u64(),
         "ember.held_devices should be present"
     );
+}
+
+// ── Phase B: glowplug orchestration integration ──
+
+#[tokio::test]
+async fn capabilities_includes_glowplug_info() {
+    let handler = test_handler();
+    let result = handler
+        .dispatch_capabilities(None)
+        .await
+        .expect("capabilities");
+    let glowplug = &result["output"]["glowplug"];
+    assert_eq!(glowplug["lifecycle_steps"], 7);
+    assert!(
+        glowplug["personalities"].as_array().is_some(),
+        "glowplug.personalities should be an array"
+    );
+    let personalities = glowplug["personalities"]
+        .as_array()
+        .unwrap();
+    assert!(personalities.len() >= 10, "should have at least 10 personalities");
+    assert!(personalities.iter().any(|p| p == "vfio"));
+    assert!(personalities.iter().any(|p| p == "akida"));
+}
+
+#[tokio::test]
+async fn capabilities_glowplug_has_orchestrator_type() {
+    let handler = test_handler();
+    let result = handler
+        .dispatch_capabilities(None)
+        .await
+        .expect("capabilities");
+    let orch = &result["output"]["glowplug"]["orchestrator"];
+    assert_eq!(orch, "SwapOrchestrator<SysfsSwapExecutor>");
 }

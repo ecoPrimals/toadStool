@@ -18,6 +18,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use toadstool_glowplug::boot::BootResult;
+use toadstool_glowplug::device_id::DeviceId;
+use toadstool_glowplug::sysfs_executor::SysfsSwapExecutor;
+use toadstool_glowplug::swap::SwapOrchestrator;
 use tracing::debug;
 
 /// Device entry returned by `ember.list`.
@@ -55,9 +59,15 @@ pub struct EmberReacquireResult {
 /// toadStool-native device management service.
 ///
 /// Manages GPU device lifecycle directly — no external primal dependency.
-/// Uses PCI sysfs for device enumeration and driver bind/unbind.
+/// Uses PCI sysfs for device enumeration and the [`SwapOrchestrator`] for
+/// lifecycle-managed personality swaps (quiesce → persist → swap → restore → health).
+///
+/// This replaces `coral-glowplug`'s `EmberClient` — all operations that
+/// formerly went through cross-process Unix socket IPC to `coral-ember`
+/// are now performed internally via `SysfsSwapExecutor`.
 pub struct GlowPlugClient {
     start_time: std::time::Instant,
+    orchestrator: SwapOrchestrator<SysfsSwapExecutor>,
 }
 
 impl Default for GlowPlugClient {
@@ -67,10 +77,11 @@ impl Default for GlowPlugClient {
 }
 
 impl GlowPlugClient {
-    /// Creates a new glowPlug service.
+    /// Creates a new glowPlug service with the sysfs-based swap orchestrator.
     pub fn new() -> Self {
         Self {
             start_time: std::time::Instant::now(),
+            orchestrator: SwapOrchestrator::new(SysfsSwapExecutor),
         }
     }
 
@@ -96,17 +107,28 @@ impl GlowPlugClient {
         }
     }
 
-    /// Request a driver swap for a device.
+    /// Request a lifecycle-managed driver swap for a device.
     ///
-    /// `target` is the driver to bind (e.g. `"vfio-pci"`, `"nouveau"`, `"unbound"`).
+    /// Executes the full 7-step swap lifecycle via [`SwapOrchestrator`]:
+    /// quiesce → persist → drop → delegate → reacquire → restore → health.
     ///
-    /// Uses sysfs driver_override + rebind for the swap.
+    /// Returns the full [`BootResult`] with per-step timing.
+    pub async fn swap_device_orchestrated(&self, bdf: &str, target: &str) -> BootResult {
+        let device = DeviceId::PciBdf(bdf.to_string());
+        let current = read_current_driver(bdf);
+        self.orchestrator
+            .execute_boot(&device, current.as_deref(), target)
+            .await
+    }
+
+    /// Request a driver swap for a device (legacy synchronous path).
+    ///
+    /// Uses direct sysfs writes. Prefer [`swap_device_orchestrated`] for
+    /// lifecycle-managed swaps with quiescence and health checks.
     pub fn swap_device(&self, bdf: &str, target: &str) -> Option<EmberSwapResult> {
         debug!(bdf, target, "ember.swap: requesting personality swap");
 
-        let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
         let unbind_path = find_driver_unbind_path(bdf);
-        let bind_path = format!("/sys/bus/pci/drivers/{target}/bind");
 
         // Unbind current driver
         if let Some(ref unbind) = unbind_path
@@ -115,14 +137,15 @@ impl GlowPlugClient {
             tracing::warn!(bdf, "unbind failed (device may not be bound)");
         }
 
-        // Set driver override
+        // Set driver override and bind
         if target != "unbound" {
+            let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
             if let Err(e) = std::fs::write(&override_path, target) {
                 tracing::warn!(bdf, target, error = %e, "driver_override write failed");
                 return None;
             }
 
-            // Bind new driver
+            let bind_path = format!("/sys/bus/pci/drivers/{target}/bind");
             if let Err(e) = std::fs::write(&bind_path, bdf) {
                 tracing::warn!(bdf, target, error = %e, "driver bind failed");
             }
@@ -141,6 +164,11 @@ impl GlowPlugClient {
             bdf: bdf.to_string(),
         })
     }
+
+    /// Access the underlying swap orchestrator.
+    pub fn orchestrator(&self) -> &SwapOrchestrator<SysfsSwapExecutor> {
+        &self.orchestrator
+    }
 }
 
 /// Shared glowPlug service wrapped in Arc for handler use.
@@ -149,6 +177,14 @@ pub type SharedGlowPlugClient = Arc<GlowPlugClient>;
 /// Create a shared glowPlug service instance.
 pub fn create_glowplug_client() -> SharedGlowPlugClient {
     Arc::new(GlowPlugClient::new())
+}
+
+/// Read the current driver bound to a PCI device.
+fn read_current_driver(bdf: &str) -> Option<String> {
+    let link = format!("/sys/bus/pci/devices/{bdf}/driver");
+    std::fs::read_link(&link)
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
 }
 
 /// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).

@@ -50,6 +50,7 @@
 //! identical across all hardware — only the handle type and personality
 //! variants differ.
 
+pub mod boot;
 pub mod device_id;
 pub mod device_slot;
 pub mod discovery;
@@ -57,15 +58,18 @@ pub mod firmware;
 pub mod health;
 pub mod personality;
 pub mod swap;
+pub mod sysfs_executor;
 
 // Re-export ember as the holder subsystem
 pub use toadstool_ember as ember;
 
 // Re-export key types
+pub use boot::{BootResult, BootStep, StepStatus};
 pub use device_id::DeviceId;
 pub use device_slot::DeviceSlot;
 pub use discovery::DeviceDiscovery;
 pub use firmware::FirmwareInterface;
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
-pub use swap::SwapOrchestrator;
+pub use swap::{SwapExecutor, SwapObservation, SwapOrchestrator};
+pub use sysfs_executor::SysfsSwapExecutor;
