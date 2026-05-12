@@ -7,22 +7,14 @@
 //! - **WebGPU** (default): Pure Rust, vendor-agnostic, universal
 //! - **Vulkan** (optional): Modern compute API
 //!
-//! CUDA and OpenCL-class dispatch are handled by `gpu.dispatch.cuda` capability providers via IPC.
-//! The `cuda_impl` module is a deprecated stub retained for backward compatibility.
+//! CUDA and OpenCL-class dispatch are handled by `gpu.dispatch.cuda` capability
+//! providers via IPC. The `cuda_impl` stub module was removed in S241 — callers
+//! should use `discover_capability("gpu.dispatch.cuda")` for CUDA workloads.
 //!
 //! ## Capability Layering
 //! 1. Base layer: WebGPU (universal, always available, pure Rust)
 //! 2. Optimization layer: Vulkan (optional, discovered at runtime)
 //! 3. Vendor / legacy: `gpu.dispatch.cuda` capability providers (external primals via IPC)
-
-/// DEPRECATED S197: `cudarc` removed. CUDA via `gpu.dispatch.cuda` capability IPC.
-pub mod cuda_impl;
-
-#[expect(
-    deprecated,
-    reason = "re-exports kept for callers migrating to WebGPU backends"
-)]
-pub use cuda_impl::{CudaBackend, CudaComputeResource};
 
 #[cfg(feature = "vulkan")]
 pub mod vulkan_impl;

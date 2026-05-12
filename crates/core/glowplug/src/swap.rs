@@ -476,4 +476,104 @@ mod tests {
         assert!(result.success);
         assert_eq!(result.initial_personality.as_deref(), Some("unknown"));
     }
+
+    /// Executor where `release` always fails but `execute_swap` succeeds.
+    #[derive(Debug)]
+    struct FailingReleaseMockExecutor;
+
+    impl SwapExecutor for FailingReleaseMockExecutor {
+        type Error = MockSwapErr;
+
+        async fn execute_swap(
+            &self,
+            device: &DeviceId,
+            target_personality: &str,
+        ) -> Result<SwapObservation, Self::Error> {
+            Ok(SwapObservation {
+                device_id: device.short_label(),
+                from: "old".into(),
+                to: target_personality.into(),
+                success: true,
+                duration: Duration::from_millis(10),
+                error: None,
+                detail: None,
+            })
+        }
+
+        async fn release(&self, _device: &DeviceId) -> Result<(), Self::Error> {
+            Err(MockSwapErr)
+        }
+    }
+
+    #[tokio::test]
+    async fn orchestrate_swap_release_failure_is_non_fatal() {
+        let orch = SwapOrchestrator::new(FailingReleaseMockExecutor);
+        let device = DeviceId::PciBdf("0000:02:00.0".into());
+        let result = orch.orchestrate_swap(&device, "nvidia", "vfio").await;
+
+        assert!(result.success, "swap should succeed even if release fails");
+        assert_eq!(result.steps.len(), 7);
+        assert_eq!(result.steps[2].name, "drop_handle");
+        assert_eq!(result.steps[2].status, StepStatus::Skipped);
+        assert!(result.steps[2]
+            .detail
+            .as_ref()
+            .is_some_and(|d| d.contains("release failed (non-fatal)")));
+    }
+
+    /// Executor where swap succeeds but returns `success: false` in observation.
+    #[derive(Debug)]
+    struct UnhealthySwapMockExecutor;
+
+    impl SwapExecutor for UnhealthySwapMockExecutor {
+        type Error = MockSwapErr;
+
+        async fn execute_swap(
+            &self,
+            device: &DeviceId,
+            target_personality: &str,
+        ) -> Result<SwapObservation, Self::Error> {
+            Ok(SwapObservation {
+                device_id: device.short_label(),
+                from: "old".into(),
+                to: target_personality.into(),
+                success: false,
+                duration: Duration::from_millis(30),
+                error: Some("device not responding after swap".into()),
+                detail: None,
+            })
+        }
+
+        async fn release(&self, _device: &DeviceId) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn orchestrate_swap_unhealthy_device_fails_at_health_step() {
+        let orch = SwapOrchestrator::new(UnhealthySwapMockExecutor);
+        let device = DeviceId::PciBdf("0000:03:00.0".into());
+        let result = orch.orchestrate_swap(&device, "nouveau", "vfio").await;
+
+        assert!(!result.success, "swap should fail when device is unhealthy");
+        assert_eq!(result.steps.len(), 7);
+        assert_eq!(result.steps[6].name, "health_check");
+        assert_eq!(result.steps[6].status, StepStatus::Failed);
+        assert!(result.steps[6]
+            .detail
+            .as_ref()
+            .is_some_and(|d| d.contains("not healthy")));
+        assert!(result.summary.contains("failed"));
+    }
+
+    #[tokio::test]
+    async fn execute_boot_with_unhealthy_swap_reports_failure() {
+        let orch = SwapOrchestrator::new(UnhealthySwapMockExecutor);
+        let device = DeviceId::PciBdf("0000:04:00.0".into());
+        let result = orch.execute_boot(&device, Some("nvidia"), "vfio").await;
+
+        assert!(!result.success);
+        assert_eq!(result.final_personality.as_deref(), Some("vfio"));
+        assert!(result.summary.contains("failed"));
+    }
 }

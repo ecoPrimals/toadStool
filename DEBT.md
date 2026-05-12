@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S240
+**Date**: May 2026 — S241
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S241 (Deprecated Stub Removal + Coverage Expansion + Phase C Planning)**:
+Removed deprecated `cuda_impl` entirely (zero callers). Enhanced `SwapOrchestrator`
+test coverage: 3 new tests covering failing `release` → `Skipped`, unhealthy swap
+→ `Failed` health check, boot failure propagation. Created Phase C coral-driver
+split plan (VFIO/DRM/AMD/NVIDIA → toadStool; GSP/Intel/compiler → coralReef).
+65 glowplug tests, 8,281 total lib-only. Discovery timeout confirmed appropriate.
 
 **S240 (Deep Debt Sweep — Test Refactor, println→tracing, Constants)**:
 Smart-refactored `execution/tests.rs` (831L) into 4-submodule `tests/`

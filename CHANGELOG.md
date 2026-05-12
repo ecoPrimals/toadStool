@@ -5,7 +5,34 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-240)
+## [Unreleased] - May 12, 2026 (Sessions 43-241)
+
+### Session S241 (May 12, 2026) — Deprecated Stub Removal, Coverage Expansion, Phase C Planning
+
+Removed deprecated `CudaBackend` / `CudaComputeResource` stubs (zero callers confirmed
+workspace-wide). Enhanced `SwapOrchestrator` test coverage with 3 new tests covering
+previously-untested branches (failing `release` → `Skipped` step, unhealthy swap observation
+→ `Failed` health check, boot failure propagation). Created Phase C coral-driver split
+plan documenting hardware-lifecycle vs compiler-pipeline module boundaries.
+
+#### Changes
+
+- **`cuda_impl` removed entirely**: Deprecated stubs (`CudaBackend`, `CudaComputeResource`)
+  and their re-exports deleted — zero callers outside the 2-file stub; migration guidance
+  preserved in `backends/mod.rs` doc comments pointing to `gpu.dispatch.cuda` capability IPC
+- **SwapOrchestrator coverage expanded**: 3 new tests:
+  - `orchestrate_swap_release_failure_is_non_fatal` — verifies `release` errors produce
+    `StepStatus::Skipped` (not abort)
+  - `orchestrate_swap_unhealthy_device_fails_at_health_step` — verifies `obs.success == false`
+    produces `Failed` health check step
+  - `execute_boot_with_unhealthy_swap_reports_failure` — verifies boot failure propagation
+- **Phase C split plan**: Created `PHASE_C_CORAL_DRIVER_SPLIT_PLAN.md` handoff documenting
+  which `coral-driver` modules are hardware-lifecycle (toadStool absorbs) vs compiler-pipeline
+  (coralReef retains). VFIO, DRM enum, AMD GEM/PM4, NVIDIA BAR0/pushbuf/QMD → toadStool;
+  GSP firmware, Intel skeleton, compiler IR → coralReef
+- **Discovery timeout audit**: Confirmed `DEFAULT_DISCOVERY_TIMEOUT_SECS` (5s) is per-source
+  (not global), and GPU sysfs scan is synchronous — no timeout issue for multi-GPU
+- **Tests**: 8,281 lib-only passing (65 glowplug, +3 new), zero clippy warnings
 
 ### Session S240 (May 12, 2026) — Deep Debt Sweep: Test Refactor, println→tracing, Hardcoded Constants
 
