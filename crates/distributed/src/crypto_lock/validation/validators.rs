@@ -20,11 +20,13 @@ impl Default for CryptoValidator {
 }
 
 impl CryptoValidator {
+    const MAX_PROOF_AGE_SECS: u64 = 86_400;
+
     /// Creates a validator with a 24-hour maximum proof age.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            max_proof_age: std::time::Duration::from_secs(86_400),
+            max_proof_age: std::time::Duration::from_secs(Self::MAX_PROOF_AGE_SECS),
         }
     }
 

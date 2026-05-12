@@ -27,13 +27,15 @@ pub struct RuntimeDiscovery<C: DiscoveryClient> {
 }
 
 impl<C: DiscoveryClient> RuntimeDiscovery<C> {
+    const DEFAULT_CACHE_TTL_SECS: u64 = 300;
+
     /// Create a new runtime discovery service
     pub fn new(primary_client: Arc<C>) -> Self {
         Self {
             primary_client,
             fallback_clients: Vec::new(),
             cache: Arc::new(RwLock::new(ServiceCache::new())),
-            cache_ttl: Duration::from_secs(300), // 5 minutes default
+            cache_ttl: Duration::from_secs(Self::DEFAULT_CACHE_TTL_SECS),
         }
     }
 

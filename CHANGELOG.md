@@ -5,7 +5,43 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-246)
+## [Unreleased] - May 12, 2026 (Sessions 43-247)
+
+### Session S247 (May 12, 2026) — Phase C Batch 3: NVIDIA Backend Absorption + Deep Debt
+
+Phase C absorption continues. Absorbed the complete NVIDIA hardware module suite into
+`toadstool-cylinder`: GPU identity probing (sysfs PCI vendor/device ID mapping, SM
+architecture detection, firmware inventory), generation profiles (QMD versions, launch
+methods, completion strategies for Volta through Blackwell), pushbuf command stream
+encoding, nouveau DRM ioctls (GEM create/mmap, VM init/bind, exec submit, syncobj,
+diagnostics), and QMD compute queue descriptors (per-SM-version builders for v2.1/2.2/2.3/
+3.0/5.0, bitfield encoding, CBUF binding, driver constant layout). Note: `bar0.rs` and
+`probe.rs` deferred (depend on `gsp` firmware modules which stay in coralReef). Deep debt
+sweep: ~30 more hardcoded Duration literals extracted to named constants across 15 files
+(discovery, backoff, timeouts, cache TTLs, monitoring retention, crypto validation).
+
+#### Changes
+
+- **Phase C Batch 3 — NV identity**: GPU identity probing via sysfs (PCI vendor/device
+  tables, SM architecture mapping), chip name/variant lookup, boot0-to-SM translation,
+  nouveau firmware inventory (`/lib/firmware/nvidia/`), PCI vendor constants
+- **Phase C Batch 3 — NV generation**: Per-GPU-generation profiles (QmdVersion, LaunchMethod,
+  CompletionStrategy, BootStrategy, PageTableFormat) for SM50 through SM120+
+- **Phase C Batch 3 — NV pushbuf**: Pushbuf command stream builder with compute class IDs
+  (Volta/Turing/Ampere+) and method constants (SET_OBJECT, PCAS, memory windows)
+- **Phase C Batch 3 — NV ioctl**: Nouveau DRM ioctl layer — GEM create/mmap, VM init/bind/
+  unmap, exec submit with syncobj signaling, diagnostic helpers
+- **Phase C Batch 3 — NV QMD**: Compute queue descriptor encoding with per-SM-version
+  builders (v2.1/2.2/2.3/3.0/5.0), bitfield layout, CBUF binding, driver constants.
+  QMD encoding absorbs into toadStool; values sourced from coralReef compile metadata
+- **NV VA constants**: `NV_KERNEL_MANAGED_ADDR` and `NV_USER_VA_START` placed in cylinder
+  `nv/mod.rs` for VM initialization
+- **Duration constant extraction**: ~30 literals extracted across discovery_defaults.rs,
+  primal_discovery.rs, capability_discovery, runtime_discovery, primal_discovery_mdns,
+  backends.rs, modern_utils.rs, glowplug/swap.rs, launcher.rs, wasm.rs, native.rs,
+  runtime_bridge.rs, wasm/config.rs, python/lib.rs, monitoring/types.rs, client/core.rs,
+  ecosystem_network.rs, config_builder.rs, crypto validators
+- **Tests**: 8,583 lib-only passing (up from 8,430), 294 cylinder tests, zero clippy warnings
 
 ### Session S246 (May 12, 2026) — Phase C Batch 2: MMIO + AMD Backend Absorption + Deep Debt
 

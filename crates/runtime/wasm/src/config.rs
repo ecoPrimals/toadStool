@@ -5,6 +5,9 @@
 //! following modern Rust best practices for type-driven configuration.
 
 use std::time::Duration;
+
+const WASM_MODULE_CACHE_TTL_HOURS: u64 = 24;
+
 use toadstool_common::config_bases::CacheConfig;
 
 /// Security isolation level for WebAssembly execution
@@ -73,7 +76,7 @@ impl Default for WasmRuntimeConfig {
             // Optimize cache for WASM modules - 512 entries, 24 hour TTL
             cache: CacheConfig {
                 max_entries: 512,
-                ttl: Duration::from_secs(24 * 3600),
+                ttl: Duration::from_secs(WASM_MODULE_CACHE_TTL_HOURS * 3600),
                 ..CacheConfig::default()
             },
             security_level: SecurityLevel::Strict,

@@ -39,6 +39,10 @@ pub struct PythonRuntimeConfig {
     pub requirements: Vec<String>,
 }
 
+impl PythonRuntimeConfig {
+    const DEFAULT_EXECUTION_TIMEOUT_SECS: u64 = 300;
+}
+
 impl Default for PythonRuntimeConfig {
     fn default() -> Self {
         Self {
@@ -47,7 +51,7 @@ impl Default for PythonRuntimeConfig {
             max_memory_mb: 1024,
             // Python execution may take longer - use 5 minute timeout
             timeouts: TimeoutConfig {
-                request_timeout: Duration::from_secs(300),
+                request_timeout: Duration::from_secs(Self::DEFAULT_EXECUTION_TIMEOUT_SECS),
                 ..TimeoutConfig::default()
             },
             requirements: vec![],

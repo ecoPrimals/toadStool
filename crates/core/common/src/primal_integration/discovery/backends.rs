@@ -22,16 +22,18 @@ use super::discovery_http_port;
 #[must_use]
 #[cfg(feature = "mdns")]
 pub fn try_discover_via_mdns(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+    const MDNS_PROBE_TIMEOUT_SECS: u64 = 2;
+    const MDNS_PROBE_TIMEOUT_TEST_MS: u64 = 50;
+
     debug!("Probing mDNS for capability '{}'", capability);
 
     let mdns = mdns_sd::ServiceDaemon::new().ok()?;
     let service_type = "_toadstool._tcp.local.";
     let receiver = mdns.browse(service_type).ok()?;
-
     let timeout = if cfg!(test) {
-        Duration::from_millis(50)
+        Duration::from_millis(MDNS_PROBE_TIMEOUT_TEST_MS)
     } else {
-        Duration::from_secs(2)
+        Duration::from_secs(MDNS_PROBE_TIMEOUT_SECS)
     };
     let deadline = std::time::Instant::now() + timeout;
     let mut discovered = Vec::new();
@@ -166,6 +168,9 @@ pub fn try_discover_via_docker_compose(capability: &str) -> Option<Vec<PrimalEnd
 /// configured, when the registry is unreachable, or when no matching service is found.
 #[must_use]
 pub fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>> {
+    const TCP_CONNECT_TIMEOUT_SECS: u64 = 3;
+    const TCP_CONNECT_TIMEOUT_TEST_MS: u64 = 100;
+
     #[derive(serde::Deserialize)]
     struct RegistryServices {
         #[serde(default)]
@@ -216,9 +221,9 @@ pub fn try_discover_via_registry(capability: &str) -> Option<Vec<PrimalEndpoint>
     let addrs: Vec<_> = (host, port).to_socket_addrs().ok()?.collect();
     let addr = addrs.first()?;
     let connect_timeout = if cfg!(test) {
-        Duration::from_millis(100)
+        Duration::from_millis(TCP_CONNECT_TIMEOUT_TEST_MS)
     } else {
-        Duration::from_secs(3)
+        Duration::from_secs(TCP_CONNECT_TIMEOUT_SECS)
     };
     let mut stream = TcpStream::connect_timeout(addr, connect_timeout).ok()?;
 

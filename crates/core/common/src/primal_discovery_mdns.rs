@@ -29,10 +29,13 @@ pub const TOADSTOOL_SERVICE_TYPE: &str = "_toadstool._tcp.local.";
 
 /// Default discovery timeout.
 /// Test builds use a short window — no real mDNS services exist in CI.
+const MDNS_DISCOVERY_TIMEOUT_SECS: u64 = 3;
+const MDNS_DISCOVERY_TIMEOUT_TEST_MS: u64 = 50;
+
 const DEFAULT_DISCOVERY_TIMEOUT: Duration = if cfg!(test) {
-    Duration::from_millis(50)
+    Duration::from_millis(MDNS_DISCOVERY_TIMEOUT_TEST_MS)
 } else {
-    Duration::from_secs(3)
+    Duration::from_secs(MDNS_DISCOVERY_TIMEOUT_SECS)
 };
 
 /// Adapter to integrate mDNS with primal discovery

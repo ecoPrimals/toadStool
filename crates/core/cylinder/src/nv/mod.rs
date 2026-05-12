@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//! NVIDIA GPU hardware modules — Phase C absorption from coral-driver.
+//!
+//! This module contains the hardware lifecycle portions of the NVIDIA driver:
+//! generation profiles, GPU identity probing, DRM ioctls, QMD encoding,
+//! and pushbuf command stream construction.
+//!
+//! Modules that depend on GSP firmware (`bar0`, `probe`, `kepler_falcon`,
+//! `fecs_init`, `vfio_compute`) remain in coralReef until Phase D.
+
+pub mod generation;
+pub mod identity;
+pub mod ioctl;
+pub mod pushbuf;
+pub mod qmd;
+
+/// Start of the kernel-managed VA region passed to `VM_INIT`.
+///
+/// `VM_INIT` reserves `[kernel_managed_addr, kernel_managed_addr + size)` for
+/// kernel use (page tables, internal objects). Userspace must allocate VA
+/// addresses OUTSIDE this range.
+pub const NV_KERNEL_MANAGED_ADDR: u64 = 0x80_0000_0000;
+
+/// Userspace VA heap start — below the kernel-managed region.
+///
+/// Userspace maps GEM buffers here and grows upward. Must stay below
+/// `NV_KERNEL_MANAGED_ADDR`. 4 GiB base avoids low-address collisions.
+pub const NV_USER_VA_START: u64 = 0x1_0000_0000;

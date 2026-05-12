@@ -6,6 +6,12 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::time::Duration;
 
+const LEGACY_MAX_RESPONSE_SECS: u64 = 10;
+const LEGACY_MIN_CYCLE_MS: u64 = 1;
+const LEGACY_TIMING_ACCURACY_MS: u64 = 1;
+const LEGACY_JOB_TIMEOUT_SECS: u64 = 3600;
+const INITIAL_POLL_INTERVAL_MS: u64 = 10;
+
 use toadstool::execution;
 use toadstool::{
     ExecutionOutput, ExecutionRequest, ExecutionResponse, ExecutionStatus, RuntimeCapabilities,
@@ -89,16 +95,16 @@ impl SpecialtyRuntimeEngine {
                 },
                 timing: TimingRequirements {
                     real_time: false,
-                    max_response_time: Duration::from_secs(10),
-                    min_cycle_time: Duration::from_millis(1),
-                    timing_accuracy: Duration::from_millis(1),
+                    max_response_time: Duration::from_secs(LEGACY_MAX_RESPONSE_SECS),
+                    min_cycle_time: Duration::from_millis(LEGACY_MIN_CYCLE_MS),
+                    timing_accuracy: Duration::from_millis(LEGACY_TIMING_ACCURACY_MS),
                 },
                 special_hardware: vec![],
             },
             communication_settings: CommunicationSettings::default(),
             priority: toadstool::JobPriority::Normal,
             created_at: std::time::SystemTime::now(),
-            timeout: Duration::from_secs(3600),
+            timeout: Duration::from_secs(LEGACY_JOB_TIMEOUT_SECS),
         })
     }
 
@@ -145,7 +151,7 @@ impl RuntimeEngine for SpecialtyRuntimeEngine {
 
             let timeout = Duration::from_secs(self.config.job_timeout.as_secs());
             let start_time = std::time::Instant::now();
-            let mut poll_interval = Duration::from_millis(10);
+            let mut poll_interval = Duration::from_millis(INITIAL_POLL_INTERVAL_MS);
 
             loop {
                 let status = self.get_job_status(job_id).await?;

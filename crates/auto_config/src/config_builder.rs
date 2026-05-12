@@ -38,6 +38,8 @@ pub struct ConfigBuilder {
 }
 
 impl ConfigBuilder {
+    const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 30;
+
     /// Create a new configuration builder with default settings
     #[must_use]
     pub const fn new() -> Self {
@@ -46,7 +48,7 @@ impl ConfigBuilder {
             enable_ecosystem_discovery: true,
             enable_performance_optimization: true,
             enable_usage_learning: true,
-            discovery_timeout: std::time::Duration::from_secs(30),
+            discovery_timeout: std::time::Duration::from_secs(Self::DEFAULT_DISCOVERY_TIMEOUT_SECS),
         }
     }
 

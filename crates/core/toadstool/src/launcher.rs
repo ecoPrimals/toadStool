@@ -211,7 +211,8 @@ pub async fn launch_toadstool(config: LaunchConfig) -> ToadStoolResult<()> {
 
     let start = std::time::Instant::now();
     let mut last_error = None;
-    let mut interval = tokio::time::interval(Duration::from_millis(100));
+    const STARTUP_POLL_INTERVAL_MS: u64 = 100;
+    let mut interval = tokio::time::interval(Duration::from_millis(STARTUP_POLL_INTERVAL_MS));
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     while start.elapsed() < config.startup_timeout {

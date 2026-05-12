@@ -18,10 +18,11 @@ pub struct DiscoveryConfig {
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
+        const DEFAULT_CAPABILITY_DISCOVERY_TIMEOUT_SECS: u64 = 5;
         let is_production = std::env::var("TOADSTOOL_ENV").is_ok_and(|e| e == "production");
 
         Self {
-            timeout: Duration::from_secs(5),
+            timeout: Duration::from_secs(DEFAULT_CAPABILITY_DISCOVERY_TIMEOUT_SECS),
             enable_localhost_fallback: !is_production,
             methods: vec![DiscoveryMethod::Auto],
         }

@@ -85,8 +85,10 @@ where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, E>>,
 {
+    const INITIAL_BACKOFF_MS: u64 = 100;
+    const MAX_BACKOFF_SECS: u64 = 30;
     let mut attempt = 0;
-    let mut delay = Duration::from_millis(100);
+    let mut delay = Duration::from_millis(INITIAL_BACKOFF_MS);
 
     loop {
         attempt += 1;
@@ -96,7 +98,7 @@ where
             Err(e) if attempt >= max_attempts => return Err(e),
             Err(_) => {
                 tokio::time::sleep(delay).await;
-                delay = delay.saturating_mul(2).min(Duration::from_secs(30));
+                delay = delay.saturating_mul(2).min(Duration::from_secs(MAX_BACKOFF_SECS));
             }
         }
     }

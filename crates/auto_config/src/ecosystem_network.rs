@@ -20,10 +20,13 @@ use toadstool_config::env_config::EnvironmentConfig;
 
 /// TCP connect timeout for `probe_service`. Production uses 2s; tests use a
 /// minimal value so discovery probes fail fast under `cargo test`.
+const TCP_PROBE_CONNECT_TIMEOUT_SECS: u64 = 2;
+const TCP_PROBE_CONNECT_TIMEOUT_TEST_MS: u64 = 5;
+
 const TCP_PROBE_CONNECT_TIMEOUT: Duration = if cfg!(test) {
-    Duration::from_millis(5)
+    Duration::from_millis(TCP_PROBE_CONNECT_TIMEOUT_TEST_MS)
 } else {
-    Duration::from_secs(2)
+    Duration::from_secs(TCP_PROBE_CONNECT_TIMEOUT_SECS)
 };
 
 /// `/24`-style network base (IPv4) used only when `range` lacks a valid prefix (see `scan_network_range`).

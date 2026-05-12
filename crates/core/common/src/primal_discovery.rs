@@ -138,9 +138,11 @@ pub struct DiscoveryConfig {
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
+        const DEFAULT_CACHE_TTL_SECS: u64 = 300;
+        const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
         Self {
-            cache_ttl: Duration::from_secs(300), // 5 minutes
-            health_check_interval: Duration::from_secs(30),
+            cache_ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECS),
+            health_check_interval: Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS),
             fallbacks: HashMap::new(),
             enable_mdns: true,
         }

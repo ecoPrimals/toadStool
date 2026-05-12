@@ -92,12 +92,14 @@ pub struct SwapOrchestrator<E: SwapExecutor> {
 }
 
 impl<E: SwapExecutor> SwapOrchestrator<E> {
+    const DEFAULT_QUIESCENCE_TIMEOUT_SECS: u64 = 5;
+
     /// Create a new orchestrator wrapping a bus-specific executor.
     #[must_use]
     pub fn new(executor: E) -> Self {
         Self {
             executor,
-            quiescence_timeout: Duration::from_secs(5),
+            quiescence_timeout: Duration::from_secs(Self::DEFAULT_QUIESCENCE_TIMEOUT_SECS),
         }
     }
 

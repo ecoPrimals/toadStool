@@ -33,6 +33,15 @@
 use std::env;
 use std::time::Duration;
 
+const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 5;
+const DEFAULT_CACHE_TTL_SECS: u64 = 60;
+const PROD_DISCOVERY_TIMEOUT_SECS: u64 = 10;
+const PROD_CACHE_TTL_SECS: u64 = 300;
+const DEV_DISCOVERY_TIMEOUT_SECS: u64 = 2;
+const DEV_CACHE_TTL_SECS: u64 = 10;
+const TEST_DISCOVERY_TIMEOUT_MS: u64 = 100;
+const TEST_CACHE_TTL_SECS: u64 = 1;
+
 /// Service discovery configuration
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
@@ -60,9 +69,9 @@ impl Default for DiscoveryConfig {
         Self {
             // Only enable fallback in non-production
             enable_localhost_fallback: !is_production,
-            timeout: Duration::from_secs(5),
+            timeout: Duration::from_secs(DEFAULT_DISCOVERY_TIMEOUT_SECS),
             max_retries: 3,
-            cache_ttl: Duration::from_secs(60),
+            cache_ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECS),
             allow_insecure: !is_production,
         }
     }
@@ -74,9 +83,9 @@ impl DiscoveryConfig {
     pub const fn production() -> Self {
         Self {
             enable_localhost_fallback: false,
-            timeout: Duration::from_secs(10),
+            timeout: Duration::from_secs(PROD_DISCOVERY_TIMEOUT_SECS),
             max_retries: 5,
-            cache_ttl: Duration::from_secs(300),
+            cache_ttl: Duration::from_secs(PROD_CACHE_TTL_SECS),
             allow_insecure: false,
         }
     }
@@ -86,9 +95,9 @@ impl DiscoveryConfig {
     pub const fn development() -> Self {
         Self {
             enable_localhost_fallback: true,
-            timeout: Duration::from_secs(2),
+            timeout: Duration::from_secs(DEV_DISCOVERY_TIMEOUT_SECS),
             max_retries: 1,
-            cache_ttl: Duration::from_secs(10),
+            cache_ttl: Duration::from_secs(DEV_CACHE_TTL_SECS),
             allow_insecure: true,
         }
     }
@@ -98,9 +107,9 @@ impl DiscoveryConfig {
     pub const fn test() -> Self {
         Self {
             enable_localhost_fallback: true,
-            timeout: Duration::from_millis(100),
+            timeout: Duration::from_millis(TEST_DISCOVERY_TIMEOUT_MS),
             max_retries: 0,
-            cache_ttl: Duration::from_secs(1),
+            cache_ttl: Duration::from_secs(TEST_CACHE_TTL_SECS),
             allow_insecure: true,
         }
     }

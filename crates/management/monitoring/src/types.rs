@@ -5,6 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+
+const DEFAULT_METRICS_RETENTION_SECS: u64 = 3600;
+
 use toadstool::ToadStoolError;
 
 /// Monitoring granularity for high-precision resource tracking
@@ -61,7 +64,7 @@ impl Default for MonitoringConfig {
             enable_network_monitoring: true,
             enable_threshold_monitoring: true,
             threshold_action: ThresholdAction::Log,
-            metrics_retention: Duration::from_secs(3600), // 1 hour
+            metrics_retention: Duration::from_secs(DEFAULT_METRICS_RETENTION_SECS),
         }
     }
 }

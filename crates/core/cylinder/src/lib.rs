@@ -97,6 +97,9 @@ pub mod drm;
 #[cfg(target_os = "linux")]
 pub mod amd;
 
+#[cfg(target_os = "linux")]
+pub mod nv;
+
 pub use error::{ChannelError, DevinitError, DriverError, DriverResult, PciDiscoveryError};
 pub use hardware::{CompletionStyle, HardwareCapabilities, MemoryType, Vendor, WaveSize};
 

@@ -296,13 +296,15 @@ impl ToadStoolClient {
 
     /// Wait for execution completion via JSON-RPC polling (`compute.status` method).
     pub async fn wait_for_completion(&self, execution_id: Uuid) -> ClientResult<ExecutionInfo> {
+        const MAX_WAIT_SECS: u64 = 300;
+        const POLL_INTERVAL_MS: u64 = 500;
+
         debug!(
             "Waiting for execution completion via polling: {}",
             execution_id
         );
-
-        let max_wait = Duration::from_secs(300);
-        let poll_interval = Duration::from_millis(500);
+        let max_wait = Duration::from_secs(MAX_WAIT_SECS);
+        let poll_interval = Duration::from_millis(POLL_INTERVAL_MS);
         let mut interval = tokio::time::interval(poll_interval);
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let start = std::time::Instant::now();

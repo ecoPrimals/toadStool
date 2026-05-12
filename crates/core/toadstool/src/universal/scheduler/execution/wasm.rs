@@ -4,6 +4,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+const DEFAULT_EXECUTION_TIMEOUT_SECS: u64 = 300;
+
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
@@ -60,7 +62,7 @@ where
                 runtime_hint: Some(RuntimeType::Wasm),
                 resources: ResourceRequirements::default(),
                 security_context: SecurityContext::default(),
-                timeout: Some(Duration::from_secs(300)),
+                timeout: Some(Duration::from_secs(DEFAULT_EXECUTION_TIMEOUT_SECS)),
                 environment: env_owned,
                 input_data: ExecutionInput::default(),
                 callback_config: None,

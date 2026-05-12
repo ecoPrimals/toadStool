@@ -1,12 +1,18 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S246
+**Date**: May 2026 — S247
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S247 (Phase C Batch 3 — NVIDIA Backend Absorption + Deep Debt)**:
+Absorbed complete NVIDIA hardware modules (identity, generation, pushbuf, ioctl,
+QMD) into `toadstool-cylinder`. 294 cylinder tests. ~30 more Duration literals
+extracted to named constants across 15 files. bar0/probe deferred (gsp dependency).
+8,583 tests, zero clippy warnings.
 
 **S246 (Phase C Batch 2 — MMIO + AMD Backend Absorption + Deep Debt)**:
 Absorbed MMIO foundation modules (VolatilePtr, MmioRegion) and complete AMD GPU
