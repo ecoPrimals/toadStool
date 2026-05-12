@@ -253,6 +253,9 @@ impl Default for BinaryTrpcTransport {
 }
 
 #[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
+const BINARY_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[cfg(all(feature = "tarpc-transport", feature = "binary-transport"))]
 impl BinaryTrpcTransport {
     /// Create a binary tRPC transport handle.
     pub const fn new() -> Self {
@@ -342,7 +345,7 @@ impl BinaryTrpcTransport {
                     ProtocolError::Transport(format!("Unix connect {}: {e}", socket.display()))
                 })?;
                 tokio::time::timeout(
-                    Duration::from_secs(5),
+                    BINARY_HANDSHAKE_TIMEOUT,
                     run_binary_roundtrip(stream, message),
                 )
                 .await
@@ -355,7 +358,7 @@ impl BinaryTrpcTransport {
                     .await
                     .map_err(|e| ProtocolError::Transport(format!("TCP connect: {e}")))?;
                 tokio::time::timeout(
-                    Duration::from_secs(5),
+                    BINARY_HANDSHAKE_TIMEOUT,
                     run_binary_roundtrip(stream, message),
                 )
                 .await

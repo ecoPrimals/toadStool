@@ -3,7 +3,9 @@
 
 use crate::types::{EntropyMixing, EntropySource};
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
+
+const DEFAULT_SEED_FRESHNESS: Duration = Duration::from_secs(300);
 
 /// Quality score for entropy
 ///
@@ -83,7 +85,7 @@ impl EphemeralSeed {
     /// Seeds should be used within reasonable time (default: 5 minutes)
     #[must_use]
     pub fn is_fresh(&self) -> bool {
-        self.is_fresh_within(std::time::Duration::from_secs(300))
+        self.is_fresh_within(DEFAULT_SEED_FRESHNESS)
     }
 
     /// Check if seed is fresh within specified duration

@@ -199,7 +199,6 @@ mod tests {
     fn list_devices_returns_vec() {
         let client = GlowPlugClient::new();
         let list = client.list_devices();
-        // May be empty in CI/test environments without GPUs
         let _ = list.devices;
     }
 
@@ -228,9 +227,36 @@ mod tests {
     #[test]
     fn discover_gpu_bdfs_runs() {
         let bdfs = discover_gpu_bdfs();
-        // Should not panic, may be empty in CI
         for bdf in &bdfs {
             assert!(bdf.contains(':'));
         }
+    }
+
+    #[tokio::test]
+    async fn reacquire_returns_bdf() {
+        let client = GlowPlugClient::new();
+        let result = client.reacquire("0000:99:00.0").await;
+        assert_eq!(result.bdf, "0000:99:00.0");
+    }
+
+    #[tokio::test]
+    async fn swap_device_orchestrated_returns_boot_result() {
+        let client = GlowPlugClient::new();
+        let result = client
+            .swap_device_orchestrated("0000:99:00.0", "vfio-pci")
+            .await;
+        assert!(!result.steps.is_empty());
+    }
+
+    #[test]
+    fn orchestrator_accessible() {
+        let client = GlowPlugClient::new();
+        let _orch = client.orchestrator();
+    }
+
+    #[test]
+    fn read_current_driver_nonexistent_device() {
+        let result = read_current_driver("ffff:ff:ff.f");
+        assert!(result.is_none());
     }
 }

@@ -2,6 +2,8 @@
 use serde::{Deserialize, Serialize};
 use toadstool::{ExecutionRequest, ExecutionResponse, ToadStoolResult};
 
+const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 300;
+
 /// Universal adapter for different execution environments
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UniversalAdapter {
@@ -65,7 +67,7 @@ impl UniversalAdapter {
         }
 
         if request.timeout.is_none() {
-            request.timeout = Some(std::time::Duration::from_secs(300));
+            request.timeout = Some(std::time::Duration::from_secs(DEFAULT_REQUEST_TIMEOUT_SECS));
         }
 
         Ok(request)

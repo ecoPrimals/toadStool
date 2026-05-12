@@ -2,11 +2,14 @@
 //! Coordination network discovery - main discovery orchestration
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use toadstool::error::{ToadStoolError, ToadStoolResult};
 use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
+
+const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);
 
 use crate::coordination::types::{
     CapabilityTracker, CoordinationConnection, CoordinationDiscoveryConfig,
@@ -255,7 +258,7 @@ impl CoordinationNetworkDiscovery {
 
         let current_utilization = if total_capacity.cpu_cores > 0.0 {
             let cpu_utilization = f64::from(
-                toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0),
+                toadstool_sysmon::cpu_usage(CPU_USAGE_SAMPLE_WINDOW).unwrap_or(0.0),
             ) / 100.0;
 
             let memory_utilization = toadstool_sysmon::memory_info()

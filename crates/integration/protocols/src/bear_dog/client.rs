@@ -21,6 +21,8 @@ use super::transport;
 /// Skew before nominal expiry when we proactively refresh (same window as `ensure_valid_token`).
 const TOKEN_REFRESH_SKEW: Duration = Duration::from_secs(60);
 
+const AUDIT_FLUSH_INTERVAL_SECS: u64 = 60;
+
 /// PKI security service integration via Unix socket JSON-RPC.
 pub struct SecurityServiceIntegration {
     config: SecurityConfig,
@@ -268,7 +270,7 @@ impl BearDogIntegration {
 
         let audit_integration = Arc::clone(&self);
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(60));
+            let mut interval = tokio::time::interval(Duration::from_secs(AUDIT_FLUSH_INTERVAL_SECS));
 
             loop {
                 interval.tick().await;

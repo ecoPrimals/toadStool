@@ -5,7 +5,37 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-243)
+## [Unreleased] - May 12, 2026 (Sessions 43-244)
+
+### Session S244 (May 12, 2026) — Deep Debt: println→tracing, Duration Constants, Test Coverage, Clippy Fixes
+
+Continued deep debt sweep across server, distributed, integration, and neuromorphic
+crates. Migrated remaining production `println!` in cross-substrate-validation benchmark
+to structured `tracing::info!`. Extracted 15+ hardcoded `Duration` literals to named
+constants across 9 files. Added async test coverage for `GlowPlugClient::reacquire()` and
+`swap_device_orchestrated()`. Fixed new clippy lints (`bool_to_int_with_if`,
+`unchecked_time_subtraction`).
+
+#### Changes
+
+- **Benchmark println!→tracing**: `comprehensive_benchmark.rs` `run_comprehensive_benchmark()`
+  and `print_results_summary()` migrated from `println!` to structured `tracing::info!` with
+  fields. Helper functions `format_time` and `truncate` moved to test-only scope
+- **Duration constant extraction**: Named constants in `server/tarpc_server/executor.rs`
+  (`CPU_USAGE_SAMPLE_WINDOW`), `distributed/cloud/federation/discovery.rs`
+  (`PROBE_TIMEOUT_TEST`, `PROBE_TIMEOUT_PROD`), `distributed/coordination/discovery/core.rs`
+  (`CPU_USAGE_SAMPLE_WINDOW`), `distributed/universal/adapter.rs`
+  (`DEFAULT_REQUEST_TIMEOUT_SECS`), `integration/protocols/config.rs` (6 constants),
+  `integration/protocols/client/health.rs` (`HEALTH_PROBE_TIMEOUT_SECS`),
+  `integration/protocols/transport.rs` (`BINARY_HANDSHAKE_TIMEOUT`, cfg-gated),
+  `integration/protocols/bear_dog/client.rs` (`AUDIT_FLUSH_INTERVAL_SECS`),
+  `integration/storage/config.rs` (3 constants), `integration/security/seed.rs`
+  (`DEFAULT_SEED_FRESHNESS`), `integration/primals/manager.rs` (3 constants)
+- **GlowPlugClient test coverage**: Added `reacquire_returns_bdf`, `swap_device_orchestrated_returns_boot_result`,
+  `orchestrator_accessible`, `read_current_driver_nonexistent_device` async/sync tests
+- **Clippy fixes**: `bool_to_int_with_if` in `resource_validator/analysis.rs`,
+  `unchecked_time_subtraction` in `coordination/discovery/registry.rs`
+- **Tests**: 8,289 lib-only passing (up from 8,285), zero clippy warnings
 
 ### Session S243 (May 12, 2026) — Vestigial Cleanup: Legacy swap_device Removal, Capabilities Enhancement, Phase C Readiness
 

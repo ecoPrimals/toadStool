@@ -9,6 +9,10 @@ use toadstool_common::constants::network::HTTP_PROTOCOL;
 
 use crate::types::{CompressionType, EncryptionType, StorageTier};
 
+const DEFAULT_STORAGE_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_CACHE_SIZE_BYTES: u64 = 1024 * 1024 * 1024;
+const DEFAULT_CACHE_TTL_SECS: u64 = 3600;
+
 /// Storage client configuration
 ///
 /// **Evolution**: Now supports capability-based discovery via `StorageClient::discover()`
@@ -54,7 +58,7 @@ impl Default for StorageConfig {
 
         Self {
             endpoint: format!("{HTTP_PROTOCOL}{host}:{port}"),
-            timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(DEFAULT_STORAGE_TIMEOUT_SECS),
             max_retries: 3,
             auth: None,
             cache: Some(CacheConfig::default()),
@@ -83,8 +87,8 @@ impl Default for CacheConfig {
         Self {
             enabled: true,
             cache_dir: None,
-            max_size: 1024 * 1024 * 1024,   // 1GB
-            ttl: Duration::from_secs(3600), // 1 hour
+            max_size: DEFAULT_CACHE_SIZE_BYTES,
+            ttl: Duration::from_secs(DEFAULT_CACHE_TTL_SECS),
         }
     }
 }

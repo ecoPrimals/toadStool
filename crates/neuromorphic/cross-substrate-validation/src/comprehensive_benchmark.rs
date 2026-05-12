@@ -5,6 +5,7 @@
 //! to understand strengths, weaknesses, and use cases.
 
 use std::time::Instant;
+use tracing::info;
 use toadstool_runtime_universal::{
     ComputeUnitType, OperationType, UniversalRuntime, WorkloadBuilder,
 };
@@ -213,14 +214,10 @@ pub async fn run_comprehensive_benchmark(runtime: &UniversalRuntime) -> Vec<Benc
     let suite = get_benchmark_suite();
     let mut results = Vec::new();
 
-    println!("\n🔬 Running Comprehensive Benchmark Suite...");
-    println!(
-        "   Testing {} workloads across all substrates\n",
-        suite.len()
-    );
+    info!(workload_count = suite.len(), "starting comprehensive benchmark suite");
 
     for (i, spec) in suite.iter().enumerate() {
-        println!("   [{}/{}] Testing: {}", i + 1, suite.len(), spec.name);
+        info!(progress = i + 1, total = suite.len(), workload = spec.name, "testing workload");
 
         // Generate test data
         let input: Vec<f32> = (0..spec.size).map(|i| i as f32 * 0.1).collect();
@@ -326,15 +323,8 @@ async fn benchmark_substrate_by_index(
     Some(elapsed.as_secs_f64() * 1_000_000.0)
 }
 
-/// Prints a formatted summary of benchmark results.
+/// Logs a structured summary of benchmark results via `tracing`.
 pub fn print_results_summary(results: &[BenchmarkResult]) {
-    println!("\n╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║                                                                              ║");
-    println!("║              COMPREHENSIVE BENCHMARK RESULTS                                 ║");
-    println!("║                                                                              ║");
-    println!("╚══════════════════════════════════════════════════════════════════════════════╝\n");
-
-    // Group by category
     let categories = [
         WorkloadCategory::ElementWise,
         WorkloadCategory::Reduction,
@@ -350,37 +340,20 @@ pub fn print_results_summary(results: &[BenchmarkResult]) {
             continue;
         }
 
-        println!("\n━━━ {category:?} Operations ━━━\n");
-        println!(
-            "   ┌────────────────────────────────┬──────────┬──────────┬──────────┬──────────┬────────────┬──────────┐"
-        );
-        println!(
-            "   │ Workload                       │ CPU (µs) │ AMD (µs) │ NVIDIA   │ NPU (µs) │ Winner     │ Speedup  │"
-        );
-        println!(
-            "   ├────────────────────────────────┼──────────┼──────────┼──────────┼──────────┼────────────┼──────────┤"
-        );
-
-        for result in category_results {
-            println!(
-                "   │ {:30} │ {:8} │ {:8} │ {:8} │ {:8} │ {:10} │ {:7.2}x │",
-                truncate(&result.workload, 30),
-                format_time(result.cpu_time_us),
-                format_time(result.gpu_amd_time_us),
-                format_time(result.gpu_nvidia_time_us),
-                format_time(result.npu_time_us),
-                truncate(&result.winner, 10),
-                result.speedup
+        for result in &category_results {
+            info!(
+                category = ?category,
+                workload = %result.workload,
+                cpu_us = ?result.cpu_time_us,
+                amd_us = ?result.gpu_amd_time_us,
+                nvidia_us = ?result.gpu_nvidia_time_us,
+                npu_us = ?result.npu_time_us,
+                winner = %result.winner,
+                speedup = result.speedup,
+                "benchmark result"
             );
         }
-
-        println!(
-            "   └────────────────────────────────┴──────────┴──────────┴──────────┴──────────┴────────────┴──────────┘"
-        );
     }
-
-    // Summary statistics
-    println!("\n━━━ Summary Statistics ━━━\n");
 
     let cpu_wins = results.iter().filter(|r| r.winner.contains("CPU")).count();
     let amd_wins = results.iter().filter(|r| r.winner.contains("AMD")).count();
@@ -389,55 +362,41 @@ pub fn print_results_summary(results: &[BenchmarkResult]) {
         .filter(|r| r.winner.contains("NVIDIA"))
         .count();
     let npu_wins = results.iter().filter(|r| r.winner.contains("NPU")).count();
+    let total = results.len();
 
-    println!("   Winner Distribution:");
-    println!(
-        "     CPU:         {} wins ({:.1}%)",
-        cpu_wins,
-        cpu_wins as f64 / results.len() as f64 * 100.0
-    );
-    println!(
-        "     GPU AMD:     {} wins ({:.1}%)",
-        amd_wins,
-        amd_wins as f64 / results.len() as f64 * 100.0
-    );
-    println!(
-        "     GPU NVIDIA:  {} wins ({:.1}%)",
-        nvidia_wins,
-        nvidia_wins as f64 / results.len() as f64 * 100.0
-    );
-    println!(
-        "     NPU:         {} wins ({:.1}%)",
-        npu_wins,
-        npu_wins as f64 / results.len() as f64 * 100.0
-    );
-
-    let avg_speedup: f64 = results.iter().map(|r| r.speedup).sum::<f64>() / results.len() as f64;
+    let avg_speedup: f64 = results.iter().map(|r| r.speedup).sum::<f64>() / total as f64;
     let max_speedup = results.iter().map(|r| r.speedup).fold(0.0f64, f64::max);
 
-    println!("\n   Speedup Statistics:");
-    println!("     Average: {avg_speedup:.2}x");
-    println!("     Maximum: {max_speedup:.2}x");
-}
-
-fn format_time(time: Option<f64>) -> String {
-    match time {
-        Some(t) => format!("{t:8.1}"),
-        None => "    -   ".to_string(),
-    }
-}
-
-fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        format!("{s:max_len$}")
-    } else {
-        format!("{}...", &s[..max_len - 3])
-    }
+    info!(
+        total,
+        cpu_wins,
+        amd_wins,
+        nvidia_wins,
+        npu_wins,
+        avg_speedup,
+        max_speedup,
+        "benchmark summary"
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn format_time(time: Option<f64>) -> String {
+        match time {
+            Some(t) => format!("{t:8.1}"),
+            None => "    -   ".to_string(),
+        }
+    }
+
+    fn truncate(s: &str, max_len: usize) -> String {
+        if s.len() <= max_len {
+            format!("{s:max_len$}")
+        } else {
+            format!("{}...", &s[..max_len - 3])
+        }
+    }
 
     #[test]
     fn test_get_benchmark_suite() {
@@ -547,9 +506,9 @@ mod tests {
 
     #[test]
     fn test_format_time_and_truncate() {
-        assert_eq!(super::format_time(Some(123.45)), "   123.5");
-        assert_eq!(super::format_time(None), "    -   ");
-        assert_eq!(super::truncate("short", 10), "short     ");
-        assert!(super::truncate("verylongstring", 5).ends_with("..."));
+        assert_eq!(format_time(Some(123.45)), "   123.5");
+        assert_eq!(format_time(None), "    -   ");
+        assert_eq!(truncate("short", 10), "short     ");
+        assert!(truncate("verylongstring", 5).ends_with("..."));
     }
 }

@@ -7,6 +7,10 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use toadstool::{ToadStoolError, ToadStoolResult};
 
+const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
+const DEFAULT_RETRY_DELAY_SECS: u64 = 5;
+
 use crate::PrimalIntegration;
 use crate::health::{HealthCheck, HealthCheckStatus, HealthStatus};
 use crate::integration_manifest::BiomeManifest;
@@ -39,10 +43,10 @@ impl Default for PrimalIntegrationConfig {
     fn default() -> Self {
         Self {
             auto_discovery: true,
-            discovery_timeout: Duration::from_secs(30),
-            health_check_interval: Duration::from_secs(30),
+            discovery_timeout: Duration::from_secs(DEFAULT_DISCOVERY_TIMEOUT_SECS),
+            health_check_interval: Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS),
             max_retry_attempts: 3,
-            retry_delay: Duration::from_secs(5),
+            retry_delay: Duration::from_secs(DEFAULT_RETRY_DELAY_SECS),
         }
     }
 }

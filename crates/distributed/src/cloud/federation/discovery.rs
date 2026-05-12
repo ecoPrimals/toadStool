@@ -8,6 +8,9 @@ use crate::cloud::types::FederationNode;
 
 use super::FederationError;
 
+const PROBE_TIMEOUT_TEST: Duration = Duration::from_millis(100);
+const PROBE_TIMEOUT_PROD: Duration = Duration::from_secs(5);
+
 impl super::CloudFederationManager {
     /// Discover federation nodes from configured discovery endpoints.
     ///
@@ -48,9 +51,9 @@ impl super::CloudFederationManager {
             .trim_start_matches("http://")
             .trim_start_matches("https://");
         let probe_timeout = if cfg!(test) {
-            Duration::from_millis(100)
+            PROBE_TIMEOUT_TEST
         } else {
-            Duration::from_secs(5)
+            PROBE_TIMEOUT_PROD
         };
         let stream = timeout(probe_timeout, TcpStream::connect(addr))
             .await

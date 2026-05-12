@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S243
+**Date**: May 2026 — S244
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S244 (Deep Debt — println→tracing, Duration Constants, Test Coverage, Clippy Fixes)**:
+Migrated remaining production `println!` in cross-substrate-validation benchmark to
+structured `tracing::info!`. Extracted 15+ hardcoded `Duration` literals to named constants
+across 9 files in server, distributed, integration crates. Added async test coverage for
+`GlowPlugClient::reacquire()` and `swap_device_orchestrated()`. Fixed new clippy lints
+(`bool_to_int_with_if`, `unchecked_time_subtraction`). 8,289 tests, zero clippy warnings.
 
 **S243 (Vestigial Cleanup — Legacy swap_device Removal, Capabilities Enhancement, Phase C Readiness)**:
 Removed legacy `swap_device()` from `GlowPlugClient` (zero external callers, orchestrator

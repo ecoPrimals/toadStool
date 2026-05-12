@@ -19,6 +19,7 @@ akida-models = { path = "../akida-models" }
 # Core
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [lib]

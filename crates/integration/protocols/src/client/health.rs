@@ -10,6 +10,8 @@ use tracing::debug;
 use crate::config::HealthConfig;
 use crate::types::{HealthStatus, ProtocolEvent, ServiceInfo};
 
+const HEALTH_PROBE_TIMEOUT_SECS: u64 = 2;
+
 /// Spawn background health monitoring task for registered services.
 /// Periodically checks endpoint connectivity and emits ServiceHealthChanged events.
 pub fn spawn_health_monitor(
@@ -32,7 +34,7 @@ pub fn spawn_health_monitor(
                 for endpoint in &service_info.endpoints {
                     let addr = format!("{}:{}", endpoint.address, endpoint.port);
                     let is_healthy = match tokio::time::timeout(
-                        std::time::Duration::from_secs(2),
+                        std::time::Duration::from_secs(HEALTH_PROBE_TIMEOUT_SECS),
                         tokio::net::TcpStream::connect(&addr),
                     )
                     .await

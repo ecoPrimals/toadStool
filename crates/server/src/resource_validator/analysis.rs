@@ -182,7 +182,7 @@ mod tests {
             total_storage_bytes: storage,
             available_storage_bytes: storage,
             network_bandwidth_mbps: 1000,
-            gpu_count: if gpu_total > 0 { 1 } else { 0 },
+            gpu_count: usize::from(gpu_total > 0),
             gpu_types: Vec::new(),
         }
     }

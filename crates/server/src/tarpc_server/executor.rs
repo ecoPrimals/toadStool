@@ -2,8 +2,11 @@
 //! Workload executor trait and [`StandaloneExecutor`] (single-node / dev).
 
 use std::future::Future;
+use std::time::Duration;
 
 use tracing::{info, warn};
+
+const CPU_USAGE_SAMPLE_WINDOW: Duration = Duration::from_millis(50);
 
 use crate::rpc_types::{
     AvailableResources, ComputeCapabilities, ComputeUnit, ExecutionMetrics, WorkloadResult,
@@ -109,7 +112,7 @@ impl StandaloneExecutor {
 
     /// Query actual CPU utilization via /proc/stat (pure Rust, zero C).
     fn query_cpu_utilization() -> f32 {
-        toadstool_sysmon::cpu_usage(std::time::Duration::from_millis(50)).unwrap_or(0.0)
+        toadstool_sysmon::cpu_usage(CPU_USAGE_SAMPLE_WINDOW).unwrap_or(0.0)
     }
 
     /// Query actual memory utilization via /proc/meminfo (pure Rust, zero C).

@@ -8,6 +8,13 @@ use crate::types::{MessageFormat, TransportType};
 use toadstool_common::auth::ServiceAuthConfig;
 use toadstool_common::constants::network::HTTP_PROTOCOL;
 
+const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 30;
+const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 300;
+const DEFAULT_KEEP_ALIVE_INTERVAL_SECS: u64 = 30;
+const DEFAULT_REGISTRATION_TTL_SECS: u64 = 300;
+const DEFAULT_DISCOVERY_REFRESH_INTERVAL_SECS: u64 = 60;
+const DEFAULT_HEALTH_CHECK_INTERVAL_SECS: u64 = 30;
+
 /// Protocol client configuration
 #[derive(Debug, Clone)]
 pub struct ProtocolConfig {
@@ -46,7 +53,7 @@ impl Default for ProtocolConfig {
             default_format: MessageFormat::Json,
             supported_transports: vec![TransportType::Http, TransportType::TRpc], // WebSocket removed — use JSON-RPC 2.0
             auth_config: None,
-            request_timeout: Duration::from_secs(30),
+            request_timeout: Duration::from_secs(DEFAULT_REQUEST_TIMEOUT_SECS),
             connection_pool: ConnectionPoolConfig::default(),
             discovery_config: None,
             routing_config: RoutingConfig::default(),
@@ -77,8 +84,8 @@ impl Default for ConnectionPoolConfig {
     fn default() -> Self {
         Self {
             max_connections_per_service: 10,
-            idle_timeout: Duration::from_secs(300),
-            keep_alive_interval: Duration::from_secs(30),
+            idle_timeout: Duration::from_secs(DEFAULT_IDLE_TIMEOUT_SECS),
+            keep_alive_interval: Duration::from_secs(DEFAULT_KEEP_ALIVE_INTERVAL_SECS),
             max_concurrent_requests: 100,
         }
     }
@@ -145,8 +152,8 @@ impl ServiceDiscoveryConfig {
         Self {
             discovery_type: DiscoveryType::Consul,
             registry_endpoint: Some(service_registry_url()),
-            registration_ttl: Duration::from_secs(300),
-            refresh_interval: Duration::from_secs(60),
+            registration_ttl: Duration::from_secs(DEFAULT_REGISTRATION_TTL_SECS),
+            refresh_interval: Duration::from_secs(DEFAULT_DISCOVERY_REFRESH_INTERVAL_SECS),
             auto_register: true,
         }
     }
@@ -233,7 +240,7 @@ impl Default for LoadBalancingConfig {
     fn default() -> Self {
         Self {
             health_check_enabled: true,
-            health_check_interval: Duration::from_secs(30),
+            health_check_interval: Duration::from_secs(DEFAULT_HEALTH_CHECK_INTERVAL_SECS),
             unhealthy_threshold: 3,
             healthy_threshold: 2,
         }
