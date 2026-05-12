@@ -69,17 +69,7 @@ impl DistributedCoordinator {
             info!("Discovering coordination services via capability-based discovery");
 
             // Use new coordination_integration module (vendor-agnostic)
-            let coord_config = CoordinationConfig {
-                auto_discover: true,
-                discovery_timeout_ms: 5000,
-                preferred_location: crate::coordination_integration::ServiceLocation::Any,
-                fallback_enabled: true,
-                required_capabilities: vec![
-                    toadstool_common::primal_identity::CoordinationCapability::ServiceDiscovery,
-                    toadstool_common::primal_identity::CoordinationCapability::LoadBalancing,
-                ],
-                health_check_interval_secs: 30,
-            };
+            let coord_config = CoordinationConfig::default();
 
             let discovery = CoordinationDiscovery::new(coord_config).await?;
 

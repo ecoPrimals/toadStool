@@ -398,34 +398,29 @@ impl ModelZoo {
         Ok(paths)
     }
 
-    /// Print zoo status
+    /// Log zoo status via `tracing`.
     pub fn print_status(&self) {
-        println!("\nAkida Model Zoo Status");
-        println!("{}", "=".repeat(60));
-        println!("Cache: {}", self.cache_dir.display());
-        println!(
-            "Available: {}/{}",
-            self.metadata.len(),
-            ZooModel::all().len()
+        tracing::info!(
+            cache = %self.cache_dir.display(),
+            available = self.metadata.len(),
+            total = ZooModel::all().len(),
+            "Akida Model Zoo status"
         );
-        println!();
 
         for model in ZooModel::all() {
             let status = self.metadata.get(model).map_or_else(
-                || "✗ not downloaded".to_string(),
+                || "not downloaded".to_string(),
                 |meta| {
                     format!(
-                        "✓ {:>8} bytes (valid: {})",
+                        "downloaded ({} bytes, valid: {})",
                         meta.size_bytes,
                         if meta.is_valid { "yes" } else { "no" }
                     )
                 },
             );
 
-            println!("  {:20} {}", model.filename(), status);
+            tracing::info!(model = model.filename(), status = %status);
         }
-
-        println!("{}", "=".repeat(60));
     }
 }
 

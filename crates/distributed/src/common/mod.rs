@@ -12,6 +12,7 @@
 //! and other distributed computing components.
 
 pub mod capacity;
+pub mod defaults;
 pub mod distribution;
 pub mod load_balancing;
 

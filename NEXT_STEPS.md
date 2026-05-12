@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S237 (Wave 8 Phase A: coral-ember absorption)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase A: coral-ember absorbed (S237)** | **VfioResourceHandle wired into dispatch (S237)**
-**Latest**: S237 — Wave 8 Phase A: coral-ember vendor lifecycle, observation, ring_meta, error types absorbed into toadstool-ember. VfioResourceHandle implementing ResourceHandle. Device pool wired into dispatch path. 90 ember tests, 76 dispatch tests, clippy clean.
-**Previous**: S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract. S233 — DF-2 fix. S232 — JH-2 Phase 2.
+**Updated**: May 2026 — S238 (Deep debt: magic numbers, println→tracing, deny.toml, JH-2 audit)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase A: coral-ember absorbed (S237)** | **VfioResourceHandle wired into dispatch (S237)** | **JH-2 FULLY RESOLVED (S238)** | **20+ magic numbers extracted (S238)**
+**Latest**: S238 — Deep debt: 20+ magic numbers extracted to named constants across distributed/container/edge/host_config. println→tracing in akida-models. deny.toml stale comments fixed. JH-2 envelope enforcement audited and confirmed complete.
+**Previous**: S237 — Wave 8 Phase A ember absorption. S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract.
 
 ---
 

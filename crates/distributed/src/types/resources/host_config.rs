@@ -13,10 +13,15 @@ pub struct NetworkConfig {
     pub protocols: Vec<String>,
 }
 
+impl NetworkConfig {
+    const DEFAULT_PORT_MIN: u16 = 8000;
+    const DEFAULT_PORT_MAX: u16 = 9000;
+}
+
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            port_range: (8000, 9000),
+            port_range: (Self::DEFAULT_PORT_MIN, Self::DEFAULT_PORT_MAX),
             security_level: NetworkSecurityLevel::Medium,
             protocols: vec!["http".to_string(), "https".to_string()],
         }
@@ -91,13 +96,20 @@ pub struct ResourceLimits {
     pub max_network_bandwidth_mbps: u64,
 }
 
+impl ResourceLimits {
+    const DEFAULT_CPU_CORES: f64 = 4.0;
+    const DEFAULT_MEMORY_GB: u64 = 8;
+    const DEFAULT_STORAGE_GB: u64 = 100;
+    const DEFAULT_BANDWIDTH_MBPS: u64 = 1000;
+}
+
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_cpu_cores: 4.0,
-            max_memory_bytes: 8 * 1024 * 1024 * 1024, // 8GB
-            max_storage_bytes: 100 * 1024 * 1024 * 1024, // 100GB
-            max_network_bandwidth_mbps: 1000,
+            max_cpu_cores: Self::DEFAULT_CPU_CORES,
+            max_memory_bytes: Self::DEFAULT_MEMORY_GB * 1024 * 1024 * 1024,
+            max_storage_bytes: Self::DEFAULT_STORAGE_GB * 1024 * 1024 * 1024,
+            max_network_bandwidth_mbps: Self::DEFAULT_BANDWIDTH_MBPS,
         }
     }
 }

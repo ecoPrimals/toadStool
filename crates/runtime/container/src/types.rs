@@ -137,6 +137,13 @@ pub struct NetworkPolicy {
     pub dns_config: DnsConfig,
 }
 
+impl NetworkPolicy {
+    const APP_PORT_RANGE_START: u16 = 8000;
+    const APP_PORT_RANGE_END: u16 = 8999;
+    const DEV_PORT_RANGE_START: u16 = 3000;
+    const DEV_PORT_RANGE_END: u16 = 3999;
+}
+
 impl Default for NetworkPolicy {
     fn default() -> Self {
         Self {
@@ -144,12 +151,12 @@ impl Default for NetworkPolicy {
             allow_custom_networks: false,
             allowed_port_ranges: vec![
                 PortRange {
-                    start: 8000,
-                    end: 8999,
+                    start: Self::APP_PORT_RANGE_START,
+                    end: Self::APP_PORT_RANGE_END,
                 },
                 PortRange {
-                    start: 3000,
-                    end: 3999,
+                    start: Self::DEV_PORT_RANGE_START,
+                    end: Self::DEV_PORT_RANGE_END,
                 },
             ],
             dns_config: DnsConfig::default(),
@@ -257,13 +264,20 @@ pub struct ContainerResourceLimits {
     pub max_io_bps: u64,
 }
 
+impl ContainerResourceLimits {
+    const DEFAULT_MEMORY_MB: u64 = 512;
+    const DEFAULT_CPU_MILLICORES: u32 = 1000;
+    const DEFAULT_EXECUTION_SECS: u64 = 3600;
+    const DEFAULT_IO_MBPS: u64 = 100;
+}
+
 impl Default for ContainerResourceLimits {
     fn default() -> Self {
         Self {
-            max_memory_bytes: 512 * 1024 * 1024,           // 512 MB
-            max_cpu_millicores: 1000,                      // 1 CPU core
-            max_execution_time: Duration::from_secs(3600), // 1 hour
-            max_io_bps: 100 * 1024 * 1024,                 // 100 MB/s
+            max_memory_bytes: Self::DEFAULT_MEMORY_MB * 1024 * 1024,
+            max_cpu_millicores: Self::DEFAULT_CPU_MILLICORES,
+            max_execution_time: Duration::from_secs(Self::DEFAULT_EXECUTION_SECS),
+            max_io_bps: Self::DEFAULT_IO_MBPS * 1024 * 1024,
         }
     }
 }
@@ -281,13 +295,18 @@ pub struct ImageConfig {
     pub cleanup_interval: Duration,
 }
 
+impl ImageConfig {
+    const DEFAULT_CACHE_SIZE_MB: u64 = 5120;
+    const DEFAULT_CLEANUP_INTERVAL_SECS: u64 = 3600;
+}
+
 impl Default for ImageConfig {
     fn default() -> Self {
         Self {
             cache_enabled: true,
             cache_dir: None,
-            max_cache_size_mb: 5120,                     // 5 GB
-            cleanup_interval: Duration::from_secs(3600), // 1 hour
+            max_cache_size_mb: Self::DEFAULT_CACHE_SIZE_MB,
+            cleanup_interval: Duration::from_secs(Self::DEFAULT_CLEANUP_INTERVAL_SECS),
         }
     }
 }

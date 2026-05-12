@@ -302,7 +302,7 @@ impl Default for RecursiveHostingConfig {
         Self {
             enabled: false,
             current_depth: 0,
-            max_depth: 3,
+            max_depth: crate::common::defaults::MAX_HOSTING_DEPTH,
             parent_toadstool: None,
             child_toadstools: Vec::new(),
             child_resource_allocation: ResourceAllocationStrategy::Fair,
@@ -314,8 +314,8 @@ impl Default for NetworkLoadBalancing {
     fn default() -> Self {
         Self {
             strategy: LoadBalancingStrategy::RoundRobin,
-            health_check_interval_ms: 5000,
-            failover_threshold: 3,
+            health_check_interval_ms: crate::common::defaults::HEALTH_CHECK_INTERVAL_MS,
+            failover_threshold: crate::common::defaults::FAILOVER_THRESHOLD,
         }
     }
 }
@@ -324,8 +324,8 @@ impl Default for ResourceSharingConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            sharing_ratio: 0.8,
-            priority_boost: 1.2,
+            sharing_ratio: crate::common::defaults::SHARING_RATIO,
+            priority_boost: crate::common::defaults::PRIORITY_BOOST,
         }
     }
 }
@@ -334,8 +334,8 @@ impl Default for FaultToleranceConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            max_retries: 3,
-            circuit_breaker_threshold: 5,
+            max_retries: crate::common::defaults::MAX_RETRIES,
+            circuit_breaker_threshold: crate::common::defaults::CIRCUIT_BREAKER_THRESHOLD,
         }
     }
 }

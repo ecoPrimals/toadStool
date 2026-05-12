@@ -40,8 +40,9 @@ allow = [
 unused-allowed-license = "allow"
 
 # Per-crate overrides for edge cases.
-# ring: defensive clarify — ring is banned and absent from Cargo.lock (S203l),
-# but the entry prevents a license error if a transitive dep temporarily pulls it in.
+# ring: defensive clarify — ring is banned but may appear in Cargo.lock as a
+# conditional/transitive dep via quinn-proto and rustls-webpki. This entry
+# prevents a license error when those paths are resolved.
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
@@ -71,12 +72,12 @@ wildcards = "warn"
 # These are C-FFI crates that must not appear in the toadstool / server / core
 # dependency graph. They are allowed in feature-gated GPU/neuromorphic crates.
 deny = [
-    # OpenSSL — use rustls + aws-lc-rs / *ring* instead
+    # OpenSSL — use rustls + aws-lc-rs instead
     { name = "openssl" },
     { name = "openssl-sys" },
     # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives.
-    # License clarified in [[licenses.clarify]]; not in resolved workspace graph
-    # (stale lockfile entry may persist from older resolves — `cargo tree -i ring` returns empty).
+    # License clarified in [[licenses.clarify]]; present in Cargo.lock as a
+    # conditional transitive dep via quinn-proto / rustls-webpki (not on default build path).
     { name = "ring" },
     # async-trait — proc macro for dyn-safe async traits; fully evolved to manual
     # Pin<Box<dyn Future>> and native AFIT (S203r). No workspace crate depends on it directly.
@@ -101,9 +102,8 @@ deny = [
 skip = []
 
 # skip-tree: skip ban traversal for subtrees rooted at a workspace crate (e.g. when a banned dep is
-# confined to one member). Empty as of 2026-04: toadstool-integration-tests has no reqwest/ring
-# (see `cargo tree -p toadstool-integration-tests --depth 1`); toadstool-runtime-secure-enclave uses
-# ruzstd for Zstandard, not zstd-sys (see `cargo tree -p toadstool-runtime-secure-enclave`).
+# confined to one member). Empty as of 2026-05: ring appears via quinn-proto/rustls-webpki but is
+# conditional; toadstool-runtime-secure-enclave uses ruzstd (pure Rust), not zstd-sys.
 skip-tree = []
 
 # ── Sources ───────────────────────────────────────────────────────────────────

@@ -45,7 +45,7 @@ impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
             auto_discover: true,
-            discovery_timeout_ms: 5000,
+            discovery_timeout_ms: crate::common::defaults::DISCOVERY_TIMEOUT_MS,
             preferred_location: ServiceLocation::Local,
             fallback_enabled: true,
         }

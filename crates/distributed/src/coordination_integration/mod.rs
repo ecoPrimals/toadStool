@@ -82,7 +82,7 @@ impl Default for CoordinationConfig {
 
         Self {
             auto_discover: true,
-            discovery_timeout_ms: 5000,
+            discovery_timeout_ms: crate::common::defaults::DISCOVERY_TIMEOUT_MS,
             preferred_location: ServiceLocation::Any,
             fallback_enabled: true,
             required_capabilities: vec![
@@ -90,7 +90,7 @@ impl Default for CoordinationConfig {
                 CoordinationCapability::LoadBalancing,
                 CoordinationCapability::HealthChecking,
             ],
-            health_check_interval_secs: 30,
+            health_check_interval_secs: crate::common::defaults::HEALTH_CHECK_INTERVAL_SECS,
         }
     }
 }

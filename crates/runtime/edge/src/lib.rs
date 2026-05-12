@@ -73,6 +73,12 @@ pub struct EdgeRuntimeConfig {
     pub port_registry: toadstool_config::ports::PortRegistry,
 }
 
+impl EdgeRuntimeConfig {
+    const DEFAULT_DISCOVERY_TIMEOUT_SECS: u64 = 30;
+    const DEFAULT_MAX_DEVICES: usize = 100;
+    const DEFAULT_COMMUNICATION_TIMEOUT_MS: u64 = 5000;
+}
+
 #[derive(Debug, Clone)]
 pub enum EdgeSecurityLevel {
     /// Minimal security for trusted environments
@@ -151,9 +157,9 @@ impl Default for EdgeRuntimeConfig {
 
         Self {
             discovery_enabled: true,
-            discovery_timeout_secs: 30,
-            max_devices: 100,
-            communication_timeout_ms: 5000,
+            discovery_timeout_secs: Self::DEFAULT_DISCOVERY_TIMEOUT_SECS,
+            max_devices: Self::DEFAULT_MAX_DEVICES,
+            communication_timeout_ms: Self::DEFAULT_COMMUNICATION_TIMEOUT_MS,
             cross_compile_cache_path: cache_path,
             auto_provisioning: true,
             security_level: EdgeSecurityLevel::Standard,

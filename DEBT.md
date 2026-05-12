@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S237
+**Date**: May 2026 — S238
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S238 (Deep Debt — Magic Numbers, println→tracing, deny.toml, JH-2 Audit)**:
+Consolidated 20+ duplicated magic numbers across `distributed/`, `container/`,
+`edge/`, and `host_config.rs` into named constants. Created `common::defaults`
+module. Migrated `akida-models` zoo `println!` to structured `tracing`. Fixed
+3 stale `deny.toml` comments. Audited JH-2: **all dispatch paths enforce all
+three envelope dimensions — FULLY RESOLVED.**
 
 **S237 (Wave 8 Phase A — coral-ember Absorption)**:
 Absorbed coralReef `coral-ember` vendor lifecycle (NVIDIA/AMD/Intel/BrainChip/Generic),

@@ -5,7 +5,43 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 11, 2026 (Sessions 43-237)
+## [Unreleased] - May 11, 2026 (Sessions 43-238)
+
+### Session S238 (May 11, 2026) — Deep Debt Sweep: Magic Numbers, println→tracing, deny.toml, JH-2 Audit
+
+Consolidated 20+ duplicated magic numbers across `distributed/`, `runtime/container/`,
+`runtime/edge/`, and `types/resources/host_config.rs` into named constants. Created
+`crate::common::defaults` module with shared distributed subsystem defaults. Migrated
+`akida-models` zoo `println!` to structured `tracing`. Fixed stale `deny.toml` comments
+about `ring` absence. Audited and confirmed JH-2 envelope enforcement is already complete
+across all dispatch paths (submit, shader, pipeline).
+
+#### Changes
+
+- **Distributed defaults module**: Created `crates/distributed/src/common/defaults.rs` with
+  `DISCOVERY_TIMEOUT_MS`, `HEALTH_CHECK_INTERVAL_SECS`, `HEALTH_CHECK_INTERVAL_MS`,
+  `STARTUP_TIMEOUT_MS`, `FAILOVER_THRESHOLD`, `MAX_RETRIES`, `CIRCUIT_BREAKER_THRESHOLD`,
+  `MAX_HOSTING_DEPTH`, `SHARING_RATIO`, `PRIORITY_BOOST` — replaces 20+ bare literals
+- **Security/crypto/coordination configs**: `discovery_timeout_ms: 5000` → `DISCOVERY_TIMEOUT_MS`,
+  `health_check_interval_secs: 30` → `HEALTH_CHECK_INTERVAL_SECS` across 3 config structs
+- **Coordinator simplification**: `core::coordinator.rs` replaced 11-line inline
+  `CoordinationConfig { ... }` with `CoordinationConfig::default()`
+- **Scheduler defaults**: `max_depth`, `health_check_interval_ms`, `failover_threshold`,
+  `max_retries`, `circuit_breaker_threshold`, `sharing_ratio`, `priority_boost` all extracted
+- **Container port policy**: `8000–8999` / `3000–3999` → `APP_PORT_RANGE_*` / `DEV_PORT_RANGE_*`
+- **Container resource limits**: `512 MB`, `1000 millicores`, `3600s`, `100 MB/s` →
+  `DEFAULT_MEMORY_MB`, `DEFAULT_CPU_MILLICORES`, `DEFAULT_EXECUTION_SECS`, `DEFAULT_IO_MBPS`
+- **Image cache config**: `5120 MB`, `3600s` → `DEFAULT_CACHE_SIZE_MB`, `DEFAULT_CLEANUP_INTERVAL_SECS`
+- **Host config defaults**: Port range `(8000, 9000)` → `DEFAULT_PORT_MIN/MAX`, startup/health
+  timeouts → shared defaults, resource limits → `DEFAULT_CPU_CORES/MEMORY_GB/STORAGE_GB/BANDWIDTH_MBPS`
+- **Edge runtime config**: `30s`, `100 devices`, `5000ms` → named constants on `EdgeRuntimeConfig`
+- **akida-models zoo**: `println!` → `tracing::info!` with structured fields (cache, available, total)
+- **deny.toml corrections**: Fixed 3 stale comments claiming `ring` absent from lockfile;
+  updated to accurately describe conditional transitive presence via quinn-proto/rustls-webpki;
+  removed misleading "ring" from OpenSSL alternative suggestion
+- **JH-2 audit**: Confirmed all 3 envelope dimensions (`mem_mb`, `cpu_cores`, `max_timeout_ms`)
+  enforced in `enforce_envelope`. `shader.dispatch` calls it. Pipeline stages forward
+  `CallerContext` to `_with_context` variants. **JH-2: FULLY RESOLVED.**
 
 ### Session S237 (May 11, 2026) — Wave 8 Phase A: coral-ember Absorption
 
