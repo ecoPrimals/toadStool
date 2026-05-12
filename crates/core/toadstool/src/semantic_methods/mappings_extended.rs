@@ -22,6 +22,7 @@ where
     add_mapping("runtime.workload.status", "get_workload_status");
     add_mapping("runtime.workload.result", "get_workload_result");
     add_mapping("runtime.workload.list", "list_workloads");
+    add_mapping("runtime.workload.validate", "validate");
 
     // ═══════════════════════════════════════════════════════════
     // SCIENCE DOMAIN - Scientific compute IPC for springs

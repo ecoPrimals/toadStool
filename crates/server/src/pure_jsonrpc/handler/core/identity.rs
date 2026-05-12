@@ -63,7 +63,7 @@ pub(crate) async fn capabilities_list(
             {
                 "type": PRIMAL_NAME,
                 "methods": ["submit_workload", "query_status", "cancel_workload",
-                            "list_workloads", "query_capabilities", "health", "version",
+                            "list_workloads", "validate", "query_capabilities", "health", "version",
                             "resources.estimate", "resources.validate_availability",
                             "resources.suggest_optimizations"],
                 "version": version,

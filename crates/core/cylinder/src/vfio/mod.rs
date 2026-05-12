@@ -5,11 +5,11 @@
 //! kernel ABI types, ioctl wrappers, DMA, PCI discovery, device open/map,
 //! BAR cartography, vendor metal identification, and memory topology.
 //!
-//! Modules that depend on GSP firmware or full NV channel orchestration
-//! (`sovereign_init`, `sovereign_stages`, `channel/`) remain in coralReef
-//! until Phase D or until the firmware boundary is resolved.
+//! GSP-dependent modules (`bar0`, `probe`, `vfio_compute`) remain in
+//! coralReef until Phase D or until the firmware boundary is resolved.
 
 pub mod amd_metal;
+pub mod channel;
 pub mod bar_cartography;
 pub mod cache_ops;
 pub mod device;
@@ -24,6 +24,8 @@ pub mod memory;
 pub mod nv_metal;
 pub(crate) mod pci_config;
 pub mod pci_discovery;
+pub mod sovereign_init;
+pub mod sovereign_stages;
 pub mod sovereign_types;
 pub mod sysfs_bar0;
 pub mod types;

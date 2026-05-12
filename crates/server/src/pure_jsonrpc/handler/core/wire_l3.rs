@@ -85,6 +85,10 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         cost("low", false, 2, "low", "low"),
     );
     map.insert(
+        "toadstool.validate".into(),
+        cost("low", false, 10, "low", "low"),
+    );
+    map.insert(
         "toadstool.query_capabilities".into(),
         cost("low", false, 5, "low", "low"),
     );

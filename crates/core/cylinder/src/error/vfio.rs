@@ -515,3 +515,9 @@ impl SovereignStagesError {
         Self::VfioCompute(Box::new(err))
     }
 }
+
+impl From<crate::vfio::channel::hbm2_training::Hbm2TrainingError> for SovereignStagesError {
+    fn from(e: crate::vfio::channel::hbm2_training::Hbm2TrainingError) -> Self {
+        Self::Hbm2Training(e.to_string())
+    }
+}

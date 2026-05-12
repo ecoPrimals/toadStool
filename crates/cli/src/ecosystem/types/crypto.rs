@@ -86,19 +86,19 @@ impl Default for CryptoVerificationContext {
         if let Ok(key) = std::env::var("CRYPTO_PROVIDER_PUBLIC_KEY") {
             trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
         } else if let Ok(key) = std::env::var("BEARDOG_PUBLIC_KEY") {
-            // legacy
+            warn!("BEARDOG_PUBLIC_KEY is deprecated — use CRYPTO_PROVIDER_PUBLIC_KEY");
             trusted_keys.insert(capabilities::CRYPTO.to_string(), key);
         }
         if let Ok(key) = std::env::var("STORAGE_PROVIDER_PUBLIC_KEY") {
             trusted_keys.insert(capabilities::STORAGE.to_string(), key);
         } else if let Ok(key) = std::env::var("NESTGATE_PUBLIC_KEY") {
-            // legacy
+            warn!("NESTGATE_PUBLIC_KEY is deprecated — use STORAGE_PROVIDER_PUBLIC_KEY");
             trusted_keys.insert(capabilities::STORAGE.to_string(), key);
         }
         if let Ok(key) = std::env::var("DISCOVERY_PROVIDER_PUBLIC_KEY") {
             trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
         } else if let Ok(key) = std::env::var("SONGBIRD_PUBLIC_KEY") {
-            // legacy
+            warn!("SONGBIRD_PUBLIC_KEY is deprecated — use DISCOVERY_PROVIDER_PUBLIC_KEY");
             trusted_keys.insert(capabilities::COORDINATION.to_string(), key);
         }
 

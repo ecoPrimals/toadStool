@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S249
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S250
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,843+ tests, 0 failures** (8,286+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **22,843+ tests, 0 failures** (8,809+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -57,7 +57,7 @@ Nest    = Tower  + Storage            <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| JSON-RPC surface | **65** JSON-RPC methods (direct) + semantic registry |
+| JSON-RPC surface | **66** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | File size limit | All production files target **< 500 lines** (S203i+S173: 52 production files refactored via test extraction; 3 specialty >700L files smart-refactored into directory modules; remaining >500L files are pure production — hardware drivers, type defs, all <700 lines) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
@@ -177,7 +177,7 @@ Surface trimmed to hardware orchestration and IPC boundaries. **Removed from thi
 
 | Domain | Methods | Notes |
 |--------|---------|-------|
-| `toadstool.*` | `health`, `version`, `query_capabilities` | Canonical namespace |
+| `toadstool.*` | `health`, `version`, `query_capabilities`, `validate`, `list_workloads` | Canonical namespace |
 | `toadstool.resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | Canonical namespace |
 | `resources.*` | `estimate`, `validate_availability`, `suggest_optimizations` | biomeOS neural API routing aliases |
 | `compute.*` | `execute`, `health`, `version`, `capabilities`, `discover_capabilities`, `submit`, `status`, `result`, `cancel`, `list` | biomeOS Node Atomic aliases + GPU queue; `execute` = `toadstool.submit_workload` |
@@ -273,7 +273,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **22,843+**, 0 failures (8,286+ lib-only) |
+| Workspace tests | **22,843+**, 0 failures (8,809+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -301,6 +301,8 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S250 (May 12, 2026)**: **Deep Debt Evolution — Legacy Env Deprecation, Sentinel Cleanup, Stub Docs** — Added `#[deprecated]` to 13 legacy primal-named env var constants (`BEARDOG_SOCKET`, `SONGBIRD_SOCKET`, etc.) with migration guidance. Added `tracing::warn!` deprecation notices for 4 legacy env vars in runtime fallback paths. Replaced `NO_HISTORY_SENTINEL_SECS = 999` magic number with `Duration::MAX`. Evolved `DEFAULT_SCAN_SUBNET` from hardcoded `192.168.1.0` to env-configurable via `TOADSTOOL_SCAN_SUBNET`. Clarified sentinel/null-object docs on `StubRuntimeEngine`, `NoopCloudProvider`, `NoopCryptoProvider`. Updated `StubRuntimeEngine` version string `"stub"` → `"unregistered"`. Full multi-dimensional audit: zero `todo!()`/`unimplemented!()`, all unsafe idiomatic, `cargo deny check bans` passes clean. **8,809 lib-only tests, zero clippy.**
+- **S249+ (May 12, 2026)**: **Pass 12-14 Execution — Phase C Batches 5-7, Phase D, toadstool.validate** — Absorbed 68 VFIO channel files + `hardware_guard.rs` (Batch 5, 499→520 cylinder tests). Created `GspBridge` trait + `StubGspBridge` for GSP-dependent firmware ops; `falcon_pio.rs` for standalone PIO uploads (Batch 6). Absorbed `bar0.rs` with re-exported `ApplyError`/`RegisterAccess` (Batch 7). Wired local dispatch cutover: `try_local_dispatch()` via `ComputeDevice` trait before `coral_client` IPC forward (Phase D). Implemented `toadstool.validate` JSON-RPC method — Tier 2 Science API pre-flight (`valid`, `gpu_available`, `precision_tier`, `warnings`, `required_capabilities`). Semantic alias `runtime.workload.validate`. **66 JSON-RPC methods.** **8,809 lib-only tests, zero clippy.**
 - **S238 (May 11, 2026)**: **Deep Debt — Magic Numbers, println→tracing, deny.toml, JH-2 Audit** — Consolidated 20+ duplicated magic numbers into named constants: new `common::defaults` module for distributed subsystem, container port/resource/image constants, host_config defaults, edge runtime constants. Migrated `akida-models` zoo `println!` to structured `tracing::info!`. Fixed 3 stale `deny.toml` comments about ring lockfile status. Audited and confirmed JH-2 envelope enforcement is complete: all 3 dimensions (`mem_mb`, `cpu_cores`, `max_timeout_ms`) checked in `enforce_envelope`, called by submit + shader + pipeline stages. **JH-2: FULLY RESOLVED.**
 - **S237 (May 11, 2026)**: **Wave 8 Phase A: coral-ember Absorption** — Absorbed coralReef `coral-ember` hardware lifecycle modules into `toadstool-ember`: vendor lifecycle (NVIDIA 4 variants, AMD 2, Intel, BrainChip, Generic), observation types, ring metadata, sysfs abstraction, error types. Created `VfioResourceHandle` — first production `ResourceHandle` implementation. Wired `device_pool` into `compute.dispatch.submit` path with `acquire_device_handle()`. `compute.dispatch.capabilities` reports `ember.held_devices` and `ember.phase`. 90 ember tests, 76 dispatch tests, clippy clean.
 - **S236 (May 11, 2026)**: **Deep Debt — Magic Numbers, Match Safety, Test Refactor** — Extracted magic numbers to named constants. Eliminated `unreachable!()` in `nvpmu/dma.rs`. Smart-refactored `dispatch/tests.rs` into 4 submodules. 72 dispatch tests, clippy clean.
@@ -380,7 +382,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S249. **22,843+** workspace tests, 0 failures (8,704+ lib-only). ~83.6% lib-only line coverage (target 90%). **65 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C Batch 4 complete — VFIO/AMD/NVIDIA/DRM absorbed into toadstool-cylinder** (S245–S248). **SwapOrchestrator 7-step lifecycle** (S239). **SysfsSwapExecutor** replaces EmberClient cross-process IPC (S239). **GpuPersonality unified** (NvidiaOracle + Akida variants, S239). **Duration literals fully extracted to named constants** (S244–S249). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S250. **22,843+** workspace tests, 0 failures (8,809+ lib-only). ~83.6% lib-only line coverage (target 90%). **66 JSON-RPC methods** (direct) + semantic registry with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C Batch 7 complete — VFIO channel + sovereign init/stages + BAR0 absorbed into toadstool-cylinder** (S245–S250). **Phase D — local dispatch cutover** (S250). **`toadstool.validate` Tier 2 Science API** (S250). **Legacy primal env vars `#[deprecated]`** (S250). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

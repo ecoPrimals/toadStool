@@ -29,8 +29,17 @@ const TCP_PROBE_CONNECT_TIMEOUT: Duration = if cfg!(test) {
     Duration::from_secs(TCP_PROBE_CONNECT_TIMEOUT_SECS)
 };
 
-/// `/24`-style network base (IPv4) used only when `range` lacks a valid prefix (see `scan_network_range`).
-pub const DEFAULT_SCAN_SUBNET: &str = "192.168.1.0";
+/// Fallback `/24`-style network base (IPv4) when `range` lacks a valid prefix.
+/// Override at runtime via `TOADSTOOL_SCAN_SUBNET`.
+const FALLBACK_SCAN_SUBNET: &str = "192.168.1.0";
+
+/// Resolve the scan subnet base, preferring env override.
+fn default_scan_subnet() -> &'static str {
+    static RESOLVED: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    RESOLVED.get_or_init(|| {
+        std::env::var("TOADSTOOL_SCAN_SUBNET").unwrap_or_else(|_| FALLBACK_SCAN_SUBNET.to_string())
+    })
+}
 
 /// Get local network ranges for scanning
 ///
@@ -109,7 +118,7 @@ pub async fn scan_network_range(
 ) -> ToadStoolResult<HashMap<String, ServiceInfo>> {
     let mut services = HashMap::new();
 
-    let base_ip = range.split('/').next().unwrap_or(DEFAULT_SCAN_SUBNET);
+    let base_ip = range.split('/').next().unwrap_or_else(|| default_scan_subnet());
     let ip_parts: Vec<&str> = base_ip.split('.').collect();
 
     if ip_parts.len() != 4 {

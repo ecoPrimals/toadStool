@@ -53,6 +53,7 @@ pub struct UnibinExecutionConfig {
 impl UnibinExecutionConfig {
     /// Load UniBin execution settings from the process environment (call once at startup).
     #[must_use]
+    #[allow(deprecated)] // intentional: reads legacy SONGBIRD_AUTH_TOKEN as backward-compat fallback
     pub fn from_env() -> Self {
         let bind_host = std::env::var(socket_env::TOADSTOOL_BIND_ADDRESS)
             .unwrap_or_else(|_| toadstool_common::constants::network::LOCALHOST_IPV4.into());

@@ -20,6 +20,7 @@ queuing, status polling, and cancellation.
 | `toadstool.query_status` | `"<workload_id>"` | `Job` | Poll workload status by UUID string |
 | `toadstool.cancel_workload` | `"<workload_id>"` | `{"success": true}` | Cancel by UUID string |
 | `toadstool.list_workloads` | none | `{"jobs": [...], "counts": {...}}` | List all workloads |
+| `toadstool.validate` | `{"workload_path": str, "dry_run"?: bool}` | `ValidateResult` | Pre-flight validate a workload (Tier 2 Science API) |
 | `toadstool.query_capabilities` | none | `Capabilities` | Self-knowledge: what this node can do |
 | `toadstool.health` | none | `HealthStatus` | Liveness + uptime check |
 | `toadstool.version` | none | `{"version": "...", ...}` | Protocol version info |

@@ -63,9 +63,12 @@ pub trait CloudProvider: Send + Sync {
     ) -> impl Future<Output = Result<Vec<GpuType>, CloudError>> + Send + 'a;
 }
 
-/// Placeholder cloud provider used as the default type parameter when no vendor
-/// implementation is registered. All methods return [`CloudError::ProviderUnavailable`]
-/// with capability-based guidance.
+/// Sentinel [`CloudProvider`] — null-object default for generic cloud dispatch
+/// types before a real provider is discovered at runtime.
+///
+/// This is **not** a test mock. It is the complete implementation of the
+/// "no provider registered" state. All methods return
+/// [`CloudError::ProviderUnavailable`] with capability-based guidance.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopCloudProvider;
 

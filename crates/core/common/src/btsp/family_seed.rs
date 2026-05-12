@@ -55,12 +55,17 @@ fn config_family_seed_path() -> PathBuf {
 /// `btsp.session.create` without hex-decoding or base64 re-encoding.
 /// BearDog owns the encoding interpretation.
 pub fn load_family_seed_for_btsp() -> Result<String, BtspFamilySeedError> {
-    for key in ["FAMILY_SEED", "BEARDOG_FAMILY_SEED"] {
-        if let Ok(v) = std::env::var(key) {
-            let trimmed = v.trim().to_string();
-            if !trimmed.is_empty() {
-                return Ok(trimmed);
-            }
+    if let Ok(v) = std::env::var("FAMILY_SEED") {
+        let trimmed = v.trim().to_string();
+        if !trimmed.is_empty() {
+            return Ok(trimmed);
+        }
+    }
+    if let Ok(v) = std::env::var("BEARDOG_FAMILY_SEED") {
+        let trimmed = v.trim().to_string();
+        if !trimmed.is_empty() {
+            tracing::warn!("BEARDOG_FAMILY_SEED is deprecated — use FAMILY_SEED");
+            return Ok(trimmed);
         }
     }
 

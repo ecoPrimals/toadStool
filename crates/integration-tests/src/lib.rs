@@ -14,5 +14,5 @@
 //!
 //! Run a specific suite:
 //! ```bash
-//! cargo test -p toadstool-integration-tests --test e2e_tests
+//! cargo test -p toadstool-integration-tests --test security_tests
 //! ```

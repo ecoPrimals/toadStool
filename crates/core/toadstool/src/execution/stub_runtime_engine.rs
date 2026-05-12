@@ -9,12 +9,14 @@ use crate::execution::{
     ExecutionRequest, ExecutionResponse, RuntimeCapabilities, RuntimeConfig, RuntimeEngine,
 };
 
-/// Sentinel [`RuntimeEngine`] used as the default type parameter in generic
-/// orchestrator, scheduler, and platform types before real engines are registered.
+/// Sentinel [`RuntimeEngine`] — null-object default for generic orchestrator,
+/// scheduler, and platform types before real engines are discovered at runtime.
 ///
-/// All execution methods return [`ToadStoolError::configuration`] with
-/// capability-based guidance, matching the `NoopCloudProvider` / `NoopCryptoProvider`
-/// pattern.
+/// This is **not** a test mock. It is the complete implementation of the
+/// "no engine registered" state. [`execute`](RuntimeEngine::execute) returns
+/// [`ToadStoolError::configuration`] with capability-based guidance directing
+/// callers to register an engine. [`initialize`](RuntimeEngine::initialize)
+/// and [`shutdown`](RuntimeEngine::shutdown) succeed as no-ops.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct StubRuntimeEngine;
 
@@ -42,7 +44,7 @@ impl RuntimeEngine for StubRuntimeEngine {
             max_concurrent_executions: Some(0),
             supported_architectures: vec![],
             platform_features: std::collections::HashMap::new(),
-            version: "stub".to_string(),
+            version: "unregistered".to_string(),
         }
     }
 
@@ -104,7 +106,7 @@ mod tests {
         assert_eq!(caps.max_concurrent_executions, Some(0));
         assert!(caps.supported_architectures.is_empty());
         assert!(caps.platform_features.is_empty());
-        assert_eq!(caps.version, "stub");
+        assert_eq!(caps.version, "unregistered");
     }
 
     #[tokio::test]

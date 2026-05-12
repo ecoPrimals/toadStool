@@ -349,6 +349,43 @@ impl DispatchHandler {
 
         let needs_coral = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
+        // Phase D: try local dispatch via cylinder before coral_client IPC.
+        if needs_coral
+            && let Some(local_result) = self
+                .try_local_dispatch(&bdf, &binary_bytes, workgroup_size, shader_info.as_ref())
+                .await
+        {
+            let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
+            match local_result {
+                Ok(local_output) => {
+                    let mut jobs = self.jobs.write().await;
+                    if let Some(job) = jobs.get_mut(&job_id) {
+                        job.status = DispatchStatus::Completed;
+                        job.result = Some(local_output.clone());
+                    }
+                    return Ok(serde_json::json!({
+                        "domain": "compute.dispatch",
+                        "operation": "submit",
+                        "job_id": job_id,
+                        "status": "completed",
+                        "output": local_output,
+                        "error": null,
+                        "timing": { "dispatch_ms": dispatch_ms, "readback_ms": 0 },
+                        "metadata": {
+                            "bdf": bdf,
+                            "dispatch_mode": "local_cylinder",
+                            "binary_size": binary_bytes.len(),
+                            "thermal_checked": thermal.is_some(),
+                            "workgroup_size": workgroup_size,
+                        },
+                    }));
+                }
+                Err(e) => {
+                    tracing::warn!(bdf, error = %e, "local dispatch failed — falling through to coral_client");
+                }
+            }
+        }
+
         if needs_coral && !self.coral_client.is_available().await {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
             let mut jobs = self.jobs.write().await;

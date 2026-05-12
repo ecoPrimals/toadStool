@@ -17,7 +17,7 @@ use std::os::fd::OwnedFd;
 use dma::VfioBackend;
 
 pub use dma::{DmaBackend, ReceivedVfioFds, VfioBackendKind};
-pub use mapped_bar::MappedBar;
+pub use mapped_bar::{ApplyError, MappedBar, RegisterAccess};
 
 /// A VFIO-managed PCIe device.
 ///

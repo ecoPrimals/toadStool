@@ -33,6 +33,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "toadstool.query_status",
     "toadstool.cancel_workload",
     "toadstool.list_workloads",
+    "toadstool.validate",
     "toadstool.query_capabilities",
     "toadstool.resources.estimate",
     "toadstool.resources.validate_availability",

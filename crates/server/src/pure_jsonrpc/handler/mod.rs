@@ -221,6 +221,7 @@ impl JsonRpcHandler {
             "toadstool.query_status" => return self.job.query_status(params).await,
             "toadstool.cancel_workload" => return self.workload.cancel_workload(params).await,
             "toadstool.list_workloads" => return self.job.list_workloads(params).await,
+            "toadstool.validate" => return self.workload.validate(params).await,
             "toadstool.query_capabilities" => return self.workload.query_capabilities().await,
             // Wire Standard L1/L2: triad shapes differ; full payload only for check + legacy name.
             "toadstool.health" | "health.check" => {
@@ -385,6 +386,7 @@ impl JsonRpcHandler {
             "get_workload_status" | "query_status" => self.job.query_status(params).await,
             "cancel_workload" => self.workload.cancel_workload(params).await,
             "list_workloads" => self.job.list_workloads(params).await,
+            "validate" => self.workload.validate(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
             "check_health" => core::health(&self.version, self.start_time, &self.error_count).await,
             "dispatch_submit" => {

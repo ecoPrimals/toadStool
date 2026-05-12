@@ -5,10 +5,14 @@
 //! generation profiles, GPU identity probing, DRM ioctls, QMD encoding,
 //! and pushbuf command stream construction.
 //!
-//! Modules that depend on GSP firmware (`bar0`, `probe`, `kepler_falcon`,
-//! `fecs_init`, `vfio_compute`) remain in coralReef until Phase D.
+//! Modules that depend on GSP firmware (`probe`, full `vfio_compute`)
+//! remain in coralReef until Phase D or trait boundary.
 
+pub mod bar0;
+pub mod falcon_pio;
 pub mod generation;
+pub mod gsp_bridge;
+pub mod hardware_guard;
 pub mod identity;
 pub mod ioctl;
 pub mod pushbuf;

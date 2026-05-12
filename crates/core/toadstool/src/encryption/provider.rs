@@ -57,8 +57,11 @@ pub trait CryptoProvider: Send + Sync {
     fn health_check(&self) -> impl Future<Output = ToadStoolResult<ProviderHealth>> + Send + '_;
 }
 
-/// Placeholder crypto provider used as the default type parameter when no
-/// vendor implementation is registered. All methods return
+/// Sentinel [`CryptoProvider`] — null-object default for generic encryption
+/// types before a real provider is discovered at runtime.
+///
+/// This is **not** a test mock. It is the complete implementation of the
+/// "no provider registered" state. All methods return
 /// [`ToadStoolError::configuration`] with capability-based guidance.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopCryptoProvider;
