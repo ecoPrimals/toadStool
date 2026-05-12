@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S242
+**Last Updated**: May 2026 — S244
 
 ---
 
@@ -30,16 +30,17 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S242 — May 2026)
+## Current State (S244 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **22,843+ tests** (8,286+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **22,843+ tests** (8,289+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **65 JSON-RPC methods** (incl. `compute.execute` direct route S203f, `auth.check`/`auth.mode`/`auth.peer_info` S229). Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. IPC compliant (`health.liveness` → `{"status":"starting"|"alive"}` with PG-62 fast-path, `health.readiness` → `"starting"|"ready"`+version, `health.check` full envelope, `capabilities.list`, `identity.get`). **Recommended caller timeout: ≥3 seconds** for health probes during startup.
 - **Wave 8 Phase A: coral-ember absorbed** (S237) — Vendor lifecycle (NVIDIA/AMD/Intel/BrainChip/Generic), observation types, ring metadata, sysfs abstraction, error types absorbed into `toadstool-ember`. `VfioResourceHandle` — first production `ResourceHandle` implementation. Device pool wired into `compute.dispatch.submit` path. 90 ember tests.
 - **Wave 8 Phase B: glowplug absorbed** (S239) — `SwapOrchestrator` 7-step lifecycle, `SysfsSwapExecutor` replaces `EmberClient` cross-process IPC, `GpuPersonality` unified (NvidiaOracle + Akida), `GlowPlugClient` wraps orchestrator internally. 65 glowplug tests (+3 coverage expansion S241).
-- **S241 Deprecated Stub Removal + Phase C Planning** — Removed deprecated `CudaBackend`/`CudaComputeResource` stubs (zero callers). 3 new `SwapOrchestrator` tests (failing release, unhealthy swap, boot failure). Phase C coral-driver split plan created. Discovery timeout validated.
-- **S242 Deep Debt Sweep** — Last library `println!` migrated to `tracing` (auto_config `SystemSummary::display`). 20+ hardcoded `Duration` literals extracted to named constants. 5 direct `ContiguousBytes` tests for hw-safe coverage. Python crate orphan `pyo3` workspace refs cleaned. Zero production println/eprintln in library code.
+- **S244 Deep Debt Sweep** — Benchmark `println!`→`tracing` (cross-substrate-validation). 15+ hardcoded `Duration` literals→named constants across server/distributed/integration crates. `GlowPlugClient` async test coverage (`reacquire`, `swap_device_orchestrated`). Clippy fixes (`bool_to_int_with_if`, `unchecked_time_subtraction`). 8,289 tests.
+- **S243 Vestigial Cleanup** — Legacy `swap_device()` removed from `GlowPlugClient` (zero callers, orchestrator is production path). `compute.dispatch.capabilities` enhanced with `render_node` and `device_id` for DRM GPUs. Stale `cuda` keyword removed. Phase C coral-driver recon complete.
+- **S241–S242 Deep Debt + Phase C Prep** — CudaBackend stubs removed. SwapOrchestrator +3 tests. Phase C split plan. Last auto_config `println!`→`tracing`. 20+ Duration magic numbers→constants. ContiguousBytes tests. pyo3 orphan refs cleaned.
 - **S240 Deep Debt Sweep** — Smart-refactored `execution/tests.rs` (831L→4 submodules). `neurobench-runner` `println!`→`tracing`. `DiscoveryEngine` hardcoded timeout→named constant. Full audit: zero production mocks/TODO/FIXME/unreachable!(), all unsafe SAFETY-documented.
 - **MethodGate JH-0** (S229) — Pre-dispatch capability gate. All methods classified Public/Protected. `GateMode::Permissive` (default) / `GateMode::Enforcing` (via `TOADSTOOL_AUTH_MODE` env var). Error codes: `-32000 UNAUTHORIZED`, `-32001 PERMISSION_DENIED` (ecosystem standard).
 - **JH-2 Resource Envelope Enforcement — FULLY RESOLVED** (S231–S232, audited S238) — `ResourceEnvelope` (mem_mb, cpu_cores, max_timeout_ms, method_allowlist) enforced at all 3 dispatch entry points: `compute.dispatch.submit`, `shader.dispatch`, `compute.dispatch.pipeline.submit`. Pipeline internal stages inherit `CallerContext`. All 3 dimensions confirmed enforced.
