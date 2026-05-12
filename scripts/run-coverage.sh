@@ -55,6 +55,7 @@ run_tier1() {
         "toadstool-display"
         "toadstool-ember"
         "toadstool-glowplug"
+        "toadstool-cylinder"
         "toadstool-hw-safe"
         "toadstool-runtime-native"
         "toadstool-runtime-orchestration"

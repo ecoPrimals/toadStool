@@ -1,14 +1,17 @@
 # GPU Linking Issue - Deep Universal Solution
 ## December 13, 2025 - Agnostic Architecture
 
+> **Architecture history document** — retained as fossil record of the GPU linking
+> evolution. The issue is **fully resolved**. Code examples below are historical and
+> may reference removed features (`cuda`, `opencl`).
+
 **Status**: ✅ **SOLVED** - Evolved to truly agnostic design  
 **Approach**: Universal capability-based runtime detection  
 **Philosophy**: Zero hardcoding, discover at runtime
 
 > **S198 Update**: OpenCL and CUDA backends are **deprecated** (S197-S198). The `opencl` feature
-> flag is a no-op; the `cuda` feature was removed. Only **wgpu** (WebGPU) and **Vulkan** are
-> active backends. OpenCL/CUDA compute is handled by barraCuda/coralReef via IPC. Code examples
-> below retain the original multi-framework design for historical context.
+> flag is a no-op; the `cuda` feature was removed (S241). Only **wgpu** (WebGPU) and **Vulkan** are
+> active backends. OpenCL/CUDA compute is handled by barraCuda/coralReef via IPC.
 
 ---
 
