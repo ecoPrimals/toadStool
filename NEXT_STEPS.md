@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S236 (deep debt: magic numbers, match exhaustiveness, test refactor)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **BTSP Phase 3 encrypted channel (ChaCha20-Poly1305, S215)** | **BTSP Phase 3 transport switch verified (S218)** | **BTSP handshake bounded + connection-reused** (PG-46 resolved, S214) | **All lint attrs with reason (S211+S213)** | **Auth issuer capability-based (S209)** | **Self-registration with Songbird (S207)** | **Encrypted compute dispatch (Phase 55)** | **Display Phase 2 (petalTongue IPC)** | **BTSP JSON-line relay (Phase 45c)** | **Orchestrator lock-panic-free (S213)** | **Health liveness fast-path (PG-62, S225)** | **JH-2 full envelope enforcement (S232)** | **DF-2 resolved: TOADSTOOL_AUTH_MODE env var (S233)** | **IPC contract: pre-resolved values (S234)** | **Wave 8 trio IPC contract + Gate 2 capabilities (S235)**
-**Latest**: S236 — Deep debt sweep: magic numbers extracted to named constants (discovery/config defaults), `unreachable!()` in nvpmu/dma.rs eliminated via exhaustive match, dispatch/tests.rs (1020L) smart-refactored into 4 submodules (core_dispatch, shader, envelope, trio_contract). 72 dispatch tests, clippy clean.
-**Previous**: S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract. S233 — DF-2 fix. S232 — JH-2 Phase 2. S231 — JH-2 Phase 1. S230 — Error codes. S229 — JH-0.
+**Updated**: May 2026 — S237 (Wave 8 Phase A: coral-ember absorption)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,843+ workspace, 0 failures) | **~65 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented, reconciled S221) | **0 production TODOs** | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names, S221)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Wave 8 Phase A: coral-ember absorbed (S237)** | **VfioResourceHandle wired into dispatch (S237)**
+**Latest**: S237 — Wave 8 Phase A: coral-ember vendor lifecycle, observation, ring_meta, error types absorbed into toadstool-ember. VfioResourceHandle implementing ResourceHandle. Device pool wired into dispatch path. 90 ember tests, 76 dispatch tests, clippy clean.
+**Previous**: S236 — Deep debt sweep. S235 — Wave 8 trio IPC + Gate 2. S234 — IPC contract. S233 — DF-2 fix. S232 — JH-2 Phase 2.
 
 ---
 
@@ -112,12 +112,12 @@ toadStool already has matching trait surfaces: `ResourceHandle` (ember), `Device
 (glowplug personality), `SwapOrchestrator` (glowplug lifecycle), `DeviceSlot` (cylinder state).
 All currently have test mock implementations only.
 
-| Phase | Scope | LOC | Key deliverable |
-|-------|-------|-----|-----------------|
-| **A: ember** | `HeldDevice` (VFIO fd holding, `SCM_RIGHTS`, BAR0 held access) → `ResourceHandle` | ~9k | First production `ResourceHandle` impl; extends existing `nvpmu` BAR0/VFIO |
-| **B: glowplug** | `sovereign_boot` → `SwapOrchestrator` 7-step; `EmberClient` becomes toadStool-internal; `GpuPersonality` unifies with `DevicePersonality`; `coralctl` → CLI | ~18k | Device lifecycle owned by toadStool |
-| **C: cylinder + coral-driver** | Per-device subprocess generalized (GPU + NPU + HSM); VFIO channel, GPFIFO/pushbuf, DRM ioctl → `hw-safe` containment zone | ~15k | Universal per-device dispatch subprocess |
-| **D: local dispatch** | `dispatch_submit_with_context` executes locally via absorbed driver layer instead of forwarding to `coral_client` | ~2k | Gate 4 E2E sovereign compute path |
+| Phase | Scope | LOC | Key deliverable | Status |
+|-------|-------|-----|-----------------|--------|
+| **A: ember** | `HeldDevice` → `ResourceHandle` + vendor lifecycle + observation + ring_meta | ~9k | First production `ResourceHandle` impl; device pool in dispatch | **S237 DONE** |
+| **B: glowplug** | `sovereign_boot` → `SwapOrchestrator` 7-step; `EmberClient` becomes toadStool-internal; `GpuPersonality` unifies with `DevicePersonality`; `coralctl` → CLI | ~18k | Device lifecycle owned by toadStool | PENDING |
+| **C: cylinder + coral-driver** | Per-device subprocess generalized (GPU + NPU + HSM); VFIO channel, GPFIFO/pushbuf, DRM ioctl → `hw-safe` containment zone | ~15k | Universal per-device dispatch subprocess | PENDING |
+| **D: local dispatch** | `dispatch_submit_with_context` executes locally via absorbed driver layer instead of forwarding to `coral_client` | ~2k | Gate 4 E2E sovereign compute path | PENDING |
 
 **Foundation (S235, DONE)**: BrainChip vendor ID fixed (`0x1E7C` canonical). `compute.dispatch.submit`
 trio IPC contract (`binary_b64`, `shader_info`, `dispatch_dims`, buffer `data_b64`, `timing`

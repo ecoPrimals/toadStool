@@ -111,6 +111,10 @@ impl DispatchHandler {
                 "vfio_gpus": vfio_gpus,
                 "drm_gpus": drm_gpus,
                 "total_dispatch_count": self.dispatch_count.load(Ordering::Relaxed),
+                "ember": {
+                    "held_devices": self.held_device_count().await,
+                    "phase": "A",
+                },
             },
             "error": null,
             "metadata": {},

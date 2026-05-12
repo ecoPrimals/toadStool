@@ -320,6 +320,8 @@ impl DispatchHandler {
             u64::from(workgroup_size[0]) * u64::from(workgroup_size[1]) * u64::from(workgroup_size[2]);
         enforce_envelope(ctx, binary_bytes.len(), workgroup_total, timeout_ms)?;
 
+        self.acquire_device_handle(&bdf).await;
+
         let job_id = uuid::Uuid::new_v4().to_string();
         let submit_instant = std::time::Instant::now();
         let job = DispatchJob {

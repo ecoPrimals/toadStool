@@ -16,6 +16,7 @@ toadstool-config = { path = "../core/config" }
 toadstool-core = { path = "../toadstool-core" }
 toadstool-display = { path = "../runtime/display" }
 toadstool-common = { path = "../core/common" }
+toadstool-ember = { path = "../core/ember" }
 toadstool-distributed = { path = "../distributed" }
 toadstool-integration-protocols = { path = "../integration/protocols" }
 toadstool-runtime-container = { path = "../runtime/container" }

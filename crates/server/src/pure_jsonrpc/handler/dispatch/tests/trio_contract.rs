@@ -173,3 +173,70 @@ async fn dispatch_submit_no_binary_or_binary_b64_returns_error() {
         err.message.contains("binary") || err.message.contains("binary_b64")
     );
 }
+
+// ── Phase A: ember device lifecycle integration ──
+
+#[tokio::test]
+async fn dispatch_submit_acquires_device_handle() {
+    let handler = test_handler();
+    assert_eq!(handler.held_device_count().await, 0);
+
+    let params = submit_params("0000:03:00.0", "passthrough");
+    handler
+        .dispatch_submit(Some(&params))
+        .await
+        .expect("submit");
+    assert_eq!(
+        handler.held_device_count().await,
+        1,
+        "dispatch should acquire a device handle"
+    );
+}
+
+#[tokio::test]
+async fn dispatch_submit_reuses_handle_for_same_bdf() {
+    let handler = test_handler();
+    let params = submit_params("0000:03:00.0", "passthrough");
+    handler
+        .dispatch_submit(Some(&params))
+        .await
+        .expect("first submit");
+    handler
+        .dispatch_submit(Some(&params))
+        .await
+        .expect("second submit");
+    assert_eq!(
+        handler.held_device_count().await,
+        1,
+        "same BDF should reuse the existing handle"
+    );
+}
+
+#[tokio::test]
+async fn dispatch_submit_separate_handles_per_bdf() {
+    let handler = test_handler();
+    let p1 = submit_params("0000:03:00.0", "passthrough");
+    let p2 = submit_params("0000:4a:00.0", "passthrough");
+    handler.dispatch_submit(Some(&p1)).await.expect("submit 1");
+    handler.dispatch_submit(Some(&p2)).await.expect("submit 2");
+    assert_eq!(
+        handler.held_device_count().await,
+        2,
+        "different BDFs should have separate handles"
+    );
+}
+
+#[tokio::test]
+async fn capabilities_includes_ember_info() {
+    let handler = test_handler();
+    let result = handler
+        .dispatch_capabilities(None)
+        .await
+        .expect("capabilities");
+    let ember = &result["output"]["ember"];
+    assert_eq!(ember["phase"], "A");
+    assert!(
+        ember["held_devices"].is_u64(),
+        "ember.held_devices should be present"
+    );
+}

@@ -5,7 +5,42 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 11, 2026 (Sessions 43-236)
+## [Unreleased] - May 11, 2026 (Sessions 43-237)
+
+### Session S237 (May 11, 2026) — Wave 8 Phase A: coral-ember Absorption
+
+Absorbed coralReef's `coral-ember` hardware lifecycle modules into `toadstool-ember`.
+Created first production `VfioResourceHandle` implementing `ResourceHandle`. Wired
+device handle acquisition into the `compute.dispatch.submit` path. Ember is now the
+device lifecycle backbone of the dispatch pipeline.
+
+#### Changes
+
+- **Vendor lifecycle absorption**: Complete `vendor_lifecycle/` module absorbed from
+  coralReef `coral-ember` — NVIDIA (Kepler, Volta+, Open, Oracle), AMD (Vega 20, RDNA),
+  Intel (Xe/Arc), BrainChip (Akida), Generic fallback. `VendorLifecycle` trait with
+  `prepare_for_unbind`, `rebind_strategy`, `settle_secs`, `stabilize_after_bind`,
+  `verify_health`, `skip_sysfs_unbind`, `available_reset_methods`. 41 vendor lifecycle
+  tests pass
+- **Observation types**: `SwapObservation`, `SwapTiming`, `HealthResult`,
+  `ResetObservation`, `epoch_ms()` — structured observations from driver swaps and resets
+- **Ring metadata**: `RingMeta`, `MailboxMeta`, `RingMetaEntry` — GPU ring/mailbox state
+  for reconstruction after daemon restart
+- **Error types**: `SwapError`, `SysfsError` with full error taxonomy for swap orchestration
+- **Sysfs abstraction**: `sysfs` module with `SysfsPort` trait for injectable test doubles,
+  `pci_device_path()`, `pin_power()`, `pin_bridge_power()`, `read_pci_id()`,
+  `read_power_state()` — replaces `coral-driver::linux_paths` dependency
+- **VfioResourceHandle**: First production `ResourceHandle` implementation — wraps BDF +
+  optional VFIO fd + `RingMeta`, implements acquire/release/reacquire lifecycle with
+  power state validation
+- **Dispatch wiring**: `DispatchHandler.device_pool` tracks `HeldResource<VfioResourceHandle>`
+  per BDF; `acquire_device_handle()` called pre-dispatch; `compute.dispatch.capabilities`
+  reports `ember.held_devices` and `ember.phase`
+- **Server dependency**: `toadstool-server` now depends on `toadstool-ember`
+- **Tests**: 90 ember tests (48 new: vendor lifecycle 41, observation 6, ring_meta 2,
+  sysfs 3, vfio_handle 7) + 4 new trio contract tests (device handle acquisition, reuse,
+  per-BDF separation, capabilities ember info). 76 dispatch tests total. All workspace
+  tests pass, clippy clean
 
 ### Session S236 (May 11, 2026) — Deep Debt: Magic Numbers + Match Safety + Test Refactor
 

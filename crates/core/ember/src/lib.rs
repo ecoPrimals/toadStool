@@ -28,17 +28,34 @@
 //! pattern. ember does not know what bus it is holding; it knows only that
 //! it owns a handle, the handle has an identity, and it must keep it alive.
 //!
-//! The visualization service's `coral-ember` is the first evolution (GPU/VFIO-specific).
-//! toadStool's ember generalizes that pattern across all hardware.
+//! ## Absorbed from coralReef (Wave 8 Phase A)
+//!
+//! The vendor lifecycle module, observation types, ring metadata, sysfs helpers,
+//! and error types were absorbed from coralReef's `coral-ember` crate as part
+//! of the Compute Trio Wave 8 sprint. These encode hardware-specific knowledge
+//! about safe driver transitions across NVIDIA, AMD, Intel, and BrainChip devices.
 
+pub mod error;
 pub mod held_resource;
 pub mod journal;
 pub mod lend_reclaim;
 pub mod metadata;
+pub mod observation;
 pub mod resource_handle;
+pub mod ring_meta;
+pub mod sysfs;
+pub mod vendor_lifecycle;
+pub mod vfio_handle;
 
+pub use error::{SwapError, SysfsError};
 pub use held_resource::HeldResource;
 pub use journal::{JournalEntry, SwapJournal};
 pub use lend_reclaim::{LendReceipt, LendState};
 pub use metadata::MetadataStore;
+pub use observation::{HealthResult, ResetObservation, SwapObservation, SwapTiming, epoch_ms};
 pub use resource_handle::ResourceHandle;
+pub use ring_meta::{MailboxMeta, RingMeta, RingMetaEntry};
+pub use vendor_lifecycle::{
+    RebindStrategy, ResetMethod, VendorLifecycle, detect_lifecycle, detect_lifecycle_for_target,
+};
+pub use vfio_handle::{VfioHandleError, VfioResourceHandle};

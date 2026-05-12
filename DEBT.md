@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S236
+**Date**: May 2026 — S237
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S237 (Wave 8 Phase A — coral-ember Absorption)**:
+Absorbed coralReef `coral-ember` vendor lifecycle (NVIDIA/AMD/Intel/BrainChip/Generic),
+observation types, ring metadata, sysfs abstraction, and error types into `toadstool-ember`.
+Created `VfioResourceHandle` (first production `ResourceHandle` impl). Wired device pool
+into `compute.dispatch.submit` path. `toadstool-server` now depends on `toadstool-ember`.
+90 ember tests, 76 dispatch tests, clippy clean. Remaining absorption: Phase B (glowplug),
+Phase C (cylinder + coral-driver), Phase D (local dispatch).
 
 **S236 (Deep Debt — Magic Numbers + Match Safety + Test Refactor)**:
 Extracted 9 magic numbers in `DiscoveryDefaults`, `DiscoveryConfig`, and

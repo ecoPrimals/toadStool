@@ -26,6 +26,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::RwLock;
+use toadstool_ember::vfio_handle::VfioResourceHandle;
+use toadstool_ember::held_resource::HeldResource;
 use types::{DispatchJob, PipelineJob};
 
 /// Handler for `compute.dispatch.*` JSON-RPC methods.
@@ -49,6 +51,9 @@ pub struct DispatchHandler {
     jobs: Arc<RwLock<HashMap<String, DispatchJob>>>,
     pipelines: Arc<RwLock<HashMap<String, PipelineJob>>>,
     dispatch_count: AtomicU64,
+    /// Device pool — ember-managed VFIO handles keyed by BDF.
+    /// Acquired before dispatch, released after completion.
+    device_pool: Arc<RwLock<HashMap<String, HeldResource<VfioResourceHandle>>>>,
 }
 
 #[expect(
@@ -67,6 +72,30 @@ impl DispatchHandler {
             jobs: Arc::new(RwLock::new(HashMap::new())),
             pipelines: Arc::new(RwLock::new(HashMap::new())),
             dispatch_count: AtomicU64::new(0),
+            device_pool: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Acquire a device handle from the pool, creating one if absent.
+    ///
+    /// This is the lifecycle hook for Phase A — tracks which devices are
+    /// actively being used for dispatch. When Phase D enables local VFIO
+    /// dispatch, this handle will actually open and hold the device fd.
+    pub(super) async fn acquire_device_handle(&self, bdf: &str) {
+        let mut pool = self.device_pool.write().await;
+        if pool.contains_key(bdf) {
+            tracing::debug!(bdf, "ember: reusing existing device handle");
+        } else {
+            let handle = VfioResourceHandle::new(bdf.to_string());
+            let held = HeldResource::new(handle);
+            tracing::info!(bdf, "ember: device handle acquired for dispatch");
+            pool.insert(bdf.to_string(), held);
+        }
+    }
+
+    /// Return the number of actively held device handles.
+    pub(super) async fn held_device_count(&self) -> usize {
+        let pool = self.device_pool.read().await;
+        pool.values().filter(|h| h.is_alive()).count()
     }
 }
