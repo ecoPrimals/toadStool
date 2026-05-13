@@ -234,10 +234,14 @@ async fn capabilities_includes_ember_info() {
         .await
         .expect("capabilities");
     let ember = &result["output"]["ember"];
-    assert_eq!(ember["phase"], "B");
+    assert_eq!(ember["phase"], "D");
     assert!(
         ember["held_devices"].is_u64(),
         "ember.held_devices should be present"
+    );
+    assert!(
+        ember.get("local_dispatch").is_some(),
+        "ember.local_dispatch should be present"
     );
 }
 

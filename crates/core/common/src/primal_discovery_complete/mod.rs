@@ -133,7 +133,7 @@ impl DiscoveryConfig {
     ///
     /// Each capability URL is resolved from env vars, falling back to
     /// `{bind_host}:{port}` using `toadstool_config::ports::capability_fallback`.
-    #[allow(deprecated)] // intentional: legacy env var names used as backward-compat fallbacks
+    #[expect(deprecated, reason = "legacy env var names used as backward-compat fallbacks")]
     fn default_fallbacks() -> HashMap<String, String> {
         let coordination_port = resolve_env_port(
             socket_env::TOADSTOOL_COORDINATION_PORT,

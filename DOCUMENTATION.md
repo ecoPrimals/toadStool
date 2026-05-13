@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S250
+**Last Updated**: May 2026 — S252
 
 ---
 
@@ -40,7 +40,7 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **Phase D: Local dispatch cutover** (S250) — `try_local_dispatch()` via `ComputeDevice` trait before `coral_client` IPC forward. Graceful fallback when no local device factory configured.
 - **Pass 14: `toadstool.validate`** (S250) — Tier 2 Science API pre-flight: workload path parsing, GPU availability, precision tier, estimated dispatch time, warnings, required capabilities.
 - **Wave 8 Phase A–B: ember + glowplug absorbed** (S237–S239) — Vendor lifecycle, `SwapOrchestrator` 7-step lifecycle, `SysfsSwapExecutor`, `GpuPersonality` unified.
-- **Deep Debt** (S240–S250) — All Duration literals extracted to named constants. Legacy primal env vars `#[deprecated]` with migration guidance. Sentinel 999→`Duration::MAX`. Scan subnet env-configurable. Zero library `println!`/`eprintln!`. All production files <800 lines. Zero production mocks/TODO/FIXME/unreachable!(). All unsafe SAFETY-documented. `cargo deny check bans` passes clean.
+- **Deep Debt** (S240–S252) — All Duration literals extracted to named constants. Legacy primal env vars `#[deprecated]` with migration guidance. Sentinel 999→`Duration::MAX`. Scan subnet env-configurable. Zero library `println!`/`eprintln!`. All production files <800 lines. Zero production mocks/TODO/FIXME/unreachable!(). All unsafe SAFETY-documented. All `#[allow(deprecated)]` evolved to `#[expect(deprecated, reason)]` (S252). `cargo deny check bans` passes clean.
 - **Capability-based everywhere**: 0 hardcoded primal names, 0 production mocks, all primal references use capability identifiers. All production logging via `tracing`.
 - **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans active.
 - **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.

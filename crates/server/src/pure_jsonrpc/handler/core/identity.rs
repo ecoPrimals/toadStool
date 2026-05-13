@@ -91,8 +91,13 @@ pub(crate) async fn capabilities_list(
             },
             {
                 "type": "ember",
-                "methods": ["list", "status"],
+                "methods": ["list", "status", "reacquire", "swap", "warm_catch"],
                 "description": "glowPlug/ember GPU device lifecycle"
+            },
+            {
+                "type": "mmio",
+                "methods": ["read32", "write32", "batch", "pramin.read32", "bar0.probe", "falcon.status"],
+                "description": "BAR0 register access and falcon diagnostics"
             }
         ],
         "consumed_capabilities": [

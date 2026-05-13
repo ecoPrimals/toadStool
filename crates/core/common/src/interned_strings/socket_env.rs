@@ -151,6 +151,13 @@ pub const BTSP_RPC_TIMEOUT_SECS: &str = "BTSP_RPC_TIMEOUT_SECS";
 /// runs as the same group but different user.
 pub const TOADSTOOL_SOCKET_MODE: &str = "TOADSTOOL_SOCKET_MODE";
 
+/// Runtime directory for the toadStool socket tree (`/run/toadstool/`).
+///
+/// Contains: `daemon.sock`, per-cylinder sockets (`cylinder-<bdf>.sock`),
+/// and the fleet artifact (`toadstool-fleet.json`).
+/// Override: `TOADSTOOL_RUN_DIR` env var. Default: `/run/toadstool`.
+pub const TOADSTOOL_RUN_DIR: &str = "TOADSTOOL_RUN_DIR";
+
 pub const TOADSTOOL_PORT: &str = "TOADSTOOL_PORT";
 pub const TOADSTOOL_REQUEST_TIMEOUT: &str = "TOADSTOOL_REQUEST_TIMEOUT";
 pub const TOADSTOOL_DNS_RESOLVERS: &str = "TOADSTOOL_DNS_RESOLVERS";

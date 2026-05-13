@@ -120,7 +120,9 @@ impl DispatchHandler {
         self.local_device_factory = Some(factory);
     }
 
-    /// Attempt local dispatch through cylinder's ComputeDevice.
+    /// Attempt local dispatch through cylinder's `ComputeDevice`.
+    ///
+    /// Full lifecycle: alloc → upload → dispatch → sync → readback.
     ///
     /// Returns `Some(result)` if local dispatch was attempted (success or failure).
     /// Returns `None` if no local device factory is configured or the device
@@ -131,6 +133,7 @@ impl DispatchHandler {
         binary: &[u8],
         workgroup_size: [u32; 3],
         shader_info: Option<&serde_json::Value>,
+        buffer_descs: &serde_json::Value,
     ) -> Option<Result<serde_json::Value, String>> {
         let factory = self.local_device_factory.as_ref()?;
 
@@ -168,17 +171,120 @@ impl DispatchHandler {
             }
         };
 
-        match device.dispatch(binary, &[], dims, &info) {
-            Ok(()) => {
-                if let Err(e) = device.sync() {
-                    return Some(Err(format!("local dispatch sync failed: {e}")));
+        Some(Self::run_local_lifecycle(&mut *device, binary, &dims, &info, buffer_descs))
+    }
+}
+
+struct BufMeta {
+    handle: toadstool_cylinder::BufferHandle,
+    size: u64,
+    readback: bool,
+}
+
+impl DispatchHandler {
+    /// Full alloc → upload → dispatch → sync → readback lifecycle on a local device.
+    fn run_local_lifecycle(
+        device: &mut dyn toadstool_cylinder::ComputeDevice,
+        binary: &[u8],
+        dims: &toadstool_cylinder::DispatchDims,
+        info: &toadstool_cylinder::ShaderInfo,
+        buffer_descs: &serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let buf_arr = buffer_descs.as_array();
+        let mut handles: Vec<toadstool_cylinder::BufferHandle> = Vec::new();
+        let mut metas: Vec<BufMeta> = Vec::new();
+
+        if let Some(descs) = buf_arr {
+            for desc in descs {
+                let size = desc
+                    .get("size")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                if size == 0 {
+                    continue;
                 }
-                Some(Ok(serde_json::json!({
-                    "dispatch_path": "local_cylinder",
-                    "status": "completed",
-                })))
+
+                let direction = desc
+                    .get("direction")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("inout");
+
+                let domain = match desc
+                    .get("domain")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("vram")
+                {
+                    "gtt" => toadstool_cylinder::MemoryDomain::Gtt,
+                    "vram_or_gtt" => toadstool_cylinder::MemoryDomain::VramOrGtt,
+                    _ => toadstool_cylinder::MemoryDomain::Vram,
+                };
+
+                let handle = device
+                    .alloc(size, domain)
+                    .map_err(|e| format!("buffer alloc ({size} bytes): {e}"))?;
+
+                if matches!(direction, "in" | "inout")
+                    && let Some(data) = desc.get("data").and_then(serde_json::Value::as_array)
+                {
+                    let bytes: Vec<u8> =
+                        data.iter().map(|v| v.as_u64().unwrap_or(0) as u8).collect();
+                    device
+                        .upload(handle, 0, &bytes)
+                        .map_err(|e| format!("buffer upload: {e}"))?;
+                }
+
+                let needs_readback = matches!(direction, "out" | "inout");
+                metas.push(BufMeta {
+                    handle,
+                    size,
+                    readback: needs_readback,
+                });
+                handles.push(handle);
             }
-            Err(e) => Some(Err(format!("local dispatch failed: {e}"))),
         }
+
+        device
+            .dispatch(binary, &handles, *dims, info)
+            .map_err(|e| format!("local dispatch failed: {e}"))?;
+
+        device
+            .sync()
+            .map_err(|e| format!("local dispatch sync failed: {e}"))?;
+
+        let readback_start = std::time::Instant::now();
+        let mut readback_results: Vec<serde_json::Value> = Vec::new();
+        for meta in &metas {
+            if meta.readback {
+                match device.readback(meta.handle, 0, meta.size as usize) {
+                    Ok(data) => {
+                        readback_results.push(serde_json::json!({
+                            "size": meta.size,
+                            "data_b64": base64::Engine::encode(
+                                &base64::engine::general_purpose::STANDARD,
+                                &data,
+                            ),
+                        }));
+                    }
+                    Err(e) => {
+                        readback_results.push(serde_json::json!({
+                            "size": meta.size,
+                            "error": format!("{e}"),
+                        }));
+                    }
+                }
+            }
+        }
+        let readback_ms = readback_start.elapsed().as_millis() as u64;
+
+        for meta in &metas {
+            let _ = device.free(meta.handle);
+        }
+
+        Ok(serde_json::json!({
+            "dispatch_path": "local_cylinder",
+            "status": "completed",
+            "buffers": readback_results,
+            "readback_ms": readback_ms,
+        }))
     }
 }

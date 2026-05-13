@@ -8,11 +8,28 @@
 
 use std::sync::Arc;
 
-/// Query local GPU and compute capabilities
+static CACHED_CAPABILITIES: std::sync::OnceLock<Vec<Arc<str>>> = std::sync::OnceLock::new();
+
+/// Query local GPU and compute capabilities.
 ///
 /// Uses toadstool-sysmon and wgpu for pure Rust discovery (zero C).
 /// Returns `Arc<str>` per capability — clone is cheap (refcount bump).
+///
+/// Results are cached after first call (hardware doesn't change at runtime).
 pub async fn query_local_capabilities() -> Vec<Arc<str>> {
+    if let Some(cached) = CACHED_CAPABILITIES.get() {
+        return cached.clone();
+    }
+    let caps = query_local_capabilities_uncached().await;
+    CACHED_CAPABILITIES.get_or_init(|| caps).clone()
+}
+
+/// Uncached capability detection — scans hardware every call.
+#[expect(
+    clippy::unused_async,
+    reason = "async required when gpu-discovery feature enables wgpu adapter enumeration"
+)]
+async fn query_local_capabilities_uncached() -> Vec<Arc<str>> {
     let mut capabilities: Vec<Arc<str>> = vec![Arc::from("compute"), Arc::from("cpu")];
 
     let cpus = toadstool_sysmon::cpu_count();

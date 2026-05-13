@@ -5,7 +5,54 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 12, 2026 (Sessions 43-249)
+## [Unreleased] - May 13, 2026 (Sessions 43-252)
+
+### Session S252 (May 13, 2026) — Diesel Engine Migration Batch 1–2 + Deep Debt
+
+Diesel Engine Migration from coral-ember/glowplug into toadStool-native handlers.
+
+- ADDED: `device.swap` JSON-RPC handler — swap GPU to arbitrary target personality via `SwapOrchestrator`
+- ADDED: `device.warm_catch` JSON-RPC handler — detect warm GPU state via PMC_ENABLE sysfs probe
+- ADDED: `mmio.read32` / `mmio.write32` / `mmio.batch` / `mmio.pramin.read32` / `mmio.bar0.probe` / `mmio.falcon.status` — 6 MMIO/Falcon RPC handlers
+- ADDED: `SysfsBar0Rw` — read-write sysfs BAR0 mmap in `toadstool-cylinder`
+- ADDED: `TOADSTOOL_RUN_DIR` env var and `run_dir()` helper for `/run/toadstool/` socket tree
+- ADDED: `DeviceSwapResult` / `DeviceSwapStep` structured response types
+- ADDED: `read_pci_config_u32()` safe sysfs config space reader
+- ADDED: `ember.mmio.*` / `ember.bar0.probe` / `ember.falcon.status` semantic aliases
+- ADDED: mmio capability group in `capabilities.list`
+- ADDED: Wire L3 cost entries for all 8 new methods
+- EVOLVED: 7 `#[allow(deprecated)]` → `#[expect(deprecated, reason)]` across 7 files
+- EVOLVED: `OnceLock` capability cache in `query_local_capabilities()` — GPU enumeration runs once per process
+- FIXED: `test_with_default_timeout_failure` 5s → 10ms (was blocking test suite)
+- METRICS: 74 JSON-RPC methods (direct), 8,827 lib tests, 0 clippy warnings
+
+### Session S251 (May 13, 2026) — hotSpring Sovereign Compute Evolution Pass (C1–C7)
+
+7 gaps resolved from hotSpring hardware validation audit.
+
+- ADDED: Full buffer lifecycle (alloc→upload→dispatch→sync→readback→free) in `try_local_dispatch`
+- ADDED: `shader.dispatch` Phase D integration (local dispatch before coral_client fallback)
+- ADDED: `ember.reacquire` JSON-RPC handler
+- ADDED: `device.list` / `device.status` / `device.reacquire` semantic aliases
+- EVOLVED: Dispatch capabilities `ember.phase` from "B" to "D" with `local_dispatch` status
+- EVOLVED: `GspBridge` / `StubGspBridge` documentation with hotSpring FECS readback context
+- METRICS: 8,809 lib tests, 0 clippy warnings
+
+### Session S250 (May 12, 2026) — Pass 12-14 + Deep Debt
+
+Phase C Batch 5–7 absorption, Phase D local dispatch, `toadstool.validate`.
+
+- ADDED: Phase C Batch 5 — VFIO channel orchestration (devinit, glowplug, HBM2, diagnostics)
+- ADDED: Phase C Batch 6 — sovereign_init/stages, falcon_pio
+- ADDED: Phase C Batch 7 — bar0, probe, GspBridge trait boundary
+- ADDED: Phase D — local dispatch cutover (`try_local_dispatch` with `ComputeDevice`)
+- ADDED: `toadstool.validate` Tier 2 Science API method
+- ADDED: `pcie.rs` `GpuTarget` local adapter
+- EVOLVED: Legacy primal env vars to `#[deprecated(note = "...")]`
+- EVOLVED: `StubRuntimeEngine` / `NoopCloudProvider` / `NoopCryptoProvider` documented as null-objects
+- EVOLVED: `DEFAULT_SCAN_SUBNET` → `TOADSTOOL_SCAN_SUBNET` env var lookup
+- EVOLVED: `NO_HISTORY_SENTINEL_SECS = 999` → `Duration::MAX`
+- METRICS: 520 cylinder tests, 8,704+ lib tests, 0 clippy warnings
 
 ### Session S249 (May 12, 2026) — Deep Debt: Duration Constants + Deprecated Cleanup
 

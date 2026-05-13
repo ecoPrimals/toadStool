@@ -115,7 +115,8 @@ impl DispatchHandler {
                 "total_dispatch_count": self.dispatch_count.load(Ordering::Relaxed),
                 "ember": {
                     "held_devices": self.held_device_count().await,
-                    "phase": "B",
+                    "phase": "D",
+                    "local_dispatch": self.local_device_factory.is_some(),
                 },
                 "glowplug": {
                     "orchestrator": "SwapOrchestrator<SysfsSwapExecutor>",

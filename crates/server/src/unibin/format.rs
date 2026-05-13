@@ -92,7 +92,7 @@ pub fn legacy_socket_filename_for_family(family_id: &str) -> String {
 /// 3. BIOMEOS_SOCKET_PATH env var
 /// 4. XDG runtime directory
 /// 5. /tmp fallback
-#[allow(deprecated)] // intentional: reads legacy PRIMAL_SOCKET as backward-compat fallback
+#[expect(deprecated, reason = "reads legacy PRIMAL_SOCKET as backward-compat fallback")]
 pub fn get_socket_path(family_id: &str, _node_id: &str) -> ServerResult<PathBuf> {
     if let Ok(socket) = std::env::var(socket_env::TOADSTOOL_SOCKET) {
         info!("✅ Using socket path from TOADSTOOL_SOCKET: {}", socket);

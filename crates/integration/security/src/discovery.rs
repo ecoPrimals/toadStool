@@ -97,7 +97,7 @@ impl EntropyClient {
     /// 3. Select best available service
     ///
     /// For now, returns error to demonstrate graceful fallback.
-    #[allow(deprecated)] // intentional: reads legacy BEARDOG_URL as backward-compat fallback
+    #[expect(deprecated, reason = "reads legacy BEARDOG_URL as backward-compat fallback")]
     async fn discover_via_capability() -> Result<String, SecurityError> {
         // Future: Implement full capability discovery via coordination unix socket
         // Current: Falls back to system entropy (graceful degradation)

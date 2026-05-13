@@ -96,6 +96,33 @@ where
     add_mapping("shader.dispatch", "shader_dispatch");
 
     // ═══════════════════════════════════════════════════════════
+    // DEVICE DOMAIN — diesel-mode aliases for ember GPU lifecycle
+    //
+    // hotSpring and external callers may use `device.*` (the
+    // cylinder translation surface) instead of `ember.*`.
+    // ═══════════════════════════════════════════════════════════
+
+    add_mapping("device.list", "ember_list");
+    add_mapping("device.status", "ember_status");
+    add_mapping("device.reacquire", "ember_reacquire");
+    add_mapping("device.swap", "device_swap");
+    add_mapping("device.warm_catch", "device_warm_catch");
+
+    // ═══════════════════════════════════════════════════════════
+    // MMIO DOMAIN — BAR0 register access and falcon status
+    //
+    // Direct hardware register access for diagnostics and
+    // sovereign GPU init. All operations use sysfs BAR0 mmap.
+    // ═══════════════════════════════════════════════════════════
+
+    add_mapping("ember.mmio.read32", "mmio_read32");
+    add_mapping("ember.mmio.write32", "mmio_write32");
+    add_mapping("ember.mmio.batch", "mmio_batch");
+    add_mapping("ember.mmio.pramin.read32", "mmio_pramin_read32");
+    add_mapping("ember.bar0.probe", "mmio_bar0_probe");
+    add_mapping("ember.falcon.status", "mmio_falcon_status");
+
+    // ═══════════════════════════════════════════════════════════
     // COMPUTE DISPATCH DOMAIN - GPU binary dispatch (PG-15 compliance)
     //
     // `compute.dispatch` is the bare entry point (routes to dispatch_submit).

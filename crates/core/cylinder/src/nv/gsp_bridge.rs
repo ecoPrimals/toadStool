@@ -8,9 +8,14 @@
 //!
 //! This keeps the wire-only principle intact: toadStool does hardware,
 //! coralReef does firmware/compiler. The bridge can be implemented:
-//! - Locally (when vfio_compute modules are fully absorbed)
-//! - Via IPC (JSON-RPC call to coralReef)
-//! - As a no-op stub (for testing or hardware without firmware needs)
+//! - Locally (when vfio_compute modules are fully absorbed into cylinder)
+//! - Via IPC (JSON-RPC call to coralReef's `compute.firmware.*` methods)
+//! - As [`StubGspBridge`] (sentinel for hardware without firmware needs,
+//!   or before coralReef connection is established)
+//!
+//! **hotSpring validation (May 2026):** Warm VFIO open and sovereign init
+//! stages 1-3 work with `StubGspBridge`. FECS compute context init (stage 4)
+//! requires a real bridge — either warm-handoff or coralReef IPC.
 
 use crate::error::DriverResult;
 use crate::vfio::device::MappedBar;
@@ -77,11 +82,22 @@ pub trait GspBridge: Send + Sync {
     fn pgob_disable(&self, bar0: &MappedBar) -> DriverResult<PgobResult>;
 }
 
-/// Stub bridge that returns errors for all firmware operations.
+/// Sentinel `GspBridge` — null-object default when no firmware provider
+/// is available.
 ///
-/// Used when no firmware provider is available (e.g., testing, or before
-/// coralReef connection is established). Sovereign init will report
-/// firmware paths as unavailable but non-firmware stages still run.
+/// This is **not** a test mock. It is the complete implementation of the
+/// "no firmware provider" state. Non-firmware stages (bar0_probe, pmc_enable,
+/// memory training, warm detection) run normally. Firmware-dependent stages
+/// (ACR boot, FECS/GPCCS PIO upload, GR init via `boot_fecs`) return
+/// [`DriverError::Unsupported`] with guidance to connect a `GspBridge`
+/// implementor.
+///
+/// **Hardware validation note (hotSpring May 2026):** Dispatch readback
+/// fails at FECS compute context init because `StubGspBridge` cannot
+/// upload FECS firmware. The production path is either:
+/// - coralReef provides a real `GspBridge` impl via IPC
+/// - toadStool absorbs `vfio_compute` with a local `NvGspBridge` impl
+/// - Warm-handoff from nouveau/nvidia-470 preserves FECS state
 #[derive(Debug, Default)]
 pub struct StubGspBridge;
 

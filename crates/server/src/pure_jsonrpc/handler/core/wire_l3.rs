@@ -260,6 +260,44 @@ pub(super) fn cost_estimates() -> serde_json::Value {
     // Ember — device lifecycle
     map.insert("ember.list".into(), cost("low", false, 5, "low", "none"));
     map.insert("ember.status".into(), cost("low", false, 5, "low", "none"));
+    map.insert(
+        "ember.reacquire".into(),
+        cost("medium", true, 30, "medium", "device"),
+    );
+    map.insert(
+        "device.swap".into(),
+        cost("high", true, 200, "high", "device"),
+    );
+    map.insert(
+        "device.warm_catch".into(),
+        cost("low", false, 10, "low", "none"),
+    );
+
+    // MMIO — BAR0 register access
+    map.insert(
+        "mmio.read32".into(),
+        cost("low", false, 1, "low", "none"),
+    );
+    map.insert(
+        "mmio.write32".into(),
+        cost("low", false, 1, "low", "none"),
+    );
+    map.insert(
+        "mmio.batch".into(),
+        cost("medium", false, 5, "low", "none"),
+    );
+    map.insert(
+        "mmio.pramin.read32".into(),
+        cost("low", false, 1, "low", "none"),
+    );
+    map.insert(
+        "mmio.bar0.probe".into(),
+        cost("low", false, 5, "low", "none"),
+    );
+    map.insert(
+        "mmio.falcon.status".into(),
+        cost("low", false, 5, "low", "none"),
+    );
 
     serde_json::Value::Object(map)
 }

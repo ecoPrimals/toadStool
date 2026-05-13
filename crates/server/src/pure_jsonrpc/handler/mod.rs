@@ -12,6 +12,7 @@ mod dispatch;
 mod hw_learn;
 mod job;
 pub mod method_gate;
+mod mmio;
 mod resources;
 mod silicon;
 mod transport;
@@ -346,6 +347,16 @@ impl JsonRpcHandler {
 
             "ember.list" => return Ok(self.ember_list()),
             "ember.status" => return Ok(self.ember_status()),
+            "ember.reacquire" => return self.ember_reacquire(params).await,
+            "device.swap" => return self.device_swap(params).await,
+            "device.warm_catch" => return self.device_warm_catch(params),
+
+            "mmio.read32" => return mmio::mmio_read32(params),
+            "mmio.write32" => return mmio::mmio_write32(params),
+            "mmio.batch" => return mmio::mmio_batch(params),
+            "mmio.pramin.read32" => return mmio::mmio_pramin_read32(params),
+            "mmio.bar0.probe" => return mmio::mmio_bar0_probe(params),
+            "mmio.falcon.status" => return mmio::mmio_falcon_status(params),
 
             "compute.performance_surface.report" => {
                 return self.silicon.report(params).await;
@@ -424,6 +435,17 @@ impl JsonRpcHandler {
             "performance_surface_query" => self.silicon.query(params).await,
             "performance_surface_list" => self.silicon.list().await,
             "route_multi_unit" => self.silicon.route_multi_unit(params).await,
+            "ember_list" => Ok(self.ember_list()),
+            "ember_status" => Ok(self.ember_status()),
+            "ember_reacquire" => self.ember_reacquire(params).await,
+            "device_swap" => self.device_swap(params).await,
+            "device_warm_catch" => self.device_warm_catch(params),
+            "mmio_read32" => mmio::mmio_read32(params),
+            "mmio_write32" => mmio::mmio_write32(params),
+            "mmio_batch" => mmio::mmio_batch(params),
+            "mmio_pramin_read32" => mmio::mmio_pramin_read32(params),
+            "mmio_bar0_probe" => mmio::mmio_bar0_probe(params),
+            "mmio_falcon_status" => mmio::mmio_falcon_status(params),
             "auth_check" => auth::auth_check(&self.gate, params),
             "auth_mode" => auth::auth_mode(&self.gate),
             "auth_peer_info" => auth::auth_peer_info(ctx),
@@ -455,6 +477,54 @@ impl JsonRpcHandler {
     fn ember_status(&self) -> serde_json::Value {
         let status = self.glowplug.status();
         serde_json::to_value(status).unwrap_or_else(|_| serde_json::json!({"available": false}))
+    }
+
+    async fn ember_reacquire(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let result = self.glowplug.reacquire(bdf).await;
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
+
+    /// `device.swap` — swap a GPU to a target personality (e.g. "vfio-pci", "nouveau").
+    async fn device_swap(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+        let target = params
+            .and_then(|p| p.get("target"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params("Missing 'target' string parameter (driver name)")
+            })?;
+
+        let result = self.glowplug.swap(bdf, target).await;
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
+
+    /// `device.warm_catch` — detect warm GPU state via PMC_ENABLE probe.
+    fn device_warm_catch(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, JsonRpcError> {
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        Ok(self.glowplug.warm_detect(bdf))
     }
 }
 

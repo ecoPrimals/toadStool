@@ -89,6 +89,15 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "shader.dispatch",
     "ember.list",
     "ember.status",
+    "ember.reacquire",
+    "device.swap",
+    "device.warm_catch",
+    "mmio.read32",
+    "mmio.write32",
+    "mmio.batch",
+    "mmio.pramin.read32",
+    "mmio.bar0.probe",
+    "mmio.falcon.status",
     "provenance.query",
 ];
 

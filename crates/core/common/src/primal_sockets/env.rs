@@ -65,7 +65,7 @@ pub struct SocketPathEnv {
 impl SocketPathEnv {
     /// Capture current environment (production use)
     #[must_use]
-    #[allow(deprecated)] // intentional: reads legacy env var names as backward-compat fallbacks
+    #[expect(deprecated, reason = "reads legacy env var names as backward-compat fallbacks")]
     pub fn from_env() -> Self {
         Self {
             xdg_runtime_dir: std::env::var(socket_env::XDG_RUNTIME_DIR).ok(),

@@ -188,8 +188,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_with_default_timeout_failure() {
-        let result = with_default_timeout(std::future::pending::<()>()).await;
+    async fn test_with_timeout_elapsed() {
+        let result = with_timeout_duration(std::future::pending::<()>(), Duration::from_millis(10)).await;
         assert_eq!(result, Err(TimeoutError::Elapsed));
     }
 

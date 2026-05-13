@@ -1,13 +1,13 @@
 # Testing Guide
 
-**Last Updated**: May 2, 2026 — S217
+**Last Updated**: May 13, 2026 — S252
 
 ## Quick Status
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Lib-Only Tests** | **7,842+ (S217)** | 0 failures, unlimited parallelism |
-| **Workspace Tests** | **22,429+ (default features)** | ~222 intentional GPU/hardware ignores |
+| **Lib-Only Tests** | **8,827+ (S252)** | 0 failures, unlimited parallelism |
+| **Workspace Tests** | **22,900+ (default features)** | ~222 intentional GPU/hardware ignores |
 | **Line Coverage** | **~83.6% (lib-only)** | ~185K production lines. Gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
 | **Clippy Pedantic** | **0 warnings** | Full workspace (`-D warnings`), in CI |
 | **BarraCuda Tests** | Separate primal | Budded to `ecoPrimals/barraCuda/` (S93) |

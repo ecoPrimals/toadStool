@@ -120,6 +120,52 @@ impl DispatchHandler {
 
         let needs_shader_service = matches!(dispatch_mode.as_str(), "vfio" | "drm");
 
+        // Phase D: try local dispatch via cylinder before coral_client IPC.
+        if needs_shader_service {
+            self.acquire_device_handle(&bdf).await;
+
+            if let Some(local_result) = self
+                .try_local_dispatch(
+                    &bdf,
+                    &binary_bytes,
+                    workgroup_size,
+                    None,
+                    &buffer_descs,
+                )
+                .await
+            {
+                match local_result {
+                    Ok(local_output) => {
+                        let mut jobs = self.jobs.write().await;
+                        if let Some(job) = jobs.get_mut(&job_id) {
+                            job.status = DispatchStatus::Completed;
+                            job.result = Some(local_output.clone());
+                        }
+                        return Ok(serde_json::json!({
+                            "domain": "compute.dispatch",
+                            "operation": "shader",
+                            "job_id": job_id,
+                            "status": "completed",
+                            "output": local_output,
+                            "error": null,
+                            "metadata": {
+                                "bdf": bdf,
+                                "dispatch_mode": "local_cylinder",
+                                "binary_size": binary_bytes.len(),
+                                "arch": source_arch,
+                                "thermal_checked": thermal.is_some(),
+                                "workgroup_size": workgroup_size,
+                                "readback": readback,
+                            },
+                        }));
+                    }
+                    Err(e) => {
+                        tracing::warn!(bdf, error = %e, "shader local dispatch failed — falling through to coral_client");
+                    }
+                }
+            }
+        }
+
         if needs_shader_service && !self.coral_client.is_available().await {
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {

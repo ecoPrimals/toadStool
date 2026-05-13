@@ -352,7 +352,7 @@ impl DispatchHandler {
         // Phase D: try local dispatch via cylinder before coral_client IPC.
         if needs_coral
             && let Some(local_result) = self
-                .try_local_dispatch(&bdf, &binary_bytes, workgroup_size, shader_info.as_ref())
+                .try_local_dispatch(&bdf, &binary_bytes, workgroup_size, shader_info.as_ref(), &buffer_descs)
                 .await
         {
             let dispatch_ms = submit_instant.elapsed().as_millis() as u64;
@@ -370,7 +370,10 @@ impl DispatchHandler {
                         "status": "completed",
                         "output": local_output,
                         "error": null,
-                        "timing": { "dispatch_ms": dispatch_ms, "readback_ms": 0 },
+                        "timing": {
+                            "dispatch_ms": dispatch_ms,
+                            "readback_ms": local_output.get("readback_ms").and_then(serde_json::Value::as_u64).unwrap_or(0),
+                        },
                         "metadata": {
                             "bdf": bdf,
                             "dispatch_mode": "local_cylinder",

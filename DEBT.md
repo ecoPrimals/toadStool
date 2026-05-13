@@ -1,12 +1,30 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S249
+**Date**: May 2026 — S252
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S252 (Diesel Engine Migration Batch 1–2 + Deep Debt)**:
+`device.swap` + `device.warm_catch` JSON-RPC handlers. 6 MMIO/Falcon RPC
+handlers (`mmio.read32/write32/batch/pramin.read32/bar0.probe/falcon.status`).
+`SysfsBar0Rw` read-write BAR0 mmap in cylinder. `TOADSTOOL_RUN_DIR` socket
+layout. 7 `#[allow(deprecated)]` evolved to `#[expect(deprecated, reason)]`.
+Test perf: 5s timeout → 10ms, `OnceLock` capability cache. 74 JSON-RPC methods.
+8,827 lib tests, 0 failures, 0 clippy warnings.
+
+**S251 (hotSpring Sovereign Compute Evolution Pass C1–C7)**:
+Full buffer lifecycle in local dispatch. `shader.dispatch` Phase D integration.
+`ember.reacquire` wired. `device.*` → `ember.*` semantic aliases. Dispatch
+capabilities phase B→D. GspBridge boundary documented. 8,809 lib tests.
+
+**S250 (Pass 12-14 + Deep Debt)**:
+Phase C Batch 5–7 (VFIO channel, sovereign init/stages, BAR0, GspBridge).
+Phase D local dispatch cutover. `toadstool.validate` Tier 2 Science API.
+Legacy primal env vars `#[deprecated]`. 520 cylinder tests.
 
 **S249 (Deep Debt: Duration Constants + Deprecated Cleanup)**:
 Full-spectrum audit and cleanup. Extracted ~55 Duration constants across CLI

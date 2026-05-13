@@ -47,6 +47,30 @@ pub struct EmberReacquireResult {
     pub bdf: String,
 }
 
+/// Swap result returned by `device.swap`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceSwapResult {
+    /// BDF of the swapped device.
+    pub bdf: String,
+    /// Target personality the device was swapped to.
+    pub target: String,
+    /// Whether the swap succeeded.
+    pub success: bool,
+    /// Per-step timing from the orchestrator.
+    pub steps: Vec<DeviceSwapStep>,
+}
+
+/// Single step in a device swap lifecycle.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceSwapStep {
+    /// Step identifier (e.g. "detect_driver", "swap_to_vfio").
+    pub name: String,
+    /// Wall-clock duration in milliseconds.
+    pub duration_ms: u64,
+    /// Whether this step succeeded.
+    pub success: bool,
+}
+
 /// toadStool-native device management service.
 ///
 /// Manages GPU device lifecycle directly — no external primal dependency.
@@ -112,6 +136,54 @@ impl GlowPlugClient {
             .await
     }
 
+    /// Swap a device to an arbitrary target personality via orchestrated lifecycle.
+    ///
+    /// Returns a [`DeviceSwapResult`] with per-step timing and success status.
+    pub async fn swap(&self, bdf: &str, target: &str) -> DeviceSwapResult {
+        let result = self.swap_device_orchestrated(bdf, target).await;
+        debug!(
+            bdf,
+            target,
+            success = result.success,
+            "device.swap via orchestrator"
+        );
+        DeviceSwapResult {
+            bdf: bdf.to_string(),
+            target: target.to_string(),
+            success: result.success,
+            steps: result
+                .steps
+                .iter()
+                .map(|s| DeviceSwapStep {
+                    name: s.name.clone(),
+                    duration_ms: s.duration_ms,
+                    success: s.status == toadstool_glowplug::boot::StepStatus::Ok,
+                })
+                .collect(),
+        }
+    }
+
+    /// Detect whether a GPU is in a warm state (HBM/GDDR trained, engines enabled).
+    ///
+    /// Reads PMC_ENABLE and PRAMIN sentinel via sysfs resource to determine
+    /// if the GPU was previously initialized (e.g. by nouveau warm-handoff).
+    pub fn warm_detect(&self, bdf: &str) -> serde_json::Value {
+        let resource_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+        let pmc_enable = read_pci_config_u32(bdf, 0x200);
+        let popcount = pmc_enable.count_ones();
+        let warm = popcount >= 8;
+
+        debug!(bdf, pmc_enable = format!("{pmc_enable:#010x}"), popcount, warm, "device.warm_catch");
+
+        serde_json::json!({
+            "bdf": bdf,
+            "warm_detected": warm,
+            "pmc_enable": format!("{pmc_enable:#010x}"),
+            "pmc_popcount": popcount,
+            "resource0_exists": std::path::Path::new(&resource_path).exists(),
+        })
+    }
+
     /// Reacquire a device (rebind to vfio-pci via orchestrated lifecycle).
     pub async fn reacquire(&self, bdf: &str) -> EmberReacquireResult {
         let result = self.swap_device_orchestrated(bdf, "vfio-pci").await;
@@ -131,6 +203,14 @@ impl GlowPlugClient {
     }
 }
 
+/// Resolve the runtime directory for toadStool's socket tree.
+///
+/// Priority: `TOADSTOOL_RUN_DIR` env → `/run/toadstool`.
+pub fn run_dir() -> std::path::PathBuf {
+    std::env::var("TOADSTOOL_RUN_DIR")
+        .map_or_else(|_| std::path::PathBuf::from("/run/toadstool"), std::path::PathBuf::from)
+}
+
 /// Shared glowPlug service wrapped in Arc for handler use.
 pub type SharedGlowPlugClient = Arc<GlowPlugClient>;
 
@@ -145,6 +225,26 @@ fn read_current_driver(bdf: &str) -> Option<String> {
     std::fs::read_link(&link)
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+}
+
+/// Read a 32-bit value from PCI config space via sysfs.
+///
+/// Falls back to `0` if the device or offset is inaccessible. This is safe:
+/// reading sysfs config files does not require any `unsafe`.
+fn read_pci_config_u32(bdf: &str, offset: u64) -> u32 {
+    use std::io::{Read, Seek, SeekFrom};
+    let path = format!("/sys/bus/pci/devices/{bdf}/config");
+    let Ok(mut f) = std::fs::File::open(&path) else {
+        return 0;
+    };
+    if f.seek(SeekFrom::Start(offset)).is_err() {
+        return 0;
+    }
+    let mut buf = [0u8; 4];
+    if f.read_exact(&mut buf).is_err() {
+        return 0;
+    }
+    u32::from_le_bytes(buf)
 }
 
 /// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).
@@ -258,5 +358,64 @@ mod tests {
     fn read_current_driver_nonexistent_device() {
         let result = read_current_driver("ffff:ff:ff.f");
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn swap_returns_result_with_steps() {
+        let client = GlowPlugClient::new();
+        let result = client.swap("0000:99:00.0", "vfio-pci").await;
+        assert_eq!(result.bdf, "0000:99:00.0");
+        assert_eq!(result.target, "vfio-pci");
+        assert!(!result.steps.is_empty());
+    }
+
+    #[test]
+    fn warm_detect_nonexistent_device() {
+        let client = GlowPlugClient::new();
+        let result = client.warm_detect("ffff:ff:ff.f");
+        assert_eq!(result["bdf"], "ffff:ff:ff.f");
+        assert_eq!(result["warm_detected"], false);
+        assert_eq!(result["resource0_exists"], false);
+    }
+
+    #[test]
+    fn device_swap_result_serialization() {
+        let result = DeviceSwapResult {
+            bdf: "0000:01:00.0".to_string(),
+            target: "nouveau".to_string(),
+            success: true,
+            steps: vec![DeviceSwapStep {
+                name: "detect_driver".to_string(),
+                duration_ms: 5,
+                success: true,
+            }],
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["bdf"], "0000:01:00.0");
+        assert_eq!(json["target"], "nouveau");
+        assert_eq!(json["success"], true);
+        assert_eq!(json["steps"][0]["name"], "detect_driver");
+    }
+
+    #[test]
+    fn run_dir_default() {
+        temp_env::with_var_unset("TOADSTOOL_RUN_DIR", || {
+            let dir = super::run_dir();
+            assert_eq!(dir, std::path::PathBuf::from("/run/toadstool"));
+        });
+    }
+
+    #[test]
+    fn run_dir_override() {
+        temp_env::with_var("TOADSTOOL_RUN_DIR", Some("/custom/toadstool"), || {
+            let dir = super::run_dir();
+            assert_eq!(dir, std::path::PathBuf::from("/custom/toadstool"));
+        });
+    }
+
+    #[test]
+    fn read_pci_config_u32_nonexistent() {
+        let val = read_pci_config_u32("ffff:ff:ff.f", 0x200);
+        assert_eq!(val, 0);
     }
 }
