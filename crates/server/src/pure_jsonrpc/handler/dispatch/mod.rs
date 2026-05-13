@@ -112,7 +112,6 @@ impl DispatchHandler {
     /// When set, dispatch attempts local execution before falling back to
     /// coral_client IPC. The factory receives a BDF and returns a `ComputeDevice`
     /// if the device can be opened locally.
-    #[allow(dead_code, reason = "wired when NvVfioComputeDevice is absorbed into cylinder")]
     pub fn set_local_device_factory(
         &mut self,
         factory: LocalDeviceFactory,
@@ -287,4 +286,66 @@ impl DispatchHandler {
             "readback_ms": readback_ms,
         }))
     }
+}
+
+/// Create a local device factory for Phase D sovereign dispatch.
+///
+/// The factory resolves a PCI BDF to a DRM render node via sysfs, probes
+/// the driver, and returns the appropriate `ComputeDevice`:
+/// - `amdgpu` → `AmdDevice::open_path`
+/// - Other vendors → `None` (fall through to coral_client IPC)
+#[cfg(target_os = "linux")]
+pub(super) fn create_cylinder_device_factory() -> LocalDeviceFactory {
+    Arc::new(|bdf: &str| -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> {
+        let render_path = resolve_render_node(bdf)?;
+
+        let drm_dev = toadstool_cylinder::drm::DrmDevice::open(&render_path).ok()?;
+        let driver = drm_dev.driver_name().ok()?;
+        drop(drm_dev);
+
+        match driver.as_str() {
+            "amdgpu" => {
+                match toadstool_cylinder::amd::AmdDevice::open_path(&render_path) {
+                    Ok(dev) => {
+                        tracing::info!(bdf, render = %render_path, "Phase D: opened AMD compute device");
+                        Some(Box::new(dev))
+                    }
+                    Err(e) => {
+                        tracing::warn!(bdf, render = %render_path, error = %e, "AMD device open failed");
+                        None
+                    }
+                }
+            }
+            "nouveau" => {
+                tracing::debug!(bdf, "NVIDIA nouveau: NvVfioComputeDevice available but FECS-gated");
+                None
+            }
+            other => {
+                tracing::debug!(bdf, driver = other, "no local ComputeDevice impl for this driver");
+                None
+            }
+        }
+    })
+}
+
+#[cfg(not(target_os = "linux"))]
+pub(super) fn create_cylinder_device_factory() -> Option<LocalDeviceFactory> {
+    None
+}
+
+/// Resolve a PCI BDF to its DRM render node path via sysfs.
+///
+/// Reads `/sys/bus/pci/devices/{bdf}/drm/` for `renderD*` entries.
+#[cfg(target_os = "linux")]
+fn resolve_render_node(bdf: &str) -> Option<String> {
+    let drm_dir = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "drm");
+    let entries = std::fs::read_dir(drm_dir).ok()?;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.starts_with("renderD") {
+            return Some(format!("/dev/dri/{name_str}"));
+        }
+    }
+    None
 }

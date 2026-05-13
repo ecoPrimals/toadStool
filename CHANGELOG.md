@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-253)
+## [Unreleased] - May 13, 2026 (Sessions 43-254)
+
+### Session S254 (May 13, 2026) — Phase D Factory + NvVfioComputeDevice
+
+primalSpring glacial debt audit response: Phase D local dispatch wired, NV VFIO skeleton created.
+
+- ADDED: `create_cylinder_device_factory()` — BDF → sysfs DRM → driver → `ComputeDevice` (AMD live, NV FECS-gated)
+- ADDED: `NvVfioComputeDevice` implementing `ComputeDevice` trait — cold/warm FECS gating, BOOT0 → SM → generation caps
+- WIRED: `LocalDeviceFactory` registered at `DispatchHandler` construction — `local_dispatch: true` in capabilities
+- ADDED: BDF → render node resolution via sysfs for Phase D dispatch routing
+- METRICS: 74 JSON-RPC methods, 8,832+ lib tests, 0 clippy warnings, deny clean
 
 ### Session S253 (May 13, 2026) — Phase C Complete + Deep Debt Sweep
 

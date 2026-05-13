@@ -90,6 +90,20 @@ impl JsonRpcHandler {
             _ => method_gate::MethodGate::permissive(),
         };
 
+        let mut dispatch = DispatchHandler::new(
+            crate::visualization_client::create_visualization_client(),
+            Self::try_connect_security_client(),
+        );
+        #[cfg(target_os = "linux")]
+        {
+            tracing::info!("Phase D: local cylinder device factory registered");
+            dispatch.set_local_device_factory(dispatch::create_cylinder_device_factory());
+        }
+        #[cfg(not(target_os = "linux"))]
+        if let Some(factory) = dispatch::create_cylinder_device_factory() {
+            dispatch.set_local_device_factory(factory);
+        }
+
         Self {
             version: version.into(),
             start_time: std::time::Instant::now(),
@@ -97,10 +111,7 @@ impl JsonRpcHandler {
             ready,
             gate,
             semantic_registry: SemanticMethodRegistry::new(),
-            dispatch: DispatchHandler::new(
-                crate::visualization_client::create_visualization_client(),
-                Self::try_connect_security_client(),
-            ),
+            dispatch,
             hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(local_gate_id),
             workload: WorkloadHandler::new(executor),

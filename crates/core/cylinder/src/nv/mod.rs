@@ -9,6 +9,7 @@
 //! remain in coralReef until Phase D or trait boundary.
 
 pub mod bar0;
+pub mod compute_device;
 pub mod falcon_pio;
 pub mod generation;
 pub mod gsp_bridge;
