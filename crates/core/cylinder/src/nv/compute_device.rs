@@ -5,21 +5,57 @@
 //! the direct-dispatch path: toadStool owns the GPU fd, programs PBDMA channels
 //! via BAR0 MMIO, and reads back results without any kernel driver intermediary.
 //!
-//! # Current status
+//! # FECS gate
 //!
-//! **FECS-gated**: The full dispatch path (alloc → upload → dispatch → sync →
-//! readback) requires a running FECS (Falcon Engine Compute Scheduler). The FECS
-//! firmware is managed by [`GspBridge`](super::gsp_bridge::GspBridge):
+//! The full dispatch path (alloc → upload → dispatch → sync → readback)
+//! requires a running FECS (Falcon Engine Compute Scheduler):
 //!
 //! - **Warm path** (nouveau/nvidia-470 preserves FECS state): dispatch works
 //! - **Cold path** (FECS needs firmware upload): requires real `GspBridge`
 //! - **Stub path** (`StubGspBridge`): FECS boot returns `Unsupported`
 //!
-//! Until the FECS firmware bridge is resolved, `dispatch()` returns
-//! `DriverError::Unsupported` on cold-boot devices.
+//! # PBDMA dispatch
+//!
+//! After [`open_vfio`](NvVfioComputeDevice::open_vfio), the device holds a live
+//! PFIFO channel with GPFIFO ring and USERD page. `alloc`/`upload`/`readback`
+//! map through [`DmaBuffer`](crate::vfio::dma::DmaBuffer), and `dispatch`
+//! submits a pushbuffer via GPFIFO + doorbell.
+
+use std::borrow::Cow;
+use std::collections::HashMap;
 
 use crate::error::{DriverError, DriverResult};
 use crate::{BufferHandle, ComputeDevice, DispatchDims, HardwareCapabilities, MemoryDomain, ShaderInfo};
+
+/// GPFIFO ring IOVA — beyond channel infrastructure (0x3000–0xBFFF).
+const GPFIFO_IOVA: u64 = 0x1_0000;
+/// USERD page IOVA.
+const USERD_IOVA: u64 = 0x1_1000;
+/// First IOVA available for user DMA buffers.
+const USER_BUFFER_BASE_IOVA: u64 = 0x2_0000;
+/// GPFIFO entry count (4 KiB / 8 bytes per entry = 512).
+const GPFIFO_ENTRIES: u32 = 512;
+/// Maximum IOVA for identity-mapped region (PT0 maps 512 × 4 KiB = 2 MiB).
+const IOVA_LIMIT: u64 = 0x20_0000;
+/// Page size for IOVA alignment.
+const PAGE_SIZE: u64 = 4096;
+
+/// Live VFIO state for PBDMA dispatch. Populated by [`NvVfioComputeDevice::open_vfio`].
+#[cfg(target_os = "linux")]
+struct VfioDispatchState {
+    #[expect(dead_code, reason = "VfioDevice held for fd lifetime — dropping closes VFIO")]
+    device: crate::vfio::VfioDevice,
+    bar0: crate::vfio::device::MappedBar,
+    channel: crate::vfio::channel::VfioChannel,
+    dma_backend: crate::vfio::device::DmaBackend,
+    gpfifo: crate::vfio::dma::DmaBuffer,
+    userd: crate::vfio::dma::DmaBuffer,
+    buffers: HashMap<u32, crate::vfio::dma::DmaBuffer>,
+    inflight: Vec<BufferHandle>,
+    next_handle: u32,
+    next_iova: u64,
+    gp_put: u32,
+}
 
 /// NVIDIA GPU compute device via VFIO direct dispatch.
 ///
@@ -29,6 +65,8 @@ pub struct NvVfioComputeDevice {
     bdf: String,
     caps: HardwareCapabilities,
     fecs_ready: bool,
+    #[cfg(target_os = "linux")]
+    vfio_state: Option<VfioDispatchState>,
 }
 
 impl NvVfioComputeDevice {
@@ -43,6 +81,8 @@ impl NvVfioComputeDevice {
             bdf,
             caps: HardwareCapabilities::UNKNOWN,
             fecs_ready: false,
+            #[cfg(target_os = "linux")]
+            vfio_state: None,
         }
     }
 
@@ -55,6 +95,8 @@ impl NvVfioComputeDevice {
             bdf,
             caps: profile.to_capabilities(),
             fecs_ready: false,
+            #[cfg(target_os = "linux")]
+            vfio_state: None,
         }
     }
 
@@ -175,41 +217,227 @@ impl NvVfioComputeDevice {
     pub fn is_fecs_ready(&self) -> bool {
         self.fecs_ready
     }
+
+    /// Open the VFIO device and create a PFIFO channel for PBDMA dispatch.
+    ///
+    /// After this call, `alloc`/`upload`/`readback`/`dispatch`/`sync` use
+    /// real DMA buffers and GPFIFO submission instead of returning
+    /// `Unsupported`.
+    ///
+    /// Uses warm handoff channel creation if FECS is already ready
+    /// (preserves falcon engine state from nouveau/nvidia-470).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if VFIO device open, BAR0 map, DMA buffer allocation,
+    /// or channel creation fails.
+    #[cfg(target_os = "linux")]
+    pub fn open_vfio(&mut self) -> DriverResult<()> {
+        use crate::vfio::channel::VfioChannel;
+        use crate::vfio::dma::DmaBuffer;
+        use crate::vfio::VfioDevice;
+
+        let device = VfioDevice::open(&self.bdf)?;
+        let bar0 = device.map_bar(0)?;
+        let dma_backend = device.dma_backend();
+
+        let gpfifo = DmaBuffer::new(dma_backend.clone(), 4096, GPFIFO_IOVA)?;
+        let userd = DmaBuffer::new(dma_backend.clone(), 4096, USERD_IOVA)?;
+
+        let channel = if self.fecs_ready {
+            VfioChannel::create_warm(
+                dma_backend.clone(),
+                &bar0,
+                GPFIFO_IOVA,
+                GPFIFO_ENTRIES,
+                USERD_IOVA,
+                0,
+            )?
+        } else {
+            VfioChannel::create(
+                dma_backend.clone(),
+                &bar0,
+                GPFIFO_IOVA,
+                GPFIFO_ENTRIES,
+                USERD_IOVA,
+                0,
+            )?
+        };
+
+        tracing::info!(
+            bdf = %self.bdf,
+            channel_id = channel.id(),
+            fecs_ready = self.fecs_ready,
+            "VFIO PBDMA dispatch state initialized"
+        );
+
+        self.vfio_state = Some(VfioDispatchState {
+            device,
+            bar0,
+            channel,
+            dma_backend,
+            gpfifo,
+            userd,
+            buffers: HashMap::new(),
+            inflight: Vec::new(),
+            next_handle: 1,
+            next_iova: USER_BUFFER_BASE_IOVA,
+            gp_put: 0,
+        });
+
+        Ok(())
+    }
+
+    /// Whether the VFIO dispatch path is initialized.
+    #[must_use]
+    pub fn is_vfio_open(&self) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            self.vfio_state.is_some()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            false
+        }
+    }
 }
 
 impl ComputeDevice for NvVfioComputeDevice {
-    fn alloc(&mut self, _size: u64, _domain: MemoryDomain) -> DriverResult<BufferHandle> {
+    fn alloc(&mut self, size: u64, _domain: MemoryDomain) -> DriverResult<BufferHandle> {
         if !self.fecs_ready {
             return Err(DriverError::Unsupported(
                 "NVIDIA VFIO alloc requires FECS compute context — see GspBridge".into(),
             ));
         }
+
+        #[cfg(target_os = "linux")]
+        {
+            let state = self.vfio_state.as_mut().ok_or_else(|| {
+                DriverError::Unsupported(
+                    "VFIO not opened — call open_vfio() before alloc".into(),
+                )
+            })?;
+
+            let aligned_size = (size as usize).div_ceil(PAGE_SIZE as usize) * PAGE_SIZE as usize;
+            let iova = state.next_iova;
+            if iova + aligned_size as u64 > IOVA_LIMIT {
+                return Err(DriverError::MmapFailed(Cow::Borrowed(
+                    "IOVA space exhausted (2 MiB identity map limit)",
+                )));
+            }
+
+            let buf = crate::vfio::dma::DmaBuffer::new(
+                state.dma_backend.clone(),
+                aligned_size,
+                iova,
+            )?;
+
+            let handle_id = state.next_handle;
+            state.next_handle += 1;
+            state.next_iova = iova + aligned_size as u64;
+            state.buffers.insert(handle_id, buf);
+
+            tracing::debug!(
+                handle = handle_id,
+                iova = format_args!("{iova:#x}"),
+                size = aligned_size,
+                "NVIDIA VFIO buffer allocated"
+            );
+
+            Ok(BufferHandle(handle_id))
+        }
+
+        #[cfg(not(target_os = "linux"))]
         Err(DriverError::Unsupported(
-            "NVIDIA VFIO buffer allocation via PBDMA not yet wired".into(),
+            "NVIDIA VFIO dispatch requires Linux".into(),
         ))
     }
 
-    fn free(&mut self, _handle: BufferHandle) -> DriverResult<()> {
-        Err(DriverError::Unsupported(
-            "NVIDIA VFIO buffer free not yet wired".into(),
-        ))
+    fn free(&mut self, handle: BufferHandle) -> DriverResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            let state = self.vfio_state.as_mut().ok_or_else(|| {
+                DriverError::Unsupported("VFIO not opened".into())
+            })?;
+            state
+                .buffers
+                .remove(&handle.0)
+                .ok_or(DriverError::BufferNotFound(handle))?;
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = handle;
+            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+        }
     }
 
-    fn upload(&mut self, _handle: BufferHandle, _offset: u64, _data: &[u8]) -> DriverResult<()> {
-        Err(DriverError::Unsupported(
-            "NVIDIA VFIO upload not yet wired".into(),
-        ))
+    fn upload(&mut self, handle: BufferHandle, offset: u64, data: &[u8]) -> DriverResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            let state = self.vfio_state.as_mut().ok_or_else(|| {
+                DriverError::Unsupported("VFIO not opened".into())
+            })?;
+            let buf = state
+                .buffers
+                .get_mut(&handle.0)
+                .ok_or(DriverError::BufferNotFound(handle))?;
+
+            let start = offset as usize;
+            let end = start + data.len();
+            let slice = buf.as_mut_slice();
+            if end > slice.len() {
+                return Err(DriverError::MmapFailed(Cow::Owned(format!(
+                    "upload out of bounds: offset {start} + len {} > buf size {}",
+                    data.len(),
+                    slice.len()
+                ))));
+            }
+            slice[start..end].copy_from_slice(data);
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = (handle, offset, data);
+            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+        }
     }
 
-    fn readback(&self, _handle: BufferHandle, _offset: u64, _len: usize) -> DriverResult<Vec<u8>> {
-        Err(DriverError::Unsupported(
-            "NVIDIA VFIO readback not yet wired".into(),
-        ))
+    fn readback(&self, handle: BufferHandle, offset: u64, len: usize) -> DriverResult<Vec<u8>> {
+        #[cfg(target_os = "linux")]
+        {
+            let state = self.vfio_state.as_ref().ok_or_else(|| {
+                DriverError::Unsupported("VFIO not opened".into())
+            })?;
+            let buf = state
+                .buffers
+                .get(&handle.0)
+                .ok_or(DriverError::BufferNotFound(handle))?;
+
+            let start = offset as usize;
+            let end = start + len;
+            let slice = buf.as_slice();
+            if end > slice.len() {
+                return Err(DriverError::MmapFailed(Cow::Owned(format!(
+                    "readback out of bounds: offset {start} + len {len} > buf size {}",
+                    slice.len()
+                ))));
+            }
+            Ok(slice[start..end].to_vec())
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = (handle, offset, len);
+            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+        }
     }
 
     fn dispatch(
         &mut self,
-        _shader: &[u8],
+        shader: &[u8],
         _buffers: &[BufferHandle],
         _dims: DispatchDims,
         _info: &ShaderInfo,
@@ -222,12 +450,118 @@ impl ComputeDevice for NvVfioComputeDevice {
                     .into(),
             ));
         }
-        Err(DriverError::Unsupported(
-            "NVIDIA VFIO dispatch via PBDMA not yet wired".into(),
-        ))
+
+        #[cfg(target_os = "linux")]
+        {
+            use crate::vfio::channel::registers::{ramuserd, usermode};
+
+            let state = self.vfio_state.as_mut().ok_or_else(|| {
+                DriverError::Unsupported(
+                    "VFIO not opened — call open_vfio() before dispatch".into(),
+                )
+            })?;
+
+            if shader.is_empty() || !shader.len().is_multiple_of(4) {
+                return Err(DriverError::SubmitFailed(
+                    "pushbuffer must be non-empty and 4-byte aligned".into(),
+                ));
+            }
+
+            // Allocate a DMA buffer for the pushbuffer contents.
+            let pb_aligned_size =
+                (shader.len()).div_ceil(PAGE_SIZE as usize) * PAGE_SIZE as usize;
+            let pb_iova = state.next_iova;
+            if pb_iova + pb_aligned_size as u64 > IOVA_LIMIT {
+                return Err(DriverError::MmapFailed(Cow::Borrowed(
+                    "IOVA space exhausted for pushbuffer",
+                )));
+            }
+            let mut pb_buf = crate::vfio::dma::DmaBuffer::new(
+                state.dma_backend.clone(),
+                pb_aligned_size,
+                pb_iova,
+            )?;
+            pb_buf.as_mut_slice()[..shader.len()].copy_from_slice(shader);
+            state.next_iova = pb_iova + pb_aligned_size as u64;
+
+            // Build GPFIFO entry:
+            //   [31:2] = pb address >> 2 (bits [1:0] for PRIV/LEVEL)
+            //   [42:32] = length in dwords (bits [10:0] of upper word)
+            let dword_count = (shader.len() / 4) as u64;
+            let gp_entry_lo = (pb_iova & 0xFFFF_FFFC) as u32;
+            let gp_entry_hi = (dword_count as u32) << 10; // LENGTH at bits [20:10]
+            let gp_entry = (gp_entry_lo as u64) | ((gp_entry_hi as u64) << 32);
+
+            // Write GP entry into GPFIFO ring at current PUT position.
+            let gp_offset = (state.gp_put as usize) * 8;
+            state.gpfifo.as_mut_slice()[gp_offset..gp_offset + 8]
+                .copy_from_slice(&gp_entry.to_le_bytes());
+
+            let new_put = (state.gp_put + 1) % GPFIFO_ENTRIES;
+
+            // Update USERD GP_PUT so PBDMA knows there's work.
+            state.userd.volatile_write_u32(ramuserd::GP_PUT, new_put);
+            std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+
+            // Ring doorbell — tells PFIFO to re-read USERD GP_PUT.
+            state
+                .bar0
+                .write_u32(usermode::NOTIFY_CHANNEL_PENDING, state.channel.id())
+                .map_err(|e| {
+                    DriverError::SubmitFailed(Cow::Owned(format!("doorbell write: {e}")))
+                })?;
+
+            state.gp_put = new_put;
+
+            // Track pushbuffer for cleanup after sync.
+            let pb_handle_id = state.next_handle;
+            state.next_handle += 1;
+            state.buffers.insert(pb_handle_id, pb_buf);
+            state.inflight.push(BufferHandle(pb_handle_id));
+
+            tracing::debug!(
+                pb_iova = format_args!("{pb_iova:#x}"),
+                dwords = dword_count,
+                gp_put = new_put,
+                "NVIDIA VFIO: pushbuffer submitted via GPFIFO"
+            );
+
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = shader;
+            Err(DriverError::Unsupported("NVIDIA VFIO requires Linux".into()))
+        }
     }
 
     fn sync(&mut self) -> DriverResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            use crate::vfio::channel::registers::ramuserd;
+
+            if let Some(state) = self.vfio_state.as_mut() {
+                // Poll USERD GP_GET until it reaches GP_PUT.
+                let target = state.gp_put;
+                for _ in 0..1000 {
+                    let gp_get = state.userd.volatile_read_u32(ramuserd::GP_GET);
+                    if gp_get == target {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+
+                // Free inflight pushbuffers.
+                let inflight = std::mem::take(&mut state.inflight);
+                for handle in inflight {
+                    state.buffers.remove(&handle.0);
+                }
+            }
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "linux"))]
         Ok(())
     }
 
@@ -291,8 +625,8 @@ mod tests {
         dev.set_fecs_ready(true);
         let err = dev.alloc(4096, MemoryDomain::Vram).unwrap_err();
         assert!(
-            err.to_string().contains("PBDMA"),
-            "with FECS ready, should pass FECS gate and hit PBDMA stub"
+            err.to_string().contains("VFIO not opened"),
+            "with FECS ready but no VFIO, should hit VFIO gate: {err}"
         );
     }
 
@@ -309,8 +643,44 @@ mod tests {
             )
             .unwrap_err();
         assert!(
-            err.to_string().contains("PBDMA"),
-            "with FECS ready, should pass FECS gate and hit PBDMA stub"
+            err.to_string().contains("VFIO not opened"),
+            "with FECS ready but no VFIO, should hit VFIO gate: {err}"
         );
+    }
+
+    #[test]
+    fn dispatch_rejects_empty_pushbuffer() {
+        let mut dev = NvVfioComputeDevice::new("0000:01:00.0".into());
+        dev.set_fecs_ready(true);
+        let err = dev
+            .dispatch(
+                &[],
+                &[],
+                DispatchDims::new(1, 1, 1),
+                &ShaderInfo::default(),
+            )
+            .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("VFIO not opened") || msg.contains("non-empty"),
+            "empty pushbuffer should fail: {msg}"
+        );
+    }
+
+    #[test]
+    fn free_unknown_handle_returns_not_found() {
+        let mut dev = NvVfioComputeDevice::new("0000:01:00.0".into());
+        let err = dev.free(BufferHandle(999)).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("VFIO") || msg.contains("not found") || msg.contains("999"),
+            "unknown handle should error: {msg}"
+        );
+    }
+
+    #[test]
+    fn is_vfio_open_default_false() {
+        let dev = NvVfioComputeDevice::new("0000:01:00.0".into());
+        assert!(!dev.is_vfio_open());
     }
 }

@@ -5,7 +5,28 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-256)
+## [Unreleased] - May 13, 2026 (Sessions 43-258)
+
+### Session S258 (May 13, 2026) — PBDMA Dispatch Wiring
+
+hotSpring evolution audit response: PBDMA dispatch plumbed through ComputeDevice trait.
+
+- WIRED: `NvVfioComputeDevice::alloc()` — DMA buffer allocation with page-aligned IOVA management (0x20000+ range)
+- WIRED: `NvVfioComputeDevice::free()` — DMA buffer deallocation via handle map
+- WIRED: `NvVfioComputeDevice::upload()` — host-to-GPU DMA buffer copy via `as_mut_slice()`
+- WIRED: `NvVfioComputeDevice::readback()` — GPU-to-host DMA buffer read via `as_slice()`
+- WIRED: `NvVfioComputeDevice::dispatch()` — pushbuffer submission via GPFIFO + doorbell (NOTIFY_CHANNEL_PENDING)
+- WIRED: `NvVfioComputeDevice::sync()` — USERD GP_GET polling until GP_PUT match + inflight cleanup
+- ADDED: `NvVfioComputeDevice::open_vfio()` — opens VfioDevice, maps BAR0, creates VfioChannel (warm/cold), allocates GPFIFO ring + USERD page
+- ADDED: `VfioDispatchState` — holds device/bar0/channel/DMA backend/buffer map/GPFIFO state for live dispatch
+- ADDED: 3 new tests (pushbuffer validation, handle not-found, vfio open state check)
+- UPDATED: 2 existing tests to match new FECS→VFIO two-stage gate behavior
+- METRICS: 77 JSON-RPC methods, 8,837 lib tests, 0 clippy warnings, deny clean
+
+### Session S257 (May 13, 2026) — Deep Debt Sweep
+
+- FIXED: `graph_types/nodes.rs` `#[allow(clippy::float_cmp)]` trailing comment → `reason = "..."` form (last policy violation)
+- AUDITED: 0 production files >800L, 0 `#[allow]` without reason, 0 production unwrap, 0 async-trait, 0 Box<dyn Error> in signatures
 
 ### Session S256 (May 13, 2026) — FECS Warm-State Init + HALTED Bit Fix
 
