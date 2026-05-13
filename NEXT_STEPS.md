@@ -1,7 +1,7 @@
 # ToadStool -- Next Steps
 
 **Updated**: May 2026 — S253 (Phase C complete + deep debt sweep)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,827+ lib-only) | **74 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests**
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,827+ lib-only) | **77 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests**
 **Latest**: S253 — Phase C complete. `VfioResourceHandle` `Option<i32>` → `OwnedFd`. SwapOrchestrator real quiesce/persist/restore. `toadstool device swap|list|status|warm` CLI. 5 `CORALREEF_*` env vars deprecated with toadstool primaries. Ember socket `coral-ember-*` → `toadstool-ember-*`. 13 `#[allow(deprecated)]` → `#[expect(deprecated, reason)]`.
 **Previous**: S252 — Diesel Engine Migration Batch 1–2 (8 new JSON-RPC methods). S251 — hotSpring C1–C7. S250 — Pass 12-14. S249 — Duration constants.
 
@@ -71,8 +71,8 @@ names directly. Deprecated API definitions retained for backward compatibility o
 |------|--------|
 | Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
 | Phase D mixed command streams | Planned — requires Phase A (VFIO) + coralReef |
-| VFIO PBDMA dispatch | Blocked on coralReef (USERD_TARGET encoding fix) |
-| E2E sovereign pipeline test | Blocked on VFIO dispatch |
+| VFIO PBDMA dispatch | USERD_TARGET encoding **in toadStool-cylinder** (runlist + RAMFC). E2E blocked on FECS compute context init (GspBridge dependency) |
+| E2E sovereign pipeline test | Blocked on FECS bridge — see `gsp_bridge.rs` for production paths |
 | Phase 2 dep migration: procfs → toadstool-sysmon | **RESOLVED** — `procfs` default features disabled (S129); dead `procfs` dep removed where unused (S160); runtime discovery uses `toadstool-sysmon` where applicable |
 | Phase 3: tarpc binary transport | **RESOLVED** S203t — MessagePack binary framing for Rust-to-Rust peers |
 | Property-based testing for computation modules | Pending |

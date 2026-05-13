@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-254)
+## [Unreleased] - May 13, 2026 (Sessions 43-255)
+
+### Session S255 (May 13, 2026) — hotSpring S243 Audit Response
+
+Response to hotSpring compute trio audit (written at S243, most items resolved in S245–S254).
+
+- ADDED: `ember.swap` → `device_swap` semantic alias (hotSpring GlowplugClient compat)
+- ADDED: `sovereign.boot` → `device_swap` semantic alias (hotSpring GlowplugClient compat)
+- FIXED: USERD_TARGET NEXT_STEPS entry — encoding is in toadStool-cylinder, not blocked on coralReef
+- FIXED: Method count 74 → 77 across all current-state docs (README, CONTEXT, NEXT_STEPS, DEBT, DOCUMENTATION)
+- FIXED: VFIO PBDMA dispatch blocker description — FECS compute context init, not coralReef
+- ADDED: Audit response handoff `HOTSPRING_TOADSTOOL_S243_AUDIT_RESPONSE_S255_MAY13_2026.md`
+- METRICS: 77 JSON-RPC methods, 8,832+ lib tests, 0 clippy warnings, deny clean
 
 ### Session S254 (May 13, 2026) — Phase D Factory + NvVfioComputeDevice
 
@@ -15,7 +27,7 @@ primalSpring glacial debt audit response: Phase D local dispatch wired, NV VFIO 
 - ADDED: `NvVfioComputeDevice` implementing `ComputeDevice` trait — cold/warm FECS gating, BOOT0 → SM → generation caps
 - WIRED: `LocalDeviceFactory` registered at `DispatchHandler` construction — `local_dispatch: true` in capabilities
 - ADDED: BDF → render node resolution via sysfs for Phase D dispatch routing
-- METRICS: 74 JSON-RPC methods, 8,832+ lib tests, 0 clippy warnings, deny clean
+- METRICS: 77 JSON-RPC methods, 8,832+ lib tests, 0 clippy warnings, deny clean
 
 ### Session S253 (May 13, 2026) — Phase C Complete + Deep Debt Sweep
 

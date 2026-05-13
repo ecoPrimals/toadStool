@@ -108,6 +108,12 @@ where
     add_mapping("device.swap", "device_swap");
     add_mapping("device.warm_catch", "device_warm_catch");
 
+    // Legacy coralReef/hotSpring names that route to device.swap.
+    // hotSpring's GlowplugClient calls these — without aliases they
+    // return `method_not_found`.
+    add_mapping("ember.swap", "device_swap");
+    add_mapping("sovereign.boot", "device_swap");
+
     // ═══════════════════════════════════════════════════════════
     // MMIO DOMAIN — BAR0 register access and falcon status
     //
