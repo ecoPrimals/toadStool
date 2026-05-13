@@ -63,9 +63,7 @@ fn test_byob_executor_creation() {
     assert_eq!(config.health_check_interval, Duration::from_secs(10));
     assert_eq!(config.deployment_timeout, Duration::from_secs(600));
 
-    #[expect(deprecated, reason = "testing legacy EnvironmentConfig during migration")]
     let env_config = toadstool_config::env_config::EnvironmentConfig::from_env();
-    #[expect(deprecated, reason = "testing legacy coordination_port during migration")]
     let expected_port = env_config.network.coordination_port;
     assert_eq!(config.default_host_port, expected_port);
     assert!(config.web_service_ports.contains(&80));

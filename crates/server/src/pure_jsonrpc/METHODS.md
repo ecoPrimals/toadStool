@@ -59,6 +59,28 @@ implementation names. This enables callers using the wateringHole
 
 ---
 
+## `device.*` — Device Lifecycle (S252)
+
+| Method | Params | Returns | Notes |
+|---|---|---|---|
+| `device.swap` | `{"bdf": str, "target": str}` | `DeviceSwapResult` | GPU personality swap (7-step orchestration) |
+| `device.warm_catch` | `{"bdf": str}` | `WarmCatchResult` | Detect warm GPU state and capture personality |
+
+---
+
+## `mmio.*` / `falcon.*` — Low-Level MMIO (S252)
+
+| Method | Params | Returns | Notes |
+|---|---|---|---|
+| `mmio.read32` | `{"bdf": str, "offset": u32}` | `{"value": u32}` | Read 32-bit BAR0 register |
+| `mmio.write32` | `{"bdf": str, "offset": u32, "value": u32}` | `{"ok": true}` | Write 32-bit BAR0 register |
+| `mmio.batch` | `{"bdf": str, "ops": [...]}` | `{"results": [...]}` | Batch read/write BAR0 registers |
+| `mmio.pramin.read32` | `{"bdf": str, "offset": u32}` | `{"value": u32}` | Read PRAMIN (instance memory) |
+| `mmio.bar0.probe` | `{"bdf": str}` | `{boot0, pmc_enable, ...}` | Probe BAR0 for device identification |
+| `mmio.falcon.status` | `{"bdf": str}` | `{os, fecs_status, ...}` | Falcon microcontroller status |
+
+---
+
 ## Choosing the Right Namespace
 
 | Use case | Namespace |

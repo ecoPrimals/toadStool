@@ -49,6 +49,7 @@
 mod types;
 
 #[cfg(test)]
+#[allow(deprecated, reason = "tests reference legacy BEARDOG_* env constants to clear them")]
 mod tests;
 
 pub use types::{DiscoveryConfig, DiscoveryError, DiscoveryMethod};

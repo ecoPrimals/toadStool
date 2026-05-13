@@ -250,6 +250,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated, reason = "testing legacy BEARDOG_* env constant values")]
     fn test_socket_env_names_match_runtime() {
         assert_eq!(socket_env::LEGACY_BEARDOG_SOCKET_ENV, "BEARDOG_SOCKET");
         assert_eq!(socket_env::BIOMEOS_CRYPTO_SOCKET, "BIOMEOS_CRYPTO_SOCKET");

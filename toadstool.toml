@@ -8,7 +8,7 @@ debug = false
 verbose = false
 
 [network]
-bind_address = "0.0.0.0"
+bind_address = "127.0.0.1"  # Loopback-only default; override with TOADSTOOL_BIND_ADDRESS or --bind for all-interfaces
 port = 8081  # This can be overridden by Songbird port orchestration
 
 [network.songbird_orchestration]

@@ -1,7 +1,8 @@
 # cargo-tarpaulin — line coverage for the ToadStool workspace.
-# Complements llvm-cov (see docs/guides/TESTING.md, scripts/run-coverage.sh, .github/workflows/ci.yml).
+# Complements llvm-cov (see docs/guides/TESTING.md, scripts/run-coverage.sh).
 # Usage: cargo tarpaulin --config tarpaulin.toml
 # Optional: add --engine llvm to match llvm-cov instrumentation on Linux.
+# NOTE: tarpaulin is not wired into CI (.github/workflows/ci.yml) — run locally.
 
 [toadstool]
 manifest-path = "Cargo.toml"

@@ -18,7 +18,6 @@ fn test_security_config_default() {
 }
 
 #[test]
-#[expect(deprecated, reason = "testing legacy SecurityDiscovery API during migration")]
 fn test_security_discovery_new() {
     let config = SecurityConfig::default();
     let discovery = SecurityDiscovery::new(config);

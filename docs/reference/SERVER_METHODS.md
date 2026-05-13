@@ -11,7 +11,7 @@ ToadStool binds **two Unix sockets** plus an optional TCP listener:
 |-----------|------|----------|----------|
 | JSON-RPC (primary) | `$XDG_RUNTIME_DIR/biomeos/compute.sock` | JSON-RPC 2.0 (newline-delimited) | External clients, `socat`, springs, biomeOS Neural API |
 | tarpc (hot-path) | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` | tarpc binary (Tokio codec) | High-perf primal-to-primal IPC (Rust-to-Rust) |
-| TCP (optional) | `0.0.0.0:<port>` | JSON-RPC 2.0 | Cross-host access (`--port`) |
+| TCP (optional) | `127.0.0.1:<port>` (loopback default; `--bind 0.0.0.0` for all interfaces) | JSON-RPC 2.0 | Cross-host access (`--port`) |
 
 The two protocols use **separate sockets** to avoid bind collision and allow independent
 lifecycle management. JSON-RPC is the universal entry point; tarpc is the optional
@@ -280,6 +280,32 @@ Hardware transport discovery and routing (DRM, V4L2, serial).
 | `transport.open` | Open a transport channel |
 | `transport.stream` | Stream data through a transport |
 | `transport.status` | Query transport status |
+
+---
+
+## `device.*` Methods (S252)
+
+Device lifecycle management — swap, warm detection.
+
+| Method | Description |
+|--------|-------------|
+| `device.swap` | Orchestrate GPU personality swap (quiesce → persist → unbind → rebind → restore → verify) |
+| `device.warm_catch` | Detect warm (already-initialized) GPU state and capture personality |
+
+---
+
+## `mmio.*` / `falcon.*` Methods (S252)
+
+Low-level MMIO register access and Falcon microcontroller status via sysfs BAR0.
+
+| Method | Description |
+|--------|-------------|
+| `mmio.read32` | Read a single 32-bit BAR0 register |
+| `mmio.write32` | Write a single 32-bit BAR0 register |
+| `mmio.batch` | Batch read/write of multiple BAR0 registers |
+| `mmio.pramin.read32` | Read a 32-bit PRAMIN (instance memory) register |
+| `mmio.bar0.probe` | Probe BAR0 for device identification (BOOT0 + PMC_ENABLE) |
+| `mmio.falcon.status` | Query Falcon microcontroller status registers |
 
 ---
 

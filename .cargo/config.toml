@@ -1,5 +1,5 @@
 # biomeOS Cross-Compilation + Build Performance Configuration
-# TRUE ecoBin v2.0 → genomeBin Evolution
+# ecoBin v3.0 (zero application-level C dependencies)
 # Created: January 30, 2026
 # Updated: April 8, 2026 — S194 build performance optimization
 

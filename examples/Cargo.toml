@@ -48,14 +48,6 @@ name = "enhanced_universal_substrate_demo"
 path = "enhanced_universal_substrate_demo.rs"
 
 [[bin]]
-name = "exotic_platforms_showcase"
-path = "exotic_platforms_showcase.rs"
-
-[[bin]]
-name = "final_universal_substrate_summary"
-path = "final_universal_substrate_summary.rs"
-
-[[bin]]
 name = "native_execution_demo"
 path = "native_execution_demo.rs"
 

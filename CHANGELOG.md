@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-252)
+## [Unreleased] - May 13, 2026 (Sessions 43-253)
+
+### Session S253 (May 13, 2026) — Phase C Complete + Deep Debt Sweep
+
+Post-excision trio alignment: all Phase C blocking items resolved after coralReef Sprint 9 diesel engine deletion.
+
+- EVOLVED: `VfioResourceHandle.vfio_fd` from `Option<i32>` to `Option<OwnedFd>` — RAII fd ownership, `BorrowedFd` accessor
+- EVOLVED: SwapOrchestrator quiesce/persist/restore from stubs to real implementations — polls `gpu_busy_percent`, persists state JSON, verifies post-swap personality
+- ADDED: `toadstool device swap|list|status|warm` CLI subcommands (coralctl parity)
+- ADDED: `DeviceCommand` enum with swap, list, status, warm variants
+- EVOLVED: 5 `CORALREEF_*` env vars deprecated with `TOADSTOOL_*` primaries + deprecation warnings (`SYSFS_ROOT`, `PROC_ROOT`, `DATA_DIR`, `DRI_RENDER_PREFIX`, `EMBER_SOCKET`, `EMBER_GATE`)
+- EVOLVED: Ember socket path `coral-ember-{family}.sock` → `toadstool-ember-{family}.sock`
+- FIXED: `DEFAULT_BIND_ADDR` aligned to `127.0.0.1` (was `0.0.0.0`, conflicting with `BIND_ADDRESS_DEFAULT`)
+- EVOLVED: 13 `#[allow(deprecated)]` → `#[expect(deprecated, reason)]` across 6 files
+- METRICS: 74 JSON-RPC methods (direct), 8,827 lib tests, 0 clippy warnings, deny clean
 
 ### Session S252 (May 13, 2026) — Diesel Engine Migration Batch 1–2 + Deep Debt
 

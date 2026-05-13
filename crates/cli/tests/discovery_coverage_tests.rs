@@ -170,7 +170,6 @@ fn discover_from_config_invalid_toml_returns_none() {
 // ─── discover_service_by_capability ─────────────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[expect(deprecated, reason = "testing legacy discover_service_by_capability during migration")]
 async fn discover_service_by_capability_from_env() {
     temp_env::async_with_vars(
         [(
@@ -189,7 +188,6 @@ async fn discover_service_by_capability_from_env() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[expect(deprecated, reason = "testing legacy discover_service_by_capability during migration")]
 async fn discover_service_by_capability_no_source_returns_empty() {
     temp_env::async_with_vars([("TOADSTOOL_NOSVC_SERVICE_URL", None::<&str>)], async {
         let r: Result<Vec<ServiceEndpoint>, _> = discover_service_by_capability("nosvc").await;
@@ -201,7 +199,6 @@ async fn discover_service_by_capability_no_source_returns_empty() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[expect(deprecated, reason = "testing legacy discover_service_by_capability during migration")]
 async fn discover_service_by_capability_invalid_env_url_skips_to_config() {
     temp_env::async_with_vars(
         [("TOADSTOOL_BADURL_SERVICE_URL", Some("not-a-valid-addr"))],

@@ -306,7 +306,7 @@ fn qmd_params_debug() {
         debug.contains("4096")
             || debug.contains("0x1000")
             || debug.contains("16")
-            || debug.contains("8"),
+            || debug.contains('8'),
         "debug should contain struct field values: {debug}"
     );
 }

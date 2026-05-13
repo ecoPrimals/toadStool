@@ -1,12 +1,22 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S252
+**Date**: May 2026 — S253
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S253 (Phase C Complete + Deep Debt Sweep)**:
+`VfioResourceHandle` `Option<i32>` → `OwnedFd` (RAII fd ownership).
+SwapOrchestrator quiesce/persist/restore evolved from stubs to real impls.
+`toadstool device swap|list|status|warm` CLI (coralctl parity). 5 CORALREEF_*
+env vars deprecated with TOADSTOOL_* primaries + deprecation warnings. Ember
+socket naming `coral-ember-*` → `toadstool-ember-*`. `DEFAULT_BIND_ADDR`
+aligned to 127.0.0.1. 13 `#[allow(deprecated)]` → `#[expect(deprecated,
+reason)]`. Zero `#[allow(deprecated)]` remaining in codebase.
+8,827 lib tests, 0 clippy warnings, deny clean.
 
 **S252 (Diesel Engine Migration Batch 1–2 + Deep Debt)**:
 `device.swap` + `device.warm_catch` JSON-RPC handlers. 6 MMIO/Falcon RPC

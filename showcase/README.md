@@ -2,7 +2,7 @@
 
 **Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
 
-**Status**: Active | **Updated**: May 2026 — S252
+**Status**: Active | **Updated**: May 2026 — S253
 **License**: AGPL-3.0-or-later
 
 ---
@@ -43,15 +43,15 @@ APIs directly and runs on any machine with Rust installed.
 | 04-resource-management | 30s | Resource estimation, validation, optimization suggestions |
 | 05-gpu-job-queue | 60s | GPU job dispatch, queue management, capabilities |
 
-### Level 01: Shader Pipeline — ARCHIVED (S169)
+### Level 01: Shader Pipeline — DELETED (archived S169, deleted S253)
 
-Archived — `shader.compile.*` methods removed from toadStool in S169 (compile is coralReef's
-domain). See `01-shader-pipeline/README.md` for details and current alternatives.
+`shader.compile.*` methods removed from toadStool in S169 (compile is coralReef's domain).
+Directory deleted S253 — stale demo code referencing removed JSON-RPC methods.
 
-### Level 02: Compute Patterns — ARCHIVED (S169)
+### Level 02: Compute Patterns — DELETED (archived S169, deleted S253)
 
-Archived — `discovery.*`, `science.*`, `deploy.*` methods removed from toadStool in S169
-(science/deploy routing is biomeOS's domain). See `02-compute-patterns/README.md` for details.
+`discovery.*`, `science.*`, `deploy.*` methods removed from toadStool in S169
+(science/deploy routing is biomeOS's domain). Directory deleted S253.
 
 ### Level 03: Ecosystem Integration (toadStool + phase1 primals)
 
