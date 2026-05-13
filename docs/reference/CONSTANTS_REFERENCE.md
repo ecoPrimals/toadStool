@@ -27,7 +27,7 @@ Ports are resolved via `toadstool_config::ports::resolve_capability_port()`:
 |--------|------|
 | Daemon (JSON-RPC) | `$XDG_RUNTIME_DIR/biomeos/compute.sock` |
 | Daemon (tarpc) | `$XDG_RUNTIME_DIR/biomeos/compute-tarpc.sock` |
-| coralReef discovery | `$XDG_RUNTIME_DIR/biomeos/coralreef*.sock` (scanned) |
+| Ember devices | `$XDG_RUNTIME_DIR/biomeos/toadstool-ember-*.sock` (per-device, S253+) |
 | Capability discovery | `$XDG_RUNTIME_DIR/ecoPrimals/{capability}.sock` |
 
 ## Configuration Module

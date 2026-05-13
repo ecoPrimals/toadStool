@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S253 (Phase C complete + deep debt sweep)
+**Updated**: May 2026 — S255 (hotSpring audit response + deep debt sweep)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,827+ lib-only) | **77 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests**
-**Latest**: S253 — Phase C complete. `VfioResourceHandle` `Option<i32>` → `OwnedFd`. SwapOrchestrator real quiesce/persist/restore. `toadstool device swap|list|status|warm` CLI. 5 `CORALREEF_*` env vars deprecated with toadstool primaries. Ember socket `coral-ember-*` → `toadstool-ember-*`. 13 `#[allow(deprecated)]` → `#[expect(deprecated, reason)]`.
-**Previous**: S252 — Diesel Engine Migration Batch 1–2 (8 new JSON-RPC methods). S251 — hotSpring C1–C7. S250 — Pass 12-14. S249 — Duration constants.
+**Latest**: S255 — hotSpring S243 audit response. `ember.swap` + `sovereign.boot` semantic aliases for device.swap. USERD_TARGET encoding confirmed in-tree. Method count 77. Deep debt: lint `reason` attributes, benchmark refactor (820→756L), capability-based names in examples.
+**Previous**: S254 — Phase D factory + NvVfioComputeDevice. S253 — Phase C complete. S252 — Diesel Engine Migration. S251 — hotSpring C1–C7.
 
 ---
 

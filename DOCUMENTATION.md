@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S253
+**Last Updated**: May 2026 — S255
 
 ---
 
@@ -37,15 +37,15 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **22,900+ tests** (8,827+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **77 JSON-RPC methods** (incl. `device.swap`, `device.warm_catch`, 6 MMIO/Falcon RPCs, `toadstool.validate`, `compute.execute` direct route, `auth.check`/`auth.mode`/`auth.peer_info`, `provenance.query`). Semantic aliases incl. `ember.swap` → `device.swap`, `sovereign.boot` → `device.swap`. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. **Recommended caller timeout: ≥3 seconds** for health probes during startup.
 - **Phase C complete** (S245–S253) — toadstool-cylinder (153 .rs, 520 tests), DRM/MMIO/AMD/NVIDIA/VFIO hardware modules absorbed from `coral-driver`. `OwnedFd` VFIO fd ownership (S253). SwapOrchestrator real quiesce/persist/restore (S253). `toadstool device` CLI with swap/list/status/warm subcommands (S253). GspBridge trait boundary.
-- **Phase D: Local dispatch cutover** (S250–S251) — `try_local_dispatch()` via `ComputeDevice` trait before `coral_client` IPC forward. Full buffer lifecycle.
+- **Phase D: Local dispatch cutover** (S250–S254) — `try_local_dispatch()` via `ComputeDevice` trait before `coral_client` IPC forward. Full buffer lifecycle. `LocalDeviceFactory` wired at handler startup (S254). AMD DRM dispatch live, NV VFIO dispatch FECS-gated. `NvVfioComputeDevice` skeleton.
 - **Diesel Engine Migration** (S252) — `device.swap` + `device.warm_catch` JSON-RPC handlers. 6 MMIO/Falcon RPCs. `SysfsBar0Rw` read-write BAR0. `TOADSTOOL_RUN_DIR` socket layout.
-- **Deep Debt** (S240–S253) — All Duration literals extracted to named constants. `CORALREEF_*` env vars deprecated with `TOADSTOOL_*` primaries + deprecation warnings (S253). Zero `#[allow(deprecated)]` remaining — all evolved to `#[expect(deprecated, reason)]`. Ember socket `coral-ember-*` → `toadstool-ember-*`. `DEFAULT_BIND_ADDR` aligned to 127.0.0.1. Zero production mocks/TODO/FIXME/unreachable!(). All unsafe SAFETY-documented. `cargo deny check bans` passes clean.
+- **Deep Debt** (S240–S255) — All Duration literals extracted to named constants. `CORALREEF_*` env vars deprecated with `TOADSTOOL_*` primaries + deprecation warnings (S253). Zero `#[allow(deprecated)]` remaining — all evolved to `#[expect(deprecated, reason)]`. Ember socket `coral-ember-*` → `toadstool-ember-*`. `DEFAULT_BIND_ADDR` aligned to 127.0.0.1. `ember.swap` + `sovereign.boot` semantic aliases for hotSpring compat (S255). All lint `#[allow]`/`#[expect]` have `reason` (S255). Benchmark refactor 820→756L (S255). Zero production mocks/TODO/FIXME/unreachable!(). All unsafe SAFETY-documented. `cargo deny check bans` passes clean.
 - **Capability-based everywhere**: 0 hardcoded primal names, 0 production mocks, all primal references use capability identifiers. All production logging via `tracing`.
 - **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans active.
 - **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S253).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S255).
 
 ---
 
