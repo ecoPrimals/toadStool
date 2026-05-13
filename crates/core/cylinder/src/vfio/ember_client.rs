@@ -21,10 +21,10 @@ use crate::vfio::{ReceivedVfioFds, VfioDevice};
 
 const MAX_RESPONSE: usize = 4096;
 
-/// Resolves the default ember socket path when `$CORALREEF_EMBER_SOCKET` is unset.
+/// Resolves the default ember socket path.
 ///
-/// Must stay aligned with `coral_ember::ember_socket_path()` (this crate cannot
-/// depend on `coral-ember` — circular dependency).
+/// Priority: `TOADSTOOL_EMBER_SOCKET` → `CORALREEF_EMBER_SOCKET` (deprecated) →
+/// `{XDG_RUNTIME_DIR}/{namespace}/toadstool-ember-{family}.sock`.
 fn default_ember_socket_path_without_env_override() -> String {
     use std::path::PathBuf;
     let base =
@@ -32,17 +32,23 @@ fn default_ember_socket_path_without_env_override() -> String {
     let ns = std::env::var("BIOMEOS_ECOSYSTEM_NAMESPACE").unwrap_or_else(|_| "biomeos".into());
     let family = std::env::var("BIOMEOS_FAMILY_ID").unwrap_or_else(|_| "default".into());
     base.join(ns)
-        .join(format!("coral-ember-{family}.sock"))
+        .join(format!("toadstool-ember-{family}.sock"))
         .display()
         .to_string()
 }
 
-/// Default ember socket path, overridable via `$CORALREEF_EMBER_SOCKET`.
+/// Default ember socket path.
+///
+/// Priority: `TOADSTOOL_EMBER_SOCKET` → `CORALREEF_EMBER_SOCKET` (deprecated) → default path.
 pub(super) fn default_socket() -> String {
-    std::env::var("CORALREEF_EMBER_SOCKET")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(default_ember_socket_path_without_env_override)
+    if let Some(v) = std::env::var("TOADSTOOL_EMBER_SOCKET").ok().filter(|s| !s.is_empty()) {
+        return v;
+    }
+    if let Some(v) = std::env::var("CORALREEF_EMBER_SOCKET").ok().filter(|s| !s.is_empty()) {
+        tracing::warn!("deprecated env var CORALREEF_EMBER_SOCKET — migrate to TOADSTOOL_EMBER_SOCKET");
+        return v;
+    }
+    default_ember_socket_path_without_env_override()
 }
 
 /// A VFIO session obtained from coral-ember via FD sharing.

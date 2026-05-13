@@ -24,8 +24,9 @@ pub mod capabilities {
 
 /// Default network configuration
 pub mod network {
-    /// Default bind address (all interfaces)
-    pub const DEFAULT_BIND_ADDR: &str = "0.0.0.0";
+    /// Default bind address (loopback — not exposed on LAN).
+    /// Override via `TOADSTOOL_BIND_ADDRESS` or `--bind` CLI flag.
+    pub const DEFAULT_BIND_ADDR: &str = "127.0.0.1";
 
     /// Localhost address
     pub const LOCALHOST: &str = "127.0.0.1";

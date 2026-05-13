@@ -10,7 +10,8 @@
 //! timeout, parse error), direct access proceeds normally. This ensures
 //! standalone usage without ember is unaffected.
 //!
-//! Disable with `CORALREEF_EMBER_GATE=off` for debugging.
+//! Disable with `TOADSTOOL_EMBER_GATE=off` for debugging.
+//! Legacy `CORALREEF_EMBER_GATE` accepted as fallback with deprecation warning.
 
 use std::os::unix::net::UnixStream;
 
@@ -94,9 +95,16 @@ pub fn check_channel(bdf: &str) -> Result<(), ChannelError> {
 }
 
 fn is_gate_disabled() -> bool {
-    std::env::var("CORALREEF_EMBER_GATE")
+    let val = std::env::var("TOADSTOOL_EMBER_GATE")
         .ok()
-        .is_some_and(|v| v.eq_ignore_ascii_case("off") || v == "0" || v.eq_ignore_ascii_case("false"))
+        .or_else(|| {
+            let v = std::env::var("CORALREEF_EMBER_GATE").ok();
+            if v.is_some() {
+                tracing::warn!("deprecated env var CORALREEF_EMBER_GATE — migrate to TOADSTOOL_EMBER_GATE");
+            }
+            v
+        });
+    val.is_some_and(|v| v.eq_ignore_ascii_case("off") || v == "0" || v.eq_ignore_ascii_case("false"))
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@
 //!
 //! ✅ MODERNIZED: Uses `temp_env` for thread-safe env var scoping (Rust 2024)
 
-#[allow(deprecated)] // Testing legacy config functions during migration
+#[expect(deprecated, reason = "testing legacy config functions during migration")]
 mod tests {
     use toadstool_config::config_utils::ConfigUtils;
 

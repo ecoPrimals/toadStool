@@ -18,7 +18,7 @@ fn test_security_config_default() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated, reason = "testing legacy SecurityDiscovery API during migration")]
 fn test_security_discovery_new() {
     let config = SecurityConfig::default();
     let discovery = SecurityDiscovery::new(config);
@@ -26,7 +26,7 @@ fn test_security_discovery_new() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_new() {
     let config = SecurityConfig::default();
     let _client = SecurityClient::new(config);
@@ -77,7 +77,7 @@ async fn test_security_discovery_preferred_location_network() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_provider_id() {
     let config = SecurityConfig::default();
     let client = Arc::new(SecurityClient::new(config).unwrap());
@@ -86,7 +86,7 @@ fn test_security_client_provider_id() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_capabilities() {
     let config = SecurityConfig::default();
     let client = Arc::new(SecurityClient::new(config).unwrap());
@@ -180,7 +180,7 @@ async fn test_security_discovery_get_best_endpoint_no_latency_uses_max() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_creation_with_custom_config() {
     let config = SecurityConfig {
         auto_discover: false,
@@ -192,7 +192,7 @@ fn test_security_client_creation_with_custom_config() {
 }
 
 #[test]
-#[allow(deprecated)]
+#[expect(deprecated, reason = "testing legacy SecurityClient API during migration")]
 fn test_security_client_creation_default_config() {
     let config = SecurityConfig::default();
     let client = Arc::new(SecurityClient::new(config).unwrap());

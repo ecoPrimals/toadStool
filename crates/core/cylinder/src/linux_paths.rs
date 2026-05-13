@@ -2,23 +2,27 @@
 //! Linux sysfs and procfs layout roots for portable deployments and tests.
 //!
 //! Environment:
-//! - `TOADSTOOL_SYSFS_ROOT` (or `CORALREEF_SYSFS_ROOT`) — sysfs mount (default `/sys`).
-//! - `TOADSTOOL_PROC_ROOT` (or `CORALREEF_PROC_ROOT`) — procfs mount (default `/proc`).
-//! - `TOADSTOOL_DATA_DIR` (or `CORALREEF_DATA_DIR`) — optional data directory for dumps.
+//! - `TOADSTOOL_SYSFS_ROOT` — sysfs mount (default `/sys`).
+//! - `TOADSTOOL_PROC_ROOT` — procfs mount (default `/proc`).
+//! - `TOADSTOOL_DATA_DIR` — optional data directory for dumps.
+//!
+//! Legacy `CORALREEF_*` equivalents are accepted as fallback with a deprecation warning.
 
 use std::sync::OnceLock;
 
-fn resolve_env(primary: &str, fallback: &str, default: &str) -> String {
-    std::env::var(primary)
-        .ok()
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            std::env::var(fallback)
-                .ok()
-                .filter(|s| !s.is_empty())
-        })
-        .map(|s| s.trim_end_matches('/').to_string())
-        .unwrap_or_else(|| default.to_string())
+fn resolve_env(primary: &str, legacy: &str, default: &str) -> String {
+    if let Some(v) = std::env::var(primary).ok().filter(|s| !s.is_empty()) {
+        return v.trim_end_matches('/').to_string();
+    }
+    if let Some(v) = std::env::var(legacy).ok().filter(|s| !s.is_empty()) {
+        tracing::warn!(
+            legacy_var = legacy,
+            modern_var = primary,
+            "deprecated env var — migrate to {primary}"
+        );
+        return v.trim_end_matches('/').to_string();
+    }
+    default.to_string()
 }
 
 fn sysfs_root_storage() -> &'static str {
@@ -48,10 +52,14 @@ pub fn proc_root() -> &'static str {
 /// Optional data directory for VBIOS dumps and similar assets.
 #[must_use]
 pub fn optional_data_dir() -> Option<String> {
-    std::env::var("TOADSTOOL_DATA_DIR")
-        .ok()
-        .or_else(|| std::env::var("CORALREEF_DATA_DIR").ok())
-        .filter(|s| !s.is_empty())
+    if let Some(v) = std::env::var("TOADSTOOL_DATA_DIR").ok().filter(|s| !s.is_empty()) {
+        return Some(v);
+    }
+    if let Some(v) = std::env::var("CORALREEF_DATA_DIR").ok().filter(|s| !s.is_empty()) {
+        tracing::warn!("deprecated env var CORALREEF_DATA_DIR — migrate to TOADSTOOL_DATA_DIR");
+        return Some(v);
+    }
+    None
 }
 
 /// Join path segments under [`sysfs_root`].

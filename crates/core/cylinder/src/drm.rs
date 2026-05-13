@@ -32,9 +32,14 @@ const DRM_IOCTL_BASE: u32 = b'd' as u32;
 fn dri_render_prefix() -> &'static str {
     static PREFIX: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     PREFIX.get_or_init(|| {
-        std::env::var("TOADSTOOL_DRI_RENDER_PREFIX")
-            .or_else(|_| std::env::var("CORALREEF_DRI_RENDER_PREFIX"))
-            .unwrap_or_else(|_| "/dev/dri/renderD".into())
+        if let Some(v) = std::env::var("TOADSTOOL_DRI_RENDER_PREFIX").ok().filter(|s| !s.is_empty()) {
+            return v;
+        }
+        if let Some(v) = std::env::var("CORALREEF_DRI_RENDER_PREFIX").ok().filter(|s| !s.is_empty()) {
+            tracing::warn!("deprecated env var CORALREEF_DRI_RENDER_PREFIX — migrate to TOADSTOOL_DRI_RENDER_PREFIX");
+            return v;
+        }
+        "/dev/dri/renderD".into()
     })
 }
 
