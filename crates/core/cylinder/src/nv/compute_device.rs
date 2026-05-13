@@ -62,10 +62,6 @@ impl NvVfioComputeDevice {
     ///
     /// On success, updates the internal capabilities from the GPU's
     /// generation profile. Requires sysfs BAR0 access (VFIO feature).
-    /// Probe capabilities from BOOT0 register if BAR0 is accessible.
-    ///
-    /// On success, updates the internal capabilities from the GPU's
-    /// generation profile. Requires sysfs BAR0 access (VFIO feature).
     #[cfg(feature = "vfio")]
     pub fn probe_capabilities(&mut self) -> DriverResult<()> {
         const BAR0_MIN_SIZE: usize = 0x1000;
@@ -81,6 +77,86 @@ impl NvVfioComputeDevice {
             );
         }
         Ok(())
+    }
+
+    /// Probe BAR0 for warm-preserved FECS state.
+    ///
+    /// After a nouveau → vfio-pci warm handoff, FECS may be halted with
+    /// firmware still resident in IMEM/DMEM. This reads FECS CPUCTL and
+    /// MAILBOX0 to detect the warm-preserved state:
+    ///
+    /// - **HALTED (bit 5) + MAILBOX0 ≠ 0** → warm-preserved, compute-ready
+    /// - Otherwise → cold or inconsistent, FECS not ready
+    ///
+    /// Also probes BOOT0 for chip identification if capabilities are unknown.
+    /// Returns `true` if warm FECS was detected and the device is compute-ready.
+    #[cfg(target_os = "linux")]
+    pub fn probe_warm_fecs(&mut self) -> bool {
+        use crate::vfio::channel::registers::falcon;
+
+        const BAR0_MIN_SIZE: usize = 0x41_A000;
+        let bar0 = match crate::vfio::sysfs_bar0::SysfsBar0::open(&self.bdf, BAR0_MIN_SIZE) {
+            Ok(b) => b,
+            Err(e) => {
+                tracing::debug!(bdf = %self.bdf, error = %e, "BAR0 open failed for warm FECS probe");
+                return false;
+            }
+        };
+
+        // Probe BOOT0 for chip identity if not already known.
+        if self.caps.vendor == crate::hardware::Vendor::Unknown {
+            let boot0 = bar0.read_u32(0);
+            if let Some(sm) = super::identity::boot0_to_sm(boot0) {
+                let profile = super::generation::profile_for_sm(sm);
+                self.caps = profile.to_capabilities();
+                tracing::info!(
+                    bdf = %self.bdf, sm,
+                    chip = super::identity::chip_name(sm),
+                    "warm probe: identified NVIDIA GPU from BOOT0"
+                );
+            }
+        }
+
+        // Check PMC_ENABLE popcount — warm GPUs have ≥8 engines enabled.
+        let pmc_enable = bar0.read_u32(0x200);
+        if pmc_enable.count_ones() < 8 {
+            tracing::debug!(
+                bdf = %self.bdf,
+                pmc_enable = format!("{pmc_enable:#010x}"),
+                popcount = pmc_enable.count_ones(),
+                "cold GPU: PMC_ENABLE popcount < 8"
+            );
+            return false;
+        }
+
+        let fecs_cpuctl = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL);
+        let fecs_mb0 = bar0.read_u32(falcon::FECS_BASE + falcon::MAILBOX0);
+
+        let halted = fecs_cpuctl & falcon::CPUCTL_HALTED != 0;
+
+        tracing::info!(
+            bdf = %self.bdf,
+            fecs_cpuctl = format!("{fecs_cpuctl:#010x}"),
+            fecs_mb0 = format!("{fecs_mb0:#010x}"),
+            halted,
+            pmc_popcount = pmc_enable.count_ones(),
+            "FECS warm-state probe"
+        );
+
+        if halted && fecs_mb0 != 0 {
+            tracing::info!(
+                bdf = %self.bdf,
+                "FECS warm-preserved detected — compute context ready"
+            );
+            self.fecs_ready = true;
+            return true;
+        }
+
+        tracing::debug!(
+            bdf = %self.bdf,
+            "FECS not warm-preserved (halted={halted}, mb0={fecs_mb0:#x})"
+        );
+        false
     }
 
     /// Mark FECS as ready (warm-preserved or firmware booted).
@@ -203,5 +279,38 @@ mod tests {
         assert!(!dev.is_fecs_ready());
         dev.set_fecs_ready(true);
         assert!(dev.is_fecs_ready());
+    }
+
+    #[test]
+    fn warm_fecs_enables_alloc_gate() {
+        let mut dev = NvVfioComputeDevice::new("0000:01:00.0".into());
+        assert!(dev.alloc(4096, MemoryDomain::Vram).is_err());
+        let err = dev.alloc(4096, MemoryDomain::Vram).unwrap_err();
+        assert!(err.to_string().contains("FECS"));
+
+        dev.set_fecs_ready(true);
+        let err = dev.alloc(4096, MemoryDomain::Vram).unwrap_err();
+        assert!(
+            err.to_string().contains("PBDMA"),
+            "with FECS ready, should pass FECS gate and hit PBDMA stub"
+        );
+    }
+
+    #[test]
+    fn warm_fecs_enables_dispatch_gate() {
+        let mut dev = NvVfioComputeDevice::with_sm("0000:01:00.0".into(), 70);
+        dev.set_fecs_ready(true);
+        let err = dev
+            .dispatch(
+                &[0u8; 64],
+                &[],
+                DispatchDims::new(1, 1, 1),
+                &ShaderInfo::default(),
+            )
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("PBDMA"),
+            "with FECS ready, should pass FECS gate and hit PBDMA stub"
+        );
     }
 }

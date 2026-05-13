@@ -290,42 +290,78 @@ impl DispatchHandler {
 
 /// Create a local device factory for Phase D sovereign dispatch.
 ///
-/// The factory resolves a PCI BDF to a DRM render node via sysfs, probes
-/// the driver, and returns the appropriate `ComputeDevice`:
-/// - `amdgpu` → `AmdDevice::open_path`
-/// - Other vendors → `None` (fall through to coral_client IPC)
+/// The factory resolves a PCI BDF to a local `ComputeDevice` via two paths:
+/// 1. **DRM path** — sysfs render node → driver probe → `AmdDevice` (amdgpu)
+/// 2. **VFIO path** — no render node → check vfio-pci binding → BAR0 warm
+///    FECS detection → `NvVfioComputeDevice` (NVIDIA, warm-handoff only)
 #[cfg(target_os = "linux")]
 pub(super) fn create_cylinder_device_factory() -> LocalDeviceFactory {
     Arc::new(|bdf: &str| -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> {
-        let render_path = resolve_render_node(bdf)?;
-
-        let drm_dev = toadstool_cylinder::drm::DrmDevice::open(&render_path).ok()?;
-        let driver = drm_dev.driver_name().ok()?;
-        drop(drm_dev);
-
-        match driver.as_str() {
-            "amdgpu" => {
-                match toadstool_cylinder::amd::AmdDevice::open_path(&render_path) {
-                    Ok(dev) => {
-                        tracing::info!(bdf, render = %render_path, "Phase D: opened AMD compute device");
-                        Some(Box::new(dev))
-                    }
-                    Err(e) => {
-                        tracing::warn!(bdf, render = %render_path, error = %e, "AMD device open failed");
-                        None
-                    }
+        // Path 1: DRM render node available → kernel driver active
+        if let Some(render_path) = resolve_render_node(bdf)
+            && let Ok(drm_dev) = toadstool_cylinder::drm::DrmDevice::open(&render_path)
+            && let Ok(driver) = drm_dev.driver_name()
+        {
+            drop(drm_dev);
+            match driver.as_str() {
+                "amdgpu" => {
+                    return match toadstool_cylinder::amd::AmdDevice::open_path(&render_path) {
+                        Ok(dev) => {
+                            tracing::info!(bdf, render = %render_path, "Phase D: opened AMD compute device");
+                            Some(Box::new(dev))
+                        }
+                        Err(e) => {
+                            tracing::warn!(bdf, render = %render_path, error = %e, "AMD device open failed");
+                            None
+                        }
+                    };
+                }
+                "nouveau" => {
+                    tracing::debug!(bdf, "NVIDIA on nouveau — not available for VFIO dispatch while kernel driver is bound");
+                    return None;
+                }
+                other => {
+                    tracing::debug!(bdf, driver = other, "no local ComputeDevice impl for this driver");
+                    return None;
                 }
             }
-            "nouveau" => {
-                tracing::debug!(bdf, "NVIDIA nouveau: NvVfioComputeDevice available but FECS-gated");
-                None
-            }
-            other => {
-                tracing::debug!(bdf, driver = other, "no local ComputeDevice impl for this driver");
-                None
-            }
         }
+
+        // Path 2: No DRM render node — check for VFIO-bound NVIDIA GPU
+        try_vfio_nvidia(bdf)
     })
+}
+
+/// Attempt to open an NVIDIA GPU via VFIO with warm FECS detection.
+///
+/// When a GPU is bound to `vfio-pci`, it has no DRM render node. This
+/// probes BAR0 via sysfs for chip identity and warm-preserved FECS state
+/// from a prior nouveau/nvidia-470 session.
+#[cfg(target_os = "linux")]
+fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> {
+    let driver_link = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let driver_target = std::fs::read_link(&driver_link).ok()?;
+    let driver_name = driver_target.file_name()?.to_str()?;
+
+    if driver_name != "vfio-pci" {
+        tracing::debug!(bdf, driver = driver_name, "not vfio-pci — skipping VFIO path");
+        return None;
+    }
+
+    tracing::info!(bdf, "VFIO-bound device detected — probing for warm FECS");
+
+    let mut dev = toadstool_cylinder::nv::compute_device::NvVfioComputeDevice::new(bdf.to_string());
+
+    if dev.probe_warm_fecs() {
+        tracing::info!(bdf, "Phase D: NVIDIA VFIO device with warm FECS — compute-ready");
+        Some(Box::new(dev))
+    } else {
+        tracing::info!(
+            bdf,
+            "NVIDIA VFIO device detected but FECS cold — waiting for firmware bridge"
+        );
+        None
+    }
 }
 
 #[cfg(not(target_os = "linux"))]

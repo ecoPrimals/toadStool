@@ -41,8 +41,9 @@ mod regs {
     /// PC / BOOTVEC register offset within a Falcon block.
     pub const FALCON_PC: u64 = 0x104;
 
-    /// CPUCTL bit indicating the engine is halted.
-    pub const CPUCTL_HALTED: u32 = 0x10;
+    /// CPUCTL bit 5: engine is halted (software halt / context-switch freeze).
+    /// Bit 4 (0x10) is HRESET — distinct from HALTED.
+    pub const CPUCTL_HALTED: u32 = 0x20;
 }
 
 /// Status snapshot of a GPU's Falcon firmware engines.

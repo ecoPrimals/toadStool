@@ -206,7 +206,7 @@ pub fn mmio_falcon_status(params: Option<&Value>) -> Result<Value, JsonRpcError>
     let bootvec = read(falcon_offsets::BOOTVEC);
     let hwcfg = read(falcon_offsets::HWCFG);
 
-    let halted = (cpuctl & 0x10) != 0;
+    let halted = (cpuctl & 0x20) != 0;
 
     debug!(bdf = %bdf, engine, cpuctl = format!("{cpuctl:#010x}"), halted, "mmio.falcon.status");
     Ok(serde_json::json!({

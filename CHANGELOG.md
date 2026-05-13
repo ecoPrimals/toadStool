@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-255)
+## [Unreleased] - May 13, 2026 (Sessions 43-256)
+
+### Session S256 (May 13, 2026) — FECS Warm-State Init + HALTED Bit Fix
+
+hotSpring compute trio audit response: warm FECS detection wired into NvVfioComputeDevice.
+
+- ADDED: `NvVfioComputeDevice::probe_warm_fecs()` — BAR0 probe for warm-preserved FECS state (PMC_ENABLE + CPUCTL HALTED + MAILBOX0)
+- ADDED: VFIO path in `create_cylinder_device_factory()` — detects vfio-pci bound NVIDIA GPUs and attempts warm FECS detection
+- FIXED: CPUCTL HALTED bit 0x10 → 0x20 in `mmio.rs` and `firmware.rs` (bit 4 is HRESET, bit 5 is HALTED)
+- ADDED: 2 tests for warm FECS gate behavior (alloc + dispatch pass FECS gate when warm)
+- FIXED: Duplicate doc comment on `probe_capabilities`
+- METRICS: 77 JSON-RPC methods, 8,834 lib tests, 0 clippy warnings, deny clean
 
 ### Session S255 (May 13, 2026) — hotSpring S243 Audit Response
 
