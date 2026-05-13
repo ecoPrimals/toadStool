@@ -141,6 +141,11 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             super::transport::execute_transport_command(action).await?;
         }
 
+        Commands::Device { action } => {
+            info!("Device lifecycle management");
+            super::device::execute_device_command(action.clone()).await?;
+        }
+
         Commands::Mode { action } => {
             info!("🖥️ GPU mode switching");
             super::mode::execute_mode_command(ctx, action.clone()).await?;

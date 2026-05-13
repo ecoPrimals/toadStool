@@ -336,6 +336,17 @@ pub enum Commands {
         config: Option<PathBuf>,
     },
 
+    /// Device lifecycle management (swap, list, status, warm detection).
+    ///
+    /// Provides coralctl-equivalent CLI for GPU personality swaps, device
+    /// enumeration, and warm state detection — direct access to the
+    /// JSON-RPC `device.*` and `ember.*` methods.
+    Device {
+        /// Subcommand (swap, list, status, warm)
+        #[command(subcommand)]
+        action: DeviceCommand,
+    },
+
     /// GPU mode switching for single-GPU systems.
     ///
     /// Switches between gaming mode (nvidia/nouveau for display) and science
@@ -501,6 +512,41 @@ pub enum UniversalCommands {
         /// Shared resources
         #[arg(short, long)]
         resources: Vec<String>,
+    },
+}
+
+/// Device lifecycle subcommands (coralctl parity).
+#[derive(Clone, Subcommand)]
+pub enum DeviceCommand {
+    /// Swap a GPU to a new driver personality (e.g. vfio-pci, nouveau, nvidia).
+    Swap {
+        /// PCI BDF address (e.g. "0000:01:00.0").
+        bdf: String,
+        /// Target personality/driver name.
+        target: String,
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+    /// List all PCI devices with GPU/NPU class codes.
+    List {
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+    /// Show status for a specific PCI device.
+    Status {
+        /// PCI BDF address. Auto-detects first GPU if omitted.
+        #[arg(long)]
+        bdf: Option<String>,
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+    },
+    /// Detect warm GPU state (PMC_ENABLE probe via sysfs config space).
+    Warm {
+        /// PCI BDF address.
+        bdf: String,
     },
 }
 

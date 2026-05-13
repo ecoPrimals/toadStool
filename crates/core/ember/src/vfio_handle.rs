@@ -9,6 +9,7 @@
 //! to `hw-safe` and `nvpmu`. This module manages the lifecycle state and
 //! metadata, not raw fd operations.
 
+use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::ring_meta::RingMeta;
@@ -60,8 +61,8 @@ pub struct VfioResourceHandle {
     /// Ring/mailbox metadata persisted across restarts.
     pub ring_meta: RingMeta,
     alive: AtomicBool,
-    /// Optional VFIO device fd number (for external tracking — ember does not own the fd).
-    vfio_fd: Option<i32>,
+    /// VFIO device fd — RAII owner. Dropping closes the fd.
+    vfio_fd: Option<OwnedFd>,
 }
 
 impl VfioResourceHandle {
@@ -78,7 +79,7 @@ impl VfioResourceHandle {
 
     /// Create with a known VFIO device fd and ring metadata.
     #[must_use]
-    pub fn with_fd_and_meta(bdf: String, fd: i32, ring_meta: RingMeta) -> Self {
+    pub fn with_fd_and_meta(bdf: String, fd: OwnedFd, ring_meta: RingMeta) -> Self {
         Self {
             bdf,
             ring_meta,
@@ -87,14 +88,14 @@ impl VfioResourceHandle {
         }
     }
 
-    /// The VFIO device fd number, if known.
+    /// Borrow the VFIO device fd, if held.
     #[must_use]
-    pub fn vfio_fd(&self) -> Option<i32> {
-        self.vfio_fd
+    pub fn vfio_fd(&self) -> Option<BorrowedFd<'_>> {
+        self.vfio_fd.as_ref().map(|fd| fd.as_fd())
     }
 
     /// Set the VFIO device fd (e.g. after opening or receiving via `SCM_RIGHTS`).
-    pub fn set_vfio_fd(&mut self, fd: i32) {
+    pub fn set_vfio_fd(&mut self, fd: OwnedFd) {
         self.vfio_fd = Some(fd);
     }
 }
@@ -147,6 +148,12 @@ impl ResourceHandle for VfioResourceHandle {
 mod tests {
     use super::*;
     use crate::held_resource::HeldResource;
+    use std::os::fd::AsRawFd;
+
+    fn test_owned_fd() -> OwnedFd {
+        let f = std::fs::File::open("/dev/null").expect("/dev/null");
+        OwnedFd::from(f)
+    }
 
     #[test]
     fn new_vfio_handle_is_alive() {
@@ -159,22 +166,25 @@ mod tests {
 
     #[test]
     fn with_fd_and_meta() {
+        let fd = test_owned_fd();
+        let raw = fd.as_raw_fd();
         let meta = RingMeta {
             mailboxes: vec![],
             rings: vec![],
             version: 7,
         };
-        let handle = VfioResourceHandle::with_fd_and_meta("0000:4a:00.0".into(), 42, meta);
+        let handle = VfioResourceHandle::with_fd_and_meta("0000:4a:00.0".into(), fd, meta);
         assert!(handle.is_alive());
-        assert_eq!(handle.vfio_fd(), Some(42));
+        assert_eq!(handle.vfio_fd().unwrap().as_raw_fd(), raw);
         assert_eq!(handle.ring_meta.version, 7);
     }
 
     #[test]
     fn release_marks_dead_and_clears_fd() {
+        let fd = test_owned_fd();
         let mut handle = VfioResourceHandle::with_fd_and_meta(
             "0000:03:00.0".into(),
-            5,
+            fd,
             RingMeta::default(),
         );
         handle.release().unwrap();
@@ -194,8 +204,10 @@ mod tests {
     fn set_vfio_fd() {
         let mut handle = VfioResourceHandle::new("0000:03:00.0".into());
         assert!(handle.vfio_fd().is_none());
-        handle.set_vfio_fd(99);
-        assert_eq!(handle.vfio_fd(), Some(99));
+        let fd = test_owned_fd();
+        let raw = fd.as_raw_fd();
+        handle.set_vfio_fd(fd);
+        assert_eq!(handle.vfio_fd().unwrap().as_raw_fd(), raw);
     }
 
     #[test]

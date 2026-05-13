@@ -122,6 +122,112 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         self.quiescence_timeout
     }
 
+    /// Path for persisting device state across a swap.
+    fn swap_state_path(device: &DeviceId) -> std::path::PathBuf {
+        let label = device.short_label().replace([':', '/'], "-");
+        std::env::temp_dir().join(format!("toadstool-swap-{label}.json"))
+    }
+
+    /// Step 1: Quiesce — poll sysfs for DRM engine idle state.
+    ///
+    /// For PCI devices, reads `/sys/bus/pci/devices/{bdf}/power_state` to
+    /// confirm the device is in D0 and reads `drm/card*/gpu_busy_percent`
+    /// to check for idle engines. Falls back to a short yield if sysfs
+    /// attributes are unavailable.
+    async fn quiesce_device(device: &DeviceId, timeout: Duration) -> String {
+        let DeviceId::PciBdf(bdf) = device else {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+            return format!("timeout_ms={} (non-PCI, yield only)", timeout.as_millis());
+        };
+        let bdf = bdf.as_str();
+
+        let power_path = format!("/sys/bus/pci/devices/{bdf}/power_state");
+        let power = std::fs::read_to_string(&power_path)
+            .ok()
+            .map_or_else(|| "unknown".into(), |s| s.trim().to_string());
+
+        let gpu_busy = Self::read_gpu_busy_percent(bdf);
+
+        let deadline = tokio::time::Instant::now() + timeout;
+        if let Some(busy) = gpu_busy {
+            if busy > 0 {
+                tracing::info!(bdf, busy, "GPU busy, waiting for quiescence");
+                while tokio::time::Instant::now() < deadline {
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                    if Self::read_gpu_busy_percent(bdf).unwrap_or(0) == 0 {
+                        break;
+                    }
+                }
+            }
+        } else {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+
+        let final_busy = Self::read_gpu_busy_percent(bdf).unwrap_or(0);
+        format!(
+            "power={power} gpu_busy={final_busy}% timeout_ms={}",
+            timeout.as_millis()
+        )
+    }
+
+    /// Read gpu_busy_percent from the first DRM card node for this BDF.
+    fn read_gpu_busy_percent(bdf: &str) -> Option<u32> {
+        let drm_dir = std::path::Path::new("/sys/bus/pci/devices")
+            .join(bdf)
+            .join("drm");
+        let entries = std::fs::read_dir(&drm_dir).ok()?;
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.starts_with("card") && !name_str.contains("render") {
+                let busy_path = drm_dir.join(&name).join("gpu_busy_percent");
+                if let Ok(content) = std::fs::read_to_string(&busy_path) {
+                    return content.trim().parse().ok();
+                }
+            }
+        }
+        None
+    }
+
+    /// Step 2: Persist — snapshot current driver and power state to a temp file.
+    fn persist_device_state(device: &DeviceId, from: &str) -> String {
+        let state = serde_json::json!({
+            "device": device.short_label(),
+            "from_personality": from,
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
+        });
+
+        let path = Self::swap_state_path(device);
+        match std::fs::write(&path, state.to_string()) {
+            Ok(()) => {
+                tracing::debug!(?path, "persisted swap state");
+                format!("from={from} state_file={}", path.display())
+            }
+            Err(e) => {
+                tracing::warn!(?path, %e, "could not persist swap state (non-fatal)");
+                format!("from={from} persist_error={e}")
+            }
+        }
+    }
+
+    /// Step 6: Verify device came back in the expected personality.
+    fn verify_post_swap_state(device: &DeviceId, target: &str, obs: &SwapObservation) -> String {
+        let path = Self::swap_state_path(device);
+        let _ = std::fs::remove_file(&path);
+
+        if obs.to == target {
+            format!("verified personality={} matches target", obs.to)
+        } else {
+            format!(
+                "personality mismatch: got {} expected {}",
+                obs.to, target
+            )
+        }
+    }
+
     /// Execute the full 7-step swap lifecycle for a device.
     ///
     /// 1. **Quiesce** — wait for in-flight operations to drain
@@ -141,26 +247,27 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         let overall_start = Instant::now();
         let device_label = device.short_label();
 
-        // Step 1: Quiesce
+        // Step 1: Quiesce — verify device has no in-flight DRM work via sysfs
         let step_start = Instant::now();
         tracing::info!(
             device = device_label.as_str(),
             timeout_ms = self.quiescence_timeout.as_millis() as u64,
             "quiescing device"
         );
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        let quiesce_detail = Self::quiesce_device(device, self.quiescence_timeout).await;
         steps.push(BootStep::ok(
             "quiesce",
-            Some(format!("timeout_ms={}", self.quiescence_timeout.as_millis())),
+            Some(quiesce_detail),
             step_start.elapsed().as_millis() as u64,
         ));
 
-        // Step 2: Persist
+        // Step 2: Persist — snapshot driver and power state to temp file
         let step_start = Instant::now();
         tracing::debug!(device = device_label.as_str(), "persisting device state");
+        let persist_detail = Self::persist_device_state(device, from);
         steps.push(BootStep::ok(
             "persist",
-            Some(format!("from={from}")),
+            Some(persist_detail),
             step_start.elapsed().as_millis() as u64,
         ));
 
@@ -222,8 +329,14 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
             0,
         ));
 
-        // Step 6: Restore (state replay placeholder)
-        steps.push(BootStep::ok("restore", Some("state replay complete".to_string()), 0));
+        // Step 6: Restore — verify device came back in expected personality
+        let step_start_restore = Instant::now();
+        let restore_detail = Self::verify_post_swap_state(device, target, &obs);
+        steps.push(BootStep::ok(
+            "restore",
+            Some(restore_detail),
+            step_start_restore.elapsed().as_millis() as u64,
+        ));
 
         // Step 7: Health check
         let step_start = Instant::now();

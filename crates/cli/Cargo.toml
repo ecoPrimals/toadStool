@@ -36,6 +36,8 @@ doc = false  # Avoid doc collision with toadstool lib (target/doc/toadstool/inde
 toadstool = { path = "../core/toadstool" }
 toadstool-common = { path = "../core/common" }
 toadstool-core = { path = "../toadstool-core" }
+toadstool-ember = { path = "../core/ember" }
+toadstool-glowplug = { path = "../core/glowplug" }
 nvpmu = { path = "../core/nvpmu" }
 toadstool-display = { path = "../runtime/display" }
 toadstool-config = { path = "../core/config" }

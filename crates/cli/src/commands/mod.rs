@@ -5,10 +5,11 @@
 
 mod definitions;
 pub use definitions::{
-    Commands, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands,
+    Commands, DeviceCommand, EcosystemCommands, ModeCommand, TransportCommands, UniversalCommands,
 };
 
 pub mod dispatch;
+mod device;
 pub mod doctor;
 mod mode;
 pub mod transport;
