@@ -5,7 +5,8 @@
     clippy::nursery,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "benchmark code uses f64 arithmetic and integer conversions extensively"
 )]
 //!
 //! This benchmark specifically tests the performance of the Songbird network configuration
@@ -34,6 +35,33 @@ use tokio::sync::Semaphore;
 
 use toadstool::universal::UniversalComputePlatform;
 use toadstool::{ToadStoolError, ToadStoolResult, init};
+
+/// Latency statistics computed from a sample of operation durations.
+#[derive(Debug, Clone, Copy)]
+struct LatencyStats {
+    avg_ms: f64,
+    p95_ms: f64,
+    p99_ms: f64,
+}
+
+impl LatencyStats {
+    fn from_millis(latencies: &mut [f64]) -> Self {
+        if latencies.is_empty() {
+            return Self {
+                avg_ms: 0.0,
+                p95_ms: 0.0,
+                p99_ms: 0.0,
+            };
+        }
+        latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let len = latencies.len();
+        Self {
+            avg_ms: latencies.iter().sum::<f64>() / len as f64,
+            p95_ms: latencies[(len as f64 * 0.95) as usize],
+            p99_ms: latencies[(len as f64 * 0.99) as usize],
+        }
+    }
+}
 
 /// Network benchmark configuration
 #[derive(Debug, Clone)]
@@ -150,13 +178,13 @@ async fn benchmark_dns_service_discovery(
     let mut successful = 0;
     let mut latencies = Vec::new();
 
-    // Test DNS resolution for various services
+    // Test DNS resolution for capability-based service names
     let services = [
-        "songbird.primal.local",
-        "beardog.primal.local",
-        "nestgate.primal.local",
-        "squirrel.primal.local",
-        "toadstool.primal.local",
+        "coordination.primal.local",
+        "security.primal.local",
+        "storage.primal.local",
+        "routing.primal.local",
+        "compute.primal.local",
     ];
 
     for i in 0..config.iterations {
@@ -182,19 +210,7 @@ async fn benchmark_dns_service_discovery(
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
     let success_rate = successful as f64 / config.iterations as f64;
 
-    // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = latencies.iter().sum::<f64>() / latencies.len() as f64;
-    let p95_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.95) as usize]
-    };
-    let p99_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    };
+    let stats = LatencyStats::from_millis(&mut latencies);
 
     let mut metrics = HashMap::new();
     metrics.insert("cache_hit_rate".to_string(), 85.0);
@@ -210,10 +226,10 @@ async fn benchmark_dns_service_discovery(
         avg_duration,
         ops_per_second,
         success_rate,
-        avg_latency_ms,
-        p95_latency_ms,
-        p99_latency_ms,
-        throughput_mbs: 0.1, // DNS is low throughput
+        avg_latency_ms: stats.avg_ms,
+        p95_latency_ms: stats.p95_ms,
+        p99_latency_ms: stats.p99_ms,
+        throughput_mbs: 0.1,
         metrics,
     })
 }
@@ -270,23 +286,7 @@ async fn benchmark_service_mesh_communication(
     let success_rate = f64::from(successful) / config.iterations as f64;
     let throughput_mbs = (total_bytes as f64 / 1024.0 / 1024.0) / total_duration.as_secs_f64();
 
-    // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies.iter().sum::<f64>() / latencies.len() as f64
-    };
-    let p95_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.95) as usize]
-    };
-    let p99_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    };
+    let stats = LatencyStats::from_millis(&mut latencies);
 
     let mut metrics = HashMap::new();
     metrics.insert("mtls_overhead_ms".to_string(), 0.5);
@@ -299,9 +299,9 @@ async fn benchmark_service_mesh_communication(
         avg_duration,
         ops_per_second,
         success_rate,
-        avg_latency_ms,
-        p95_latency_ms,
-        p99_latency_ms,
+        avg_latency_ms: stats.avg_ms,
+        p95_latency_ms: stats.p95_ms,
+        p99_latency_ms: stats.p99_ms,
         throughput_mbs,
         metrics,
     })
@@ -346,23 +346,7 @@ async fn benchmark_load_balancing(
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
     let success_rate = f64::from(successful) / config.iterations as f64;
 
-    // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies.iter().sum::<f64>() / latencies.len() as f64
-    };
-    let p95_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.95) as usize]
-    };
-    let p99_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    };
+    let stats = LatencyStats::from_millis(&mut latencies);
 
     // Calculate load balancing fairness
     let expected_per_backend = config.iterations as f64 / backends.len() as f64;
@@ -384,10 +368,10 @@ async fn benchmark_load_balancing(
         avg_duration,
         ops_per_second,
         success_rate,
-        avg_latency_ms,
-        p95_latency_ms,
-        p99_latency_ms,
-        throughput_mbs: 0.5, // Load balancing is low throughput
+        avg_latency_ms: stats.avg_ms,
+        p95_latency_ms: stats.p95_ms,
+        p99_latency_ms: stats.p99_ms,
+        throughput_mbs: 0.5,
         metrics,
     })
 }
@@ -438,23 +422,7 @@ async fn benchmark_circuit_breaker(
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
     let success_rate = f64::from(successful) / config.iterations as f64;
 
-    // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies.iter().sum::<f64>() / latencies.len() as f64
-    };
-    let p95_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.95) as usize]
-    };
-    let p99_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    };
+    let stats = LatencyStats::from_millis(&mut latencies);
 
     let mut metrics = HashMap::new();
     metrics.insert("circuit_trips".to_string(), 2.0);
@@ -467,9 +435,9 @@ async fn benchmark_circuit_breaker(
         avg_duration,
         ops_per_second,
         success_rate,
-        avg_latency_ms,
-        p95_latency_ms,
-        p99_latency_ms,
+        avg_latency_ms: stats.avg_ms,
+        p95_latency_ms: stats.p95_ms,
+        p99_latency_ms: stats.p99_ms,
         throughput_mbs: 0.3,
         metrics,
     })
@@ -512,23 +480,7 @@ async fn benchmark_network_policies(
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
     let success_rate = f64::from(successful) / config.iterations as f64;
 
-    // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies.iter().sum::<f64>() / latencies.len() as f64
-    };
-    let p95_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.95) as usize]
-    };
-    let p99_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    };
+    let stats = LatencyStats::from_millis(&mut latencies);
 
     let mut metrics = HashMap::new();
     metrics.insert("policy_evaluations".to_string(), f64::from(policy_checks));
@@ -541,9 +493,9 @@ async fn benchmark_network_policies(
         avg_duration,
         ops_per_second,
         success_rate,
-        avg_latency_ms,
-        p95_latency_ms,
-        p99_latency_ms,
+        avg_latency_ms: stats.avg_ms,
+        p95_latency_ms: stats.p95_ms,
+        p99_latency_ms: stats.p99_ms,
         throughput_mbs: 0.2,
         metrics,
     })
@@ -586,26 +538,10 @@ async fn benchmark_cross_primal_security(
     let ops_per_second = config.iterations as f64 / total_duration.as_secs_f64();
     let success_rate = f64::from(successful) / config.iterations as f64;
 
-    // Calculate latency percentiles
-    latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let avg_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies.iter().sum::<f64>() / latencies.len() as f64
-    };
-    let p95_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.95) as usize]
-    };
-    let p99_latency_ms = if latencies.is_empty() {
-        0.0
-    } else {
-        latencies[(latencies.len() as f64 * 0.99) as usize]
-    };
+    let stats = LatencyStats::from_millis(&mut latencies);
 
     let mut metrics = HashMap::new();
-    metrics.insert("beardog_auth_calls".to_string(), f64::from(auth_checks));
+    metrics.insert("auth_calls".to_string(), f64::from(auth_checks));
     metrics.insert("crypto_verification_ms".to_string(), 1.5);
     metrics.insert("token_validation_ms".to_string(), 0.8);
 
@@ -615,9 +551,9 @@ async fn benchmark_cross_primal_security(
         avg_duration,
         ops_per_second,
         success_rate,
-        avg_latency_ms,
-        p95_latency_ms,
-        p99_latency_ms,
+        avg_latency_ms: stats.avg_ms,
+        p95_latency_ms: stats.p95_ms,
+        p99_latency_ms: stats.p99_ms,
         throughput_mbs: 0.1,
         metrics,
     })

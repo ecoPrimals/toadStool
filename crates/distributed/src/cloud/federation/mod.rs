@@ -16,8 +16,7 @@ pub mod discovery;
 pub mod policy;
 mod state;
 
-// Re-export heartbeat constants; `MIN_HEARTBEAT_INTERVAL_SECS` is only used in `policy`.
-#[allow(unused_imports)]
+#[allow(unused_imports, reason = "MIN_HEARTBEAT_INTERVAL_SECS re-exported for downstream crates")]
 pub use policy::{DEFAULT_HEARTBEAT_TIMEOUT_SECS, FederationMember, MIN_HEARTBEAT_INTERVAL_SECS};
 
 // ─── Federation Errors ───────────────────────────────────────────────────────

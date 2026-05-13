@@ -424,7 +424,7 @@ pub(super) fn populate_kepler_runlist(rl: &mut [u8], _instance_iova: u64, channe
 }
 
 /// Populate runlist in a pre-allocated buffer (static version for matrix).
-#[expect(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation, reason = "IOVA addresses and channel IDs fit in u32 for GPU register encoding")]
 pub(super) fn populate_runlist_static(
     rl: &mut [u8],
     userd_iova: u64,

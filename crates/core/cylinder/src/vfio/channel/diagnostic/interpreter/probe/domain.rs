@@ -181,7 +181,7 @@ pub fn probe_power(bar0: &MappedBar, identity: GpuIdentity) -> Result<PowerState
 }
 
 /// Layer 3: Engine topology — PBDMAs, runlists, BAR2.
-#[expect(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation, reason = "register offsets and engine counts fit in u32")]
 pub fn probe_engines(
     bar0: &MappedBar,
     container: DmaBackend,

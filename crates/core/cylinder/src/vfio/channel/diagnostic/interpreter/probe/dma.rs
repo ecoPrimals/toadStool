@@ -20,7 +20,7 @@ fn w(bar0: &MappedBar, reg: usize, val: u32) {
 }
 
 /// Layer 4: DMA validation — test GPU can DMA-read instance block from system memory.
-#[expect(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation, reason = "register offsets and DMA sizes fit in u32")]
 pub fn probe_dma(
     bar0: &MappedBar,
     container: DmaBackend,
