@@ -57,6 +57,60 @@ struct VfioDispatchState {
     gp_put: u32,
 }
 
+#[cfg(target_os = "linux")]
+impl VfioDispatchState {
+    /// Allocate a DMA buffer at the next available IOVA, advancing the bump pointer.
+    fn alloc_next_dma(&mut self, size: usize, what: &str) -> DriverResult<crate::vfio::dma::DmaBuffer> {
+        let aligned = size.div_ceil(PAGE_SIZE as usize) * PAGE_SIZE as usize;
+        let iova = self.next_iova;
+        if iova + aligned as u64 > IOVA_LIMIT {
+            return Err(DriverError::MmapFailed(Cow::Owned(format!(
+                "IOVA space exhausted for {what}"
+            ))));
+        }
+        let buf = crate::vfio::dma::DmaBuffer::new(self.dma_backend.clone(), aligned, iova)?;
+        self.next_iova = iova + aligned as u64;
+        Ok(buf)
+    }
+
+    /// Submit a pushbuffer via GPFIFO + doorbell.
+    fn submit_pushbuffer(&mut self, pb_bytes: &[u8]) -> DriverResult<()> {
+        use crate::vfio::channel::registers::{ramuserd, usermode};
+
+        let dword_count = (pb_bytes.len() / 4) as u64;
+        let mut pb_buf = self.alloc_next_dma(pb_bytes.len(), "pushbuffer")?;
+        pb_buf.as_mut_slice()[..pb_bytes.len()].copy_from_slice(pb_bytes);
+
+        let gp_entry_lo = (pb_buf.iova() & 0xFFFF_FFFC) as u32;
+        let gp_entry_hi = (dword_count as u32) << 10;
+        let gp_entry = (gp_entry_lo as u64) | ((gp_entry_hi as u64) << 32);
+
+        let gp_offset = (self.gp_put as usize) * 8;
+        self.gpfifo.as_mut_slice()[gp_offset..gp_offset + 8]
+            .copy_from_slice(&gp_entry.to_le_bytes());
+
+        let new_put = (self.gp_put + 1) % GPFIFO_ENTRIES;
+        self.userd.volatile_write_u32(ramuserd::GP_PUT, new_put);
+        std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+
+        self.bar0
+            .write_u32(usermode::NOTIFY_CHANNEL_PENDING, self.channel.id())
+            .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("doorbell write: {e}"))))?;
+
+        self.gp_put = new_put;
+        self.track_inflight(pb_buf);
+        Ok(())
+    }
+
+    /// Track a transient DMA buffer for cleanup after sync.
+    fn track_inflight(&mut self, dma: crate::vfio::dma::DmaBuffer) {
+        let id = self.next_handle;
+        self.next_handle += 1;
+        self.buffers.insert(id, dma);
+        self.inflight.push(BufferHandle(id));
+    }
+}
+
 /// NVIDIA GPU compute device via VFIO direct dispatch.
 ///
 /// Created from a PCI BDF. Capabilities are initially `UNKNOWN` until
@@ -451,15 +505,13 @@ impl ComputeDevice for NvVfioComputeDevice {
             return Err(DriverError::Unsupported(
                 "NVIDIA VFIO dispatch requires FECS compute context — firmware loads but \
                  compute context never becomes ready. Production path: warm-handoff from \
-                 nouveau/nvidia-470, or real GspBridge (coralReef IPC or local absorption)"
+                 nouveau/nvidia-470, or real GspBridge (shader compiler IPC or local absorption)"
                     .into(),
             ));
         }
 
         #[cfg(target_os = "linux")]
         {
-            use crate::vfio::channel::registers::{ramuserd, usermode};
-
             let state = self.vfio_state.as_mut().ok_or_else(|| {
                 DriverError::Unsupported(
                     "VFIO not opened — call open_vfio() before dispatch".into(),
@@ -475,193 +527,69 @@ impl ComputeDevice for NvVfioComputeDevice {
             let sm = self.sm;
             let profile = super::generation::profile_for_sm(sm);
 
-            // --- 1. Upload shader binary to GPU-visible DMA buffer ---
-            let shader_aligned =
-                shader.len().div_ceil(PAGE_SIZE as usize) * PAGE_SIZE as usize;
-            let shader_iova = state.next_iova;
-            if shader_iova + shader_aligned as u64 > IOVA_LIMIT {
-                return Err(DriverError::MmapFailed(Cow::Borrowed(
-                    "IOVA space exhausted for shader binary",
-                )));
-            }
-            let mut shader_buf = crate::vfio::dma::DmaBuffer::new(
-                state.dma_backend.clone(),
-                shader_aligned,
-                shader_iova,
-            )?;
+            // 1. Upload shader binary
+            let mut shader_buf = state.alloc_next_dma(shader.len(), "shader binary")?;
+            let shader_iova = shader_buf.iova();
             shader_buf.as_mut_slice()[..shader.len()].copy_from_slice(shader);
-            state.next_iova = shader_iova + shader_aligned as u64;
 
-            // --- 2. Build CBUF descriptor table for user buffers ---
-            let desc_entry_size: u64 = 16;
-            let desc_size = (buffers.len() as u64) * desc_entry_size;
-            let desc_aligned = (desc_size as usize)
-                .max(PAGE_SIZE as usize)
-                .div_ceil(PAGE_SIZE as usize)
-                * PAGE_SIZE as usize;
-            let desc_iova = state.next_iova;
-            if desc_iova + desc_aligned as u64 > IOVA_LIMIT {
-                return Err(DriverError::MmapFailed(Cow::Borrowed(
-                    "IOVA space exhausted for descriptor table",
-                )));
-            }
-            let mut desc_buf = crate::vfio::dma::DmaBuffer::new(
-                state.dma_backend.clone(),
-                desc_aligned,
-                desc_iova,
-            )?;
-
+            // 2. Build CBUF descriptor table (16-byte stride per binding)
+            let desc_entry_size: usize = 16;
+            let desc_size = buffers.len() * desc_entry_size;
+            let mut desc_buf = state.alloc_next_dma(desc_size.max(PAGE_SIZE as usize), "descriptor table")?;
+            let desc_iova = desc_buf.iova();
             for (i, handle) in buffers.iter().enumerate() {
-                let buf = state.buffers.get(&handle.0).ok_or(
-                    DriverError::BufferNotFound(*handle),
-                )?;
-                let buf_iova = buf.iova();
-                let buf_size = buf.size() as u32;
-                let offset = i * desc_entry_size as usize;
+                let buf = state.buffers.get(&handle.0).ok_or(DriverError::BufferNotFound(*handle))?;
+                let offset = i * desc_entry_size;
                 desc_buf.as_mut_slice()[offset..offset + 4]
-                    .copy_from_slice(&(buf_iova as u32).to_le_bytes());
+                    .copy_from_slice(&(buf.iova() as u32).to_le_bytes());
                 desc_buf.as_mut_slice()[offset + 4..offset + 8]
-                    .copy_from_slice(&((buf_iova >> 32) as u32).to_le_bytes());
+                    .copy_from_slice(&((buf.iova() >> 32) as u32).to_le_bytes());
                 desc_buf.as_mut_slice()[offset + 8..offset + 12]
-                    .copy_from_slice(&buf_size.to_le_bytes());
+                    .copy_from_slice(&(buf.size() as u32).to_le_bytes());
             }
-            state.next_iova = desc_iova + desc_aligned as u64;
 
-            // --- 3. Build driver constants (grid dims for `num_workgroups`) ---
-            let driver_const_data =
-                super::qmd::encode_driver_constants(&dims);
-            let dc_iova = state.next_iova;
-            if dc_iova + PAGE_SIZE > IOVA_LIMIT {
-                return Err(DriverError::MmapFailed(Cow::Borrowed(
-                    "IOVA space exhausted for driver constants",
-                )));
-            }
-            let mut dc_buf = crate::vfio::dma::DmaBuffer::new(
-                state.dma_backend.clone(),
-                PAGE_SIZE as usize,
-                dc_iova,
-            )?;
-            dc_buf.as_mut_slice()[..driver_const_data.len()]
-                .copy_from_slice(&driver_const_data);
-            state.next_iova = dc_iova + PAGE_SIZE;
+            // 3. Driver constants (grid dims for `@builtin(num_workgroups)`)
+            let driver_const_data = super::qmd::encode_driver_constants(&dims);
+            let mut dc_buf = state.alloc_next_dma(PAGE_SIZE as usize, "driver constants")?;
+            let dc_iova = dc_buf.iova();
+            dc_buf.as_mut_slice()[..driver_const_data.len()].copy_from_slice(&driver_const_data);
 
-            // --- 4. Build QMD ---
-            let workgroup = if info.workgroup.iter().any(|&d| d > 0) {
-                info.workgroup
-            } else {
-                [64, 1, 1]
-            };
-
+            // 4. Build QMD
+            let workgroup = if info.workgroup.iter().any(|&d| d > 0) { info.workgroup } else { [64, 1, 1] };
             let cbufs = super::qmd::build_standard_cbufs(
-                desc_iova,
-                desc_size.max(64) as u32,
-                dc_iova,
-                super::qmd::DRIVER_CONST_SIZE,
+                desc_iova, desc_size.max(64) as u32, dc_iova, super::qmd::DRIVER_CONST_SIZE,
             );
-
             let qmd_params = super::qmd::QmdParams {
-                shader_va: shader_iova,
-                grid: dims,
-                workgroup,
-                gpr_count: info.gpr_count.max(4),
-                shared_mem_bytes: info.shared_mem_bytes,
-                barrier_count: info.barrier_count,
-                local_mem_low_bytes: info.local_mem_bytes.unwrap_or(0),
+                shader_va: shader_iova, grid: dims, workgroup,
+                gpr_count: info.gpr_count.max(4), shared_mem_bytes: info.shared_mem_bytes,
+                barrier_count: info.barrier_count, local_mem_low_bytes: info.local_mem_bytes.unwrap_or(0),
                 cbufs,
             };
-
             let qmd_words = super::qmd::build_qmd(profile, &qmd_params);
             let qmd_bytes: &[u8] = bytemuck::cast_slice(&qmd_words);
-            let qmd_aligned = qmd_bytes
-                .len()
-                .div_ceil(PAGE_SIZE as usize)
-                * PAGE_SIZE as usize;
-            let qmd_iova = state.next_iova;
-            if qmd_iova + qmd_aligned as u64 > IOVA_LIMIT {
-                return Err(DriverError::MmapFailed(Cow::Borrowed(
-                    "IOVA space exhausted for QMD",
-                )));
-            }
-            let mut qmd_buf = crate::vfio::dma::DmaBuffer::new(
-                state.dma_backend.clone(),
-                qmd_aligned,
-                qmd_iova,
-            )?;
+            let mut qmd_buf = state.alloc_next_dma(qmd_bytes.len(), "QMD")?;
+            let qmd_iova = qmd_buf.iova();
             qmd_buf.as_mut_slice()[..qmd_bytes.len()].copy_from_slice(qmd_bytes);
-            state.next_iova = qmd_iova + qmd_aligned as u64;
 
-            // --- 5. Build pushbuffer (compute init + dispatch) ---
+            // 5. Build + submit pushbuffer (compute init + dispatch)
             let mut init_pb = super::pushbuf::PushBuf::compute_init(
-                profile.compute_class,
-                profile.local_mem_window,
-                0,
-                0,
+                profile.compute_class, profile.local_mem_window, 0, 0,
             );
-            let dispatch_pb = super::pushbuf::PushBuf::compute_dispatch_with_launch(
-                profile.launch_method,
-                qmd_iova,
-            );
-            init_pb.append(&dispatch_pb);
-            let pb_bytes = init_pb.as_bytes();
-
-            let pb_aligned = pb_bytes
-                .len()
-                .div_ceil(PAGE_SIZE as usize)
-                * PAGE_SIZE as usize;
-            let pb_iova = state.next_iova;
-            if pb_iova + pb_aligned as u64 > IOVA_LIMIT {
-                return Err(DriverError::MmapFailed(Cow::Borrowed(
-                    "IOVA space exhausted for pushbuffer",
-                )));
-            }
-            let mut pb_buf = crate::vfio::dma::DmaBuffer::new(
-                state.dma_backend.clone(),
-                pb_aligned,
-                pb_iova,
-            )?;
-            pb_buf.as_mut_slice()[..pb_bytes.len()].copy_from_slice(pb_bytes);
-            state.next_iova = pb_iova + pb_aligned as u64;
-
-            // --- 6. Submit via GPFIFO ---
-            let dword_count = (pb_bytes.len() / 4) as u64;
-            let gp_entry_lo = (pb_iova & 0xFFFF_FFFC) as u32;
-            let gp_entry_hi = (dword_count as u32) << 10;
-            let gp_entry = (gp_entry_lo as u64) | ((gp_entry_hi as u64) << 32);
-
-            let gp_offset = (state.gp_put as usize) * 8;
-            state.gpfifo.as_mut_slice()[gp_offset..gp_offset + 8]
-                .copy_from_slice(&gp_entry.to_le_bytes());
-
-            let new_put = (state.gp_put + 1) % GPFIFO_ENTRIES;
-
-            state.userd.volatile_write_u32(ramuserd::GP_PUT, new_put);
-            std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
-
-            state
-                .bar0
-                .write_u32(usermode::NOTIFY_CHANNEL_PENDING, state.channel.id())
-                .map_err(|e| {
-                    DriverError::SubmitFailed(Cow::Owned(format!("doorbell write: {e}")))
-                })?;
-
-            state.gp_put = new_put;
+            init_pb.append(&super::pushbuf::PushBuf::compute_dispatch_with_launch(
+                profile.launch_method, qmd_iova,
+            ));
+            state.submit_pushbuffer(init_pb.as_bytes())?;
 
             // Track transient DMA allocations for cleanup after sync.
-            for dma in [shader_buf, desc_buf, dc_buf, qmd_buf, pb_buf] {
-                let id = state.next_handle;
-                state.next_handle += 1;
-                state.buffers.insert(id, dma);
-                state.inflight.push(BufferHandle(id));
+            for dma in [shader_buf, desc_buf, dc_buf, qmd_buf] {
+                state.track_inflight(dma);
             }
 
             tracing::debug!(
-                sm,
-                shader_iova = format_args!("{shader_iova:#x}"),
+                sm, shader_iova = format_args!("{shader_iova:#x}"),
                 qmd_iova = format_args!("{qmd_iova:#x}"),
-                pb_iova = format_args!("{pb_iova:#x}"),
-                dwords = dword_count,
                 grid = format_args!("[{},{},{}]", dims.x, dims.y, dims.z),
-                gp_put = new_put,
+                gp_put = state.gp_put,
                 "NVIDIA VFIO: QMD-based compute dispatch submitted via GPFIFO"
             );
 

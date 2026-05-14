@@ -54,7 +54,7 @@ impl BiomeExecutor {
     }
 
     #[cfg(test)]
-    #[expect(dead_code)]
+    #[expect(dead_code, reason = "test helper — only called when wasm feature is active")]
     pub(super) async fn execute_wasm_module(
         &self,
         module_data: &[u8],

@@ -140,7 +140,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests exercise deprecated legacy name mapping")]
     fn test_legacy_service_name_for_capability() {
         assert_eq!(
             legacy_service_name_for_capability("crypto"),
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests exercise deprecated capability_to_service mapping")]
     fn test_capability_to_service() {
         assert_eq!(capability_to_service("crypto"), "beardog");
         assert_eq!(capability_to_service("coordination"), "songbird");
@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests exercise deprecated capability mappings")]
     fn test_get_capability_mappings() {
         let mappings = get_capability_mappings();
         assert_eq!(mappings.get("beardog"), Some(&"crypto"));

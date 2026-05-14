@@ -449,7 +449,7 @@ mod tests {
         assert!(coordinator.is_ok());
     }
 
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests exercise deprecated is_primal_available API")]
     #[tokio::test]
     async fn test_deprecated_primal_available() {
         let coordinator = EcosystemCoordinator::new().await.unwrap();

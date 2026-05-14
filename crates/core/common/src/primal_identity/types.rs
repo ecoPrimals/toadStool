@@ -334,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "tests exercise deprecated websocket constructor")]
     fn test_service_endpoint_websocket_deprecated() {
         let endpoint = ServiceEndpoint::websocket("ws.example.com", 8081);
         assert_eq!(endpoint.protocol, "ws");
