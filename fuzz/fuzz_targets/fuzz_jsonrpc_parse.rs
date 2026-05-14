@@ -9,7 +9,7 @@
 use libfuzzer_sys::fuzz_target;
 
 #[derive(serde::Deserialize)]
-#[allow(dead_code)]
+#[allow(dead_code, reason = "fields populated by serde Deserialize for fuzz validation")]
 struct JsonRpcRequest<'a> {
     jsonrpc: &'a str,
     method: &'a str,

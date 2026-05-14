@@ -43,7 +43,7 @@ pub(crate) fn default_thresholds() -> Vec<RoutingThreshold> {
         RoutingThreshold {
             pattern: WorkloadPattern::SpMV,
             gpu_crossover_n: 1_000,
-            provenance: "hotSpring v0.6.25 spectral",
+            provenance: "spectral workload analysis v0.6.25",
         },
         RoutingThreshold {
             pattern: WorkloadPattern::ElementWise,

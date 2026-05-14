@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S259
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S261
 
 ---
 
@@ -391,7 +391,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S260. **22,900+** workspace tests, 0 failures (8,841+ lib-only). ~83.6% lib-only line coverage (target 90%). **81 JSON-RPC methods** (direct) + semantic registry (incl. `health.version`, `health.drain`, `device.vfio.open`, `device.vfio.roundtrip`, `ember.vfio.*`, `ember.swap`, `sovereign.boot` aliases) with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production+examples). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C complete** (S245–S253). **Phase D dispatch live** (S254–S259) — AMD DRM dispatch live, NV VFIO QMD-based dispatch wired via PBDMA. **`OwnedFd` VFIO fd ownership** (S253). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S261. **22,900+** workspace tests, 0 failures (8,841+ lib-only). ~83.6% lib-only line coverage (target 90%). **81 JSON-RPC methods** (direct) + semantic registry (incl. `health.version`, `health.drain`, `device.vfio.open`, `device.vfio.roundtrip`, `ember.vfio.*`, `ember.swap`, `sovereign.boot` aliases) with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production+examples). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C complete** (S245–S253). **Phase D dispatch live** (S254–S259) — AMD DRM dispatch live, NV VFIO QMD-based dispatch wired via PBDMA. **`OwnedFd` VFIO fd ownership** (S253). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

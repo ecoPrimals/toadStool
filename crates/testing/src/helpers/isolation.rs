@@ -190,7 +190,7 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[expect(clippy::expect_used)]
+    #[expect(clippy::expect_used, reason = "test helper — panic on misuse is the intended contract")]
     pub fn get(&self) -> &T {
         self.resource
             .as_ref()
@@ -202,7 +202,7 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until `into_inner()` consumes it.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[expect(clippy::expect_used)]
+    #[expect(clippy::expect_used, reason = "test helper — panic on misuse is the intended contract")]
     pub fn get_mut(&mut self) -> &mut T {
         self.resource
             .as_mut()
@@ -214,7 +214,7 @@ impl<T> TestScope<T> {
     /// # Safety
     /// The resource is guaranteed to be `Some` until this method is called.
     /// This is a test helper where panic-on-misuse is acceptable.
-    #[expect(clippy::expect_used)]
+    #[expect(clippy::expect_used, reason = "test helper — panic on misuse is the intended contract")]
     pub fn into_inner(mut self) -> T {
         self.resource
             .take()

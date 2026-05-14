@@ -5,7 +5,20 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 14, 2026 (Sessions 43-260)
+## [Unreleased] - May 14, 2026 (Sessions 43-261)
+
+### Session S261 (May 14, 2026) — Deep Debt Sweep + hotSpring Audit Acknowledgement
+
+hotSpring upstream evolution debt audit: toadStool confirmed clear (1 joint item remaining — FECS GR method entries from hotSpring experiments 184-190). Deep debt sweep fixes.
+
+- FIXED: 3 `#[expect(clippy::expect_used)]` in `crates/testing/src/helpers/isolation.rs` — added `reason = "test helper — panic on misuse is the intended contract"`
+- FIXED: `#[allow(dead_code)]` in `examples/cooperative_network_demo.rs` — added `reason`
+- FIXED: `#[allow(dead_code)]` in `fuzz/fuzz_targets/fuzz_jsonrpc_parse.rs` — added `reason`
+- FIXED: `#[allow(clippy::await_holding_lock)]` in `toadstool_client_impl_tests.rs` — added `reason`
+- FIXED: Hardcoded primal name "hotSpring v0.6.25 spectral" → "spectral workload analysis v0.6.25" in `workload_routing/defaults.rs`
+- AUDITED: 0 production files >800L, 0 production mocks outside cfg(test), 0 TODO/FIXME/HACK, 0 clippy warnings, deny clean
+- CONFIRMED: FECS GR context init is joint with hotSpring — `init_gr_context()` API ready, awaiting method entries from hotSpring experiments
+- METRICS: 81 JSON-RPC methods (direct), 8,841 lib tests, 0 clippy warnings, deny clean
 
 ### Session S260 (May 14, 2026) — hotSpring Sovereign Compute Trio Evolution Response
 
