@@ -396,47 +396,6 @@ impl NvVfioComputeDevice {
         Ok(())
     }
 
-    /// Submit GR context init method entries via pushbuffer.
-    ///
-    /// On Volta+ (GV100), this writes the FECS method init entries from the
-    /// warm-preserved context. These entries must be submitted before the
-    /// first compute dispatch to ensure PBDMA has a valid GR context slot.
-    ///
-    /// For Kepler, GR context is established during `kepler_falcon_boot`
-    /// and does not need explicit method-entry submission.
-    ///
-    /// # Arguments
-    ///
-    /// * `method_entries` - `(addr, value)` pairs for GR class method writes.
-    ///   Use `crate::gsp::split_for_application` to filter BAR0-only entries.
-    #[cfg(target_os = "linux")]
-    pub fn init_gr_context(&mut self, method_entries: &[(u32, u32)]) -> DriverResult<()> {
-        let state = self.vfio_state.as_mut().ok_or_else(|| {
-            DriverError::Unsupported("VFIO not opened — call open_vfio() first".into())
-        })?;
-
-        if method_entries.is_empty() {
-            tracing::debug!(bdf = %self.bdf, "GR context init: no method entries to submit");
-            return Ok(());
-        }
-
-        let profile = super::generation::profile_for_sm(self.sm);
-        let pb = super::pushbuf::PushBuf::gr_context_init(
-            profile.compute_class,
-            method_entries,
-        );
-        state.submit_pushbuffer(pb.as_bytes())?;
-
-        tracing::info!(
-            bdf = %self.bdf,
-            entries = method_entries.len(),
-            compute_class = format_args!("{:#06x}", profile.compute_class),
-            "GR context init pushbuffer submitted"
-        );
-
-        Ok(())
-    }
-
     /// Whether the VFIO dispatch path is initialized.
     #[must_use]
     pub fn is_vfio_open(&self) -> bool {
@@ -724,6 +683,44 @@ impl ComputeDevice for NvVfioComputeDevice {
 
     fn capabilities(&self) -> &HardwareCapabilities {
         &self.caps
+    }
+
+    fn init_gr_context(&mut self, method_entries: &[(u32, u32)]) -> DriverResult<()> {
+        #[cfg(target_os = "linux")]
+        {
+            let state = self.vfio_state.as_mut().ok_or_else(|| {
+                DriverError::Unsupported("VFIO not opened — call open_vfio() first".into())
+            })?;
+
+            if method_entries.is_empty() {
+                tracing::debug!(bdf = %self.bdf, "GR context init: no method entries to submit");
+                return Ok(());
+            }
+
+            let profile = super::generation::profile_for_sm(self.sm);
+            let pb = super::pushbuf::PushBuf::gr_context_init(
+                profile.compute_class,
+                method_entries,
+            );
+            state.submit_pushbuffer(pb.as_bytes())?;
+
+            tracing::info!(
+                bdf = %self.bdf,
+                entries = method_entries.len(),
+                compute_class = format_args!("{:#06x}", profile.compute_class),
+                "GR context init pushbuffer submitted"
+            );
+
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = method_entries;
+            Err(DriverError::Unsupported(
+                "GR context init requires Linux VFIO".into(),
+            ))
+        }
     }
 }
 

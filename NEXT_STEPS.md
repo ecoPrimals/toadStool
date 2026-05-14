@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S261 (deep debt sweep + hotSpring audit acknowledgement)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,841+ lib-only) | **81 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S260)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests**
-**Latest**: S261 — deep debt sweep + hotSpring upstream evolution audit acknowledgement. FECS GR context init joint item confirmed — API ready, awaiting method entries from hotSpring experiments 184-190. Kepler dispatch fully wired. Health RPCs live.
-**Previous**: S260 — hotSpring trio evolution response (`health.version`, `health.drain`, Kepler dispatch, FECS GR context init API). S259 — VFIO IPC + QMD dispatch. S258 — PBDMA dispatch wiring. S256–S257 — FECS warm-state + deep debt. S255 — hotSpring S243 audit response.
+**Updated**: May 2026 — S262 (diesel engine completion: GR init IPC + shader metadata aliases)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,849+ lib-only) | **83 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S262)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests**
+**Latest**: S262 — `device.gr.init` / `compute.context.init` IPC endpoints exposed. coralReef shader metadata aliases wired (`gprs`→`gpr_count`, `shared_memory`→`shared_mem_bytes`, `barriers`→`barrier_count`). `init_gr_context` promoted to `ComputeDevice` trait. Optional `gr_init_entries` on `device.vfio.roundtrip`.
+**Previous**: S261 — deep debt sweep. S260 — `health.version`, `health.drain`, Kepler dispatch. S259 — VFIO IPC + QMD dispatch. S258 — PBDMA dispatch wiring. S256–S257 — FECS warm-state + deep debt. S255 — hotSpring S243 audit response.
 
 ---
 
@@ -34,7 +34,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **22,900+ tests** (0 failures, 8,841+ lib-only). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **22,900+ tests** (0 failures, 8,849+ lib-only). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -165,7 +165,7 @@ after Phase D.
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 22,900+ tests (8,841+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 22,900+ tests (8,849+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)

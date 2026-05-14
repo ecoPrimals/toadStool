@@ -155,14 +155,7 @@ impl DispatchHandler {
         );
 
         let info = if let Some(si) = shader_info {
-            toadstool_cylinder::ShaderInfo {
-                gpr_count: si.get("gpr_count").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
-                shared_mem_bytes: si.get("shared_mem_bytes").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
-                barrier_count: si.get("barrier_count").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
-                workgroup: workgroup_size,
-                wave_size: si.get("wave_size").and_then(serde_json::Value::as_u64).unwrap_or(32) as u32,
-                local_mem_bytes: si.get("local_mem_bytes").and_then(serde_json::Value::as_u64).map(|v| v as u32),
-            }
+            submit::resolve_shader_info(si, workgroup_size)
         } else {
             toadstool_cylinder::ShaderInfo {
                 workgroup: workgroup_size,
@@ -384,20 +377,34 @@ impl DispatchHandler {
         );
 
         let info = if let Some(ref si) = shader_info {
-            toadstool_cylinder::ShaderInfo {
-                gpr_count: si.get("gpr_count").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
-                shared_mem_bytes: si.get("shared_mem_bytes").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
-                barrier_count: si.get("barrier_count").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
-                workgroup: workgroup_size,
-                wave_size: si.get("wave_size").and_then(serde_json::Value::as_u64).unwrap_or(32) as u32,
-                local_mem_bytes: si.get("local_mem_bytes").and_then(serde_json::Value::as_u64).map(|v| v as u32),
-            }
+            submit::resolve_shader_info(si, workgroup_size)
         } else {
             toadstool_cylinder::ShaderInfo {
                 workgroup: workgroup_size,
                 ..Default::default()
             }
         };
+
+        // GR context init — optional pre-dispatch step for warm-caught NVIDIA GPUs
+        if let Some(entries_arr) = p.get("gr_init_entries").and_then(serde_json::Value::as_array) {
+            let method_entries: Vec<(u32, u32)> = entries_arr
+                .iter()
+                .filter_map(|entry| {
+                    let pair = entry.as_array()?;
+                    let reg = pair.first()?.as_u64()? as u32;
+                    let val = pair.get(1)?.as_u64()? as u32;
+                    Some((reg, val))
+                })
+                .collect();
+
+            if !method_entries.is_empty()
+                && let Err(e) = device.init_gr_context(&method_entries)
+            {
+                return Err(JsonRpcError::internal_error(format!(
+                    "GR context init failed: {e}"
+                )));
+            }
+        }
 
         let job_id = uuid::Uuid::new_v4().to_string();
         let start = std::time::Instant::now();
@@ -427,6 +434,96 @@ impl DispatchHandler {
                     "status": "failed",
                     "error": e,
                     "timing": { "dispatch_ms": dispatch_ms },
+                }))
+            }
+        }
+    }
+}
+
+impl DispatchHandler {
+    /// `device.gr.init` — submit GR context init method entries to a VFIO device.
+    ///
+    /// Accepts `(register, value)` pairs captured from warm-catch experiments and
+    /// submits them as a GR context init pushbuffer. Required before first compute
+    /// dispatch on warm-caught Volta+ GPUs (Kepler does not need this).
+    pub(super) async fn device_gr_init(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+
+        let p = params.ok_or_else(|| {
+            JsonRpcError::invalid_params(
+                "Expected { bdf, method_entries: [[register, value], ...] }",
+            )
+        })?;
+
+        let bdf = p
+            .get("bdf")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let entries_arr = p
+            .get("method_entries")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| {
+                JsonRpcError::invalid_params(
+                    "Missing 'method_entries' array of [register, value] pairs",
+                )
+            })?;
+
+        let method_entries: Vec<(u32, u32)> = entries_arr
+            .iter()
+            .filter_map(|entry| {
+                let pair = entry.as_array()?;
+                let reg = pair.first()?.as_u64()? as u32;
+                let val = pair.get(1)?.as_u64()? as u32;
+                Some((reg, val))
+            })
+            .collect();
+
+        if method_entries.is_empty() {
+            return Err(JsonRpcError::invalid_params(
+                "method_entries must contain at least one [register, value] pair",
+            ));
+        }
+
+        let factory = self.local_device_factory.as_ref().ok_or_else(|| {
+            JsonRpcError::internal_error("no local device factory configured")
+        })?;
+
+        self.acquire_device_handle(bdf).await;
+
+        let mut device = factory(bdf).ok_or_else(|| {
+            JsonRpcError::internal_error(format!(
+                "VFIO device {bdf} not available — FECS cold or not VFIO-bound"
+            ))
+        })?;
+
+        let start = std::time::Instant::now();
+
+        match device.init_gr_context(&method_entries) {
+            Ok(()) => {
+                let elapsed_ms = start.elapsed().as_millis() as u64;
+                Ok(serde_json::json!({
+                    "domain": "device.gr",
+                    "operation": "init",
+                    "bdf": bdf,
+                    "status": "completed",
+                    "entries_submitted": method_entries.len(),
+                    "timing": { "init_ms": elapsed_ms },
+                }))
+            }
+            Err(e) => {
+                let elapsed_ms = start.elapsed().as_millis() as u64;
+                Ok(serde_json::json!({
+                    "domain": "device.gr",
+                    "operation": "init",
+                    "bdf": bdf,
+                    "status": "failed",
+                    "error": format!("{e}"),
+                    "entries_submitted": 0,
+                    "timing": { "init_ms": elapsed_ms },
                 }))
             }
         }

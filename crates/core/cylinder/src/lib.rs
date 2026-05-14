@@ -221,6 +221,16 @@ pub trait ComputeDevice: Send + Sync {
 
     /// Query the hardware capabilities of this device.
     fn capabilities(&self) -> &HardwareCapabilities;
+
+    /// Submit GR context initialization method entries.
+    ///
+    /// Only meaningful for NVIDIA VFIO devices where warm-caught GPUs need
+    /// GR context setup before first dispatch. Default returns `Unsupported`.
+    fn init_gr_context(&mut self, _method_entries: &[(u32, u32)]) -> DriverResult<()> {
+        Err(DriverError::Unsupported(
+            "GR context init not supported on this device type".into(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -272,5 +282,25 @@ mod tests {
         assert_eq!(info.workgroup, [1, 1, 1]);
         assert_eq!(info.wave_size, 32);
         assert_eq!(info.local_mem_bytes, None);
+    }
+
+    #[test]
+    fn init_gr_context_default_returns_unsupported() {
+        struct StubDevice;
+        impl ComputeDevice for StubDevice {
+            fn alloc(&mut self, _: u64, _: MemoryDomain) -> DriverResult<BufferHandle> {
+                Err(DriverError::Unsupported("stub".into()))
+            }
+            fn free(&mut self, _: BufferHandle) -> DriverResult<()> { Ok(()) }
+            fn upload(&mut self, _: BufferHandle, _: u64, _: &[u8]) -> DriverResult<()> { Ok(()) }
+            fn readback(&self, _: BufferHandle, _: u64, _: usize) -> DriverResult<Vec<u8>> { Ok(vec![]) }
+            fn dispatch(&mut self, _: &[u8], _: &[BufferHandle], _: DispatchDims, _: &ShaderInfo) -> DriverResult<()> { Ok(()) }
+            fn sync(&mut self) -> DriverResult<()> { Ok(()) }
+            fn capabilities(&self) -> &HardwareCapabilities { unimplemented!() }
+        }
+        let mut dev = StubDevice;
+        let result = dev.init_gr_context(&[(0x900, 0x1234)]);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DriverError::Unsupported(_)));
     }
 }

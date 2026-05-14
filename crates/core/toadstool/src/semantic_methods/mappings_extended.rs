@@ -120,6 +120,12 @@ where
     add_mapping("ember.vfio.open", "device_vfio_open");
     add_mapping("ember.vfio.roundtrip", "device_vfio_roundtrip");
 
+    // GR context init — FECS method entry submission for warm-caught Volta+ GPUs.
+    add_mapping("device.gr.init", "device_gr_init");
+    add_mapping("compute.context.init", "device_gr_init");
+    add_mapping("ember.gr.init", "device_gr_init");
+    add_mapping("sovereign.gr.init", "device_gr_init");
+
     // ═══════════════════════════════════════════════════════════
     // HEALTH DOMAIN — build identity and drain control
     // ═══════════════════════════════════════════════════════════

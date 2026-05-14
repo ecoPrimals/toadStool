@@ -278,3 +278,110 @@ async fn capabilities_glowplug_has_orchestrator_type() {
     let orch = &result["output"]["glowplug"]["orchestrator"];
     assert_eq!(orch, "SwapOrchestrator<SysfsSwapExecutor>");
 }
+
+// ── Shader metadata alias resolution (coralReef CompileResponse compat) ──
+
+#[test]
+fn resolve_shader_info_accepts_toadstool_native_names() {
+    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    let si = serde_json::json!({
+        "gpr_count": 32,
+        "shared_mem_bytes": 16384,
+        "barrier_count": 2,
+        "wave_size": 32,
+        "local_mem_bytes": 512,
+    });
+    let info = resolve_shader_info(&si, [256, 1, 1]);
+    assert_eq!(info.gpr_count, 32);
+    assert_eq!(info.shared_mem_bytes, 16384);
+    assert_eq!(info.barrier_count, 2);
+    assert_eq!(info.wave_size, 32);
+    assert_eq!(info.local_mem_bytes, Some(512));
+    assert_eq!(info.workgroup, [256, 1, 1]);
+}
+
+#[test]
+fn resolve_shader_info_accepts_coralreef_field_names() {
+    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    let si = serde_json::json!({
+        "gprs": 48,
+        "shared_memory": 32768,
+        "barriers": 3,
+        "wave_size": 32,
+        "local_memory": 1024,
+    });
+    let info = resolve_shader_info(&si, [128, 2, 1]);
+    assert_eq!(info.gpr_count, 48);
+    assert_eq!(info.shared_mem_bytes, 32768);
+    assert_eq!(info.barrier_count, 3);
+    assert_eq!(info.local_mem_bytes, Some(1024));
+    assert_eq!(info.workgroup, [128, 2, 1]);
+}
+
+#[test]
+fn resolve_shader_info_native_name_preferred_over_alias() {
+    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    let si = serde_json::json!({
+        "gpr_count": 32,
+        "gprs": 64,
+        "shared_mem_bytes": 8192,
+        "shared_memory": 16384,
+    });
+    let info = resolve_shader_info(&si, [256, 1, 1]);
+    assert_eq!(info.gpr_count, 32, "native gpr_count should win over gprs alias");
+    assert_eq!(info.shared_mem_bytes, 8192, "native shared_mem_bytes should win");
+}
+
+#[test]
+fn resolve_shader_info_defaults_without_metadata() {
+    use crate::pure_jsonrpc::handler::dispatch::submit::resolve_shader_info;
+    let si = serde_json::json!({});
+    let info = resolve_shader_info(&si, [64, 1, 1]);
+    assert_eq!(info.gpr_count, 0);
+    assert_eq!(info.shared_mem_bytes, 0);
+    assert_eq!(info.barrier_count, 0);
+    assert_eq!(info.wave_size, 32);
+    assert_eq!(info.local_mem_bytes, None);
+}
+
+// ── device.gr.init validation ──
+
+#[tokio::test]
+async fn device_gr_init_requires_bdf() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "method_entries": [[0x900, 0x1234]],
+    });
+    let err = handler
+        .device_gr_init(Some(&params))
+        .await
+        .expect_err("missing bdf should fail");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn device_gr_init_requires_method_entries() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "bdf": "0000:01:00.0",
+    });
+    let err = handler
+        .device_gr_init(Some(&params))
+        .await
+        .expect_err("missing method_entries should fail");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn device_gr_init_rejects_empty_entries() {
+    let handler = test_handler();
+    let params = serde_json::json!({
+        "bdf": "0000:01:00.0",
+        "method_entries": [],
+    });
+    let err = handler
+        .device_gr_init(Some(&params))
+        .await
+        .expect_err("empty entries should fail");
+    assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
+}

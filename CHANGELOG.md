@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 14, 2026 (Sessions 43-261)
+## [Unreleased] - May 14, 2026 (Sessions 43-262)
+
+### Session S262 (May 14, 2026) — Diesel Engine Completion: GR Init IPC + Shader Metadata Aliases
+
+hotSpring diesel engine completion audit response: exposed `init_gr_context` over IPC, wired coralReef shader metadata aliases into QMD path.
+
+- ADDED: `device.gr.init` / `compute.context.init` JSON-RPC endpoint — accepts `bdf` and `method_entries: [[register, value], ...]` for GR context initialization on warm-caught NVIDIA GPUs
+- ADDED: Semantic aliases `ember.gr.init`, `sovereign.gr.init` for GR context init
+- ADDED: Optional `gr_init_entries` parameter on `device.vfio.roundtrip` — inline GR context init in same VFIO session as dispatch
+- EVOLVED: `init_gr_context()` promoted from inherent method to `ComputeDevice` trait — default returns `Unsupported`, NVIDIA impl submits via GPFIFO
+- EVOLVED: `resolve_shader_info()` helper — accepts both toadStool-native field names (`gpr_count`, `shared_mem_bytes`, `barrier_count`, `local_mem_bytes`) and coralReef `CompilationInfoResponse` field names (`gprs`, `shared_memory`, `barriers`, `local_memory`), native names preferred
+- EVOLVED: Deduplicated 3 inline shader_info parsing sites into single `resolve_shader_info()` (try_local_dispatch, device_vfio_roundtrip, dispatch_submit)
+- ADDED: Wire L3 cost entries for `device.gr.init` and `compute.context.init`
+- ADDED: 8 new tests — shader_info alias resolution (4), device.gr.init validation (3), init_gr_context trait default (1)
+- METRICS: 83 JSON-RPC methods (direct), 8,849 lib tests, 0 clippy warnings, deny clean
 
 ### Session S261 (May 14, 2026) — Deep Debt Sweep + hotSpring Audit Acknowledgement
 

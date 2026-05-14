@@ -124,6 +124,39 @@ pub(super) fn resolve_buffers(p: &serde_json::Value) -> serde_json::Value {
     serde_json::json!(resolved)
 }
 
+/// Resolve shader metadata from JSON, accepting both toadStool-native and
+/// coralReef `CompilationInfoResponse` field names.
+///
+/// toadStool names: `gpr_count`, `shared_mem_bytes`, `barrier_count`, `wave_size`, `local_mem_bytes`
+/// coralReef names: `gprs`, `shared_memory`, `barriers`, `wave_size`, `local_memory`
+pub(super) fn resolve_shader_info(
+    si: &serde_json::Value,
+    workgroup: [u32; 3],
+) -> toadstool_cylinder::ShaderInfo {
+    let u32_field = |primary: &str, alias: &str| -> u32 {
+        si.get(primary)
+            .or_else(|| si.get(alias))
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0) as u32
+    };
+
+    toadstool_cylinder::ShaderInfo {
+        gpr_count: u32_field("gpr_count", "gprs"),
+        shared_mem_bytes: u32_field("shared_mem_bytes", "shared_memory"),
+        barrier_count: u32_field("barrier_count", "barriers"),
+        workgroup,
+        wave_size: si
+            .get("wave_size")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(32) as u32,
+        local_mem_bytes: si
+            .get("local_mem_bytes")
+            .or_else(|| si.get("local_memory"))
+            .and_then(serde_json::Value::as_u64)
+            .map(|v| v as u32),
+    }
+}
+
 fn resource_exhausted(msg: String) -> JsonRpcError {
     JsonRpcError {
         code: toadstool_common::constants::jsonrpc::error_codes::RESOURCE_EXHAUSTED,

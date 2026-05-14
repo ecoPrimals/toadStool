@@ -138,6 +138,14 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         cost("high", true, 100, "high", "high"),
     );
     map.insert(
+        "device.gr.init".into(),
+        cost("medium", true, 20, "medium", "low"),
+    );
+    map.insert(
+        "compute.context.init".into(),
+        cost("medium", true, 20, "medium", "low"),
+    );
+    map.insert(
         "compute.dispatch.status".into(),
         cost("negligible", false, 1, "negligible", "none"),
     );
