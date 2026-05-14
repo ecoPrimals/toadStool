@@ -23,7 +23,7 @@ reason)]`. Zero `#[allow(deprecated)]` remaining in codebase.
 handlers (`mmio.read32/write32/batch/pramin.read32/bar0.probe/falcon.status`).
 `SysfsBar0Rw` read-write BAR0 mmap in cylinder. `TOADSTOOL_RUN_DIR` socket
 layout. 7 `#[allow(deprecated)]` evolved to `#[expect(deprecated, reason)]`.
-Test perf: 5s timeout → 10ms, `OnceLock` capability cache. 77 JSON-RPC methods.
+Test perf: 5s timeout → 10ms, `OnceLock` capability cache. 79 JSON-RPC methods.
 8,827 lib tests, 0 failures, 0 clippy warnings.
 
 **S251 (hotSpring Sovereign Compute Evolution Pass C1–C7)**:

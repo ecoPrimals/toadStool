@@ -159,19 +159,26 @@ impl ToadStoolTarpcServer {
         let listener =
             UnixListener::bind(socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
 
-        // Set permissions to user-only (0600)
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
+            let mode = std::env::var(
+                toadstool_common::interned_strings::socket_env::TOADSTOOL_SOCKET_MODE,
+            )
+            .ok()
+            .and_then(|s| {
+                u32::from_str_radix(s.trim_start_matches("0o").trim_start_matches('0'), 8).ok()
+            })
+            .unwrap_or(0o600);
             let mut perms = tokio::fs::metadata(socket_path)
                 .await
                 .map_err(|e| ServerError::Internal(e.to_string()))?
                 .permissions();
-            perms.set_mode(0o600); // Owner read+write only
+            perms.set_mode(mode);
             tokio::fs::set_permissions(socket_path, perms)
                 .await
                 .map_err(|e| ServerError::Internal(e.to_string()))?;
-            info!("Set socket permissions to 0600 (user-only)");
+            info!("Set tarpc socket permissions to {mode:04o}");
         }
 
         info!(

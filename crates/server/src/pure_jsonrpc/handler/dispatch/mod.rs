@@ -288,6 +288,151 @@ impl DispatchHandler {
     }
 }
 
+impl DispatchHandler {
+    /// `device.vfio.open` — open a VFIO device by BDF, return capabilities and status.
+    pub(super) async fn device_vfio_open(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let factory = self.local_device_factory.as_ref().ok_or_else(|| {
+            JsonRpcError::internal_error("no local device factory configured")
+        })?;
+
+        self.acquire_device_handle(bdf).await;
+
+        match factory(bdf) {
+            Some(device) => {
+                let caps = device.capabilities();
+                Ok(serde_json::json!({
+                    "domain": "device.vfio",
+                    "operation": "open",
+                    "bdf": bdf,
+                    "status": "ready",
+                    "capabilities": {
+                        "vendor": format!("{:?}", caps.vendor),
+                        "device_name": caps.device_name,
+                        "generation": caps.generation_name,
+                        "has_f64": caps.has_hardware_f64,
+                        "max_shared_mem_bytes": caps.max_shared_mem_bytes,
+                    },
+                }))
+            }
+            None => Ok(serde_json::json!({
+                "domain": "device.vfio",
+                "operation": "open",
+                "bdf": bdf,
+                "status": "unavailable",
+                "error": "device not available — FECS cold or not VFIO-bound",
+            })),
+        }
+    }
+
+    /// `device.vfio.roundtrip` — alloc→upload→dispatch→sync→readback in one call.
+    ///
+    /// Convenience endpoint for springs that want a single RPC for the full
+    /// compute lifecycle on a VFIO device. Returns a `job_id` and inline results.
+    pub(super) async fn device_vfio_roundtrip(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+        use std::sync::atomic::Ordering;
+
+        let p = params.ok_or_else(|| {
+            JsonRpcError::invalid_params(
+                "Expected { bdf, binary_b64|binary, workgroup_size?, buffers?, shader_info? }",
+            )
+        })?;
+
+        let bdf = p
+            .get("bdf")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let binary_bytes = submit::resolve_binary_param(p)?;
+        if binary_bytes.is_empty() {
+            return Err(JsonRpcError::invalid_params("binary must not be empty"));
+        }
+
+        let factory = self.local_device_factory.as_ref().ok_or_else(|| {
+            JsonRpcError::internal_error("no local device factory configured")
+        })?;
+
+        self.acquire_device_handle(bdf).await;
+
+        let mut device = factory(bdf).ok_or_else(|| {
+            JsonRpcError::internal_error(format!(
+                "VFIO device {bdf} not available — FECS cold or not VFIO-bound"
+            ))
+        })?;
+
+        let workgroup_size = submit::resolve_workgroup_size(p);
+        let buffer_descs = submit::resolve_buffers(p);
+        let shader_info = p.get("shader_info").cloned();
+
+        let dims = toadstool_cylinder::DispatchDims::new(
+            workgroup_size[0],
+            workgroup_size[1],
+            workgroup_size[2],
+        );
+
+        let info = if let Some(ref si) = shader_info {
+            toadstool_cylinder::ShaderInfo {
+                gpr_count: si.get("gpr_count").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
+                shared_mem_bytes: si.get("shared_mem_bytes").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
+                barrier_count: si.get("barrier_count").and_then(serde_json::Value::as_u64).unwrap_or(0) as u32,
+                workgroup: workgroup_size,
+                wave_size: si.get("wave_size").and_then(serde_json::Value::as_u64).unwrap_or(32) as u32,
+                local_mem_bytes: si.get("local_mem_bytes").and_then(serde_json::Value::as_u64).map(|v| v as u32),
+            }
+        } else {
+            toadstool_cylinder::ShaderInfo {
+                workgroup: workgroup_size,
+                ..Default::default()
+            }
+        };
+
+        let job_id = uuid::Uuid::new_v4().to_string();
+        let start = std::time::Instant::now();
+
+        self.dispatch_count.fetch_add(1, Ordering::Relaxed);
+
+        match Self::run_local_lifecycle(&mut *device, &binary_bytes, &dims, &info, &buffer_descs) {
+            Ok(output) => {
+                let dispatch_ms = start.elapsed().as_millis() as u64;
+                Ok(serde_json::json!({
+                    "domain": "device.vfio",
+                    "operation": "roundtrip",
+                    "job_id": job_id,
+                    "bdf": bdf,
+                    "status": "completed",
+                    "output": output,
+                    "timing": { "dispatch_ms": dispatch_ms },
+                }))
+            }
+            Err(e) => {
+                let dispatch_ms = start.elapsed().as_millis() as u64;
+                Ok(serde_json::json!({
+                    "domain": "device.vfio",
+                    "operation": "roundtrip",
+                    "job_id": job_id,
+                    "bdf": bdf,
+                    "status": "failed",
+                    "error": e,
+                    "timing": { "dispatch_ms": dispatch_ms },
+                }))
+            }
+        }
+    }
+}
+
 /// Create a local device factory for Phase D sovereign dispatch.
 ///
 /// The factory resolves a PCI BDF to a local `ComputeDevice` via two paths:
@@ -353,7 +498,14 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
     let mut dev = toadstool_cylinder::nv::compute_device::NvVfioComputeDevice::new(bdf.to_string());
 
     if dev.probe_warm_fecs() {
-        tracing::info!(bdf, "Phase D: NVIDIA VFIO device with warm FECS — compute-ready");
+        match dev.open_vfio() {
+            Ok(()) => {
+                tracing::info!(bdf, "Phase D: NVIDIA VFIO device opened — PBDMA dispatch ready");
+            }
+            Err(e) => {
+                tracing::warn!(bdf, error = %e, "VFIO device open failed — caps-only mode");
+            }
+        }
         Some(Box::new(dev))
     } else {
         tracing::info!(

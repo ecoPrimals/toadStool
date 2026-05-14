@@ -361,6 +361,10 @@ impl JsonRpcHandler {
             "ember.reacquire" => return self.ember_reacquire(params).await,
             "device.swap" => return self.device_swap(params).await,
             "device.warm_catch" => return self.device_warm_catch(params),
+            "device.vfio.open" => return self.dispatch.device_vfio_open(params).await,
+            "device.vfio.roundtrip" => {
+                return self.dispatch.device_vfio_roundtrip(params).await;
+            }
 
             "mmio.read32" => return mmio::mmio_read32(params),
             "mmio.write32" => return mmio::mmio_write32(params),
@@ -451,6 +455,8 @@ impl JsonRpcHandler {
             "ember_reacquire" => self.ember_reacquire(params).await,
             "device_swap" => self.device_swap(params).await,
             "device_warm_catch" => self.device_warm_catch(params),
+            "device_vfio_open" => self.dispatch.device_vfio_open(params).await,
+            "device_vfio_roundtrip" => self.dispatch.device_vfio_roundtrip(params).await,
             "mmio_read32" => mmio::mmio_read32(params),
             "mmio_write32" => mmio::mmio_write32(params),
             "mmio_batch" => mmio::mmio_batch(params),

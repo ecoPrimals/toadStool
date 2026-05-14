@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-258)
+## [Unreleased] - May 13, 2026 (Sessions 43-259)
+
+### Session S259 (May 13, 2026) — Universal Sovereign Dispatch: Last Mile
+
+hotSpring last-mile audit response: VFIO IPC surface, QMD-based dispatch, socket permissions.
+
+- ADDED: `device.vfio.open` JSON-RPC endpoint — opens VFIO device by BDF, returns capabilities and status
+- ADDED: `device.vfio.roundtrip` JSON-RPC endpoint — alloc→upload→dispatch→sync→readback in one call with `job_id`
+- ADDED: Semantic aliases `ember.vfio.open`, `ember.vfio.roundtrip` for device.vfio.* endpoints
+- EVOLVED: `NvVfioComputeDevice::dispatch()` — raw pushbuffer → QMD-based compute launch (shader upload → CBUF descriptor table → driver constants → QMD build → PushBuf init+dispatch → GPFIFO submit)
+- EVOLVED: `try_vfio_nvidia()` factory — now calls `open_vfio()` after warm FECS detection, devices returned dispatch-ready
+- FIXED: tarpc socket hardcoded `0o600` → reads `TOADSTOOL_SOCKET_MODE` env var (matches JSON-RPC socket behavior)
+- ADDED: `NvVfioComputeDevice.sm` field for generation-aware QMD version selection
+- ADDED: `resolve_binary_param`, `resolve_workgroup_size`, `resolve_buffers` → `pub(super)` for VFIO handler reuse
+- METRICS: 79 JSON-RPC methods, 8,837 lib tests, 0 clippy warnings, deny clean
 
 ### Session S258 (May 13, 2026) — PBDMA Dispatch Wiring
 

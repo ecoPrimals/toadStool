@@ -114,6 +114,12 @@ where
     add_mapping("ember.swap", "device_swap");
     add_mapping("sovereign.boot", "device_swap");
 
+    // VFIO dispatch surface — direct PBDMA dispatch on VFIO-bound GPUs.
+    add_mapping("device.vfio.open", "device_vfio_open");
+    add_mapping("device.vfio.roundtrip", "device_vfio_roundtrip");
+    add_mapping("ember.vfio.open", "device_vfio_open");
+    add_mapping("ember.vfio.roundtrip", "device_vfio_roundtrip");
+
     // ═══════════════════════════════════════════════════════════
     // MMIO DOMAIN — BAR0 register access and falcon status
     //

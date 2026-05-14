@@ -57,7 +57,7 @@ Nest    = Tower  + Storage            <- storage
 | Wildcard re-exports | Narrowed in 13 crates (explicit `pub use` reduces recompilation cascade) |
 | Hardcoded ports/localhost | 0 inline literals -- config constants + capability-based discovery |
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
-| JSON-RPC surface | **77** JSON-RPC methods (direct) + semantic registry |
+| JSON-RPC surface | **79** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
 | File size limit | All production files target **< 500 lines** (S203i+S173: 52 production files refactored via test extraction; 3 specialty >700L files smart-refactored into directory modules; remaining >500L files are pure production — hardware drivers, type defs, all <700 lines) |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
@@ -388,7 +388,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S255. **22,900+** workspace tests, 0 failures (8,832+ lib-only). ~83.6% lib-only line coverage (target 90%). **77 JSON-RPC methods** (direct) + semantic registry (incl. `ember.swap`, `sovereign.boot` aliases) with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production+examples). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C complete** (S245–S253). **Phase D factory wired** (S254) — AMD DRM dispatch live, NV VFIO FECS-gated. **`OwnedFd` VFIO fd ownership** (S253). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S255. **22,900+** workspace tests, 0 failures (8,832+ lib-only). ~83.6% lib-only line coverage (target 90%). **79 JSON-RPC methods** (direct) + semantic registry (incl. `device.vfio.open`, `device.vfio.roundtrip`, `ember.swap`, `sovereign.boot` aliases) with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production+examples). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C complete** (S245–S253). **Phase D factory wired** (S254) — AMD DRM dispatch live, NV VFIO FECS-gated. **`OwnedFd` VFIO fd ownership** (S253). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 

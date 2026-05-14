@@ -59,7 +59,7 @@ pub(super) fn enforce_envelope(
 
 /// Resolve the binary payload from either `binary_b64` (base64, preferred) or
 /// `binary` (JSON u8 array, legacy).
-fn resolve_binary_param(p: &serde_json::Value) -> Result<Vec<u8>, JsonRpcError> {
+pub(super) fn resolve_binary_param(p: &serde_json::Value) -> Result<Vec<u8>, JsonRpcError> {
     if let Some(b64) = p.get("binary_b64").and_then(|v| v.as_str()) {
         return base64::engine::general_purpose::STANDARD
             .decode(b64)
@@ -79,7 +79,7 @@ fn resolve_binary_param(p: &serde_json::Value) -> Result<Vec<u8>, JsonRpcError> 
 
 /// Resolve workgroup/dispatch dimensions from `dispatch_dims` (trio standard)
 /// or `workgroup_size` (legacy), defaulting to [256, 1, 1].
-fn resolve_workgroup_size(p: &serde_json::Value) -> [u32; 3] {
+pub(super) fn resolve_workgroup_size(p: &serde_json::Value) -> [u32; 3] {
     let dims = p
         .get("dispatch_dims")
         .or_else(|| p.get("workgroup_size"))
@@ -98,7 +98,7 @@ fn resolve_workgroup_size(p: &serde_json::Value) -> [u32; 3] {
 
 /// Resolve buffer descriptors. Accepts trio-standard `buffers[]` with `data_b64`
 /// fields — decodes them to `data` (u8 arrays) for downstream consumption.
-fn resolve_buffers(p: &serde_json::Value) -> serde_json::Value {
+pub(super) fn resolve_buffers(p: &serde_json::Value) -> serde_json::Value {
     let Some(buffers) = p.get("buffers").and_then(|v| v.as_array()) else {
         return serde_json::json!([]);
     };

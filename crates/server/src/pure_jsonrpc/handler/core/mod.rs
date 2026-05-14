@@ -92,6 +92,8 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "ember.reacquire",
     "device.swap",
     "device.warm_catch",
+    "device.vfio.open",
+    "device.vfio.roundtrip",
     "mmio.read32",
     "mmio.write32",
     "mmio.batch",
