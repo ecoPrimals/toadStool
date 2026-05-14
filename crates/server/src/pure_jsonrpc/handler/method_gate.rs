@@ -185,8 +185,8 @@ impl MethodGate {
 pub fn classify_method(method: &str) -> MethodVisibility {
     match method {
         // Health probes — always public (PG-62 fast-path must not be gated)
-        "health.liveness" | "health.readiness" | "health.check" | "toadstool.health"
-        | "compute.health" => MethodVisibility::Public,
+        "health.liveness" | "health.readiness" | "health.check" | "health.version"
+        | "health.drain" | "toadstool.health" | "compute.health" => MethodVisibility::Public,
 
         // Identity and capabilities — introspection is always public
         "identity.get" | "toadstool.version" | "compute.version" | "capabilities.list"

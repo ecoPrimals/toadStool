@@ -121,6 +121,15 @@ where
     add_mapping("ember.vfio.roundtrip", "device_vfio_roundtrip");
 
     // ═══════════════════════════════════════════════════════════
+    // HEALTH DOMAIN — build identity and drain control
+    // ═══════════════════════════════════════════════════════════
+
+    add_mapping("ember.health.version", "health_version");
+    add_mapping("sovereign.health.version", "health_version");
+    add_mapping("ember.health.drain", "health_drain");
+    add_mapping("sovereign.health.drain", "health_drain");
+
+    // ═══════════════════════════════════════════════════════════
     // MMIO DOMAIN — BAR0 register access and falcon status
     //
     // Direct hardware register access for diagnostics and

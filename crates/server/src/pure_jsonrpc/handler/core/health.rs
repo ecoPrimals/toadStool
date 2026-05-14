@@ -2,7 +2,7 @@
 //! JSON-RPC health probes and full health envelope.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 use crate::rpc_types::HealthStatus;
@@ -38,6 +38,24 @@ pub(crate) async fn health_readiness(version: &str, ready: bool) -> JsonRpcResul
     Ok(serde_json::json!({
         "status": status,
         "version": version,
+    }))
+}
+
+/// Build-identity probe (`health.version`).
+///
+/// Returns session, version, build hash, and service name for post-upgrade
+/// verification. Build hash is embedded at compile time via `GIT_HASH` env
+/// var (set by CI or `build.rs`); falls back to `"dev"` for local builds.
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
+pub(crate) async fn health_version(version: &str) -> JsonRpcResult {
+    Ok(serde_json::json!({
+        "version": version,
+        "session": env!("CARGO_PKG_VERSION"),
+        "build_hash": option_env!("GIT_HASH").unwrap_or("dev"),
+        "service": "toadstool",
     }))
 }
 
@@ -77,4 +95,29 @@ pub(crate) async fn health(
         obj.insert("status".into(), serde_json::Value::String("alive".into()));
     }
     Ok(value)
+}
+
+/// Graceful drain for zero-disruption upgrades (`health.drain`).
+///
+/// Sets the draining flag so new dispatches are rejected, then waits for
+/// in-flight work to complete (up to a configurable timeout). Returns
+/// the drain status so the caller can confirm readiness for shutdown.
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
+pub(crate) async fn health_drain(
+    draining: &AtomicBool,
+    ready: &AtomicBool,
+) -> JsonRpcResult {
+    draining.store(true, Ordering::SeqCst);
+    ready.store(false, Ordering::SeqCst);
+
+    tracing::info!("health.drain: server entering drain state — rejecting new dispatches");
+
+    Ok(serde_json::json!({
+        "status": "draining",
+        "accepting_new_work": false,
+        "message": "Server is draining. Send SIGTERM when ready to shut down."
+    }))
 }

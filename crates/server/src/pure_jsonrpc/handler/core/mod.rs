@@ -10,7 +10,7 @@ mod identity;
 mod wire_l3;
 
 pub(crate) use compute::{gpu_info, gpu_memory, version_info};
-pub(crate) use health::{health, health_liveness, health_readiness};
+pub(crate) use health::{health, health_drain, health_liveness, health_readiness, health_version};
 pub(crate) use identity::{capabilities_list, discover_capabilities, identity_get};
 
 use crate::pure_jsonrpc::types::JsonRpcError;
@@ -27,6 +27,8 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "health.liveness",
     "health.readiness",
     "health.check",
+    "health.version",
+    "health.drain",
     "toadstool.health",
     "toadstool.version",
     "toadstool.submit_workload",
@@ -162,6 +164,26 @@ mod tests {
             .expect("health ok");
         assert_eq!(v2["error_count"], 8);
         assert_eq!(v2["status"], "alive");
+    }
+
+    #[tokio::test]
+    async fn health_version_includes_session_and_build_hash() {
+        let v = health_version("v-ver-1").await.expect("ok");
+        assert_eq!(v["version"], "v-ver-1");
+        assert!(v["session"].as_str().is_some(), "session field required");
+        assert!(v["build_hash"].as_str().is_some(), "build_hash field required");
+        assert_eq!(v["service"], "toadstool");
+    }
+
+    #[tokio::test]
+    async fn health_drain_sets_status() {
+        let draining = std::sync::atomic::AtomicBool::new(false);
+        let ready = std::sync::atomic::AtomicBool::new(true);
+        let v = health_drain(&draining, &ready).await.expect("ok");
+        assert_eq!(v["status"], "draining");
+        assert_eq!(v["accepting_new_work"], false);
+        assert!(draining.load(Ordering::Relaxed), "draining flag should be set");
+        assert!(!ready.load(Ordering::Relaxed), "ready flag should be cleared");
     }
 
     #[tokio::test]

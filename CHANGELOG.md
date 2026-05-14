@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 13, 2026 (Sessions 43-259)
+## [Unreleased] - May 14, 2026 (Sessions 43-260)
+
+### Session S260 (May 14, 2026) — hotSpring Sovereign Compute Trio Evolution Response
+
+hotSpring May 14 audit response: health RPC surface, Kepler dispatch wiring, FECS GR context init.
+
+- ADDED: `health.version` JSON-RPC endpoint — returns session, version, build hash, service name for post-upgrade verification
+- ADDED: `health.drain` JSON-RPC endpoint — sets drain flag, clears readiness, rejects new dispatches for zero-disruption upgrades
+- ADDED: Semantic aliases `ember.health.version`, `sovereign.health.version`, `ember.health.drain`, `sovereign.health.drain`
+- EVOLVED: `NvVfioComputeDevice::open_vfio()` — branches on `PageTableFormat::V1TwoLevel` (Kepler) to use `VfioChannel::create_kepler` with GK104 doorbell instead of Volta-only `NOTIFY_CHANNEL_PENDING`
+- EVOLVED: `VfioDispatchState::submit_pushbuffer()` — generation-aware doorbell via `DoorbellKind` enum (Usermode vs Gk104)
+- EVOLVED: `try_vfio_nvidia()` factory — recognizes Kepler `NoAcr` devices, marks them compute-ready without warm FECS
+- ADDED: `NvVfioComputeDevice::init_gr_context()` — submits GR context init method entries via pushbuffer for warm-caught Volta+ GPUs
+- ADDED: `draining` state to `JsonRpcHandler` for graceful shutdown coordination
+- METRICS: 81 JSON-RPC methods (direct), 8,841 lib tests, 0 clippy warnings, deny clean
 
 ### Session S259 (May 13, 2026) — Universal Sovereign Dispatch: Last Mile
 

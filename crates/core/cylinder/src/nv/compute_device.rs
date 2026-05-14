@@ -40,6 +40,16 @@ const IOVA_LIMIT: u64 = 0x20_0000;
 /// Page size for IOVA alignment.
 const PAGE_SIZE: u64 = 4096;
 
+/// Doorbell strategy: Volta+ uses NV_USERMODE, Kepler uses GK104 per-channel.
+#[cfg(target_os = "linux")]
+#[derive(Debug, Clone, Copy)]
+enum DoorbellKind {
+    /// Volta+ `NV_USERMODE_NOTIFY_CHANNEL_PENDING` at BAR0 0x81_0090.
+    Usermode,
+    /// Kepler GK104 per-channel doorbell at `0x3000 + ch_id * 8`.
+    Gk104 { channel_id: u32 },
+}
+
 /// Live VFIO state for PBDMA dispatch. Populated by [`NvVfioComputeDevice::open_vfio`].
 #[cfg(target_os = "linux")]
 struct VfioDispatchState {
@@ -55,6 +65,7 @@ struct VfioDispatchState {
     next_handle: u32,
     next_iova: u64,
     gp_put: u32,
+    doorbell: DoorbellKind,
 }
 
 #[cfg(target_os = "linux")]
@@ -75,7 +86,7 @@ impl VfioDispatchState {
 
     /// Submit a pushbuffer via GPFIFO + doorbell.
     fn submit_pushbuffer(&mut self, pb_bytes: &[u8]) -> DriverResult<()> {
-        use crate::vfio::channel::registers::{ramuserd, usermode};
+        use crate::vfio::channel::registers::ramuserd;
 
         let dword_count = (pb_bytes.len() / 4) as u64;
         let mut pb_buf = self.alloc_next_dma(pb_bytes.len(), "pushbuffer")?;
@@ -93,8 +104,16 @@ impl VfioDispatchState {
         self.userd.volatile_write_u32(ramuserd::GP_PUT, new_put);
         std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
 
+        let doorbell_addr = match self.doorbell {
+            DoorbellKind::Usermode => {
+                crate::vfio::channel::registers::usermode::NOTIFY_CHANNEL_PENDING
+            }
+            DoorbellKind::Gk104 { channel_id } => {
+                crate::vfio::channel::registers::usermode::gk104_doorbell(channel_id)
+            }
+        };
         self.bar0
-            .write_u32(usermode::NOTIFY_CHANNEL_PENDING, self.channel.id())
+            .write_u32(doorbell_addr, self.channel.id())
             .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("doorbell write: {e}"))))?;
 
         self.gp_put = new_put;
@@ -296,6 +315,12 @@ impl NvVfioComputeDevice {
         use crate::vfio::dma::DmaBuffer;
         use crate::vfio::VfioDevice;
 
+        let profile = super::generation::profile_for_sm(self.sm);
+        let is_kepler = matches!(
+            profile.page_table_format,
+            super::generation::PageTableFormat::V1TwoLevel
+        );
+
         let device = VfioDevice::open(&self.bdf)?;
         let bar0 = device.map_bar(0)?;
         let dma_backend = device.dma_backend();
@@ -303,30 +328,53 @@ impl NvVfioComputeDevice {
         let gpfifo = DmaBuffer::new(dma_backend.clone(), 4096, GPFIFO_IOVA)?;
         let userd = DmaBuffer::new(dma_backend.clone(), 4096, USERD_IOVA)?;
 
-        let channel = if self.fecs_ready {
-            VfioChannel::create_warm(
+        let (channel, doorbell) = if is_kepler {
+            let guard = super::hardware_guard::GuardedBar::new(&bar0, 16).map_err(|e| {
+                DriverError::Unsupported(Cow::Owned(format!("Kepler BAR0 guard init: {e}")))
+            })?;
+            let ch = VfioChannel::create_kepler(
+                dma_backend.clone(),
+                &guard,
+                GPFIFO_IOVA,
+                GPFIFO_ENTRIES,
+                USERD_IOVA,
+                0,
+            )?;
+            let ch_id = ch.id();
+            tracing::info!(
+                bdf = %self.bdf,
+                generation = profile.name,
+                "Kepler VFIO channel created — GK104 doorbell"
+            );
+            (ch, DoorbellKind::Gk104 { channel_id: ch_id })
+        } else if self.fecs_ready {
+            let ch = VfioChannel::create_warm(
                 dma_backend.clone(),
                 &bar0,
                 GPFIFO_IOVA,
                 GPFIFO_ENTRIES,
                 USERD_IOVA,
                 0,
-            )?
+            )?;
+            (ch, DoorbellKind::Usermode)
         } else {
-            VfioChannel::create(
+            let ch = VfioChannel::create(
                 dma_backend.clone(),
                 &bar0,
                 GPFIFO_IOVA,
                 GPFIFO_ENTRIES,
                 USERD_IOVA,
                 0,
-            )?
+            )?;
+            (ch, DoorbellKind::Usermode)
         };
 
         tracing::info!(
             bdf = %self.bdf,
             channel_id = channel.id(),
             fecs_ready = self.fecs_ready,
+            generation = profile.name,
+            doorbell = ?doorbell,
             "VFIO PBDMA dispatch state initialized"
         );
 
@@ -342,7 +390,49 @@ impl NvVfioComputeDevice {
             next_handle: 1,
             next_iova: USER_BUFFER_BASE_IOVA,
             gp_put: 0,
+            doorbell,
         });
+
+        Ok(())
+    }
+
+    /// Submit GR context init method entries via pushbuffer.
+    ///
+    /// On Volta+ (GV100), this writes the FECS method init entries from the
+    /// warm-preserved context. These entries must be submitted before the
+    /// first compute dispatch to ensure PBDMA has a valid GR context slot.
+    ///
+    /// For Kepler, GR context is established during `kepler_falcon_boot`
+    /// and does not need explicit method-entry submission.
+    ///
+    /// # Arguments
+    ///
+    /// * `method_entries` - `(addr, value)` pairs for GR class method writes.
+    ///   Use `crate::gsp::split_for_application` to filter BAR0-only entries.
+    #[cfg(target_os = "linux")]
+    pub fn init_gr_context(&mut self, method_entries: &[(u32, u32)]) -> DriverResult<()> {
+        let state = self.vfio_state.as_mut().ok_or_else(|| {
+            DriverError::Unsupported("VFIO not opened — call open_vfio() first".into())
+        })?;
+
+        if method_entries.is_empty() {
+            tracing::debug!(bdf = %self.bdf, "GR context init: no method entries to submit");
+            return Ok(());
+        }
+
+        let profile = super::generation::profile_for_sm(self.sm);
+        let pb = super::pushbuf::PushBuf::gr_context_init(
+            profile.compute_class,
+            method_entries,
+        );
+        state.submit_pushbuffer(pb.as_bytes())?;
+
+        tracing::info!(
+            bdf = %self.bdf,
+            entries = method_entries.len(),
+            compute_class = format_args!("{:#06x}", profile.compute_class),
+            "GR context init pushbuffer submitted"
+        );
 
         Ok(())
     }
@@ -749,5 +839,28 @@ mod tests {
     fn is_vfio_open_default_false() {
         let dev = NvVfioComputeDevice::new("0000:01:00.0".into());
         assert!(!dev.is_vfio_open());
+    }
+
+    #[test]
+    fn kepler_sm_uses_v21_qmd() {
+        use crate::nv::generation;
+
+        let dev = NvVfioComputeDevice::with_sm("0000:25:00.0".into(), 37);
+        let profile = generation::profile_for_sm(37);
+        assert_eq!(profile.qmd_version, generation::QmdVersion::V21);
+        assert!(matches!(
+            profile.page_table_format,
+            generation::PageTableFormat::V1TwoLevel
+        ));
+        assert_eq!(profile.boot_strategy, generation::BootStrategy::NoAcr);
+        assert_eq!(dev.capabilities().vendor, crate::hardware::Vendor::Nvidia);
+    }
+
+    #[test]
+    fn kepler_doorbell_address() {
+        let addr = crate::vfio::channel::registers::usermode::gk104_doorbell(0);
+        assert_eq!(addr, 0x3000);
+        let addr7 = crate::vfio::channel::registers::usermode::gk104_doorbell(7);
+        assert_eq!(addr7, 0x3000 + 7 * 8);
     }
 }

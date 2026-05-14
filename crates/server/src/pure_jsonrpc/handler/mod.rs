@@ -48,6 +48,8 @@ pub struct JsonRpcHandler {
     /// PG-62 fast-path: set to `true` once the server is fully initialized.
     /// `health.liveness` returns `"starting"` until this is set.
     ready: Arc<AtomicBool>,
+    /// Drain flag: set by `health.drain` to reject new dispatches.
+    draining: Arc<AtomicBool>,
     /// JH-0 pre-dispatch capability gate. Ships permissive (all calls allowed).
     gate: method_gate::MethodGate,
     semantic_registry: SemanticMethodRegistry,
@@ -109,6 +111,7 @@ impl JsonRpcHandler {
             start_time: std::time::Instant::now(),
             error_count: error_count.unwrap_or_else(|| Arc::new(AtomicU64::new(0))),
             ready,
+            draining: Arc::new(AtomicBool::new(false)),
             gate,
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch,
@@ -248,6 +251,12 @@ impl JsonRpcHandler {
                     self.ready.load(Ordering::Relaxed),
                 )
                 .await;
+            }
+            "health.version" => {
+                return core::health_version(self.version.as_ref()).await;
+            }
+            "health.drain" => {
+                return core::health_drain(&self.draining, &self.ready).await;
             }
             "identity.get" => {
                 return core::identity_get(&self.version, &self.semantic_registry).await;
@@ -415,6 +424,8 @@ impl JsonRpcHandler {
             "validate" => self.workload.validate(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
             "check_health" => core::health(&self.version, self.start_time, &self.error_count).await,
+            "health_version" => core::health_version(self.version.as_ref()).await,
+            "health_drain" => core::health_drain(&self.draining, &self.ready).await,
             "dispatch_submit" => {
                 self.dispatch
                     .dispatch_submit_with_context(params, ctx)

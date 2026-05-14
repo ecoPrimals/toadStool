@@ -482,8 +482,15 @@ pub(super) fn create_cylinder_device_factory() -> LocalDeviceFactory {
 /// When a GPU is bound to `vfio-pci`, it has no DRM render node. This
 /// probes BAR0 via sysfs for chip identity and warm-preserved FECS state
 /// from a prior nouveau/nvidia-470 session.
+///
+/// Kepler GPUs (SM 35–37) use `BootStrategy::NoAcr` and don't need a warm
+/// FECS handoff — they boot FECS directly via PIO. For these devices,
+/// `probe_capabilities` identifies the chip and `open_vfio` creates a
+/// Kepler-specific PFIFO channel with GK104 doorbell.
 #[cfg(target_os = "linux")]
 fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevice>> {
+    use toadstool_cylinder::ComputeDevice as _;
+
     let driver_link = format!("/sys/bus/pci/devices/{bdf}/driver");
     let driver_target = std::fs::read_link(&driver_link).ok()?;
     let driver_name = driver_target.file_name()?.to_str()?;
@@ -493,11 +500,29 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
         return None;
     }
 
-    tracing::info!(bdf, "VFIO-bound device detected — probing for warm FECS");
+    tracing::info!(bdf, "VFIO-bound device detected — probing for identity and FECS");
 
     let mut dev = toadstool_cylinder::nv::compute_device::NvVfioComputeDevice::new(bdf.to_string());
 
-    if dev.probe_warm_fecs() {
+    // Probe BOOT0 for chip identity and warm FECS state.
+    let warm_fecs = dev.probe_warm_fecs();
+
+    // Check if this is a Kepler (NoAcr) device that doesn't need warm FECS.
+    let device_name = dev.capabilities().device_name.to_owned();
+    let is_kepler = device_name.contains("Kepler")
+        || device_name.contains("gk210")
+        || device_name.contains("gk110");
+
+    if warm_fecs || is_kepler {
+        if is_kepler && !warm_fecs {
+            dev.set_fecs_ready(true);
+            tracing::info!(
+                bdf,
+                device = %device_name,
+                "Kepler NoAcr: FECS boots via PIO — marking compute-ready"
+            );
+        }
+
         match dev.open_vfio() {
             Ok(()) => {
                 tracing::info!(bdf, "Phase D: NVIDIA VFIO device opened — PBDMA dispatch ready");

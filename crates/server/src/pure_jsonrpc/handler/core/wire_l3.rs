@@ -27,6 +27,8 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         "health.liveness",
         "health.check",
         "health.readiness",
+        "health.version",
+        "health.drain",
         "capabilities.list",
         "identity.get",
         "toadstool.health",
