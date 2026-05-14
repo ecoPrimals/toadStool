@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S255
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S259
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **22,900+ tests, 0 failures** (8,827+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **22,900+ tests, 0 failures** (8,837+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -171,7 +171,7 @@ For GPU workloads, callers should set `timeout_ms` proportional to expected comp
 
 All JSON-RPC methods expect **pre-resolved** parameter values. The server does **not** perform `${VAR}`/`$VAR` environment variable expansion on any string fields. Env expansion is a **CLI-only** convenience in `load_workload_file` for locally-authored TOML/JSON specs. IPC callers must send fully resolved paths, identifiers, and metadata values. In cross-primal composition, the server's process env differs from the caller's — implicit expansion would create ambiguity. Graph specs and composition callers should pre-expand variables on the client side. See `crates/server/src/pure_jsonrpc/METHODS.md` for full details.
 
-### JSON-RPC Methods (~65 direct + semantic registry; S186+)
+### JSON-RPC Methods (79 direct + semantic registry; S186+)
 
 Surface trimmed to hardware orchestration and IPC boundaries. **Removed from this repo** (S169): `inference.*` / Ollama-style AI (→ intelligence service), **`shader.compile.*`** (→ visualization service), **`science.*`** / **`ecology.*`** / **`discovery.*`** / **`deploy.*`** relays (→ orchestration and peers). **Kept**: **`shader.dispatch`** (dispatch compiled binary to GPU; compile happens in visualization service).
 
@@ -273,7 +273,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **22,843+**, 0 failures (8,809+ lib-only) |
+| Workspace tests | **22,900+**, 0 failures (8,837+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -295,15 +295,18 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 22,900+ tests (8,832 lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
-- **FECS compute context** -- NVIDIA VFIO E2E dispatch blocked on FECS init; `NvVfioComputeDevice` FECS-gated (S254)
+- **Test coverage** -- pushing toward 90% target; 22,900+ tests (8,837 lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; hardware validation pending on warm-caught GPUs
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
-- **S255 (May 13, 2026)**: **hotSpring S243 Audit Response + Deep Debt Sweep** — All 4 hotSpring S243 blockers confirmed resolved (cylinder crate S245, coral-driver absorption S245–S250, `device.swap` RPC S252, USERD_TARGET encoding in-tree). Added `ember.swap` + `sovereign.boot` semantic aliases for hotSpring GlowplugClient compat. Method count corrected 74→77. All production `#[allow]`/`#[expect]` given `reason`. Benchmark refactored 820→756L via `LatencyStats` extraction. Hardcoded primal names evolved to capability-based in examples. **77 JSON-RPC methods. 8,832 lib tests, zero clippy.**
-- **S254 (May 13, 2026)**: **Phase D Factory + NvVfioComputeDevice** — primalSpring glacial debt audit response. `create_cylinder_device_factory()` — BDF → sysfs DRM → driver → `ComputeDevice` (AMD live, NV FECS-gated). `NvVfioComputeDevice` implementing `ComputeDevice` trait. `LocalDeviceFactory` registered at `DispatchHandler` construction. BDF → render node resolution via sysfs. **8,832 lib tests, zero clippy.**
+- **S259 (May 13, 2026)**: **Universal Sovereign Dispatch: Last Mile + Deep Debt** — Wired `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints with `ember.vfio.*` semantic aliases. `NvVfioComputeDevice::dispatch()` → QMD-based (generation-aware via SM version). `try_vfio_nvidia` auto-calls `open_vfio()` after warm FECS detection. `TOADSTOOL_SOCKET_MODE` env var on tarpc socket. Refactored `compute_device.rs` 825→753L via helper extraction. Fixed 6 `#[expect]` without `reason`. **79 JSON-RPC methods. 8,837 lib tests, zero clippy.**
+- **S258 (May 13, 2026)**: **PBDMA Dispatch Wiring** — Full `ComputeDevice` trait impl for `NvVfioComputeDevice`: `alloc`/`upload`/`dispatch`/`readback`/`sync` via VFIO DMA + GPFIFO. Two-stage FECS/VFIO gate model. `open_vfio()` initializes full dispatch state.
+- **S256–S257 (May 13, 2026)**: **FECS Warm-State + Deep Debt** — `CPUCTL_HALTED` bit fix (0x10→0x20). `probe_warm_fecs()` for warm-preserved FECS detection. VFIO factory path in `create_cylinder_device_factory()`.
+- **S255 (May 13, 2026)**: **hotSpring S243 Audit Response + Deep Debt Sweep** — All 4 hotSpring S243 blockers confirmed resolved. Added `ember.swap` + `sovereign.boot` semantic aliases. Method count corrected 74→77. Benchmark refactored 820→756L via `LatencyStats` extraction. **77 JSON-RPC methods. 8,832 lib tests, zero clippy.**
+- **S254 (May 13, 2026)**: **Phase D Factory + NvVfioComputeDevice** — `create_cylinder_device_factory()` — BDF → sysfs DRM → driver → `ComputeDevice` (AMD live, NV FECS-gated). `LocalDeviceFactory` registered at `DispatchHandler` construction. **8,832 lib tests, zero clippy.**
 - **S253 (May 13, 2026)**: **Phase C Complete + Deep Debt Sweep** — `VfioResourceHandle` `Option<i32>` → `OwnedFd`. SwapOrchestrator real quiesce/persist/restore. `toadstool device` CLI (swap/list/status/warm). 5 `CORALREEF_*` env vars deprecated. 13 `#[allow(deprecated)]` → `#[expect(deprecated, reason)]`. **8,827 lib tests, zero clippy.**
 - **S252 (May 13, 2026)**: **Diesel Engine Migration Batch 1–2** — `device.swap` + `device.warm_catch` JSON-RPC handlers. 6 MMIO/Falcon RPCs. `SysfsBar0Rw`. `TOADSTOOL_RUN_DIR` socket layout. **8,827 lib tests, zero clippy.**
 - **S251 (May 13, 2026)**: **hotSpring Sovereign Compute Evolution — Daemon Parity Gaps C1–C7** — Wired full buffer lifecycle (alloc→upload→dispatch→sync→readback→free) into `try_local_dispatch`. Integrated `shader.dispatch` with Phase D local path. Wired `ember.reacquire` JSON-RPC handler. Added `device.*` → `ember.*` semantic aliases for diesel-mode callers. Updated dispatch capabilities phase from B to D. Documented `GspBridge` boundary with hotSpring hardware validation context (FECS dispatch readback root cause). **67 JSON-RPC methods** (direct) + 3 new `device.*` semantic aliases. **8,809 lib-only tests, zero clippy.**
@@ -345,7 +348,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 22,900+ tests (8,832 lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 22,900+ tests (8,837 lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -388,7 +391,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S255. **22,900+** workspace tests, 0 failures (8,832+ lib-only). ~83.6% lib-only line coverage (target 90%). **79 JSON-RPC methods** (direct) + semantic registry (incl. `device.vfio.open`, `device.vfio.roundtrip`, `ember.swap`, `sovereign.boot` aliases) with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production+examples). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C complete** (S245–S253). **Phase D factory wired** (S254) — AMD DRM dispatch live, NV VFIO FECS-gated. **`OwnedFd` VFIO fd ownership** (S253). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
+**Last Updated**: May 2026 — S259. **22,900+** workspace tests, 0 failures (8,837+ lib-only). ~83.6% lib-only line coverage (target 90%). **79 JSON-RPC methods** (direct) + semantic registry (incl. `device.vfio.open`, `device.vfio.roundtrip`, `ember.vfio.*`, `ember.swap`, `sovereign.boot` aliases) with **Wire Standard L3** (cost_estimates + operation_dependencies). AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. Zero production `unreachable!()`. All files under 800 lines (production+examples). Zero library println/eprintln. IPC-first JSON-RPC (dual-socket: `compute.sock` + `compute-tarpc.sock`). Rust 1.85+ (edition 2024, MSRV). **Phase C complete** (S245–S253). **Phase D dispatch live** (S254–S259) — AMD DRM dispatch live, NV VFIO QMD-based dispatch wired via PBDMA. **`OwnedFd` VFIO fd ownership** (S253). **520 cylinder tests.** **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2.
 
 ---
 
