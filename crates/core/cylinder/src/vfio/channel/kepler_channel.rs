@@ -37,6 +37,12 @@ impl VfioChannel {
         channel_id: u32,
     ) -> DriverResult<Self> {
         let bar0 = guard.inner();
+
+        let guard_0 = DmaBuffer::new(container.clone(), 4096, 0x0000)?;
+        let guard_1 = DmaBuffer::new(container.clone(), 4096, 0x1000)?;
+        let guard_2 = DmaBuffer::new(container.clone(), 4096, 0x2000)?;
+        let guard_pages = vec![guard_0, guard_1, guard_2];
+
         let instance = DmaBuffer::new(container.clone(), 4096, INSTANCE_IOVA)?;
         let runlist = DmaBuffer::new(container.clone(), 4096, RUNLIST_IOVA)?;
         let pd3 = DmaBuffer::new(container.clone(), 4096, PD3_IOVA)?;
@@ -55,6 +61,7 @@ impl VfioChannel {
             pd0,
             pt0,
             fault_buf,
+            guard_pages,
             channel_id,
             runlist_id: 0,
         };

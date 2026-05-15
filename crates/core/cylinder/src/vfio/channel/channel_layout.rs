@@ -79,7 +79,7 @@ pub struct ChannelLayout {
     pub mmu_invalidate: MmuInvalidateEncode,
     /// Runlist entry count passed to `gv100_runlist_submit_value` (TSG + channel).
     pub runlist_submit_entry_count: u32,
-    /// Value for `runlist_base(runlist_id)` including aperture target in bits [29:28].
+    /// Value for `runlist_base(runlist_id)` — plain (addr >> 12), no target bits.
     pub gv100_runlist_base_reg: u32,
     /// Value for `runlist_submit(runlist_id)`.
     pub gv100_runlist_submit_reg: u32,
@@ -127,8 +127,7 @@ impl ChannelLayout {
             bar2_physical_block: BAR2_PHYS,
             mmu_invalidate,
             runlist_submit_entry_count: RL_ENTRIES,
-            gv100_runlist_base_reg: pfifo::gv100_runlist_base_value(RUNLIST_IOVA)
-                | (TARGET_SYS_MEM_COHERENT << 28),
+            gv100_runlist_base_reg: pfifo::gv100_runlist_base_value(RUNLIST_IOVA),
             gv100_runlist_submit_reg: pfifo::gv100_runlist_submit_value(RUNLIST_IOVA, RL_ENTRIES),
         }
     }
@@ -196,7 +195,7 @@ mod tests {
         assert_eq!(layout.mmu_invalidate, inv);
         assert_eq!(
             layout.gv100_runlist_base_reg,
-            pfifo::gv100_runlist_base_value(RUNLIST_IOVA) | (TARGET_SYS_MEM_COHERENT << 28)
+            pfifo::gv100_runlist_base_value(RUNLIST_IOVA)
         );
         assert_eq!(
             layout.gv100_runlist_submit_reg,

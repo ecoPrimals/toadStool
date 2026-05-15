@@ -276,14 +276,15 @@ pub(super) fn populate_runlist(
     write_u32_le(rl, 0x0C, 0);
 
     // ── Channel entry — 16 bytes (gv100_runl_insert_chan) ────────────
-    // DW0: [31:8] USERD_ADDR[31:8], [7:6] USERD_TARGET, [1] RUNQ, [0] TYPE=0
-    // DW1: [31:0] USERD_ADDR_HI
-    // DW2: [31:12] INST_ADDR[31:12], [21:20] INST_TARGET, [11:0] CHID
-    // DW3: [31:0] INST_ADDR_HI
+    // DW0: lower_32(userd_addr) | (aperture << 2) | (runq << 1)
+    // DW1: upper_32(userd_addr)
+    // DW2: lower_32(ramfc >> 12) << 12 | (inst_target << 20) | chid
+    // DW3: upper_32(ramfc >> 12)
+    // Aperture at bits [3:2], NOT [7:6]. Nouveau: userd.aperture << 2.
     write_u32_le(
         rl,
         0x10,
-        (userd_iova as u32 & 0xFFFF_FF00) | (TARGET_SYS_MEM_COHERENT << 6) | (runq << 1),
+        (userd_iova as u32 & 0xFFFF_FF00) | (TARGET_SYS_MEM_COHERENT << 2) | (runq << 1),
     );
     write_u32_le(rl, 0x14, (userd_iova >> 32) as u32);
     write_u32_le(
@@ -437,11 +438,11 @@ pub(super) fn populate_runlist_static(
     write_u32_le(rl, 0x04, 1);
     write_u32_le(rl, 0x08, 0);
     write_u32_le(rl, 0x0C, 0);
-    // DW0: [31:8] USERD_ADDR, [7:6] USERD_TARGET, [1] RUNQ, [0] TYPE=0
+    // DW0: userd_addr | (aperture << 2) | (runq << 1)
     write_u32_le(
         rl,
         0x10,
-        (userd_iova as u32 & 0xFFFF_FF00) | (userd_target << 6) | (runq << 1),
+        (userd_iova as u32 & 0xFFFF_FF00) | (userd_target << 2) | (runq << 1),
     );
     // DW1: USERD_ADDR_HI
     write_u32_le(rl, 0x14, (userd_iova >> 32) as u32);

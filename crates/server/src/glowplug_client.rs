@@ -165,22 +165,40 @@ impl GlowPlugClient {
 
     /// Detect whether a GPU is in a warm state (HBM/GDDR trained, engines enabled).
     ///
-    /// Reads PMC_ENABLE and PRAMIN sentinel via sysfs resource to determine
-    /// if the GPU was previously initialized (e.g. by nouveau warm-handoff).
+    /// Reads PMC_ENABLE at BAR0 offset 0x200 via sysfs resource0 mmap to
+    /// determine if the GPU was previously initialized (e.g. by nouveau
+    /// warm-handoff). Also probes FECS CPUCTL (0x409100) for falcon state.
     pub fn warm_detect(&self, bdf: &str) -> serde_json::Value {
         let resource_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
-        let pmc_enable = read_pci_config_u32(bdf, 0x200);
+        let resource0_exists = std::path::Path::new(&resource_path).exists();
+
+        let (pmc_enable, fecs_cpuctl) = if resource0_exists {
+            read_bar0_registers(bdf)
+        } else {
+            (0, 0)
+        };
         let popcount = pmc_enable.count_ones();
+        let fecs_halted = fecs_cpuctl & 0x20 != 0;
         let warm = popcount >= 8;
 
-        debug!(bdf, pmc_enable = format!("{pmc_enable:#010x}"), popcount, warm, "device.warm_catch");
+        debug!(
+            bdf,
+            pmc_enable = format!("{pmc_enable:#010x}"),
+            popcount,
+            fecs_halted,
+            warm,
+            "device.warm_catch"
+        );
 
         serde_json::json!({
             "bdf": bdf,
             "warm_detected": warm,
             "pmc_enable": format!("{pmc_enable:#010x}"),
             "pmc_popcount": popcount,
-            "resource0_exists": std::path::Path::new(&resource_path).exists(),
+            "fecs_cpuctl": format!("{fecs_cpuctl:#010x}"),
+            "fecs_halted": fecs_halted,
+            "fecs_ready": warm && !fecs_halted,
+            "resource0_exists": resource0_exists,
         })
     }
 
@@ -229,8 +247,8 @@ fn read_current_driver(bdf: &str) -> Option<String> {
 
 /// Read a 32-bit value from PCI config space via sysfs.
 ///
-/// Falls back to `0` if the device or offset is inaccessible. This is safe:
-/// reading sysfs config files does not require any `unsafe`.
+/// Falls back to `0` if the device or offset is inaccessible.
+#[cfg(test)]
 fn read_pci_config_u32(bdf: &str, offset: u64) -> u32 {
     use std::io::{Read, Seek, SeekFrom};
     let path = format!("/sys/bus/pci/devices/{bdf}/config");
@@ -245,6 +263,19 @@ fn read_pci_config_u32(bdf: &str, offset: u64) -> u32 {
         return 0;
     }
     u32::from_le_bytes(buf)
+}
+
+/// Probe GPU registers from BAR0 via `nvpmu::bar0::Bar0Access`.
+///
+/// Returns (PMC_ENABLE at 0x200, FECS_CPUCTL at 0x409100).
+/// Falls back to (0, 0) if the BAR0 resource is inaccessible.
+fn read_bar0_registers(bdf: &str) -> (u32, u32) {
+    let Ok(bar0) = nvpmu::bar0::Bar0Access::open(bdf) else {
+        return (0, 0);
+    };
+    let pmc_enable = bar0.read_u32(0x200).unwrap_or(0);
+    let fecs_cpuctl = bar0.read_u32(0x40_9100).unwrap_or(0);
+    (pmc_enable, fecs_cpuctl)
 }
 
 /// Discover GPU BDF addresses from PCI sysfs (class 0x030000 = VGA).

@@ -13,10 +13,12 @@
 //! - [`statistics`] — Periodic stats aggregation
 //! - [`cleanup`] — Timed-out execution garbage collection
 //! - [`capability`] — Primal heartbeat (when capability provider enabled)
+//! - [`pcie_keepalive`] — PLX PEX 8747 bridge keepalive (prevents D3cold)
 
 mod capability;
 mod cleanup;
 mod health;
+pub(crate) mod pcie_keepalive;
 mod resource;
 mod statistics;
 
@@ -63,6 +65,11 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
     // Start cleanup task
     tokio::spawn(async move {
         cleanup::run(state).await;
+    });
+
+    // Start PCIe keepalive for PLX bridges (prevents D3cold on K80)
+    tokio::spawn(async move {
+        pcie_keepalive::run().await;
     });
 
     info!("Background services started");

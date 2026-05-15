@@ -46,6 +46,11 @@ pub struct PfifoInitConfig {
     pub use_sched_en: bool,
     /// Milliseconds to wait after empty-runlist flush.
     pub post_flush_settle_ms: u64,
+    /// Skip the PFIFO_ENABLE 0→1 toggle. On GV100, writing PFIFO_ENABLE=0
+    /// during warm handoff disrupts the running PFIFO scheduler state even
+    /// though the register reads 0 on this generation. Preserving the
+    /// existing state allows PBDMA to continue servicing channels.
+    pub skip_pfifo_toggle: bool,
 }
 
 impl Default for PfifoInitConfig {
@@ -63,6 +68,7 @@ impl Default for PfifoInitConfig {
             preempt_runlists: true,
             use_sched_en: true,
             post_flush_settle_ms: 20,
+            skip_pfifo_toggle: false,
         }
     }
 }
@@ -83,14 +89,49 @@ impl PfifoInitConfig {
             preempt_runlists: false,
             use_sched_en: false,
             post_flush_settle_ms: 0,
+            skip_pfifo_toggle: true,
         }
     }
 
-    /// Config for warm handoff from nouveau — preserves PFIFO/PMC state
-    /// left by nouveau. Skips PMC glow plug, PMC PFIFO reset, and PBDMA
-    /// force-clear so falcon engines (FECS/GPCCS) remain alive.
+    /// Config for warm handoff from nouveau — preserves FECS/GPCCS state
+    /// but resets PFIFO scheduler to clear stale channel mappings.
+    ///
+    /// PMC_ENABLE bit 8 (HOST/PFIFO) is toggled to reset the scheduler
+    /// and PBDMAs. This does NOT affect FECS/GPCCS which are in the GR
+    /// engine (separate PMC bit). Without this reset, the scheduler's
+    /// internal channel-to-PBDMA mappings remain from nouveau's session,
+    /// and our runlist submission + PBDMA programming fails to activate
+    /// the channel (ch_state stays 0, GP_GET never advances).
+    ///
+    /// `pbdma_force_clear` is FALSE: the PMC PFIFO reset already clears
+    /// PBDMA hardware state. The destructive force-clear (writing 0 to
+    /// all PBDMA registers 0x000..0x1FC) creates invalid GPFIFO pointers
+    /// that latch persistent INTR_0 errors (GPPTR_INVALID, GPENTRY_INVALID,
+    /// DEVICE). These latched errors cause the scheduler to refuse loading
+    /// channels on the errored PBDMA, leaving channels stuck in PENDING.
+    /// Stale interrupt flags are cleared separately via the non-force path.
     #[must_use]
     pub fn warm_handoff() -> Self {
+        Self {
+            clear_priv_ring: true,
+            pmc_glow_plug: false,
+            pfifo_settle_ms: 10,
+            retry_on_priv_fault: true,
+            pmc_pfifo_reset: true,
+            pbdma_force_clear: false,
+            flush_empty_runlists: false,
+            preempt_runlists: false,
+            use_sched_en: true,
+            post_flush_settle_ms: 10,
+            skip_pfifo_toggle: false,
+        }
+    }
+
+    /// Warm handoff with FECS preservation — skips PMC PFIFO reset and PFIFO
+    /// toggle because both cascade into the GR engine and force FECS back to
+    /// HRESET on Volta. Use after a successful FECS HS boot.
+    #[must_use]
+    pub fn warm_fecs_alive() -> Self {
         Self {
             clear_priv_ring: true,
             pmc_glow_plug: false,
@@ -102,6 +143,7 @@ impl PfifoInitConfig {
             preempt_runlists: false,
             use_sched_en: true,
             post_flush_settle_ms: 10,
+            skip_pfifo_toggle: true,
         }
     }
 }
@@ -211,34 +253,47 @@ pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> Driver
     }
 
     // Initialize PFIFO — verify the enable write takes effect.
+    // On warm handoff, skip the 0→1 toggle: writing PFIFO_ENABLE=0
+    // disrupts the running scheduler on GV100 (where the register
+    // reads 0 even when functional). The preempt ACK liveness probe
+    // is the authoritative check for PFIFO state.
     let pfifo_en = bar0.read_u32(pfifo::ENABLE).unwrap_or(0);
-    w(pfifo::ENABLE, 0)?;
-    std::thread::sleep(std::time::Duration::from_millis(1));
-    w(pfifo::ENABLE, 1)?;
-    std::thread::sleep(std::time::Duration::from_millis(cfg.pfifo_settle_ms));
-    let mut readback = bar0.read_u32(pfifo::ENABLE).unwrap_or(0xDEAD);
-
-    if readback == 0 && cfg.retry_on_priv_fault {
-        tracing::warn!("PFIFO_ENABLE=0 after first write — retrying with PRI fault re-clear");
-        let priv_st = bar0.read_u32(pri::PRIV_RING_INTR_STATUS).unwrap_or(0);
-        if priv_st != 0 {
-            for _ in 0..5 {
-                w(pri::PRIV_RING_COMMAND, pri::PRIV_RING_CMD_ACK)?;
-                std::thread::sleep(std::time::Duration::from_millis(20));
-                if bar0.read_u32(pri::PRIV_RING_INTR_STATUS).unwrap_or(0) == 0 {
-                    break;
-                }
-            }
-        }
+    #[allow(unused_assignments)]
+    let readback;
+    if cfg.skip_pfifo_toggle {
+        readback = pfifo_en;
+        tracing::info!(
+            pfifo_en = format_args!("{pfifo_en:#010x}"),
+            "PFIFO toggle skipped (warm handoff — preserving scheduler state)"
+        );
+    } else {
+        w(pfifo::ENABLE, 0)?;
+        std::thread::sleep(std::time::Duration::from_millis(1));
         w(pfifo::ENABLE, 1)?;
         std::thread::sleep(std::time::Duration::from_millis(cfg.pfifo_settle_ms));
         readback = bar0.read_u32(pfifo::ENABLE).unwrap_or(0xDEAD);
+
+        if readback == 0 && cfg.retry_on_priv_fault {
+            tracing::warn!("PFIFO_ENABLE=0 after first write — retrying with PRI fault re-clear");
+            let priv_st = bar0.read_u32(pri::PRIV_RING_INTR_STATUS).unwrap_or(0);
+            if priv_st != 0 {
+                for _ in 0..5 {
+                    w(pri::PRIV_RING_COMMAND, pri::PRIV_RING_CMD_ACK)?;
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                    if bar0.read_u32(pri::PRIV_RING_INTR_STATUS).unwrap_or(0) == 0 {
+                        break;
+                    }
+                }
+            }
+            w(pfifo::ENABLE, 1)?;
+            std::thread::sleep(std::time::Duration::from_millis(cfg.pfifo_settle_ms));
+        }
+        tracing::info!(
+            pfifo_before = format_args!("{pfifo_en:#010x}"),
+            pfifo_after = format_args!("{readback:#010x}"),
+            "PFIFO enable"
+        );
     }
-    tracing::info!(
-        pfifo_before = format_args!("{pfifo_en:#010x}"),
-        pfifo_after = format_args!("{readback:#010x}"),
-        "PFIFO enable"
-    );
 
     let r = |reg: usize| bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
 
@@ -303,8 +358,10 @@ pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> Driver
             ] {
                 let _ = w(b + off, 0);
             }
-            let _ = w(b + 0x108, 0xFFFF_FFFF); // clear pending interrupts
+            let _ = w(b + 0x100, 0xFFFF_FFFF); // clear INTR_0
+            let _ = w(b + 0x108, 0xFFFF_FFFF); // clear INTR_STALL
             let _ = w(b + 0x110, 0);
+            let _ = w(b + 0x148, 0xFFFF_FFFF); // clear HCE_INTR
         }
         std::thread::sleep(std::time::Duration::from_millis(2));
         tracing::info!("PBDMA registers force-cleared");
@@ -313,20 +370,42 @@ pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> Driver
         // stale interrupt flags left by nouveau's teardown. Without this,
         // latched errors (GPPTR_INVALID, DEVICE, HCE) prevent the PBDMA
         // from scheduling our new channel after the runlist update.
+        //
+        // GV100 PBDMA interrupt registers (per-PBDMA, stride 0x2000):
+        //   0x100: INTR_0     — primary interrupt status (W1C)
+        //   0x108: INTR_STALL — stall interrupt status (W1C)
+        //   0x148: HCE_INTR   — HCE interrupt status (W1C)
+        // All three must be cleared; nouveau teardown can latch errors
+        // in any of them.
         let cur_map = r(pfifo::PBDMA_MAP);
         for pid in 0..32_usize {
             if cur_map & (1 << pid) == 0 {
                 continue;
             }
             let b = 0x0004_0000 + pid * 0x2000;
-            let intr = bar0.read_u32(b + 0x108).unwrap_or(0);
-            if intr != 0 {
+            let intr0 = bar0.read_u32(b + 0x100).unwrap_or(0);
+            let intr_stall = bar0.read_u32(b + 0x108).unwrap_or(0);
+            let hce_intr = bar0.read_u32(b + 0x148).unwrap_or(0);
+            if pri::is_pri_error(intr0) {
+                tracing::debug!(
+                    pbdma = pid,
+                    intr0 = format_args!("{intr0:#010x}"),
+                    "warm handoff: PBDMA returns PRI error — skipping"
+                );
+                continue;
+            }
+            let any_set = intr0 != 0 || intr_stall != 0 || hce_intr != 0;
+            if any_set {
                 tracing::info!(
                     pbdma = pid,
-                    intr = format_args!("{intr:#010x}"),
+                    intr0 = format_args!("{intr0:#010x}"),
+                    intr_stall = format_args!("{intr_stall:#010x}"),
+                    hce_intr = format_args!("{hce_intr:#010x}"),
                     "warm handoff: clearing stale PBDMA interrupts"
                 );
+                let _ = w(b + 0x100, 0xFFFF_FFFF);
                 let _ = w(b + 0x108, 0xFFFF_FFFF);
+                let _ = w(b + 0x148, 0xFFFF_FFFF);
             }
         }
         tracing::info!("PBDMA force-clear skipped (warm handoff), interrupts cleared");

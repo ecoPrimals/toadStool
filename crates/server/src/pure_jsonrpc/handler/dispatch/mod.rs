@@ -61,6 +61,10 @@ pub struct DispatchHandler {
     /// Local compute device factory — produces ComputeDevice from BDF when
     /// cylinder can dispatch locally (Phase D). None = fall through to coral_client.
     local_device_factory: Option<LocalDeviceFactory>,
+    /// Persistent cache of opened VFIO compute devices keyed by BDF.
+    /// Devices hold iommufd/VFIO FDs and DMA mappings — dropping them
+    /// triggers GPU reset. Cached to survive across multiple RPC calls.
+    cached_devices: Arc<tokio::sync::Mutex<HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>>,
 }
 
 #[expect(
@@ -81,6 +85,7 @@ impl DispatchHandler {
             dispatch_count: AtomicU64::new(0),
             device_pool: Arc::new(RwLock::new(HashMap::new())),
             local_device_factory: None,
+            cached_devices: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         }
     }
 
@@ -119,6 +124,24 @@ impl DispatchHandler {
         self.local_device_factory = Some(factory);
     }
 
+    /// Get a cached device or create one via the factory.
+    ///
+    /// VFIO devices hold iommufd FDs and DMA mappings. Dropping them
+    /// can trigger a GPU reset, so we cache them across RPC calls.
+    async fn get_or_create_device(
+        &self,
+        bdf: &str,
+    ) -> Option<tokio::sync::MutexGuard<'_, HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>> {
+        let factory = self.local_device_factory.as_ref()?;
+        let mut cache = self.cached_devices.lock().await;
+        if !cache.contains_key(bdf) {
+            let device = factory(bdf)?;
+            cache.insert(bdf.to_string(), device);
+            tracing::info!(bdf, "VFIO device cached for persistent dispatch");
+        }
+        Some(cache)
+    }
+
     /// Attempt local dispatch through cylinder's `ComputeDevice`.
     ///
     /// Full lifecycle: alloc → upload → dispatch → sync → readback.
@@ -134,8 +157,6 @@ impl DispatchHandler {
         shader_info: Option<&serde_json::Value>,
         buffer_descs: &serde_json::Value,
     ) -> Option<Result<serde_json::Value, String>> {
-        let factory = self.local_device_factory.as_ref()?;
-
         let pool = self.device_pool.read().await;
         let held = pool.get(bdf)?;
         if !held.is_alive() {
@@ -144,7 +165,8 @@ impl DispatchHandler {
         }
         drop(pool);
 
-        let mut device = factory(bdf)?;
+        let mut cache = self.get_or_create_device(bdf).await?;
+        let device = cache.get_mut(bdf)?;
 
         tracing::info!(bdf, binary_len = binary.len(), "Phase D: local dispatch via cylinder");
 
@@ -163,7 +185,7 @@ impl DispatchHandler {
             }
         };
 
-        Some(Self::run_local_lifecycle(&mut *device, binary, &dims, &info, buffer_descs))
+        Some(Self::run_local_lifecycle(&mut **device, binary, &dims, &info, buffer_descs))
     }
 }
 
@@ -283,6 +305,9 @@ impl DispatchHandler {
 
 impl DispatchHandler {
     /// `device.vfio.open` — open a VFIO device by BDF, return capabilities and status.
+    ///
+    /// The opened device is cached persistently — VFIO iommufd FDs and DMA
+    /// mappings survive across calls. Dropping them triggers GPU reset.
     pub(super) async fn device_vfio_open(
         &self,
         params: Option<&serde_json::Value>,
@@ -294,14 +319,11 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
-        let factory = self.local_device_factory.as_ref().ok_or_else(|| {
-            JsonRpcError::internal_error("no local device factory configured")
-        })?;
-
         self.acquire_device_handle(bdf).await;
 
-        match factory(bdf) {
-            Some(device) => {
+        match self.get_or_create_device(bdf).await {
+            Some(cache) => {
+                let device = cache.get(bdf).expect("just inserted");
                 let caps = device.capabilities();
                 Ok(serde_json::json!({
                     "domain": "device.vfio",
@@ -354,15 +376,17 @@ impl DispatchHandler {
             return Err(JsonRpcError::invalid_params("binary must not be empty"));
         }
 
-        let factory = self.local_device_factory.as_ref().ok_or_else(|| {
-            JsonRpcError::internal_error("no local device factory configured")
-        })?;
-
         self.acquire_device_handle(bdf).await;
 
-        let mut device = factory(bdf).ok_or_else(|| {
+        let mut cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
             JsonRpcError::internal_error(format!(
                 "VFIO device {bdf} not available — FECS cold or not VFIO-bound"
+            ))
+        })?;
+
+        let device = cache.get_mut(bdf).ok_or_else(|| {
+            JsonRpcError::internal_error(format!(
+                "VFIO device {bdf} not in cache after creation"
             ))
         })?;
 
@@ -385,7 +409,6 @@ impl DispatchHandler {
             }
         };
 
-        // GR context init — optional pre-dispatch step for warm-caught NVIDIA GPUs
         if let Some(entries_arr) = p.get("gr_init_entries").and_then(serde_json::Value::as_array) {
             let method_entries: Vec<(u32, u32)> = entries_arr
                 .iter()
@@ -411,7 +434,7 @@ impl DispatchHandler {
 
         self.dispatch_count.fetch_add(1, Ordering::Relaxed);
 
-        match Self::run_local_lifecycle(&mut *device, &binary_bytes, &dims, &info, &buffer_descs) {
+        match Self::run_local_lifecycle(&mut **device, &binary_bytes, &dims, &info, &buffer_descs) {
             Ok(output) => {
                 let dispatch_ms = start.elapsed().as_millis() as u64;
                 Ok(serde_json::json!({
@@ -488,15 +511,17 @@ impl DispatchHandler {
             ));
         }
 
-        let factory = self.local_device_factory.as_ref().ok_or_else(|| {
-            JsonRpcError::internal_error("no local device factory configured")
-        })?;
-
         self.acquire_device_handle(bdf).await;
 
-        let mut device = factory(bdf).ok_or_else(|| {
+        let mut cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
             JsonRpcError::internal_error(format!(
                 "VFIO device {bdf} not available — FECS cold or not VFIO-bound"
+            ))
+        })?;
+
+        let device = cache.get_mut(bdf).ok_or_else(|| {
+            JsonRpcError::internal_error(format!(
+                "VFIO device {bdf} not in cache after creation"
             ))
         })?;
 
@@ -599,9 +624,12 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
 
     tracing::info!(bdf, "VFIO-bound device detected — probing for identity and FECS");
 
+    // Bypass ember gate for server-internal probes — toadstool IS ember,
+    // so the gate would deadlock or reject our own BAR0 access.
+    let _gate_bypass = toadstool_cylinder::vfio::ember_gate::EmberGateBypass::enter();
+
     let mut dev = toadstool_cylinder::nv::compute_device::NvVfioComputeDevice::new(bdf.to_string());
 
-    // Probe BOOT0 for chip identity and warm FECS state.
     let warm_fecs = dev.probe_warm_fecs();
 
     // Check if this is a Kepler (NoAcr) device that doesn't need warm FECS.
@@ -610,13 +638,32 @@ fn try_vfio_nvidia(bdf: &str) -> Option<Box<dyn toadstool_cylinder::ComputeDevic
         || device_name.contains("gk210")
         || device_name.contains("gk110");
 
-    if warm_fecs || is_kepler {
-        if is_kepler && !warm_fecs {
+    // Check if this GPU can cold boot via PIO firmware upload from
+    // /lib/firmware/nvidia/{chip}/gr/. This covers Volta (pre-GSP) on
+    // systems where open nvidia.ko refuses to bind and nouveau is absent.
+    let can_pio_cold_boot = if !warm_fecs && !is_kepler {
+        let sm = dev.sm_version();
+        if sm > 0 {
+            let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
+            let bridge = toadstool_cylinder::nv::nv_gsp_bridge::NvGspBridge::new(
+                profile.firmware_chip,
+            );
+            bridge.has_gr_firmware()
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    if warm_fecs || is_kepler || can_pio_cold_boot {
+        if (is_kepler || can_pio_cold_boot) && !warm_fecs {
             dev.set_fecs_ready(true);
             tracing::info!(
                 bdf,
                 device = %device_name,
-                "Kepler NoAcr: FECS boots via PIO — marking compute-ready"
+                pio_cold_boot = can_pio_cold_boot,
+                "FECS boots via PIO from /lib/firmware — marking compute-ready"
             );
         }
 

@@ -152,53 +152,41 @@ pub const GR_CLASS_CFG: usize = 0x802C;
 
 /// FBIF_TRANSCFG — falcon bus interface configuration register.
 ///
-/// Per-falcon DMA aperture control. Key bits:
-/// - `[1:0]`: target mode (0=VIRT, 1=PHYS_VID, 2=PHYS_SYS_COH, 3=PHYS_SYS_NCOH)
-/// - `[7]`:   physical addressing override (nouveau `nvkm_falcon_mask(falcon, 0x624, 0x80, 0x80)`)
+/// Per-falcon DMA aperture control. Bits `[2:0]` select the target:
+///   - `0x0`: VIRT (virtual, requires active instance block bind)
+///   - `0x4`: PHYS_VID (physical video memory, bypasses MMU)
+///   - `0x5`: PHYS_SYS_COH (physical system memory, coherent)
+///   - `0x6`: PHYS_SYS_NCOH (physical system memory, non-coherent)
 ///
-/// The FBIF VIRT mode creates a circular dependency during instance block bind:
-/// the MMU walker needs FBIF to read page tables from VRAM, but FBIF is set to
-/// VIRT which requires the bind it's trying to complete. Setting PHYS_VID (0x01)
-/// or the physical override bit (0x80) breaks this dependency.
-pub const FBIF_TRANSCFG: usize = 0x624;
-/// Per-DMA-index TRANSCFG base offset (index 0 = UCODE).
-/// Each index is 0x10 apart: 0x604, 0x614, 0x624, 0x634, 0x644.
-pub const FBIF_TRANSCFG_IDX_BASE: usize = 0x604;
-pub const FBIF_TRANSCFG_IDX_STRIDE: usize = 0x10;
-/// DMA index names used by falcon firmware.
-#[expect(dead_code, reason = "hardware register map — DMA index for reference")]
+/// Per nouveau `nvkm_falcon_v1_bind_context()`: registers are at
+/// `fbif + 4 * DMAIDX`, stride 4 bytes. GR FECS/GPCCS fbif = 0x600.
+///
+/// The FBIF base offset varies by falcon engine:
+///   - GR (FECS/GPCCS): 0x600
+///   - SEC2, NVDEC, GSP: 0x600
+///   - NVENC: 0x800
+///   - PMU: 0xE00
+pub const FBIF_GR: usize = 0x600;
+/// Per-DMA-index TRANSCFG stride (4 bytes per index).
+pub const FBIF_STRIDE: usize = 4;
+/// DMA index: UCODE.
 pub const FBIF_DMAIDX_UCODE: usize = 0;
-#[expect(dead_code, reason = "hardware register map — DMA index for reference")]
+/// DMA index: VIRT (virtual addressing).
 pub const FBIF_DMAIDX_VIRT: usize = 1;
-#[expect(dead_code, reason = "hardware register map — DMA index for reference")]
+/// DMA index: PHYS_VID (physical video memory).
 pub const FBIF_DMAIDX_PHYS_VID: usize = 2;
-#[expect(dead_code, reason = "hardware register map — DMA index for reference")]
+/// DMA index: PHYS_SYS_COH (physical system memory, coherent).
 pub const FBIF_DMAIDX_PHYS_SYS_COH: usize = 3;
-#[expect(dead_code, reason = "hardware register map — DMA index for reference")]
+/// DMA index: PHYS_SYS_NCOH (physical system memory, non-coherent).
 pub const FBIF_DMAIDX_PHYS_SYS_NCOH: usize = 4;
-/// FBIF target mode: virtual addressing (requires active instance block bind).
-#[expect(
-    dead_code,
-    reason = "hardware register map — VIRT mode is the reset default, documented for reference"
-)]
-pub const FBIF_TARGET_VIRT: u32 = 0x00;
-/// FBIF target mode: physical video memory (bypasses MMU).
-#[expect(dead_code, reason = "hardware register map — target mode for reference")]
-pub const FBIF_TARGET_PHYS_VID: u32 = 0x01;
+/// FBIF target mode: virtual (requires instance block).
+pub const FBIF_TARGET_VIRT: u32 = 0x0;
+/// FBIF target mode: physical video memory.
+pub const FBIF_TARGET_PHYS_VID: u32 = 0x4;
 /// FBIF target mode: physical system memory coherent.
-#[expect(
-    dead_code,
-    reason = "hardware register map — target mode for reference"
-)]
-pub const FBIF_TARGET_PHYS_SYS_COH: u32 = 0x02;
+pub const FBIF_TARGET_PHYS_SYS_COH: u32 = 0x5;
 /// FBIF target mode: physical system memory non-coherent.
-#[expect(
-    dead_code,
-    reason = "hardware register map — target mode for reference"
-)]
-pub const FBIF_TARGET_PHYS_SYS_NCOH: u32 = 0x03;
-/// FBIF physical addressing override bit (nouveau `0x80` mask).
-pub const FBIF_PHYSICAL_OVERRIDE: u32 = 0x80;
+pub const FBIF_TARGET_PHYS_SYS_NCOH: u32 = 0x6;
 
 /// Extract IMEM size in bytes from HWCFG register.
 /// IMEM_SIZE field is bits [8:0] of HWCFG, in units of 256 bytes.

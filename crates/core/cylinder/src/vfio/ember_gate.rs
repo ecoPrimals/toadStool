@@ -17,13 +17,37 @@ use std::os::unix::net::UnixStream;
 
 use crate::error::{ChannelError, DriverError};
 
+std::thread_local! {
+    static GATE_BYPASS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// RAII guard that bypasses the ember gate for the current thread.
+///
+/// Used by the toadstool server itself when probing devices — the server
+/// IS ember, so the gate would deadlock querying its own socket.
+pub struct EmberGateBypass;
+
+impl EmberGateBypass {
+    /// Enter bypass mode for the current thread.
+    pub fn enter() -> Self {
+        GATE_BYPASS.with(|b| b.set(true));
+        Self
+    }
+}
+
+impl Drop for EmberGateBypass {
+    fn drop(&mut self) {
+        GATE_BYPASS.with(|b| b.set(false));
+    }
+}
+
 /// Check whether `bdf` is held by a live ember instance.
 ///
 /// Returns `true` only when the ember socket is reachable, responds to
 /// `ember.list`, and the response includes `bdf`. Returns `false` on any
 /// failure (fail-open).
 pub fn is_device_held_by_ember(bdf: &str) -> bool {
-    if is_gate_disabled() {
+    if is_gate_disabled() || GATE_BYPASS.with(|b| b.get()) {
         return false;
     }
     let socket_path = super::ember_client::default_socket();

@@ -239,6 +239,9 @@ pub async fn run_server_main(
         }
     });
 
+    // PCIe keepalive — prevents PLX PEX 8747 from D3cold-gating K80 GPUs.
+    tokio::spawn(async { crate::background::pcie_keepalive::run().await });
+
     // PG-62: discovery registration and biomeOS scan run AFTER listeners are
     // spawned so that health.liveness is reachable during initialization.
     // Callers see {"status":"starting"} until ready flag is set below.

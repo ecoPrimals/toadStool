@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S262 (diesel engine completion: GR init IPC + shader metadata aliases)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,849+ lib-only) | **83 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S262)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests**
-**Latest**: S262 — `device.gr.init` / `compute.context.init` IPC endpoints exposed. coralReef shader metadata aliases wired (`gprs`→`gpr_count`, `shared_memory`→`shared_mem_bytes`, `barriers`→`barrier_count`). `init_gr_context` promoted to `ComputeDevice` trait. Optional `gr_init_entries` on `device.vfio.roundtrip`.
-**Previous**: S261 — deep debt sweep. S260 — `health.version`, `health.drain`, Kepler dispatch. S259 — VFIO IPC + QMD dispatch. S258 — PBDMA dispatch wiring. S256–S257 — FECS warm-state + deep debt. S255 — hotSpring S243 audit response.
+**Updated**: May 2026 — S263 (FECS CPUCTL_ALIAS breakthrough, GR context scheduler, warm handoff validated on Titan V)
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,849+ lib-only) | **83 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S263)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
+**Latest**: S263 — **CPUCTL_ALIAS breakthrough**: discovered Volta HS falcons security-lock `CPUCTL` (0x100), always reading 0x10 (false HRESET). All probes migrated to `CPUCTL_ALIAS` (0x130) which reveals true running state. FECS confirmed alive throughout warm handoff. GR context buffer allocation + scheduler cycle (`resubmit_runlist`). NvGspBridge HS boot with corrected FBIF/DMACTL. Full e2e dispatch pipeline validated: warm handoff → VFIO open → channel create → DMA roundtrip → GR init. Current frontier: FECS PENDING_CTX_RELOAD (golden context mapping from VRAM).
+**Previous**: S262 — `device.gr.init` IPC. S261 — deep debt sweep. S259 — VFIO IPC + QMD dispatch. S258 — PBDMA dispatch wiring. S256–S257 — FECS warm-state + deep debt.
 
 ---
 
@@ -65,14 +65,15 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on coralReef FECS firmware loading; extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
 
-### Key Remaining Items (S159)
+### Key Remaining Items (S263)
 
 | Item | Status |
 |------|--------|
 | Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
-| Phase D mixed command streams | Planned — requires Phase A (VFIO) + coralReef |
-| VFIO PBDMA dispatch | USERD_TARGET encoding **in toadStool-cylinder** (runlist + RAMFC). E2E blocked on FECS compute context init (GspBridge dependency) |
-| E2E sovereign pipeline test | Blocked on FECS bridge — see `gsp_bridge.rs` for production paths |
+| Phase D mixed command streams | Planned — requires coralReef FECS firmware loading |
+| VFIO PBDMA dispatch | **VALIDATED** (S258–S263) — GPFIFO + QMD dispatch works e2e on Titan V via warm handoff. FECS alive via CPUCTL_ALIAS. DMA roundtrip confirmed. |
+| E2E sovereign pipeline test | **VALIDATED** (S263) — warm handoff → VFIO open → channel → dispatch → readback. Pending: real shader execution (FECS PENDING_CTX_RELOAD frontier). |
+| FECS golden context mapping | **ACTIVE** — FECS scheduler stuck at PENDING_CTX_RELOAD. GR context buffer allocated but FECS needs golden context from VRAM. Next: map VRAM identity region or extract context init sequence from nouveau. |
 | Phase 2 dep migration: procfs → toadstool-sysmon | **RESOLVED** — `procfs` default features disabled (S129); dead `procfs` dep removed where unused (S160); runtime discovery uses `toadstool-sysmon` where applicable |
 | Phase 3: tarpc binary transport | **RESOLVED** S203t — MessagePack binary framing for Rust-to-Rust peers |
 | Property-based testing for computation modules | Pending |

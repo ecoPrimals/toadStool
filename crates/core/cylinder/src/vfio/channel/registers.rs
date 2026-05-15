@@ -623,7 +623,7 @@ pub mod ramuserd {
 
 /// Offsets within the RAMFC region of the instance block.
 /// Derived from `gv100_chan_ramfc_write()` and `dev_ram.ref.txt`.
-pub(super) mod ramfc {
+pub(crate) mod ramfc {
     /// `NV_RAMFC_USERD` (dword 2) — USERD base address low + aperture target.
     pub const USERD_LO: usize = 0x008;
     /// `NV_RAMFC_USERD_HI` (dword 3) — USERD base address high.

@@ -66,6 +66,8 @@ pub struct VfioChannel {
     pt0: DmaBuffer,
     #[expect(dead_code, reason = "kept alive for DMA buffer lifecycle")]
     fault_buf: DmaBuffer,
+    #[expect(dead_code, reason = "IOMMU guard pages — prevent stale PBDMA IO_PAGE_FAULTs")]
+    guard_pages: Vec<DmaBuffer>,
     channel_id: u32,
     runlist_id: u32,
 }
@@ -124,6 +126,27 @@ impl VfioChannel {
         )
     }
 
+    /// Create a VFIO channel preserving a live FECS falcon — skips PMC PFIFO
+    /// reset and PFIFO toggle that cascade into the GR engine on Volta.
+    pub fn create_fecs_alive(
+        container: DmaBackend,
+        bar0: &MappedBar,
+        gpfifo_iova: u64,
+        gpfifo_entries: u32,
+        userd_iova: u64,
+        channel_id: u32,
+    ) -> DriverResult<Self> {
+        Self::create_with_config(
+            container,
+            bar0,
+            gpfifo_iova,
+            gpfifo_entries,
+            userd_iova,
+            channel_id,
+            &pfifo::PfifoInitConfig::warm_fecs_alive(),
+        )
+    }
+
     fn create_with_config(
         container: DmaBackend,
         bar0: &MappedBar,
@@ -133,6 +156,17 @@ impl VfioChannel {
         channel_id: u32,
         pfifo_cfg: &pfifo::PfifoInitConfig,
     ) -> DriverResult<Self> {
+        // Guard pages: IOVA 0x0000–0x2FFF. Stale PBDMAs (from nouveau's old
+        // channels) may issue DMA reads to IOVA 0x0 when their instance pointer
+        // is zero. The RAMIN PDB at offset 0x200 triggers an IO_PAGE_FAULT at
+        // exactly IOVA 0x200. Mapping zeroed guard pages lets these reads
+        // succeed harmlessly instead of wedging the PBDMA via IOMMU faults.
+        let guard_0 = DmaBuffer::new(container.clone(), 4096, 0x0000)?;
+        let guard_1 = DmaBuffer::new(container.clone(), 4096, 0x1000)?;
+        let guard_2 = DmaBuffer::new(container.clone(), 4096, 0x2000)?;
+        let guard_pages = vec![guard_0, guard_1, guard_2];
+        tracing::info!("IOMMU guard pages mapped at IOVA 0x0000–0x2FFF");
+
         let instance = DmaBuffer::new(container.clone(), 4096, INSTANCE_IOVA)?;
         let runlist = DmaBuffer::new(container.clone(), 4096, RUNLIST_IOVA)?;
         let pd3 = DmaBuffer::new(container.clone(), 4096, PD3_IOVA)?;
@@ -151,6 +185,7 @@ impl VfioChannel {
             pd0,
             pt0,
             fault_buf,
+            guard_pages,
             channel_id,
             runlist_id: 0,
         };
@@ -165,8 +200,24 @@ impl VfioChannel {
             );
         };
 
-        let (runq, _runlist_id) = pfifo::init_pfifo_engine_with(bar0, pfifo_cfg)?;
+        let fecs_probe = |bar0: &MappedBar, label: &str| {
+            let ctl = bar0.read_u32(registers::falcon::FECS_BASE + registers::falcon::CPUCTL).unwrap_or(0xDEAD);
+            let ctl_alias = bar0.read_u32(registers::falcon::FECS_BASE + registers::falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+            let pc = bar0.read_u32(registers::falcon::FECS_BASE + registers::falcon::PC).unwrap_or(0xDEAD);
+            tracing::info!(
+                cpuctl = format_args!("{ctl:#010x}"),
+                cpuctl_alias = format_args!("{ctl_alias:#010x}"),
+                pc = format_args!("{pc:#010x}"),
+                "FECS probe: {label}"
+            );
+        };
+
+        fecs_probe(bar0, "before-pfifo-init");
+
+        let (runq, discovered_runlist_id) = pfifo::init_pfifo_engine_with(bar0, pfifo_cfg)?;
+        chan.runlist_id = discovered_runlist_id;
         pfifo_trace(bar0, "after-pfifo-init");
+        fecs_probe(bar0, "after-pfifo-init");
 
         // Configure BAR2 in PHYSICAL mode targeting system memory.
         // The VRAM-based BAR2 setup (VIRTUAL mode) fails on cold VFIO cards
@@ -183,6 +234,7 @@ impl VfioChannel {
             );
         }
         pfifo_trace(bar0, "after-bar2-setup");
+        fecs_probe(bar0, "after-bar2-setup");
 
         // Volta requires non-replayable fault buffers configured before any
         // MMU translation can succeed. Without them, FBHUB stalls on the
@@ -233,6 +285,7 @@ impl VfioChannel {
             );
         }
         pfifo_trace(bar0, "after-fault-buf-setup");
+        fecs_probe(bar0, "after-fault-buf-setup");
 
         page_tables::populate_page_tables(
             chan.pd3.as_mut_slice(),
@@ -256,8 +309,11 @@ impl VfioChannel {
             runq,
         );
 
+        fecs_probe(bar0, "after-page-table-populate");
+
         Self::invalidate_tlb(bar0, PD3_IOVA)?;
         pfifo_trace(bar0, "after-tlb-invalidate");
+        fecs_probe(bar0, "after-tlb-invalidate");
 
         // Clear stale PCCSR state from prior driver (nouveau residue).
         let stale = bar0.read_u32(pccsr::channel(channel_id)).unwrap_or(0);
@@ -277,6 +333,9 @@ impl VfioChannel {
                 }
                 let intr_reg = 0x0004_0000 + (pid as usize) * 0x2000 + 0x108;
                 let intr_val = bar0.read_u32(intr_reg).unwrap_or(0);
+                if registers::pri::is_pri_error(intr_val) {
+                    continue;
+                }
                 if intr_val != 0 {
                     let _ = bar0.write_u32(intr_reg, 0xFFFF_FFFF);
                     tracing::debug!(
@@ -302,6 +361,42 @@ impl VfioChannel {
         }
         pfifo_trace(bar0, "after-clear-pfifo-intr");
 
+        // On warm-caught GV100, FECS is typically in HARD RESET (CPUCTL bit 4)
+        // after the PCI FLR during vfio-pci rebind. The GR runlist scheduler
+        // requires FECS to complete context loads; without a running FECS,
+        // channels get stuck in PENDING_CTX_RELOAD.
+        //
+        // Attempt to restart FECS: firmware should still be in IMEM from
+        // nouveau's ACR load (FLR resets control registers but preserves SRAM).
+        // Use CPUCTL_ALIAS (0x130) for HS-mode falcons (Volta+ v5).
+        // Check FECS state via CPUCTL_ALIAS (0x130) — the host-accessible
+        // register on Volta HS falcons. CPUCTL at 0x100 is security-locked
+        // and always reads HRESET=1 regardless of actual falcon state.
+        {
+            let fecs_base = falcon::FECS_BASE;
+            let cpuctl_alias = bar0.read_u32(fecs_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+            let pc = bar0.read_u32(fecs_base + falcon::PC).unwrap_or(0xDEAD);
+            let mb0 = bar0.read_u32(fecs_base + falcon::MAILBOX0).unwrap_or(0);
+            let in_hreset = cpuctl_alias & falcon::CPUCTL_HRESET != 0;
+            let halted = cpuctl_alias & falcon::CPUCTL_HALTED != 0;
+            let alive = !in_hreset && !halted;
+
+            tracing::info!(
+                cpuctl_alias = format_args!("{cpuctl_alias:#010x}"),
+                pc = format_args!("{pc:#010x}"),
+                mb0 = format_args!("{mb0:#010x}"),
+                alive,
+                "FECS state before channel bind (via CPUCTL_ALIAS)"
+            );
+
+            if !alive {
+                tracing::warn!(
+                    cpuctl_alias = format_args!("{cpuctl_alias:#010x}"),
+                    "FECS not running — GR scheduling may fail"
+                );
+            }
+        }
+
         chan.bind_channel(bar0)?;
         pfifo_trace(bar0, "after-bind-channel");
 
@@ -312,11 +407,208 @@ impl VfioChannel {
         chan.enable_channel(bar0)?;
         pfifo_trace(bar0, "after-enable-channel");
 
+        // On warm-caught GV100, the scheduler's internal state still maps
+        // PBDMAs to nouveau's old channels. A preempt forces the scheduler
+        // to unload those stale mappings, then our runlist submission loads
+        // our channel fresh. This preempt→submit cycle is safe because
+        // it only affects PFIFO scheduling, not FECS/GPCCS falcons.
+        {
+            let w = |reg, val| bar0.write_u32(reg, val).ok();
+            w(registers::pfifo::INTR, 0xFFFF_FFFF);
+            w(registers::pfifo::GV100_PREEMPT, 1u32 << chan.runlist_id);
+            for _ in 0..25 {
+                std::thread::sleep(std::time::Duration::from_millis(2));
+                let intr = bar0.read_u32(registers::pfifo::INTR).unwrap_or(0);
+                if intr & registers::pfifo::INTR_RL_COMPLETE != 0 {
+                    w(registers::pfifo::INTR, registers::pfifo::INTR_RL_COMPLETE);
+                    tracing::info!("pre-submit preempt ACK received — old channels unloaded");
+                    break;
+                }
+            }
+        }
+        pfifo_trace(bar0, "after-preempt-old-channels");
+
         chan.submit_runlist(bar0)?;
         pfifo_trace(bar0, "after-submit-runlist");
 
-        std::thread::sleep(std::time::Duration::from_millis(50));
-        pfifo_trace(bar0, "after-50ms-settle");
+        // Wait for runlist completion and poll PCCSR to see if the scheduler
+        // loaded our channel onto the PBDMA. On GV100, GR runlist scheduling
+        // involves FECS; if FECS is halted, the channel gets stuck in
+        // PENDING_CTX_RELOAD (STATUS=1).
+        let mut scheduler_loaded = false;
+        {
+            let w = |reg, val| bar0.write_u32(reg, val).ok();
+            w(registers::pfifo::INTR, registers::pfifo::INTR_RL_COMPLETE);
+            for tick in 0..50 {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+                let pccsr_val = bar0.read_u32(pccsr::channel(channel_id)).unwrap_or(0);
+                let status = pccsr::status(pccsr_val);
+                if status >= 5 {
+                    tracing::info!(
+                        tick,
+                        status,
+                        pccsr = format_args!("{pccsr_val:#010x}"),
+                        "scheduler loaded channel onto PBDMA (STATUS >= ON_PBDMA)"
+                    );
+                    scheduler_loaded = true;
+                    break;
+                }
+                if tick % 10 == 9 {
+                    tracing::debug!(
+                        tick,
+                        status,
+                        pccsr = format_args!("{pccsr_val:#010x}"),
+                        "waiting for scheduler context load"
+                    );
+                }
+            }
+            if !scheduler_loaded {
+                let pccsr_val = bar0.read_u32(pccsr::channel(channel_id)).unwrap_or(0);
+                let status = pccsr::status(pccsr_val);
+                tracing::info!(
+                    status,
+                    pccsr = format_args!("{pccsr_val:#010x}"),
+                    "scheduler did not load channel — will force-program PBDMA"
+                );
+            }
+        }
+        pfifo_trace(bar0, "after-scheduler-poll");
+
+        // Discover the target PBDMA for this runlist.
+        let target_pbdma = {
+            let pbdma_map = bar0.read_u32(registers::pfifo::PBDMA_MAP).unwrap_or(0);
+            let mut found: Option<usize> = None;
+            let mut seq = 0_usize;
+            for pid in 0..32_usize {
+                if pbdma_map & (1 << pid) == 0 {
+                    continue;
+                }
+                let rl = bar0.read_u32(0x2390 + seq * 4).unwrap_or(0xFFFF);
+                if rl == chan.runlist_id {
+                    found = Some(pid);
+                    break;
+                }
+                seq += 1;
+            }
+            found
+        };
+
+        if !scheduler_loaded {
+            if let Some(pid) = target_pbdma {
+                // If the channel is stuck in PENDING (status 1) or
+                // PEND_CTX_RELOAD (status 2), the scheduler is mid-load.
+                // Preempt to cancel it before force-programming the PBDMA.
+                let pccsr_val = bar0.read_u32(pccsr::channel(channel_id)).unwrap_or(0);
+                let status = pccsr::status(pccsr_val);
+                if status == 1 || status == 2 {
+                    tracing::info!(
+                        status,
+                        status_name = pccsr::status_name(pccsr_val),
+                        "channel stuck in pending state — preempting to cancel"
+                    );
+                    let w = |reg, val| bar0.write_u32(reg, val).ok();
+                    w(registers::pfifo::INTR, 0xFFFF_FFFF);
+                    w(registers::pfifo::GV100_PREEMPT, 1u32 << chan.runlist_id);
+                    for _ in 0..25 {
+                        std::thread::sleep(std::time::Duration::from_millis(2));
+                        let intr = bar0.read_u32(registers::pfifo::INTR).unwrap_or(0);
+                        if intr & registers::pfifo::INTR_RL_COMPLETE != 0 {
+                            w(registers::pfifo::INTR, registers::pfifo::INTR_RL_COMPLETE);
+                            tracing::info!("preempt ACK — pending ctx reload cancelled");
+                            break;
+                        }
+                    }
+                    // Clear any resulting faults
+                    let _ = bar0.write_u32(
+                        pccsr::channel(channel_id),
+                        pccsr::PBDMA_FAULTED_RESET | pccsr::ENG_FAULTED_RESET,
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+
+                let pb = 0x0004_0000 + pid * 0x2000;
+                let w = |off: usize, val: u32| bar0.write_u32(pb + off, val).ok();
+
+                let limit2 = gpfifo_entries.ilog2();
+                let userd_val = (userd_iova as u32 & 0xFFFF_FE00) | PBDMA_TARGET_SYS_MEM_COHERENT;
+                let gpbase_hi = (gpfifo_iova >> 32) as u32 | (limit2 << 16);
+
+                // DIRECT PBDMA registers (hardware-read for processing)
+                w(pbdma::GP_BASE_LO, gpfifo_iova as u32);
+                w(pbdma::GP_BASE_HI, gpbase_hi);
+                w(pbdma::USERD_LO, userd_val);
+                w(pbdma::USERD_HI, (userd_iova >> 32) as u32);
+                w(pbdma::SIGNATURE, 0x0000_FACE);
+                w(pbdma::CHANNEL_INFO, 0x0300_0000 | channel_id as u32);
+                w(pbdma::GP_FETCH, 0);
+                w(pbdma::GP_STATE, 0);
+                w(pbdma::GP_PUT, 0);
+
+                // CTX registers (RAMFC mirror — scheduler save/restore)
+                w(pbdma::CTX_USERD_LO, userd_val);
+                w(pbdma::CTX_USERD_HI, (userd_iova >> 32) as u32);
+                w(pbdma::CTX_SIGNATURE, 0x0000_FACE);
+                w(pbdma::CTX_ACQUIRE, 0x7FFF_F902);
+                w(pbdma::CTX_GP_BASE_LO, gpfifo_iova as u32);
+                w(pbdma::CTX_GP_BASE_HI, gpbase_hi);
+                w(pbdma::CTX_GP_PUT, 0);
+                w(pbdma::CTX_GP_FETCH, 0);
+
+                // RAMFC-specific fields
+                w(ramfc::PB_HEADER, 0x2040_0000);
+                w(ramfc::SUBDEVICE, 0x3000_0000 | 0xFFF);
+                w(ramfc::ACQUIRE, 0x7FFF_F902);
+                w(ramfc::DMA_LIMIT_REF, 0x003F_6078);
+
+                // Re-submit runlist so scheduler sees our channel with
+                // freshly-programmed PBDMA state. Do NOT set NEXT bit (0x2)
+                // which would trigger another context reload that conflicts
+                // with our force-programmed values.
+                chan.submit_runlist(bar0)?;
+                std::thread::sleep(std::time::Duration::from_millis(10));
+
+                // Ring doorbell to wake the PBDMA.
+                let _ = bar0.write_u32(
+                    registers::usermode::NOTIFY_CHANNEL_PENDING,
+                    channel_id,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(50));
+
+                let intr_0 = bar0.read_u32(pb + 0x100).unwrap_or(0);
+                let intr_stall = bar0.read_u32(pb + 0x108).unwrap_or(0);
+                let userd_direct = bar0.read_u32(pb + pbdma::USERD_LO).unwrap_or(0);
+                let sig_direct = bar0.read_u32(pb + pbdma::SIGNATURE).unwrap_or(0);
+                let ch_state = bar0.read_u32(pb + pbdma::CHANNEL_STATE).unwrap_or(0);
+                let pccsr_post = bar0.read_u32(pccsr::channel(channel_id)).unwrap_or(0);
+                tracing::info!(
+                    pbdma = pid,
+                    gpfifo = format_args!("{gpfifo_iova:#x}"),
+                    userd_direct = format_args!("{userd_direct:#010x}"),
+                    sig_direct = format_args!("{sig_direct:#010x}"),
+                    ch_state = format_args!("{ch_state:#010x}"),
+                    intr_0 = format_args!("{intr_0:#010x}"),
+                    intr_stall = format_args!("{intr_stall:#010x}"),
+                    pccsr = format_args!("{pccsr_post:#010x}"),
+                    pccsr_status = pccsr::status(pccsr_post),
+                    "PBDMA force-programmed (preempt→program→resubmit→doorbell)"
+                );
+            } else {
+                tracing::warn!(
+                    runlist = chan.runlist_id,
+                    "no PBDMA found for target runlist — scheduler must load channel"
+                );
+            }
+        } else if let Some(pid) = target_pbdma {
+            let pb = 0x0004_0000 + pid * 0x2000;
+            let ch_state = bar0.read_u32(pb + pbdma::CHANNEL_STATE).unwrap_or(0);
+            let intr_0 = bar0.read_u32(pb + 0x100).unwrap_or(0);
+            tracing::info!(
+                pbdma = pid,
+                ch_state = format_args!("{ch_state:#010x}"),
+                intr_0 = format_args!("{intr_0:#010x}"),
+                "scheduler loaded channel — PBDMA ready"
+            );
+        }
 
         // Post-init liveness probe: issue a runlist preempt and check for ACK.
         // On GV100, PFIFO_ENABLE (0x2200) reads 0 even when the engine is
@@ -399,6 +691,12 @@ impl VfioChannel {
     #[must_use]
     pub const fn id(&self) -> u32 {
         self.channel_id
+    }
+
+    /// Runlist ID this channel was submitted on (for PBDMA discovery).
+    #[must_use]
+    pub const fn runlist_id_hint(&self) -> u32 {
+        self.runlist_id
     }
 
     /// BAR0 offset for the USERMODE doorbell register.
@@ -549,6 +847,81 @@ impl VfioChannel {
             .map_err(|e| DriverError::SubmitFailed(Cow::Owned(format!("channel enable: {e}"))))
     }
 
+    /// Re-submit the runlist after modifying the instance block (e.g., adding
+    /// a GR context pointer). Cycles the scheduler to force FECS to re-read
+    /// the updated channel state.
+    pub fn resubmit_runlist(&self, bar0: &MappedBar) -> DriverResult<()> {
+        use registers::pfifo;
+
+        tracing::info!(
+            channel_id = self.channel_id,
+            runlist_id = self.runlist_id,
+            "re-submitting runlist with scheduler cycle"
+        );
+
+        // 1. Disable scheduler
+        let _ = bar0.write_u32(pfifo::SCHED_DISABLE, 0xFFFF_FFFF);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        // 2. Clear pending interrupts
+        let _ = bar0.write_u32(pfifo::INTR, 0xFFFF_FFFF);
+
+        // 3. Preempt old runlist state
+        let _ = bar0.write_u32(pfifo::GV100_PREEMPT, 1u32 << self.runlist_id);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let _ = bar0.write_u32(pfifo::INTR, pfifo::INTR_RL_COMPLETE);
+
+        // 4. Re-enable channel
+        let _ = bar0.write_u32(
+            pccsr::channel(self.channel_id),
+            pccsr::CHANNEL_ENABLE_SET,
+        );
+
+        // 5. Submit runlist
+        self.submit_runlist(bar0)?;
+
+        // 6. Re-enable scheduler
+        let _ = bar0.write_u32(pfifo::SCHED_DISABLE, 0);
+        let _ = bar0.write_u32(pfifo::SCHED_EN, 1);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        // 7. Wait for scheduler to process
+        let mut loaded = false;
+        for tick in 0..100 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            let pccsr_val = bar0.read_u32(pccsr::channel(self.channel_id)).unwrap_or(0);
+            let status = pccsr::status(pccsr_val);
+            if status >= 5 {
+                tracing::info!(
+                    tick,
+                    status,
+                    pccsr = format_args!("{pccsr_val:#010x}"),
+                    "scheduler loaded channel after cycle (STATUS >= ON_PBDMA)"
+                );
+                loaded = true;
+                break;
+            }
+            if tick % 20 == 19 {
+                tracing::debug!(
+                    tick,
+                    status,
+                    pccsr = format_args!("{pccsr_val:#010x}"),
+                    "waiting for scheduler after cycle"
+                );
+            }
+        }
+        if !loaded {
+            let pccsr_val = bar0.read_u32(pccsr::channel(self.channel_id)).unwrap_or(0);
+            let status = pccsr::status(pccsr_val);
+            tracing::info!(
+                status,
+                pccsr = format_args!("{pccsr_val:#010x}"),
+                "scheduler still pending after cycle"
+            );
+        }
+        Ok(())
+    }
+
     /// Submit runlist to PFIFO using GV100 per-runlist registers.
     ///
     /// GV100 uses per-runlist registers at stride 0x10:
@@ -557,8 +930,11 @@ impl VfioChannel {
     /// Writing SUBMIT triggers the scheduler.
     /// Source: nouveau `gv100_runl_commit()`.
     fn submit_runlist(&self, bar0: &MappedBar) -> DriverResult<()> {
-        let rl_base = registers::pfifo::gv100_runlist_base_value(RUNLIST_IOVA)
-            | (TARGET_SYS_MEM_COHERENT << 28);
+        // GV100 runlist BASE register: plain (addr >> 12), NO target bits.
+        // nouveau's gv100_runl_commit writes lower_32_bits(addr >> 12) directly.
+        // Previously we OR'd in (TARGET_SYS_MEM_COHERENT << 28) which corrupted
+        // the address, making the scheduler read runlist from 0x200000000000.
+        let rl_base = registers::pfifo::gv100_runlist_base_value(RUNLIST_IOVA);
         let rl_submit = registers::pfifo::gv100_runlist_submit_value(RUNLIST_IOVA, 2);
 
         tracing::debug!(

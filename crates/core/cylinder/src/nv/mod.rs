@@ -14,6 +14,7 @@ pub mod falcon_pio;
 pub mod generation;
 pub mod gsp_bridge;
 pub mod hardware_guard;
+pub mod nv_gsp_bridge;
 pub mod identity;
 pub mod ioctl;
 pub mod pushbuf;

@@ -31,12 +31,17 @@ use crate::{BufferHandle, ComputeDevice, DispatchDims, HardwareCapabilities, Mem
 const GPFIFO_IOVA: u64 = 0x1_0000;
 /// USERD page IOVA.
 const USERD_IOVA: u64 = 0x1_1000;
-/// First IOVA available for user DMA buffers.
-const USER_BUFFER_BASE_IOVA: u64 = 0x2_0000;
+/// GR context save area IOVA — FECS copies golden context here per-channel.
+const GR_CTX_IOVA: u64 = 0x1_2000;
+/// GR context buffer size — GV100 context is ~500KB; 1MB gives margin.
+const GR_CTX_SIZE: usize = 0x10_0000;
+/// First IOVA available for user DMA buffers (shifted to make room for GR ctx).
+const USER_BUFFER_BASE_IOVA: u64 = 0x12_0000;
 /// GPFIFO entry count (4 KiB / 8 bytes per entry = 512).
 const GPFIFO_ENTRIES: u32 = 512;
-/// Maximum IOVA for identity-mapped region (PT0 maps 512 × 4 KiB = 2 MiB).
-const IOVA_LIMIT: u64 = 0x20_0000;
+/// Maximum IOVA for identity-mapped region. PT0 now needs to cover up to
+/// USER_BUFFER_BASE_IOVA + user allocations.
+const IOVA_LIMIT: u64 = 0x40_0000;
 /// Page size for IOVA alignment.
 const PAGE_SIZE: u64 = 4096;
 
@@ -60,12 +65,18 @@ struct VfioDispatchState {
     dma_backend: crate::vfio::device::DmaBackend,
     gpfifo: crate::vfio::dma::DmaBuffer,
     userd: crate::vfio::dma::DmaBuffer,
+    #[expect(dead_code, reason = "GR context buffer held for DMA lifetime")]
+    gr_ctx: Option<crate::vfio::dma::DmaBuffer>,
     buffers: HashMap<u32, crate::vfio::dma::DmaBuffer>,
     inflight: Vec<BufferHandle>,
     next_handle: u32,
     next_iova: u64,
     gp_put: u32,
     doorbell: DoorbellKind,
+    /// BAR0 base offset of the target PBDMA for direct GP_PUT writes.
+    /// On warm-caught GV100, the scheduler doesn't reliably propagate
+    /// USERD GP_PUT to the PBDMA; direct writes ensure GPFIFO consumption.
+    target_pbdma_base: Option<usize>,
 }
 
 #[cfg(target_os = "linux")]
@@ -86,7 +97,7 @@ impl VfioDispatchState {
 
     /// Submit a pushbuffer via GPFIFO + doorbell.
     fn submit_pushbuffer(&mut self, pb_bytes: &[u8]) -> DriverResult<()> {
-        use crate::vfio::channel::registers::ramuserd;
+        use crate::vfio::channel::registers::{pbdma, ramuserd};
 
         let dword_count = (pb_bytes.len() / 4) as u64;
         let mut pb_buf = self.alloc_next_dma(pb_bytes.len(), "pushbuffer")?;
@@ -103,6 +114,15 @@ impl VfioDispatchState {
         let new_put = (self.gp_put + 1) % GPFIFO_ENTRIES;
         self.userd.volatile_write_u32(ramuserd::GP_PUT, new_put);
         std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+
+        // On warm-caught GV100, also write GP_PUT directly to the PBDMA's
+        // direct register (0x054) and CTX register (same offset). The
+        // scheduler doesn't propagate USERD GP_PUT to PBDMAs after warm
+        // handoff — direct register write ensures the PBDMA sees pending
+        // GPFIFO entries immediately.
+        if let Some(pb) = self.target_pbdma_base {
+            let _ = self.bar0.write_u32(pb + pbdma::GP_PUT, new_put);
+        }
 
         let doorbell_addr = match self.doorbell {
             DoorbellKind::Usermode => {
@@ -198,14 +218,18 @@ impl NvVfioComputeDevice {
         Ok(())
     }
 
-    /// Probe BAR0 for warm-preserved FECS state.
+    /// Probe BAR0 for warm FECS state.
     ///
-    /// After a nouveau → vfio-pci warm handoff, FECS may be halted with
-    /// firmware still resident in IMEM/DMEM. This reads FECS CPUCTL and
-    /// MAILBOX0 to detect the warm-preserved state:
+    /// After a nouveau → vfio-pci warm handoff, FECS is in one of two
+    /// valid warm states depending on the teardown strategy:
     ///
-    /// - **HALTED (bit 5) + MAILBOX0 ≠ 0** → warm-preserved, compute-ready
-    /// - Otherwise → cold or inconsistent, FECS not ready
+    /// - **Live warm**: FECS still running (not halted), PMC engines enabled.
+    ///   Occurs with NOP'd-teardown patched nouveau — FECS was never stopped.
+    /// - **Preserved warm**: FECS halted + MAILBOX0 ≠ 0, firmware resident in
+    ///   IMEM/DMEM. Occurs with standard teardown interception (kprobe/livepatch).
+    ///
+    /// Both states indicate the GPU is compute-ready. Cold state (PMC popcount < 8)
+    /// means no prior driver session initialized the GPU.
     ///
     /// Also probes BOOT0 for chip identification if capabilities are unknown.
     /// Returns `true` if warm FECS was detected and the device is compute-ready.
@@ -222,7 +246,6 @@ impl NvVfioComputeDevice {
             }
         };
 
-        // Probe BOOT0 for chip identity if not already known.
         if self.caps.vendor == crate::hardware::Vendor::Unknown {
             let boot0 = bar0.read_u32(0);
             if let Some(sm) = super::identity::boot0_to_sm(boot0) {
@@ -237,7 +260,6 @@ impl NvVfioComputeDevice {
             }
         }
 
-        // Check PMC_ENABLE popcount — warm GPUs have ≥8 engines enabled.
         let pmc_enable = bar0.read_u32(0x200);
         if pmc_enable.count_ones() < 8 {
             tracing::debug!(
@@ -249,24 +271,47 @@ impl NvVfioComputeDevice {
             return false;
         }
 
-        let fecs_cpuctl = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL);
+        // Use CPUCTL_ALIAS (0x130) for Volta HS falcons. CPUCTL at 0x100
+        // is security-locked and always reads HRESET=1 on HS mode falcons.
+        let fecs_cpuctl_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS);
+        let fecs_cpuctl_raw = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL);
         let fecs_mb0 = bar0.read_u32(falcon::FECS_BASE + falcon::MAILBOX0);
+        let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC);
 
-        let halted = fecs_cpuctl & falcon::CPUCTL_HALTED != 0;
+        let halted = fecs_cpuctl_alias & falcon::CPUCTL_HALTED != 0;
+        let in_hreset = fecs_cpuctl_alias & falcon::CPUCTL_HRESET != 0;
+        let running = !halted && !in_hreset;
 
         tracing::info!(
             bdf = %self.bdf,
-            fecs_cpuctl = format!("{fecs_cpuctl:#010x}"),
+            fecs_cpuctl_alias = format!("{fecs_cpuctl_alias:#010x}"),
+            fecs_cpuctl_raw = format!("{fecs_cpuctl_raw:#010x}"),
+            fecs_pc = format!("{fecs_pc:#010x}"),
             fecs_mb0 = format!("{fecs_mb0:#010x}"),
             halted,
+            in_hreset,
+            running,
             pmc_popcount = pmc_enable.count_ones(),
-            "FECS warm-state probe"
+            "FECS warm-state probe (CPUCTL_ALIAS)"
         );
 
-        if halted && fecs_mb0 != 0 {
+        let preserved_warm = halted && fecs_mb0 != 0;
+        let live_warm = running && pmc_enable.count_ones() >= 16;
+
+        if preserved_warm {
             tracing::info!(
                 bdf = %self.bdf,
-                "FECS warm-preserved detected — compute context ready"
+                "FECS warm-preserved (halted + firmware resident) — compute-ready"
+            );
+            self.fecs_ready = true;
+            return true;
+        }
+
+        if live_warm {
+            tracing::info!(
+                bdf = %self.bdf,
+                pmc_popcount = pmc_enable.count_ones(),
+                "FECS live-warm (still running, NOP'd teardown) — compute-ready"
             );
             self.fecs_ready = true;
             return true;
@@ -274,7 +319,8 @@ impl NvVfioComputeDevice {
 
         tracing::debug!(
             bdf = %self.bdf,
-            "FECS not warm-preserved (halted={halted}, mb0={fecs_mb0:#x})"
+            "FECS not warm (halted={halted}, mb0={fecs_mb0:#x}, pmc_pop={})",
+            pmc_enable.count_ones(),
         );
         false
     }
@@ -288,6 +334,12 @@ impl NvVfioComputeDevice {
     #[must_use]
     pub fn bdf(&self) -> &str {
         &self.bdf
+    }
+
+    /// SM version detected from BOOT0 (0 if not yet probed).
+    #[must_use]
+    pub fn sm_version(&self) -> u32 {
+        self.sm
     }
 
     /// Whether FECS compute context is available for dispatch.
@@ -325,8 +377,88 @@ impl NvVfioComputeDevice {
         let bar0 = device.map_bar(0)?;
         let dma_backend = device.dma_backend();
 
+        let mut fecs_hs_booted = false;
+        let mut fecs_bridge: Option<super::nv_gsp_bridge::NvGspBridge> = None;
+
+        // Probe FECS state and prepare for deferred boot (after channel creation).
+        // On nouveau warm handoff, FECS firmware expects PFIFO infrastructure
+        // to exist before it can run. We boot FECS AFTER channel setup.
+        if !is_kepler && self.fecs_ready {
+            use crate::vfio::channel::registers::falcon;
+
+            let pmc_before = bar0.read_u32(0x200).unwrap_or(0);
+            if pmc_before.count_ones() < 8 {
+                tracing::info!(
+                    bdf = %self.bdf,
+                    pmc_before = format_args!("{pmc_before:#010x}"),
+                    "PMC cold after VFIO FLR — enabling all engines"
+                );
+                let _ = bar0.write_u32(0x200, 0xFFFF_FFFF);
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                let pmc_after = bar0.read_u32(0x200).unwrap_or(0);
+                tracing::info!(
+                    bdf = %self.bdf,
+                    pmc_after = format_args!("{pmc_after:#010x}"),
+                    popcount = pmc_after.count_ones(),
+                    "PMC engines enabled"
+                );
+            }
+
+            // Use CPUCTL_ALIAS for Volta HS falcons — CPUCTL at 0x100 is
+            // security-locked and always reads HRESET on HS mode.
+            let fecs_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+            let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
+            let is_bad_read = fecs_alias & 0xBADF_0000 == 0xBADF_0000;
+            let fecs_in_hreset = !is_bad_read
+                && (fecs_alias & falcon::CPUCTL_HRESET != 0);
+            let fecs_running = !is_bad_read && !fecs_in_hreset
+                && (fecs_alias & falcon::CPUCTL_HALTED == 0);
+            let fecs_needs_boot = is_bad_read || fecs_in_hreset;
+
+            if fecs_running {
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
+                    fecs_pc = format_args!("{fecs_pc:#010x}"),
+                    "FECS already running (warm handoff preserved) — skipping boot"
+                );
+            } else if fecs_needs_boot {
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
+                    fecs_pc = format_args!("{fecs_pc:#010x}"),
+                    bad_read = is_bad_read,
+                    "FECS not alive — preparing deferred HS boot"
+                );
+                let bridge = super::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
+                if bridge.has_gr_firmware() {
+                    tracing::info!(
+                        bdf = %self.bdf,
+                        "FECS firmware available — deferring boot to after channel creation"
+                    );
+                    fecs_bridge = Some(bridge);
+                }
+            }
+        }
+
         let gpfifo = DmaBuffer::new(dma_backend.clone(), 4096, GPFIFO_IOVA)?;
         let userd = DmaBuffer::new(dma_backend.clone(), 4096, USERD_IOVA)?;
+
+        // Allocate GR context save area for FECS. Each channel needs a context
+        // buffer where FECS saves/restores the GR register state during
+        // context switching. Without this, FECS leaves our channel in PENDING.
+        let gr_ctx = if !is_kepler && self.fecs_ready {
+            let ctx = DmaBuffer::new(dma_backend.clone(), GR_CTX_SIZE, GR_CTX_IOVA)?;
+            tracing::info!(
+                bdf = %self.bdf,
+                gr_ctx_iova = format_args!("{GR_CTX_IOVA:#x}"),
+                gr_ctx_size = GR_CTX_SIZE,
+                "GR context buffer allocated for FECS"
+            );
+            Some(ctx)
+        } else {
+            None
+        };
 
         let (channel, doorbell) = if is_kepler {
             let guard = super::hardware_guard::GuardedBar::new(&bar0, 16).map_err(|e| {
@@ -348,7 +480,7 @@ impl NvVfioComputeDevice {
             );
             (ch, DoorbellKind::Gk104 { channel_id: ch_id })
         } else if self.fecs_ready {
-            let ch = VfioChannel::create_warm(
+            let mut ch = VfioChannel::create_warm(
                 dma_backend.clone(),
                 &bar0,
                 GPFIFO_IOVA,
@@ -356,6 +488,10 @@ impl NvVfioComputeDevice {
                 USERD_IOVA,
                 0,
             )?;
+            if gr_ctx.is_some() {
+                ch.write_gr_context_ptr(GR_CTX_IOVA, 4);
+                ch.resubmit_runlist(&bar0)?;
+            }
             (ch, DoorbellKind::Usermode)
         } else {
             let ch = VfioChannel::create(
@@ -378,6 +514,143 @@ impl NvVfioComputeDevice {
             "VFIO PBDMA dispatch state initialized"
         );
 
+        // Discover the target PBDMA for direct GP_PUT writes.
+        let target_pbdma_base = if matches!(doorbell, DoorbellKind::Usermode) {
+            let pbdma_map = bar0.read_u32(0x2004).unwrap_or(0);
+            let runlist_id = channel.runlist_id_hint();
+            let mut found: Option<usize> = None;
+            let mut seq = 0_usize;
+            for pid in 0..32_usize {
+                if pbdma_map & (1 << pid) == 0 {
+                    continue;
+                }
+                let rl = bar0.read_u32(0x2390 + seq * 4).unwrap_or(0xFFFF);
+                if rl == runlist_id {
+                    found = Some(0x0004_0000 + pid * 0x2000);
+                    tracing::info!(pbdma = pid, runlist = rl, "target PBDMA for direct GP_PUT");
+                    break;
+                }
+                seq += 1;
+            }
+            found
+        } else {
+            None
+        };
+
+        // Deferred GR falcon boot: now that PFIFO + channel infrastructure
+        // exists, boot GPCCS first, then FECS, then send INIT_CTXSW.
+        // FECS and GPCCS are a pair — FECS self-halts if GPCCS is not running.
+        if let Some(bridge) = fecs_bridge {
+            use crate::vfio::channel::registers::{falcon, pmc};
+
+            // Ensure all engines are enabled in PMC_ENABLE before touching
+            // GPC registers. GPCCS registers at 0x41Axxx are behind the GR
+            // engine clock gate and return 0xbadf5040 (PRI fault) when
+            // GR/GPC is clock-gated.
+            let pmc_before = bar0.read_u32(pmc::ENABLE).unwrap_or(0);
+            let _ = bar0.write_u32(pmc::ENABLE, 0xFFFF_FFFF);
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            let pmc_after = bar0.read_u32(pmc::ENABLE).unwrap_or(0);
+            tracing::info!(
+                bdf = %self.bdf,
+                pmc_before = format_args!("{pmc_before:#010x}"),
+                pmc_after = format_args!("{pmc_after:#010x}"),
+                "GR init: PMC glow-plug all engines"
+            );
+
+            // 1. Boot GPCCS first
+            tracing::info!(bdf = %self.bdf, "GR init: booting GPCCS falcon");
+            match bridge.boot_falcon_hs(
+                &bar0,
+                "GPCCS",
+                falcon::GPCCS_BASE,
+                &dma_backend,
+                super::nv_gsp_bridge::GPCCS_FW_CODE_IOVA,
+                super::nv_gsp_bridge::GPCCS_FW_DATA_IOVA,
+            ) {
+                Ok((ctl, mb0)) => {
+                    tracing::info!(
+                        bdf = %self.bdf,
+                        gpccs_cpuctl = format_args!("{ctl:#010x}"),
+                        gpccs_mb0 = format_args!("{mb0:#010x}"),
+                        "GPCCS HS boot complete"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(bdf = %self.bdf, error = %e, "GPCCS HS boot failed");
+                }
+            }
+
+            // 2. Boot FECS
+            tracing::info!(bdf = %self.bdf, "GR init: booting FECS falcon");
+            match bridge.boot_falcon_hs(
+                &bar0,
+                "FECS",
+                falcon::FECS_BASE,
+                &dma_backend,
+                super::nv_gsp_bridge::FECS_FW_CODE_IOVA,
+                super::nv_gsp_bridge::FECS_FW_DATA_IOVA,
+            ) {
+                Ok((ctl, mb0)) => {
+                    fecs_hs_booted = true;
+                    tracing::info!(
+                        bdf = %self.bdf,
+                        fecs_cpuctl = format_args!("{ctl:#010x}"),
+                        fecs_mb0 = format_args!("{mb0:#010x}"),
+                        "FECS HS boot complete (post-channel-creation)"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(bdf = %self.bdf, error = %e, "FECS HS boot failed");
+                }
+            }
+
+            // 3. Check FECS state via both CPUCTL and CPUCTL_ALIAS.
+            // On Volta HS falcons, CPUCTL at 0x100 may be security-locked and
+            // always show HRESET, while CPUCTL_ALIAS at 0x130 shows the true state.
+            if fecs_hs_booted {
+                let fecs_base = falcon::FECS_BASE;
+
+                // Immediate check via both registers
+                let ctl = bar0.read_u32(fecs_base + falcon::CPUCTL).unwrap_or(0xDEAD);
+                let ctl_alias = bar0.read_u32(fecs_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+                let pc = bar0.read_u32(fecs_base + falcon::PC).unwrap_or(0xDEAD);
+                let mb0 = bar0.read_u32(fecs_base + falcon::MAILBOX0).unwrap_or(0xDEAD);
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_cpuctl = format_args!("{ctl:#010x}"),
+                    fecs_cpuctl_alias = format_args!("{ctl_alias:#010x}"),
+                    fecs_pc = format_args!("{pc:#010x}"),
+                    fecs_mb0 = format_args!("{mb0:#010x}"),
+                    "FECS post-boot: CPUCTL vs CPUCTL_ALIAS (HS security check)"
+                );
+
+                // Wait 100ms and check stability
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                let ctl2 = bar0.read_u32(fecs_base + falcon::CPUCTL).unwrap_or(0xDEAD);
+                let ctl2_alias = bar0.read_u32(fecs_base + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+                let pc2 = bar0.read_u32(fecs_base + falcon::PC).unwrap_or(0xDEAD);
+                let mb02 = bar0.read_u32(fecs_base + falcon::MAILBOX0).unwrap_or(0xDEAD);
+                let gpccs_ctl = bar0.read_u32(falcon::GPCCS_BASE + falcon::CPUCTL).unwrap_or(0xDEAD);
+                let gpccs_alias = bar0.read_u32(falcon::GPCCS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+                let gpccs_pc = bar0.read_u32(falcon::GPCCS_BASE + falcon::PC).unwrap_or(0xDEAD);
+                let fecs_alive = ctl2_alias & falcon::CPUCTL_HRESET == 0
+                    && ctl2_alias & falcon::CPUCTL_HALTED == 0;
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_cpuctl = format_args!("{ctl2:#010x}"),
+                    fecs_cpuctl_alias = format_args!("{ctl2_alias:#010x}"),
+                    fecs_pc = format_args!("{pc2:#010x}"),
+                    fecs_mb0 = format_args!("{mb02:#010x}"),
+                    fecs_alive,
+                    gpccs_cpuctl = format_args!("{gpccs_ctl:#010x}"),
+                    gpccs_cpuctl_alias = format_args!("{gpccs_alias:#010x}"),
+                    gpccs_pc = format_args!("{gpccs_pc:#010x}"),
+                    "GR falcon stability check (100ms post-boot)"
+                );
+            }
+        }
+
         self.vfio_state = Some(VfioDispatchState {
             device,
             bar0,
@@ -385,12 +658,14 @@ impl NvVfioComputeDevice {
             dma_backend,
             gpfifo,
             userd,
+            gr_ctx,
             buffers: HashMap::new(),
             inflight: Vec::new(),
             next_handle: 1,
             next_iova: USER_BUFFER_BASE_IOVA,
             gp_put: 0,
             doorbell,
+            target_pbdma_base,
         });
 
         Ok(())
@@ -655,17 +930,62 @@ impl ComputeDevice for NvVfioComputeDevice {
     fn sync(&mut self) -> DriverResult<()> {
         #[cfg(target_os = "linux")]
         {
-            use crate::vfio::channel::registers::ramuserd;
+            use crate::vfio::channel::registers::{pbdma, ramuserd};
 
             if let Some(state) = self.vfio_state.as_mut() {
-                // Poll USERD GP_GET until it reaches GP_PUT.
                 let target = state.gp_put;
-                for _ in 0..1000 {
+
+                // Pre-sync PBDMA diagnostics (reading direct PBDMA registers)
+                if let Some(pb) = state.target_pbdma_base {
+                    let gp_base = state.bar0.read_u32(pb + pbdma::GP_BASE_LO).unwrap_or(0);
+                    let hw_put = state.bar0.read_u32(pb + pbdma::GP_PUT).unwrap_or(0xDEAD);
+                    let hw_get = state.bar0.read_u32(pb + pbdma::GP_FETCH).unwrap_or(0xDEAD);
+                    let hw_state = state.bar0.read_u32(pb + pbdma::GP_STATE).unwrap_or(0xDEAD);
+                    let ch_state = state.bar0.read_u32(pb + pbdma::CHANNEL_STATE).unwrap_or(0xDEAD);
+                    let userd_lo = state.bar0.read_u32(pb + pbdma::USERD_LO).unwrap_or(0xDEAD);
+                    let sig = state.bar0.read_u32(pb + pbdma::SIGNATURE).unwrap_or(0xDEAD);
+                    tracing::info!(
+                        target_gp_put = target,
+                        gp_base = format_args!("{gp_base:#010x}"),
+                        hw_put = format_args!("{hw_put:#010x}"),
+                        hw_get = format_args!("{hw_get:#010x}"),
+                        gp_state = format_args!("{hw_state:#010x}"),
+                        ch_state = format_args!("{ch_state:#010x}"),
+                        userd_lo = format_args!("{userd_lo:#010x}"),
+                        signature = format_args!("{sig:#010x}"),
+                        "pre-sync PBDMA diagnostics"
+                    );
+                }
+
+                // Poll USERD GP_GET until it reaches GP_PUT.
+                let mut last_gp_get = 0xFFFF_FFFFu32;
+                for i in 0..1000 {
                     let gp_get = state.userd.volatile_read_u32(ramuserd::GP_GET);
                     if gp_get == target {
+                        tracing::info!(iterations = i, "sync complete: GP_GET reached GP_PUT");
                         break;
                     }
+                    if gp_get != last_gp_get {
+                        tracing::debug!(gp_get, target, iteration = i, "GP_GET changed");
+                        last_gp_get = gp_get;
+                    }
                     std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+
+                // Post-sync PBDMA diagnostics
+                if let Some(pb) = state.target_pbdma_base {
+                    let hw_put = state.bar0.read_u32(pb + pbdma::GP_PUT).unwrap_or(0xDEAD);
+                    let hw_get = state.bar0.read_u32(pb + pbdma::GP_FETCH).unwrap_or(0xDEAD);
+                    let userd_gp_get = state.userd.volatile_read_u32(ramuserd::GP_GET);
+                    let userd_gp_put = state.userd.volatile_read_u32(ramuserd::GP_PUT);
+                    tracing::info!(
+                        hw_put = format_args!("{hw_put:#010x}"),
+                        hw_get = format_args!("{hw_get:#010x}"),
+                        userd_gp_get,
+                        userd_gp_put,
+                        target,
+                        "post-sync PBDMA diagnostics"
+                    );
                 }
 
                 // Free inflight pushbuffers.
