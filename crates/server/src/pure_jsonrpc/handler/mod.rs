@@ -380,6 +380,7 @@ impl JsonRpcHandler {
             }
 
             "sovereign.init" => return sovereign::sovereign_init(params),
+            "sovereign.devinit" => return sovereign::sovereign_devinit(params),
 
             "mmio.read32" => return mmio::mmio_read32(params),
             "mmio.write32" => return mmio::mmio_write32(params),
@@ -476,6 +477,7 @@ impl JsonRpcHandler {
             "device_vfio_roundtrip" => self.dispatch.device_vfio_roundtrip(params).await,
             "device_gr_init" => self.dispatch.device_gr_init(params).await,
             "sovereign_init" => sovereign::sovereign_init(params),
+            "sovereign_devinit" => sovereign::sovereign_devinit(params),
             "mmio_read32" => mmio::mmio_read32(params),
             "mmio_write32" => mmio::mmio_write32(params),
             "mmio_batch" => mmio::mmio_batch(params),

@@ -94,3 +94,90 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     serde_json::to_value(&result)
         .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
 }
+
+/// `sovereign.devinit` — Run PMU FALCON devinit (VBIOS-based memory training).
+///
+/// Reads VBIOS from PROM, parses BIT table, uploads PMU firmware, executes
+/// devinit. Falls back to host-side VBIOS interpreter if FALCON fails.
+/// This is the K80/Kepler cold-boot path to bring up GDDR5 VRAM.
+///
+/// Params:
+/// - `bdf` (required): PCI BDF address
+/// - `vbios_path` (optional): Path to pre-dumped VBIOS ROM file
+pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> {
+    use toadstool_cylinder::vfio::channel::devinit;
+
+    let bdf = params
+        .and_then(|p| p.get("bdf"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+    info!(bdf = %bdf, "sovereign.devinit: opening BAR0");
+
+    let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+        .map_err(|e| {
+            JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+        })?;
+
+    let diag = devinit::FalconDiagnostic::probe(&bar0, Some(bdf));
+
+    let diag_json = serde_json::json!({
+        "needs_post": diag.status.needs_post,
+        "devinit_reg": format!("{:#010x}", diag.status.devinit_reg),
+        "pmu_id": format!("{:#010x}", diag.status.pmu_id),
+        "pmu_hwcfg": format!("{:#010x}", diag.status.pmu_hwcfg),
+        "pmu_ctrl": format!("{:#010x}", diag.status.pmu_ctrl),
+        "pmu_mbox0": format!("{:#010x}", diag.status.pmu_mbox0),
+        "prom_accessible": diag.prom_accessible,
+        "prom_signature": format!("{:#010x}", diag.prom_signature),
+        "secure_boot": diag.secure_boot,
+        "falcon_halted": diag.falcon_halted,
+        "falcon_pc": format!("{:#010x}", diag.falcon_pc),
+        "imem_kb": diag.imem_size_kb,
+        "dmem_kb": diag.dmem_size_kb,
+        "vbios_sources": diag.vbios_sources.iter().map(|(name, ok, detail)| {
+            serde_json::json!({"name": name, "available": ok, "detail": detail})
+        }).collect::<Vec<_>>(),
+    });
+
+    if !diag.status.needs_post {
+        return Ok(serde_json::json!({
+            "bdf": bdf,
+            "action": "none",
+            "reason": "devinit already complete",
+            "diagnostic": diag_json,
+        }));
+    }
+
+    info!(bdf = %bdf, prom = diag.prom_accessible, secure = diag.secure_boot,
+          "sovereign.devinit: GPU needs POST, attempting devinit");
+
+    match devinit::execute_devinit_with_diagnostics(&bar0, Some(bdf)) {
+        Ok(true) => {
+            info!(bdf = %bdf, "sovereign.devinit: VRAM alive after devinit");
+            Ok(serde_json::json!({
+                "bdf": bdf,
+                "action": "devinit_executed",
+                "vram_alive": true,
+                "diagnostic": diag_json,
+            }))
+        }
+        Ok(false) => {
+            Ok(serde_json::json!({
+                "bdf": bdf,
+                "action": "devinit_not_needed",
+                "vram_alive": false,
+                "diagnostic": diag_json,
+            }))
+        }
+        Err(e) => {
+            info!(bdf = %bdf, error = %e, "sovereign.devinit: devinit failed");
+            Ok(serde_json::json!({
+                "bdf": bdf,
+                "action": "devinit_failed",
+                "error": e.to_string(),
+                "diagnostic": diag_json,
+            }))
+        }
+    }
+}
