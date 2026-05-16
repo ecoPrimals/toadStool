@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S263 (FECS CPUCTL_ALIAS breakthrough, GR context scheduler, warm handoff validated on Titan V)
+**Updated**: May 2026 — S266 (PlxKeepalive: continuous config space heartbeat for PLX-bridged devices. Root cause: PLX D3cold from **inactivity**, not swap events. ember `PlxKeepalive` + glowplug `PlxGuardian` fleet manager. 98 ember tests, 95 glowplug tests.)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (22,900+ workspace, 0 failures; 8,849+ lib-only) | **83 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S263)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **520 cylinder tests** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
-**Latest**: S263 — **CPUCTL_ALIAS breakthrough**: discovered Volta HS falcons security-lock `CPUCTL` (0x100), always reading 0x10 (false HRESET). All probes migrated to `CPUCTL_ALIAS` (0x130) which reveals true running state. FECS confirmed alive throughout warm handoff. GR context buffer allocation + scheduler cycle (`resubmit_runlist`). NvGspBridge HS boot with corrected FBIF/DMACTL. Full e2e dispatch pipeline validated: warm handoff → VFIO open → channel create → DMA roundtrip → GR init. Current frontier: FECS PENDING_CTX_RELOAD (golden context mapping from VRAM).
-**Previous**: S262 — `device.gr.init` IPC. S261 — deep debt sweep. S259 — VFIO IPC + QMD dispatch. S258 — PBDMA dispatch wiring. S256–S257 — FECS warm-state + deep debt.
+**Latest**: S266 — **PLX Keepalive (Root Cause Fix)**: `PlxKeepalive` in ember — continuous config space heartbeat (CfgRd 0x00 every 5s) on PLX-bridged devices + full bridge chain. `KeepaliveHandle` for stop/status/heartbeat_count. `detect_plx_bridge()` checks vendor 0x10b5 in ancestry. `PlxGuardian` in glowplug — fleet-level auto-detection via `scan_and_protect()`, per-device `protect()/release()`, `status_summary()`. Root cause: PLX D3cold from inactivity (toadstool-server polling was accidental keepalive; bridge died in ~10min when it stopped).
+**Previous**: S265r — Driver Lab + Containment. S264 — PCIe bridge keepalive. S263 — CPUCTL_ALIAS breakthrough, GR context scheduler, warm handoff on Titan V. S262 — `device.gr.init` IPC. S261 — deep debt sweep. S259 — VFIO IPC + QMD dispatch. S258 — PBDMA dispatch wiring.
 
 ---
 
@@ -65,15 +65,17 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on coralReef FECS firmware loading; extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
 
-### Key Remaining Items (S263)
+### Key Remaining Items (S265)
 
 | Item | Status |
 |------|--------|
 | Coverage push 83%→90% | Ongoing — hardware mocks needed for remaining gaps |
 | Phase D mixed command streams | Planned — requires coralReef FECS firmware loading |
 | VFIO PBDMA dispatch | **VALIDATED** (S258–S263) — GPFIFO + QMD dispatch works e2e on Titan V via warm handoff. FECS alive via CPUCTL_ALIAS. DMA roundtrip confirmed. |
+| PCIe bridge keepalive | **VALIDATED + EVOLVED** (S264→S266) — Phase 1 (S264): `pin_bridge_hierarchy()` + `SwapGuard` burst CfgRd during swaps. Phase 2 (S266): Root cause fix — PLX D3cold caused by **inactivity** (not swaps). `PlxKeepalive` (ember): continuous CfgRd every 5s on device + all upstream bridges. `PlxGuardian` (glowplug): fleet-level auto-detect via `scan_and_protect()`. 98 ember tests, 95 glowplug tests. |
 | E2E sovereign pipeline test | **VALIDATED** (S263) — warm handoff → VFIO open → channel → dispatch → readback. Pending: real shader execution (FECS PENDING_CTX_RELOAD frontier). |
 | FECS golden context mapping | **ACTIVE** — FECS scheduler stuck at PENDING_CTX_RELOAD. GR context buffer allocated but FECS needs golden context from VRAM. Next: map VRAM identity region or extract context init sequence from nouveau. |
+| No-FLR warm swap | **VALIDATED + IMPLEMENTED** (Exp 194, S265r) — `reset_method=""` disables FLR during vfio-pci bind. Titan V: 13/15 registers alive through nouveau→vfio-pci swap. Full BAR access verified. `WarmInitPlan` with containment architecture: bare-metal (nouveau, host-safe) vs contained (nvidia-470, agentReagents VM). `SysfsSwapExecutor::execute_warm_init()` bare-metal only — contained plans dispatch through agentReagents. Host DRM sacred. 77 tests pass. |
 | Phase 2 dep migration: procfs → toadstool-sysmon | **RESOLVED** — `procfs` default features disabled (S129); dead `procfs` dep removed where unused (S160); runtime discovery uses `toadstool-sysmon` where applicable |
 | Phase 3: tarpc binary transport | **RESOLVED** S203t — MessagePack binary framing for Rust-to-Rust peers |
 | Property-based testing for computation modules | Pending |

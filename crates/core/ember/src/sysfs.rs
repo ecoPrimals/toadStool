@@ -110,7 +110,10 @@ pub fn pin_bridge_power_with(sysfs: &dyn SysfsPort, bdf: &str) {
     }
 }
 
-/// Pin upstream PCI bridge power (direct version).
+/// Pin upstream PCI bridge power (direct version — single parent only).
+///
+/// For multi-level switch topologies (e.g. PLX PEX 8747 on Tesla K80),
+/// use [`pin_bridge_hierarchy`] instead to walk the full ancestry.
 pub fn pin_bridge_power(bdf: &str) {
     let device_path = std::path::Path::new("/sys/bus/pci/devices").join(bdf);
     if let Ok(parent) = std::fs::read_link(device_path.join("..")) {
@@ -119,6 +122,45 @@ pub fn pin_bridge_power(bdf: &str) {
             let _ = std::fs::write(pci_device_path(bridge_name, "d3cold_allowed"), "0");
         }
     }
+}
+
+/// Pin power on **every** upstream PCI bridge from `bdf` to the root complex.
+///
+/// Walks the canonical sysfs path upward, setting `power/control=on` and
+/// `d3cold_allowed=0` on each ancestor whose name contains `:` (PCI BDF
+/// convention). Stops at the first non-PCI parent.
+///
+/// Returns the number of bridges pinned.
+pub fn pin_bridge_hierarchy(bdf: &str) -> usize {
+    let device_link = Path::new("/sys/bus/pci/devices").join(bdf);
+    let Ok(canonical) = std::fs::canonicalize(&device_link) else {
+        return 0;
+    };
+
+    let mut pinned = 0usize;
+    let mut current = canonical.as_path().parent();
+
+    while let Some(parent) = current {
+        let Some(name) = parent.file_name().and_then(|n| n.to_str()) else {
+            break;
+        };
+
+        if !name.contains(':') {
+            break;
+        }
+
+        let control = parent.join("power/control");
+        let d3cold = parent.join("d3cold_allowed");
+        if control.exists() {
+            let _ = std::fs::write(&control, "on");
+            let _ = std::fs::write(&d3cold, "0");
+            pinned += 1;
+        }
+
+        current = parent.parent();
+    }
+
+    pinned
 }
 
 /// Direct sysfs write (bypasses path construction).

@@ -27,23 +27,17 @@ use std::collections::HashMap;
 use crate::error::{DriverError, DriverResult};
 use crate::{BufferHandle, ComputeDevice, DispatchDims, HardwareCapabilities, MemoryDomain, ShaderInfo};
 
-/// GPFIFO ring IOVA — beyond channel infrastructure (0x3000–0xBFFF).
-const GPFIFO_IOVA: u64 = 0x1_0000;
-/// USERD page IOVA.
-const USERD_IOVA: u64 = 0x1_1000;
-/// GR context save area IOVA — FECS copies golden context here per-channel.
-const GR_CTX_IOVA: u64 = 0x1_2000;
-/// GR context buffer size — GV100 context is ~500KB; 1MB gives margin.
-const GR_CTX_SIZE: usize = 0x10_0000;
-/// First IOVA available for user DMA buffers (shifted to make room for GR ctx).
-const USER_BUFFER_BASE_IOVA: u64 = 0x12_0000;
+use super::iova;
+
+const GPFIFO_IOVA: u64 = iova::dispatch::GPFIFO_IOVA;
+const USERD_IOVA: u64 = iova::dispatch::USERD_IOVA;
+const GR_CTX_IOVA: u64 = iova::dispatch::GR_CTX_IOVA;
+const GR_CTX_SIZE: usize = iova::dispatch::GR_CTX_SIZE;
+const USER_BUFFER_BASE_IOVA: u64 = iova::dispatch::USER_BUFFER_BASE_IOVA;
 /// GPFIFO entry count (4 KiB / 8 bytes per entry = 512).
 const GPFIFO_ENTRIES: u32 = 512;
-/// Maximum IOVA for identity-mapped region. PT0 now needs to cover up to
-/// USER_BUFFER_BASE_IOVA + user allocations.
-const IOVA_LIMIT: u64 = 0x40_0000;
-/// Page size for IOVA alignment.
-const PAGE_SIZE: u64 = 4096;
+const IOVA_LIMIT: u64 = iova::IOVA_LIMIT;
+const PAGE_SIZE: u64 = iova::PAGE_SIZE;
 
 /// Doorbell strategy: Volta+ uses NV_USERMODE, Kepler uses GK104 per-channel.
 #[cfg(target_os = "linux")]
@@ -67,12 +61,18 @@ struct VfioDispatchState {
     userd: crate::vfio::dma::DmaBuffer,
     #[expect(dead_code, reason = "GR context buffer held for DMA lifetime")]
     gr_ctx: Option<crate::vfio::dma::DmaBuffer>,
+    /// Semaphore buffer for Blackwell+ completion signaling (GP_GET removed from USERD).
+    semaphore: Option<crate::vfio::dma::DmaBuffer>,
+    /// Expected semaphore payload value for the next sync.
+    semaphore_value: u32,
     buffers: HashMap<u32, crate::vfio::dma::DmaBuffer>,
     inflight: Vec<BufferHandle>,
     next_handle: u32,
     next_iova: u64,
     gp_put: u32,
     doorbell: DoorbellKind,
+    /// Completion strategy for this GPU generation.
+    completion: super::generation::CompletionStrategy,
     /// BAR0 base offset of the target PBDMA for direct GP_PUT writes.
     /// On warm-caught GV100, the scheduler doesn't reliably propagate
     /// USERD GP_PUT to the PBDMA; direct writes ensure GPFIFO consumption.
@@ -238,16 +238,43 @@ impl NvVfioComputeDevice {
         use crate::vfio::channel::registers::falcon;
 
         const BAR0_MIN_SIZE: usize = 0x41_A000;
+
+        enum Bar0Source {
+            Sysfs(crate::vfio::sysfs_bar0::SysfsBar0),
+            #[expect(dead_code, reason = "VfioDevice must outlive MappedBar to keep the fd alive")]
+            Vfio(crate::vfio::device::MappedBar, crate::vfio::VfioDevice),
+        }
+
+        impl Bar0Source {
+            fn read(&self, offset: usize) -> u32 {
+                match self {
+                    Self::Sysfs(b) => b.read_u32(offset),
+                    Self::Vfio(b, _) => b.read_u32(offset).unwrap_or(0xDEAD_DEAD),
+                }
+            }
+        }
+
         let bar0 = match crate::vfio::sysfs_bar0::SysfsBar0::open(&self.bdf, BAR0_MIN_SIZE) {
-            Ok(b) => b,
+            Ok(b) => Bar0Source::Sysfs(b),
             Err(e) => {
-                tracing::debug!(bdf = %self.bdf, error = %e, "BAR0 open failed for warm FECS probe");
-                return false;
+                tracing::debug!(bdf = %self.bdf, error = %e, "sysfs BAR0 failed — trying VFIO API");
+                match crate::vfio::VfioDevice::open(&self.bdf)
+                    .and_then(|dev| dev.map_bar(0).map(|bar| (bar, dev)))
+                {
+                    Ok((bar, dev)) => {
+                        tracing::info!(bdf = %self.bdf, "warm probe via VFIO BAR0 mmap");
+                        Bar0Source::Vfio(bar, dev)
+                    }
+                    Err(e2) => {
+                        tracing::debug!(bdf = %self.bdf, error = %e2, "VFIO BAR0 also failed");
+                        return false;
+                    }
+                }
             }
         };
 
         if self.caps.vendor == crate::hardware::Vendor::Unknown {
-            let boot0 = bar0.read_u32(0);
+            let boot0 = bar0.read(0);
             if let Some(sm) = super::identity::boot0_to_sm(boot0) {
                 let profile = super::generation::profile_for_sm(sm);
                 self.caps = profile.to_capabilities();
@@ -260,7 +287,7 @@ impl NvVfioComputeDevice {
             }
         }
 
-        let pmc_enable = bar0.read_u32(0x200);
+        let pmc_enable = bar0.read(0x200);
         if pmc_enable.count_ones() < 8 {
             tracing::debug!(
                 bdf = %self.bdf,
@@ -271,12 +298,10 @@ impl NvVfioComputeDevice {
             return false;
         }
 
-        // Use CPUCTL_ALIAS (0x130) for Volta HS falcons. CPUCTL at 0x100
-        // is security-locked and always reads HRESET=1 on HS mode falcons.
-        let fecs_cpuctl_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS);
-        let fecs_cpuctl_raw = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL);
-        let fecs_mb0 = bar0.read_u32(falcon::FECS_BASE + falcon::MAILBOX0);
-        let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC);
+        let fecs_cpuctl_alias = bar0.read(falcon::FECS_BASE + falcon::CPUCTL_ALIAS);
+        let fecs_cpuctl_raw = bar0.read(falcon::FECS_BASE + falcon::CPUCTL);
+        let fecs_mb0 = bar0.read(falcon::FECS_BASE + falcon::MAILBOX0);
+        let fecs_pc = bar0.read(falcon::FECS_BASE + falcon::PC);
 
         let halted = fecs_cpuctl_alias & falcon::CPUCTL_HALTED != 0;
         let in_hreset = fecs_cpuctl_alias & falcon::CPUCTL_HRESET != 0;
@@ -348,6 +373,84 @@ impl NvVfioComputeDevice {
         self.fecs_ready
     }
 
+    /// Send FECS method commands to set up a channel for context switching.
+    ///
+    /// Sequence (from nouveau `gf100_gr_init`):
+    /// 1. Set watchdog timeout
+    /// 2. INIT_CTXSW — initialize FECS context switching tables
+    /// 3. BIND_CHANNEL — register our instance block with FECS
+    /// 4. COMMIT — tell FECS to copy golden context into our GR buffer
+    #[cfg(target_os = "linux")]
+    fn fecs_setup_channel(
+        bar0: &crate::vfio::device::MappedBar,
+        channel: &crate::vfio::channel::VfioChannel,
+    ) -> DriverResult<()> {
+        use crate::vfio::channel::fecs;
+
+        let inst_iova = channel.instance_iova();
+
+        match fecs::fecs_set_watchdog_timeout(bar0, 0x7FFF_FFFF) {
+            Ok(r) => tracing::info!(status = r.status, "FECS watchdog set"),
+            Err(e) => tracing::warn!(error = %e, "FECS watchdog timeout set failed (non-fatal)"),
+        }
+
+        match fecs::fecs_init_ctxsw(bar0) {
+            Ok(r) => {
+                tracing::info!(
+                    status = r.status,
+                    mailbox0 = format_args!("{:#x}", r.mailbox0),
+                    "FECS INIT_CTXSW completed"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "FECS INIT_CTXSW failed — context switching may not work");
+            }
+        }
+
+        match fecs::fecs_bind_channel(bar0, inst_iova) {
+            Ok(r) => {
+                tracing::info!(
+                    status = r.status,
+                    mailbox0 = format_args!("{:#x}", r.mailbox0),
+                    inst_iova = format_args!("{inst_iova:#x}"),
+                    "FECS BIND_CHANNEL completed"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "FECS BIND_CHANNEL failed");
+            }
+        }
+
+        match fecs::fecs_commit(bar0, inst_iova) {
+            Ok(r) => {
+                tracing::info!(
+                    status = r.status,
+                    mailbox0 = format_args!("{:#x}", r.mailbox0),
+                    "FECS COMMIT completed — golden context should be loaded"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "FECS COMMIT failed");
+            }
+        }
+
+        // Query the GR context image size for diagnostics
+        match fecs::fecs_discover_image_size(bar0) {
+            Ok(size) => {
+                tracing::info!(
+                    gr_ctx_size = size,
+                    gr_ctx_size_hex = format_args!("{size:#x}"),
+                    "FECS reports GR context image size"
+                );
+            }
+            Err(e) => {
+                tracing::debug!(error = %e, "FECS DISCOVER_IMAGE_SIZE failed (non-fatal)");
+            }
+        }
+
+        Ok(())
+    }
+
     /// Open the VFIO device and create a PFIFO channel for PBDMA dispatch.
     ///
     /// After this call, `alloc`/`upload`/`readback`/`dispatch`/`sync` use
@@ -379,6 +482,7 @@ impl NvVfioComputeDevice {
 
         let mut fecs_hs_booted = false;
         let mut fecs_bridge: Option<super::nv_gsp_bridge::NvGspBridge> = None;
+        let mut pmc_was_cold = false;
 
         // Probe FECS state and prepare for deferred boot (after channel creation).
         // On nouveau warm handoff, FECS firmware expects PFIFO infrastructure
@@ -388,6 +492,7 @@ impl NvVfioComputeDevice {
 
             let pmc_before = bar0.read_u32(0x200).unwrap_or(0);
             if pmc_before.count_ones() < 8 {
+                pmc_was_cold = true;
                 tracing::info!(
                     bdf = %self.bdf,
                     pmc_before = format_args!("{pmc_before:#010x}"),
@@ -415,7 +520,37 @@ impl NvVfioComputeDevice {
                 && (fecs_alias & falcon::CPUCTL_HALTED == 0);
             let fecs_needs_boot = is_bad_read || fecs_in_hreset;
 
-            if fecs_running {
+            // VFIO FLR wipes IMEM/DMEM but leaves CPUCTL_ALIAS at 0x0 (not
+            // halted), making the falcon appear "alive". Detect this by checking:
+            //   1. PMC was cold (FLR occurred)
+            //   2. FECS PC < 0x100 (boot stub, not real firmware idle loop)
+            // Genuine nouveau firmware sits at PC ~0x6000+ when idle.
+            let fecs_fw_wiped = pmc_was_cold && fecs_pc < 0x100;
+
+            if fecs_fw_wiped {
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
+                    fecs_pc = format_args!("{fecs_pc:#010x}"),
+                    pmc_was_cold,
+                    "FECS firmware wiped by VFIO FLR — need PIO reload"
+                );
+                let bridge = super::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
+                if bridge.has_gr_firmware() {
+                    tracing::info!(
+                        bdf = %self.bdf,
+                        chip = profile.firmware_chip,
+                        "FECS firmware available — deferring PIO boot to after channel creation"
+                    );
+                    fecs_bridge = Some(bridge);
+                } else {
+                    tracing::warn!(
+                        bdf = %self.bdf,
+                        chip = profile.firmware_chip,
+                        "No FECS firmware found on disk — FECS methods will fail"
+                    );
+                }
+            } else if fecs_running {
                 tracing::info!(
                     bdf = %self.bdf,
                     fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
@@ -460,50 +595,29 @@ impl NvVfioComputeDevice {
             None
         };
 
-        let (channel, doorbell) = if is_kepler {
-            let guard = super::hardware_guard::GuardedBar::new(&bar0, 16).map_err(|e| {
-                DriverError::Unsupported(Cow::Owned(format!("Kepler BAR0 guard init: {e}")))
-            })?;
-            let ch = VfioChannel::create_kepler(
-                dma_backend.clone(),
-                &guard,
-                GPFIFO_IOVA,
-                GPFIFO_ENTRIES,
-                USERD_IOVA,
-                0,
-            )?;
-            let ch_id = ch.id();
-            tracing::info!(
-                bdf = %self.bdf,
-                generation = profile.name,
-                "Kepler VFIO channel created — GK104 doorbell"
-            );
-            (ch, DoorbellKind::Gk104 { channel_id: ch_id })
-        } else if self.fecs_ready {
-            let mut ch = VfioChannel::create_warm(
-                dma_backend.clone(),
-                &bar0,
-                GPFIFO_IOVA,
-                GPFIFO_ENTRIES,
-                USERD_IOVA,
-                0,
-            )?;
-            if gr_ctx.is_some() {
-                ch.write_gr_context_ptr(GR_CTX_IOVA, 4);
-                ch.resubmit_runlist(&bar0)?;
-            }
-            (ch, DoorbellKind::Usermode)
+        let mut ch = VfioChannel::create_for_profile(
+            dma_backend.clone(),
+            &bar0,
+            GPFIFO_IOVA,
+            GPFIFO_ENTRIES,
+            USERD_IOVA,
+            0,
+            profile,
+            self.fecs_ready,
+        )?;
+
+        let doorbell = if is_kepler {
+            DoorbellKind::Gk104 { channel_id: ch.id() }
         } else {
-            let ch = VfioChannel::create(
-                dma_backend.clone(),
-                &bar0,
-                GPFIFO_IOVA,
-                GPFIFO_ENTRIES,
-                USERD_IOVA,
-                0,
-            )?;
-            (ch, DoorbellKind::Usermode)
+            DoorbellKind::Usermode
         };
+
+        if !is_kepler && gr_ctx.is_some() {
+            ch.write_gr_context_ptr(GR_CTX_IOVA, 4);
+            ch.resubmit_runlist(&bar0)?;
+        }
+
+        let channel = ch;
 
         tracing::info!(
             bdf = %self.bdf,
@@ -651,6 +765,94 @@ impl NvVfioComputeDevice {
             }
         }
 
+        // After deferred boot (or on warm handoff), send FECS method protocol
+        // to register our channel for context switching.
+        if !is_kepler && gr_ctx.is_some() {
+            use crate::vfio::channel::registers::falcon;
+
+            // GR PGRAPH method registers (MTHD_CMD at 0x504, GR_FECS_MAILBOX0
+            // at 0x840) may be behind a PRI clock gate after driver teardown.
+            // Probe whether MTHD_CMD is accessible before sending methods.
+            let mthd_cmd_probe = bar0.read_u32(
+                falcon::FECS_BASE + falcon::MTHD_CMD
+            ).unwrap_or(0xDEAD);
+            let pgraph_gated = mthd_cmd_probe & 0xBAD0_0000 == 0xBAD0_0000;
+
+            if pgraph_gated {
+                // GR PRI ring is gated. Toggle GR in PMC to bring the engine
+                // out of its gated state. This resets FECS but makes the
+                // method interface accessible.
+                let pmc_val = bar0.read_u32(0x200).unwrap_or(0);
+                tracing::info!(
+                    mthd_cmd_probe = format_args!("{mthd_cmd_probe:#010x}"),
+                    pmc = format_args!("{pmc_val:#010x}"),
+                    "PGRAPH method registers gated — toggling GR engine in PMC"
+                );
+                // Clear GR bit (bit 12), wait, re-set it
+                let _ = bar0.write_u32(0x200, pmc_val & !(1u32 << 12));
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                let _ = bar0.write_u32(0x200, pmc_val | (1u32 << 12));
+                std::thread::sleep(std::time::Duration::from_millis(100));
+
+                // Clear PRI ring faults that may have accumulated
+                let priv_intr = bar0.read_u32(0x0002_0100).unwrap_or(0);
+                if priv_intr != 0 {
+                    let _ = bar0.write_u32(0x0002_0100, priv_intr);
+                    tracing::info!(
+                        priv_intr = format_args!("{priv_intr:#010x}"),
+                        "PRI ring faults cleared after GR toggle"
+                    );
+                }
+
+                let mthd_cmd_after = bar0.read_u32(
+                    falcon::FECS_BASE + falcon::MTHD_CMD
+                ).unwrap_or(0xDEAD);
+                tracing::info!(
+                    mthd_cmd_after = format_args!("{mthd_cmd_after:#010x}"),
+                    "PGRAPH method registers after GR toggle"
+                );
+            }
+
+            let fecs_alive = crate::vfio::channel::fecs::fecs_is_alive(&bar0);
+            let pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
+            tracing::info!(
+                fecs_alive,
+                fecs_hs_booted,
+                pc = format_args!("{pc:#010x}"),
+                pgraph_was_gated = pgraph_gated,
+                "FECS liveness check before method protocol"
+            );
+
+            if fecs_alive {
+                Self::fecs_setup_channel(&bar0, &channel)?;
+            } else {
+                tracing::warn!(
+                    fecs_hs_booted,
+                    pgraph_was_gated = pgraph_gated,
+                    "FECS not alive after boot — skipping method protocol"
+                );
+            }
+        }
+
+        // Allocate semaphore buffer for Blackwell+ completion signaling
+        let semaphore = if matches!(profile.completion, super::generation::CompletionStrategy::SemaphoreFence) {
+            let mut sem = crate::vfio::dma::DmaBuffer::new(
+                dma_backend.clone(), 4096,
+                USER_BUFFER_BASE_IOVA,
+            )?;
+            sem.as_mut_slice()[..4].copy_from_slice(&0u32.to_le_bytes());
+            tracing::info!(
+                bdf = %self.bdf,
+                sem_iova = format_args!("{USER_BUFFER_BASE_IOVA:#x}"),
+                "semaphore buffer allocated for SemaphoreFence completion"
+            );
+            Some(sem)
+        } else {
+            None
+        };
+
+        let sem_offset = if semaphore.is_some() { PAGE_SIZE } else { 0 };
+
         self.vfio_state = Some(VfioDispatchState {
             device,
             bar0,
@@ -659,12 +861,15 @@ impl NvVfioComputeDevice {
             gpfifo,
             userd,
             gr_ctx,
+            semaphore,
+            semaphore_value: 0,
             buffers: HashMap::new(),
             inflight: Vec::new(),
             next_handle: 1,
-            next_iova: USER_BUFFER_BASE_IOVA,
+            next_iova: USER_BUFFER_BASE_IOVA + sem_offset,
             gp_put: 0,
             doorbell,
+            completion: profile.completion,
             target_pbdma_base,
         });
 
@@ -895,13 +1100,24 @@ impl ComputeDevice for NvVfioComputeDevice {
             let qmd_iova = qmd_buf.iova();
             qmd_buf.as_mut_slice()[..qmd_bytes.len()].copy_from_slice(qmd_bytes);
 
-            // 5. Build + submit pushbuffer (compute init + dispatch)
+            // 5. Build + submit pushbuffer (compute init + dispatch + optional semaphore)
             let mut init_pb = super::pushbuf::PushBuf::compute_init(
                 profile.compute_class, profile.local_mem_window, 0, 0,
             );
             init_pb.append(&super::pushbuf::PushBuf::compute_dispatch_with_launch(
                 profile.launch_method, qmd_iova,
             ));
+
+            if matches!(state.completion, super::generation::CompletionStrategy::SemaphoreFence) {
+                if let Some(sem) = &state.semaphore {
+                    state.semaphore_value = state.semaphore_value.wrapping_add(1);
+                    let release_pb = super::pushbuf::PushBuf::semaphore_release(
+                        sem.iova(), state.semaphore_value, 0,
+                    );
+                    init_pb.append(&release_pb);
+                }
+            }
+
             state.submit_pushbuffer(init_pb.as_bytes())?;
 
             // Track transient DMA allocations for cleanup after sync.
@@ -931,6 +1147,7 @@ impl ComputeDevice for NvVfioComputeDevice {
         #[cfg(target_os = "linux")]
         {
             use crate::vfio::channel::registers::{pbdma, ramuserd};
+            use super::generation::CompletionStrategy;
 
             if let Some(state) = self.vfio_state.as_mut() {
                 let target = state.gp_put;
@@ -957,19 +1174,48 @@ impl ComputeDevice for NvVfioComputeDevice {
                     );
                 }
 
-                // Poll USERD GP_GET until it reaches GP_PUT.
-                let mut last_gp_get = 0xFFFF_FFFFu32;
-                for i in 0..1000 {
-                    let gp_get = state.userd.volatile_read_u32(ramuserd::GP_GET);
-                    if gp_get == target {
-                        tracing::info!(iterations = i, "sync complete: GP_GET reached GP_PUT");
-                        break;
+                match state.completion {
+                    CompletionStrategy::GpGetPoll => {
+                        let mut last_gp_get = 0xFFFF_FFFFu32;
+                        for i in 0..1000 {
+                            let gp_get = state.userd.volatile_read_u32(ramuserd::GP_GET);
+                            if gp_get == target {
+                                tracing::info!(iterations = i, "sync complete: GP_GET reached GP_PUT");
+                                break;
+                            }
+                            if gp_get != last_gp_get {
+                                tracing::debug!(gp_get, target, iteration = i, "GP_GET changed");
+                                last_gp_get = gp_get;
+                            }
+                            std::thread::sleep(std::time::Duration::from_millis(1));
+                        }
                     }
-                    if gp_get != last_gp_get {
-                        tracing::debug!(gp_get, target, iteration = i, "GP_GET changed");
-                        last_gp_get = gp_get;
+
+                    CompletionStrategy::SemaphoreFence => {
+                        let expected = state.semaphore_value;
+                        if let Some(sem) = &state.semaphore {
+                            for i in 0..2000 {
+                                let val = sem.volatile_read_u32(0);
+                                if val == expected {
+                                    tracing::info!(
+                                        iterations = i,
+                                        payload = expected,
+                                        "sync complete: semaphore reached expected value"
+                                    );
+                                    break;
+                                }
+                                if i % 100 == 0 {
+                                    tracing::debug!(
+                                        val, expected, iteration = i,
+                                        "semaphore poll in progress"
+                                    );
+                                }
+                                std::thread::sleep(std::time::Duration::from_millis(1));
+                            }
+                        } else {
+                            tracing::warn!("SemaphoreFence strategy but no semaphore buffer allocated");
+                        }
                     }
-                    std::thread::sleep(std::time::Duration::from_millis(1));
                 }
 
                 // Post-sync PBDMA diagnostics

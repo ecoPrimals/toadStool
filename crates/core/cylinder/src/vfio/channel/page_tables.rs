@@ -51,6 +51,26 @@ pub(super) fn encode_pte(phys_addr: u64) -> u64 {
     (phys_addr >> 4) | FLAGS
 }
 
+/// Encode a V2 small-page PTE targeting VRAM (video memory).
+///
+/// Aperture 0 = VRAM (no aperture bits set). This maps a GPU virtual
+/// address directly to a VRAM physical address, bypassing system memory.
+/// Used for mapping the golden context region that FECS stores in VRAM.
+pub(super) fn encode_pte_vram(vram_addr: u64) -> u64 {
+    const FLAGS: u64 = 1 | (1 << 3); // VALID + VOL, aperture=0 (VRAM)
+    (vram_addr >> 4) | FLAGS
+}
+
+/// Write a VRAM-targeted PTE at a specific page index in a page table.
+///
+/// `pt_index` is the page table entry index (0-based).
+/// `vram_addr` is the physical VRAM address to map.
+pub(super) fn write_vram_pte(pt: &mut [u8], pt_index: usize, vram_addr: u64) {
+    let pte = encode_pte_vram(vram_addr);
+    let off = pt_index * 8;
+    pt[off..off + 8].copy_from_slice(&pte.to_le_bytes());
+}
+
 /// Write a little-endian `u32` into a byte slice at the given byte offset.
 pub(super) fn write_u32_le(buf: &mut [u8], offset: usize, value: u32) {
     buf[offset..offset + 4].copy_from_slice(&value.to_le_bytes());

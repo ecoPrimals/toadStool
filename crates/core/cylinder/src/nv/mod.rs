@@ -10,13 +10,18 @@
 
 pub mod bar0;
 pub mod compute_device;
+pub mod driver_probe;
 pub mod falcon_pio;
 pub mod generation;
+pub mod gr_init;
+pub mod pmu_init;
+pub mod pri;
 pub mod gsp_bridge;
 pub mod hardware_guard;
-pub mod nv_gsp_bridge;
 pub mod identity;
 pub mod ioctl;
+pub mod iova;
+pub mod nv_gsp_bridge;
 pub mod pushbuf;
 pub mod qmd;
 

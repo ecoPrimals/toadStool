@@ -145,6 +145,10 @@ pub const MTHD_CMD: usize = 0x504;
 pub const MTHD_STATUS: usize = 0x800;
 /// FECS method status2 register (base + 0x804).
 pub const MTHD_STATUS2: usize = 0x804;
+/// PGRAPH-wrapped falcon MAILBOX0 (CTXSW_MAILBOX[16]).
+/// Used by the GR FECS method protocol for data in/out.
+/// NOT the same as the falcon core MAILBOX0 at offset 0x040.
+pub const GR_FECS_MAILBOX0: usize = 0x840;
 /// FECS exception configuration register (base + 0xC24).
 pub const EXCEPTION_REG: usize = 0xC24;
 /// GR class configuration register (base-relative within PGRAPH).

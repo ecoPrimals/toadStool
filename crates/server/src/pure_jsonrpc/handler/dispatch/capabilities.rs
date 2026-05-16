@@ -23,6 +23,8 @@ fn gpu_architecture(vendor: toadstool_sysmon::GpuVendor, device_id: u32) -> Opti
             0x20B0..=0x20FF | 0x2204..=0x253F => "sm80",
             // Ada Lovelace: RTX 40xx
             0x2684..=0x283F => "sm89",
+            // Blackwell: RTX 50xx, B100, B200
+            0x2900..=0x2FFF => "sm120",
             _ => "sm_unknown",
         }),
         toadstool_sysmon::GpuVendor::Amd => Some(match device_id {

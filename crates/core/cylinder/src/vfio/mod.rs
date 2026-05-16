@@ -29,6 +29,7 @@ pub mod sovereign_stages;
 pub mod sovereign_types;
 pub mod sysfs_bar0;
 pub mod types;
+pub mod warm_capture;
 
 pub use device::{DmaBackend, ReceivedVfioFds, VfioBackendKind, VfioDevice};
 pub use dma::DmaBuffer;

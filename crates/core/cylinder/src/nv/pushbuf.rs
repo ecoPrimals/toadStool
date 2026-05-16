@@ -100,6 +100,18 @@ pub mod method {
     /// PCAS2 action (Ampere+): invalidate QMD cache, copy from memory, schedule.
     /// 4-bit field [3:0] per clcec0.h NVCEC0_SEND_SIGNALING_PCAS2_B_PCAS_ACTION.
     pub const PCAS_ACTION_INVALIDATE_COPY_SCHEDULE: u32 = 3;
+
+    /// Semaphore address upper 8 bits (method 0x06C0).
+    pub const SEMAPHORE_ADDR_UPPER: u32 = 0x06C0;
+    /// Semaphore address lower 32 bits (method 0x06C4).
+    pub const SEMAPHORE_ADDR_LOWER: u32 = 0x06C4;
+    /// Semaphore payload value to write on release (method 0x06C8).
+    pub const SEMAPHORE_PAYLOAD: u32 = 0x06C8;
+    /// Semaphore control: operation mode (method 0x06CC).
+    /// Bit [0] = RELEASE (write payload to addr), Bit [2:1] = ACQUIRE mode.
+    pub const SEMAPHORE_CTRL: u32 = 0x06CC;
+    /// Semaphore control value: release (write payload, no acquire).
+    pub const SEMAPHORE_CTRL_RELEASE: u32 = 0x1;
 }
 
 impl PushBuf {
@@ -291,6 +303,34 @@ impl PushBuf {
             }
         }
 
+        pb
+    }
+
+    /// Build a semaphore release push buffer for completion signaling.
+    ///
+    /// On Blackwell+, USERD no longer contains GP_GET, so the host cannot
+    /// poll for GPFIFO consumption. Instead, the compute engine writes a
+    /// known value to a DMA-mapped semaphore address after dispatch completes.
+    ///
+    /// Uses `RELEASE_MEMBAR_REDUCTION` (0x06C0/0x06C4/0x06C8/0x06CC) methods:
+    /// - `ADDR_UPPER` = high 8 bits of semaphore GPU VA
+    /// - `ADDR_LOWER` = low 32 bits (must be 4-byte aligned)
+    /// - `PAYLOAD` = value to write on completion
+    /// - `CTRL` = release mode (0x5 = ACQUIRE_TERNARY + RELEASE_TRUE)
+    #[must_use]
+    pub fn semaphore_release(
+        sem_iova: u64,
+        payload: u32,
+        subchannel: u32,
+    ) -> Self {
+        let mut pb = Self::new();
+        #[expect(clippy::cast_possible_truncation, reason = "deliberate split into 32-bit halves")]
+        {
+            pb.push_1(subchannel, method::SEMAPHORE_ADDR_UPPER, (sem_iova >> 32) as u32);
+            pb.push_1(subchannel, method::SEMAPHORE_ADDR_LOWER, sem_iova as u32);
+        }
+        pb.push_1(subchannel, method::SEMAPHORE_PAYLOAD, payload);
+        pb.push_1(subchannel, method::SEMAPHORE_CTRL, method::SEMAPHORE_CTRL_RELEASE);
         pb
     }
 

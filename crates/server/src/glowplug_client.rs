@@ -138,8 +138,12 @@ impl GlowPlugClient {
 
     /// Swap a device to an arbitrary target personality via orchestrated lifecycle.
     ///
+    /// Activates PCIe keepalive burst mode for the duration of the swap to
+    /// prevent PLX bridge D3cold during the unbind window.
+    ///
     /// Returns a [`DeviceSwapResult`] with per-step timing and success status.
     pub async fn swap(&self, bdf: &str, target: &str) -> DeviceSwapResult {
+        let _keepalive_guard = crate::background::pcie_keepalive::SwapGuard::enter();
         let result = self.swap_device_orchestrated(bdf, target).await;
         debug!(
             bdf,

@@ -13,7 +13,7 @@
 //! - [`statistics`] — Periodic stats aggregation
 //! - [`cleanup`] — Timed-out execution garbage collection
 //! - [`capability`] — Primal heartbeat (when capability provider enabled)
-//! - [`pcie_keepalive`] — PLX PEX 8747 bridge keepalive (prevents D3cold)
+//! - [`pcie_keepalive`] — PCIe bridge keepalive + hierarchy pinning (prevents D3cold)
 
 mod capability;
 mod cleanup;
@@ -67,7 +67,9 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
         cleanup::run(state).await;
     });
 
-    // Start PCIe keepalive for PLX bridges (prevents D3cold on K80)
+    // Start PCIe bridge keepalive — pins all GPU bridge hierarchies and
+    // generates periodic CfgRd traffic to prevent D3cold (critical for PLX,
+    // AMD switches, and any multi-level PCIe topology)
     tokio::spawn(async move {
         pcie_keepalive::run().await;
     });

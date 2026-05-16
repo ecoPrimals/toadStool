@@ -22,10 +22,11 @@ impl VendorLifecycle for AmdVega20Lifecycle {
 
     fn prepare_for_unbind(&self, bdf: &str, _current_driver: &str) -> Result<(), SwapError> {
         sysfs::pin_power(bdf);
-        sysfs::pin_bridge_power(bdf);
+        let pinned = sysfs::pin_bridge_hierarchy(bdf);
 
         tracing::info!(
             bdf,
+            bridges_pinned = pinned,
             "AMD Vega 20: disabling reset_method (prevents D3cold on any transition)"
         );
         sysfs::sysfs_write_direct(
@@ -54,7 +55,7 @@ impl VendorLifecycle for AmdVega20Lifecycle {
 
     fn stabilize_after_bind(&self, bdf: &str, target_driver: &str) {
         sysfs::pin_power(bdf);
-        sysfs::pin_bridge_power(bdf);
+        let pinned = sysfs::pin_bridge_hierarchy(bdf);
 
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
@@ -81,7 +82,8 @@ impl VendorLifecycle for AmdVega20Lifecycle {
         tracing::info!(
             bdf,
             target_driver,
-            "AMD Vega 20: post-bind stabilized (power pinned, reset_method cleared)"
+            bridges_pinned = pinned,
+            "AMD Vega 20: post-bind stabilized (hierarchy pinned, reset_method cleared)"
         );
     }
 
@@ -132,9 +134,9 @@ impl VendorLifecycle for AmdRdnaLifecycle {
 
     fn prepare_for_unbind(&self, bdf: &str, _current_driver: &str) -> Result<(), SwapError> {
         sysfs::pin_power(bdf);
-        sysfs::pin_bridge_power(bdf);
+        let pinned = sysfs::pin_bridge_hierarchy(bdf);
 
-        tracing::info!(bdf, "AMD RDNA: disabling reset_method (conservative)");
+        tracing::info!(bdf, bridges_pinned = pinned, "AMD RDNA: disabling reset_method (conservative)");
         sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")
                 .display()
@@ -158,7 +160,8 @@ impl VendorLifecycle for AmdRdnaLifecycle {
 
     fn stabilize_after_bind(&self, bdf: &str, target_driver: &str) {
         sysfs::pin_power(bdf);
-        sysfs::pin_bridge_power(bdf);
+        let pinned = sysfs::pin_bridge_hierarchy(bdf);
+        tracing::debug!(bdf, bridges_pinned = pinned, "AMD RDNA: re-pinned hierarchy post-bind");
 
         let _ = sysfs::sysfs_write_direct(
             &sysfs::pci_device_path(bdf, "reset_method")

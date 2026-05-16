@@ -57,8 +57,10 @@ pub mod discovery;
 pub mod firmware;
 pub mod health;
 pub mod personality;
+pub mod plx;
 pub mod swap;
 pub mod sysfs_executor;
+pub mod warm_init;
 
 // Re-export ember as the holder subsystem
 pub use toadstool_ember as ember;
@@ -72,4 +74,8 @@ pub use firmware::FirmwareInterface;
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
 pub use swap::{SwapExecutor, SwapObservation, SwapOrchestrator};
+pub use plx::{PlxDeviceStatus, PlxGuardian};
 pub use sysfs_executor::SysfsSwapExecutor;
+pub use warm_init::{
+    DriverLabPlan, DriverTrial, NV_BAR0_DOMAINS, SeederContainment, WarmInitPlan,
+};

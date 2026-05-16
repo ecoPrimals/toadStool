@@ -16,6 +16,7 @@
 //! 6. Enable channel and submit runlist to PFIFO
 
 pub mod devinit;
+pub mod fecs;
 pub mod glowplug;
 pub mod hbm2_training;
 mod bar2_init;
@@ -73,6 +74,64 @@ pub struct VfioChannel {
 }
 
 impl VfioChannel {
+    /// Create a PFIFO channel using a `GenerationProfile` to drive
+    /// generation-specific behavior.
+    ///
+    /// This is the unified entry point — callers pass the profile and
+    /// a warm-handoff flag instead of choosing between `create_kepler`,
+    /// `create_warm`, or `create`. Internally dispatches to the correct
+    /// page table format, instance block layout, and runlist submission
+    /// strategy.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if any DMA allocation or BAR0 write fails.
+    pub fn create_for_profile(
+        container: DmaBackend,
+        bar0: &MappedBar,
+        gpfifo_iova: u64,
+        gpfifo_entries: u32,
+        userd_iova: u64,
+        channel_id: u32,
+        profile: &crate::nv::generation::GenerationProfile,
+        warm_handoff: bool,
+    ) -> DriverResult<Self> {
+        use crate::nv::generation::PageTableFormat;
+
+        match profile.page_table_format {
+            PageTableFormat::V1TwoLevel => {
+                let guard = crate::nv::hardware_guard::GuardedBar::new(bar0, 16)
+                    .map_err(|e| DriverError::Unsupported(Cow::Owned(
+                        format!("Kepler BAR0 guard init: {e}")
+                    )))?;
+                Self::create_kepler(
+                    container,
+                    &guard,
+                    gpfifo_iova,
+                    gpfifo_entries,
+                    userd_iova,
+                    channel_id,
+                )
+            }
+            PageTableFormat::V2FiveLevel => {
+                let config = if warm_handoff {
+                    pfifo::PfifoInitConfig::warm_handoff()
+                } else {
+                    pfifo::PfifoInitConfig::default()
+                };
+                Self::create_with_config(
+                    container,
+                    bar0,
+                    gpfifo_iova,
+                    gpfifo_entries,
+                    userd_iova,
+                    channel_id,
+                    &config,
+                )
+            }
+        }
+    }
+
     /// Create and activate a GPU PFIFO channel via BAR0 register programming.
     ///
     /// This performs the full channel lifecycle:
@@ -839,6 +898,44 @@ impl VfioChannel {
     /// Return the DMA IOVA of this channel's instance block.
     pub fn instance_iova(&self) -> u64 {
         INSTANCE_IOVA
+    }
+
+    /// Map a VRAM region into this channel's page table.
+    ///
+    /// Writes VRAM-aperture PTEs into PT0 so the GPU can DMA between
+    /// system memory and VRAM using the same virtual address space.
+    /// `gpu_va_base` is the GPU virtual address where the mapping starts.
+    /// `vram_phys_base` is the VRAM physical address to map.
+    /// `num_pages` is the number of 4 KiB pages to map.
+    ///
+    /// The GPU VA must fall within the PT0 coverage range (first 2 MiB).
+    pub fn map_vram_pages(
+        &mut self,
+        gpu_va_base: u64,
+        vram_phys_base: u64,
+        num_pages: usize,
+    ) -> DriverResult<()> {
+        let pt0_start_index = (gpu_va_base / 4096) as usize;
+        if pt0_start_index + num_pages > PT_ENTRIES {
+            return Err(DriverError::MmapFailed(Cow::Owned(format!(
+                "VRAM mapping {gpu_va_base:#x}+{num_pages} pages exceeds PT0 range"
+            ))));
+        }
+        let pt0 = self.pt0.as_mut_slice();
+        for i in 0..num_pages {
+            page_tables::write_vram_pte(
+                pt0,
+                pt0_start_index + i,
+                vram_phys_base + (i as u64) * 4096,
+            );
+        }
+        tracing::info!(
+            gpu_va = format_args!("{gpu_va_base:#x}"),
+            vram_phys = format_args!("{vram_phys_base:#x}"),
+            num_pages,
+            "mapped VRAM pages into PT0"
+        );
+        Ok(())
     }
 
     /// Enable the channel via PCCSR `ENABLE_SET` trigger.

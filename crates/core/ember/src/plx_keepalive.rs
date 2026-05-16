@@ -1,0 +1,357 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! PLX bridge keepalive — prevents D3cold on PCIe switch fabrics.
+//!
+//! The PLX PEX 8747 (and similar PCIe switches) enter D3cold when the
+//! kernel's runtime power management detects no PCIe traffic for a
+//! sustained period. Once D3cold hits, the entire downstream fabric
+//! goes dark — config space reads return `0xFFFFFFFF` and the device
+//! is unrecoverable without a physical power cycle.
+//!
+//! [`PlxKeepalive`] prevents this by performing a lightweight config
+//! space read on a timer. A single 4-byte PCI config read every few
+//! seconds is enough to keep the bridge powered. The read targets the
+//! PCI Vendor/Device ID register (offset 0x00) which is always safe.
+//!
+//! # Usage
+//!
+//! ```rust,no_run
+//! use toadstool_ember::plx_keepalive::PlxKeepalive;
+//!
+//! let keepalive = PlxKeepalive::new("0000:4b:00.0", std::time::Duration::from_secs(5));
+//! let handle = keepalive.spawn();
+//! // ... device is safe from D3cold ...
+//! handle.stop(); // stop when done
+//! ```
+//!
+//! # Root Cause (Experiment 193/195)
+//!
+//! The Tesla K80 sits behind a PLX PEX 8747 bridge. When
+//! toadstool-server stopped polling (process restart, crash, or idle),
+//! the PLX bridge entered D3cold within minutes. The "All device reset
+//! methods disabled" messages in dmesg were *accidentally* serving as
+//! keepalive — when they stopped, the bridge died.
+
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
+/// Keepalive state for a PLX-bridged device.
+///
+/// Performs periodic config space reads on the device and its bridge
+/// ancestry to prevent the kernel from putting the PLX fabric into D3cold.
+#[derive(Debug)]
+pub struct PlxKeepalive {
+    /// PCI BDF of the device behind the PLX bridge.
+    bdf: String,
+
+    /// How often to perform the keepalive read.
+    interval: Duration,
+
+    /// All BDFs in the bridge hierarchy (device + ancestors).
+    /// Populated by [`detect_bridge_chain`].
+    bridge_chain: Vec<String>,
+}
+
+/// Handle to a running keepalive task.
+#[derive(Debug, Clone)]
+pub struct KeepaliveHandle {
+    running: Arc<AtomicBool>,
+    heartbeats: Arc<AtomicU64>,
+    bdf: String,
+}
+
+impl KeepaliveHandle {
+    /// Stop the keepalive task.
+    pub fn stop(&self) {
+        self.running.store(false, Ordering::Release);
+        tracing::info!(bdf = %self.bdf, "PLX keepalive stopped");
+    }
+
+    /// Whether the keepalive is still running.
+    #[must_use]
+    pub fn is_running(&self) -> bool {
+        self.running.load(Ordering::Acquire)
+    }
+
+    /// Total number of heartbeats performed since start.
+    #[must_use]
+    pub fn heartbeat_count(&self) -> u64 {
+        self.heartbeats.load(Ordering::Relaxed)
+    }
+
+    /// The device BDF this keepalive protects.
+    #[must_use]
+    pub fn bdf(&self) -> &str {
+        &self.bdf
+    }
+}
+
+impl PlxKeepalive {
+    /// Create a new keepalive for a device behind a PLX bridge.
+    ///
+    /// Automatically detects the full bridge hierarchy by walking sysfs
+    /// ancestry. The keepalive reads config space on the device AND every
+    /// upstream bridge to prevent any level of the fabric from sleeping.
+    #[must_use]
+    pub fn new(bdf: &str, interval: Duration) -> Self {
+        let bridge_chain = detect_bridge_chain(bdf);
+
+        if bridge_chain.len() > 1 {
+            tracing::info!(
+                bdf,
+                bridges = bridge_chain.len() - 1,
+                interval_ms = interval.as_millis() as u64,
+                "PLX keepalive created with {} bridge(s) in chain",
+                bridge_chain.len() - 1,
+            );
+        }
+
+        Self {
+            bdf: bdf.to_string(),
+            interval,
+            bridge_chain,
+        }
+    }
+
+    /// Create with a specific interval in seconds.
+    #[must_use]
+    pub fn with_secs(bdf: &str, secs: u64) -> Self {
+        Self::new(bdf, Duration::from_secs(secs))
+    }
+
+    /// The BDFs that will be read on each heartbeat.
+    #[must_use]
+    pub fn bridge_chain(&self) -> &[String] {
+        &self.bridge_chain
+    }
+
+    /// Whether this device has upstream bridges (i.e., actually needs keepalive).
+    #[must_use]
+    pub fn has_bridges(&self) -> bool {
+        self.bridge_chain.len() > 1
+    }
+
+    /// Spawn the keepalive as a tokio task.
+    ///
+    /// Returns a [`KeepaliveHandle`] that can be used to stop the task
+    /// and query heartbeat count. The task runs until stopped or the
+    /// tokio runtime shuts down.
+    #[must_use]
+    pub fn spawn(self) -> KeepaliveHandle {
+        let running = Arc::new(AtomicBool::new(true));
+        let heartbeats = Arc::new(AtomicU64::new(0));
+
+        let handle = KeepaliveHandle {
+            running: Arc::clone(&running),
+            heartbeats: Arc::clone(&heartbeats),
+            bdf: self.bdf.clone(),
+        };
+
+        let interval = self.interval;
+        let chain = self.bridge_chain;
+        let bdf = self.bdf;
+
+        tokio::spawn(async move {
+            tracing::info!(
+                bdf = %bdf,
+                chain_len = chain.len(),
+                interval_ms = interval.as_millis() as u64,
+                "PLX keepalive started",
+            );
+
+            // Pin power on all bridges at startup
+            for bridge_bdf in &chain {
+                crate::sysfs::pin_power(bridge_bdf);
+            }
+
+            while running.load(Ordering::Acquire) {
+                let mut all_alive = true;
+
+                for target_bdf in &chain {
+                    let alive = config_read_heartbeat(target_bdf);
+                    if !alive {
+                        all_alive = false;
+                        tracing::warn!(
+                            bdf = %target_bdf,
+                            "keepalive: config space read returned 0xFFFFFFFF (D3cold?)",
+                        );
+                    }
+                }
+
+                heartbeats.fetch_add(1, Ordering::Relaxed);
+
+                if !all_alive {
+                    // Re-pin power on all bridges — kernel may have overridden
+                    for bridge_bdf in &chain {
+                        crate::sysfs::pin_power(bridge_bdf);
+                    }
+                }
+
+                tokio::time::sleep(interval).await;
+            }
+
+            tracing::info!(
+                bdf = %bdf,
+                total_heartbeats = heartbeats.load(Ordering::Relaxed),
+                "PLX keepalive task exited",
+            );
+        });
+
+        handle
+    }
+
+    /// Perform a single heartbeat (non-async, for testing).
+    #[must_use]
+    pub fn heartbeat_once(&self) -> bool {
+        let mut all_alive = true;
+        for target_bdf in &self.bridge_chain {
+            if !config_read_heartbeat(target_bdf) {
+                all_alive = false;
+            }
+        }
+        all_alive
+    }
+}
+
+/// Read PCI config space register 0x00 (Vendor/Device ID) via sysfs.
+///
+/// Returns `true` if the read succeeded and didn't return `0xFFFFFFFF`
+/// (which indicates the device is in D3cold or the link is down).
+fn config_read_heartbeat(bdf: &str) -> bool {
+    let config_path = format!("/sys/bus/pci/devices/{bdf}/config");
+    let path = Path::new(&config_path);
+
+    if !path.exists() {
+        return false;
+    }
+
+    // Read 4 bytes at offset 0 (Vendor ID + Device ID)
+    match std::fs::read(&config_path) {
+        Ok(data) if data.len() >= 4 => {
+            let val = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
+            val != 0xFFFF_FFFF
+        }
+        _ => false,
+    }
+}
+
+/// Walk sysfs ancestry to find all PCI bridges between a device and the root.
+///
+/// Returns a vec starting with the device BDF, followed by each upstream
+/// bridge BDF in order (nearest first). Stops at the first non-PCI parent.
+fn detect_bridge_chain(bdf: &str) -> Vec<String> {
+    let mut chain = vec![bdf.to_string()];
+
+    let device_link = Path::new("/sys/bus/pci/devices").join(bdf);
+    let Ok(canonical) = std::fs::canonicalize(&device_link) else {
+        return chain;
+    };
+
+    let mut current = canonical.as_path().parent();
+
+    while let Some(parent) = current {
+        let Some(name) = parent.file_name().and_then(|n| n.to_str()) else {
+            break;
+        };
+
+        // PCI BDFs contain colons (e.g., "0000:4a:08.0")
+        if !name.contains(':') {
+            break;
+        }
+
+        chain.push(name.to_string());
+        current = parent.parent();
+    }
+
+    chain
+}
+
+/// Detect whether a device sits behind a PLX/Broadcom PCIe switch.
+///
+/// Checks the vendor ID of each bridge in the hierarchy for PLX/Broadcom
+/// (vendor `0x10b5`). Returns the BDF of the PLX bridge if found.
+#[must_use]
+pub fn detect_plx_bridge(bdf: &str) -> Option<String> {
+    let chain = detect_bridge_chain(bdf);
+
+    for bridge_bdf in chain.iter().skip(1) {
+        let vendor = crate::sysfs::read_pci_id(bridge_bdf, "vendor");
+        if vendor == 0x10b5 {
+            return Some(bridge_bdf.clone());
+        }
+    }
+
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detect_bridge_chain_includes_device() {
+        let chain = detect_bridge_chain("9999:99:99.9");
+        assert_eq!(chain, vec!["9999:99:99.9"]);
+    }
+
+    #[test]
+    fn config_read_nonexistent_returns_false() {
+        assert!(!config_read_heartbeat("9999:99:99.9"));
+    }
+
+    #[test]
+    fn keepalive_new_nonexistent_device() {
+        let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5));
+        assert_eq!(ka.bdf, "9999:99:99.9");
+        assert_eq!(ka.bridge_chain.len(), 1);
+        assert!(!ka.has_bridges());
+    }
+
+    #[test]
+    fn keepalive_with_secs() {
+        let ka = PlxKeepalive::with_secs("9999:99:99.9", 3);
+        assert_eq!(ka.interval, Duration::from_secs(3));
+    }
+
+    #[test]
+    fn heartbeat_once_nonexistent() {
+        let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5));
+        assert!(!ka.heartbeat_once());
+    }
+
+    #[test]
+    fn detect_plx_bridge_nonexistent() {
+        assert!(detect_plx_bridge("9999:99:99.9").is_none());
+    }
+
+    #[test]
+    fn keepalive_handle_initial_state() {
+        let running = Arc::new(AtomicBool::new(true));
+        let heartbeats = Arc::new(AtomicU64::new(0));
+        let handle = KeepaliveHandle {
+            running,
+            heartbeats,
+            bdf: "0000:4b:00.0".into(),
+        };
+        assert!(handle.is_running());
+        assert_eq!(handle.heartbeat_count(), 0);
+        assert_eq!(handle.bdf(), "0000:4b:00.0");
+    }
+
+    #[test]
+    fn keepalive_handle_stop() {
+        let running = Arc::new(AtomicBool::new(true));
+        let heartbeats = Arc::new(AtomicU64::new(42));
+        let handle = KeepaliveHandle {
+            running,
+            heartbeats,
+            bdf: "0000:4b:00.0".into(),
+        };
+        assert!(handle.is_running());
+        handle.stop();
+        assert!(!handle.is_running());
+        assert_eq!(handle.heartbeat_count(), 42);
+    }
+}

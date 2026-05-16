@@ -24,6 +24,7 @@
 use std::time::Instant;
 
 use crate::nv::generation::{self, BootStrategy, MemoryType};
+use crate::nv::pri::is_pri_fault;
 use crate::vfio::channel::hbm2_training::TrainingLog;
 use crate::vfio::device::MappedBar;
 use crate::vfio::sovereign_stages::{
@@ -234,6 +235,68 @@ pub fn sovereign_init(
         });
     }
 
+    // ── Stage 3b: Kepler PGRAPH Ungating ────────────────────────────────
+    // On Kepler (NoAcr), PGRAPH is clock-gated after PMC_ENABLE.
+    // If we have a captured GrInitSequence, replay the PGRAPH-domain
+    // writes to ungate the GR engine before falcon boot.
+    let no_acr = matches!(profile.boot_strategy, BootStrategy::NoAcr);
+    if no_acr {
+        if opts.halt_before == Some(HaltBefore::KeplerPgraphUngate) {
+            stages.push(StageResult {
+                name: "kepler_pgraph_ungate".into(),
+                status: StageStatus::Skipped,
+                detail: Some("halt_before=kepler_pgraph_ungate".into()),
+                duration_ms: 0,
+            });
+            return finish_halted(
+                bdf,
+                boot0,
+                chip_id,
+                "kepler_pgraph_ungate",
+                stages,
+                pipeline_start,
+            );
+        }
+
+        let t = Instant::now();
+        if let Some(ref gr_init_seq) = opts.kepler_gr_init {
+            match kepler_pgraph_ungate(bar0, gr_init_seq) {
+                Ok(detail) => {
+                    stages.push(StageResult {
+                        name: "kepler_pgraph_ungate".into(),
+                        status: StageStatus::Ok,
+                        detail: Some(detail),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                }
+                Err(e) => {
+                    stages.push(StageResult {
+                        name: "kepler_pgraph_ungate".into(),
+                        status: StageStatus::Failed,
+                        detail: Some(e),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                    return finish(
+                        bdf,
+                        boot0,
+                        chip_id,
+                        stages,
+                        training_log,
+                        pipeline_start,
+                        warm_detected,
+                    );
+                }
+            }
+        } else {
+            stages.push(StageResult {
+                name: "kepler_pgraph_ungate".into(),
+                status: StageStatus::Skipped,
+                detail: Some("no kepler_gr_init sequence provided".into()),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+        }
+    }
+
     // ── Stage 4: Falcon Boot ────────────────────────────────────────────
     if opts.halt_before == Some(HaltBefore::FalconBoot) {
         stages.push(StageResult {
@@ -278,7 +341,6 @@ pub fn sovereign_init(
     // NoAcr GPUs (Kepler) boot FECS via direct PIO in the falcon_boot stage.
     // The GV100+ gr_init path re-boots FECS with BL firmware that doesn't
     // exist for NoAcr GPUs. Skip GR init when the profile says NoAcr.
-    let no_acr = matches!(profile.boot_strategy, BootStrategy::NoAcr);
     if opts.halt_before == Some(HaltBefore::GrInit) || opts.skip_gr_init || no_acr {
         let reason = if no_acr {
             "NoAcr boot strategy: FECS already booted via PIO"
@@ -403,6 +465,28 @@ fn finish(
         total_ms: start.elapsed().as_millis() as u64,
         hbm2_writes: training_log.as_ref().map(|l| l.write_count()),
         warm_detected: warm,
+    }
+}
+
+/// Replay a captured GrInitSequence to ungate Kepler PGRAPH.
+///
+/// Applies only the PGRAPH-domain writes from the sequence, then
+/// verifies that PGRAPH_STATUS (0x400700) is no longer PRI-faulted.
+fn kepler_pgraph_ungate(
+    bar0: &MappedBar,
+    seq: &crate::nv::gr_init::GrInitSequence,
+) -> Result<String, String> {
+    let applied = seq.apply(bar0)?;
+
+    let pgraph_status = bar0.read_u32(0x0040_0700).unwrap_or(0xDEAD_DEAD);
+    if is_pri_fault(pgraph_status) {
+        Err(format!(
+            "PGRAPH still gated after {applied} writes (status=0x{pgraph_status:08x})"
+        ))
+    } else {
+        Ok(format!(
+            "PGRAPH ungated: {applied} writes applied, status=0x{pgraph_status:08x}"
+        ))
     }
 }
 

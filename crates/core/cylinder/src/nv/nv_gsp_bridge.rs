@@ -19,14 +19,14 @@ use crate::nv::gsp_bridge::{AcrBootResult, FalconBootResult, GspBridge, PgobResu
 use crate::vfio::channel::registers::falcon;
 use crate::vfio::device::MappedBar;
 
-/// DMA IOVA for FECS firmware code image.
-pub const FECS_FW_CODE_IOVA: u64 = 0x0030_0000;
+/// DMA IOVA for FECS firmware code image (from centralized layout).
+pub const FECS_FW_CODE_IOVA: u64 = super::iova::firmware::FECS_CODE_IOVA;
 /// DMA IOVA for FECS firmware data image.
-pub const FECS_FW_DATA_IOVA: u64 = 0x0031_0000;
+pub const FECS_FW_DATA_IOVA: u64 = super::iova::firmware::FECS_DATA_IOVA;
 /// DMA IOVA for GPCCS firmware code image.
-pub const GPCCS_FW_CODE_IOVA: u64 = 0x0032_0000;
+pub const GPCCS_FW_CODE_IOVA: u64 = super::iova::firmware::GPCCS_CODE_IOVA;
 /// DMA IOVA for GPCCS firmware data image.
-pub const GPCCS_FW_DATA_IOVA: u64 = 0x0033_0000;
+pub const GPCCS_FW_DATA_IOVA: u64 = super::iova::firmware::GPCCS_DATA_IOVA;
 
 /// Firmware-backed `GspBridge` that loads blobs from the local filesystem.
 #[derive(Debug)]

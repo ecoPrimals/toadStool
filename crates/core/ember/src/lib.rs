@@ -41,6 +41,7 @@ pub mod journal;
 pub mod lend_reclaim;
 pub mod metadata;
 pub mod observation;
+pub mod plx_keepalive;
 pub mod resource_handle;
 pub mod ring_meta;
 pub mod sysfs;
@@ -58,4 +59,5 @@ pub use ring_meta::{MailboxMeta, RingMeta, RingMetaEntry};
 pub use vendor_lifecycle::{
     RebindStrategy, ResetMethod, VendorLifecycle, detect_lifecycle, detect_lifecycle_for_target,
 };
+pub use plx_keepalive::{KeepaliveHandle, PlxKeepalive, detect_plx_bridge};
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};

@@ -1,30 +1,72 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! PCIe switch keepalive for PLX PEX 8747 and similar bridge chips.
+//! PCIe bridge keepalive — prevents D3cold on PCIe switch fabrics.
 //!
 //! Generates periodic config-space reads on upstream bridges and downstream
-//! ports to prevent BIOS/ACPI idle power-gating from transitioning the
-//! switch into D3cold. Without this, the PLX can go dark after ~2h of idle
-//! (sometimes as short as ~11 min), taking all downstream GPUs offline.
+//! GPU endpoints to prevent BIOS/ACPI idle power-gating from transitioning
+//! PCIe switches into D3cold. This is critical for any GPU behind a PCIe
+//! switch (PLX PEX 8747 on Tesla K80, AMD Matisse switches, Broadcom
+//! PEX switches in multi-GPU workstations, etc.).
 //!
 //! ## How it works
 //!
-//! Every `INTERVAL` seconds, reads PCI config-space offset 0x04 (COMMAND
-//! register) on each monitored bridge BDF. This generates a Configuration
-//! Read (CfgRd) TLP that traverses the root complex → upstream bridge →
-//! PLX fabric, keeping the LTSSM in L0.
+//! 1. **Startup**: Discovers all PCI-to-PCI bridges (class `0x0604`) with
+//!    GPU endpoints downstream. Pins `d3cold_allowed=0` and `power/control=on`
+//!    on every bridge in the hierarchy from GPU to root complex.
+//!
+//! 2. **Steady state**: Every `INTERVAL` seconds, reads PCI config-space
+//!    offset 0x04 (COMMAND register) on each monitored BDF. This generates
+//!    a CfgRd TLP that keeps the LTSSM in L0.
+//!
+//! 3. **Swap guard**: During driver swaps, the keepalive switches to burst
+//!    mode (10ms interval) to saturate the fabric with CfgRd traffic during
+//!    the critical unbind/rebind window. Callers use [`SwapGuard`].
 //!
 //! ## Discovery
 //!
-//! On startup, scans `/sys/bus/pci/devices` for bridge-class devices
-//! (class 0x060400 = PCI-to-PCI bridge) with PLX vendor ID (0x10b5).
-//! Falls back to well-known PLX BDF addresses from the Tesla K80 topology.
+//! Scans `/sys/bus/pci/devices` for bridge-class devices (class `0x060400`)
+//! that have GPU endpoints (class `0x0300` or `0x0302`) downstream.
 
 use std::io::{Read, Seek, SeekFrom};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use tracing::{debug, info, warn};
 
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(3);
+
+const BURST_INTERVAL: Duration = Duration::from_millis(10);
+
+/// Global swap-guard refcount. When >0, keepalive runs at burst frequency.
+static SWAP_GUARD_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// RAII guard that switches pcie_keepalive to burst mode for the duration
+/// of a driver swap. Drop the guard to return to normal cadence.
+pub struct SwapGuard(());
+
+impl SwapGuard {
+    /// Enter burst mode. Returns a guard whose drop restores normal cadence.
+    #[must_use]
+    pub fn enter() -> Self {
+        let prev = SWAP_GUARD_COUNT.fetch_add(1, Ordering::SeqCst);
+        info!(active_guards = prev + 1, "PCIe keepalive: burst mode ON");
+        Self(())
+    }
+}
+
+impl Drop for SwapGuard {
+    fn drop(&mut self) {
+        let prev = SWAP_GUARD_COUNT.fetch_sub(1, Ordering::SeqCst);
+        info!(active_guards = prev - 1, "PCIe keepalive: burst mode OFF");
+    }
+}
+
+fn current_interval() -> Duration {
+    if SWAP_GUARD_COUNT.load(Ordering::Relaxed) > 0 {
+        BURST_INTERVAL
+    } else {
+        KEEPALIVE_INTERVAL
+    }
+}
 
 const PLX_VENDOR_ID: u16 = 0x10b5;
 
@@ -106,20 +148,61 @@ fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
     gpus
 }
 
+fn discover_gpu_bridges() -> Vec<String> {
+    let mut bridges = Vec::new();
+    let Ok(entries) = std::fs::read_dir("/sys/bus/pci/devices") else {
+        return bridges;
+    };
+
+    for entry in entries.flatten() {
+        let bdf = entry.file_name().to_string_lossy().to_string();
+        let Some(class) = read_config_u32(&bdf, 0x08) else {
+            continue;
+        };
+        let class_code = (class >> 8) & 0xFF_FFFF;
+        if class_code == 0x0604 {
+            bridges.push(bdf);
+        }
+    }
+
+    bridges.sort();
+    bridges
+}
+
+fn pin_hierarchy_for_gpus(gpu_bdfs: &[String]) -> usize {
+    let mut total_pinned = 0usize;
+    for bdf in gpu_bdfs {
+        let pinned = toadstool_ember::sysfs::pin_bridge_hierarchy(bdf);
+        toadstool_ember::sysfs::pin_power(bdf);
+        if pinned > 0 {
+            info!(bdf, bridges_pinned = pinned, "pinned GPU bridge hierarchy at startup");
+        }
+        total_pinned += pinned;
+    }
+    total_pinned
+}
+
 pub(crate) async fn run() {
-    let bridges = discover_plx_bridges();
+    let all_bridges = discover_gpu_bridges();
+    let plx_bridges = discover_plx_bridges();
+
+    let bridges = if plx_bridges.is_empty() { &all_bridges } else { &plx_bridges };
+
     if bridges.is_empty() {
-        info!("No PLX PCIe bridges found — keepalive disabled");
+        info!("No PCIe bridges with GPU endpoints found — keepalive disabled");
         return;
     }
 
-    let downstream = discover_downstream_gpus(&bridges);
+    let downstream = discover_downstream_gpus(bridges);
+
+    let pinned = pin_hierarchy_for_gpus(&downstream);
 
     info!(
         bridge_count = bridges.len(),
         gpu_count = downstream.len(),
+        hierarchies_pinned = pinned,
         bridges = ?bridges,
-        "PLX PCIe keepalive started"
+        "PCIe bridge keepalive started (hierarchies pinned)"
     );
 
     let all_targets: Vec<String> = bridges
@@ -163,6 +246,6 @@ pub(crate) async fn run() {
             consecutive_failures = 0;
         }
 
-        tokio::time::sleep(KEEPALIVE_INTERVAL).await;
+        tokio::time::sleep(current_interval()).await;
     }
 }

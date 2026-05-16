@@ -11,8 +11,11 @@ use crate::sysfs::{self, SysfsPort};
 pub enum LifecycleStep {
     /// Pin device and bridge power rails (`power/control`, `d3cold_allowed`).
     PinPower,
-    /// Pin upstream bridge power (walks PCI parents).
+    /// Pin upstream bridge power (walks PCI parents — single level).
     PinBridgePower,
+    /// Pin **every** ancestor bridge from device to root complex.
+    /// Required for multi-level switch topologies (PLX PEX 8747 on K80).
+    PinBridgeHierarchy,
     /// Clear PCI `reset_method` (write empty / newline semantics).
     ClearResetMethod,
 }
@@ -31,6 +34,10 @@ pub fn execute_lifecycle_steps(
             LifecycleStep::PinBridgePower => {
                 sysfs::pin_bridge_power_with(port, bdf);
             }
+            LifecycleStep::PinBridgeHierarchy => {
+                let count = sysfs::pin_bridge_hierarchy(bdf);
+                tracing::debug!(bdf, bridges_pinned = count, "hierarchy power pinned");
+            }
             LifecycleStep::ClearResetMethod => {
                 let path = sysfs::pci_device_path(bdf, "reset_method");
                 let _ = sysfs::sysfs_write_direct_with(port, &path.display().to_string(), "");
@@ -41,11 +48,15 @@ pub fn execute_lifecycle_steps(
 }
 
 /// Steps for NVIDIA Kepler before unbind.
+///
+/// Uses [`PinBridgeHierarchy`](LifecycleStep::PinBridgeHierarchy) instead of
+/// single-parent `PinBridgePower` because the K80 sits behind a multi-level
+/// PLX PEX 8747 switch that enters D3cold if any ancestor is un-pinned.
 #[must_use]
 pub fn nvidia_kepler_lifecycle_prepare_steps() -> Vec<LifecycleStep> {
     vec![
         LifecycleStep::PinPower,
-        LifecycleStep::PinBridgePower,
+        LifecycleStep::PinBridgeHierarchy,
         LifecycleStep::ClearResetMethod,
     ]
 }

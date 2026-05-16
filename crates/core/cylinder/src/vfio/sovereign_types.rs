@@ -13,6 +13,8 @@ pub enum HaltBefore {
     PmcEnable,
     /// Halt before HBM2 memory controller bring-up.
     Hbm2Training,
+    /// Halt before Kepler PGRAPH ungating (only applies to NoAcr GPUs).
+    KeplerPgraphUngate,
     /// Halt before falcon (SEC2/ACR/FECS) boot.
     FalconBoot,
     /// Halt before GR engine register programming.
@@ -52,6 +54,11 @@ pub struct SovereignInitOptions {
     /// the WPR in system memory rather than VRAM-only paths.
     #[serde(skip)]
     pub dma_backend: Option<crate::vfio::device::DmaBackend>,
+    /// Captured GR init sequence for Kepler PGRAPH ungating.
+    /// When provided, the pipeline replays this sequence to ungate PGRAPH
+    /// before falcon boot on NoAcr (Kepler) GPUs.
+    #[serde(skip)]
+    pub kepler_gr_init: Option<crate::nv::gr_init::GrInitSequence>,
 }
 
 /// Outcome of a single pipeline stage.
