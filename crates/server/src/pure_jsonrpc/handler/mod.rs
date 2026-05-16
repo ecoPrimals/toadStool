@@ -15,6 +15,7 @@ pub mod method_gate;
 mod mmio;
 mod resources;
 mod silicon;
+mod sovereign;
 mod transport;
 mod workload;
 
@@ -378,6 +379,8 @@ impl JsonRpcHandler {
                 return self.dispatch.device_gr_init(params).await;
             }
 
+            "sovereign.init" => return sovereign::sovereign_init(params),
+
             "mmio.read32" => return mmio::mmio_read32(params),
             "mmio.write32" => return mmio::mmio_write32(params),
             "mmio.batch" => return mmio::mmio_batch(params),
@@ -472,6 +475,7 @@ impl JsonRpcHandler {
             "device_vfio_open" => self.dispatch.device_vfio_open(params).await,
             "device_vfio_roundtrip" => self.dispatch.device_vfio_roundtrip(params).await,
             "device_gr_init" => self.dispatch.device_gr_init(params).await,
+            "sovereign_init" => sovereign::sovereign_init(params),
             "mmio_read32" => mmio::mmio_read32(params),
             "mmio_write32" => mmio::mmio_write32(params),
             "mmio_batch" => mmio::mmio_batch(params),

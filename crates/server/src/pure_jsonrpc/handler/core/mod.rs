@@ -98,6 +98,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "device.vfio.roundtrip",
     "device.gr.init",
     "compute.context.init",
+    "sovereign.init",
     "mmio.read32",
     "mmio.write32",
     "mmio.batch",

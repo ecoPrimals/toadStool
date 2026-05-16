@@ -181,6 +181,54 @@ impl RegisterAccess for MappedBar {
     }
 }
 
+impl MappedBar {
+    /// Create a `MappedBar` from a sysfs PCI BAR0 resource file (read-write).
+    ///
+    /// Opens `/sys/bus/pci/devices/{bdf}/resource0` with `O_RDWR` and mmaps it.
+    /// The file descriptor is leaked intentionally — the mapping lives for the
+    /// duration of the `MappedBar` lifetime and the kernel reclaims on drop
+    /// via `MmioRegion`'s unmap.
+    pub fn from_sysfs_rw(bdf: &str, size: usize) -> Result<Self, DriverError> {
+        let path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&path)
+            .map_err(|e| {
+                DriverError::MmapFailed(Cow::Owned(format!(
+                    "sysfs BAR0 open failed for {bdf}: {e}"
+                )))
+            })?;
+
+        let raw = unsafe {
+            rustix::mm::mmap(
+                std::ptr::null_mut(),
+                size,
+                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
+                rustix::mm::MapFlags::SHARED,
+                &file,
+                0,
+            )
+        }
+        .map_err(|e| {
+            DriverError::MmapFailed(Cow::Owned(format!(
+                "sysfs BAR0 mmap failed for {bdf}: {e}"
+            )))
+        })?;
+
+        if raw.is_null() {
+            return Err(DriverError::MmapFailed(Cow::Borrowed(
+                "sysfs BAR0 mmap returned null",
+            )));
+        }
+
+        // Leak the file descriptor — the mmap keeps the mapping alive.
+        std::mem::forget(file);
+        let region = unsafe { MmioRegion::new(raw.cast::<u8>(), size) };
+        Ok(Self { region })
+    }
+}
+
 /// Test-only constructor backed by heap memory.
 #[cfg(test)]
 impl MappedBar {
