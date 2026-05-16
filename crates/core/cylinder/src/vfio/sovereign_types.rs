@@ -57,8 +57,19 @@ pub struct SovereignInitOptions {
     /// Captured GR init sequence for Kepler PGRAPH ungating.
     /// When provided, the pipeline replays this sequence to ungate PGRAPH
     /// before falcon boot on NoAcr (Kepler) GPUs.
+    ///
+    /// Prefer [`engine_init_sequences`] for new code; this field is checked
+    /// as a fallback for backward compatibility.
     #[serde(skip)]
     pub kepler_gr_init: Option<crate::nv::gr_init::GrInitSequence>,
+    /// Per-engine init sequences for generalized ungating.
+    ///
+    /// Each entry is `(engine_name, sequence, optional_status_register)`.
+    /// `engine_name` is used for logging (e.g. "PGRAPH", "CE", "NVDEC").
+    /// `status_register` is a BAR0 offset to validate after replay —
+    /// if it returns a PRI fault, the ungate is considered failed.
+    #[serde(skip)]
+    pub engine_init_sequences: Vec<(String, crate::nv::gr_init::GrInitSequence, Option<usize>)>,
 }
 
 /// Outcome of a single pipeline stage.

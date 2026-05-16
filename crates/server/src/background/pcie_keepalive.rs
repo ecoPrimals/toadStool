@@ -31,7 +31,7 @@ use std::time::Duration;
 use tokio::time::MissedTickBehavior;
 use tracing::{debug, info, warn};
 
-use toadstool_ember::plx_keepalive::{ActivityTracker, is_pci_bdf};
+use toadstool_ember::plx_keepalive::{ActivityTracker, PLX_VENDOR_ID, is_pci_bdf};
 
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(3);
 
@@ -86,8 +86,6 @@ fn current_interval() -> Duration {
         KEEPALIVE_INTERVAL
     }
 }
-
-const PLX_VENDOR_ID: u16 = 0x10b5;
 
 /// PCI base class + subclass for PCI-to-PCI bridge.
 const PCI_CLASS_BRIDGE_PCI: u16 = 0x0604;

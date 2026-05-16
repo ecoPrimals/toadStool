@@ -1,28 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! PLX bridge detection and keepalive management for glowplug devices.
+//! PCIe bridge health management for glowplug devices.
 //!
-//! Provides auto-detection of devices behind PLX PCIe switches and
-//! manages keepalive tasks to prevent D3cold. This module bridges
-//! ember's [`PlxKeepalive`] into glowplug's device lifecycle.
+//! Provides auto-detection of devices behind PCIe switches (PLX, AMD,
+//! Broadcom, etc.) and manages keepalive tasks to prevent D3cold. This
+//! module bridges ember's [`PcieBridgeKeepalive`] into glowplug's device
+//! lifecycle.
 //!
 //! # Background
 //!
-//! The Tesla K80 uses a PLX PEX 8747 PCIe switch. When no PCIe traffic
-//! hits the bridge for ~10 minutes, the kernel's runtime PM puts it into
-//! D3cold. Once D3cold occurs, the entire downstream fabric goes dark
-//! (config reads return `0xFFFFFFFF`), and only a physical power cycle
-//! can recover the device.
-//!
-//! Previous "fix" attempts (pinning during swap, SwapGuard) were
-//! insufficient because the bridge re-enters D3cold during idle periods
-//! between operations. The only reliable solution is a continuous
-//! keepalive heartbeat.
+//! PCIe switches enter D3cold when the kernel's runtime PM detects no
+//! traffic for a sustained period. Once D3cold occurs, the entire
+//! downstream fabric goes dark (config reads return `0xFFFFFFFF`), and
+//! only a physical power cycle can recover the device. Originally
+//! discovered on the Tesla K80's PLX PEX 8747, this applies to any
+//! GPU behind a PCIe switch.
 
 use std::collections::HashMap;
 use std::time::Duration;
 
-use toadstool_ember::plx_keepalive::{KeepaliveHandle, PlxKeepalive, detect_plx_bridge};
+use toadstool_ember::plx_keepalive::{
+    KeepaliveHandle, PcieBridgeKeepalive, detect_pcie_bridges, detect_plx_bridge,
+};
 
 use crate::device_id::DeviceId;
 
@@ -34,17 +33,22 @@ use crate::device_id::DeviceId;
 /// 10+ seconds for PCI bridges).
 const DEFAULT_KEEPALIVE_INTERVAL_SECS: u64 = 5;
 
-/// Manages PLX keepalive tasks for a set of PCI devices.
+/// Manages PCIe bridge keepalive tasks for a set of PCI devices.
 ///
-/// Call [`PlxGuardian::scan_and_protect`] after device discovery to
-/// automatically detect PLX-bridged devices and start keepalive tasks.
+/// Call [`BridgeGuardian::scan_and_protect`] after device discovery to
+/// automatically detect bridge-attached devices and start keepalive tasks.
+/// PLX bridges are detected with priority, but any PCIe bridge in the
+/// device ancestry is protected.
 #[derive(Debug)]
-pub struct PlxGuardian {
+pub struct BridgeGuardian {
     handles: HashMap<String, KeepaliveHandle>,
     interval: Duration,
 }
 
-impl PlxGuardian {
+/// Backward-compatible alias. Prefer [`BridgeGuardian`].
+pub type PlxGuardian = BridgeGuardian;
+
+impl BridgeGuardian {
     /// Create a new guardian with the default keepalive interval.
     #[must_use]
     pub fn new() -> Self {
@@ -64,7 +68,7 @@ impl PlxGuardian {
     }
 
     /// Scan a list of discovered devices and start keepalive tasks for
-    /// any that sit behind PLX bridges.
+    /// any that sit behind PCIe bridges.
     ///
     /// Returns the number of new keepalive tasks started.
     pub fn scan_and_protect(&mut self, devices: &[DeviceId]) -> usize {
@@ -79,14 +83,17 @@ impl PlxGuardian {
                 continue;
             }
 
-            if let Some(plx_bridge) = detect_plx_bridge(bdf) {
+            let bridges = detect_pcie_bridges(bdf);
+            if !bridges.is_empty() {
+                let plx_hint = detect_plx_bridge(bdf);
                 tracing::info!(
                     device = bdf.as_str(),
-                    plx_bridge = plx_bridge.as_str(),
-                    "PLX bridge detected — starting keepalive",
+                    bridge_count = bridges.len(),
+                    plx_bridge = ?plx_hint,
+                    "PCIe bridge(s) detected — starting keepalive",
                 );
 
-                let keepalive = PlxKeepalive::new(bdf, self.interval);
+                let keepalive = PcieBridgeKeepalive::new(bdf, self.interval);
                 let handle = keepalive.spawn();
                 self.handles.insert(bdf.clone(), handle);
                 started += 1;
@@ -96,7 +103,7 @@ impl PlxGuardian {
         started
     }
 
-    /// Protect a single PCI device if it's behind a PLX bridge.
+    /// Protect a single PCI device if it's behind a PCIe bridge.
     ///
     /// Returns `true` if a keepalive was started.
     pub fn protect(&mut self, bdf: &str) -> bool {
@@ -104,8 +111,8 @@ impl PlxGuardian {
             return false;
         }
 
-        if detect_plx_bridge(bdf).is_some() {
-            let keepalive = PlxKeepalive::new(bdf, self.interval);
+        if !detect_pcie_bridges(bdf).is_empty() {
+            let keepalive = PcieBridgeKeepalive::new(bdf, self.interval);
             let handle = keepalive.spawn();
             self.handles.insert(bdf.to_string(), handle);
             true
@@ -153,10 +160,10 @@ impl PlxGuardian {
 
     /// Summary of all protected devices and their heartbeat counts.
     #[must_use]
-    pub fn status_summary(&self) -> Vec<PlxDeviceStatus> {
+    pub fn status_summary(&self) -> Vec<BridgeDeviceStatus> {
         self.handles
             .iter()
-            .map(|(bdf, handle)| PlxDeviceStatus {
+            .map(|(bdf, handle)| BridgeDeviceStatus {
                 bdf: bdf.clone(),
                 running: handle.is_running(),
                 heartbeats: handle.heartbeat_count(),
@@ -165,15 +172,15 @@ impl PlxGuardian {
     }
 }
 
-impl Default for PlxGuardian {
+impl Default for BridgeGuardian {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Status of a single PLX-protected device.
+/// Status of a single bridge-protected device.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PlxDeviceStatus {
+pub struct BridgeDeviceStatus {
     /// PCI BDF of the protected device.
     pub bdf: String,
     /// Whether the keepalive task is still running.
@@ -182,32 +189,35 @@ pub struct PlxDeviceStatus {
     pub heartbeats: u64,
 }
 
+/// Backward-compatible alias. Prefer [`BridgeDeviceStatus`].
+pub type PlxDeviceStatus = BridgeDeviceStatus;
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn guardian_new_is_empty() {
-        let g = PlxGuardian::new();
+        let g = BridgeGuardian::new();
         assert_eq!(g.active_count(), 0);
         assert!(g.status_summary().is_empty());
     }
 
     #[test]
     fn guardian_default_same_as_new() {
-        let g = PlxGuardian::default();
+        let g = BridgeGuardian::default();
         assert_eq!(g.active_count(), 0);
     }
 
     #[test]
     fn guardian_with_custom_interval() {
-        let g = PlxGuardian::with_interval(Duration::from_secs(10));
+        let g = BridgeGuardian::with_interval(Duration::from_secs(10));
         assert_eq!(g.interval, Duration::from_secs(10));
     }
 
     #[test]
     fn scan_non_pci_devices_ignored() {
-        let mut g = PlxGuardian::new();
+        let mut g = BridgeGuardian::new();
         let devices = vec![
             DeviceId::UsbPath("1-2".into()),
             DeviceId::Serial("SN123".into()),
@@ -219,39 +229,44 @@ mod tests {
 
     #[test]
     fn protect_nonexistent_device_returns_false() {
-        let mut g = PlxGuardian::new();
+        let mut g = BridgeGuardian::new();
         assert!(!g.protect("9999:99:99.9"));
     }
 
     #[test]
     fn is_protected_nonexistent() {
-        let g = PlxGuardian::new();
+        let g = BridgeGuardian::new();
         assert!(!g.is_protected("9999:99:99.9"));
     }
 
     #[test]
     fn release_nonexistent_is_noop() {
-        let mut g = PlxGuardian::new();
+        let mut g = BridgeGuardian::new();
         g.release("9999:99:99.9");
     }
 
     #[test]
     fn release_all_on_empty_is_noop() {
-        let mut g = PlxGuardian::new();
+        let mut g = BridgeGuardian::new();
         g.release_all();
     }
 
     #[test]
-    fn plx_device_status_serde_roundtrip() {
-        let status = PlxDeviceStatus {
+    fn bridge_device_status_serde_roundtrip() {
+        let status = BridgeDeviceStatus {
             bdf: "0000:4b:00.0".into(),
             running: true,
             heartbeats: 42,
         };
         let json = serde_json::to_string(&status).unwrap();
-        let back: PlxDeviceStatus = serde_json::from_str(&json).unwrap();
+        let back: BridgeDeviceStatus = serde_json::from_str(&json).unwrap();
         assert_eq!(back.bdf, "0000:4b:00.0");
         assert!(back.running);
         assert_eq!(back.heartbeats, 42);
+    }
+
+    #[test]
+    fn plx_alias_works() {
+        let _g: PlxGuardian = BridgeGuardian::new();
     }
 }

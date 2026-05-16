@@ -146,6 +146,102 @@ pub(crate) fn gddr5_training(bar0: &MappedBar, bdf: &str) -> Result<String, Sove
     }
 }
 
+/// Strategy for memory training, keyed by [`MemoryType`].
+///
+/// Each GPU generation's `GenerationProfile::memory_type` maps to a
+/// training strategy. The dispatch function runs the appropriate path
+/// or returns a skip reason for types that don't need explicit training.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemoryTrainingStrategy {
+    /// GDDR5 (Kepler): DEVINIT script interpreter.
+    Gddr5Devinit,
+    /// HBM2/HBM2e (Volta, Ampere datacenter): typestate training controller.
+    Hbm2Controller,
+    /// Memory type exists but no sovereign training path implemented yet.
+    Unsupported(&'static str),
+}
+
+impl MemoryTrainingStrategy {
+    /// Determine the training strategy for a given memory type.
+    #[must_use]
+    pub fn for_memory_type(mem: crate::hardware::MemoryType) -> Self {
+        use crate::hardware::MemoryType;
+        match mem {
+            MemoryType::Gddr5 => Self::Gddr5Devinit,
+            MemoryType::Hbm2 => Self::Hbm2Controller,
+            MemoryType::Hbm3 => Self::Unsupported("HBM3"),
+            MemoryType::Gddr6 => Self::Unsupported("GDDR6"),
+            MemoryType::Gddr6x => Self::Unsupported("GDDR6X"),
+            MemoryType::Gddr7 => Self::Unsupported("GDDR7"),
+        }
+    }
+}
+
+/// Result of memory training dispatch.
+pub enum MemoryTrainingResult {
+    /// Training ran or was already warm — detail string.
+    Ok(String),
+    /// HBM2 training produced a full training log.
+    OkWithLog(crate::vfio::channel::hbm2_training::TrainingLog),
+    /// Skipped (already warm or unsupported type) — reason string.
+    Skipped(String),
+    /// Training failed.
+    Failed(SovereignStagesError),
+}
+
+/// Dispatch memory training based on strategy and warm state.
+///
+/// Centralizes the branching logic that was previously inlined in
+/// `sovereign_init`. Callers provide the strategy (from
+/// `MemoryTrainingStrategy::for_memory_type`) and warm detection flag.
+pub(crate) fn dispatch_memory_training(
+    strategy: MemoryTrainingStrategy,
+    bar0: &MappedBar,
+    bdf: &str,
+    warm_detected: bool,
+    pmc_before: u32,
+    opts: &SovereignInitOptions,
+) -> MemoryTrainingResult {
+    match strategy {
+        MemoryTrainingStrategy::Gddr5Devinit => {
+            if warm_detected {
+                tracing::info!(
+                    pmc_enable = format!("0x{pmc_before:08x}"),
+                    "GDDR5 GPU warm — skipping memory training"
+                );
+                return MemoryTrainingResult::Skipped(format!(
+                    "GDDR5 warm (pmc=0x{pmc_before:08x}, PRAMIN sentinel ok)"
+                ));
+            }
+            match gddr5_training(bar0, bdf) {
+                Ok(detail) => MemoryTrainingResult::Ok(detail),
+                Err(e) => MemoryTrainingResult::Failed(e),
+            }
+        }
+        MemoryTrainingStrategy::Hbm2Controller => {
+            if warm_detected {
+                tracing::info!(
+                    pmc_enable = format!("0x{pmc_before:08x}"),
+                    "warm GPU detected — skipping HBM2 training"
+                );
+                return MemoryTrainingResult::Skipped(format!(
+                    "warm detected (pmc=0x{pmc_before:08x}, PRAMIN sentinel ok)"
+                ));
+            }
+            let fbpa_count = opts.fbpa_count.unwrap_or(4);
+            match run_hbm2_training(bar0, bdf, fbpa_count, opts) {
+                Ok(log) => MemoryTrainingResult::OkWithLog(log),
+                Err(e) => MemoryTrainingResult::Failed(e),
+            }
+        }
+        MemoryTrainingStrategy::Unsupported(name) => {
+            MemoryTrainingResult::Skipped(format!(
+                "memory_type={name} (pmc=0x{pmc_before:08x})"
+            ))
+        }
+    }
+}
+
 fn kepler_falcon_boot(
     bar0: &MappedBar,
     sm_version: u32,

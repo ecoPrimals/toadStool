@@ -74,8 +74,9 @@ pub use firmware::FirmwareInterface;
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
 pub use swap::{SwapExecutor, SwapObservation, SwapOrchestrator};
-pub use plx::{PlxDeviceStatus, PlxGuardian};
+pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
 pub use sysfs_executor::SysfsSwapExecutor;
 pub use warm_init::{
-    DriverLabPlan, DriverTrial, NV_BAR0_DOMAINS, SeederContainment, WarmInitPlan,
+    DiffSummary, DriverLabExecutor, DriverLabPlan, DriverTrial, LabExecutionResult,
+    NV_BAR0_DOMAINS, SeederContainment, TrialExecutionResult, WarmInitPlan,
 };

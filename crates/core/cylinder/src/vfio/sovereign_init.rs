@@ -23,13 +23,13 @@
 
 use std::time::Instant;
 
-use crate::nv::generation::{self, BootStrategy, MemoryType};
+use crate::nv::generation::{self, BootStrategy};
 use crate::nv::pri::is_pri_fault;
 use crate::vfio::channel::hbm2_training::TrainingLog;
 use crate::vfio::device::MappedBar;
 use crate::vfio::sovereign_stages::{
-    PMC_ENABLE, bar0_probe, chip_id_to_sm, falcon_boot, gddr5_training, gr_init, is_warm_gpu,
-    pmc_enable, run_hbm2_training, verify,
+    MemoryTrainingResult, MemoryTrainingStrategy, PMC_ENABLE, bar0_probe, chip_id_to_sm,
+    dispatch_memory_training, falcon_boot, gr_init, is_warm_gpu, pmc_enable, verify,
 };
 
 pub use crate::vfio::sovereign_types::{
@@ -128,122 +128,65 @@ pub fn sovereign_init(
     // accessible, the GPU was previously trained (e.g. by nouveau warm
     // handoff). Skip the full typestate pipeline.
     let pmc_before = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
-    let is_hbm2 = matches!(profile.memory_type, MemoryType::Hbm2);
-    let is_gddr5 = matches!(profile.memory_type, MemoryType::Gddr5);
     let warm_detected = is_warm_gpu(pmc_before, bar0);
 
+    let strategy = MemoryTrainingStrategy::for_memory_type(profile.memory_type);
     let t = Instant::now();
-    if is_gddr5 {
-        // GDDR5 (Kepler/K80): never use HBM2 typestate pipeline.
-        // If cold (PRAMIN dead), run DEVINIT-based GDDR5 training.
-        if warm_detected {
-            tracing::info!(
-                pmc_enable = format!("0x{pmc_before:08x}"),
-                "GDDR5 GPU warm — skipping memory training"
-            );
+    match dispatch_memory_training(strategy, bar0, bdf, warm_detected, pmc_before, opts) {
+        MemoryTrainingResult::Ok(detail) => {
+            stages.push(StageResult {
+                name: "memory_training".into(),
+                status: StageStatus::Ok,
+                detail: Some(detail),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+        }
+        MemoryTrainingResult::OkWithLog(log) => {
+            let writes = log.write_count();
+            training_log = Some(log);
+            stages.push(StageResult {
+                name: "memory_training".into(),
+                status: StageStatus::Ok,
+                detail: Some(format!("{writes} register writes")),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+        }
+        MemoryTrainingResult::Skipped(reason) => {
             stages.push(StageResult {
                 name: "memory_training".into(),
                 status: StageStatus::Skipped,
-                detail: Some(format!(
-                    "GDDR5 warm (pmc=0x{pmc_before:08x}, PRAMIN sentinel ok)"
-                )),
+                detail: Some(reason),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
-        } else {
-            match gddr5_training(bar0, bdf) {
-                Ok(detail) => {
-                    stages.push(StageResult {
-                        name: "memory_training".into(),
-                        status: StageStatus::Ok,
-                        detail: Some(detail),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-                }
-                Err(e) => {
-                    stages.push(StageResult {
-                        name: "memory_training".into(),
-                        status: StageStatus::Failed,
-                        detail: Some(e.to_string()),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-                    return finish(
-                        bdf,
-                        boot0,
-                        chip_id,
-                        stages,
-                        training_log,
-                        pipeline_start,
-                        warm_detected,
-                    );
-                }
-            }
         }
-    } else if is_hbm2 && warm_detected {
-        tracing::info!(
-            pmc_enable = format!("0x{pmc_before:08x}"),
-            "warm GPU detected — skipping HBM2 training"
-        );
-        stages.push(StageResult {
-            name: "hbm2_training".into(),
-            status: StageStatus::Skipped,
-            detail: Some(format!(
-                "warm detected (pmc=0x{pmc_before:08x}, PRAMIN sentinel ok)"
-            )),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
-    } else if is_hbm2 {
-        let fbpa_count = opts.fbpa_count.unwrap_or(4);
-        match run_hbm2_training(bar0, bdf, fbpa_count, opts) {
-            Ok(log) => {
-                let writes = log.write_count();
-                training_log = Some(log);
-                stages.push(StageResult {
-                    name: "hbm2_training".into(),
-                    status: StageStatus::Ok,
-                    detail: Some(format!("{writes} register writes")),
-                    duration_ms: t.elapsed().as_millis() as u64,
-                });
-            }
-            Err(e) => {
-                stages.push(StageResult {
-                    name: "hbm2_training".into(),
-                    status: StageStatus::Failed,
-                    detail: Some(e.to_string()),
-                    duration_ms: t.elapsed().as_millis() as u64,
-                });
-                return finish(
-                    bdf,
-                    boot0,
-                    chip_id,
-                    stages,
-                    training_log,
-                    pipeline_start,
-                    warm_detected,
-                );
-            }
+        MemoryTrainingResult::Failed(e) => {
+            stages.push(StageResult {
+                name: "memory_training".into(),
+                status: StageStatus::Failed,
+                detail: Some(e.to_string()),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+            return finish(
+                bdf,
+                boot0,
+                chip_id,
+                stages,
+                training_log,
+                pipeline_start,
+                warm_detected,
+            );
         }
-    } else {
-        // Other memory types (GDDR6, etc.): skip training unless cold.
-        stages.push(StageResult {
-            name: "memory_training".into(),
-            status: StageStatus::Skipped,
-            detail: Some(format!(
-                "memory_type={:?} (pmc=0x{pmc_before:08x})",
-                profile.memory_type
-            )),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
     }
 
-    // ── Stage 3b: Kepler PGRAPH Ungating ────────────────────────────────
-    // On Kepler (NoAcr), PGRAPH is clock-gated after PMC_ENABLE.
-    // If we have a captured GrInitSequence, replay the PGRAPH-domain
-    // writes to ungate the GR engine before falcon boot.
+    // ── Stage 3b: Engine Ungating ──────────────────────────────────────
+    // On NoAcr GPUs, engines are clock-gated after PMC_ENABLE. Replay
+    // any captured GrInitSequences to ungate them before falcon boot.
+    // Supports arbitrary engines; falls back to legacy kepler_gr_init.
     let no_acr = matches!(profile.boot_strategy, BootStrategy::NoAcr);
     if no_acr {
         if opts.halt_before == Some(HaltBefore::KeplerPgraphUngate) {
             stages.push(StageResult {
-                name: "kepler_pgraph_ungate".into(),
+                name: "engine_ungate".into(),
                 status: StageStatus::Skipped,
                 detail: Some("halt_before=kepler_pgraph_ungate".into()),
                 duration_ms: 0,
@@ -252,48 +195,66 @@ pub fn sovereign_init(
                 bdf,
                 boot0,
                 chip_id,
-                "kepler_pgraph_ungate",
+                "engine_ungate",
                 stages,
                 pipeline_start,
             );
         }
 
-        let t = Instant::now();
-        if let Some(ref gr_init_seq) = opts.kepler_gr_init {
-            match kepler_pgraph_ungate(bar0, gr_init_seq) {
-                Ok(detail) => {
-                    stages.push(StageResult {
-                        name: "kepler_pgraph_ungate".into(),
-                        status: StageStatus::Ok,
-                        detail: Some(detail),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-                }
-                Err(e) => {
-                    stages.push(StageResult {
-                        name: "kepler_pgraph_ungate".into(),
-                        status: StageStatus::Failed,
-                        detail: Some(e),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-                    return finish(
-                        bdf,
-                        boot0,
-                        chip_id,
-                        stages,
-                        training_log,
-                        pipeline_start,
-                        warm_detected,
-                    );
-                }
+        // Build the sequence list: generalized sequences + legacy fallback
+        let mut ungate_list: Vec<(&str, &crate::nv::gr_init::GrInitSequence, Option<usize>)> =
+            opts.engine_init_sequences
+                .iter()
+                .map(|(name, seq, reg)| (name.as_str(), seq, *reg))
+                .collect();
+
+        // Legacy fallback: if no generalized sequences but kepler_gr_init exists
+        if ungate_list.is_empty() {
+            if let Some(ref gr_init_seq) = opts.kepler_gr_init {
+                ungate_list.push(("PGRAPH", gr_init_seq, Some(PGRAPH_STATUS)));
             }
-        } else {
+        }
+
+        if ungate_list.is_empty() {
+            let t = Instant::now();
             stages.push(StageResult {
-                name: "kepler_pgraph_ungate".into(),
+                name: "engine_ungate".into(),
                 status: StageStatus::Skipped,
-                detail: Some("no kepler_gr_init sequence provided".into()),
+                detail: Some("no init sequences provided".into()),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
+        } else {
+            for (engine_name, seq, status_reg) in &ungate_list {
+                let t = Instant::now();
+                let stage_name = format!("engine_ungate:{engine_name}");
+                match engine_ungate(bar0, seq, engine_name, *status_reg) {
+                    Ok(detail) => {
+                        stages.push(StageResult {
+                            name: stage_name,
+                            status: StageStatus::Ok,
+                            detail: Some(detail),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                    }
+                    Err(e) => {
+                        stages.push(StageResult {
+                            name: stage_name,
+                            status: StageStatus::Failed,
+                            detail: Some(e),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return finish(
+                            bdf,
+                            boot0,
+                            chip_id,
+                            stages,
+                            training_log,
+                            pipeline_start,
+                            warm_detected,
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -472,23 +433,37 @@ fn finish(
 ///
 /// Applies only the PGRAPH-domain writes from the sequence, then
 /// verifies that PGRAPH_STATUS (0x400700) is no longer PRI-faulted.
-fn kepler_pgraph_ungate(
+/// Generalized engine ungating — replays a [`GrInitSequence`] for any
+/// named engine and optionally validates a status register afterward.
+///
+/// `engine_name` is used for logging/stage naming (e.g. "PGRAPH", "CE").
+/// `status_reg` is an optional BAR0 offset to read-back after applying
+/// the sequence; if the read-back returns a PRI fault, the ungate failed.
+fn engine_ungate(
     bar0: &MappedBar,
     seq: &crate::nv::gr_init::GrInitSequence,
+    engine_name: &str,
+    status_reg: Option<usize>,
 ) -> Result<String, String> {
     let applied = seq.apply(bar0)?;
 
-    let pgraph_status = bar0.read_u32(0x0040_0700).unwrap_or(0xDEAD_DEAD);
-    if is_pri_fault(pgraph_status) {
-        Err(format!(
-            "PGRAPH still gated after {applied} writes (status=0x{pgraph_status:08x})"
+    if let Some(reg) = status_reg {
+        let status = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+        if is_pri_fault(status) {
+            return Err(format!(
+                "{engine_name} still gated after {applied} writes (status=0x{status:08x})"
+            ));
+        }
+        Ok(format!(
+            "{engine_name} ungated: {applied} writes applied, status=0x{status:08x}"
         ))
     } else {
-        Ok(format!(
-            "PGRAPH ungated: {applied} writes applied, status=0x{pgraph_status:08x}"
-        ))
+        Ok(format!("{engine_name} ungated: {applied} writes applied"))
     }
 }
+
+/// PGRAPH status register (GK110+).
+const PGRAPH_STATUS: usize = 0x0040_0700;
 
 fn finish_halted(
     bdf: &str,

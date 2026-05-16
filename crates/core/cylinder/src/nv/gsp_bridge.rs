@@ -56,7 +56,56 @@ pub struct PgobResult {
 /// Implementors provide the actual firmware upload, ACR chain execution,
 /// and GR initialization logic. toadStool's sovereign init stages call
 /// through this trait boundary.
+///
+/// # Capability queries
+///
+/// Default methods (`supports_acr`, `supports_pgob`, `supports_pmu`)
+/// let callers discover what the bridge can do before calling. The
+/// defaults return `false`; real implementations override the ones they
+/// support. This lets `sovereign_init` skip stages cleanly without
+/// external `BootStrategy` matching.
 pub trait GspBridge: Send + Sync {
+    // ── capability queries ──────────────────────────────────────────
+
+    /// Whether this bridge can run the ACR secure-boot chain (SEC2 DMA
+    /// → ACR → FECS release). Volta+ with signed firmware.
+    fn supports_acr(&self) -> bool {
+        false
+    }
+
+    /// Whether this bridge can manage PGOB (Power-Gated Off Block)
+    /// domains — i.e., ungate GPC compute partitions.
+    fn supports_pgob(&self) -> bool {
+        false
+    }
+
+    /// Whether this bridge can bootstrap the PMU falcon (unsigned
+    /// PIO upload for Kepler-class GPUs).
+    fn supports_pmu(&self) -> bool {
+        false
+    }
+
+    /// Whether this bridge can apply GR BAR0 init writes.
+    fn supports_gr_init(&self) -> bool {
+        false
+    }
+
+    // ── operations ──────────────────────────────────────────────────
+
+    /// Bootstrap the PMU falcon (unsigned PIO upload, start, mailbox
+    /// handshake). Returns `Unsupported` by default.
+    fn pmu_boot(
+        &self,
+        bar0: &MappedBar,
+        imem: &[u8],
+        dmem: &[u8],
+    ) -> DriverResult<crate::nv::pmu_init::PmuBootResult> {
+        let _ = (bar0, imem, dmem);
+        Err(crate::DriverError::Unsupported(
+            "PMU boot requires firmware provider (GspBridge)".into(),
+        ))
+    }
+
     /// Apply GR BAR0 initialization writes (engine enable, nonctx, dynamic).
     fn apply_gr_bar0_init(&self, bar0: &MappedBar, sm_version: u32) -> DriverResult<()>;
 
@@ -151,6 +200,15 @@ mod tests {
         // SAFETY: MappedBar cannot be created without real hardware,
         // so we only test the bridge trait object dispatch here.
         let _: Box<dyn GspBridge> = Box::new(bridge);
+    }
+
+    #[test]
+    fn stub_bridge_capabilities_all_false() {
+        let bridge = StubGspBridge;
+        assert!(!bridge.supports_acr());
+        assert!(!bridge.supports_pgob());
+        assert!(!bridge.supports_pmu());
+        assert!(!bridge.supports_gr_init());
     }
 
     #[test]

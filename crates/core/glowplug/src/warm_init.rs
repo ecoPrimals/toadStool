@@ -611,6 +611,272 @@ impl std::fmt::Display for DriverLabPlan {
     }
 }
 
+// ── Driver Lab Executor ──────────────────────────────────────────────
+
+/// Result of a single trial execution within a `DriverLabPlan`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrialExecutionResult {
+    /// The trial label (mirrors `DriverTrial::label`).
+    pub label: String,
+    /// Whether this trial completed successfully.
+    pub success: bool,
+    /// Human-readable detail.
+    pub detail: String,
+    /// Path to the persisted BAR0 snapshot JSON, if saved.
+    pub snapshot_path: Option<String>,
+    /// Duration of this trial in milliseconds.
+    pub duration_ms: u64,
+    /// Whether a power cycle was needed (and presumably performed).
+    pub power_cycle_performed: bool,
+}
+
+/// Result of executing a full `DriverLabPlan`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LabExecutionResult {
+    /// The target BDF.
+    pub bdf: String,
+    /// GPU description.
+    pub gpu_description: String,
+    /// Per-trial outcomes.
+    pub trials: Vec<TrialExecutionResult>,
+    /// Pairwise diff summary (trial_a, trial_b, changed_registers).
+    pub diffs: Vec<DiffSummary>,
+    /// Total wall-clock time in milliseconds.
+    pub total_ms: u64,
+}
+
+/// Summary of a pairwise diff between two trials.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffSummary {
+    /// Label of the first trial.
+    pub trial_a: String,
+    /// Label of the second trial.
+    pub trial_b: String,
+    /// Number of registers that changed between the two snapshots.
+    pub changed_registers: usize,
+    /// Path to the persisted diff JSON, if saved.
+    pub diff_path: Option<String>,
+}
+
+/// Executor for `DriverLabPlan` — orchestrates trial runs.
+///
+/// The executor does NOT perform driver swaps or power cycles itself.
+/// Instead it accepts callbacks for each step, making it testable and
+/// composable with any swap mechanism (bare-metal glowplug swap,
+/// agentReagents VM, manual operator).
+///
+/// # Lifecycle per trial
+///
+/// ```text
+/// 1. power_cycle_fn (if trial.needs_power_cycle)
+/// 2. swap_fn (bind seeder driver)
+/// 3. settle (wait seeder_settle duration)
+/// 4. capture_fn (BAR0 snapshot via WarmStateCapture/TrialResult)
+/// 5. persist snapshot to output_dir
+/// ```
+///
+/// After all trials, pairwise diffs are computed and persisted.
+pub struct DriverLabExecutor {
+    plan: DriverLabPlan,
+}
+
+impl DriverLabExecutor {
+    /// Create an executor for the given plan.
+    pub fn new(plan: DriverLabPlan) -> Self {
+        Self { plan }
+    }
+
+    /// The underlying plan.
+    pub fn plan(&self) -> &DriverLabPlan {
+        &self.plan
+    }
+
+    /// Execute all trials using the provided callbacks.
+    ///
+    /// - `power_cycle_fn`: called when a trial requires a power cycle.
+    ///   Returns `Ok(())` on success, `Err(reason)` to abort.
+    /// - `swap_fn`: binds the seeder driver. Receives `(bdf, seeder_name)`.
+    ///   Returns `Ok(detail_string)` on success.
+    /// - `capture_fn`: captures BAR0 state. Receives `(bdf, trial_label, scan_ranges)`.
+    ///   Returns `Ok(snapshot_json_bytes)` with the serialized snapshot.
+    pub fn execute<F1, F2, F3>(
+        &self,
+        mut power_cycle_fn: F1,
+        mut swap_fn: F2,
+        mut capture_fn: F3,
+    ) -> LabExecutionResult
+    where
+        F1: FnMut(&str) -> Result<(), String>,
+        F2: FnMut(&str, &str) -> Result<String, String>,
+        F3: FnMut(&str, &str, &[(String, usize, usize)]) -> Result<Vec<u8>, String>,
+    {
+        let lab_start = std::time::Instant::now();
+        let mut trial_results = Vec::new();
+        let mut snapshots: Vec<(String, Vec<u8>)> = Vec::new();
+
+        for trial in &self.plan.trials {
+            let trial_start = std::time::Instant::now();
+            let mut power_cycle_performed = false;
+
+            if trial.needs_power_cycle {
+                match power_cycle_fn(&self.plan.bdf) {
+                    Ok(()) => {
+                        power_cycle_performed = true;
+                    }
+                    Err(reason) => {
+                        trial_results.push(TrialExecutionResult {
+                            label: trial.label.clone(),
+                            success: false,
+                            detail: format!("power cycle failed: {reason}"),
+                            snapshot_path: None,
+                            duration_ms: trial_start.elapsed().as_millis() as u64,
+                            power_cycle_performed: false,
+                        });
+                        continue;
+                    }
+                }
+            }
+
+            match swap_fn(&self.plan.bdf, &trial.plan.seeder.name) {
+                Ok(swap_detail) => {
+                    tracing::info!(
+                        label = trial.label.as_str(),
+                        seeder = trial.plan.seeder.name.as_str(),
+                        detail = swap_detail.as_str(),
+                        "trial swap complete"
+                    );
+                }
+                Err(reason) => {
+                    trial_results.push(TrialExecutionResult {
+                        label: trial.label.clone(),
+                        success: false,
+                        detail: format!("swap failed: {reason}"),
+                        snapshot_path: None,
+                        duration_ms: trial_start.elapsed().as_millis() as u64,
+                        power_cycle_performed,
+                    });
+                    continue;
+                }
+            }
+
+            std::thread::sleep(trial.plan.seeder_settle);
+
+            match capture_fn(&self.plan.bdf, &trial.label, &trial.scan_ranges) {
+                Ok(snapshot_bytes) => {
+                    let snapshot_path = format!(
+                        "{}/{}.json",
+                        self.plan.output_dir, trial.label
+                    );
+                    let saved = std::fs::create_dir_all(&self.plan.output_dir)
+                        .and_then(|_| std::fs::write(&snapshot_path, &snapshot_bytes));
+
+                    let path = match saved {
+                        Ok(()) => Some(snapshot_path),
+                        Err(e) => {
+                            tracing::warn!(
+                                label = trial.label.as_str(),
+                                error = %e,
+                                "failed to persist snapshot"
+                            );
+                            None
+                        }
+                    };
+
+                    snapshots.push((trial.label.clone(), snapshot_bytes));
+
+                    trial_results.push(TrialExecutionResult {
+                        label: trial.label.clone(),
+                        success: true,
+                        detail: "capture complete".into(),
+                        snapshot_path: path,
+                        duration_ms: trial_start.elapsed().as_millis() as u64,
+                        power_cycle_performed,
+                    });
+                }
+                Err(reason) => {
+                    trial_results.push(TrialExecutionResult {
+                        label: trial.label.clone(),
+                        success: false,
+                        detail: format!("capture failed: {reason}"),
+                        snapshot_path: None,
+                        duration_ms: trial_start.elapsed().as_millis() as u64,
+                        power_cycle_performed,
+                    });
+                }
+            }
+        }
+
+        // Compute pairwise diffs for successful captures
+        let diff_pairs = self.plan.diff_pairs();
+        let mut diffs = Vec::new();
+
+        for (i, j) in diff_pairs {
+            let label_a = &self.plan.trials[i].label;
+            let label_b = &self.plan.trials[j].label;
+
+            let snap_a = snapshots.iter().find(|(l, _)| l == label_a);
+            let snap_b = snapshots.iter().find(|(l, _)| l == label_b);
+
+            if let (Some((_, bytes_a)), Some((_, bytes_b))) = (snap_a, snap_b) {
+                let changed = count_json_diffs(bytes_a, bytes_b);
+                let diff_path = format!(
+                    "{}/diff_{}_{}.json",
+                    self.plan.output_dir, label_a, label_b
+                );
+
+                let _ = std::fs::write(
+                    &diff_path,
+                    serde_json::json!({
+                        "trial_a": label_a,
+                        "trial_b": label_b,
+                        "changed_registers": changed,
+                    })
+                    .to_string(),
+                );
+
+                diffs.push(DiffSummary {
+                    trial_a: label_a.clone(),
+                    trial_b: label_b.clone(),
+                    changed_registers: changed,
+                    diff_path: Some(diff_path),
+                });
+            }
+        }
+
+        LabExecutionResult {
+            bdf: self.plan.bdf.clone(),
+            gpu_description: self.plan.gpu_description.clone(),
+            trials: trial_results,
+            diffs,
+            total_ms: lab_start.elapsed().as_millis() as u64,
+        }
+    }
+}
+
+/// Count the number of differing bytes between two snapshot blobs.
+/// Used as a rough "changed register count" heuristic for diff summaries.
+fn count_json_diffs(a: &[u8], b: &[u8]) -> usize {
+    if a.len() != b.len() {
+        return a.len().max(b.len());
+    }
+    a.iter().zip(b.iter()).filter(|(x, y)| x != y).count()
+}
+
+impl std::fmt::Display for LabExecutionResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let succeeded = self.trials.iter().filter(|t| t.success).count();
+        write!(
+            f,
+            "DriverLab({}, {}/{} trials ok, {} diffs, {}ms)",
+            self.bdf,
+            succeeded,
+            self.trials.len(),
+            self.diffs.len(),
+            self.total_ms,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -846,5 +1112,174 @@ mod tests {
         let json = serde_json::to_string(&contained).unwrap();
         let back: SeederContainment = serde_json::from_str(&json).unwrap();
         assert!(matches!(back, SeederContainment::Contained { .. }));
+    }
+
+    // ── DriverLabExecutor tests ─────────────────────────────────────
+
+    #[test]
+    fn executor_new_from_plan() {
+        let plan = DriverLabPlan::standard_titanv("0000:02:00.0", "/tmp/lab-test");
+        let executor = DriverLabExecutor::new(plan);
+        assert_eq!(executor.plan().trials.len(), 3);
+    }
+
+    fn fast_test_plan(bdf: &str) -> WarmInitPlan {
+        WarmInitPlan {
+            seeder_settle: Duration::from_millis(1),
+            ..WarmInitPlan::nouveau_titanv(bdf)
+        }
+    }
+
+    #[test]
+    fn executor_runs_with_mock_callbacks() {
+        let plan = DriverLabPlan {
+            bdf: "0000:02:00.0".into(),
+            gpu_description: "Test GPU".into(),
+            trials: vec![
+                DriverTrial {
+                    label: "trial-a".into(),
+                    plan: fast_test_plan("0000:02:00.0"),
+                    scan_ranges: vec![("PMC".into(), 0, 0x100)],
+                    full_scan: false,
+                    needs_power_cycle: false,
+                },
+                DriverTrial {
+                    label: "trial-b".into(),
+                    plan: fast_test_plan("0000:02:00.0"),
+                    scan_ranges: vec![("PMC".into(), 0, 0x100)],
+                    full_scan: false,
+                    needs_power_cycle: false,
+                },
+            ],
+            output_dir: "/tmp/glowplug-lab-test-nonexistent".into(),
+        };
+
+        let executor = DriverLabExecutor::new(plan);
+        let result = executor.execute(
+            |_bdf| Ok(()),
+            |_bdf, _seeder| Ok("mock swap".into()),
+            |_bdf, label, _ranges| Ok(format!("{{\"label\": \"{label}\"}}").into_bytes()),
+        );
+
+        assert_eq!(result.trials.len(), 2);
+        assert!(result.trials.iter().all(|t| t.success));
+    }
+
+    #[test]
+    fn executor_handles_swap_failure() {
+        let plan = DriverLabPlan {
+            bdf: "0000:02:00.0".into(),
+            gpu_description: "Test GPU".into(),
+            trials: vec![DriverTrial {
+                label: "fail-trial".into(),
+                plan: fast_test_plan("0000:02:00.0"),
+                scan_ranges: vec![],
+                full_scan: false,
+                needs_power_cycle: false,
+            }],
+            output_dir: "/tmp/glowplug-lab-test-fail".into(),
+        };
+
+        let executor = DriverLabExecutor::new(plan);
+        let result = executor.execute(
+            |_| Ok(()),
+            |_, _| Err("swap refused".into()),
+            |_, _, _| Ok(vec![]),
+        );
+
+        assert_eq!(result.trials.len(), 1);
+        assert!(!result.trials[0].success);
+        assert!(result.trials[0].detail.contains("swap failed"));
+    }
+
+    #[test]
+    fn executor_handles_power_cycle_failure() {
+        let plan = DriverLabPlan {
+            bdf: "0000:02:00.0".into(),
+            gpu_description: "Test GPU".into(),
+            trials: vec![DriverTrial {
+                label: "power-fail".into(),
+                plan: fast_test_plan("0000:02:00.0"),
+                scan_ranges: vec![],
+                full_scan: false,
+                needs_power_cycle: true,
+            }],
+            output_dir: "/tmp/glowplug-lab-test-power".into(),
+        };
+
+        let executor = DriverLabExecutor::new(plan);
+        let result = executor.execute(
+            |_| Err("power cycle unavailable".into()),
+            |_, _| Ok("ok".into()),
+            |_, _, _| Ok(vec![]),
+        );
+
+        assert_eq!(result.trials.len(), 1);
+        assert!(!result.trials[0].success);
+        assert!(result.trials[0].detail.contains("power cycle failed"));
+    }
+
+    #[test]
+    fn lab_execution_result_display() {
+        let result = LabExecutionResult {
+            bdf: "0000:02:00.0".into(),
+            gpu_description: "Test GPU".into(),
+            trials: vec![TrialExecutionResult {
+                label: "test".into(),
+                success: true,
+                detail: "ok".into(),
+                snapshot_path: None,
+                duration_ms: 42,
+                power_cycle_performed: false,
+            }],
+            diffs: vec![],
+            total_ms: 100,
+        };
+        let s = result.to_string();
+        assert!(s.contains("1/1 trials ok"));
+    }
+
+    #[test]
+    fn trial_execution_result_serde_roundtrip() {
+        let result = TrialExecutionResult {
+            label: "test".into(),
+            success: true,
+            detail: "ok".into(),
+            snapshot_path: Some("/tmp/test.json".into()),
+            duration_ms: 42,
+            power_cycle_performed: true,
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        let back: TrialExecutionResult = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.label, "test");
+        assert!(back.success);
+        assert!(back.power_cycle_performed);
+    }
+
+    #[test]
+    fn diff_summary_serde_roundtrip() {
+        let diff = DiffSummary {
+            trial_a: "a".into(),
+            trial_b: "b".into(),
+            changed_registers: 42,
+            diff_path: Some("/tmp/diff.json".into()),
+        };
+        let json = serde_json::to_string(&diff).unwrap();
+        let back: DiffSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.changed_registers, 42);
+    }
+
+    #[test]
+    fn count_json_diffs_identical() {
+        let a = b"hello world";
+        let b = b"hello world";
+        assert_eq!(count_json_diffs(a, b), 0);
+    }
+
+    #[test]
+    fn count_json_diffs_different() {
+        let a = b"hello";
+        let b = b"world";
+        assert!(count_json_diffs(a, b) > 0);
     }
 }

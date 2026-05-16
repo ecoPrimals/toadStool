@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! PLX bridge keepalive — prevents D3cold on PCIe switch fabrics.
+//! PCIe bridge keepalive — prevents D3cold on PCIe switch fabrics.
 //!
-//! The PLX PEX 8747 (and similar PCIe switches) enter D3cold when the
-//! kernel's runtime power management detects no PCIe traffic for a
-//! sustained period. Once D3cold hits, the entire downstream fabric
-//! goes dark — config space reads return `0xFFFFFFFF` and the device
-//! is unrecoverable without a physical power cycle.
+//! PCIe switches (PLX PEX 8747, AMD Matisse, Broadcom PEX, etc.) enter
+//! D3cold when the kernel's runtime power management detects no PCIe
+//! traffic for a sustained period. Once D3cold hits, the entire
+//! downstream fabric goes dark — config space reads return `0xFFFFFFFF`
+//! and the device is unrecoverable without a physical power cycle.
 //!
-//! [`PlxKeepalive`] prevents this by performing a lightweight config
+//! [`PcieBridgeKeepalive`] (aliased as [`PlxKeepalive`] for backward
+//! compatibility) prevents this by performing a lightweight config
 //! space read on a timer. A single 4-byte PCI config read every few
-//! seconds is enough to keep the bridge powered. The read targets the
+//! seconds is enough to keep any bridge powered. The read targets the
 //! PCI Vendor/Device ID register (offset 0x00) which is always safe.
 //!
 //! # Usage
 //!
 //! ```rust,no_run
-//! use toadstool_ember::plx_keepalive::PlxKeepalive;
+//! use toadstool_ember::plx_keepalive::PcieBridgeKeepalive;
 //!
-//! let keepalive = PlxKeepalive::new("0000:4b:00.0", std::time::Duration::from_secs(5));
+//! let keepalive = PcieBridgeKeepalive::new("0000:4b:00.0", std::time::Duration::from_secs(5));
 //! let handle = keepalive.spawn();
 //! // ... device is safe from D3cold ...
 //! handle.stop(); // stop when done
 //! ```
 //!
-//! # Root Cause (Experiment 193/195)
+//! # History
 //!
-//! The Tesla K80 sits behind a PLX PEX 8747 bridge. When
-//! toadstool-server stopped polling (process restart, crash, or idle),
-//! the PLX bridge entered D3cold within minutes. The "All device reset
-//! methods disabled" messages in dmesg were *accidentally* serving as
-//! keepalive — when they stopped, the bridge died.
+//! Originally named `PlxKeepalive` after the PLX PEX 8747 on the Tesla
+//! K80 (Experiment 193/195). Generalized to any PCIe bridge topology —
+//! PLX discovery is retained as a priority hint, not the identity of the
+//! subsystem.
 
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -72,15 +72,15 @@ impl ActivityTracker {
     }
 }
 
-/// Keepalive state for a PLX-bridged device.
+/// Keepalive state for a PCIe-bridged device.
 ///
 /// Performs periodic config space reads on the device and its bridge
-/// ancestry to prevent the kernel from putting the PLX fabric into D3cold.
+/// ancestry to prevent the kernel from putting the PCIe fabric into D3cold.
 /// Uses `tokio::time::interval` for drift-free timing with immediate first
 /// tick, and skips synthetic heartbeats when real PCIe traffic was recent.
 #[derive(Debug)]
-pub struct PlxKeepalive {
-    /// PCI BDF of the device behind the PLX bridge.
+pub struct PcieBridgeKeepalive {
+    /// PCI BDF of the device behind the PCIe bridge.
     bdf: String,
 
     /// How often to perform the keepalive read.
@@ -94,6 +94,9 @@ pub struct PlxKeepalive {
     activity: Option<ActivityTracker>,
 }
 
+/// Backward-compatible alias. Prefer [`PcieBridgeKeepalive`].
+pub type PlxKeepalive = PcieBridgeKeepalive;
+
 /// Handle to a running keepalive task.
 #[derive(Debug, Clone)]
 pub struct KeepaliveHandle {
@@ -106,7 +109,7 @@ impl KeepaliveHandle {
     /// Stop the keepalive task.
     pub fn stop(&self) {
         self.running.store(false, Ordering::Release);
-        tracing::info!(bdf = %self.bdf, "PLX keepalive stopped");
+        tracing::info!(bdf = %self.bdf, "PCIe bridge keepalive stopped");
     }
 
     /// Whether the keepalive is still running.
@@ -128,12 +131,14 @@ impl KeepaliveHandle {
     }
 }
 
-impl PlxKeepalive {
-    /// Create a new keepalive for a device behind a PLX bridge.
+impl PcieBridgeKeepalive {
+    /// Create a new keepalive for a device behind a PCIe bridge.
     ///
     /// Automatically detects the full bridge hierarchy by walking sysfs
     /// ancestry. The keepalive reads config space on the device AND every
     /// upstream bridge to prevent any level of the fabric from sleeping.
+    /// PLX bridges are discovered with priority, but any PCI-to-PCI bridge
+    /// in the ancestry chain is protected.
     #[must_use]
     pub fn new(bdf: &str, interval: Duration) -> Self {
         let bridge_chain = detect_bridge_chain(bdf);
@@ -143,7 +148,7 @@ impl PlxKeepalive {
                 bdf,
                 bridges = bridge_chain.len() - 1,
                 interval_ms = interval.as_millis() as u64,
-                "PLX keepalive created with {} bridge(s) in chain",
+                "PCIe bridge keepalive created with {} bridge(s) in chain",
                 bridge_chain.len() - 1,
             );
         }
@@ -214,7 +219,7 @@ impl PlxKeepalive {
                 chain_len = chain.len(),
                 interval_ms = interval.as_millis() as u64,
                 activity_aware = activity.is_some(),
-                "PLX keepalive started",
+                "PCIe bridge keepalive started",
             );
 
             // Pin power on all bridges at startup
@@ -261,7 +266,7 @@ impl PlxKeepalive {
             tracing::info!(
                 bdf = %bdf,
                 total_heartbeats = heartbeats.load(Ordering::Relaxed),
-                "PLX keepalive task exited",
+                "PCIe bridge keepalive task exited",
             );
         });
 
@@ -342,22 +347,44 @@ fn detect_bridge_chain(bdf: &str) -> Vec<String> {
     chain
 }
 
-/// Detect whether a device sits behind a PLX/Broadcom PCIe switch.
+/// PLX/Broadcom vendor ID — used as a priority discovery hint.
+pub const PLX_VENDOR_ID: u16 = 0x10b5;
+
+/// Detect PCIe bridges in a device's ancestry.
 ///
-/// Checks the vendor ID of each bridge in the hierarchy for PLX/Broadcom
-/// (vendor `0x10b5`). Returns the BDF of the PLX bridge if found.
+/// Walks the sysfs hierarchy and returns all upstream bridge BDFs.
+/// If a PLX/Broadcom bridge (`0x10b5`) is present, it is returned first
+/// (priority hint for keepalive targeting).
 #[must_use]
-pub fn detect_plx_bridge(bdf: &str) -> Option<String> {
+pub fn detect_pcie_bridges(bdf: &str) -> Vec<String> {
     let chain = detect_bridge_chain(bdf);
+    let mut plx = Vec::new();
+    let mut others = Vec::new();
 
     for bridge_bdf in chain.iter().skip(1) {
         let vendor = crate::sysfs::read_pci_id(bridge_bdf, "vendor");
-        if vendor == 0x10b5 {
-            return Some(bridge_bdf.clone());
+        if vendor == PLX_VENDOR_ID {
+            plx.push(bridge_bdf.clone());
+        } else {
+            others.push(bridge_bdf.clone());
         }
     }
 
-    None
+    plx.extend(others);
+    plx
+}
+
+/// Detect whether a device sits behind a PLX/Broadcom PCIe switch.
+///
+/// Backward-compatible convenience — returns the first PLX bridge BDF if found.
+#[must_use]
+pub fn detect_plx_bridge(bdf: &str) -> Option<String> {
+    detect_pcie_bridges(bdf)
+        .into_iter()
+        .next()
+        .filter(|b| {
+            crate::sysfs::read_pci_id(b, "vendor") == PLX_VENDOR_ID
+        })
 }
 
 #[cfg(test)]
@@ -377,7 +404,7 @@ mod tests {
 
     #[test]
     fn keepalive_new_nonexistent_device() {
-        let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5));
+        let ka = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5));
         assert_eq!(ka.bdf, "9999:99:99.9");
         assert_eq!(ka.bridge_chain.len(), 1);
         assert!(!ka.has_bridges());
@@ -386,16 +413,21 @@ mod tests {
 
     #[test]
     fn keepalive_with_secs() {
-        let ka = PlxKeepalive::with_secs("9999:99:99.9", 3);
+        let ka = PcieBridgeKeepalive::with_secs("9999:99:99.9", 3);
         assert_eq!(ka.interval, Duration::from_secs(3));
     }
 
     #[test]
     fn keepalive_with_activity_tracker() {
         let tracker = ActivityTracker::new();
-        let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5))
+        let ka = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5))
             .with_activity_tracker(tracker);
         assert!(ka.activity.is_some());
+    }
+
+    #[test]
+    fn plx_alias_works() {
+        let _ka: PlxKeepalive = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5));
     }
 
     #[test]
@@ -421,8 +453,14 @@ mod tests {
 
     #[test]
     fn heartbeat_once_nonexistent() {
-        let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5));
+        let ka = PcieBridgeKeepalive::new("9999:99:99.9", Duration::from_secs(5));
         assert!(!ka.heartbeat_once());
+    }
+
+    #[test]
+    fn detect_pcie_bridges_nonexistent() {
+        let bridges = detect_pcie_bridges("9999:99:99.9");
+        assert!(bridges.is_empty());
     }
 
     #[test]

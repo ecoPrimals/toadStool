@@ -60,6 +60,7 @@ pub use vendor_lifecycle::{
     RebindStrategy, ResetMethod, VendorLifecycle, detect_lifecycle, detect_lifecycle_for_target,
 };
 pub use plx_keepalive::{
-    ActivityTracker, KeepaliveHandle, PlxKeepalive, detect_plx_bridge, is_pci_bdf,
+    ActivityTracker, KeepaliveHandle, PcieBridgeKeepalive, PlxKeepalive,
+    detect_pcie_bridges, detect_plx_bridge, is_pci_bdf, PLX_VENDOR_ID,
 };
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};

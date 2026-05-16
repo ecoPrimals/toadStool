@@ -250,12 +250,21 @@ pub struct PmuBootResult {
 }
 
 impl PmuBootstrap {
-    /// Create a Kepler PMU bootstrap with default parameters.
-    pub fn kepler() -> Self {
+    /// Create a PMU bootstrap for any chip family.
+    ///
+    /// Uses Kepler-style defaults (unsigned PIO upload). For families
+    /// that require signed firmware (Volta+), callers must provide
+    /// appropriately signed IMEM/DMEM blobs.
+    pub fn for_chip(chip: ChipFamily) -> Self {
         Self {
-            chip: ChipFamily::Kepler,
+            chip,
             ..Default::default()
         }
+    }
+
+    /// Create a Kepler PMU bootstrap with default parameters.
+    pub fn kepler() -> Self {
+        Self::for_chip(ChipFamily::Kepler)
     }
 
     /// Create from a warm-state PMU snapshot (learn the boot vector from
