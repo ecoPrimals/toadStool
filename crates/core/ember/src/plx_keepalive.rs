@@ -37,10 +37,47 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::time::MissedTickBehavior;
+
+use crate::observation::epoch_ms;
+
+/// Tracks real PCIe activity so the keepalive can skip redundant
+/// synthetic heartbeats when the device is actively being used.
+///
+/// Share an `ActivityTracker` between the keepalive and any code that
+/// performs PCIe operations (VFIO opens, config reads, BAR accesses).
+#[derive(Debug, Clone, Default)]
+pub struct ActivityTracker(Arc<AtomicU64>);
+
+impl ActivityTracker {
+    /// Create a new tracker with no recorded activity.
+    #[must_use]
+    pub fn new() -> Self {
+        Self(Arc::new(AtomicU64::new(0)))
+    }
+
+    /// Record that real PCIe traffic just occurred.
+    pub fn record(&self) {
+        self.0.store(epoch_ms(), Ordering::Release);
+    }
+
+    /// Milliseconds since the last recorded activity (`u64::MAX` if none).
+    #[must_use]
+    pub fn ms_since_last(&self) -> u64 {
+        let last = self.0.load(Ordering::Acquire);
+        if last == 0 {
+            return u64::MAX;
+        }
+        epoch_ms().saturating_sub(last)
+    }
+}
+
 /// Keepalive state for a PLX-bridged device.
 ///
 /// Performs periodic config space reads on the device and its bridge
 /// ancestry to prevent the kernel from putting the PLX fabric into D3cold.
+/// Uses `tokio::time::interval` for drift-free timing with immediate first
+/// tick, and skips synthetic heartbeats when real PCIe traffic was recent.
 #[derive(Debug)]
 pub struct PlxKeepalive {
     /// PCI BDF of the device behind the PLX bridge.
@@ -52,6 +89,9 @@ pub struct PlxKeepalive {
     /// All BDFs in the bridge hierarchy (device + ancestors).
     /// Populated by [`detect_bridge_chain`].
     bridge_chain: Vec<String>,
+
+    /// Optional activity tracker for backpressure.
+    activity: Option<ActivityTracker>,
 }
 
 /// Handle to a running keepalive task.
@@ -112,6 +152,7 @@ impl PlxKeepalive {
             bdf: bdf.to_string(),
             interval,
             bridge_chain,
+            activity: None,
         }
     }
 
@@ -119,6 +160,15 @@ impl PlxKeepalive {
     #[must_use]
     pub fn with_secs(bdf: &str, secs: u64) -> Self {
         Self::new(bdf, Duration::from_secs(secs))
+    }
+
+    /// Attach an [`ActivityTracker`] for backpressure. When real PCIe
+    /// traffic is recorded via the tracker, the keepalive skips its
+    /// synthetic heartbeat for that cycle.
+    #[must_use]
+    pub fn with_activity_tracker(mut self, tracker: ActivityTracker) -> Self {
+        self.activity = Some(tracker);
+        self
     }
 
     /// The BDFs that will be read on each heartbeat.
@@ -138,6 +188,10 @@ impl PlxKeepalive {
     /// Returns a [`KeepaliveHandle`] that can be used to stop the task
     /// and query heartbeat count. The task runs until stopped or the
     /// tokio runtime shuts down.
+    ///
+    /// Uses `tokio::time::interval` with `MissedTickBehavior::Skip` for
+    /// drift-free scheduling. The first tick fires immediately — no
+    /// initial delay before the first heartbeat.
     #[must_use]
     pub fn spawn(self) -> KeepaliveHandle {
         let running = Arc::new(AtomicBool::new(true));
@@ -152,12 +206,14 @@ impl PlxKeepalive {
         let interval = self.interval;
         let chain = self.bridge_chain;
         let bdf = self.bdf;
+        let activity = self.activity;
 
         tokio::spawn(async move {
             tracing::info!(
                 bdf = %bdf,
                 chain_len = chain.len(),
                 interval_ms = interval.as_millis() as u64,
+                activity_aware = activity.is_some(),
                 "PLX keepalive started",
             );
 
@@ -166,7 +222,20 @@ impl PlxKeepalive {
                 crate::sysfs::pin_power(bridge_bdf);
             }
 
+            let mut ticker = tokio::time::interval(interval);
+            ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
             while running.load(Ordering::Acquire) {
+                ticker.tick().await;
+
+                // Skip synthetic heartbeat if real traffic was recent
+                if let Some(ref tracker) = activity {
+                    if tracker.ms_since_last() < interval.as_millis() as u64 {
+                        heartbeats.fetch_add(1, Ordering::Relaxed);
+                        continue;
+                    }
+                }
+
                 let mut all_alive = true;
 
                 for target_bdf in &chain {
@@ -183,13 +252,10 @@ impl PlxKeepalive {
                 heartbeats.fetch_add(1, Ordering::Relaxed);
 
                 if !all_alive {
-                    // Re-pin power on all bridges — kernel may have overridden
                     for bridge_bdf in &chain {
                         crate::sysfs::pin_power(bridge_bdf);
                     }
                 }
-
-                tokio::time::sleep(interval).await;
             }
 
             tracing::info!(
@@ -237,6 +303,15 @@ fn config_read_heartbeat(bdf: &str) -> bool {
     }
 }
 
+/// Check whether a sysfs directory name looks like a PCI BDF (`DDDD:BB:DD.F`).
+///
+/// Rejects PCI domain roots like `pci0000:40` which contain a colon but
+/// no dot, and would otherwise pollute bridge chain walks.
+#[must_use]
+pub fn is_pci_bdf(name: &str) -> bool {
+    name.contains(':') && name.contains('.')
+}
+
 /// Walk sysfs ancestry to find all PCI bridges between a device and the root.
 ///
 /// Returns a vec starting with the device BDF, followed by each upstream
@@ -256,8 +331,7 @@ fn detect_bridge_chain(bdf: &str) -> Vec<String> {
             break;
         };
 
-        // PCI BDFs contain colons (e.g., "0000:4a:08.0")
-        if !name.contains(':') {
+        if !is_pci_bdf(name) {
             break;
         }
 
@@ -307,6 +381,7 @@ mod tests {
         assert_eq!(ka.bdf, "9999:99:99.9");
         assert_eq!(ka.bridge_chain.len(), 1);
         assert!(!ka.has_bridges());
+        assert!(ka.activity.is_none());
     }
 
     #[test]
@@ -316,9 +391,58 @@ mod tests {
     }
 
     #[test]
+    fn keepalive_with_activity_tracker() {
+        let tracker = ActivityTracker::new();
+        let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5))
+            .with_activity_tracker(tracker);
+        assert!(ka.activity.is_some());
+    }
+
+    #[test]
+    fn activity_tracker_initial_state() {
+        let tracker = ActivityTracker::new();
+        assert_eq!(tracker.ms_since_last(), u64::MAX);
+    }
+
+    #[test]
+    fn activity_tracker_record_and_check() {
+        let tracker = ActivityTracker::new();
+        tracker.record();
+        assert!(tracker.ms_since_last() < 1000);
+    }
+
+    #[test]
+    fn activity_tracker_clone_shares_state() {
+        let tracker = ActivityTracker::new();
+        let clone = tracker.clone();
+        tracker.record();
+        assert!(clone.ms_since_last() < 1000);
+    }
+
+    #[test]
     fn heartbeat_once_nonexistent() {
         let ka = PlxKeepalive::new("9999:99:99.9", Duration::from_secs(5));
         assert!(!ka.heartbeat_once());
+    }
+
+    #[test]
+    fn is_pci_bdf_valid() {
+        assert!(is_pci_bdf("0000:49:00.0"));
+        assert!(is_pci_bdf("0000:4a:08.0"));
+        assert!(is_pci_bdf("0001:00:00.0"));
+    }
+
+    #[test]
+    fn is_pci_bdf_rejects_domain_root() {
+        assert!(!is_pci_bdf("pci0000:40"));
+        assert!(!is_pci_bdf("pci0000:00"));
+    }
+
+    #[test]
+    fn is_pci_bdf_rejects_garbage() {
+        assert!(!is_pci_bdf(""));
+        assert!(!is_pci_bdf("not-a-bdf"));
+        assert!(!is_pci_bdf("pci0000"));
     }
 
     #[test]

@@ -59,5 +59,7 @@ pub use ring_meta::{MailboxMeta, RingMeta, RingMetaEntry};
 pub use vendor_lifecycle::{
     RebindStrategy, ResetMethod, VendorLifecycle, detect_lifecycle, detect_lifecycle_for_target,
 };
-pub use plx_keepalive::{KeepaliveHandle, PlxKeepalive, detect_plx_bridge};
+pub use plx_keepalive::{
+    ActivityTracker, KeepaliveHandle, PlxKeepalive, detect_plx_bridge, is_pci_bdf,
+};
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};
