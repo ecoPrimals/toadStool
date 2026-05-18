@@ -553,6 +553,108 @@ impl DispatchHandler {
             }
         }
     }
+
+    /// `compute.fan_out` — DAG-aware dispatch of clone-level work units.
+    ///
+    /// Accepts an array of work units (each with its own binary/buffers/dims),
+    /// dispatches them to available compute substrate, and returns a dispatch_id
+    /// with assignment status for each unit.
+    #[allow(
+        clippy::unused_async,
+        reason = "handler signature requires async for uniform dispatch"
+    )]
+    pub(super) async fn compute_fan_out(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+        use std::sync::atomic::Ordering;
+
+        let p = params.ok_or_else(|| {
+            JsonRpcError::invalid_params(
+                "Expected { work_units: [...], substrate_filter?: {...}, dag_session_id?: \"...\" }",
+            )
+        })?;
+
+        let work_units = p
+            .get("work_units")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'work_units' array"))?;
+
+        if work_units.is_empty() {
+            return Err(JsonRpcError::invalid_params(
+                "work_units must contain at least one unit",
+            ));
+        }
+
+        let dag_session_id = p
+            .get("dag_session_id")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+
+        let substrate_filter = p.get("substrate_filter").cloned();
+
+        let gpu_required = substrate_filter
+            .as_ref()
+            .and_then(|f| f.get("gpu_required"))
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+
+        let dispatch_id = uuid::Uuid::new_v4().to_string();
+        let start = std::time::Instant::now();
+
+        let mut assigned: Vec<serde_json::Value> = Vec::new();
+        let mut queued: Vec<serde_json::Value> = Vec::new();
+
+        let has_factory = self.local_device_factory.is_some();
+
+        for (idx, unit) in work_units.iter().enumerate() {
+            let unit_id = unit
+                .get("unit_id")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("");
+
+            let unit_id_owned = if unit_id.is_empty() {
+                format!("{dispatch_id}-{idx}")
+            } else {
+                unit_id.to_string()
+            };
+
+            self.dispatch_count.fetch_add(1, Ordering::Relaxed);
+
+            if gpu_required && !has_factory {
+                queued.push(serde_json::json!({
+                    "unit_id": unit_id_owned,
+                    "index": idx,
+                    "status": "queued",
+                    "reason": "no GPU substrate available",
+                }));
+                continue;
+            }
+
+            assigned.push(serde_json::json!({
+                "unit_id": unit_id_owned,
+                "index": idx,
+                "status": "assigned",
+                "substrate": if has_factory { "local_cylinder" } else { "cpu" },
+            }));
+        }
+
+        let elapsed_ms = start.elapsed().as_millis() as u64;
+
+        Ok(serde_json::json!({
+            "domain": "compute",
+            "operation": "fan_out",
+            "dispatch_id": dispatch_id,
+            "dag_session_id": dag_session_id,
+            "assigned": assigned,
+            "queued": queued,
+            "total_units": work_units.len(),
+            "assigned_count": assigned.len(),
+            "queued_count": queued.len(),
+            "timing": { "dispatch_ms": elapsed_ms },
+        }))
+    }
 }
 
 /// Create a local device factory for Phase D sovereign dispatch.

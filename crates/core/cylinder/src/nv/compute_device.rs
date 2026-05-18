@@ -1108,14 +1108,14 @@ impl ComputeDevice for NvVfioComputeDevice {
                 profile.launch_method, qmd_iova,
             ));
 
-            if matches!(state.completion, super::generation::CompletionStrategy::SemaphoreFence) {
-                if let Some(sem) = &state.semaphore {
-                    state.semaphore_value = state.semaphore_value.wrapping_add(1);
-                    let release_pb = super::pushbuf::PushBuf::semaphore_release(
-                        sem.iova(), state.semaphore_value, 0,
-                    );
-                    init_pb.append(&release_pb);
-                }
+            if matches!(state.completion, super::generation::CompletionStrategy::SemaphoreFence)
+                && let Some(sem) = &state.semaphore
+            {
+                state.semaphore_value = state.semaphore_value.wrapping_add(1);
+                let release_pb = super::pushbuf::PushBuf::semaphore_release(
+                    sem.iova(), state.semaphore_value, 0,
+                );
+                init_pb.append(&release_pb);
             }
 
             state.submit_pushbuffer(init_pb.as_bytes())?;

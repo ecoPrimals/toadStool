@@ -107,6 +107,7 @@ mod tests {
             },
             resources: None,
             security: None,
+            data_dependencies: None,
         }
     }
 

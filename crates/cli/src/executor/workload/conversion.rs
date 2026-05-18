@@ -175,6 +175,7 @@ mod tests {
             },
             resources: None,
             security: None,
+            data_dependencies: None,
         };
 
         let env_overrides = HashMap::new();
@@ -210,6 +211,7 @@ mod tests {
             },
             resources: None,
             security: None,
+            data_dependencies: None,
         };
 
         let result = convert_to_workload_spec(&workload, HashMap::new());
@@ -244,6 +246,7 @@ mod tests {
             },
             resources: None,
             security: None,
+            data_dependencies: None,
         };
 
         let result = convert_to_workload_spec(&workload, HashMap::new());
@@ -278,6 +281,7 @@ mod tests {
             },
             resources: None,
             security: None,
+            data_dependencies: None,
         };
 
         let result = convert_to_workload_spec(&workload, HashMap::new());
@@ -380,6 +384,7 @@ mod tests {
             },
             resources: None,
             security: None,
+            data_dependencies: None,
         };
 
         let result = convert_to_workload_spec(&workload, overrides).unwrap();

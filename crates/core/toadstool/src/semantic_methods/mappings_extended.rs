@@ -126,6 +126,11 @@ where
     add_mapping("ember.gr.init", "device_gr_init");
     add_mapping("sovereign.gr.init", "device_gr_init");
 
+    // DAG-aware fan-out dispatch for distributed clone processing.
+    add_mapping("compute.fan_out", "compute_fan_out");
+    add_mapping("ember.fan_out", "compute_fan_out");
+    add_mapping("sovereign.fan_out", "compute_fan_out");
+
     // ═══════════════════════════════════════════════════════════
     // HEALTH DOMAIN — build identity and drain control
     // ═══════════════════════════════════════════════════════════

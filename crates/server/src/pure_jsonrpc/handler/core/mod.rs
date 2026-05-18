@@ -11,7 +11,7 @@ mod wire_l3;
 
 pub(crate) use compute::{gpu_info, gpu_memory, version_info};
 pub(crate) use health::{health, health_drain, health_liveness, health_readiness, health_version};
-pub(crate) use identity::{capabilities_list, discover_capabilities, identity_get};
+pub(crate) use identity::{capabilities_list, discover_capabilities, identity_get, primal_announce};
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 
@@ -24,6 +24,7 @@ pub(super) type JsonRpcResult = Result<serde_json::Value, JsonRpcError>;
 pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "capabilities.list",
     "identity.get",
+    "primal.announce",
     "health.liveness",
     "health.readiness",
     "health.check",
@@ -57,6 +58,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "compute.list",
     "compute.dispatch",
     "compute.dispatch.submit",
+    "compute.fan_out",
     "compute.dispatch.status",
     "compute.dispatch.result",
     "compute.dispatch.forward",

@@ -189,9 +189,10 @@ pub fn classify_method(method: &str) -> MethodVisibility {
         | "health.drain" | "toadstool.health" | "compute.health" => MethodVisibility::Public,
 
         // Identity and capabilities — introspection is always public
-        "identity.get" | "toadstool.version" | "compute.version" | "capabilities.list"
-        | "capability.list" | "primal.capabilities" | "compute.capabilities"
-        | "compute.discover_capabilities" | "toadstool.query_capabilities" => {
+        "identity.get" | "primal.announce" | "toadstool.version" | "compute.version"
+        | "capabilities.list" | "capability.list" | "primal.capabilities"
+        | "compute.capabilities" | "compute.discover_capabilities"
+        | "toadstool.query_capabilities" => {
             MethodVisibility::Public
         }
 

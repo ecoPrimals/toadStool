@@ -16,6 +16,30 @@ pub struct WorkloadFile {
     pub resources: Option<ResourceSpec>,
     /// Optional security settings
     pub security: Option<SecuritySpec>,
+    /// Input data dependencies that must be staged before execution.
+    /// Each entry declares an artifact the workload requires (path, URI, or
+    /// nestGate artifact ID). The runtime ensures these are present before
+    /// dispatch.
+    pub data_dependencies: Option<Vec<DataDependency>>,
+}
+
+/// A declared input data dependency for a workload.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct DataDependency {
+    /// Logical name used to reference this dependency within the workload.
+    pub name: String,
+    /// Source: local path, URI (`nestgate://artifact-id`), or inline.
+    pub source: String,
+    /// Expected BLAKE3 hash of the artifact (optional integrity check).
+    pub blake3: Option<String>,
+    /// Whether this dependency is required (default: true). Optional deps
+    /// allow degraded execution when the artifact is unavailable.
+    #[serde(default = "default_required")]
+    pub required: bool,
+}
+
+fn default_required() -> bool {
+    true
 }
 
 /// Workload metadata (name, description, version)

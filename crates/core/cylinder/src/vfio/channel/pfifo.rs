@@ -258,10 +258,7 @@ pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> Driver
     // reads 0 even when functional). The preempt ACK liveness probe
     // is the authoritative check for PFIFO state.
     let pfifo_en = bar0.read_u32(pfifo::ENABLE).unwrap_or(0);
-    #[allow(unused_assignments)]
-    let readback;
     if cfg.skip_pfifo_toggle {
-        readback = pfifo_en;
         tracing::info!(
             pfifo_en = format_args!("{pfifo_en:#010x}"),
             "PFIFO toggle skipped (warm handoff — preserving scheduler state)"
@@ -271,7 +268,7 @@ pub fn init_pfifo_engine_with(bar0: &MappedBar, cfg: &PfifoInitConfig) -> Driver
         std::thread::sleep(std::time::Duration::from_millis(1));
         w(pfifo::ENABLE, 1)?;
         std::thread::sleep(std::time::Duration::from_millis(cfg.pfifo_settle_ms));
-        readback = bar0.read_u32(pfifo::ENABLE).unwrap_or(0xDEAD);
+        let readback = bar0.read_u32(pfifo::ENABLE).unwrap_or(0xDEAD);
 
         if readback == 0 && cfg.retry_on_priv_fault {
             tracing::warn!("PFIFO_ENABLE=0 after first write — retrying with PRI fault re-clear");

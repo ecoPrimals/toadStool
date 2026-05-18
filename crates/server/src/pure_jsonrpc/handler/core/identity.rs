@@ -39,67 +39,83 @@ pub(crate) async fn capabilities_list(
 ) -> JsonRpcResult {
     let methods = all_callable_methods(semantic_registry);
 
+    let capabilities = serde_json::json!([
+        {
+            "type": "compute",
+            "methods": ["execute", "submit", "status", "result", "cancel", "list",
+                        "dispatch.submit", "dispatch.status", "dispatch.result",
+                        "dispatch.forward", "dispatch.capabilities",
+                        "dispatch.pipeline.submit", "dispatch.pipeline.status",
+                        "fan_out",
+                        "hardware.observe", "hardware.distill", "hardware.apply",
+                        "hardware.share_recipe", "hardware.auto_init",
+                        "hardware.auto_init_all", "hardware.status",
+                        "hardware.vfio_devices",
+                        "performance_surface.report", "performance_surface.query",
+                        "performance_surface.list", "route.multi_unit",
+                        "health", "version", "capabilities", "discover_capabilities"],
+            "version": version,
+            "description": "GPU job queue, hardware dispatch, and performance routing"
+        },
+        {
+            "type": PRIMAL_NAME,
+            "methods": ["submit_workload", "query_status", "cancel_workload",
+                        "list_workloads", "validate", "query_capabilities", "health", "version",
+                        "resources.estimate", "resources.validate_availability",
+                        "resources.suggest_optimizations"],
+            "version": version,
+            "description": "High-level workload executor (multi-runtime)"
+        },
+        {
+            "type": "gpu",
+            "methods": ["query_info", "query_memory", "query_telemetry"],
+            "description": "GPU hardware info and telemetry"
+        },
+        {
+            "type": "gate",
+            "methods": ["update", "remove", "list", "route"],
+            "description": "Distributed cross-gate routing"
+        },
+        {
+            "type": "transport",
+            "methods": ["discover", "list", "route", "open", "stream", "status"],
+            "description": "Hardware transport (DRM, V4L2, serial)"
+        },
+        {
+            "type": "shader",
+            "methods": ["dispatch"],
+            "description": "Sovereign shader dispatch (VFIO/DRM passthrough)"
+        },
+        {
+            "type": "ember",
+            "methods": ["list", "status", "reacquire", "swap", "warm_catch"],
+            "description": "glowPlug/ember GPU device lifecycle"
+        },
+        {
+            "type": "device",
+            "methods": ["vfio.open", "vfio.roundtrip", "gr.init"],
+            "description": "VFIO device management and GR context initialization"
+        },
+        {
+            "type": "mmio",
+            "methods": ["read32", "write32", "batch", "pramin.read32", "bar0.probe", "falcon.status"],
+            "description": "BAR0 register access and falcon diagnostics"
+        },
+        {
+            "type": "btsp",
+            "methods": ["capabilities"],
+            "description": "BTSP transport security (ChaCha20-Poly1305 + HKDF)"
+        }
+    ]);
+    let cap_count = capabilities.as_array().map_or(0, Vec::len);
+
     Ok(serde_json::json!({
         "primal": toadstool_common::constants::PRIMAL_NAME,
         "version": version,
+        "capabilities": capabilities,
+        "count": cap_count,
         "methods": methods,
-        "provided_capabilities": [
-            {
-                "type": "compute",
-                "methods": ["execute", "submit", "status", "result", "cancel", "list",
-                            "dispatch.submit", "dispatch.status", "dispatch.result",
-                            "dispatch.forward", "dispatch.capabilities",
-                            "dispatch.pipeline.submit", "dispatch.pipeline.status",
-                            "hardware.observe", "hardware.distill", "hardware.apply",
-                            "hardware.share_recipe", "hardware.auto_init",
-                            "hardware.auto_init_all", "hardware.status",
-                            "hardware.vfio_devices",
-                            "performance_surface.report", "performance_surface.query",
-                            "performance_surface.list", "route.multi_unit",
-                            "health", "version", "capabilities", "discover_capabilities"],
-                "version": version,
-                "description": "GPU job queue, hardware dispatch, and performance routing"
-            },
-            {
-                "type": PRIMAL_NAME,
-                "methods": ["submit_workload", "query_status", "cancel_workload",
-                            "list_workloads", "validate", "query_capabilities", "health", "version",
-                            "resources.estimate", "resources.validate_availability",
-                            "resources.suggest_optimizations"],
-                "version": version,
-                "description": "High-level workload executor (multi-runtime)"
-            },
-            {
-                "type": "gpu",
-                "methods": ["query_info", "query_memory", "query_telemetry"],
-                "description": "GPU hardware info and telemetry"
-            },
-            {
-                "type": "gate",
-                "methods": ["update", "remove", "list", "route"],
-                "description": "Distributed cross-gate routing"
-            },
-            {
-                "type": "transport",
-                "methods": ["discover", "list", "route", "open", "stream", "status"],
-                "description": "Hardware transport (DRM, V4L2, serial)"
-            },
-            {
-                "type": "shader",
-                "methods": ["dispatch"],
-                "description": "Sovereign shader dispatch (VFIO/DRM passthrough)"
-            },
-            {
-                "type": "ember",
-                "methods": ["list", "status", "reacquire", "swap", "warm_catch"],
-                "description": "glowPlug/ember GPU device lifecycle"
-            },
-            {
-                "type": "mmio",
-                "methods": ["read32", "write32", "batch", "pramin.read32", "bar0.probe", "falcon.status"],
-                "description": "BAR0 register access and falcon diagnostics"
-            }
-        ],
+        "provided_capabilities": capabilities,
         "consumed_capabilities": [
             "security.sign",
             "security.verify",
@@ -176,6 +192,35 @@ pub(crate) async fn identity_get(
         "methods": semantic_methods,
         "transport": "unix-socket",
         "socket_name": format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN),
+    }))
+}
+
+/// `primal.announce` — self-registration broadcast for discovery.
+///
+/// Returns the primal's identity, capabilities, and socket path so
+/// orchestrators and peers can register this primal in the mesh.
+#[allow(
+    clippy::unused_async,
+    reason = "handler signature requires async for uniform dispatch"
+)]
+pub(crate) async fn primal_announce(
+    version: &str,
+    semantic_registry: &SemanticMethodRegistry,
+) -> JsonRpcResult {
+    let methods = all_callable_methods(semantic_registry);
+
+    Ok(serde_json::json!({
+        "primal": PRIMAL_NAME,
+        "version": version,
+        "domain": "compute",
+        "capabilities": ["compute", "workload", "gpu", "shader_dispatch",
+                         "hardware_transport", "hardware_learning"],
+        "methods": methods,
+        "count": methods.len(),
+        "protocol": "jsonrpc-2.0",
+        "transport": ["uds", "tcp"],
+        "socket_name": format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN),
+        "status": "ready",
     }))
 }
 
@@ -274,5 +319,42 @@ mod tests {
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("sock"))
         );
         assert!(sock.contains("compute"));
+    }
+
+    #[tokio::test]
+    async fn test_capabilities_list_stadial_envelope() {
+        let reg = empty_registry();
+        let result = capabilities_list(&reg, "0.2.0").await.unwrap();
+        assert!(result["capabilities"].is_array());
+        let count = result["count"].as_u64().unwrap();
+        assert!(count > 0);
+        assert_eq!(
+            count as usize,
+            result["capabilities"].as_array().unwrap().len()
+        );
+        let cap_types: Vec<&str> = result["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|c| c["type"].as_str())
+            .collect();
+        assert!(cap_types.contains(&"btsp"));
+        assert!(cap_types.contains(&"device"));
+    }
+
+    #[tokio::test]
+    async fn test_primal_announce_structure() {
+        let reg = empty_registry();
+        let result = primal_announce("0.2.0", &reg).await.unwrap();
+        assert_eq!(result["primal"], PRIMAL_NAME);
+        assert_eq!(result["version"], "0.2.0");
+        assert_eq!(result["domain"], "compute");
+        assert_eq!(result["status"], "ready");
+        assert!(result["capabilities"].is_array());
+        assert!(result["methods"].is_array());
+        let count = result["count"].as_u64().unwrap();
+        assert_eq!(count as usize, result["methods"].as_array().unwrap().len());
+        let transport = result["transport"].as_array().unwrap();
+        assert!(transport.iter().any(|t| t == "uds"));
     }
 }

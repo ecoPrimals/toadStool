@@ -86,6 +86,10 @@ impl VfioChannel {
     /// # Errors
     ///
     /// Returns error if any DMA allocation or BAR0 write fails.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "hardware channel init requires all these distinct physical parameters"
+    )]
     pub fn create_for_profile(
         container: DmaBackend,
         bar0: &MappedBar,
@@ -598,7 +602,7 @@ impl VfioChannel {
                 w(pbdma::USERD_LO, userd_val);
                 w(pbdma::USERD_HI, (userd_iova >> 32) as u32);
                 w(pbdma::SIGNATURE, 0x0000_FACE);
-                w(pbdma::CHANNEL_INFO, 0x0300_0000 | channel_id as u32);
+                w(pbdma::CHANNEL_INFO, 0x0300_0000 | channel_id);
                 w(pbdma::GP_FETCH, 0);
                 w(pbdma::GP_STATE, 0);
                 w(pbdma::GP_PUT, 0);

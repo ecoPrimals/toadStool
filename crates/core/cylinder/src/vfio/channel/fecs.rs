@@ -297,7 +297,7 @@ pub fn pramin_read(
     const PRAMIN_SIZE: usize = 0x0001_0000; // 64 KiB window
     const BAR0_WINDOW: usize = 0x0000_1700;
 
-    if len % 4 != 0 {
+    if !len.is_multiple_of(4) {
         return Err(DriverError::MmapFailed(Cow::Borrowed(
             "PRAMIN read length must be 4-byte aligned"
         )));
@@ -352,7 +352,7 @@ pub fn pramin_write(
     const PRAMIN_SIZE: usize = 0x0001_0000;
     const BAR0_WINDOW: usize = 0x0000_1700;
 
-    if data.len() % 4 != 0 {
+    if !data.len().is_multiple_of(4) {
         return Err(DriverError::MmapFailed(Cow::Borrowed(
             "PRAMIN write length must be 4-byte aligned"
         )));

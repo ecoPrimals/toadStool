@@ -75,6 +75,8 @@ deny = [
     # OpenSSL — use rustls + aws-lc-rs instead
     { name = "openssl" },
     { name = "openssl-sys" },
+    # aws-lc-sys — C FFI shim for AWS-LC; banned per SOVEREIGNTY_STANDARDS.md.
+    { name = "aws-lc-sys" },
     # ring — C/asm crypto; use aws-lc-rs or other pure Rust alternatives.
     # License clarified in [[licenses.clarify]]; present in Cargo.lock as a
     # conditional transitive dep via quinn-proto / rustls-webpki (not on default build path).

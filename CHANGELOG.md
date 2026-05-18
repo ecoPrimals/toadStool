@@ -5,7 +5,26 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 14, 2026 (Sessions 43-262)
+## [Unreleased] - May 17, 2026 (Sessions 43-263)
+
+### Session S263 (May 17, 2026) — Stadial Gate: primalSpring Audit Response
+
+primalSpring Wave 22 stadial gate audit response: universal standards compliance, upstream `compute.fan_out` implementation, composition gap closure.
+
+- ADDED: `compute.fan_out` JSON-RPC endpoint — DAG-aware dispatch of clone-level work units with substrate filtering, auto-generated dispatch_id, and per-unit assignment/queuing status (wetSpring upstream ask for Tenaillon 2016 264-clone parallelism)
+- ADDED: `primal.announce` JSON-RPC endpoint — self-registration broadcast for mesh discovery (stadial standard)
+- ADDED: `btsp.capabilities` in `capabilities.list` response — BTSP transport security capability declaration
+- ADDED: `device` capability type in `capabilities.list` — VFIO management and GR init
+- EVOLVED: `capabilities.list` response shape — added `capabilities` array + `count` field per `CAPABILITY_WIRE_STANDARD.md` envelope (backward-compat: `provided_capabilities` retained)
+- EVOLVED: `DataDependency` struct in workload TOML spec — `name`, `source`, `blake3`, `required` fields for input data staging (composition gap with nestGate)
+- SECURITY: Banned `aws-lc-sys` in `deny.toml` per `SOVEREIGNTY_STANDARDS.md` dark forest gate
+- FIXED: `#[expect(non_camel_case_types)]` in `gguf.rs` — added `reason`
+- FIXED: 4 pre-existing clippy issues from Rust 1.92 (`manual_is_multiple_of`, `collapsible_if`, `needless_late_init`, `unnecessary_cast`, `too_many_arguments`)
+- EVOLVED: Workspace version `0.1.0` → `0.2.0` (reflecting Phase D maturity, stadial readiness)
+- ADDED: Semantic aliases `ember.fan_out`, `sovereign.fan_out` for `compute.fan_out`
+- ADDED: Wire L3 cost entry for `compute.fan_out` (high energy, GPU-capable)
+- ADDED: 12 new tests — fan_out validation (5), capabilities envelope (2), primal.announce (1), shader_info + gr_init (from S262, 4)
+- METRICS: 85 JSON-RPC methods (direct), 8,945 lib tests, 0 clippy warnings, deny clean
 
 ### Session S262 (May 14, 2026) — Diesel Engine Completion: GR Init IPC + Shader Metadata Aliases
 

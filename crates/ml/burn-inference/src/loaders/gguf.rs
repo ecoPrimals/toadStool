@@ -41,7 +41,7 @@ const GGUF_VERSION_3: u32 = 3;
 /// GGUF data types
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[expect(non_camel_case_types)]
+#[expect(non_camel_case_types, reason = "GGUF wire-format names are spec-defined (e.g. F32, Q4_0)")]
 pub enum GgufType {
     F32 = 0,
     F16 = 1,
