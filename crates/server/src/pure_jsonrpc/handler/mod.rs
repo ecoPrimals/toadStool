@@ -55,6 +55,8 @@ pub struct JsonRpcHandler {
     gate: method_gate::MethodGate,
     semantic_registry: SemanticMethodRegistry,
     dispatch: DispatchHandler,
+    /// Shared anchor store for warm keepalive — leaked on SIGTERM.
+    anchor_store: dispatch::AnchorStore,
     hw_learn: HwLearnHandler,
     job: JobHandler,
     workload: WorkloadHandler,
@@ -107,6 +109,8 @@ impl JsonRpcHandler {
             dispatch.set_local_device_factory(factory);
         }
 
+        let anchor_store = dispatch.anchor_store();
+
         Self {
             version: version.into(),
             start_time: std::time::Instant::now(),
@@ -116,6 +120,7 @@ impl JsonRpcHandler {
             gate,
             semantic_registry: SemanticMethodRegistry::new(),
             dispatch,
+            anchor_store,
             hw_learn: HwLearnHandler::new(),
             job: JobHandler::new(local_gate_id),
             workload: WorkloadHandler::new(executor),
@@ -124,6 +129,11 @@ impl JsonRpcHandler {
             silicon: SiliconHandler::new(),
             glowplug: glowplug_client::create_glowplug_client(),
         }
+    }
+
+    /// Get the anchor store for wiring into the SIGTERM leak handler.
+    pub fn anchor_store(&self) -> dispatch::AnchorStore {
+        self.anchor_store.clone()
     }
 
     /// Attempt to connect to the Tower security client (BearDog) for crypto
@@ -383,7 +393,16 @@ impl JsonRpcHandler {
                 return self.dispatch.device_gr_init(params).await;
             }
 
-            "sovereign.init" => return sovereign::sovereign_init(params),
+            "sovereign.init" => {
+                // Always route through the ember handler — it has access to
+                // the cached device's DMA backend.  The stateless handler
+                // can't acquire DMA when the factory already holds the VFIO
+                // group, which causes acr_no_dma failures.
+                return self.dispatch.sovereign_init_ember(params).await;
+            }
+            "sovereign.profile" => {
+                return self.dispatch.sovereign_profile_ember(params).await;
+            }
             "sovereign.devinit" => return sovereign::sovereign_devinit(params),
 
             "mmio.read32" => return mmio::mmio_read32(params),

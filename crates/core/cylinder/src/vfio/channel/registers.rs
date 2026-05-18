@@ -290,6 +290,15 @@ pub mod pri {
     /// PRI master IOCTL — controls timeout duration and enable.
     pub const PRI_IOCTL: usize = 0x0012_2120;
 
+    /// PRI ringmaster command register (Kepler+).
+    pub const PRI_RINGMASTER_COMMAND: usize = 0x0012_2000;
+    /// PRI ringmaster interrupt status (Kepler+).
+    pub const PRI_RINGMASTER_INTR_STATUS: usize = 0x0012_200C;
+    /// Enumerate command for PRI ringmaster — re-discovers all ring stations.
+    pub const PRI_RINGMASTER_CMD_ENUMERATE: u32 = 0x0000_0004;
+    /// Start command for PRI ringmaster — starts the ring bus.
+    pub const PRI_RINGMASTER_CMD_START: u32 = 0x0000_0001;
+
     /// Sentinel values returned when a PRI target doesn't respond.
     /// The upper 16 bits encode the error type.
     pub const fn is_pri_error(val: u32) -> bool {
@@ -374,10 +383,6 @@ pub mod pri {
 /// `0xBADF1100` (BLCG/SLCG gated) or `0xBADF3000` (hub clock gated).
 ///
 /// Register map derived from nouveau `nvkm/subdev/therm/` and open-gpu-doc.
-#[expect(
-    dead_code,
-    reason = "clock gating constants reserved for sovereign power management"
-)]
 pub(crate) mod cg {
     /// PTHERM CG control — master clock gating override.
     /// Writing 0x0 disables CG at the top level.

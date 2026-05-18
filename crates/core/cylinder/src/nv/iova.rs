@@ -81,6 +81,8 @@ pub mod firmware {
     pub const GPCCS_CODE_IOVA: u64 = 0x0032_0000;
     /// GPCCS firmware data image.
     pub const GPCCS_DATA_IOVA: u64 = 0x0033_0000;
+    /// ACR load ucode image (PMU-targeted).
+    pub const ACR_UCODE_IOVA: u64 = 0x0034_0000;
 }
 
 /// Global IOVA space limits.
@@ -168,7 +170,7 @@ mod tests {
         assert!(dispatch::USERD_IOVA < dispatch::GR_CTX_IOVA);
         assert!(dispatch::GR_CTX_IOVA + dispatch::GR_CTX_SIZE as u64 <= dispatch::USER_BUFFER_BASE_IOVA);
         assert!(dispatch::USER_BUFFER_BASE_IOVA < firmware::FECS_CODE_IOVA);
-        assert!(firmware::GPCCS_DATA_IOVA + 0x1_0000 <= IOVA_LIMIT);
+        assert!(firmware::ACR_UCODE_IOVA + 0x1_0000 <= IOVA_LIMIT);
     }
 
     #[test]
@@ -216,6 +218,7 @@ mod tests {
             dispatch::GR_CTX_IOVA, dispatch::USER_BUFFER_BASE_IOVA,
             firmware::FECS_CODE_IOVA, firmware::FECS_DATA_IOVA,
             firmware::GPCCS_CODE_IOVA, firmware::GPCCS_DATA_IOVA,
+            firmware::ACR_UCODE_IOVA,
         ] {
             assert_eq!(iova % PAGE_SIZE, 0, "IOVA {iova:#x} is not page-aligned");
         }

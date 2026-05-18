@@ -1,20 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Staged sovereign GPU initialization pipeline.
+//! Staged sovereign device initialization pipeline.
 //!
-//! Orchestrates the full path from cold/warm VFIO device to compute-ready state.
-//! Each stage runs through fork-isolated MMIO where possible so that a BAR0
-//! D-state kills only the probing child, not the ember daemon.
+//! Orchestrates the full path from cold/warm device to compute-ready state.
+//! The pipeline is vendor/generation-agnostic — all hardware-specific
+//! decisions are delegated to a [`SovereignStrategy`] implementation.
 //!
 //! # Stages
 //!
 //! ```text
-//! 1. bar0_probe     — Chip ID verification, PMC liveness check
-//! 2. pmc_enable     — Master clock/engine enable (PMC_ENABLE = 0xFFFF_FFFF)
-//! 3. hbm2_training  — Memory controller bring-up via typestate pipeline
-//! 4. falcon_boot    — SEC2/ACR secure boot, then FECS/GPCCS GR falcons
-//! 5. gr_init        — GR engine BAR0 register programming
-//! 6. verify         — Final VRAM sentinel test and falcon health check
+//! 1.   bar0_probe          — Chip ID verification, PMC liveness check
+//! 2.   pmc_enable          — Staged engine clock enable (strategy-aware mask)
+//! 2b.  cg_sweep            — Clock gating disable across all domains (strategy)
+//! 2a.  pgraph_reset        — PGRAPH engine reset (PMC_ENABLE bit 12 toggle)
+//! 2c.  pri_recovery        — PRI bus fault acknowledge + ringmaster re-enumerate
+//! 2d.  pgob_ungating       — PGRAPH GPC broadcast ungate (strategy)
+//! 2e.  early_falcon_boot   — [cold ACR only] ACR DMA boot before memory training
+//! 3.   memory_training     — Memory controller bring-up
+//! 3b.  pmc_full            — Full engine ungating (post-devinit, strategy)
+//! 3c.  engine_ungate       — Replay captured init sequences (strategy)
+//! 4.   falcon_boot         — Microcontroller firmware boot (skipped if early)
+//! 5.   gr_init             — GR engine register programming
+//! 6.   verify              — Final memory/timer verification
 //! ```
+//!
+//! On cold Volta+ GPUs with secure boot (HBM2 + AcrDmaHs), stage 2e runs
+//! falcon_boot early so the PMU can drive HBM2 calibration in stage 3.
 //!
 //! # Contract
 //!
@@ -23,30 +33,35 @@
 
 use std::time::Instant;
 
-use crate::nv::generation::{self, BootStrategy};
 use crate::nv::pri::is_pri_fault;
 use crate::vfio::channel::hbm2_training::TrainingLog;
 use crate::vfio::device::MappedBar;
+use crate::vfio::boot_state::{SovereignBootState, probe_boot_state};
 use crate::vfio::sovereign_stages::{
-    MemoryTrainingResult, MemoryTrainingStrategy, PMC_ENABLE, bar0_probe, chip_id_to_sm,
-    dispatch_memory_training, falcon_boot, gr_init, is_warm_gpu, pmc_enable, verify,
+    MemoryTrainingResult, PMC_ENABLE, PmcEnableResult,
+    cg_sweep, dispatch_memory_training, falcon_boot, gr_init,
+    pgob_ungating, pgraph_engine_reset, pmc_enable, pmc_enable_full, pmc_enable_rollback,
+    pramin_sentinel_test, pri_bus_recover,
 };
+use crate::vfio::sovereign_strategy::SovereignStrategy;
 
 pub use crate::vfio::sovereign_types::{
     HaltBefore, SovereignInitOptions, SovereignInitResult, StageResult, StageStatus,
 };
 
-/// Run the full sovereign init pipeline on a VFIO-held GPU.
+/// Run the full sovereign init pipeline on a device.
 ///
-/// `bar0` must be a valid mapped BAR0 region from an active VFIO device.
-/// All MMIO in the probe stage uses fork isolation; the HBM2 and GR stages
+/// `bar0` must be a valid mapped BAR0 region from an active device.
+/// `strategy` encodes all vendor/generation-specific decisions.
+///
+/// All MMIO in the probe stage uses fork isolation; subsequent stages
 /// use direct BAR0 access (the controller's r/w helpers already have PRI
 /// fault recovery).
 pub fn sovereign_init(
     bar0: &MappedBar,
     bdf: &str,
     opts: &SovereignInitOptions,
-    bridge: &dyn crate::nv::gsp_bridge::GspBridge,
+    strategy: &dyn SovereignStrategy,
 ) -> SovereignInitResult {
     let pipeline_start = Instant::now();
     let mut stages: Vec<StageResult> = Vec::new();
@@ -54,31 +69,43 @@ pub fn sovereign_init(
     let mut boot0 = 0u32;
     let mut training_log: Option<TrainingLog> = None;
 
-    // ── Stage 1: BAR0 Probe ─────────────────────────────────────────────
+    // ── Stage 1: Identity Probe ──────────────────────────────────────────
     let t = Instant::now();
-    match bar0_probe(bar0) {
-        Ok((b0, cid)) => {
-            boot0 = b0;
-            chip_id = cid;
+    match strategy.probe_identity(bar0) {
+        Ok(id) => {
+            boot0 = id.identity_raw;
+            chip_id = id.identity_chip;
             stages.push(StageResult {
-                name: "bar0_probe".into(),
+                name: "identity_probe".into(),
                 status: StageStatus::Ok,
-                detail: Some(format!("boot0=0x{boot0:08x} chip=0x{chip_id:03x}")),
+                detail: Some(format!("raw=0x{boot0:08x} chip=0x{chip_id:03x}")),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
         }
         Err(e) => {
             stages.push(StageResult {
-                name: "bar0_probe".into(),
+                name: "identity_probe".into(),
                 status: StageStatus::Failed,
                 detail: Some(e.to_string()),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
-            return finish(bdf, boot0, chip_id, stages, None, pipeline_start, false);
+            return finish(bdf, boot0, chip_id, stages, None, pipeline_start, false, None);
         }
     }
 
-    // ── Stage 2: PMC Enable ─────────────────────────────────────────────
+    let power = strategy.power_profile();
+    let sm = strategy.sm_version();
+    let bridge = strategy.bridge();
+
+    tracing::info!(
+        gen = strategy.family_name(),
+        sm,
+        initial_mask = format!("0x{:08x}", power.initial_pmc_mask),
+        rollback = power.rollback_on_devinit_failure,
+        "Generation profile resolved for sovereign pipeline"
+    );
+
+    // ── Stage 2: PMC Enable (staged) ──────────────────────────────────
     if opts.halt_before == Some(HaltBefore::PmcEnable) {
         stages.push(StageResult {
             name: "pmc_enable".into(),
@@ -90,14 +117,16 @@ pub fn sovereign_init(
     }
 
     let t = Instant::now();
-    match pmc_enable(bar0) {
-        Ok(detail) => {
+    let pmc_result: PmcEnableResult;
+    match pmc_enable(bar0, power) {
+        Ok(result) => {
             stages.push(StageResult {
                 name: "pmc_enable".into(),
                 status: StageStatus::Ok,
-                detail: Some(detail),
+                detail: Some(result.detail()),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
+            pmc_result = result;
         }
         Err(e) => {
             stages.push(StageResult {
@@ -106,34 +135,209 @@ pub fn sovereign_init(
                 detail: Some(e.to_string()),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
-            return finish(bdf, boot0, chip_id, stages, None, pipeline_start, false);
+            return finish(bdf, boot0, chip_id, stages, None, pipeline_start, false, None);
         }
     }
 
-    // ── Stage 3: HBM2 Training ──────────────────────────────────────────
-    if opts.halt_before == Some(HaltBefore::Hbm2Training) {
-        stages.push(StageResult {
-            name: "hbm2_training".into(),
-            status: StageStatus::Skipped,
-            detail: Some("halt_before=hbm2_training".into()),
-            duration_ms: 0,
-        });
-        return finish_halted(bdf, boot0, chip_id, "hbm2_training", stages, pipeline_start);
+    // ── Stage 2a: PGRAPH Engine Reset ─────────────────────────────────
+    // Toggle GR bit in PMC_ENABLE to reset PGRAPH's internal PRI fabric.
+    // After UEFI POST the GPC ring stations retain stale fault state;
+    // without this reset, GPC/FECS/GPCCS registers read 0xBADF.
+    {
+        let t = Instant::now();
+        match pgraph_engine_reset(bar0) {
+            Ok(detail) => {
+                stages.push(StageResult {
+                    name: "pgraph_reset".into(),
+                    status: StageStatus::Ok,
+                    detail: Some(detail),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                stages.push(StageResult {
+                    name: "pgraph_reset".into(),
+                    status: StageStatus::Failed,
+                    detail: Some(e.to_string()),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
     }
 
-    let sm = opts.sm_version.unwrap_or(chip_id_to_sm(chip_id));
-    let profile = generation::profile_for_sm(sm);
+    // ── Stage 2b: CG Sweep + PRI Recovery ──────────────────────────────
+    if strategy.needs_cg_sweep() {
+        if opts.halt_before == Some(HaltBefore::CgSweep) {
+            stages.push(StageResult {
+                name: "cg_sweep".into(),
+                status: StageStatus::Skipped,
+                detail: Some("halt_before=cg_sweep".into()),
+                duration_ms: 0,
+            });
+            return finish_halted(bdf, boot0, chip_id, "cg_sweep", stages, pipeline_start);
+        }
 
-    // Warm detection: if PMC_ENABLE has many engines on AND PRAMIN is
-    // accessible, the GPU was previously trained (e.g. by nouveau warm
-    // handoff). Skip the full typestate pipeline.
+        let t = Instant::now();
+        let cg_result = cg_sweep(bar0);
+        stages.push(StageResult {
+            name: "cg_sweep".into(),
+            status: StageStatus::Ok,
+            detail: Some(cg_result.detail),
+            duration_ms: t.elapsed().as_millis() as u64,
+        });
+
+        let t = Instant::now();
+        let pri_result = pri_bus_recover(bar0);
+        stages.push(StageResult {
+            name: "pri_recovery".into(),
+            status: if pri_result.recovered {
+                StageStatus::Ok
+            } else {
+                StageStatus::Failed
+            },
+            detail: Some(format!(
+                "{} alive, {} faulted, recovered={}",
+                pri_result.alive, pri_result.faulted, pri_result.recovered
+            )),
+            duration_ms: t.elapsed().as_millis() as u64,
+        });
+    }
+
+    // ── Stage 2c: PGOB Ungating ──────────────────────────────────────
+    if strategy.needs_pgob_before_memory() {
+        if opts.halt_before == Some(HaltBefore::PgobUngate) {
+            stages.push(StageResult {
+                name: "pgob_ungating".into(),
+                status: StageStatus::Skipped,
+                detail: Some("halt_before=pgob_ungate".into()),
+                duration_ms: 0,
+            });
+            return finish_halted(bdf, boot0, chip_id, "pgob_ungating", stages, pipeline_start);
+        }
+
+        let t = Instant::now();
+        match pgob_ungating(bar0, bridge) {
+            Ok(detail) => {
+                stages.push(StageResult {
+                    name: "pgob_ungating".into(),
+                    status: StageStatus::Ok,
+                    detail: Some(detail),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                stages.push(StageResult {
+                    name: "pgob_ungating".into(),
+                    status: StageStatus::Failed,
+                    detail: Some(e.to_string()),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
+    }
+
+    // ── Stage 3: Memory Training ──────────────────────────────────────
+    if opts.halt_before == Some(HaltBefore::MemoryTraining) {
+        stages.push(StageResult {
+            name: "memory_training".into(),
+            status: StageStatus::Skipped,
+            detail: Some("halt_before=memory_training".into()),
+            duration_ms: 0,
+        });
+        return finish_halted(bdf, boot0, chip_id, "memory_training", stages, pipeline_start);
+    }
+
     let pmc_before = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
-    let warm_detected = is_warm_gpu(pmc_before, bar0);
 
-    let strategy = MemoryTrainingStrategy::for_memory_type(profile.memory_type);
+    // Unified boot state probe — single source of truth for warm/cold
+    let t_probe = Instant::now();
+    let boot_state = probe_boot_state(bar0, Some(&|b, w| strategy.detect_falcon_warm_state(b, w)));
+    let warm_detected = boot_state.is_warm();
+
+    tracing::info!(
+        bdf,
+        boot_state = %boot_state.summary(),
+        "boot state probed"
+    );
+
+    stages.push(StageResult {
+        name: "boot_state_probe".into(),
+        status: StageStatus::Ok,
+        detail: Some(boot_state.summary()),
+        duration_ms: t_probe.elapsed().as_millis() as u64,
+    });
+
+    // ── Cold ACR reorder: falcon boot before memory training ─────────
+    //
+    // On Volta+ with secure boot (HBM2 + AcrDmaHs), a cold GPU cannot
+    // train memory without the PMU falcon running signed firmware.  The
+    // PMU is loaded via ACR boot (falcon_boot stage).  If we detect a
+    // cold GPU that needs falcon-before-memory, promote falcon_boot
+    // ahead of memory_training so the PMU can drive HBM2 calibration.
+    let mut early_falcon_done = false;
+    if !warm_detected && strategy.needs_falcon_before_memory() && opts.dma_backend.is_some() {
+        tracing::info!(
+            "cold secure-boot GPU: running falcon_boot before memory_training"
+        );
+
+        let falcon_warm_state = strategy.detect_falcon_warm_state(bar0, false);
+        let t = Instant::now();
+        match falcon_boot(
+            bar0,
+            sm,
+            opts.dma_backend.as_ref(),
+            falcon_warm_state,
+            bridge,
+            strategy.falcon_boot_style(),
+        ) {
+            Ok(detail) => {
+                stages.push(StageResult {
+                    name: "early_falcon_boot".into(),
+                    status: StageStatus::Ok,
+                    detail: Some(detail),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+                early_falcon_done = true;
+
+                // Give PMU time to run devinit after ACR loads it.
+                // The PMU's signed firmware auto-runs devinit on cold GPUs
+                // when it detects needs_post.  Allow up to 2s for HBM2
+                // training to complete.
+                tracing::info!("waiting for PMU devinit after ACR boot...");
+                let poll_start = Instant::now();
+                let poll_timeout = std::time::Duration::from_secs(2);
+                while poll_start.elapsed() < poll_timeout {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    if pramin_sentinel_test(bar0) {
+                        tracing::info!(
+                            elapsed_ms = poll_start.elapsed().as_millis(),
+                            "VRAM alive after early falcon boot — PMU devinit succeeded"
+                        );
+                        break;
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "early falcon_boot failed — falling through to memory_training"
+                );
+                stages.push(StageResult {
+                    name: "early_falcon_boot".into(),
+                    status: StageStatus::Failed,
+                    detail: Some(e.to_string()),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
+    }
+
+    let mem_strategy = strategy.memory_strategy();
     let t = Instant::now();
-    match dispatch_memory_training(strategy, bar0, bdf, warm_detected, pmc_before, opts) {
+    let devinit_ok;
+    match dispatch_memory_training(mem_strategy, bar0, bdf, warm_detected, pmc_before, opts) {
         MemoryTrainingResult::Ok(detail) => {
+            devinit_ok = true;
             stages.push(StageResult {
                 name: "memory_training".into(),
                 status: StageStatus::Ok,
@@ -142,6 +346,7 @@ pub fn sovereign_init(
             });
         }
         MemoryTrainingResult::OkWithLog(log) => {
+            devinit_ok = true;
             let writes = log.write_count();
             training_log = Some(log);
             stages.push(StageResult {
@@ -152,6 +357,7 @@ pub fn sovereign_init(
             });
         }
         MemoryTrainingResult::Skipped(reason) => {
+            devinit_ok = true;
             stages.push(StageResult {
                 name: "memory_training".into(),
                 status: StageStatus::Skipped,
@@ -166,6 +372,23 @@ pub fn sovereign_init(
                 detail: Some(e.to_string()),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
+
+            if power.rollback_on_devinit_failure {
+                let rollback_detail = match pmc_enable_rollback(bar0, pmc_result.before) {
+                    Ok(()) => format!(
+                        "rolled back PMC_ENABLE to 0x{:08x}",
+                        pmc_result.before
+                    ),
+                    Err(e) => format!("rollback attempted but failed: {e}"),
+                };
+                stages.push(StageResult {
+                    name: "pmc_rollback".into(),
+                    status: StageStatus::Ok,
+                    detail: Some(rollback_detail),
+                    duration_ms: 0,
+                });
+            }
+
             return finish(
                 bdf,
                 boot0,
@@ -174,84 +397,118 @@ pub fn sovereign_init(
                 training_log,
                 pipeline_start,
                 warm_detected,
+                Some(boot_state),
             );
         }
     }
 
-    // ── Stage 3b: Engine Ungating ──────────────────────────────────────
-    // On NoAcr GPUs, engines are clock-gated after PMC_ENABLE. Replay
-    // any captured GrInitSequences to ungate them before falcon boot.
-    // Supports arbitrary engines; falls back to legacy kepler_gr_init.
-    let no_acr = matches!(profile.boot_strategy, BootStrategy::NoAcr);
-    if no_acr {
-        if opts.halt_before == Some(HaltBefore::KeplerPgraphUngate) {
-            stages.push(StageResult {
-                name: "engine_ungate".into(),
-                status: StageStatus::Skipped,
-                detail: Some("halt_before=kepler_pgraph_ungate".into()),
-                duration_ms: 0,
-            });
-            return finish_halted(
-                bdf,
-                boot0,
-                chip_id,
-                "engine_ungate",
-                stages,
-                pipeline_start,
-            );
-        }
-
-        // Build the sequence list: generalized sequences + legacy fallback
-        let mut ungate_list: Vec<(&str, &crate::nv::gr_init::GrInitSequence, Option<usize>)> =
-            opts.engine_init_sequences
-                .iter()
-                .map(|(name, seq, reg)| (name.as_str(), seq, *reg))
-                .collect();
-
-        // Legacy fallback: if no generalized sequences but kepler_gr_init exists
-        if ungate_list.is_empty() {
-            if let Some(ref gr_init_seq) = opts.kepler_gr_init {
-                ungate_list.push(("PGRAPH", gr_init_seq, Some(PGRAPH_STATUS)));
+    // ── Stage 3b: Post-devinit full engine ungating ─────────────────
+    if devinit_ok && power.full_enable_after_devinit && pmc_result.mask != 0xFFFF_FFFF {
+        let t = Instant::now();
+        match pmc_enable_full(bar0) {
+            Ok(detail) => {
+                stages.push(StageResult {
+                    name: "pmc_full_enable".into(),
+                    status: StageStatus::Ok,
+                    detail: Some(detail),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                stages.push(StageResult {
+                    name: "pmc_full_enable".into(),
+                    status: StageStatus::Failed,
+                    detail: Some(e.to_string()),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
             }
         }
+    }
 
-        if ungate_list.is_empty() {
-            let t = Instant::now();
-            stages.push(StageResult {
-                name: "engine_ungate".into(),
-                status: StageStatus::Skipped,
-                detail: Some("no init sequences provided".into()),
-                duration_ms: t.elapsed().as_millis() as u64,
-            });
-        } else {
-            for (engine_name, seq, status_reg) in &ungate_list {
-                let t = Instant::now();
-                let stage_name = format!("engine_ungate:{engine_name}");
-                match engine_ungate(bar0, seq, engine_name, *status_reg) {
-                    Ok(detail) => {
-                        stages.push(StageResult {
-                            name: stage_name,
-                            status: StageStatus::Ok,
-                            detail: Some(detail),
-                            duration_ms: t.elapsed().as_millis() as u64,
-                        });
-                    }
-                    Err(e) => {
-                        stages.push(StageResult {
-                            name: stage_name,
-                            status: StageStatus::Failed,
-                            detail: Some(e),
-                            duration_ms: t.elapsed().as_millis() as u64,
-                        });
-                        return finish(
-                            bdf,
-                            boot0,
-                            chip_id,
-                            stages,
-                            training_log,
-                            pipeline_start,
-                            warm_detected,
-                        );
+    // ── Stage 3c: Engine Ungating ──────────────────────────────────────
+    // Strategy-driven: replay captured init sequences before falcon boot.
+    {
+        let has_strategy_sequences = strategy.engine_ungate_sequences().is_some();
+        let has_opts_sequences =
+            !opts.engine_init_sequences.is_empty() || opts.kepler_gr_init.is_some();
+
+        if has_strategy_sequences || has_opts_sequences {
+            if opts.halt_before == Some(HaltBefore::EngineUngate) {
+                stages.push(StageResult {
+                    name: "engine_ungate".into(),
+                    status: StageStatus::Skipped,
+                    detail: Some("halt_before=engine_ungate".into()),
+                    duration_ms: 0,
+                });
+                return finish_halted(
+                    bdf,
+                    boot0,
+                    chip_id,
+                    "engine_ungate",
+                    stages,
+                    pipeline_start,
+                );
+            }
+
+            let mut ungate_list: Vec<(&str, &crate::nv::gr_init::GrInitSequence, Option<usize>)> =
+                Vec::new();
+
+            if let Some(seqs) = strategy.engine_ungate_sequences() {
+                for (name, seq, reg) in seqs {
+                    ungate_list.push((name.as_str(), seq, *reg));
+                }
+            }
+
+            if ungate_list.is_empty() {
+                for (name, seq, reg) in &opts.engine_init_sequences {
+                    ungate_list.push((name.as_str(), seq, *reg));
+                }
+            }
+
+            if ungate_list.is_empty() {
+                if let Some(ref gr_init_seq) = opts.kepler_gr_init {
+                    ungate_list.push(("PGRAPH", gr_init_seq, Some(PGRAPH_STATUS)));
+                }
+            }
+
+            if ungate_list.is_empty() {
+                stages.push(StageResult {
+                    name: "engine_ungate".into(),
+                    status: StageStatus::Skipped,
+                    detail: Some("no init sequences provided".into()),
+                    duration_ms: 0,
+                });
+            } else {
+                for (engine_name, seq, status_reg) in &ungate_list {
+                    let t = Instant::now();
+                    let stage_name = format!("engine_ungate:{engine_name}");
+                    match engine_ungate(bar0, seq, engine_name, *status_reg) {
+                        Ok(detail) => {
+                            stages.push(StageResult {
+                                name: stage_name,
+                                status: StageStatus::Ok,
+                                detail: Some(detail),
+                                duration_ms: t.elapsed().as_millis() as u64,
+                            });
+                        }
+                        Err(e) => {
+                            stages.push(StageResult {
+                                name: stage_name,
+                                status: StageStatus::Failed,
+                                detail: Some(e),
+                                duration_ms: t.elapsed().as_millis() as u64,
+                            });
+                            return finish(
+                                bdf,
+                                boot0,
+                                chip_id,
+                                stages,
+                                training_log,
+                                pipeline_start,
+                                warm_detected,
+                                Some(boot_state),
+                            );
+                        }
                     }
                 }
             }
@@ -269,42 +526,83 @@ pub fn sovereign_init(
         return finish_halted(bdf, boot0, chip_id, "falcon_boot", stages, pipeline_start);
     }
 
-    let t = Instant::now();
-    match falcon_boot(bar0, sm, opts.dma_backend.as_ref(), warm_detected, bridge) {
-        Ok(detail) => {
-            stages.push(StageResult {
-                name: "falcon_boot".into(),
-                status: StageStatus::Ok,
-                detail: Some(detail),
-                duration_ms: t.elapsed().as_millis() as u64,
-            });
-        }
-        Err(e) => {
-            stages.push(StageResult {
-                name: "falcon_boot".into(),
-                status: StageStatus::Failed,
-                detail: Some(e.to_string()),
-                duration_ms: t.elapsed().as_millis() as u64,
-            });
-            return finish(
-                bdf,
-                boot0,
-                chip_id,
-                stages,
-                training_log,
-                pipeline_start,
-                warm_detected,
-            );
-        }
+    if early_falcon_done {
+        stages.push(StageResult {
+            name: "falcon_boot".into(),
+            status: StageStatus::Skipped,
+            detail: Some("already completed in early_falcon_boot".into()),
+            duration_ms: 0,
+        });
     }
 
+    let falcon_warm_state = strategy.detect_falcon_warm_state(bar0, warm_detected);
+    let t = Instant::now();
+    let (_falcon_detail, warm_fecs_preserved) = if early_falcon_done {
+        ("early_falcon_boot".to_string(), true)
+    } else {
+        match falcon_boot(bar0, sm, opts.dma_backend.as_ref(), falcon_warm_state, bridge, strategy.falcon_boot_style()) {
+            Ok(detail) => {
+                let preserved = detail.contains("warm-preserved")
+                    || detail.contains("warm-running")
+                    || detail.contains("ACR boot OK");
+                stages.push(StageResult {
+                    name: "falcon_boot".into(),
+                    status: StageStatus::Ok,
+                    detail: Some(detail.clone()),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+                (detail, preserved)
+            }
+            Err(e) => {
+                let err_str = e.to_string();
+                let is_stub_unsupported =
+                    warm_detected && err_str.contains("requires firmware provider");
+                if is_stub_unsupported {
+                    tracing::info!(
+                        "falcon_boot failed on warm GPU (no firmware provider) — \
+                         continuing to verify"
+                    );
+                    stages.push(StageResult {
+                        name: "falcon_boot".into(),
+                        status: StageStatus::Skipped,
+                        detail: Some(format!(
+                            "warm-gated: FECS/GR gated, no firmware provider ({err_str})"
+                        )),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                    ("warm-gated".to_string(), true)
+                } else {
+                    stages.push(StageResult {
+                        name: "falcon_boot".into(),
+                        status: StageStatus::Failed,
+                        detail: Some(err_str),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                    return finish(
+                        bdf,
+                        boot0,
+                        chip_id,
+                        stages,
+                        training_log,
+                        pipeline_start,
+                        warm_detected,
+                        Some(boot_state),
+                    );
+                }
+            }
+        }
+    };
+
     // ── Stage 5: GR Init ────────────────────────────────────────────────
-    // NoAcr GPUs (Kepler) boot FECS via direct PIO in the falcon_boot stage.
-    // The GV100+ gr_init path re-boots FECS with BL firmware that doesn't
-    // exist for NoAcr GPUs. Skip GR init when the profile says NoAcr.
-    if opts.halt_before == Some(HaltBefore::GrInit) || opts.skip_gr_init || no_acr {
-        let reason = if no_acr {
-            "NoAcr boot strategy: FECS already booted via PIO"
+    let skip_gr = !strategy.needs_gr_init_after_falcon()
+        || warm_fecs_preserved
+        || opts.skip_gr_init
+        || opts.halt_before == Some(HaltBefore::GrInit);
+    if skip_gr {
+        let reason = if !strategy.needs_gr_init_after_falcon() {
+            "boot strategy does not require post-falcon GR init"
+        } else if warm_fecs_preserved {
+            "FECS warm-preserved/running: skipping re-bootstrap"
         } else if opts.skip_gr_init {
             "skip_gr_init=true"
         } else {
@@ -345,6 +643,7 @@ pub fn sovereign_init(
                     training_log,
                     pipeline_start,
                     warm_detected,
+                    Some(boot_state),
                 );
             }
         }
@@ -362,7 +661,7 @@ pub fn sovereign_init(
     }
 
     let t = Instant::now();
-    match verify(bar0) {
+    match strategy.verify_device(bar0) {
         Ok(detail) => {
             stages.push(StageResult {
                 name: "verify".into(),
@@ -386,23 +685,25 @@ pub fn sovereign_init(
                 training_log,
                 pipeline_start,
                 warm_detected,
+                Some(boot_state),
             );
         }
     }
 
     // All stages passed
-    let hbm2_writes = training_log.as_ref().map(|l| l.write_count());
+    let training_writes = training_log.as_ref().map(|l| l.write_count());
     SovereignInitResult {
         bdf: bdf.to_string(),
-        chip_id,
-        boot0,
+        identity_chip: chip_id,
+        identity_raw: boot0,
         all_ok: true,
         compute_ready: true,
         halted_at: None,
         stages,
         total_ms: pipeline_start.elapsed().as_millis() as u64,
-        hbm2_writes,
+        training_writes,
         warm_detected,
+        boot_state: Some(boot_state),
     }
 }
 
@@ -414,18 +715,20 @@ fn finish(
     training_log: Option<TrainingLog>,
     start: Instant,
     warm: bool,
+    boot_state: Option<SovereignBootState>,
 ) -> SovereignInitResult {
     SovereignInitResult {
         bdf: bdf.to_string(),
-        chip_id,
-        boot0,
+        identity_chip: chip_id,
+        identity_raw: boot0,
         all_ok: false,
         compute_ready: false,
         halted_at: None,
         stages,
         total_ms: start.elapsed().as_millis() as u64,
-        hbm2_writes: training_log.as_ref().map(|l| l.write_count()),
+        training_writes: training_log.as_ref().map(|l| l.write_count()),
         warm_detected: warm,
+        boot_state,
     }
 }
 
@@ -475,35 +778,38 @@ fn finish_halted(
 ) -> SovereignInitResult {
     SovereignInitResult {
         bdf: bdf.to_string(),
-        chip_id,
-        boot0,
+        identity_chip: chip_id,
+        identity_raw: boot0,
         all_ok: stages.iter().all(|s| s.status != StageStatus::Failed),
         compute_ready: false,
         halted_at: Some(stage.to_string()),
         stages,
         total_ms: start.elapsed().as_millis() as u64,
-        hbm2_writes: None,
+        training_writes: None,
         warm_detected: false,
+        boot_state: None,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vfio::sovereign_stages::chip_id_to_sm;
 
     #[test]
     fn chip_id_to_sm_covers_titan_v() {
+        use crate::vfio::sovereign_stages::chip_id_to_sm;
         assert_eq!(chip_id_to_sm(0x140), 70);
     }
 
     #[test]
     fn chip_id_to_sm_covers_k80() {
+        use crate::vfio::sovereign_stages::chip_id_to_sm;
         assert_eq!(chip_id_to_sm(0x0E7), 35);
     }
 
     #[test]
     fn chip_id_to_sm_unknown_defaults_to_70() {
+        use crate::vfio::sovereign_stages::chip_id_to_sm;
         assert_eq!(chip_id_to_sm(0xFFF), 70);
     }
 
@@ -519,18 +825,19 @@ mod tests {
     fn sovereign_init_result_display_halted() {
         let r = SovereignInitResult {
             bdf: "0000:03:00.0".into(),
-            chip_id: 0x140,
-            boot0: 0x140000A1,
+            identity_chip: 0x140,
+            identity_raw: 0x140000A1,
             all_ok: true,
             compute_ready: false,
-            halted_at: Some("hbm2_training".into()),
+            halted_at: Some("memory_training".into()),
             stages: vec![],
             total_ms: 42,
-            hbm2_writes: None,
+            training_writes: None,
             warm_detected: false,
+            boot_state: None,
         };
         let s = r.to_string();
-        assert!(s.contains("HALTED@hbm2_training"));
+        assert!(s.contains("HALTED@memory_training"));
         assert!(s.contains("42ms"));
     }
 
@@ -538,20 +845,21 @@ mod tests {
     fn sovereign_init_result_display_ready() {
         let r = SovereignInitResult {
             bdf: "0000:03:00.0".into(),
-            chip_id: 0x140,
-            boot0: 0x140000A1,
+            identity_chip: 0x140,
+            identity_raw: 0x140000A1,
             all_ok: true,
             compute_ready: true,
             halted_at: None,
             stages: vec![StageResult {
-                name: "bar0_probe".into(),
+                name: "identity_probe".into(),
                 status: StageStatus::Ok,
                 detail: None,
                 duration_ms: 1,
             }],
             total_ms: 100,
-            hbm2_writes: Some(42),
+            training_writes: Some(42),
             warm_detected: true,
+            boot_state: None,
         };
         let s = r.to_string();
         assert!(s.contains("COMPUTE_READY"));
@@ -560,10 +868,45 @@ mod tests {
 
     #[test]
     fn halt_before_serde_roundtrip() {
-        let json = serde_json::to_string(&HaltBefore::Hbm2Training).unwrap();
-        assert_eq!(json, "\"hbm2_training\"");
+        let json = serde_json::to_string(&HaltBefore::MemoryTraining).unwrap();
+        assert_eq!(json, "\"memory_training\"");
         let back: HaltBefore = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, HaltBefore::Hbm2Training);
+        assert_eq!(back, HaltBefore::MemoryTraining);
+    }
+
+    #[test]
+    fn halt_before_cg_sweep_serde() {
+        let json = serde_json::to_string(&HaltBefore::CgSweep).unwrap();
+        assert_eq!(json, "\"cg_sweep\"");
+        let back: HaltBefore = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, HaltBefore::CgSweep);
+    }
+
+    #[test]
+    fn halt_before_pgob_ungate_serde() {
+        let json = serde_json::to_string(&HaltBefore::PgobUngate).unwrap();
+        assert_eq!(json, "\"pgob_ungate\"");
+        let back: HaltBefore = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, HaltBefore::PgobUngate);
+    }
+
+    #[test]
+    fn result_backward_compat_aliases() {
+        let json = r#"{
+            "bdf": "0000:03:00.0",
+            "chip_id": 320,
+            "boot0": 335544481,
+            "all_ok": true,
+            "compute_ready": true,
+            "stages": [],
+            "total_ms": 100,
+            "hbm2_writes": 42,
+            "warm_detected": false
+        }"#;
+        let r: SovereignInitResult = serde_json::from_str(json).unwrap();
+        assert_eq!(r.identity_chip, 320);
+        assert_eq!(r.identity_raw, 335544481);
+        assert_eq!(r.training_writes, Some(42));
     }
 
     #[test]

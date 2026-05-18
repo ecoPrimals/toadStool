@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! AMD Vega 20 (MI50/MI60, GFX906) `GpuMetal` implementation.
-//!
-//! EVOLUTION: Register offsets from AMD ISA docs — awaiting MI50 hardware validation.
+//! AMD Vega 20 (MI50/MI60, GFX906) `GpuMetal` + `BootPipeline` implementation.
 //!
 //! Register offsets derived from AMD's publicly documented MMIO layout
 //! and Mesa amdgpu driver headers for Vega/GFX906. Key subsystems:
@@ -12,10 +10,17 @@
 //! - **GFX**: Graphics Core (compute dispatch, shader execution)
 //! - **SDMA**: System DMA engines (memory copy, fill)
 //! - **MMHUB**: Memory Management Hub (GART, page tables)
+//!
+//! The `VegaInit` struct implements the vendor-agnostic `BootPipeline` trait,
+//! proving the trait works cross-vendor. Probe reads GRBM_STATUS for warm
+//! detection; devinit/engine_init return `Unsupported` (no AMD hardware present).
 
 use super::bar_cartography::DomainHint;
 use super::gpu_vendor::*;
 use super::pci_discovery::GpuVendor;
+use crate::error::DriverError;
+use crate::hardware::{BootInitInfo, BootPipeline, BootProbeInfo, Vendor};
+use crate::vfio::device::RegisterAccess;
 
 // ── AMD Vega 20 / GFX906 MMIO Register Offsets ───────────────────────
 //
@@ -327,5 +332,264 @@ impl GpuMetal for AmdVegaMetal {
 
     fn bar2_block_offset(&self) -> Option<usize> {
         None
+    }
+}
+
+// ── Vendor-Agnostic BootPipeline: VegaInit ───────────────────────────
+
+/// Probe result for AMD Vega 20.
+#[derive(Debug, Clone)]
+pub struct VegaProbeResult {
+    /// GRBM_STATUS register value (AMD's primary engine status register).
+    pub grbm_status: u32,
+    /// GRBM_STATUS2 register value.
+    pub grbm_status2: u32,
+    /// SRBM_STATUS register value (system request broker).
+    pub srbm_status: u32,
+    /// Whether the GFX engine appears warm (GRBM not returning 0xFFFFFFFF).
+    pub warm: bool,
+}
+
+/// Init result for AMD Vega 20 (stub).
+#[derive(Debug, Clone)]
+pub struct VegaInitResult {
+    /// Whether VRAM is alive after init.
+    pub memory_alive: bool,
+    /// Init method description.
+    pub method: String,
+}
+
+/// AMD Vega 20 (MI50/MI60) boot pipeline stub.
+///
+/// Implements `BootPipeline` using the GRBM register map already defined
+/// in this module. The probe phase is functional — it reads GRBM_STATUS,
+/// GRBM_STATUS2, and SRBM_STATUS to detect engine state. The devinit
+/// and engine_init phases return `Unsupported` since no AMD hardware is
+/// available for validation.
+///
+/// This stub proves the `BootPipeline` trait works cross-vendor: the same
+/// `probe → is_warm → devinit → engine_init → verify` contract applies
+/// to AMD GCN/CDNA hardware with completely different register semantics.
+#[derive(Debug)]
+pub struct VegaInit {
+    #[allow(dead_code)]
+    bdf: Option<String>,
+}
+
+impl VegaInit {
+    /// Create a Vega pipeline with no BDF.
+    pub fn new() -> Self {
+        Self { bdf: None }
+    }
+
+    /// Create a Vega pipeline targeting a specific PCI BDF address.
+    pub fn with_bdf(bdf: impl Into<String>) -> Self {
+        Self {
+            bdf: Some(bdf.into()),
+        }
+    }
+}
+
+impl BootPipeline for VegaInit {
+    type ProbeResult = VegaProbeResult;
+    type InitResult = VegaInitResult;
+
+    fn device_family(&self) -> &str {
+        "Vega 20"
+    }
+
+    fn probe(
+        &self,
+        bar: &dyn RegisterAccess,
+    ) -> Result<VegaProbeResult, DriverError> {
+        let grbm = bar
+            .read_u32(GRBM_STATUS as u32)
+            .map_err(|e| DriverError::Unsupported(format!("GRBM_STATUS read: {e}").into()))?;
+        let grbm2 = bar.read_u32(GRBM_STATUS2 as u32).unwrap_or(0xFFFF_FFFF);
+        let srbm = bar.read_u32(SRBM_STATUS as u32).unwrap_or(0xFFFF_FFFF);
+
+        let warm = grbm != 0xFFFF_FFFF && grbm != 0;
+
+        Ok(VegaProbeResult {
+            grbm_status: grbm,
+            grbm_status2: grbm2,
+            srbm_status: srbm,
+            warm,
+        })
+    }
+
+    fn is_warm(&self, probe: &VegaProbeResult) -> bool {
+        probe.warm
+    }
+
+    fn probe_summary(&self, probe: &VegaProbeResult) -> BootProbeInfo {
+        BootProbeInfo {
+            vendor: Vendor::Amd,
+            family: "Vega 20".to_string(),
+            warm: probe.warm,
+            identity_raw: probe.grbm_status,
+        }
+    }
+
+    fn devinit(
+        &self,
+        _bar: &dyn RegisterAccess,
+        probe: &VegaProbeResult,
+    ) -> Result<VegaInitResult, DriverError> {
+        if probe.warm {
+            return Ok(VegaInitResult {
+                memory_alive: true,
+                method: "warm-skip".to_string(),
+            });
+        }
+        Err(DriverError::Unsupported(
+            "Vega cold devinit not implemented (no AMD hardware for validation)".into(),
+        ))
+    }
+
+    fn init_summary(&self, init: &VegaInitResult) -> BootInitInfo {
+        BootInitInfo {
+            memory_alive: init.memory_alive,
+            writes_applied: 0,
+            method: init.method.clone(),
+        }
+    }
+
+    fn engine_init(
+        &self,
+        _bar: &dyn RegisterAccess,
+        _probe: &VegaProbeResult,
+    ) -> Result<(), DriverError> {
+        Err(DriverError::Unsupported(
+            "Vega engine_init not implemented (no AMD hardware for validation)".into(),
+        ))
+    }
+
+    fn verify(
+        &self,
+        bar: &dyn RegisterAccess,
+    ) -> Result<bool, DriverError> {
+        let grbm = bar.read_u32(GRBM_STATUS as u32).unwrap_or(0xFFFF_FFFF);
+        let srbm = bar.read_u32(SRBM_STATUS as u32).unwrap_or(0xFFFF_FFFF);
+        let gfx_idle = (grbm & BUSY_BIT_MASK) == 0;
+        let sys_idle = (srbm & BUSY_BIT_MASK) == 0;
+        Ok(gfx_idle && sys_idle && grbm != 0xFFFF_FFFF)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::vfio::device::ApplyError;
+
+    struct FakeBar {
+        grbm: u32,
+        grbm2: u32,
+        srbm: u32,
+    }
+
+    impl RegisterAccess for FakeBar {
+        fn read_u32(&self, offset: u32) -> Result<u32, ApplyError> {
+            match offset as usize {
+                GRBM_STATUS => Ok(self.grbm),
+                GRBM_STATUS2 => Ok(self.grbm2),
+                SRBM_STATUS => Ok(self.srbm),
+                _ => Ok(0),
+            }
+        }
+
+        fn write_u32(&mut self, _offset: u32, _value: u32) -> Result<(), ApplyError> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn vega_probe_warm_detection() {
+        let bar = FakeBar {
+            grbm: 0x0000_3000,
+            grbm2: 0x0000_0100,
+            srbm: 0x0000_0000,
+        };
+        let vega = VegaInit::new();
+        let probe = BootPipeline::probe(&vega, &bar).unwrap();
+        assert!(vega.is_warm(&probe));
+        assert_eq!(probe.grbm_status, 0x0000_3000);
+
+        let summary = vega.probe_summary(&probe);
+        assert_eq!(summary.vendor, Vendor::Amd);
+        assert_eq!(summary.family, "Vega 20");
+        assert!(summary.warm);
+    }
+
+    #[test]
+    fn vega_probe_cold_detection() {
+        let bar = FakeBar {
+            grbm: 0xFFFF_FFFF,
+            grbm2: 0xFFFF_FFFF,
+            srbm: 0xFFFF_FFFF,
+        };
+        let vega = VegaInit::new();
+        let probe = BootPipeline::probe(&vega, &bar).unwrap();
+        assert!(!vega.is_warm(&probe));
+    }
+
+    #[test]
+    fn vega_warm_devinit_succeeds() {
+        let bar = FakeBar {
+            grbm: 0x0000_3000,
+            grbm2: 0,
+            srbm: 0,
+        };
+        let vega = VegaInit::new();
+        let probe = BootPipeline::probe(&vega, &bar).unwrap();
+        let init = BootPipeline::devinit(&vega, &bar, &probe).unwrap();
+        assert!(init.memory_alive);
+        assert_eq!(init.method, "warm-skip");
+    }
+
+    #[test]
+    fn vega_cold_devinit_unsupported() {
+        let bar = FakeBar {
+            grbm: 0xFFFF_FFFF,
+            grbm2: 0xFFFF_FFFF,
+            srbm: 0xFFFF_FFFF,
+        };
+        let vega = VegaInit::new();
+        let probe = BootPipeline::probe(&vega, &bar).unwrap();
+        assert!(BootPipeline::devinit(&vega, &bar, &probe).is_err());
+    }
+
+    #[test]
+    fn vega_verify_idle() {
+        let bar = FakeBar {
+            grbm: 0x0000_3000,
+            grbm2: 0,
+            srbm: 0,
+        };
+        let vega = VegaInit::new();
+        assert!(BootPipeline::verify(&vega, &bar).unwrap());
+    }
+
+    #[test]
+    fn vega_verify_busy() {
+        let bar = FakeBar {
+            grbm: BUSY_BIT_MASK | 0x100,
+            grbm2: 0,
+            srbm: 0,
+        };
+        let vega = VegaInit::new();
+        assert!(!BootPipeline::verify(&vega, &bar).unwrap());
+    }
+
+    #[test]
+    fn vega_device_family() {
+        let vega = VegaInit::new();
+        assert_eq!(vega.device_family(), "Vega 20");
+    }
+
+    #[test]
+    fn vega_with_bdf() {
+        let vega = VegaInit::with_bdf("0000:03:00.0");
+        assert_eq!(vega.bdf.as_deref(), Some("0000:03:00.0"));
     }
 }

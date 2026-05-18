@@ -26,9 +26,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::RwLock;
+use toadstool_ember::VfioAnchor;
 use toadstool_ember::vfio_handle::VfioResourceHandle;
 use toadstool_ember::held_resource::HeldResource;
 use types::{DispatchJob, PipelineJob};
+
+/// Shared collection of VFIO warm-keepalive anchors.
+///
+/// Each anchor holds dup'd VFIO fds for a GPU. On SIGTERM, all anchors
+/// are leaked to prevent bus resets during daemon restart.
+pub type AnchorStore = Arc<tokio::sync::Mutex<HashMap<String, VfioAnchor>>>;
 
 /// Factory that produces a local `ComputeDevice` from a PCI BDF string.
 type LocalDeviceFactory =
@@ -65,6 +72,9 @@ pub struct DispatchHandler {
     /// Devices hold iommufd/VFIO FDs and DMA mappings — dropping them
     /// triggers GPU reset. Cached to survive across multiple RPC calls.
     cached_devices: Arc<tokio::sync::Mutex<HashMap<String, Box<dyn toadstool_cylinder::ComputeDevice>>>>,
+    /// Warm-keepalive anchors — dup'd VFIO fds that persist independently
+    /// of cached_devices. On SIGTERM, these are leaked to prevent bus reset.
+    anchor_store: AnchorStore,
 }
 
 #[expect(
@@ -76,6 +86,7 @@ impl DispatchHandler {
         coral_client: SharedVisualizationClient,
         security_client: Option<Arc<toadstool_distributed::security::client::SecurityClient>>,
     ) -> Self {
+        let anchor_store: AnchorStore = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
         Self {
             coral_client,
             security_client,
@@ -86,7 +97,13 @@ impl DispatchHandler {
             device_pool: Arc::new(RwLock::new(HashMap::new())),
             local_device_factory: None,
             cached_devices: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            anchor_store,
         }
+    }
+
+    /// Get a clone of the anchor store for use in the SIGTERM handler.
+    pub fn anchor_store(&self) -> AnchorStore {
+        Arc::clone(&self.anchor_store)
     }
 
     /// Acquire a device handle from the pool, creating one if absent.
@@ -136,6 +153,21 @@ impl DispatchHandler {
         let mut cache = self.cached_devices.lock().await;
         if !cache.contains_key(bdf) {
             let device = factory(bdf)?;
+
+            if let Some(anchor_fds) = device.dup_anchor_fds() {
+                let anchor = match anchor_fds {
+                    toadstool_cylinder::vfio::DupAnchorFds::Iommufd { device_fd, iommufd, ioas_id } => {
+                        VfioAnchor::from_iommufd(bdf.to_string(), device_fd, iommufd, ioas_id)
+                    }
+                    toadstool_cylinder::vfio::DupAnchorFds::Legacy { device_fd, container, group } => {
+                        VfioAnchor::from_legacy(bdf.to_string(), device_fd, container, group)
+                    }
+                };
+                let mut anchors = self.anchor_store.lock().await;
+                tracing::info!(bdf, "VfioAnchor created — warm keepalive active");
+                anchors.insert(bdf.to_string(), anchor);
+            }
+
             cache.insert(bdf.to_string(), device);
             tracing::info!(bdf, "VFIO device cached for persistent dispatch");
         }
@@ -655,6 +687,285 @@ impl DispatchHandler {
             "timing": { "dispatch_ms": elapsed_ms },
         }))
     }
+
+
+    /// Try to engage the clutch for a BDF from the anchor store.
+    ///
+    /// Uses `WarmKeepalive` to streamline fd extraction and DMA construction.
+    async fn try_engage_clutch(
+        &self,
+        bdf: &str,
+    ) -> Option<toadstool_cylinder::vfio::clutch::ClutchEngaged> {
+        let anchors = self.anchor_store.lock().await;
+        let anchor = anchors.get(bdf)?;
+        let view = toadstool_ember::WarmKeepalive::from_ref(anchor);
+        let dma = dma_from_keepalive(&view);
+
+        match toadstool_cylinder::vfio::clutch::Clutch::engage(bdf, view.device_fd(), dma.clone()) {
+            Ok(engaged) => {
+                tracing::info!(bdf, "clutch engaged from keepalive (VFIO BAR0)");
+                Some(engaged)
+            }
+            Err(e) => {
+                tracing::warn!(bdf, err = %e, "clutch VFIO engage failed — trying sysfs BAR0");
+                toadstool_cylinder::vfio::clutch::Clutch::engage_sysfs(bdf, dma).ok()
+            }
+        }
+    }
+
+    /// `sovereign.init` via ember — runs the sovereign pipeline using
+    /// the clutch (preferred) or cached device BAR0 + DMA.
+    ///
+    /// Path 1 (clutch): if a VfioAnchor exists for this BDF, engage the clutch
+    /// to get fresh BAR0 + DMA from the anchor's fds. No stale state.
+    ///
+    /// Path 2 (factory): if no anchor, create device via factory (which also
+    /// populates the anchor store for future calls), then try clutch again.
+    ///
+    /// Path 3 (sysfs): last resort — sysfs BAR0 with DMA from cached device.
+    pub(super) async fn sovereign_init_ember(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        self.acquire_device_handle(bdf).await;
+
+        // Try clutch from existing anchor
+        let mut clutch = self.try_engage_clutch(bdf).await;
+        let mut used_clutch = clutch.is_some();
+
+        // No anchor yet — run factory to create device + anchor, then retry
+        if clutch.is_none() {
+            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+                JsonRpcError::internal_error(format!(
+                    "device {bdf} not available — factory returned None"
+                ))
+            })?;
+            drop(_cache);
+            clutch = self.try_engage_clutch(bdf).await;
+            used_clutch = clutch.is_some();
+        }
+
+        // Resolve BAR0 + DMA from clutch or sysfs fallback
+        let _sysfs_bar;
+        let (bar0_ref, dma_for_opts): (
+            &toadstool_cylinder::vfio::device::MappedBar,
+            Option<toadstool_cylinder::vfio::device::DmaBackend>,
+        ) = if let Some(ref engaged) = clutch {
+            (engaged.bar0(), Some(engaged.dma_backend_clone()))
+        } else {
+            tracing::warn!(bdf, "no clutch available — sysfs BAR0 fallback");
+            let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(
+                bdf,
+                16 * 1024 * 1024,
+            )
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!(
+                    "sysfs BAR0 open failed for {bdf}: {e}"
+                ))
+            })?;
+            let dma = {
+                let cache = self.cached_devices.lock().await;
+                cache.get(bdf).and_then(|d| d.dma_backend().cloned())
+            };
+            _sysfs_bar = bar;
+            (&_sysfs_bar, dma)
+        };
+
+        let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
+            if let Some(p) = params {
+                serde_json::from_value(p.clone()).unwrap_or_default()
+            } else {
+                Default::default()
+            };
+
+        if let Some(path) = opts.vbios_rom_path.as_ref() {
+            if let Ok(rom) = std::fs::read(path) {
+                opts.vbios_rom = Some(rom);
+            }
+        }
+
+        opts.dma_backend = dma_for_opts;
+
+        let sm = opts.sm_version.unwrap_or_else(|| {
+            let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
+            let chip_id = (boot0 >> 20) & 0x1FF;
+            let synthetic = chip_id << 20;
+            toadstool_cylinder::nv::identity::boot0_to_sm(synthetic).unwrap_or(70)
+        });
+        let chip = toadstool_cylinder::nv::identity::chip_name(sm);
+
+        let bridge: std::sync::Arc<dyn toadstool_cylinder::nv::gsp_bridge::GspBridge> = {
+            let nv = toadstool_cylinder::nv::nv_gsp_bridge::NvGspBridge::new(chip);
+            if nv.has_gr_firmware() {
+                tracing::info!(chip, bdf, "sovereign.init(ember): using NvGspBridge");
+                std::sync::Arc::new(nv)
+            } else {
+                tracing::info!(chip, bdf, "sovereign.init(ember): using StubGspBridge");
+                std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::StubGspBridge::default())
+            }
+        };
+
+        let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
+        let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
+            &profile, bridge, sm,
+        );
+
+        let pre_channel_stages = strategy.pre_channel_init(bar0_ref);
+        if !pre_channel_stages.is_empty() {
+            tracing::info!(
+                bdf,
+                stages = pre_channel_stages.len(),
+                "sovereign.init(ember): pre_channel_init complete"
+            );
+            for s in &pre_channel_stages {
+                tracing::info!(
+                    name = %s.name,
+                    status = ?s.status,
+                    detail = ?s.detail,
+                    ms = s.duration_ms,
+                    "pre_channel stage"
+                );
+            }
+        }
+
+        tracing::info!(bdf, halt_before = ?opts.halt_before, "sovereign.init(ember): starting pipeline");
+
+        let result = toadstool_cylinder::vfio::sovereign_init::sovereign_init(
+            bar0_ref, bdf, &opts, &*strategy,
+        );
+
+        tracing::info!(
+            bdf,
+            all_ok = result.all_ok,
+            compute_ready = result.compute_ready,
+            total_ms = result.total_ms,
+            stages = result.stages.len(),
+            warm_detected = result.warm_detected,
+            clutch_path = used_clutch,
+            "sovereign.init(ember): pipeline complete"
+        );
+
+        if let Some(engaged) = clutch {
+            engaged.disengage();
+        }
+
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
+
+    /// `sovereign.profile` via ember — instrumented pipeline with microsecond
+    /// timing, boot state snapshots, and register captures.
+    pub(super) async fn sovereign_profile_ember(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        self.acquire_device_handle(bdf).await;
+
+        let mut clutch = self.try_engage_clutch(bdf).await;
+
+        if clutch.is_none() {
+            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+                JsonRpcError::internal_error(format!(
+                    "device {bdf} not available — factory returned None"
+                ))
+            })?;
+            drop(_cache);
+            clutch = self.try_engage_clutch(bdf).await;
+        }
+
+        let _sysfs_bar;
+        let (bar0_ref, dma_for_opts): (
+            &toadstool_cylinder::vfio::device::MappedBar,
+            Option<toadstool_cylinder::vfio::device::DmaBackend>,
+        ) = if let Some(ref engaged) = clutch {
+            (engaged.bar0(), Some(engaged.dma_backend_clone()))
+        } else {
+            tracing::warn!(bdf, "no clutch available — sysfs BAR0 fallback");
+            let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(
+                bdf, 16 * 1024 * 1024,
+            ).map_err(|e| {
+                JsonRpcError::internal_error(format!("sysfs BAR0 open failed for {bdf}: {e}"))
+            })?;
+            let dma = {
+                let cache = self.cached_devices.lock().await;
+                cache.get(bdf).and_then(|d| d.dma_backend().cloned())
+            };
+            _sysfs_bar = bar;
+            (&_sysfs_bar, dma)
+        };
+
+        let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
+            if let Some(p) = params {
+                serde_json::from_value(p.clone()).unwrap_or_default()
+            } else {
+                Default::default()
+            };
+
+        if let Some(path) = opts.vbios_rom_path.as_ref() {
+            if let Ok(rom) = std::fs::read(path) {
+                opts.vbios_rom = Some(rom);
+            }
+        }
+        opts.dma_backend = dma_for_opts;
+
+        let sm = opts.sm_version.unwrap_or_else(|| {
+            let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
+            let chip_id = (boot0 >> 20) & 0x1FF;
+            let synthetic = chip_id << 20;
+            toadstool_cylinder::nv::identity::boot0_to_sm(synthetic).unwrap_or(70)
+        });
+        let chip = toadstool_cylinder::nv::identity::chip_name(sm);
+
+        let bridge: std::sync::Arc<dyn toadstool_cylinder::nv::gsp_bridge::GspBridge> = {
+            let nv = toadstool_cylinder::nv::nv_gsp_bridge::NvGspBridge::new(chip);
+            if nv.has_gr_firmware() {
+                std::sync::Arc::new(nv)
+            } else {
+                std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::StubGspBridge::default())
+            }
+        };
+
+        let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
+        let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
+            &profile, bridge, sm,
+        );
+
+        tracing::info!(bdf, "sovereign.profile: starting instrumented pipeline");
+
+        let result = toadstool_cylinder::vfio::sovereign_profile::sovereign_profile(
+            bar0_ref, bdf, &opts, &*strategy,
+        );
+
+        tracing::info!(
+            bdf,
+            compute_ready = result.result.compute_ready,
+            pipeline_us = result.result.total_ms * 1000,
+            overhead_us = result.profiling_overhead_us,
+            stages = result.stage_timings_us.len(),
+            "sovereign.profile: complete"
+        );
+
+        if let Some(engaged) = clutch {
+            engaged.disengage();
+        }
+
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
 }
 
 /// Create a local device factory for Phase D sovereign dispatch.
@@ -795,6 +1106,20 @@ pub(super) fn create_cylinder_device_factory() -> Option<LocalDeviceFactory> {
 /// Resolve a PCI BDF to its DRM render node path via sysfs.
 ///
 /// Reads `/sys/bus/pci/devices/{bdf}/drm/` for `renderD*` entries.
+/// Convert a `WarmKeepaliveRef`'s DMA spec into cylinder's `DmaBackend`.
+fn dma_from_keepalive(
+    view: &toadstool_ember::warm_keepalive::WarmKeepaliveRef<'_>,
+) -> toadstool_cylinder::vfio::DmaBackend {
+    let spec = view.make_dma_backend();
+    if let Some((iommufd, ioas_id)) = spec.as_iommufd() {
+        toadstool_cylinder::vfio::clutch::Clutch::dma_backend_from_iommufd(iommufd, ioas_id)
+    } else if let Some(container) = spec.as_legacy_container() {
+        toadstool_cylinder::vfio::clutch::Clutch::dma_backend_from_legacy(container)
+    } else {
+        unreachable!("DmaSpec must be either iommufd or legacy")
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn resolve_render_node(bdf: &str) -> Option<String> {
     let drm_dir = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "drm");

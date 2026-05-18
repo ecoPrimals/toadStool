@@ -27,6 +27,15 @@ pub struct InterpreterStats {
     pub faulted_domains: Vec<String>,
 }
 
+/// BIOS generation determines opcode stride/semantic differences.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BiosGeneration {
+    /// Pre-Maxwell: shorter strides for some opcodes (GK110, GK210, etc.)
+    Kepler,
+    /// Maxwell and later: extended opcode formats.
+    MaxwellPlus,
+}
+
 /// State for the VBIOS init script interpreter.
 struct VbiosInterpreter<'a> {
     bar0: &'a MappedBar,
@@ -43,10 +52,12 @@ struct VbiosInterpreter<'a> {
     pri_fault_threshold: u32,
     /// PRI backpressure: domain -> fault count. Domains with 3+ faults are skipped.
     pri_domain_faults: std::collections::HashMap<String, u32>,
+    /// BIOS generation for opcode stride/semantic branching.
+    bios_gen: BiosGeneration,
 }
 
 impl<'a> VbiosInterpreter<'a> {
-    fn new(bar0: &'a MappedBar, rom: &'a [u8], start: usize) -> Self {
+    fn new(bar0: &'a MappedBar, rom: &'a [u8], start: usize, bios_gen: BiosGeneration) -> Self {
         Self {
             bar0,
             rom,
@@ -59,6 +70,7 @@ impl<'a> VbiosInterpreter<'a> {
             pri_consecutive_faults: 0,
             pri_fault_threshold: 5,
             pri_domain_faults: std::collections::HashMap::new(),
+            bios_gen,
         }
     }
 
@@ -143,16 +155,24 @@ impl<'a> VbiosInterpreter<'a> {
     }
 }
 
-/// Number of RAM-restrict groups from VBIOS strap info.
+/// Number of RAM-restrict groups from VBIOS M (rammap) table header.
+///
+/// BIT 'M' data\[0:2\] points to the rammap table. The table header's
+/// `snr` field (offset +4 for version < 0x10, offset +4 for version >= 0x10)
+/// gives the number of sub-entries per timing entry, which equals the
+/// RAM-restrict group count used by opcodes 0x87, 0x88, 0x8F.
 pub(crate) fn ram_restrict_group_count(rom: &[u8]) -> usize {
     if let Ok(bit) = BitTable::parse(rom)
         && let Some(m) = bit.find(b'M')
     {
         let m_off = m.data_offset as usize;
-        if m_off + 3 <= rom.len() {
-            let count = rom[m_off + 2] as usize;
-            if count > 0 && count <= 16 {
-                return count;
+        if m_off + 2 <= rom.len() {
+            let tbl_ptr = u16::from_le_bytes([rom[m_off], rom[m_off + 1]]) as usize;
+            if tbl_ptr != 0 && tbl_ptr + 5 <= rom.len() {
+                let snr = rom[tbl_ptr + 4] as usize;
+                if snr > 0 && snr <= 16 {
+                    return snr;
+                }
             }
         }
     }
@@ -176,22 +196,32 @@ pub fn interpret_boot_scripts(
         return Err(DevinitError::BitIDataTooShort);
     }
 
-    let init_tables_base = u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
+    // Detect BIOS generation from BIT I data size:
+    // Kepler (GK110/GK210) has 18-byte BIT I (no PMU script pointers).
+    // Maxwell+ has >=28-byte BIT I with extended PMU firmware fields.
+    let bios_gen = if bit_i.data_size < 0x1c {
+        BiosGeneration::Kepler
+    } else {
+        BiosGeneration::MaxwellPlus
+    };
+    tracing::debug!(
+        data_size = bit_i.data_size,
+        gen = ?bios_gen,
+        "VBIOS generation detected"
+    );
 
-    if init_tables_base == 0 || init_tables_base + 2 > rom.len() {
+    // BIT I data[0:2] is the "init tables base" — a table of u16 script
+    // offsets.  Each entry points directly to an init script in the ROM.
+    // nouveau: nvbios_init_table(bios, n) reads rd16(tbl + n * 2).
+    let script_table = u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
+
+    if script_table == 0 || script_table + 2 > rom.len() {
         return Err(DevinitError::InterpreterInitTablesInvalid);
     }
 
-    let script_table_ptr =
-        u16::from_le_bytes([rom[init_tables_base], rom[init_tables_base + 1]]) as usize;
-
-    if script_table_ptr == 0 || script_table_ptr >= rom.len() {
-        return Err(DevinitError::InterpreterScriptTableInvalid);
-    }
-
     tracing::debug!(
-        init_tables_base = format!("{init_tables_base:#06x}"),
-        script_table = format!("{script_table_ptr:#06x}"),
+        script_table = format!("{script_table:#06x}"),
+        gen = ?bios_gen,
         "VBIOS interpreter entry points"
     );
 
@@ -199,7 +229,7 @@ pub fn interpret_boot_scripts(
     let mut script_idx = 0;
 
     loop {
-        let entry_off = script_table_ptr + script_idx * 2;
+        let entry_off = script_table + script_idx * 2;
         if entry_off + 2 > rom.len() {
             break;
         }
@@ -214,7 +244,7 @@ pub fn interpret_boot_scripts(
             "VBIOS interpreter running init script"
         );
 
-        let mut interp = VbiosInterpreter::new(bar0, rom, script_off);
+        let mut interp = VbiosInterpreter::new(bar0, rom, script_off, bios_gen);
         match interp.run() {
             Ok(()) => {
                 tracing::info!(
@@ -296,7 +326,8 @@ mod ram_restrict_tests {
 
     fn rom_with_bit_m(m_data_off: usize, count: u8) -> Vec<u8> {
         let bit_off = 0x100;
-        let mut rom = vec![0u8; m_data_off + 16];
+        let tbl_off = m_data_off + 16;
+        let mut rom = vec![0u8; tbl_off + 16];
         rom[bit_off..bit_off + 5].copy_from_slice(&[0xFF, 0xB8, b'B', b'I', b'T']);
         rom[bit_off + 9] = 6;
         rom[bit_off + 10] = 1;
@@ -305,7 +336,11 @@ mod ram_restrict_tests {
         rom[e0 + 1] = 1;
         rom[e0 + 2..e0 + 4].copy_from_slice(&0x10u16.to_le_bytes());
         rom[e0 + 4..e0 + 6].copy_from_slice(&(m_data_off as u16).to_le_bytes());
-        rom[m_data_off + 2] = count;
+        // M data[0:2] = pointer to rammap table
+        rom[m_data_off..m_data_off + 2]
+            .copy_from_slice(&(tbl_off as u16).to_le_bytes());
+        // Rammap table header: snr (ram restrict groups) at offset +4
+        rom[tbl_off + 4] = count;
         rom
     }
 

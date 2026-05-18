@@ -201,6 +201,15 @@ pub enum DevinitError {
         last_opcode: u8,
     },
 
+    /// BIT `'I'` short form (Kepler): init-directory only, no PMU
+    /// opcode/script blob pointers. Callers should use the host-side
+    /// VBIOS interpreter instead of the PMU FALCON upload path.
+    #[error("BIT 'I' short form (data_size={data_size}): no PMU firmware table")]
+    BitIShortForm {
+        /// Actual data size from BIT.
+        data_size: u16,
+    },
+
     /// BIT `'I'` exists but layout is not suitable for PMU devinit.
     #[error(
         "BIT 'I' entry: unexpected version {version} or size {data_size} (need ver=1, size>=0x1c)"

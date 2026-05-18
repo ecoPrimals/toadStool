@@ -44,11 +44,30 @@ pub(crate) fn bar0_probe(bar0: &MappedBar) -> Result<(u32, u32), SovereignStages
     Ok((boot0, chip_id))
 }
 
-pub(crate) fn pmc_enable(bar0: &MappedBar) -> Result<String, SovereignStagesError> {
+/// Staged PMC_ENABLE write using the generation's power safety profile.
+///
+/// For pre-firmware generations (Kepler, Maxwell), this writes only a
+/// conservative mask to avoid bulk-ungating all engine clocks on a cold
+/// GPU — the inrush current from 0xFFFF_FFFF on an aged K80 with
+/// uninitialised GDDR5 is what caused the fire in Experiment 199.
+///
+/// Returns `(before, after, mask_used)` for logging.
+pub(crate) fn pmc_enable(
+    bar0: &MappedBar,
+    power: &crate::nv::generation::PowerSafetyProfile,
+) -> Result<PmcEnableResult, SovereignStagesError> {
     let before = bar0.read_u32(PMC_ENABLE).unwrap_or(0xDEAD_DEAD);
     tracing::debug!(pmc_before = format!("0x{before:08x}"), "PMC_ENABLE before");
 
-    match bar0.isolated_write_u32(PMC_ENABLE as u32, 0xFFFF_FFFF, ISOLATE_TIMEOUT) {
+    let mask = power.initial_pmc_mask;
+    tracing::info!(
+        mask = format!("0x{mask:08x}"),
+        full_after_devinit = power.full_enable_after_devinit,
+        rollback_on_failure = power.rollback_on_devinit_failure,
+        "PMC_ENABLE staged write"
+    );
+
+    match bar0.isolated_write_u32(PMC_ENABLE as u32, mask, ISOLATE_TIMEOUT) {
         super::isolation::IsolationResult::Ok(()) => {}
         super::isolation::IsolationResult::Timeout => {
             return Err(SovereignStagesError::PmcEnableWriteTimeout);
@@ -75,7 +94,364 @@ pub(crate) fn pmc_enable(bar0: &MappedBar) -> Result<String, SovereignStagesErro
         }
     }
 
-    Ok(format!("before=0x{before:08x} after=0x{after:08x}"))
+    Ok(PmcEnableResult { before, after, mask })
+}
+
+/// Result of a staged PMC_ENABLE write, kept for rollback.
+#[derive(Debug, Clone)]
+pub(crate) struct PmcEnableResult {
+    pub before: u32,
+    pub after: u32,
+    pub mask: u32,
+}
+
+impl PmcEnableResult {
+    pub fn detail(&self) -> String {
+        format!(
+            "before=0x{:08x} after=0x{:08x} mask=0x{:08x}",
+            self.before, self.after, self.mask
+        )
+    }
+}
+
+/// Roll back PMC_ENABLE to its pre-pipeline value.
+///
+/// Called when devinit fails on a pre-firmware GPU to prevent the
+/// partially-clocked state from persisting across power cycles.
+pub(crate) fn pmc_enable_rollback(
+    bar0: &MappedBar,
+    restore_value: u32,
+) -> Result<(), SovereignStagesError> {
+    tracing::warn!(
+        restore = format!("0x{restore_value:08x}"),
+        "Rolling back PMC_ENABLE after devinit failure"
+    );
+    match bar0.isolated_write_u32(PMC_ENABLE as u32, restore_value, ISOLATE_TIMEOUT) {
+        super::isolation::IsolationResult::Ok(()) => {
+            std::thread::sleep(Duration::from_millis(20));
+            let readback = bar0.read_u32(PMC_ENABLE).unwrap_or(0xDEAD_DEAD);
+            tracing::info!(
+                readback = format!("0x{readback:08x}"),
+                "PMC_ENABLE rollback complete"
+            );
+            Ok(())
+        }
+        other => {
+            tracing::error!("PMC_ENABLE rollback failed: {other:?}");
+            Err(SovereignStagesError::PmcEnableIsolationFailure {
+                message: format!("PMC_ENABLE rollback failed: {other:?}"),
+            })
+        }
+    }
+}
+
+/// Post-devinit full enable for firmware-managed generations.
+///
+/// Only called after VBIOS devinit succeeds AND the profile allows it.
+pub(crate) fn pmc_enable_full(bar0: &MappedBar) -> Result<String, SovereignStagesError> {
+    let before = bar0.read_u32(PMC_ENABLE).unwrap_or(0xDEAD_DEAD);
+    tracing::info!(
+        pmc_before = format!("0x{before:08x}"),
+        "PMC_ENABLE full ungating (post-devinit)"
+    );
+
+    match bar0.isolated_write_u32(PMC_ENABLE as u32, 0xFFFF_FFFF, ISOLATE_TIMEOUT) {
+        super::isolation::IsolationResult::Ok(()) => {}
+        super::isolation::IsolationResult::Timeout => {
+            return Err(SovereignStagesError::PmcEnableWriteTimeout);
+        }
+        other => {
+            return Err(SovereignStagesError::PmcEnableIsolationFailure {
+                message: format!("PMC_ENABLE full write failed: {other:?}"),
+            });
+        }
+    }
+    std::thread::sleep(Duration::from_millis(50));
+
+    let after = bar0.read_u32(PMC_ENABLE).unwrap_or(0xDEAD_DEAD);
+    tracing::debug!(pmc_after = format!("0x{after:08x}"), "PMC_ENABLE full ungating done");
+
+    Ok(format!("post_devinit_enable before=0x{before:08x} after=0x{after:08x}"))
+}
+
+/// PGRAPH engine reset via PMC_ENABLE bit 12 toggle.
+///
+/// After UEFI POST or driver handoff, PGRAPH's internal PRI fabric
+/// (GPCs, FECS, GPCCS) can be in an inconsistent state — registers
+/// read back PRI fault sentinels even though PMC reports the engine
+/// as enabled. Toggling the GR bit resets PGRAPH's internal ring
+/// stations and falcon state machines, matching nouveau's `mc_init`
+/// sequence.
+///
+/// Must run *before* CG sweep and PRI recovery — those stages can't
+/// clear faults inside a stale PGRAPH fabric.
+pub(crate) fn pgraph_engine_reset(bar0: &MappedBar) -> Result<String, SovereignStagesError> {
+    const GR_BIT: u32 = 1 << 12;
+    const PGRAPH_STATUS: usize = 0x0040_0700;
+
+    let pmc_before = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
+    let gr_was_enabled = pmc_before & GR_BIT != 0;
+
+    if !gr_was_enabled {
+        tracing::info!("PGRAPH not enabled in PMC — enabling without reset");
+        let _ = bar0.write_u32(PMC_ENABLE, pmc_before | GR_BIT);
+        std::thread::sleep(Duration::from_millis(10));
+        let after = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
+        return Ok(format!(
+            "pgraph_enable pmc=0x{pmc_before:08x}->0x{after:08x}"
+        ));
+    }
+
+    // Toggle: clear GR bit, wait, re-set
+    let _ = bar0.write_u32(PMC_ENABLE, pmc_before & !GR_BIT);
+    std::thread::sleep(Duration::from_millis(10));
+
+    let _ = bar0.write_u32(PMC_ENABLE, pmc_before | GR_BIT);
+    std::thread::sleep(Duration::from_millis(20));
+
+    // Poll PGRAPH_STATUS for up to 100ms — wait for PRI fault to clear
+    let deadline = std::time::Instant::now() + Duration::from_millis(100);
+    let mut status = bar0.read_u32(PGRAPH_STATUS).unwrap_or(0xDEAD_DEAD);
+    while std::time::Instant::now() < deadline {
+        if !crate::nv::pri::is_pri_fault(status) {
+            break;
+        }
+        std::thread::sleep(Duration::from_micros(500));
+        status = bar0.read_u32(PGRAPH_STATUS).unwrap_or(0xDEAD_DEAD);
+    }
+
+    let pmc_after = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
+    let fecs_cpuctl = bar0.read_u32(0x0040_9100).unwrap_or(0xDEAD_DEAD);
+    let fecs_imem_sz = bar0.read_u32(0x0040_9140).unwrap_or(0);
+
+    tracing::info!(
+        pmc_before = format!("{pmc_before:#010x}"),
+        pmc_after = format!("{pmc_after:#010x}"),
+        pgraph_status = format!("{status:#010x}"),
+        fecs_cpuctl = format!("{fecs_cpuctl:#010x}"),
+        fecs_imem_kb = fecs_imem_sz,
+        "PGRAPH engine reset complete"
+    );
+
+    Ok(format!(
+        "pgraph_reset pmc=0x{pmc_before:08x}->0x{pmc_after:08x} status=0x{status:08x} fecs_imem={fecs_imem_sz}KB"
+    ))
+}
+
+/// Clock gating sweep for Volta+ GPUs.
+///
+/// Disables ELCG/BLCG/SLCG across all known domains so that PGRAPH,
+/// FBPA, LTC, and PFB registers become accessible. Without this, cold
+/// GPUs return `0xBADF1100` / `0xBADF3000` on reads to clock-gated domains,
+/// blocking HBM2 training and falcon DMA boot.
+///
+/// This is the sovereign_init equivalent of glowplug's `run_step_clock_gating`.
+pub(crate) fn cg_sweep(bar0: &MappedBar) -> CgSweepResult {
+    use crate::nv::pri::is_pri_fault;
+    use crate::vfio::channel::registers::cg;
+
+    let mut changes = 0u32;
+    let mut faulted = 0u32;
+    let mut detail_lines: Vec<String> = Vec::new();
+
+    // Phase 1: Sweep all known CG control registers
+    for &(offset, name) in cg::CG_SWEEP_TARGETS {
+        let old = bar0.read_u32(offset).unwrap_or(0xDEAD_DEAD);
+        if is_pri_fault(old) {
+            faulted += 1;
+            tracing::debug!(
+                name,
+                offset = format!("{offset:#08x}"),
+                val = format!("{old:#010x}"),
+                "CG sweep: domain unreachable"
+            );
+        } else if old != cg::CG_DISABLE {
+            let _ = bar0.write_u32(offset, cg::CG_DISABLE);
+            let new = bar0.read_u32(offset).unwrap_or(0xDEAD_DEAD);
+            if old != new {
+                changes += 1;
+                detail_lines.push(format!("{name}: {old:#010x}->{new:#010x}"));
+            }
+        }
+    }
+
+    // Phase 2: Per-FBPA clock gating disable
+    for i in 0..cg::FBPA_COUNT {
+        let reg = cg::FBPA0_BASE + i * cg::FBPA_STRIDE + cg::FBPA_CG_OFFSET;
+        let old = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+        let _ = bar0.write_u32(reg, cg::CG_DISABLE);
+        if is_pri_fault(old) {
+            faulted += 1;
+        } else {
+            let new = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+            if old != new {
+                changes += 1;
+                detail_lines.push(format!("FBPA{i}: {old:#010x}->{new:#010x}"));
+            }
+        }
+    }
+
+    // Phase 3: Per-LTC clock gating disable
+    for i in 0..cg::LTC_COUNT {
+        let reg = cg::LTC0_BASE + i * cg::LTC_STRIDE + cg::LTC_CG_OFFSET;
+        let old = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+        let _ = bar0.write_u32(reg, cg::CG_DISABLE);
+        if is_pri_fault(old) {
+            faulted += 1;
+        } else {
+            let new = bar0.read_u32(reg).unwrap_or(0xDEAD_DEAD);
+            if old != new {
+                changes += 1;
+                detail_lines.push(format!("LTC{i}: {old:#010x}->{new:#010x}"));
+            }
+        }
+    }
+
+    tracing::info!(
+        changes,
+        faulted,
+        "CG sweep complete"
+    );
+
+    CgSweepResult {
+        changes,
+        faulted,
+        detail: if detail_lines.is_empty() {
+            format!("{changes} changed, {faulted} faulted")
+        } else {
+            format!(
+                "{changes} changed, {faulted} faulted [{}]",
+                detail_lines.join(", ")
+            )
+        },
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CgSweepResult {
+    #[expect(dead_code, reason = "used in tracing + future diagnostics")]
+    pub changes: u32,
+    #[expect(dead_code, reason = "used in tracing + future diagnostics")]
+    pub faulted: u32,
+    pub detail: String,
+}
+
+/// PRI bus recovery — acknowledge pending PRIV_RING faults and re-probe.
+///
+/// After a CG sweep, some domains may have generated PRI faults during
+/// the transition. This clears the fault state so subsequent register
+/// reads don't hit stale backpressure.
+///
+/// Also clears PRI ringmaster-level errors (0x12200c) and re-enumerates
+/// ring stations — without this, GPC/PGRAPH registers remain unreachable
+/// after UEFI POST because the ringmaster retains stale fault state from
+/// firmware handoff.
+pub(crate) fn pri_bus_recover(bar0: &MappedBar) -> PriRecoveryResult {
+    use crate::vfio::channel::pri_monitor::PriBusMonitor;
+    use crate::vfio::channel::registers::pri;
+
+    // Phase 0: Clear PRI ringmaster errors (0x122xxx layer).
+    // The station-level ACK at 0x12004c doesn't touch these. Stale
+    // ringmaster faults from UEFI/firmware handoff block all GPC and
+    // PGRAPH register access.
+    let rm_intr = bar0.read_u32(pri::PRI_RINGMASTER_INTR_STATUS).unwrap_or(0);
+    if rm_intr != 0 {
+        tracing::info!(
+            rm_intr = format!("{rm_intr:#010x}"),
+            "PRI ringmaster has pending errors — clearing and re-enumerating"
+        );
+        // Write-back to clear ringmaster interrupt bits
+        let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, rm_intr);
+        std::thread::sleep(Duration::from_millis(5));
+
+        // Re-enumerate all ring stations so they re-register with the master
+        let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+        std::thread::sleep(Duration::from_millis(20));
+
+        let rm_after = bar0.read_u32(pri::PRI_RINGMASTER_INTR_STATUS).unwrap_or(0);
+        tracing::info!(
+            rm_after = format!("{rm_after:#010x}"),
+            "PRI ringmaster after enumerate"
+        );
+    }
+
+    // Phase 1: Station-level fault recovery
+    let mut monitor = PriBusMonitor::new(bar0);
+    let health = monitor.probe_all_domains();
+    let alive = health
+        .iter()
+        .filter(|(_, _, h)| {
+            matches!(
+                h,
+                crate::vfio::channel::pri_monitor::DomainHealth::Alive
+            )
+        })
+        .count();
+    let faulted = health
+        .iter()
+        .filter(|(_, _, h)| {
+            matches!(
+                h,
+                crate::vfio::channel::pri_monitor::DomainHealth::Faulted { .. }
+            )
+        })
+        .count();
+
+    let recovered = if faulted > 0 {
+        monitor.attempt_recovery()
+    } else {
+        true
+    };
+
+    std::thread::sleep(Duration::from_millis(50));
+
+    tracing::info!(
+        alive,
+        faulted,
+        recovered,
+        "PRI bus recovery after CG sweep"
+    );
+
+    PriRecoveryResult {
+        alive,
+        faulted,
+        recovered,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct PriRecoveryResult {
+    pub alive: usize,
+    pub faulted: usize,
+    pub recovered: bool,
+}
+
+/// PGOB disable for Volta+ cold boot.
+///
+/// Ungates GPC compute domains via PMC clock gate + PGRAPH GPC broadcast.
+/// Required before falcon DMA boot on cold GPUs where PGRAPH is power-gated.
+/// Delegates to the bridge's implementation (NvGspBridge has the register
+/// sequence, StubGspBridge no-ops).
+pub(crate) fn pgob_ungating(
+    bar0: &MappedBar,
+    bridge: &dyn crate::nv::gsp_bridge::GspBridge,
+) -> Result<String, SovereignStagesError> {
+    if !bridge.supports_pgob() {
+        return Ok("pgob: skipped (no firmware provider)".into());
+    }
+
+    bridge.pgob_diagnostic(bar0, "sovereign::pre-PGOB");
+    match bridge.pgob_disable(bar0) {
+        Ok(out) => {
+            bridge.pgob_diagnostic(bar0, "sovereign::post-PGOB");
+            tracing::info!(gpc_alive = out.gpc_alive, "PGOB ungating succeeded");
+            Ok(format!("pgob: {} GPCs alive", out.gpc_alive))
+        }
+        Err(e) => {
+            tracing::warn!(%e, "PGOB ungating failed — GPCs may remain gated");
+            Ok(format!("pgob: failed ({e})"))
+        }
+    }
 }
 
 pub(crate) fn run_hbm2_training(
@@ -228,6 +604,51 @@ pub(crate) fn dispatch_memory_training(
                     "warm detected (pmc=0x{pmc_before:08x}, PRAMIN sentinel ok)"
                 ));
             }
+            // After early falcon boot, the PMU may have completed HBM2 training
+            // autonomously.  Check PRAMIN before attempting the full controller path.
+            if pramin_sentinel_test(bar0) {
+                tracing::info!(
+                    pmc_enable = format!("0x{pmc_before:08x}"),
+                    "VRAM alive (PMU devinit completed) — skipping HBM2 training"
+                );
+                return MemoryTrainingResult::Skipped(format!(
+                    "VRAM alive after falcon boot (pmc=0x{pmc_before:08x})"
+                ));
+            }
+
+            // On cold secure-boot GPUs, try PMU FALCON devinit first.
+            // The PMU firmware in the VBIOS ROM includes HBM2 training
+            // sequences that the host-side interpreter cannot replicate.
+            tracing::info!("HBM2 cold: trying PMU FALCON devinit before controller path");
+            match crate::vfio::channel::devinit::execute_devinit_with_diagnostics(
+                bar0,
+                Some(bdf),
+            ) {
+                Ok(true) => {
+                    tracing::info!("PMU FALCON devinit trained HBM2 — VRAM alive");
+                    return MemoryTrainingResult::Ok(
+                        "HBM2 trained via PMU FALCON devinit".into(),
+                    );
+                }
+                Ok(false) => {
+                    tracing::info!("PMU FALCON devinit: not needed or VRAM still dead");
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        "PMU FALCON devinit failed — falling through to HBM2 controller"
+                    );
+                }
+            }
+
+            // Check PRAMIN again in case PMU devinit worked asynchronously
+            if pramin_sentinel_test(bar0) {
+                tracing::info!("VRAM alive after PMU devinit attempt");
+                return MemoryTrainingResult::Ok(
+                    "HBM2 trained via PMU FALCON devinit (delayed)".into(),
+                );
+            }
+
             let fbpa_count = opts.fbpa_count.unwrap_or(4);
             match run_hbm2_training(bar0, bdf, fbpa_count, opts) {
                 Ok(log) => MemoryTrainingResult::OkWithLog(log),
@@ -369,62 +790,58 @@ pub(crate) fn falcon_boot(
     bar0: &MappedBar,
     sm_version: u32,
     dma: Option<&crate::vfio::device::DmaBackend>,
-    warm_detected: bool,
+    warm_state: crate::vfio::sovereign_strategy::FalconWarmState,
     bridge: &dyn crate::nv::gsp_bridge::GspBridge,
+    boot_style: crate::vfio::sovereign_strategy::FalconBootStyle,
 ) -> Result<String, SovereignStagesError> {
     use crate::vfio::channel::registers::falcon;
+    use crate::vfio::sovereign_strategy::{FalconBootStyle, FalconWarmState};
 
-    let profile = crate::nv::generation::profile_for_sm(sm_version);
-    if crate::nv::generation::is_kepler(profile) {
-        tracing::info!(
-            sm = sm_version,
-            "Kepler GPU detected — using direct PIO falcon boot (no ACR)"
-        );
-        return kepler_falcon_boot(bar0, sm_version, bridge);
+    match boot_style {
+        FalconBootStyle::DirectPio => {
+            tracing::info!(
+                sm = sm_version,
+                "DirectPio falcon boot — using PIO firmware upload (no ACR)"
+            );
+            return kepler_falcon_boot(bar0, sm_version, bridge);
+        }
+        FalconBootStyle::NoFalcons => {
+            tracing::info!("No falcon engines on this hardware — skipping falcon boot");
+            return Ok("no-falcons: hardware has no falcon microcontrollers".into());
+        }
+        FalconBootStyle::AcrDmaHs => {}
     }
 
-    // ── FECS warm-preservation detection ─────────────────────────────
+    // ── FECS warm-preservation dispatch ──────────────────────────────
     //
-    // After a nouveau warm handoff with livepatch freeze, FECS may be
-    // in one of these states:
-    //   a) HALTED + MAILBOX0 != 0: warm-preserved (context-switch-ready
-    //      halt).  The firmware is still in IMEM/DMEM and runlist was
-    //      frozen — skip ACR/PIO entirely.
-    //   b) cpuctl == 0x12 (STARTCPU|HRESET, no HALTED): inconsistent
-    //      post-teardown state.  Attempt direct PIO re-bootstrap since
-    //      firmware may still be resident in IMEM from nouveau's ACR load.
-    //   c) Otherwise: cold or unknown — fall through to normal boot.
-    if warm_detected {
-        let fecs_cpuctl = bar0
-            .read_u32(falcon::FECS_BASE + falcon::CPUCTL)
-            .unwrap_or(0xDEAD_DEAD);
-        let fecs_mb0 = bar0
-            .read_u32(falcon::FECS_BASE + falcon::MAILBOX0)
-            .unwrap_or(0);
+    // The strategy has already classified the falcon thermal state via
+    // `detect_falcon_warm_state()` — dispatch on the enum rather than
+    // reading BAR0 registers inline.
+    tracing::info!(warm_state = ?warm_state, "falcon warm-state detection result");
 
-        tracing::info!(
-            fecs_cpuctl = format!("{fecs_cpuctl:#010x}"),
-            fecs_mb0 = format!("{fecs_mb0:#010x}"),
-            "warm FECS state check"
-        );
-
-        let halted = fecs_cpuctl & falcon::CPUCTL_HALTED != 0;
-        let is_0x12 = fecs_cpuctl == (falcon::CPUCTL_STARTCPU | falcon::CPUCTL_HRESET);
-
-        if halted && fecs_mb0 != 0 {
-            // (a) Warm-preserved: FECS was frozen by livepatch before teardown.
+    match warm_state {
+        FalconWarmState::WarmPreserved { cpuctl, mailbox0 } => {
             tracing::info!(
-                "FECS warm-preserved (HALTED + mb0={fecs_mb0:#010x}) — skipping ACR/PIO"
+                "FECS warm-preserved (HALTED + mb0={mailbox0:#010x}) — skipping ACR/PIO"
             );
             return Ok(format!(
-                "warm-preserved: FECS cpuctl={fecs_cpuctl:#010x} mb0={fecs_mb0:#010x}"
+                "warm-preserved: FECS cpuctl={cpuctl:#010x} mb0={mailbox0:#010x}"
             ));
         }
-
-        if is_0x12 {
-            // (b) Inconsistent: nouveau teardown halted FECS without a clean
-            //     freeze.  Firmware may still be in IMEM — try direct PIO kick.
-            tracing::warn!("FECS at cpuctl=0x12 (STARTCPU+HRESET) — attempting PIO re-bootstrap");
+        FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 } => {
+            tracing::info!(
+                fecs_pc = format!("{pc:#010x}"),
+                "FECS warm-running (active firmware, PC advancing) — skipping boot"
+            );
+            return Ok(format!(
+                "warm-running: FECS cpuctl={cpuctl:#010x} pc={pc:#010x} mb0={mailbox0:#010x}"
+            ));
+        }
+        FalconWarmState::Inconsistent { cpuctl } => {
+            tracing::warn!(
+                cpuctl = format!("{cpuctl:#010x}"),
+                "FECS inconsistent teardown state — attempting PIO re-bootstrap"
+            );
             let chip = crate::nv::identity::chip_name(sm_version);
             match bridge.boot_gr_falcons(bar0, chip) {
                 Ok(result) if result.running => {
@@ -447,6 +864,7 @@ pub(crate) fn falcon_boot(
                 }
             }
         }
+        FalconWarmState::Cold => {}
     }
 
     let chip = crate::nv::identity::chip_name(sm_version);
@@ -589,7 +1007,7 @@ pub(crate) fn verify(bar0: &MappedBar) -> Result<String, SovereignStagesError> {
     }
 }
 
-fn pramin_sentinel_test(bar0: &MappedBar) -> bool {
+pub(crate) fn pramin_sentinel_test(bar0: &MappedBar) -> bool {
     use crate::vfio::memory::{MemoryRegion, PraminRegion};
 
     match PraminRegion::new(bar0, 0x0002_6000, 8) {

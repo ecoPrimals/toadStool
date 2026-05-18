@@ -101,6 +101,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "device.gr.init",
     "compute.context.init",
     "sovereign.init",
+    "sovereign.profile",
     "mmio.read32",
     "mmio.write32",
     "mmio.batch",

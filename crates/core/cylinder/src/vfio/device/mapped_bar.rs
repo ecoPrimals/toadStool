@@ -64,7 +64,7 @@ use std::borrow::Cow;
 /// therefore `Send` + `Sync` for the same reasons as other mmap-backed BAR
 /// wrappers in this crate.
 pub struct MappedBar {
-    pub(super) region: MmioRegion,
+    pub(crate) region: MmioRegion,
 }
 
 impl MappedBar {

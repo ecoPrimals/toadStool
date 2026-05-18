@@ -231,6 +231,55 @@ pub trait ComputeDevice: Send + Sync {
             "GR context init not supported on this device type".into(),
         ))
     }
+
+    /// Borrow the device's BAR0 mapping if available.
+    ///
+    /// Returns `None` for devices without direct BAR access (non-VFIO,
+    /// caps-only mode, or non-Linux platforms).
+    ///
+    /// New code should prefer [`VfioDeviceExt`] when the concrete type
+    /// is known. This default implementation exists for backward compat
+    /// with dispatch paths that hold `&dyn ComputeDevice`.
+    fn bar0(&self) -> Option<&vfio::device::MappedBar> {
+        None
+    }
+
+    /// Borrow the device's DMA backend if available.
+    ///
+    /// Returns `None` for devices without DMA capability.
+    ///
+    /// New code should prefer [`VfioDeviceExt`] when the concrete type
+    /// is known.
+    fn dma_backend(&self) -> Option<&vfio::device::DmaBackend> {
+        None
+    }
+
+    /// Duplicate the VFIO file descriptors for constructing a warm-keepalive anchor.
+    ///
+    /// Returns `None` for devices without a VFIO fd (DRM-backed, non-Linux).
+    /// When available, returns owned dup'd copies of the VFIO device and
+    /// backend fds — the caller can hold them independently to prevent
+    /// GPU bus resets on fd close.
+    fn dup_anchor_fds(&self) -> Option<vfio::DupAnchorFds> {
+        None
+    }
+}
+
+/// Extension trait for devices with direct VFIO hardware access.
+///
+/// Separates VFIO-specific capabilities (BAR0 mapping, DMA backend) from
+/// the vendor-neutral [`ComputeDevice`] trait. [`ComputeDevice`] stays
+/// purely about alloc/free/upload/readback/dispatch/sync/capabilities;
+/// VFIO concerns live here.
+///
+/// All [`ComputeDevice`] implementations that also have VFIO access
+/// (e.g. `NvVfioComputeDevice`) should implement this trait.
+pub trait VfioDeviceExt {
+    /// Borrow the device's BAR0 mapping.
+    fn vfio_bar0(&self) -> Option<&vfio::device::MappedBar>;
+
+    /// Borrow the device's DMA backend.
+    fn vfio_dma_backend(&self) -> Option<&vfio::device::DmaBackend>;
 }
 
 #[cfg(test)]

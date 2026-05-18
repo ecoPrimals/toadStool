@@ -57,6 +57,53 @@ pub enum BootStrategy {
     Untested,
 }
 
+/// Power safety profile for sovereign boot PMC_ENABLE sequencing.
+///
+/// Older GPUs (Kepler, Maxwell) have no firmware-managed power sequencing.
+/// Writing 0xFFFF_FFFF to PMC_ENABLE on a cold GPU can instantly ungate
+/// all engine clock domains, causing inrush current spikes that exceed
+/// the VRM's capacity — especially on high-TDP multi-die cards (K80).
+///
+/// This profile controls how aggressively the sovereign pipeline enables
+/// engine clock domains during cold boot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PowerSafetyProfile {
+    /// PMC_ENABLE mask for initial engine bring-up (stage 2).
+    /// Only these engines will be clocked before VBIOS devinit.
+    /// Bits: 0=PPCI, 1=PBUS, 4=PTIMER, 5=PFB, 6=PGRAPH, etc.
+    pub initial_pmc_mask: u32,
+    /// Whether full PMC_ENABLE (0xFFFF_FFFF) is safe after devinit.
+    /// True for Volta+ where firmware manages power rails.
+    /// False for Kepler/Maxwell where devinit IS the power sequencer.
+    pub full_enable_after_devinit: bool,
+    /// Whether PMC_ENABLE must be rolled back on devinit failure.
+    /// True for all pre-GSP generations.
+    pub rollback_on_devinit_failure: bool,
+}
+
+/// Conservative mask: PPCI + PBUS + PTIMER + PFIFO + PMC essentials.
+/// Does NOT enable PGRAPH, CE, NVDEC, or memory controller engines.
+const PMC_MASK_CONSERVATIVE: u32 = 0xC000_2030;
+
+/// Full ungating — firmware-managed generations only.
+const PMC_MASK_FULL: u32 = 0xFFFF_FFFF;
+
+impl PowerSafetyProfile {
+    /// Pre-firmware generations: only enable minimal engines before devinit.
+    pub const PRE_FIRMWARE: Self = Self {
+        initial_pmc_mask: PMC_MASK_CONSERVATIVE,
+        full_enable_after_devinit: false,
+        rollback_on_devinit_failure: true,
+    };
+
+    /// Firmware-managed generations: safe to enable all engines.
+    pub const FIRMWARE_MANAGED: Self = Self {
+        initial_pmc_mask: PMC_MASK_FULL,
+        full_enable_after_devinit: true,
+        rollback_on_devinit_failure: false,
+    };
+}
+
 pub use crate::hardware::MemoryType;
 
 /// Source of `@builtin(num_workgroups)` in compiled shaders.
@@ -153,6 +200,8 @@ pub struct GenerationProfile {
     pub instance_block_format: InstanceBlockFormat,
     /// Runlist entry format and register programming.
     pub runlist_format: RunlistFormat,
+    /// Power safety profile for PMC_ENABLE sequencing.
+    pub power_safety: PowerSafetyProfile,
 }
 
 const LOCAL_MEM_WINDOW_LEGACY: u64 = 0xFF00_0000;
@@ -181,6 +230,7 @@ pub const KEPLER: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V1TwoLevel,
     instance_block_format: InstanceBlockFormat::Simple,
     runlist_format: RunlistFormat::Gk104Global,
+    power_safety: PowerSafetyProfile::PRE_FIRMWARE,
 };
 
 /// Maxwell (GM200) — GTX 980 Ti, Titan X (Maxwell).
@@ -206,6 +256,7 @@ pub const MAXWELL: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V1TwoLevel,
     instance_block_format: InstanceBlockFormat::Simple,
     runlist_format: RunlistFormat::Gk104Global,
+    power_safety: PowerSafetyProfile::PRE_FIRMWARE,
 };
 
 /// Pascal (GP100/GP102) — GTX 1080, Tesla P100.
@@ -234,6 +285,7 @@ pub const PASCAL: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Simple,
     runlist_format: RunlistFormat::Gk104Global,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Volta (GV100) — Titan V, Tesla V100.
@@ -259,6 +311,7 @@ pub const VOLTA: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Turing (TU102/TU104/TU106) — RTX 2080, Tesla T4.
@@ -284,6 +337,7 @@ pub const TURING: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Ampere A (GA100) — A100 datacenter.
@@ -309,6 +363,7 @@ pub const AMPERE_A: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Ampere B (GA102/GA104/GA106/GA107) — RTX 3090, RTX 3080, etc.
@@ -334,6 +389,7 @@ pub const AMPERE_B: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Ada Lovelace (AD102/AD103/AD104) — RTX 4090, RTX 4080, etc.
@@ -359,6 +415,7 @@ pub const ADA: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Hopper (GH100) — H100, H200 datacenter.
@@ -384,6 +441,7 @@ pub const HOPPER: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Blackwell A (GB100/GB102) — B100, B200 datacenter.
@@ -409,6 +467,7 @@ pub const BLACKWELL_A: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// Blackwell B (GB202/GB203/GB205/GB206/GB207) — RTX 5090, RTX 5080, RTX 5060, etc.
@@ -434,6 +493,7 @@ pub const BLACKWELL_B: GenerationProfile = GenerationProfile {
     page_table_format: PageTableFormat::V2FiveLevel,
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
+    power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
 };
 
 /// All known generation profiles, ordered by SM range.

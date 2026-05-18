@@ -64,6 +64,30 @@ pub enum ReceivedVfioFds {
     },
 }
 
+/// Duplicated VFIO fds for constructing an anchor (warm keepalive holder).
+/// All fds are independent `dup()`'d copies — closing the originals does not
+/// affect these, and vice versa.
+pub enum DupAnchorFds {
+    /// iommufd backend: device fd + shared iommufd + IOAS ID.
+    Iommufd {
+        /// Duplicated VFIO device fd.
+        device_fd: OwnedFd,
+        /// Shared iommufd fd (Arc clone — same underlying fd).
+        iommufd: Arc<OwnedFd>,
+        /// IOAS ID for DMA mappings.
+        ioas_id: u32,
+    },
+    /// Legacy backend: device fd + shared container + dup'd group.
+    Legacy {
+        /// Duplicated VFIO device fd.
+        device_fd: OwnedFd,
+        /// Shared container fd (Arc clone).
+        container: Arc<OwnedFd>,
+        /// Duplicated VFIO group fd.
+        group: OwnedFd,
+    },
+}
+
 /// Internal backend state for the VFIO open path. Legacy carries the group
 /// and container fds; iommufd carries the iommufd and IOAS id.
 pub(crate) enum VfioBackend {

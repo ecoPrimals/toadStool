@@ -57,6 +57,23 @@ pub struct PgobResult {
 /// and GR initialization logic. toadStool's sovereign init stages call
 /// through this trait boundary.
 ///
+/// # Frozen Dependency Pattern
+///
+/// Bridge implementations are designed as **frozen dependencies**:
+///
+/// - Firmware blobs are pinned artifacts extracted from vendor drivers,
+///   committed to the ecosystem's artifact store, and never change for
+///   a given chip.
+/// - Upload mechanisms (PIO register writes, DMA descriptors) are
+///   defined by silicon hardware specifications and evolve glacially.
+/// - The trait interface itself is the evolution boundary — new
+///   capabilities are added as default methods, leaving existing
+///   implementations untouched.
+///
+/// Future bridge implementations (AMD GFX, NPU accelerators) follow
+/// the same pattern: frozen vendor blobs + pure Rust register-write
+/// upload. The `SovereignStrategy` trait selects which bridge to use.
+///
 /// # Capability queries
 ///
 /// Default methods (`supports_acr`, `supports_pgob`, `supports_pmu`)
@@ -141,6 +158,10 @@ pub trait GspBridge: Send + Sync {
 /// [`DriverError::Unsupported`] with guidance to connect a `GspBridge`
 /// implementor.
 ///
+/// When constructed with [`StubGspBridge::with_gr_init_sequence`], the stub
+/// can apply captured GR BAR0 init writes — enabling warm-handoff validation
+/// without a full firmware provider.
+///
 /// **Hardware validation note (hotSpring May 2026):** Dispatch readback
 /// fails at FECS compute context init because `StubGspBridge` cannot
 /// upload FECS firmware. The production path is either:
@@ -148,12 +169,42 @@ pub trait GspBridge: Send + Sync {
 /// - toadStool absorbs `vfio_compute` with a local `NvGspBridge` impl
 /// - Warm-handoff from nouveau/nvidia-470 preserves FECS state
 #[derive(Debug, Default)]
-pub struct StubGspBridge;
+pub struct StubGspBridge {
+    gr_init_sequence: Option<crate::nv::gr_init::GrInitSequence>,
+}
+
+impl StubGspBridge {
+    /// Create a stub bridge with a captured `GrInitSequence` for BAR0 init.
+    pub fn with_gr_init_sequence(seq: crate::nv::gr_init::GrInitSequence) -> Self {
+        Self {
+            gr_init_sequence: Some(seq),
+        }
+    }
+}
 
 impl GspBridge for StubGspBridge {
-    fn apply_gr_bar0_init(&self, _bar0: &MappedBar, _sm_version: u32) -> DriverResult<()> {
-        tracing::warn!("GspBridge stub: apply_gr_bar0_init skipped (no firmware provider)");
-        Ok(())
+    fn supports_gr_init(&self) -> bool {
+        self.gr_init_sequence.is_some()
+    }
+
+    fn apply_gr_bar0_init(&self, bar0: &MappedBar, _sm_version: u32) -> DriverResult<()> {
+        match &self.gr_init_sequence {
+            Some(seq) => {
+                let applied = seq.apply(bar0).map_err(|e| {
+                    crate::DriverError::Unsupported(
+                        format!("GrInitSequence apply failed: {e}").into(),
+                    )
+                })?;
+                tracing::info!(writes = applied, "GspBridge stub: applied GrInitSequence");
+                Ok(())
+            }
+            None => {
+                tracing::warn!(
+                    "GspBridge stub: apply_gr_bar0_init skipped (no init sequence provided)"
+                );
+                Ok(())
+            }
+        }
     }
 
     fn acr_boot(
@@ -196,7 +247,7 @@ mod tests {
 
     #[test]
     fn stub_bridge_gr_init_is_ok() {
-        let bridge = StubGspBridge;
+        let bridge = StubGspBridge::default();
         // SAFETY: MappedBar cannot be created without real hardware,
         // so we only test the bridge trait object dispatch here.
         let _: Box<dyn GspBridge> = Box::new(bridge);
@@ -204,7 +255,7 @@ mod tests {
 
     #[test]
     fn stub_bridge_capabilities_all_false() {
-        let bridge = StubGspBridge;
+        let bridge = StubGspBridge::default();
         assert!(!bridge.supports_acr());
         assert!(!bridge.supports_pgob());
         assert!(!bridge.supports_pmu());

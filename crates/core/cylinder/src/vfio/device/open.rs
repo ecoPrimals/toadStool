@@ -248,7 +248,7 @@ impl VfioDevice {
                 Ok(dev)
             }
             Err(e) => {
-                tracing::debug!(bdf, err = %e, "iommufd/cdev unavailable, trying legacy (no bus master)");
+                tracing::warn!(bdf, err = %e, "iommufd/cdev failed, trying legacy (no bus master)");
                 Self::open_legacy_no_busmaster(bdf)
             }
         }

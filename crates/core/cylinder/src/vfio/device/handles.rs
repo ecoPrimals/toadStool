@@ -2,11 +2,11 @@
 //! FD handles, backend metadata, and introspection for VFIO devices.
 
 use crate::error::{DriverError, DriverResult};
-use std::os::fd::{AsFd, AsRawFd, BorrowedFd, RawFd};
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd, RawFd};
 use std::sync::Arc;
 
 use super::VfioDevice;
-use super::dma::{DmaBackend, VfioBackend, VfioBackendKind};
+use super::dma::{DmaBackend, DupAnchorFds, VfioBackend, VfioBackendKind};
 
 impl VfioDevice {
     /// DMA mapping backend for this device. Pass this to [`crate::vfio::DmaBuffer`],
@@ -107,6 +107,39 @@ impl VfioDevice {
     /// the process exits, at which point the kernel will reset the device.
     pub fn leak(self) {
         std::mem::forget(self);
+    }
+
+    /// Duplicate the VFIO fds for constructing a warm-keepalive anchor.
+    ///
+    /// Returns independent `dup()`'d copies of the device fd (and group fd
+    /// for legacy backend). The Arc-wrapped backend fds (iommufd or container)
+    /// are cloned by reference count. The caller can construct a `VfioAnchor`
+    /// from these without affecting this device's fd lifecycle.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `dup()` fails on any fd.
+    pub fn dup_anchor_fds(&self) -> DriverResult<DupAnchorFds> {
+        let device_fd = self.device.try_clone().map_err(|e| {
+            DriverError::Io(std::io::Error::new(e.kind(), format!("dup device fd: {e}")))
+        })?;
+        match &self.backend {
+            VfioBackend::Iommufd { iommufd, ioas_id } => Ok(DupAnchorFds::Iommufd {
+                device_fd,
+                iommufd: Arc::clone(iommufd),
+                ioas_id: *ioas_id,
+            }),
+            VfioBackend::LegacyGroup { container, group } => {
+                let group_fd = group.try_clone().map_err(|e| {
+                    DriverError::Io(std::io::Error::new(e.kind(), format!("dup group fd: {e}")))
+                })?;
+                Ok(DupAnchorFds::Legacy {
+                    device_fd,
+                    container: Arc::clone(container),
+                    group: OwnedFd::from(group_fd),
+                })
+            }
+        }
     }
 
     /// Raw fd of the VFIO device (for SCM\_RIGHTS fd passing to/from coral-ember).

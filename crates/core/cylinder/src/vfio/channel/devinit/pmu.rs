@@ -371,16 +371,17 @@ pub fn execute_devinit_with_diagnostics(
 
     let rom = diag.best_vbios(bar0, bdf)?;
 
+    // If VRAM is already alive (e.g. PMU devinit completed via ACR), short-circuit.
+    if check_vram_via_pramin(bar0) {
+        tracing::info!("VRAM already alive — skipping devinit");
+        return Ok(true);
+    }
+
     if diag.secure_boot {
-        tracing::info!("secure boot detected — using host-side VBIOS interpreter");
-        let stats = interpret_boot_scripts(bar0, &rom)?;
-        let vram_ok = check_vram_via_pramin(bar0);
         tracing::info!(
-            writes = stats.writes_applied,
-            vram = if vram_ok { "ALIVE" } else { "still dead" },
-            "VBIOS interpreter result"
+            "secure boot detected — trying PMU FALCON upload (VBIOS signed firmware), \
+             then host-side interpreter as fallback"
         );
-        return Ok(vram_ok);
     }
 
     tracing::info!("attempting PMU FALCON devinit");
@@ -531,8 +532,17 @@ pub fn execute_devinit(bar0: &MappedBar, rom: &[u8]) -> Result<bool, DevinitErro
     status.print_summary();
 
     if !status.needs_post {
-        tracing::info!("devinit already complete — skipping PMU upload");
-        return Ok(false);
+        // The devinit_reg can be stale after a bus reset: the register says
+        // "done" but VRAM is actually dead.  Cross-check with a PRAMIN
+        // sentinel test before skipping.
+        if check_vram_via_pramin(bar0) {
+            tracing::info!("devinit already complete + VRAM alive — skipping PMU upload");
+            return Ok(false);
+        }
+        tracing::warn!(
+            "devinit_reg says complete but VRAM is dead — clearing stale register"
+        );
+        let _ = bar0.write_u32(pmu_reg::DEVINIT_STATUS, 0);
     }
 
     let bit = BitTable::parse(rom)?;
@@ -549,7 +559,21 @@ pub fn execute_devinit(bar0: &MappedBar, rom: &[u8]) -> Result<bool, DevinitErro
 
     let bit_i = bit.find(b'I').ok_or(DevinitError::BitINotFound)?;
 
-    if bit_i.version != 1 || bit_i.data_size < 0x1c {
+    // Kepler BIT I is 18 bytes (0x12): init-directory pointers only, no
+    // PMU opcode/script blob fields at 0x14-0x1b.  Skip PMU FALCON upload
+    // and let the caller fall through to the host-side VBIOS interpreter.
+    if bit_i.data_size < 0x1c {
+        tracing::info!(
+            data_size = bit_i.data_size,
+            "BIT I short-form (Kepler): PMU firmware table not present, \
+             deferring to host-side interpreter"
+        );
+        return Err(DevinitError::BitIShortForm {
+            data_size: bit_i.data_size,
+        });
+    }
+
+    if bit_i.version != 1 {
         return Err(DevinitError::BitIUnexpectedLayout {
             version: bit_i.version,
             data_size: bit_i.data_size,

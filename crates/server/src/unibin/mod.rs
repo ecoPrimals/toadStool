@@ -6,6 +6,8 @@
 mod capabilities;
 mod execution;
 mod format;
+#[allow(unsafe_code)]
+pub(crate) mod systemd_fdstore;
 
 // Re-exports: capability probe, execution helpers, socket layout (integration tests / coverage)
 pub use capabilities::query_local_capabilities;
@@ -219,6 +221,21 @@ pub async fn run_server_main(
         Arc::clone(&ready),
     ));
 
+    // Extract anchor store before handler moves into the server task
+    let anchor_store = jsonrpc_handler.anchor_store();
+
+    // Recover VFIO anchors from systemd fd store (survives daemon restart)
+    let recovered = systemd_fdstore::retrieve_anchors();
+    if !recovered.is_empty() {
+        let count = recovered.len();
+        let mut store = anchor_store.lock().await;
+        for (bdf, anchor) in recovered {
+            info!(bdf, "recovered VfioAnchor from systemd fd store — GPU warm state preserved");
+            store.insert(bdf, anchor);
+        }
+        info!(count, "restored VfioAnchor(s) from previous daemon instance");
+    }
+
     let socket_path_for_server = socket_path.clone();
     let jsonrpc_socket_for_server = jsonrpc_socket.clone();
     let unibin_for_server = unibin_config.clone();
@@ -285,6 +302,12 @@ pub async fn run_server_main(
     ready.store(true, Ordering::Release);
     info!("✅ Server fully initialized — health.liveness → alive");
 
+    if let Err(e) = systemd_fdstore::sd_notify("READY=1\n") {
+        info!("sd_notify(READY=1) skipped: {e} (normal outside systemd)");
+    } else {
+        info!("sd_notify(READY=1) sent to systemd");
+    }
+
     info!("Ready for shutdown (Ctrl+C or SIGTERM)");
     let shutdown_signal = execution::wait_for_shutdown_signal().await;
 
@@ -292,6 +315,33 @@ pub async fn run_server_main(
         ShutdownSignal::Sigint => info!("📡 Received SIGINT (Ctrl+C)"),
         ShutdownSignal::Sigterm => info!("📡 Received SIGTERM (graceful shutdown)"),
         ShutdownSignal::Error(err) => error!("Failed to listen for shutdown signals: {}", err),
+    }
+
+    // Store VFIO anchor fds in systemd's FileDescriptorStore.
+    // systemd holds duplicated fds in PID 1, keeping the VFIO binding
+    // alive across our process exit — prevents Secondary Bus Reset.
+    {
+        let anchors = anchor_store.lock().await;
+        if !anchors.is_empty() {
+            let count = anchors.len();
+            let stored = systemd_fdstore::store_anchors(&anchors);
+            if stored > 0 {
+                info!(
+                    anchors = count,
+                    fds_stored = stored,
+                    "stored VFIO fds in systemd fd store — GPUs will stay warm"
+                );
+            } else {
+                warn!(
+                    "failed to store fds in systemd — falling back to anchor leak"
+                );
+                drop(anchors);
+                let mut anchors = anchor_store.lock().await;
+                for (_bdf, anchor) in anchors.drain() {
+                    anchor.leak();
+                }
+            }
+        }
     }
 
     info!("Shutting down ToadStool server...");

@@ -46,7 +46,9 @@ pub mod resource_handle;
 pub mod ring_meta;
 pub mod sysfs;
 pub mod vendor_lifecycle;
+pub mod vfio_anchor;
 pub mod vfio_handle;
+pub mod warm_keepalive;
 
 pub use error::{SwapError, SysfsError};
 pub use held_resource::HeldResource;
@@ -63,4 +65,6 @@ pub use plx_keepalive::{
     ActivityTracker, KeepaliveHandle, PcieBridgeKeepalive, PlxKeepalive,
     detect_pcie_bridges, detect_plx_bridge, is_pci_bdf, PLX_VENDOR_ID,
 };
+pub use vfio_anchor::{AnchorBackendRef, VfioAnchor};
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};
+pub use warm_keepalive::{DmaSpec, KeepaliveStore, WarmKeepalive, WarmKeepaliveRef};

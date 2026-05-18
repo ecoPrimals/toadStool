@@ -294,6 +294,27 @@ fn pin_hierarchy_for_gpus(gpu_bdfs: &[String]) -> usize {
     total_pinned
 }
 
+/// Discover all VFIO-bound GPUs that need keepalive, regardless of bridge topology.
+/// Covers Titan V and other direct-attached GPUs that might not sit behind a
+/// discoverable PLX switch.
+fn discover_vfio_gpus() -> Vec<String> {
+    let mut gpus = Vec::new();
+    let driver_dir = "/sys/bus/pci/drivers/vfio-pci";
+    let Ok(entries) = std::fs::read_dir(driver_dir) else {
+        return gpus;
+    };
+
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if is_pci_bdf(&name) {
+            gpus.push(name);
+        }
+    }
+
+    gpus.sort();
+    gpus
+}
+
 pub(crate) async fn run() {
     // Phase 1: class-based PLX discovery
     let mut plx_bridges = discover_plx_bridges();
@@ -325,12 +346,22 @@ pub(crate) async fn run() {
     let all_bridges = discover_gpu_bridges();
     let bridges = if plx_bridges.is_empty() { &all_bridges } else { &plx_bridges };
 
-    if bridges.is_empty() {
-        info!("no PCIe bridges with GPU endpoints found — keepalive disabled");
-        return;
+    let mut downstream = discover_downstream_gpus(bridges);
+
+    // Ensure all VFIO-bound GPUs are included, even if not behind a
+    // discovered bridge (direct CPU-to-GPU topology like Titan V).
+    let vfio_gpus = discover_vfio_gpus();
+    for bdf in &vfio_gpus {
+        if !downstream.contains(bdf) {
+            info!(bdf, "VFIO GPU not behind any bridge — adding to keepalive targets");
+            downstream.push(bdf.clone());
+        }
     }
 
-    let downstream = discover_downstream_gpus(bridges);
+    if bridges.is_empty() && downstream.is_empty() {
+        info!("no PCIe bridges or GPU endpoints found — keepalive disabled");
+        return;
+    }
 
     // Pin immediately — before the first interval tick
     let pinned = pin_hierarchy_for_gpus(&downstream);
@@ -338,6 +369,7 @@ pub(crate) async fn run() {
     info!(
         bridge_count = bridges.len(),
         gpu_count = downstream.len(),
+        vfio_gpu_count = vfio_gpus.len(),
         hierarchies_pinned = pinned,
         bridges = ?bridges,
         downstream = ?downstream,

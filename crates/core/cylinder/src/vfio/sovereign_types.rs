@@ -5,21 +5,30 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
+use crate::vfio::boot_state::SovereignBootState;
+
 /// Which stage to halt before (for debugging partial pipelines).
+///
+/// Stages execute in this order:
+/// `PmcEnable → CgSweep → PgobUngate → MemoryTraining → EngineUngate → FalconBoot → GrInit → Verify`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HaltBefore {
     /// Halt before master clock/engine enable.
     PmcEnable,
-    /// Halt before HBM2 memory controller bring-up.
-    Hbm2Training,
-    /// Halt before Kepler PGRAPH ungating (only applies to NoAcr GPUs).
-    KeplerPgraphUngate,
-    /// Halt before falcon (SEC2/ACR/FECS) boot.
+    /// Halt before clock-gating sweep (observe raw post-PMC state).
+    CgSweep,
+    /// Halt before PGOB ungating (after CG sweep + PRI recovery).
+    PgobUngate,
+    /// Halt before memory controller bring-up (GDDR5 devinit, HBM2 training, etc.).
+    MemoryTraining,
+    /// Halt before engine ungating (init sequence replay).
+    EngineUngate,
+    /// Halt before microcontroller firmware boot (falcon, etc.).
     FalconBoot,
     /// Halt before GR engine register programming.
     GrInit,
-    /// Halt before final VRAM/PTIMER verification.
+    /// Halt before final memory/timer verification.
     Verify,
 }
 
@@ -75,7 +84,7 @@ pub struct SovereignInitOptions {
 /// Outcome of a single pipeline stage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StageResult {
-    /// Stage identifier (e.g. `"bar0_probe"`, `"hbm2_training"`).
+    /// Stage identifier (e.g. `"bar0_probe"`, `"memory_training"`).
     pub name: String,
     /// Whether the stage passed, was skipped, or failed.
     pub status: StageStatus,
@@ -103,10 +112,12 @@ pub enum StageStatus {
 pub struct SovereignInitResult {
     /// PCI BDF address of the device.
     pub bdf: String,
-    /// Decoded chip ID from BOOT0 (e.g. 0x140 for GV100).
-    pub chip_id: u32,
-    /// Raw BOOT0 register value.
-    pub boot0: u32,
+    /// Decoded device identity (e.g. 0x140 for GV100 from BOOT0).
+    #[serde(alias = "chip_id")]
+    pub identity_chip: u32,
+    /// Raw identity register value (BOOT0 for NVIDIA, GRBM for AMD).
+    #[serde(alias = "boot0")]
+    pub identity_raw: u32,
     /// True if every executed stage passed.
     pub all_ok: bool,
     /// True if the full pipeline completed and GPU is compute-ready.
@@ -118,12 +129,16 @@ pub struct SovereignInitResult {
     pub stages: Vec<StageResult>,
     /// Total pipeline wall-clock time in milliseconds.
     pub total_ms: u64,
-    /// Number of HBM2 training register writes (if training ran).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hbm2_writes: Option<usize>,
-    /// Whether the GPU was detected as warm (HBM2 training skipped/reduced).
+    /// Number of memory training register writes (if training ran).
+    #[serde(alias = "hbm2_writes", skip_serializing_if = "Option::is_none")]
+    pub training_writes: Option<usize>,
+    /// Whether the GPU was detected as warm (training skipped/reduced).
     #[serde(default)]
     pub warm_detected: bool,
+    /// Unified boot state classification.
+    /// `None` for pipelines that ran before the boot state abstraction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boot_state: Option<SovereignBootState>,
 }
 
 impl fmt::Display for SovereignInitResult {
@@ -138,7 +153,7 @@ impl fmt::Display for SovereignInitResult {
         write!(
             f,
             "{status} chip=0x{:03x} stages={}/{} ({}ms)",
-            self.chip_id,
+            self.identity_chip,
             self.stages
                 .iter()
                 .filter(|s| s.status == StageStatus::Ok)

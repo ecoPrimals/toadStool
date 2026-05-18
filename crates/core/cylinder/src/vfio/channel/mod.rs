@@ -118,11 +118,7 @@ impl VfioChannel {
                 )
             }
             PageTableFormat::V2FiveLevel => {
-                let config = if warm_handoff {
-                    pfifo::PfifoInitConfig::warm_handoff()
-                } else {
-                    pfifo::PfifoInitConfig::default()
-                };
+                let config = pfifo::PfifoInitConfig::for_thermal_state(warm_handoff, false);
                 Self::create_with_config(
                     container,
                     bar0,

@@ -52,7 +52,6 @@ enum DoorbellKind {
 /// Live VFIO state for PBDMA dispatch. Populated by [`NvVfioComputeDevice::open_vfio`].
 #[cfg(target_os = "linux")]
 struct VfioDispatchState {
-    #[expect(dead_code, reason = "VfioDevice held for fd lifetime — dropping closes VFIO")]
     device: crate::vfio::VfioDevice,
     bar0: crate::vfio::device::MappedBar,
     channel: crate::vfio::channel::VfioChannel,
@@ -1287,6 +1286,34 @@ impl ComputeDevice for NvVfioComputeDevice {
                 "GR context init requires Linux VFIO".into(),
             ))
         }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn bar0(&self) -> Option<&crate::vfio::device::MappedBar> {
+        self.vfio_state.as_ref().map(|s| &s.bar0)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn dma_backend(&self) -> Option<&crate::vfio::device::DmaBackend> {
+        self.vfio_state.as_ref().map(|s| &s.dma_backend)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn dup_anchor_fds(&self) -> Option<crate::vfio::DupAnchorFds> {
+        self.vfio_state
+            .as_ref()
+            .and_then(|s| s.device.dup_anchor_fds().ok())
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl crate::VfioDeviceExt for NvVfioComputeDevice {
+    fn vfio_bar0(&self) -> Option<&crate::vfio::device::MappedBar> {
+        self.vfio_state.as_ref().map(|s| &s.bar0)
+    }
+
+    fn vfio_dma_backend(&self) -> Option<&crate::vfio::device::DmaBackend> {
+        self.vfio_state.as_ref().map(|s| &s.dma_backend)
     }
 }
 

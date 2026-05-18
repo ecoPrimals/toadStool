@@ -12,14 +12,17 @@ const DEFAULT_BAR0_SIZE: usize = 16 * 1024 * 1024;
 
 /// `sovereign.init` — Run the full sovereign init pipeline on a GPU.
 ///
-/// Opens BAR0 via sysfs, runs `cylinder::sovereign_init` stages, returns
-/// per-stage results. The GPU must be VFIO-bound (or unbound) with BAR0
-/// accessible via `/sys/bus/pci/devices/{bdf}/resource0`.
+/// Opens BAR0 via sysfs or VFIO device, runs `cylinder::sovereign_init`
+/// stages, returns per-stage results.
 ///
 /// Params:
 /// - `bdf` (required): PCI BDF address (e.g. `"0000:4b:00.0"`)
-/// - `halt_before` (optional): Stop before a stage (`"pmc_enable"`, `"hbm2_training"`,
-///   `"kepler_pgraph_ungate"`, `"falcon_boot"`, `"gr_init"`, `"verify"`)
+/// - `bar0_source` (optional): `"sysfs"` (default) or `"vfio"`. Use `"vfio"` for
+///   GPUs bound to vfio-pci where sysfs resource0 is not accessible (e.g. K80).
+///   VFIO path uses `open_no_busmaster` to avoid PFIFO DMA faults on Kepler.
+/// - `halt_before` (optional): Stop before a stage (`"pmc_enable"`, `"cg_sweep"`,
+///   `"pgob_ungate"`, `"memory_training"`, `"engine_ungate"`, `"falcon_boot"`,
+///   `"gr_init"`, `"verify"`)
 /// - `skip_gr_init` (optional, default false): Skip GR init stage
 /// - `golden_state_path` (optional): Path to golden-state JSON for HBM2 replay
 /// - `vbios_rom_path` (optional): Path to raw VBIOS ROM dump
@@ -31,14 +34,63 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
         .and_then(Value::as_str)
         .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
-    info!(bdf = %bdf, "sovereign.init: opening BAR0");
+    let bar0_source = params
+        .and_then(|p| p.get("bar0_source"))
+        .and_then(Value::as_str)
+        .unwrap_or("auto");
 
-    let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-        .map_err(|e| {
-            JsonRpcError::internal_error(format!(
-                "BAR0 open failed for {bdf}: {e}. Ensure vfio-pci is bound and resource0 is accessible."
-            ))
-        })?;
+    info!(bdf = %bdf, bar0_source, "sovereign.init: opening BAR0");
+
+    // Keep the VfioDevice alive for the duration of the pipeline — the MappedBar
+    // borrows the device fd's mmap, so the device must outlive it.
+    let mut _vfio_device;
+
+    let mut dma_backend_for_opts = None;
+
+    let _gate_bypass = toadstool_cylinder::vfio::ember_gate::EmberGateBypass::enter();
+
+    let bar0 = match bar0_source {
+        "vfio" => {
+            let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
+                .map_err(|e| {
+                    JsonRpcError::internal_error(format!(
+                        "VFIO device open failed for {bdf}: {e}. Ensure vfio-pci is bound and IOMMU is configured."
+                    ))
+                })?;
+            let bar = dev.map_bar(0).map_err(|e| {
+                JsonRpcError::internal_error(format!(
+                    "VFIO BAR0 map failed for {bdf}: {e}"
+                ))
+            })?;
+            dma_backend_for_opts = Some(dev.dma_backend());
+            info!(bdf = %bdf, "sovereign.init: VFIO opened (DMA backend available)");
+            _vfio_device = Some(dev);
+            bar
+        }
+        _ => {
+            _vfio_device = None;
+            let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+                .map_err(|e| {
+                    JsonRpcError::internal_error(format!(
+                        "BAR0 open failed for {bdf}: {e}. Ensure vfio-pci is bound and resource0 is accessible."
+                    ))
+                })?;
+            // Try to acquire a DMA backend via iommufd cdev even when using
+            // sysfs BAR0 — this enables ACR falcon boot on warm GPUs where
+            // the VFIO group may be busy but the cdev is accessible.
+            match toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf) {
+                Ok(dev) => {
+                    dma_backend_for_opts = Some(dev.dma_backend());
+                    info!(bdf = %bdf, "sovereign.init: DMA backend acquired via VFIO cdev (sysfs BAR0)");
+                    _vfio_device = Some(dev);
+                }
+                Err(e) => {
+                    info!(bdf = %bdf, err = %e, "sovereign.init: no DMA backend available (sysfs-only)");
+                }
+            }
+            bar
+        }
+    };
 
     let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
         if let Some(p) = params {
@@ -73,12 +125,36 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
         }
     }
 
-    let bridge = toadstool_cylinder::nv::gsp_bridge::StubGspBridge;
+    opts.dma_backend = dma_backend_for_opts;
+
+    let sm = opts.sm_version.unwrap_or_else(|| {
+        let boot0 = bar0.read_u32(0).unwrap_or(0);
+        let chip_id = (boot0 >> 20) & 0x1FF;
+        let synthetic = chip_id << 20;
+        toadstool_cylinder::nv::identity::boot0_to_sm(synthetic).unwrap_or(70)
+    });
+    let chip = toadstool_cylinder::nv::identity::chip_name(sm);
+
+    let bridge: std::sync::Arc<dyn toadstool_cylinder::nv::gsp_bridge::GspBridge> = {
+        let nv = toadstool_cylinder::nv::nv_gsp_bridge::NvGspBridge::new(chip);
+        if nv.has_gr_firmware() {
+            info!(chip, "sovereign.init: using NvGspBridge (firmware found)");
+            std::sync::Arc::new(nv)
+        } else {
+            info!(chip, "sovereign.init: using StubGspBridge (no firmware)");
+            std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::StubGspBridge::default())
+        }
+    };
+
+    let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
+    let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
+        &profile, bridge, sm,
+    );
 
     info!(bdf = %bdf, halt_before = ?opts.halt_before, "sovereign.init: starting pipeline");
 
     let result = toadstool_cylinder::vfio::sovereign_init::sovereign_init(
-        &bar0, bdf, &opts, &bridge,
+        &bar0, bdf, &opts, &*strategy,
     );
 
     info!(
@@ -103,6 +179,8 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
 ///
 /// Params:
 /// - `bdf` (required): PCI BDF address
+/// - `bar0_source` (optional): `"sysfs"` (default) or `"vfio"`. Use `"vfio"` for
+///   GPUs bound to vfio-pci where sysfs resource0 is not accessible.
 /// - `vbios_path` (optional): Path to pre-dumped VBIOS ROM file
 pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     use toadstool_cylinder::vfio::channel::devinit;
@@ -112,12 +190,39 @@ pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> 
         .and_then(Value::as_str)
         .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
-    info!(bdf = %bdf, "sovereign.devinit: opening BAR0");
+    let bar0_source = params
+        .and_then(|p| p.get("bar0_source"))
+        .and_then(Value::as_str)
+        .unwrap_or("sysfs");
 
-    let bar0 = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-        .map_err(|e| {
-            JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
-        })?;
+    info!(bdf = %bdf, bar0_source, "sovereign.devinit: opening BAR0");
+
+    let _vfio_device;
+
+    let bar0 = match bar0_source {
+        "vfio" => {
+            let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
+                .map_err(|e| {
+                    JsonRpcError::internal_error(format!(
+                        "VFIO device open failed for {bdf}: {e}"
+                    ))
+                })?;
+            let bar = dev.map_bar(0).map_err(|e| {
+                JsonRpcError::internal_error(format!(
+                    "VFIO BAR0 map failed for {bdf}: {e}"
+                ))
+            })?;
+            _vfio_device = Some(dev);
+            bar
+        }
+        _ => {
+            _vfio_device = None;
+            toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+                .map_err(|e| {
+                    JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+                })?
+        }
+    };
 
     let diag = devinit::FalconDiagnostic::probe(&bar0, Some(bdf));
 

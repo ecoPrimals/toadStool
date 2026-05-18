@@ -182,12 +182,32 @@ pub fn extract_boot_script_writes(rom: &[u8]) -> Result<Vec<ScriptRegWrite>, Dev
     let bit_i = bit.find(b'I').ok_or(DevinitError::BitINotFound)?;
 
     let i_off = bit_i.data_offset as usize;
-    if i_off + 0x1c > rom.len() {
-        return Err(DevinitError::BitIDataTooShort);
-    }
 
-    let script_off = u16::from_le_bytes([rom[i_off + 0x18], rom[i_off + 0x19]]) as usize;
-    let script_len = u16::from_le_bytes([rom[i_off + 0x1a], rom[i_off + 0x1b]]) as usize;
+    // Extended BIT I (>=0x1c): PMU script blob pointer at 0x18-0x1b.
+    // Short BIT I (Kepler, 0x12): only init-directory at 0x00-0x01.
+    // For the short form, derive script region from the init table chain.
+    let (script_off, script_len) = if bit_i.data_size >= 0x1c && i_off + 0x1c <= rom.len() {
+        let off = u16::from_le_bytes([rom[i_off + 0x18], rom[i_off + 0x19]]) as usize;
+        let len = u16::from_le_bytes([rom[i_off + 0x1a], rom[i_off + 0x1b]]) as usize;
+        (off, len)
+    } else if i_off + 2 <= rom.len() {
+        // Short form: init_tables_base at i_off+0x00 points to the
+        // script table. Walk it to find the first script offset and
+        // scan to ROM end.
+        let init_tables_base =
+            u16::from_le_bytes([rom[i_off], rom[i_off + 1]]) as usize;
+        if init_tables_base == 0 || init_tables_base + 2 > rom.len() {
+            return Err(DevinitError::InterpreterInitTablesInvalid);
+        }
+        let first_script =
+            u16::from_le_bytes([rom[init_tables_base], rom[init_tables_base + 1]]) as usize;
+        if first_script == 0 || first_script >= rom.len() {
+            return Err(DevinitError::NoBootScriptsInBitI);
+        }
+        (first_script, rom.len().saturating_sub(first_script))
+    } else {
+        return Err(DevinitError::BitIDataTooShort);
+    };
 
     if script_off == 0 || script_len == 0 {
         return Err(DevinitError::NoBootScriptsInBitI);

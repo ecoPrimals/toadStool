@@ -146,6 +146,22 @@ impl PfifoInitConfig {
             skip_pfifo_toggle: true,
         }
     }
+
+    /// Unified config selection based on GPU thermal state.
+    ///
+    /// Cold GPUs get full aggressive init. Warm GPUs with confirmed FECS
+    /// preservation get the gentlest path; other warm states use standard
+    /// warm handoff.
+    #[must_use]
+    pub fn for_thermal_state(warm: bool, fecs_preserved: bool) -> Self {
+        if !warm {
+            Self::default()
+        } else if fecs_preserved {
+            Self::warm_fecs_alive()
+        } else {
+            Self::warm_handoff()
+        }
+    }
 }
 
 /// Enable the PFIFO engine in PMC, discover PBDMAs, and initialize.
