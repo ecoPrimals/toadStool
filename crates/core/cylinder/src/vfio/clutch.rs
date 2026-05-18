@@ -87,7 +87,6 @@ impl Clutch {
     /// # Errors
     ///
     /// Returns error if BAR0 region info ioctl fails or mmap fails.
-    #[expect(clippy::cast_possible_truncation, reason = "struct argsz always fits u32")]
     pub fn engage(
         bdf: &str,
         device_fd: BorrowedFd<'_>,

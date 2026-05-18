@@ -5,7 +5,20 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 17, 2026 (Sessions 43-263)
+## [Unreleased] - May 18, 2026 (Sessions 43-264)
+
+### Session S264 (May 18, 2026) — Stale Socket Cleanup: primalSpring Audit Response
+
+primalSpring stale socket cleanup audit response: server-side socket hygiene hardened.
+
+- FIXED: CLI daemon shutdown now removes socket file (was no-op stub)
+- FIXED: CLI daemon now handles SIGTERM in addition to SIGINT (was ctrl_c only)
+- ADDED: `DisplayServer` Drop impl — removes display socket on drop
+- AUDITED: All 6 UDS bind sites already do `unlink()` before `bind()` (no changes needed)
+- AUDITED: UniBin server already cleans up both sockets + legacy symlink on SIGINT/SIGTERM
+- AUDITED: `IpcServer::Drop` already removes Unix socket files
+- FIXED: 20+ pre-existing Rust 1.92 clippy issues across upstream code (`if_not_else`, `ignored_unit_patterns`, `collapsible_if`, `map_unwrap_or`, `default_trait_access`, `new_without_default`, `unnecessary_literal_bound`, `type_complexity`, `needless_late_init`, `too_many_arguments`, `items_after_statements`, `used_underscore_binding`, `collection_is_never_read`, `single_match_else`, `io_other_error`, `match_wildcard_for_single_variants`, `unfulfilled_lint_expectations`)
+- METRICS: 85 JSON-RPC methods (direct), 9,028 lib tests, 0 clippy warnings, deny clean
 
 ### Session S263 (May 17, 2026) — Stadial Gate: primalSpring Audit Response
 

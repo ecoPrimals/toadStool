@@ -8,9 +8,9 @@
 //! - Workload lifecycle management
 
 use crate::Result;
+use std::path::PathBuf;
 use std::sync::Arc;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
-use tokio::signal;
 use tracing::{info, warn};
 
 use super::config::DaemonConfig;
@@ -30,6 +30,9 @@ pub struct DaemonServer {
 
     /// Workload manager
     workload_manager: Arc<WorkloadManager>,
+
+    /// Socket path used for the JSON-RPC listener (for cleanup on shutdown).
+    socket_path: PathBuf,
 }
 
 impl DaemonServer {
@@ -75,28 +78,29 @@ impl DaemonServer {
             }
         }
 
+        let socket_path = config.socket_path.clone().unwrap_or_else(|| {
+            let env = PathEnv::from_env();
+            PlatformPaths::new(&env).toadstool_socket()
+        });
+
         info!("✅ ToadStool daemon server initialized");
 
         Ok(Self {
             config,
             workload_manager: Arc::new(workload_manager),
+            socket_path,
         })
     }
 
     /// Run the daemon server until shutdown signal
     pub async fn run(self) -> Result<()> {
-        let socket_path = self.config.socket_path.clone().unwrap_or_else(|| {
-            let env = PathEnv::from_env();
-            PlatformPaths::new(&env).toadstool_socket()
-        });
-
         info!("🚀 ToadStool daemon running");
-        info!("🍄 JSON-RPC socket: {}", socket_path.display());
+        info!("🍄 JSON-RPC socket: {}", self.socket_path.display());
         info!("📊 Methods: daemon.health, daemon.metrics, daemon.submit_workload, etc.");
 
         // Start JSON-RPC Unix socket server
         {
-            let socket = socket_path.clone();
+            let socket = self.socket_path.clone();
             let manager = Arc::clone(&self.workload_manager);
 
             tokio::spawn(async move {
@@ -120,34 +124,54 @@ impl DaemonServer {
 
         info!("✨ JSON-RPC over UDS per wateringHole standard");
 
-        // Wait for shutdown signal
-        signal::ctrl_c().await?;
+        // Wait for SIGINT or SIGTERM
+        wait_for_shutdown().await;
 
         info!("🛑 Shutdown signal received");
 
-        // Graceful shutdown
+        // Graceful shutdown — clean up socket files
         self.shutdown().await?;
 
         info!("👋 ToadStool daemon stopped");
         Ok(())
     }
 
-    /// Graceful shutdown
-    #[expect(
-        clippy::unused_async,
-        reason = "async signature required by trait/interface"
-    )] // Shutdown hook; async for future extension
+    /// Graceful shutdown — remove socket files to prevent stale socket accumulation.
     async fn shutdown(&self) -> Result<()> {
         info!("🧹 Performing graceful shutdown...");
 
-        // Shutdown sequence:
-        // 1. Stop accepting new workloads
-        // 2. Stop JSON-RPC servers (Unix + TCP)
-        // 3. Gracefully terminate running workloads
-        // 4. Unregister from coordination service (if registered)
+        if self.socket_path.exists() {
+            match tokio::fs::remove_file(&self.socket_path).await {
+                Ok(()) => info!("Removed socket: {}", self.socket_path.display()),
+                Err(e) => warn!("Failed to remove socket {}: {e}", self.socket_path.display()),
+            }
+        }
 
         info!("✅ Shutdown complete");
         Ok(())
+    }
+}
+
+/// Wait for SIGINT (Ctrl+C) or SIGTERM.
+async fn wait_for_shutdown() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("failed to register SIGINT handler");
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("failed to register SIGTERM handler");
+
+        tokio::select! {
+            _ = sigint.recv() => info!("Received SIGINT"),
+            _ = sigterm.recv() => info!("Received SIGTERM"),
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
     }
 }
 

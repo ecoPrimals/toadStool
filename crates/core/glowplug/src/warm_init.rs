@@ -768,7 +768,7 @@ impl DriverLabExecutor {
                         self.plan.output_dir, trial.label
                     );
                     let saved = std::fs::create_dir_all(&self.plan.output_dir)
-                        .and_then(|_| std::fs::write(&snapshot_path, &snapshot_bytes));
+                        .and_then(|()| std::fs::write(&snapshot_path, &snapshot_bytes));
 
                     let path = match saved {
                         Ok(()) => Some(snapshot_path),

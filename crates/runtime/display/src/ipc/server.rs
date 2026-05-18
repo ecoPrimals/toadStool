@@ -329,6 +329,15 @@ impl DisplayServer {
     }
 }
 
+impl Drop for DisplayServer {
+    fn drop(&mut self) {
+        if self.socket_path.exists() {
+            let _ = std::fs::remove_file(&self.socket_path);
+            tracing::debug!("Cleaned up display socket: {}", self.socket_path.display());
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "server_tests.rs"]
 mod tests;

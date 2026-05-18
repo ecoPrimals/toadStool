@@ -376,6 +376,12 @@ pub struct VegaInit {
     bdf: Option<String>,
 }
 
+impl Default for VegaInit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VegaInit {
     /// Create a Vega pipeline with no BDF.
     pub fn new() -> Self {
@@ -394,7 +400,7 @@ impl BootPipeline for VegaInit {
     type ProbeResult = VegaProbeResult;
     type InitResult = VegaInitResult;
 
-    fn device_family(&self) -> &str {
+    fn device_family(&self) -> &'static str {
         "Vega 20"
     }
 

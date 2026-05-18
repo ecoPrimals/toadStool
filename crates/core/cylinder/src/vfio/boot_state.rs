@@ -177,6 +177,9 @@ impl SovereignBootState {
     }
 }
 
+/// Strategy-provided closure that reads falcon registers and classifies state.
+pub type FalconDetector<'a> = &'a dyn Fn(&MappedBar, bool) -> FalconWarmState;
+
 /// Probe the GPU's boot state from BAR0 registers.
 ///
 /// This is the authoritative warm/cold classifier. It reads PMC_ENABLE,
@@ -188,7 +191,7 @@ impl SovereignBootState {
 /// probing (the state will default to `FalconWarmState::Cold`).
 pub fn probe_boot_state(
     bar0: &MappedBar,
-    detect_falcon: Option<&dyn Fn(&MappedBar, bool) -> FalconWarmState>,
+    detect_falcon: Option<FalconDetector<'_>>,
 ) -> SovereignBootState {
     let pmc_enable = bar0.read_u32(PMC_ENABLE).unwrap_or(0);
     let pmc_popcount = pmc_enable.count_ones();

@@ -172,7 +172,7 @@ impl DmaSpec {
             AnchorBackendRef::Iommufd { iommufd, ioas_id } => {
                 Some((Arc::clone(iommufd), *ioas_id))
             }
-            _ => None,
+            AnchorBackendRef::LegacyGroup { .. } => None,
         }
     }
 
@@ -181,7 +181,7 @@ impl DmaSpec {
     pub fn as_legacy_container(&self) -> Option<Arc<std::os::fd::OwnedFd>> {
         match &self.0 {
             AnchorBackendRef::LegacyGroup { container } => Some(Arc::clone(container)),
-            _ => None,
+            AnchorBackendRef::Iommufd { .. } => None,
         }
     }
 }

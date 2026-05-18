@@ -117,8 +117,7 @@ pub fn sovereign_init(
     }
 
     let t = Instant::now();
-    let pmc_result: PmcEnableResult;
-    match pmc_enable(bar0, power) {
+    let pmc_result: PmcEnableResult = match pmc_enable(bar0, power) {
         Ok(result) => {
             stages.push(StageResult {
                 name: "pmc_enable".into(),
@@ -126,7 +125,7 @@ pub fn sovereign_init(
                 detail: Some(result.detail()),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
-            pmc_result = result;
+            result
         }
         Err(e) => {
             stages.push(StageResult {
@@ -137,7 +136,7 @@ pub fn sovereign_init(
             });
             return finish(bdf, boot0, chip_id, stages, None, pipeline_start, false, None);
         }
-    }
+    };
 
     // ── Stage 2a: PGRAPH Engine Reset ─────────────────────────────────
     // Toggle GR bit in PMC_ENABLE to reset PGRAPH's internal PRI fabric.
@@ -465,10 +464,10 @@ pub fn sovereign_init(
                 }
             }
 
-            if ungate_list.is_empty() {
-                if let Some(ref gr_init_seq) = opts.kepler_gr_init {
-                    ungate_list.push(("PGRAPH", gr_init_seq, Some(PGRAPH_STATUS)));
-                }
+            if ungate_list.is_empty()
+                && let Some(ref gr_init_seq) = opts.kepler_gr_init
+            {
+                ungate_list.push(("PGRAPH", gr_init_seq, Some(PGRAPH_STATUS)));
             }
 
             if ungate_list.is_empty() {
@@ -707,6 +706,10 @@ pub fn sovereign_init(
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "pipeline result builder aggregates all stage outputs"
+)]
 fn finish(
     bdf: &str,
     boot0: u32,

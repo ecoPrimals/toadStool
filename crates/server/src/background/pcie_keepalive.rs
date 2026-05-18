@@ -237,7 +237,7 @@ fn discover_downstream_gpus(bridges: &[String]) -> Vec<String> {
     for entry in entries.flatten() {
         let bdf = entry.file_name().to_string_lossy().to_string();
         let class_opt = read_config_u32(&bdf, 0x08);
-        let base_sub = class_opt.map(pci_base_subclass).unwrap_or(0xFFFF);
+        let base_sub = class_opt.map_or(0xFFFF, pci_base_subclass);
 
         let is_gpu = base_sub == PCI_CLASS_VGA || base_sub == PCI_CLASS_3D;
         let is_dead = class_opt == Some(0xFFFF_FFFF) || class_opt.is_none();

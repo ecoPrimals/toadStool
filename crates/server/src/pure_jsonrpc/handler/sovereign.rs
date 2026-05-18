@@ -6,6 +6,7 @@
 
 use crate::pure_jsonrpc::types::JsonRpcError;
 use serde_json::Value;
+use toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions;
 use tracing::info;
 
 const DEFAULT_BAR0_SIZE: usize = 16 * 1024 * 1024;
@@ -28,6 +29,10 @@ const DEFAULT_BAR0_SIZE: usize = 16 * 1024 * 1024;
 /// - `vbios_rom_path` (optional): Path to raw VBIOS ROM dump
 /// - `sm_version` (optional): SM version override (auto-detected if omitted)
 /// - `fbpa_count` (optional): FBPA partition count override (auto-detected)
+#[expect(
+    clippy::collection_is_never_read,
+    reason = "VfioDevice anchor must outlive MappedBar — keeps mmap valid"
+)]
 pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     let bdf = params
         .and_then(|p| p.get("bdf"))
@@ -41,14 +46,13 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
 
     info!(bdf = %bdf, bar0_source, "sovereign.init: opening BAR0");
 
-    // Keep the VfioDevice alive for the duration of the pipeline — the MappedBar
-    // borrows the device fd's mmap, so the device must outlive it.
-    let mut _vfio_device;
-
+    // VfioDevice must outlive MappedBar (mmap borrows device fd)
+    let mut _vfio_anchor = None;
     let mut dma_backend_for_opts = None;
 
     let _gate_bypass = toadstool_cylinder::vfio::ember_gate::EmberGateBypass::enter();
 
+    #[expect(clippy::single_match_else, reason = "bar0_source may grow more variants")]
     let bar0 = match bar0_source {
         "vfio" => {
             let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
@@ -64,11 +68,10 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
             })?;
             dma_backend_for_opts = Some(dev.dma_backend());
             info!(bdf = %bdf, "sovereign.init: VFIO opened (DMA backend available)");
-            _vfio_device = Some(dev);
+            _vfio_anchor = Some(dev);
             bar
         }
         _ => {
-            _vfio_device = None;
             let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
                 .map_err(|e| {
                     JsonRpcError::internal_error(format!(
@@ -82,7 +85,7 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
                 Ok(dev) => {
                     dma_backend_for_opts = Some(dev.dma_backend());
                     info!(bdf = %bdf, "sovereign.init: DMA backend acquired via VFIO cdev (sysfs BAR0)");
-                    _vfio_device = Some(dev);
+                    _vfio_anchor = Some(dev);
                 }
                 Err(e) => {
                     info!(bdf = %bdf, err = %e, "sovereign.init: no DMA backend available (sysfs-only)");
@@ -92,12 +95,11 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
         }
     };
 
-    let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
-        if let Some(p) = params {
-            serde_json::from_value(p.clone()).unwrap_or_default()
-        } else {
-            Default::default()
-        };
+    let mut opts: SovereignInitOptions = if let Some(p) = params {
+        serde_json::from_value(p.clone()).unwrap_or_default()
+    } else {
+        SovereignInitOptions::default()
+    };
 
     if let Some(path) = opts.golden_state_path.as_ref() {
         match std::fs::read_to_string(path) {
@@ -148,7 +150,7 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
 
     let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
     let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
-        &profile, bridge, sm,
+        profile, bridge, sm,
     );
 
     info!(bdf = %bdf, halt_before = ?opts.halt_before, "sovereign.init: starting pipeline");
@@ -182,6 +184,10 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
 /// - `bar0_source` (optional): `"sysfs"` (default) or `"vfio"`. Use `"vfio"` for
 ///   GPUs bound to vfio-pci where sysfs resource0 is not accessible.
 /// - `vbios_path` (optional): Path to pre-dumped VBIOS ROM file
+#[expect(
+    clippy::collection_is_never_read,
+    reason = "VfioDevice anchor must outlive MappedBar — keeps mmap valid"
+)]
 pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> {
     use toadstool_cylinder::vfio::channel::devinit;
 
@@ -197,31 +203,27 @@ pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> 
 
     info!(bdf = %bdf, bar0_source, "sovereign.devinit: opening BAR0");
 
-    let _vfio_device;
+    let mut _vfio_anchor = None;
 
-    let bar0 = match bar0_source {
-        "vfio" => {
-            let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
-                .map_err(|e| {
-                    JsonRpcError::internal_error(format!(
-                        "VFIO device open failed for {bdf}: {e}"
-                    ))
-                })?;
-            let bar = dev.map_bar(0).map_err(|e| {
+    let bar0 = if bar0_source == "vfio" {
+        let dev = toadstool_cylinder::vfio::VfioDevice::open_no_busmaster(bdf)
+            .map_err(|e| {
                 JsonRpcError::internal_error(format!(
-                    "VFIO BAR0 map failed for {bdf}: {e}"
+                    "VFIO device open failed for {bdf}: {e}"
                 ))
             })?;
-            _vfio_device = Some(dev);
-            bar
-        }
-        _ => {
-            _vfio_device = None;
-            toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
-                .map_err(|e| {
-                    JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
-                })?
-        }
+        let bar = dev.map_bar(0).map_err(|e| {
+            JsonRpcError::internal_error(format!(
+                "VFIO BAR0 map failed for {bdf}: {e}"
+            ))
+        })?;
+        _vfio_anchor = Some(dev);
+        bar
+    } else {
+        toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+            })?
     };
 
     let diag = devinit::FalconDiagnostic::probe(&bar0, Some(bdf));

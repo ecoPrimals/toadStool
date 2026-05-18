@@ -32,6 +32,12 @@ pub struct VoltaInit {
     bdf: Option<String>,
 }
 
+impl Default for VoltaInit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VoltaInit {
     /// Create a Volta pipeline with no BDF (uses default/unknown).
     pub fn new() -> Self {
@@ -172,7 +178,7 @@ impl BootPipeline for VoltaInit {
     type ProbeResult = ProbeResult;
     type InitResult = DevinitResult;
 
-    fn device_family(&self) -> &str {
+    fn device_family(&self) -> &'static str {
         "Volta"
     }
 

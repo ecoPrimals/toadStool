@@ -28,6 +28,12 @@ pub struct KeplerInit {
     bdf: Option<String>,
 }
 
+impl Default for KeplerInit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeplerInit {
     /// Create a Kepler pipeline with no BDF (uses default/unknown).
     pub fn new() -> Self {
@@ -165,7 +171,7 @@ impl BootPipeline for KeplerInit {
     type ProbeResult = ProbeResult;
     type InitResult = DevinitResult;
 
-    fn device_family(&self) -> &str {
+    fn device_family(&self) -> &'static str {
         "Kepler"
     }
 

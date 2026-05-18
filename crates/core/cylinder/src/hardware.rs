@@ -198,7 +198,7 @@ pub trait BootPipeline: Send + Sync + std::fmt::Debug {
     type InitResult: std::fmt::Debug + Clone;
 
     /// Device family name (e.g. "Kepler", "Volta", "Vega 20").
-    fn device_family(&self) -> &str;
+    fn device_family(&self) -> &'static str;
 
     /// Phase 1: Probe the device — read identity registers, detect warm/cold.
     fn probe(

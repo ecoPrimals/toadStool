@@ -42,7 +42,7 @@ fn sd_notify_with_fds(msg: &str, fds: &[BorrowedFd<'_>]) -> std::io::Result<()> 
         rustix::net::SocketType::DGRAM,
         None,
     )
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    .map_err(std::io::Error::other)?;
 
     let iov = [rustix::io::IoSlice::new(msg.as_bytes())];
 
@@ -54,7 +54,7 @@ fn sd_notify_with_fds(msg: &str, fds: &[BorrowedFd<'_>]) -> std::io::Result<()> 
             &mut rustix::net::SendAncillaryBuffer::default(),
             rustix::net::SendFlags::empty(),
         )
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
     } else {
         // Allocate space for up to 4 fds (device + backend + group + spare)
         let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(4))];
@@ -68,7 +68,7 @@ fn sd_notify_with_fds(msg: &str, fds: &[BorrowedFd<'_>]) -> std::io::Result<()> 
             &mut cmsg_buf,
             rustix::net::SendFlags::empty(),
         )
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
     }
 
     Ok(())

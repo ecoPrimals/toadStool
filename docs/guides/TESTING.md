@@ -1,12 +1,12 @@
 # Testing Guide
 
-**Last Updated**: May 17, 2026 — S263
+**Last Updated**: May 18, 2026 — S264
 
 ## Quick Status
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **Lib-Only Tests** | **8,945+ (S263)** | 0 failures, unlimited parallelism |
+| **Lib-Only Tests** | **9,028+ (S264)** | 0 failures, unlimited parallelism |
 | **Workspace Tests** | **22,900+ (default features)** | ~222 intentional GPU/hardware ignores |
 | **Line Coverage** | **~83.6% (lib-only)** | ~185K production lines. Gap: hardware-dependent code (V4L2/VFIO/neuromorphic) |
 | **Clippy Pedantic** | **0 warnings** | Full workspace (`-D warnings`), in CI |

@@ -111,13 +111,13 @@ impl BridgeGuardian {
             return false;
         }
 
-        if !detect_pcie_bridges(bdf).is_empty() {
+        if detect_pcie_bridges(bdf).is_empty() {
+            false
+        } else {
             let keepalive = PcieBridgeKeepalive::new(bdf, self.interval);
             let handle = keepalive.spawn();
             self.handles.insert(bdf.to_string(), handle);
             true
-        } else {
-            false
         }
     }
 
