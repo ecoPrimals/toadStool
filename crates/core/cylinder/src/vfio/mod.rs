@@ -10,6 +10,7 @@
 
 pub mod amd_metal;
 pub mod boot_state;
+pub mod ce_validate;
 pub mod channel;
 pub mod bar_cartography;
 pub mod cache_ops;
@@ -33,6 +34,7 @@ pub mod sovereign_init;
 pub mod sovereign_profile;
 pub mod sovereign_stages;
 pub mod sovereign_strategy;
+pub mod sovereign_tiers;
 pub mod sovereign_types;
 pub mod sysfs_bar0;
 pub mod types;

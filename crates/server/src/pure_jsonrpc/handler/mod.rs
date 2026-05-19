@@ -272,9 +272,6 @@ impl JsonRpcHandler {
             "identity.get" => {
                 return core::identity_get(&self.version, &self.semantic_registry).await;
             }
-            "primal.announce" => {
-                return core::primal_announce(&self.version, &self.semantic_registry).await;
-            }
             "toadstool.version" => return core::version_info(&self.version).await,
 
             "toadstool.resources.estimate"
@@ -322,7 +319,6 @@ impl JsonRpcHandler {
                     .dispatch_submit_with_context(params, &caller_ctx)
                     .await;
             }
-            "compute.fan_out" => return self.dispatch.compute_fan_out(params).await,
             "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
             "compute.dispatch.forward" => return self.dispatch.dispatch_forward(params).await,
@@ -403,6 +399,12 @@ impl JsonRpcHandler {
             "sovereign.profile" => {
                 return self.dispatch.sovereign_profile_ember(params).await;
             }
+            "sovereign.warm_status" => {
+                return self.dispatch.sovereign_warm_status().await;
+            }
+            "sovereign.ce_validate" | "ce.validate" => {
+                return self.dispatch.sovereign_ce_validate_ember(params).await;
+            }
             "sovereign.devinit" => return sovereign::sovereign_devinit(params),
 
             "mmio.read32" => return mmio::mmio_read32(params),
@@ -453,13 +455,9 @@ impl JsonRpcHandler {
             "list_workloads" => self.job.list_workloads(params).await,
             "validate" => self.workload.validate(params).await,
             "query_capabilities" => self.workload.query_capabilities().await,
-            "primal_announce" => {
-                core::primal_announce(self.version.as_ref(), &self.semantic_registry).await
-            }
             "check_health" => core::health(&self.version, self.start_time, &self.error_count).await,
             "health_version" => core::health_version(self.version.as_ref()).await,
             "health_drain" => core::health_drain(&self.draining, &self.ready).await,
-            "compute_fan_out" => self.dispatch.compute_fan_out(params).await,
             "dispatch_submit" => {
                 self.dispatch
                     .dispatch_submit_with_context(params, ctx)

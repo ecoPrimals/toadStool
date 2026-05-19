@@ -34,7 +34,7 @@ pub mod registers;
 pub mod diagnostic;
 pub mod mmu_fault;
 mod page_tables;
-mod pfifo;
+pub(crate) mod pfifo;
 
 pub use diagnostic::{
     ExperimentConfig, ExperimentOrdering, ExperimentResult, GpuCapabilities,
@@ -619,10 +619,26 @@ impl VfioChannel {
                 w(ramfc::ACQUIRE, 0x7FFF_F902);
                 w(ramfc::DMA_LIMIT_REF, 0x003F_6078);
 
-                // Re-submit runlist so scheduler sees our channel with
-                // freshly-programmed PBDMA state. Do NOT set NEXT bit (0x2)
-                // which would trigger another context reload that conflicts
-                // with our force-programmed values.
+                // Clear latched PBDMA errors NOW — valid state is
+                // programmed above so errors won't re-latch.
+                w(0x100, 0xFFFF_FFFF); // INTR_0 W1C
+                w(0x108, 0xFFFF_FFFF); // INTR_STALL W1C
+                w(0x148, 0xFFFF_FFFF); // HCE_INTR W1C
+                std::thread::sleep(std::time::Duration::from_millis(2));
+
+                // Also clear PCCSR faults for this channel
+                let _ = bar0.write_u32(
+                    pccsr::channel(channel_id),
+                    pccsr::PBDMA_FAULTED_RESET | pccsr::ENG_FAULTED_RESET,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(2));
+
+                // Re-enable the channel after fault clear
+                let _ = bar0.write_u32(
+                    pccsr::channel(channel_id),
+                    pccsr::CHANNEL_ENABLE_SET,
+                );
+
                 chan.submit_runlist(bar0)?;
                 std::thread::sleep(std::time::Duration::from_millis(10));
 
@@ -649,8 +665,41 @@ impl VfioChannel {
                     intr_stall = format_args!("{intr_stall:#010x}"),
                     pccsr = format_args!("{pccsr_post:#010x}"),
                     pccsr_status = pccsr::status(pccsr_post),
-                    "PBDMA force-programmed (preempt→program→resubmit→doorbell)"
+                    "PBDMA force-programmed (program→clear_intr→enable→resubmit→doorbell)"
                 );
+
+                // If PBDMA still has errors, retry: clear again + re-doorbell
+                if intr_0 != 0 {
+                    w(0x100, 0xFFFF_FFFF);
+                    w(0x108, 0xFFFF_FFFF);
+                    w(0x148, 0xFFFF_FFFF);
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+
+                    let _ = bar0.write_u32(
+                        pccsr::channel(channel_id),
+                        pccsr::PBDMA_FAULTED_RESET | pccsr::ENG_FAULTED_RESET,
+                    );
+                    let _ = bar0.write_u32(
+                        pccsr::channel(channel_id),
+                        pccsr::CHANNEL_ENABLE_SET,
+                    );
+                    chan.submit_runlist(bar0)?;
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    let _ = bar0.write_u32(
+                        registers::usermode::NOTIFY_CHANNEL_PENDING,
+                        channel_id,
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+
+                    let intr_retry = bar0.read_u32(pb + 0x100).unwrap_or(0);
+                    let pccsr_retry = bar0.read_u32(pccsr::channel(channel_id)).unwrap_or(0);
+                    tracing::info!(
+                        intr_0 = format_args!("{intr_retry:#010x}"),
+                        pccsr = format_args!("{pccsr_retry:#010x}"),
+                        pccsr_status = pccsr::status(pccsr_retry),
+                        "PBDMA retry after second interrupt clear"
+                    );
+                }
             } else {
                 tracing::warn!(
                     runlist = chan.runlist_id,

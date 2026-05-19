@@ -63,6 +63,51 @@ pub mod class {
     pub const AMPERE_COMPUTE_A: u32 = 0xC6C0;
 }
 
+/// Copy Engine (CE / DMA_COPY) class identifiers and method offsets.
+pub mod ce {
+    /// Volta DMA copy class (VOLTA_DMA_COPY_A).
+    pub const VOLTA_DMA_COPY_A: u32 = 0xC3B5;
+
+    /// Method offsets for the DMA copy engine class.
+    pub mod method {
+        pub const SET_OBJECT: u32 = 0x0000;
+        /// Source address upper 8 bits.
+        pub const OFFSET_IN_UPPER: u32 = 0x0400;
+        /// Source address lower 32 bits.
+        pub const OFFSET_IN_LOWER: u32 = 0x0404;
+        /// Dest address upper 8 bits.
+        pub const OFFSET_OUT_UPPER: u32 = 0x0408;
+        /// Dest address lower 32 bits.
+        pub const OFFSET_OUT_LOWER: u32 = 0x040C;
+        /// Pitch-in (bytes per row, source).
+        pub const PITCH_IN: u32 = 0x0410;
+        /// Pitch-out (bytes per row, dest).
+        pub const PITCH_OUT: u32 = 0x0414;
+        /// Line length in bytes.
+        pub const LINE_LENGTH_IN: u32 = 0x0418;
+        /// Line count.
+        pub const LINE_COUNT: u32 = 0x041C;
+        /// Launch DMA transfer.
+        /// Bits: [1:0] = data_transfer_type (0=NONE, 1=PIPELINED, 2=NON_PIPELINED)
+        ///       [2]   = flush_enable
+        ///       [8]   = src_memory_layout (0=BLOCKLINEAR, 1=PITCH)
+        ///       [12]  = dst_memory_layout (0=BLOCKLINEAR, 1=PITCH)
+        ///       [20]  = src_type (0=VIRTUAL, 1=PHYSICAL)
+        ///       [24]  = dst_type (0=VIRTUAL, 1=PHYSICAL)
+        pub const LAUNCH_DMA: u32 = 0x0300;
+        /// LAUNCH_DMA value: pipelined, pitch src+dst, virtual addressing.
+        pub const LAUNCH_PIPELINED_PITCH: u32 = 0x0000_1101;
+        /// Semaphore address upper (CE semaphore, not compute).
+        pub const SET_SEMAPHORE_A: u32 = 0x0240;
+        /// Semaphore address lower.
+        pub const SET_SEMAPHORE_B: u32 = 0x0244;
+        /// Semaphore payload.
+        pub const SET_SEMAPHORE_PAYLOAD: u32 = 0x0248;
+        /// Semaphore control: bit [0] = release after copy.
+        pub const SEMAPHORE_CTRL: u32 = 0x024C;
+    }
+}
+
 /// Method offsets and constants for NVIDIA compute class push buffers.
 pub mod method {
     /// Bind an engine class to a subchannel.
@@ -362,6 +407,50 @@ impl PushBuf {
             pb.push_1(sub, addr, value);
         }
 
+        pb
+    }
+
+    /// Build a CE (Copy Engine) init pushbuffer — binds the CE class on subchannel 0.
+    #[must_use]
+    pub fn ce_init(ce_class: u32) -> Self {
+        let mut pb = Self::new();
+        pb.push_1(0, ce::method::SET_OBJECT, ce_class);
+        pb
+    }
+
+    /// Build a CE DMA copy pushbuffer.
+    ///
+    /// Copies `byte_count` bytes from `src_iova` to `dst_iova` using the CE
+    /// LAUNCH_DMA method. Both addresses must be GPU-virtual (IOVA) from the
+    /// same DMA domain.
+    #[must_use]
+    pub fn ce_dma_copy(src_iova: u64, dst_iova: u64, byte_count: u32) -> Self {
+        let mut pb = Self::new();
+        let sc = 0_u32;
+
+        pb.push_1(sc, ce::method::OFFSET_IN_UPPER, (src_iova >> 32) as u32);
+        pb.push_1(sc, ce::method::OFFSET_IN_LOWER, src_iova as u32);
+        pb.push_1(sc, ce::method::OFFSET_OUT_UPPER, (dst_iova >> 32) as u32);
+        pb.push_1(sc, ce::method::OFFSET_OUT_LOWER, dst_iova as u32);
+        pb.push_1(sc, ce::method::PITCH_IN, byte_count);
+        pb.push_1(sc, ce::method::PITCH_OUT, byte_count);
+        pb.push_1(sc, ce::method::LINE_LENGTH_IN, byte_count);
+        pb.push_1(sc, ce::method::LINE_COUNT, 1);
+        pb.push_1(sc, ce::method::LAUNCH_DMA, ce::method::LAUNCH_PIPELINED_PITCH);
+        pb
+    }
+
+    /// Build a CE semaphore release pushbuffer.
+    ///
+    /// After the preceding copy completes, writes `payload` to `sem_iova`.
+    #[must_use]
+    pub fn ce_semaphore_release(sem_iova: u64, payload: u32) -> Self {
+        let mut pb = Self::new();
+        let sc = 0_u32;
+        pb.push_1(sc, ce::method::SET_SEMAPHORE_A, (sem_iova >> 32) as u32);
+        pb.push_1(sc, ce::method::SET_SEMAPHORE_B, sem_iova as u32);
+        pb.push_1(sc, ce::method::SET_SEMAPHORE_PAYLOAD, payload);
+        pb.push_1(sc, ce::method::SEMAPHORE_CTRL, 0x1);
         pb
     }
 }

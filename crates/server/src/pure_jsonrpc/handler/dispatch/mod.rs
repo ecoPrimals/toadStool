@@ -145,6 +145,11 @@ impl DispatchHandler {
     ///
     /// VFIO devices hold iommufd FDs and DMA mappings. Dropping them
     /// can trigger a GPU reset, so we cache them across RPC calls.
+    ///
+    /// When the factory creates a device in "caps-only" mode (VFIO group
+    /// held by ember → EBUSY), this method tries to adopt dup'd fds from
+    /// the anchor store, bridging sovereign.init's warm state into the
+    /// dispatch path.
     async fn get_or_create_device(
         &self,
         bdf: &str,
@@ -152,7 +157,7 @@ impl DispatchHandler {
         let factory = self.local_device_factory.as_ref()?;
         let mut cache = self.cached_devices.lock().await;
         if !cache.contains_key(bdf) {
-            let device = factory(bdf)?;
+            let mut device = factory(bdf)?;
 
             if let Some(anchor_fds) = device.dup_anchor_fds() {
                 let anchor = match anchor_fds {
@@ -166,6 +171,22 @@ impl DispatchHandler {
                 let mut anchors = self.anchor_store.lock().await;
                 tracing::info!(bdf, "VfioAnchor created — warm keepalive active");
                 anchors.insert(bdf.to_string(), anchor);
+            } else if device.dma_backend().is_none() {
+                // Device is in caps-only mode — VFIO group was EBUSY because
+                // ember holds it via anchors. Try to adopt dup'd fds from the
+                // anchor store to complete the VFIO session.
+                if let Some(received) = self.dup_received_fds_from_anchor(bdf).await {
+                    match device.adopt_anchor_fds(received) {
+                        Ok(()) => {
+                            tracing::info!(bdf, "VFIO session adopted from anchor fds — dispatch ready");
+                        }
+                        Err(e) => {
+                            tracing::warn!(bdf, err = %e, "adopt_anchor_fds failed — caps-only mode persists");
+                        }
+                    }
+                } else {
+                    tracing::debug!(bdf, "no anchor fds available for adoption");
+                }
             }
 
             cache.insert(bdf.to_string(), device);
@@ -586,108 +607,38 @@ impl DispatchHandler {
         }
     }
 
-    /// `compute.fan_out` — DAG-aware dispatch of clone-level work units.
-    ///
-    /// Accepts an array of work units (each with its own binary/buffers/dims),
-    /// dispatches them to available compute substrate, and returns a dispatch_id
-    /// with assignment status for each unit.
-    #[allow(
-        clippy::unused_async,
-        reason = "handler signature requires async for uniform dispatch"
-    )]
-    pub(super) async fn compute_fan_out(
+    /// Dup VFIO fds from the anchor store into `ReceivedVfioFds` for
+    /// device adoption. Returns `None` if no anchor exists for this BDF.
+    async fn dup_received_fds_from_anchor(
         &self,
-        params: Option<&serde_json::Value>,
-    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
-        use super::super::types::JsonRpcError;
-        use std::sync::atomic::Ordering;
+        bdf: &str,
+    ) -> Option<toadstool_cylinder::vfio::ReceivedVfioFds> {
+        use std::os::fd::AsFd;
+        let anchors = self.anchor_store.lock().await;
+        let anchor = anchors.get(bdf)?;
 
-        let p = params.ok_or_else(|| {
-            JsonRpcError::invalid_params(
-                "Expected { work_units: [...], substrate_filter?: {...}, dag_session_id?: \"...\" }",
-            )
-        })?;
+        let device_fd = anchor.device_fd().try_clone_to_owned().ok()?;
 
-        let work_units = p
-            .get("work_units")
-            .and_then(serde_json::Value::as_array)
-            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'work_units' array"))?;
-
-        if work_units.is_empty() {
-            return Err(JsonRpcError::invalid_params(
-                "work_units must contain at least one unit",
-            ));
-        }
-
-        let dag_session_id = p
-            .get("dag_session_id")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("");
-
-        let substrate_filter = p.get("substrate_filter").cloned();
-
-        let gpu_required = substrate_filter
-            .as_ref()
-            .and_then(|f| f.get("gpu_required"))
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
-
-        let dispatch_id = uuid::Uuid::new_v4().to_string();
-        let start = std::time::Instant::now();
-
-        let mut assigned: Vec<serde_json::Value> = Vec::new();
-        let mut queued: Vec<serde_json::Value> = Vec::new();
-
-        let has_factory = self.local_device_factory.is_some();
-
-        for (idx, unit) in work_units.iter().enumerate() {
-            let unit_id = unit
-                .get("unit_id")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or("");
-
-            let unit_id_owned = if unit_id.is_empty() {
-                format!("{dispatch_id}-{idx}")
-            } else {
-                unit_id.to_string()
-            };
-
-            self.dispatch_count.fetch_add(1, Ordering::Relaxed);
-
-            if gpu_required && !has_factory {
-                queued.push(serde_json::json!({
-                    "unit_id": unit_id_owned,
-                    "index": idx,
-                    "status": "queued",
-                    "reason": "no GPU substrate available",
-                }));
-                continue;
+        match anchor.backend_arc() {
+            toadstool_ember::vfio_anchor::AnchorBackendRef::Iommufd { iommufd, ioas_id } => {
+                let iommufd_dup = iommufd.as_fd().try_clone_to_owned().ok()?;
+                Some(toadstool_cylinder::vfio::ReceivedVfioFds::Iommufd {
+                    iommufd: iommufd_dup,
+                    device: device_fd,
+                    ioas_id,
+                })
             }
-
-            assigned.push(serde_json::json!({
-                "unit_id": unit_id_owned,
-                "index": idx,
-                "status": "assigned",
-                "substrate": if has_factory { "local_cylinder" } else { "cpu" },
-            }));
+            toadstool_ember::vfio_anchor::AnchorBackendRef::LegacyGroup { container } => {
+                let container_dup = container.as_fd().try_clone_to_owned().ok()?;
+                let group_fd = anchor.group_fd()?.try_clone_to_owned().ok()?;
+                Some(toadstool_cylinder::vfio::ReceivedVfioFds::Legacy {
+                    container: container_dup,
+                    device: device_fd,
+                    group: group_fd,
+                })
+            }
         }
-
-        let elapsed_ms = start.elapsed().as_millis() as u64;
-
-        Ok(serde_json::json!({
-            "domain": "compute",
-            "operation": "fan_out",
-            "dispatch_id": dispatch_id,
-            "dag_session_id": dag_session_id,
-            "assigned": assigned,
-            "queued": queued,
-            "total_units": work_units.len(),
-            "assigned_count": assigned.len(),
-            "queued_count": queued.len(),
-            "timing": { "dispatch_ms": elapsed_ms },
-        }))
     }
-
 
     /// Try to engage the clutch for a BDF from the anchor store.
     ///
@@ -791,6 +742,7 @@ impl DispatchHandler {
         }
 
         opts.dma_backend = dma_for_opts;
+        opts.skip_cold_memory_training = true;
 
         let sm = opts.sm_version.unwrap_or_else(|| {
             let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
@@ -840,6 +792,12 @@ impl DispatchHandler {
             bar0_ref, bdf, &opts, &*strategy,
         );
 
+        // Confirm anchor is live in store for fd persistence across restarts
+        let anchor_held = {
+            let store = self.anchor_store.lock().await;
+            store.contains_key(bdf)
+        };
+
         tracing::info!(
             bdf,
             all_ok = result.all_ok,
@@ -848,8 +806,77 @@ impl DispatchHandler {
             stages = result.stages.len(),
             warm_detected = result.warm_detected,
             clutch_path = used_clutch,
+            anchor_held,
             "sovereign.init(ember): pipeline complete"
         );
+
+        if let Some(engaged) = clutch {
+            engaged.disengage();
+        }
+
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
+
+    /// `sovereign.ce_validate` via ember — validates the sovereign DMA
+    /// pipeline by dispatching a CE (Copy Engine) DMA copy and verifying
+    /// readback. Independent of PGRAPH/GPC state.
+    pub(super) async fn sovereign_ce_validate_ember(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        self.acquire_device_handle(bdf).await;
+
+        let mut clutch = self.try_engage_clutch(bdf).await;
+        if clutch.is_none() {
+            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+                JsonRpcError::internal_error(format!(
+                    "device {bdf} not available — factory returned None"
+                ))
+            })?;
+            drop(_cache);
+            clutch = self.try_engage_clutch(bdf).await;
+        }
+
+        let _sysfs_bar;
+        let (bar0_ref, dma_opt): (
+            &toadstool_cylinder::vfio::device::MappedBar,
+            Option<toadstool_cylinder::vfio::device::DmaBackend>,
+        ) = if let Some(ref engaged) = clutch {
+            (engaged.bar0(), Some(engaged.dma_backend_clone()))
+        } else {
+            tracing::warn!(bdf, "no clutch available for CE validate — sysfs fallback");
+            let bar = toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(
+                bdf,
+                16 * 1024 * 1024,
+            )
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!(
+                    "sysfs BAR0 open failed for {bdf}: {e}"
+                ))
+            })?;
+            let dma = {
+                let cache = self.cached_devices.lock().await;
+                cache.get(bdf).and_then(|d| d.dma_backend().cloned())
+            };
+            _sysfs_bar = bar;
+            (&_sysfs_bar, dma)
+        };
+
+        let dma_backend = dma_opt.ok_or_else(|| {
+            JsonRpcError::internal_error(
+                "no DMA backend available — CE validate requires VFIO DMA".to_string(),
+            )
+        })?;
+
+        let result = toadstool_cylinder::vfio::ce_validate::validate_ce(bar0_ref, dma_backend);
 
         if let Some(engaged) = clutch {
             engaged.disengage();
@@ -920,6 +947,7 @@ impl DispatchHandler {
             opts.vbios_rom = Some(rom);
         }
         opts.dma_backend = dma_for_opts;
+        opts.skip_cold_memory_training = true;
 
         let sm = opts.sm_version.unwrap_or_else(|| {
             let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
@@ -949,12 +977,18 @@ impl DispatchHandler {
             bar0_ref, bdf, &opts, &*strategy,
         );
 
+        let anchor_held = {
+            let store = self.anchor_store.lock().await;
+            store.contains_key(bdf)
+        };
+
         tracing::info!(
             bdf,
             compute_ready = result.result.compute_ready,
             pipeline_us = result.result.total_ms * 1000,
             overhead_us = result.profiling_overhead_us,
             stages = result.stage_timings_us.len(),
+            anchor_held,
             "sovereign.profile: complete"
         );
 
@@ -965,6 +999,80 @@ impl DispatchHandler {
         serde_json::to_value(&result)
             .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
     }
+
+    /// `sovereign.warm_status` — lightweight warm keepalive status for all known GPUs.
+    ///
+    /// Reports anchor state, boot state probe (via sysfs BAR0), and fd store
+    /// capability without running any pipeline. Used to verify fd persistence
+    /// across daemon restarts.
+    pub(super) async fn sovereign_warm_status(
+        &self,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        let anchors = self.anchor_store.lock().await;
+        let fd_store_capable = std::env::var("NOTIFY_SOCKET").is_ok();
+
+        let mut devices = serde_json::Map::new();
+
+        // Report on anchored devices
+        for (bdf, _anchor) in anchors.iter() {
+            let boot_probe = probe_boot_state_sysfs(bdf);
+            let tier = classify_tier_sysfs(bdf);
+            devices.insert(bdf.clone(), serde_json::json!({
+                "anchor_held": true,
+                "boot_state": boot_probe.as_ref().map(|s| s.0.as_str()).unwrap_or("unknown"),
+                "pmc_enable": boot_probe.as_ref().map(|s| s.1.as_str()).unwrap_or("n/a"),
+                "pramin_ok": boot_probe.as_ref().map(|s| s.2).unwrap_or(false),
+                "fd_store_capable": fd_store_capable,
+                "sovereign_tier": tier.as_ref().map(|t| t.tier.level()),
+                "sovereign_tier_name": tier.as_ref().map(|t| t.tier.description()),
+            }));
+        }
+
+        // Also report cached devices not yet anchored
+        let cache = self.cached_devices.lock().await;
+        for bdf in cache.keys() {
+            if !devices.contains_key(bdf) {
+                let boot_probe = probe_boot_state_sysfs(bdf);
+                let tier = classify_tier_sysfs(bdf);
+                devices.insert(bdf.clone(), serde_json::json!({
+                    "anchor_held": false,
+                    "boot_state": boot_probe.as_ref().map(|s| s.0.as_str()).unwrap_or("unknown"),
+                    "pmc_enable": boot_probe.as_ref().map(|s| s.1.as_str()).unwrap_or("n/a"),
+                    "pramin_ok": boot_probe.as_ref().map(|s| s.2).unwrap_or(false),
+                    "fd_store_capable": fd_store_capable,
+                    "sovereign_tier": tier.as_ref().map(|t| t.tier.level()),
+                    "sovereign_tier_name": tier.as_ref().map(|t| t.tier.description()),
+                }));
+            }
+        }
+
+        Ok(serde_json::json!({
+            "anchor_count": anchors.len(),
+            "fd_store_capable": fd_store_capable,
+            "devices": devices,
+        }))
+    }
+}
+
+/// Probe boot state and sovereignty tier via sysfs BAR0.
+/// Returns (state_name, pmc_hex, pramin_ok) or None on failure.
+fn probe_boot_state_sysfs(bdf: &str) -> Option<(String, String, bool)> {
+    use toadstool_cylinder::vfio::device::MappedBar;
+    use toadstool_cylinder::vfio::probe_boot_state;
+
+    let bar = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024).ok()?;
+    let state = probe_boot_state(&bar, None);
+    let pmc = bar.read_u32(0x200).unwrap_or(0);
+    let pramin_ok = state.is_warm();
+    let state_name = if state.is_warm() { "warm" } else { "cold" };
+    Some((state_name.to_string(), format!("0x{pmc:08x}"), pramin_ok))
+}
+
+/// Classify the sovereignty tier for a device via sysfs BAR0.
+fn classify_tier_sysfs(bdf: &str) -> Option<toadstool_cylinder::vfio::sovereign_tiers::TierEvidence> {
+    use toadstool_cylinder::vfio::device::MappedBar;
+    let bar = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024).ok()?;
+    Some(toadstool_cylinder::vfio::sovereign_tiers::classify_tier(&bar))
 }
 
 /// Create a local device factory for Phase D sovereign dispatch.
