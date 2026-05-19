@@ -27,6 +27,7 @@ pub mod memory;
 pub mod nv_metal;
 pub(crate) mod pci_config;
 pub mod pci_discovery;
+pub mod pmu_investigate;
 pub mod init_kepler;
 pub mod init_pipeline;
 pub mod init_volta;

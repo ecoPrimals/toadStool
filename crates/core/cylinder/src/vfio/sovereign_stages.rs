@@ -329,9 +329,7 @@ pub(crate) fn cg_sweep(bar0: &MappedBar) -> CgSweepResult {
 
 #[derive(Debug, Clone)]
 pub(crate) struct CgSweepResult {
-    #[expect(dead_code, reason = "used in tracing + future diagnostics")]
     pub changes: u32,
-    #[expect(dead_code, reason = "used in tracing + future diagnostics")]
     pub faulted: u32,
     pub detail: String,
 }
