@@ -1,6 +1,6 @@
 # ToadStool Documentation
 
-**Updated**: May 2026 — S264
+**Updated**: May 2026 — S265
 
 Primary documentation lives at the repository root. See [../DOCUMENTATION.md](../DOCUMENTATION.md) for the navigation hub. Session trackers archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
 

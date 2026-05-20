@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 18, 2026 (Sessions 43-264)
+## [Unreleased] - May 20, 2026 (Sessions 43-265)
+
+### Session S265 (May 20, 2026) — sporePrint pappusCast Wave 28
+
+primalSpring Wave 28 sporePrint contribution: validation surface + CI dispatch.
+
+- ADDED: `sporeprint/validation-summary.md` — primal status, test metrics, hardware substrates, capabilities
+- ADDED: `sporeprint/README.md` — sporePrint contribution guide
+- ADDED: `.github/workflows/notify-sporeprint.yml` — CI dispatch to sporePrint on push (type: primal, content: true)
+- FIXED: README JSON-RPC method count (83 → 85, was stale since S263)
+- METRICS: 85 JSON-RPC methods, 9,028 lib tests, 0 clippy warnings, deny clean
 
 ### Session S264 (May 18, 2026) — Stale Socket Cleanup: primalSpring Audit Response
 
