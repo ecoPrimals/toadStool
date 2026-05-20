@@ -947,6 +947,71 @@ impl DispatchHandler {
             .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
     }
 
+    /// `sovereign.warm_handoff` — sovereign driver rotation pipeline.
+    ///
+    /// Orchestrates the full warm handoff: module patching → insmod →
+    /// seeder bind → settle → warm swap to vfio-pci → tier classification
+    /// → rmmod. The operator never touches the kernel.
+    ///
+    /// Params:
+    /// - `bdf`: PCI BDF of the target GPU (required)
+    /// - `strategy`: warm handoff strategy name (required)
+    ///   - `"nouveau_titanv"`: patched nouveau for Volta (GV100)
+    ///   - `"nouveau_k80"`: stock nouveau for Kepler (GK210)
+    pub(super) async fn sovereign_warm_handoff(
+        &self,
+        params: Option<&serde_json::Value>,
+    ) -> Result<serde_json::Value, super::super::types::JsonRpcError> {
+        use super::super::types::JsonRpcError;
+        use toadstool_cylinder::vfio::sovereign_handoff::{HandoffConfig, execute_handoff};
+
+        let bdf = params
+            .and_then(|p| p.get("bdf"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
+
+        let strategy = params
+            .and_then(|p| p.get("strategy"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| JsonRpcError::invalid_params("Missing 'strategy' string parameter"))?;
+
+        let config = HandoffConfig::from_strategy(strategy, bdf).ok_or_else(|| {
+            JsonRpcError::invalid_params(format!(
+                "Unknown warm handoff strategy: '{strategy}'. \
+                 Valid: nouveau_titanv, nouveau_k80"
+            ))
+        })?;
+
+        tracing::info!(
+            bdf,
+            strategy,
+            "sovereign.warm_handoff: starting driver rotation pipeline"
+        );
+
+        // The handoff changes the GPU's driver binding (vfio → nouveau →
+        // vfio), so any pre-existing VFIO BAR0 mapping is invalidated.
+        // Pass None — the orchestrator uses sysfs BAR0 for post-handoff
+        // tier classification after vfio-pci rebind.
+        let result = tokio::task::spawn_blocking(move || {
+            execute_handoff(&config, None)
+        })
+        .await
+        .map_err(|e| {
+            JsonRpcError::internal_error(format!("handoff task panicked: {e}"))
+        })?;
+
+        tracing::info!(
+            bdf,
+            success = result.success,
+            tier = ?result.tier.as_ref().map(|t| t.tier),
+            total_ms = result.total_ms,
+            "sovereign.warm_handoff: complete"
+        );
+
+        serde_json::to_value(&result)
+            .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+    }
+
     /// `sovereign.profile` via ember — instrumented pipeline with microsecond
     /// timing, boot state snapshots, and register captures.
     pub(super) async fn sovereign_profile_ember(

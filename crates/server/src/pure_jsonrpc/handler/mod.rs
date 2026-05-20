@@ -408,6 +408,9 @@ impl JsonRpcHandler {
             "sovereign.pmu_investigate" | "pmu.investigate" => {
                 return self.dispatch.sovereign_pmu_investigate(params).await;
             }
+            "sovereign.warm_handoff" => {
+                return self.dispatch.sovereign_warm_handoff(params).await;
+            }
             "sovereign.devinit" => return sovereign::sovereign_devinit(params),
 
             "mmio.read32" => return mmio::mmio_read32(params),

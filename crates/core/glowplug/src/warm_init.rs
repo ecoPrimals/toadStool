@@ -56,6 +56,35 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+/// Where the seeder's kernel module comes from.
+///
+/// `System` means the module is already loaded (or loadable via `modprobe`).
+/// `Patched` means the diesel engine finds the stock `.ko`, binary-patches
+/// it at runtime, and loads the patched version via `insmod`. After the
+/// warm handoff completes, the patched module is `rmmod`'d and cleaned up.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ModuleSource {
+    /// Module already loaded in the kernel (current behavior).
+    /// No module lifecycle management needed.
+    System,
+
+    /// Load a binary-patched version of a stock module.
+    /// The diesel engine handles find → patch → insmod → rmmod.
+    Patched {
+        /// Stock module name to find via `modinfo -n` (e.g., "nouveau").
+        stock_module: String,
+        /// Patch set name resolved by `cylinder::vfio::module_patch::PatchSet::by_name`
+        /// (e.g., "volta_warm_handoff", "kepler_warm_handoff").
+        patch_set: String,
+    },
+}
+
+impl Default for ModuleSource {
+    fn default() -> Self {
+        Self::System
+    }
+}
+
 /// How a seeder driver is contained.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SeederContainment {
@@ -109,6 +138,10 @@ pub struct SeederDriver {
 
     /// Kernel module name (e.g., "nouveau", "nvidia").
     pub module: String,
+
+    /// Where the kernel module comes from — system or patched at runtime.
+    #[serde(default)]
+    pub module_source: ModuleSource,
 
     /// What this seeder initializes (documentation).
     pub initializes: Vec<String>,
@@ -173,6 +206,10 @@ impl WarmInitPlan {
             seeder: SeederDriver {
                 name: "nouveau".into(),
                 module: "nouveau".into(),
+                module_source: ModuleSource::Patched {
+                    stock_module: "nouveau".into(),
+                    patch_set: "volta_warm_handoff".into(),
+                },
                 initializes: vec![
                     "PRI ring (internal register bus)".into(),
                     "PGRAPH hub + GPC clusters".into(),
@@ -209,6 +246,7 @@ impl WarmInitPlan {
             seeder: SeederDriver {
                 name: "nvidia-470".into(),
                 module: "nvidia".into(),
+                module_source: ModuleSource::System,
                 initializes: vec![
                     "SEC2 → ACR → FECS authentication chain".into(),
                     "HBM2 memory training (12GB, 3072-bit bus)".into(),
@@ -246,6 +284,7 @@ impl WarmInitPlan {
             seeder: SeederDriver {
                 name: "nouveau".into(),
                 module: "nouveau".into(),
+                module_source: ModuleSource::System,
                 initializes: vec![
                     "PRI ring".into(),
                     "PGRAPH + FECS (direct PIO, no ACR needed)".into(),
@@ -501,6 +540,7 @@ impl DriverLabPlan {
                         seeder: SeederDriver {
                             name: "vfio-pci".into(),
                             module: "vfio-pci".into(),
+                            module_source: ModuleSource::System,
                             initializes: vec!["nothing — cold baseline".into()],
                             limitations: vec![
                                 "PRI ring dead after FLR".into(),

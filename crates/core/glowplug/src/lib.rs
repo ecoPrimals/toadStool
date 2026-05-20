@@ -78,5 +78,5 @@ pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
 pub use sysfs_executor::SysfsSwapExecutor;
 pub use warm_init::{
     DiffSummary, DriverLabExecutor, DriverLabPlan, DriverTrial, LabExecutionResult,
-    NV_BAR0_DOMAINS, SeederContainment, TrialExecutionResult, WarmInitPlan,
+    ModuleSource, NV_BAR0_DOMAINS, SeederContainment, TrialExecutionResult, WarmInitPlan,
 };
