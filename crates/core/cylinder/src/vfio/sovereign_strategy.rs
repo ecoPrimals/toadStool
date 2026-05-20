@@ -234,17 +234,23 @@ pub trait SovereignStrategy: Send + Sync {
         let in_hreset = cpuctl & falcon::CPUCTL_HRESET != 0;
         let is_0x12 = cpuctl == (falcon::CPUCTL_STARTCPU | falcon::CPUCTL_HRESET);
 
-        if halted && mailbox0 != 0 {
+        let pc = bar0
+            .read_u32(falcon::FECS_BASE + falcon::PC)
+            .unwrap_or(0);
+        // ACR-loaded firmware PCs are typically 0x80+ (firmware code section).
+        // Post-FLR residual PCs are 0x00-0x10 (boot ROM artifacts).
+        // Require PC >= 0x40 to avoid false positives from FLR residuals.
+        let pc_valid = pc >= 0x40 && pc != 0xDEAD_DEAD && (pc & 0xBADF_0000) != 0xBADF_0000;
+
+        if halted && !in_hreset {
             FalconWarmState::WarmPreserved { cpuctl, mailbox0 }
-        } else if !halted && !in_hreset {
-            let pc = bar0
-                .read_u32(falcon::FECS_BASE + falcon::PC)
-                .unwrap_or(0);
-            if pc > 0 {
-                FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 }
-            } else {
-                FalconWarmState::Cold
-            }
+        } else if in_hreset && pc_valid {
+            // HS ACR falcon: CPUCTL shows HRESET (0x10) but PC is advancing
+            // and firmware is executing. This is the normal post-ACR-boot state
+            // where the HS-secure falcon's true status isn't reflected in CPUCTL.
+            FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 }
+        } else if !halted && !in_hreset && pc_valid {
+            FalconWarmState::WarmRunning { cpuctl, pc, mailbox0 }
         } else if is_0x12 {
             FalconWarmState::Inconsistent { cpuctl }
         } else {

@@ -778,38 +778,153 @@ impl NvVfioComputeDevice {
             let pgraph_gated = mthd_cmd_probe & 0xBAD0_0000 == 0xBAD0_0000;
 
             if pgraph_gated {
-                // GR PRI ring is gated. Toggle GR in PMC to bring the engine
-                // out of its gated state. This resets FECS but makes the
-                // method interface accessible.
-                let pmc_val = bar0.read_u32(0x200).unwrap_or(0);
+                use crate::vfio::channel::registers::pri;
+
                 tracing::info!(
                     mthd_cmd_probe = format_args!("{mthd_cmd_probe:#010x}"),
-                    pmc = format_args!("{pmc_val:#010x}"),
-                    "PGRAPH method registers gated — toggling GR engine in PMC"
+                    "PGRAPH method registers gated — running full GPC ungating"
                 );
-                // Clear GR bit (bit 12), wait, re-set it
-                let _ = bar0.write_u32(0x200, pmc_val & !(1u32 << 12));
-                std::thread::sleep(std::time::Duration::from_millis(50));
-                let _ = bar0.write_u32(0x200, pmc_val | (1u32 << 12));
-                std::thread::sleep(std::time::Duration::from_millis(100));
 
-                // Clear PRI ring faults that may have accumulated
-                let priv_intr = bar0.read_u32(0x0002_0100).unwrap_or(0);
-                if priv_intr != 0 {
-                    let _ = bar0.write_u32(0x0002_0100, priv_intr);
+                let bridge = super::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
+
+                // Phase 1: CG sweep + PRI recovery + PGOB (hub-level ungating)
+                let cg = crate::vfio::sovereign_stages::cg_sweep(&bar0);
+                tracing::info!(changes = cg.changes, faulted = cg.faulted, "ungating: CG sweep");
+
+                let pri = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+                tracing::info!(alive = pri.alive, faulted = pri.faulted, "ungating: PRI recovery");
+
+                match crate::vfio::sovereign_stages::pgob_ungating(&bar0, &bridge) {
+                    Ok(detail) => tracing::info!(%detail, "ungating: PGOB"),
+                    Err(e) => tracing::warn!(%e, "ungating: PGOB failed"),
+                }
+
+                // Phase 2: Force PRI ring enumerate unconditionally.
+                // pri_bus_recover only enumerates when ringmaster has pending
+                // errors. On warm handoff the ringmaster may be clean but GPC
+                // ring stations are power-gated and never got re-enumerated.
+                {
+                    let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
+                    let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    let _ = bar0.write_u32(0x0001_2004_usize, 2); // station ACK
+                    let pmc_intr = bar0.read_u32(0x100).unwrap_or(0);
+                    if pmc_intr & (1 << 26) != 0 {
+                        let _ = bar0.write_u32(0x100, 1 << 26);
+                    }
+                    tracing::info!("ungating: forced PRI ring enumerate + ACK");
+                }
+
+                // Phase 3: GPC MMU init (nouveau gm200_gr_init_gpc_mmu).
+                // These writes route FBHUB MMU config into GPC PRI fabric.
+                {
+                    let fb_mmu = bar0.read_u32(0x100c80).unwrap_or(0);
+                    let _ = bar0.write_u32(0x418880, fb_mmu & 0x0001_FFFF);
+                    let _ = bar0.write_u32(0x418890, 0);
+                    let _ = bar0.write_u32(0x418894, 0);
+                    let cc4 = bar0.read_u32(0x100cc4).unwrap_or(0);
+                    let cc8 = bar0.read_u32(0x100cc8).unwrap_or(0);
+                    let ccc = bar0.read_u32(0x100ccc).unwrap_or(0);
+                    let _ = bar0.write_u32(0x4188b0, cc4);
+                    let _ = bar0.write_u32(0x4188b4, cc8);
+                    let _ = bar0.write_u32(0x4188b8, ccc);
+                    // GV100 specific: enable additional MMU modes
+                    let a4 = bar0.read_u32(0x4188a4).unwrap_or(0);
+                    let _ = bar0.write_u32(0x4188a4, a4 | 0x0300_0000);
                     tracing::info!(
-                        priv_intr = format_args!("{priv_intr:#010x}"),
-                        "PRI ring faults cleared after GR toggle"
+                        fb_mmu = format_args!("{fb_mmu:#010x}"),
+                        a4_after = format_args!("{:#010x}", a4 | 0x0300_0000),
+                        "ungating: GPC MMU init"
                     );
                 }
 
+                // Phase 4: Replay sw_nonctx.bin — programs GPC/TPC/hub state
+                // registers via BAR0 without resetting falcons.
+                use crate::nv::gsp_bridge::GspBridge;
+                match bridge.apply_gr_bar0_init(&bar0, *profile.sm_range.start()) {
+                    Ok(()) => tracing::info!("ungating: sw_nonctx.bin applied"),
+                    Err(e) => tracing::warn!(%e, "ungating: sw_nonctx.bin failed"),
+                }
+
+                // Phase 5: Second PRI ring recovery after sw_nonctx.bin writes.
+                let pri2 = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+                tracing::info!(alive = pri2.alive, faulted = pri2.faulted, "ungating: post-init PRI recovery");
+
+                // Probe result
                 let mthd_cmd_after = bar0.read_u32(
                     falcon::FECS_BASE + falcon::MTHD_CMD
                 ).unwrap_or(0xDEAD);
+                let gpc_enables = bar0.read_u32(0x22004).unwrap_or(0xDEAD);
+                let pgraph_status = bar0.read_u32(0x400700).unwrap_or(0xDEAD);
+                let still_gated = mthd_cmd_after & 0xBAD0_0000 == 0xBAD0_0000;
                 tracing::info!(
                     mthd_cmd_after = format_args!("{mthd_cmd_after:#010x}"),
-                    "PGRAPH method registers after GR toggle"
+                    gpc_enables = format_args!("{gpc_enables:#010x}"),
+                    pgraph_status = format_args!("{pgraph_status:#010x}"),
+                    still_gated,
+                    "ungating: probe after full GPC init"
                 );
+
+                if still_gated {
+                    tracing::warn!(
+                        "GPC PRI still gated — full destructive GR reset + PIO FECS boot"
+                    );
+
+                    // Step 1: Full PGRAPH engine reset via sovereign_stages
+                    match crate::vfio::sovereign_stages::pgraph_engine_reset(&bar0) {
+                        Ok(detail) => tracing::info!(%detail, "ungating: PGRAPH engine reset"),
+                        Err(e) => tracing::warn!(%e, "ungating: PGRAPH engine reset failed"),
+                    }
+
+                    // Step 2: Full ungating sequence after reset
+                    let cg2 = crate::vfio::sovereign_stages::cg_sweep(&bar0);
+                    let pri2 = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+                    let _ = crate::vfio::sovereign_stages::pgob_ungating(&bar0, &bridge);
+
+                    // Step 3: Force PRI enumerate again
+                    let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
+                    let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    let _ = bar0.write_u32(0x0001_2004_usize, 2);
+
+                    // Step 4: sw_nonctx.bin replay
+                    let _ = bridge.apply_gr_bar0_init(&bar0, *profile.sm_range.start());
+
+                    // Step 5: Final PRI recovery
+                    let pri3 = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+
+                    let mthd_post = bar0.read_u32(falcon::FECS_BASE + falcon::MTHD_CMD).unwrap_or(0xDEAD);
+                    let gpc_post = bar0.read_u32(0x22004).unwrap_or(0xDEAD);
+                    tracing::info!(
+                        cg_changes = cg2.changes, pri_alive = pri3.alive,
+                        mthd_cmd = format_args!("{mthd_post:#010x}"),
+                        gpc_enables = format_args!("{gpc_post:#010x}"),
+                        "ungating: probe after destructive GR reset"
+                    );
+
+                    // Step 6: PIO FECS re-boot if firmware available
+                    if bridge.has_gr_firmware() {
+                        tracing::info!("ungating: attempting PIO FECS re-boot");
+                        match bridge.boot_falcon_hs(
+                            &bar0,
+                            "FECS",
+                            falcon::FECS_BASE,
+                            &dma_backend,
+                            super::nv_gsp_bridge::FECS_FW_CODE_IOVA,
+                            super::nv_gsp_bridge::FECS_FW_DATA_IOVA,
+                        ) {
+                            Ok((ctl, mb0)) => {
+                                fecs_hs_booted = true;
+                                tracing::info!(
+                                    fecs_cpuctl = format_args!("{ctl:#010x}"),
+                                    fecs_mb0 = format_args!("{mb0:#010x}"),
+                                    "ungating: FECS re-boot succeeded"
+                                );
+                            }
+                            Err(e) => tracing::warn!(%e, "ungating: FECS re-boot failed"),
+                        }
+                    }
+                }
             }
 
             let fecs_alive = crate::vfio::channel::fecs::fecs_is_alive(&bar0);
@@ -886,6 +1001,208 @@ impl NvVfioComputeDevice {
         {
             false
         }
+    }
+
+    /// Open VFIO dispatch state using pre-existing fds from an anchor/ember.
+    ///
+    /// Identical to [`open_vfio`] except the `VfioDevice` is reconstructed
+    /// from received fds (via `VfioDevice::from_received`) instead of
+    /// opening `/dev/vfio/{group}` directly. This avoids the EBUSY conflict
+    /// when ember already holds the VFIO group.
+    #[cfg(target_os = "linux")]
+    pub fn open_vfio_from_received(
+        &mut self,
+        fds: crate::vfio::ReceivedVfioFds,
+    ) -> DriverResult<()> {
+        use crate::vfio::channel::VfioChannel;
+        use crate::vfio::dma::DmaBuffer;
+        use crate::vfio::VfioDevice;
+
+        let profile = super::generation::profile_for_sm(self.sm);
+        let is_kepler = matches!(
+            profile.page_table_format,
+            super::generation::PageTableFormat::V1TwoLevel
+        );
+
+        let device = VfioDevice::from_received(&self.bdf, fds)?;
+        let bar0 = device.map_bar(0)?;
+        let dma_backend = device.dma_backend();
+
+        let fecs_running = if !is_kepler && self.fecs_ready {
+            use crate::vfio::channel::registers::falcon;
+            let fecs_alias = bar0
+                .read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS)
+                .unwrap_or(0xDEAD);
+            let fecs_pc = bar0
+                .read_u32(falcon::FECS_BASE + falcon::PC)
+                .unwrap_or(0xDEAD);
+            let halted = fecs_alias & falcon::CPUCTL_HALTED != 0;
+            let in_hreset = fecs_alias & falcon::CPUCTL_HRESET != 0;
+            let running = !halted && !in_hreset;
+            tracing::info!(
+                bdf = %self.bdf,
+                fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
+                fecs_pc = format_args!("{fecs_pc:#010x}"),
+                running,
+                "adopt_anchor: FECS state check"
+            );
+            running
+        } else {
+            false
+        };
+
+        let gpfifo = DmaBuffer::new(dma_backend.clone(), 4096, GPFIFO_IOVA)?;
+        let userd = DmaBuffer::new(dma_backend.clone(), 4096, USERD_IOVA)?;
+
+        let gr_ctx = if !is_kepler && self.fecs_ready {
+            let ctx = DmaBuffer::new(dma_backend.clone(), GR_CTX_SIZE, GR_CTX_IOVA)?;
+            tracing::info!(
+                bdf = %self.bdf,
+                gr_ctx_iova = format_args!("{GR_CTX_IOVA:#x}"),
+                "GR context buffer allocated (anchor adopt)"
+            );
+            Some(ctx)
+        } else {
+            None
+        };
+
+        let mut ch = VfioChannel::create_for_profile(
+            dma_backend.clone(),
+            &bar0,
+            GPFIFO_IOVA,
+            GPFIFO_ENTRIES,
+            USERD_IOVA,
+            0,
+            profile,
+            self.fecs_ready,
+        )?;
+
+        let doorbell = if is_kepler {
+            DoorbellKind::Gk104 { channel_id: ch.id() }
+        } else {
+            DoorbellKind::Usermode
+        };
+
+        if !is_kepler && gr_ctx.is_some() {
+            ch.write_gr_context_ptr(GR_CTX_IOVA, 4);
+            ch.resubmit_runlist(&bar0)?;
+        }
+
+        let channel = ch;
+
+        // Full GPC ungating before FECS method protocol. After nouveau→vfio
+        // handoff, the GR PRI ring is power-gated — FECS method mailbox
+        // returns 0xbadf5545. Full sequence: CG sweep + PRI + PGOB + force
+        // enumerate + GPC MMU + sw_nonctx.bin replay.
+        if fecs_running && !is_kepler {
+            use crate::nv::gsp_bridge::GspBridge;
+            use crate::vfio::channel::registers::pri;
+
+            let bridge = super::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
+
+            let cg = crate::vfio::sovereign_stages::cg_sweep(&bar0);
+            tracing::info!(bdf = %self.bdf, changes = cg.changes, "anchor: CG sweep");
+
+            let pri_r = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+            tracing::info!(bdf = %self.bdf, alive = pri_r.alive, "anchor: PRI recovery");
+
+            let _ = crate::vfio::sovereign_stages::pgob_ungating(&bar0, &bridge);
+
+            // Force PRI ring enumerate
+            let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
+            let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let _ = bar0.write_u32(0x0001_2004_usize, 2);
+
+            // GPC MMU init
+            let fb_mmu = bar0.read_u32(0x100c80).unwrap_or(0);
+            let _ = bar0.write_u32(0x418880, fb_mmu & 0x0001_FFFF);
+            let _ = bar0.write_u32(0x418890, 0);
+            let _ = bar0.write_u32(0x418894, 0);
+            let _ = bar0.write_u32(0x4188b0, bar0.read_u32(0x100cc4).unwrap_or(0));
+            let _ = bar0.write_u32(0x4188b4, bar0.read_u32(0x100cc8).unwrap_or(0));
+            let _ = bar0.write_u32(0x4188b8, bar0.read_u32(0x100ccc).unwrap_or(0));
+            let a4 = bar0.read_u32(0x4188a4).unwrap_or(0);
+            let _ = bar0.write_u32(0x4188a4, a4 | 0x0300_0000);
+
+            // sw_nonctx.bin replay
+            let _ = bridge.apply_gr_bar0_init(&bar0, *profile.sm_range.start());
+
+            // Post-init PRI recovery
+            let _ = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+
+            Self::fecs_setup_channel(&bar0, &channel)?;
+        } else if fecs_running {
+            Self::fecs_setup_channel(&bar0, &channel)?;
+        }
+
+        tracing::info!(
+            bdf = %self.bdf,
+            channel_id = channel.id(),
+            fecs_ready = self.fecs_ready,
+            fecs_running,
+            generation = profile.name,
+            doorbell = ?doorbell,
+            "VFIO PBDMA dispatch state initialized (from anchor fds)"
+        );
+
+        let target_pbdma_base = if matches!(doorbell, DoorbellKind::Usermode) {
+            let pbdma_map = bar0.read_u32(0x2004).unwrap_or(0);
+            let runlist_id = channel.runlist_id_hint();
+            let mut found: Option<usize> = None;
+            let mut seq = 0_usize;
+            for pid in 0..32_usize {
+                if pbdma_map & (1 << pid) == 0 {
+                    continue;
+                }
+                let rl = bar0.read_u32(0x2390 + seq * 4).unwrap_or(0xFFFF);
+                if rl == runlist_id {
+                    found = Some(0x0004_0000 + pid * 0x2000);
+                    tracing::info!(pbdma = pid, runlist = rl, "target PBDMA for direct GP_PUT (anchor)");
+                    break;
+                }
+                seq += 1;
+            }
+            found
+        } else {
+            None
+        };
+
+        let semaphore = if matches!(profile.completion, super::generation::CompletionStrategy::SemaphoreFence) {
+            let mut sem = DmaBuffer::new(dma_backend.clone(), 4096, USER_BUFFER_BASE_IOVA)?;
+            sem.as_mut_slice()[..4].copy_from_slice(&0u32.to_le_bytes());
+            tracing::info!(
+                bdf = %self.bdf,
+                sem_iova = format_args!("{USER_BUFFER_BASE_IOVA:#x}"),
+                "semaphore buffer allocated (anchor adopt)"
+            );
+            Some(sem)
+        } else {
+            None
+        };
+        let sem_offset = if semaphore.is_some() { PAGE_SIZE } else { 0 };
+
+        self.vfio_state = Some(VfioDispatchState {
+            device,
+            bar0,
+            channel,
+            dma_backend,
+            gpfifo,
+            userd,
+            gr_ctx,
+            semaphore,
+            semaphore_value: 0,
+            buffers: HashMap::new(),
+            inflight: Vec::new(),
+            next_handle: 1,
+            next_iova: USER_BUFFER_BASE_IOVA + sem_offset,
+            gp_put: 0,
+            doorbell,
+            completion: profile.completion,
+            target_pbdma_base,
+        });
+
+        Ok(())
     }
 }
 
@@ -1303,6 +1620,11 @@ impl ComputeDevice for NvVfioComputeDevice {
         self.vfio_state
             .as_ref()
             .and_then(|s| s.device.dup_anchor_fds().ok())
+    }
+
+    #[cfg(target_os = "linux")]
+    fn adopt_anchor_fds(&mut self, fds: crate::vfio::ReceivedVfioFds) -> DriverResult<()> {
+        self.open_vfio_from_received(fds)
     }
 }
 

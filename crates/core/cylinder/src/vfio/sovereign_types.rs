@@ -58,6 +58,11 @@ pub struct SovereignInitOptions {
     /// Skip GR init even if falcon boot succeeds.
     #[serde(default)]
     pub skip_gr_init: bool,
+    /// Skip doomed memory_training on cold GPUs (HBM2 requires power-on reset).
+    /// When true and boot_state_probe returns Cold, the pipeline returns early
+    /// after the probe stage with `compute_ready: false`.
+    #[serde(default)]
+    pub skip_cold_memory_training: bool,
     /// DMA backend for system-memory ACR boot (IOMMU-mapped buffers).
     /// When provided, the ACR boot solver can use strategies that place
     /// the WPR in system memory rather than VRAM-only paths.

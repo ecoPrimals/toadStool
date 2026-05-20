@@ -105,6 +105,26 @@ pub fn sovereign_init(
         "Generation profile resolved for sovereign pipeline"
     );
 
+    // ── Early falcon probe (before pgraph_reset destroys state) ───────
+    //
+    // pgraph_reset toggles PMC_ENABLE bit 12 which resets the PGRAPH
+    // engine, killing FECS/GPCCS firmware state. If the falcon is already
+    // warm-preserved or warm-running from a previous sovereign.init, we
+    // can skip both pgraph_reset and the expensive ACR falcon_boot.
+    let early_falcon_state = strategy.detect_falcon_warm_state(bar0, true);
+    let falcon_already_warm = matches!(
+        early_falcon_state,
+        crate::vfio::sovereign_strategy::FalconWarmState::WarmPreserved { .. }
+            | crate::vfio::sovereign_strategy::FalconWarmState::WarmRunning { .. }
+    );
+
+    if falcon_already_warm {
+        tracing::info!(
+            state = ?early_falcon_state,
+            "falcon already warm — will skip pgraph_reset to preserve firmware"
+        );
+    }
+
     // ── Stage 2: PMC Enable (staged) ──────────────────────────────────
     if opts.halt_before == Some(HaltBefore::PmcEnable) {
         stages.push(StageResult {
@@ -142,7 +162,17 @@ pub fn sovereign_init(
     // Toggle GR bit in PMC_ENABLE to reset PGRAPH's internal PRI fabric.
     // After UEFI POST the GPC ring stations retain stale fault state;
     // without this reset, GPC/FECS/GPCCS registers read 0xBADF.
-    {
+    //
+    // SKIP when falcon is already warm — pgraph_reset would destroy the
+    // running FECS/GPCCS firmware, forcing a 700ms+ ACR re-boot.
+    if falcon_already_warm {
+        stages.push(StageResult {
+            name: "pgraph_reset".into(),
+            status: StageStatus::Skipped,
+            detail: Some("falcon warm — skipped to preserve FECS/GPCCS".into()),
+            duration_ms: 0,
+        });
+    } else {
         let t = Instant::now();
         match pgraph_engine_reset(bar0) {
             Ok(detail) => {
@@ -265,6 +295,38 @@ pub fn sovereign_init(
         detail: Some(boot_state.summary()),
         duration_ms: t_probe.elapsed().as_millis() as u64,
     });
+
+    // ── Cold early-exit: skip doomed memory_training on cold GPUs ────
+    //
+    // HBM2 training requires the boot ROM during power-on reset — a software-only
+    // pipeline cannot train cold memory. When skip_cold_memory_training is set and
+    // the GPU is cold, return immediately with compute_ready=false rather than
+    // wasting ~10s on a doomed dispatch_memory_training call.
+    if opts.skip_cold_memory_training && !warm_detected {
+        tracing::info!(
+            bdf,
+            "cold GPU detected with skip_cold_memory_training — skipping doomed stages"
+        );
+        stages.push(StageResult {
+            name: "memory_training".into(),
+            status: StageStatus::Skipped,
+            detail: Some("cold GPU: HBM2 training requires power-on reset".into()),
+            duration_ms: 0,
+        });
+        return SovereignInitResult {
+            bdf: bdf.to_string(),
+            identity_chip: chip_id,
+            identity_raw: boot0,
+            all_ok: true,
+            compute_ready: false,
+            halted_at: Some("memory_training (cold_early_exit)".into()),
+            stages,
+            total_ms: pipeline_start.elapsed().as_millis() as u64,
+            training_writes: None,
+            warm_detected: false,
+            boot_state: Some(boot_state),
+        };
+    }
 
     // ── Cold ACR reorder: falcon boot before memory training ─────────
     //

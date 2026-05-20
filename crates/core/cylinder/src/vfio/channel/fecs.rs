@@ -112,12 +112,15 @@ pub fn fecs_method(
 
 /// Send a method to a falcon at a given base address.
 ///
-/// Uses the GR FECS method protocol from nouveau `gf100_gr_fecs_method`:
-///   1. Write data to GR_FECS_MAILBOX0 (base + 0x840)
-///   2. Write 0 to MTHD_DATA (base + 0x500)
-///   3. Write method to MTHD_CMD (base + 0x504) — triggers execution
-///   4. Poll MTHD_CMD until bit 0 clears (FECS clears when done)
-///   5. Read result from GR_FECS_MAILBOX0 (base + 0x840)
+/// Two completion-detection paths:
+///
+/// **Standard (MTHD_CMD readable):** Poll MTHD_CMD bit 0 until cleared.
+///
+/// **PRI-faulted fallback (Volta HS via VFIO):** PGRAPH method registers
+/// (MTHD_CMD, GR_FECS_MAILBOX0) are write-through but read-back as PRI
+/// faults. Writes still reach FECS (confirmed: falcon PC advances). Use
+/// PC-based confirmation: snapshot PC before dispatch, poll until PC
+/// changes (proving FECS received/processed the method), then settle.
 pub fn fecs_method_on(
     bar0: &MappedBar,
     falcon_base: usize,
@@ -126,13 +129,82 @@ pub fn fecs_method_on(
 ) -> DriverResult<FecsMethodResult> {
     use std::borrow::Cow;
 
-    // 1. Write method data to GR FECS MAILBOX0 (PGRAPH-wrapped, not falcon core)
-    bar0.write_u32(falcon_base + falcon::GR_FECS_MAILBOX0, data)
-        .map_err(|e| DriverError::SubmitFailed(Cow::Owned(
-            format!("FECS GR_MAILBOX0 write: {e}")
-        )))?;
+    let mthd_cmd_readable = {
+        let probe = bar0.read_u32(falcon_base + falcon::MTHD_CMD).unwrap_or(0xBADF_DEAD);
+        probe & 0xBAD0_0000 != 0xBAD0_0000
+    };
 
-    // 2. Write method (MTHD_DATA=0, MTHD_CMD=method — writing CMD triggers)
+    // Write method data to GR FECS MAILBOX0 (write-through even if PRI reads fault)
+    let _ = bar0.write_u32(falcon_base + falcon::GR_FECS_MAILBOX0, data);
+
+    if !mthd_cmd_readable {
+        // Volta HS VFIO fallback: MAILBOX1-triggered, PC-confirmed.
+        //
+        // PGRAPH method interface registers (MTHD_CMD, GR_FECS_MAILBOX0)
+        // are write-through but reads return PRI faults. Falcon core regs
+        // (PC, CPUCTL_ALIAS, MAILBOX0/1) are fully accessible.
+        //
+        // Protocol:
+        //   1. Write GR_FECS_MAILBOX0, MTHD_DATA, MTHD_CMD (method payload)
+        //   2. Write falcon core MAILBOX1=1 (interrupt/trigger for HS FECS)
+        //   3. Poll PC until it changes (FECS dispatched the method)
+        //   4. Brief settle for handler completion
+        let pc_before = bar0.read_u32(falcon_base + falcon::PC).unwrap_or(0);
+
+        let _ = bar0.write_u32(falcon_base + falcon::MTHD_DATA, 0);
+        let _ = bar0.write_u32(falcon_base + falcon::MTHD_CMD, method as u32);
+        // MAILBOX1=1 triggers HS FECS to check for a queued method
+        let _ = bar0.write_u32(falcon_base + falcon::MAILBOX1, 1);
+
+        // Poll PC for up to 200ms — generous for cold FECS wakeup
+        let pc_deadline = std::time::Instant::now()
+            + std::time::Duration::from_millis(200);
+        let mut poll_count = 0u32;
+        let mut pc_changed = false;
+
+        while std::time::Instant::now() < pc_deadline {
+            let pc_now = bar0.read_u32(falcon_base + falcon::PC).unwrap_or(0);
+            if pc_now != pc_before {
+                pc_changed = true;
+                break;
+            }
+            poll_count += 1;
+            std::thread::sleep(std::time::Duration::from_micros(100));
+        }
+
+        // Settle: let FECS finish handler before next method.
+        // Longer settle for methods that do real work.
+        let settle_ms = match method {
+            FecsMethod::InitCtxsw | FecsMethod::DiscoverImageSize => 10,
+            _ => 5,
+        };
+        std::thread::sleep(std::time::Duration::from_millis(settle_ms));
+
+        let pc_after = bar0.read_u32(falcon_base + falcon::PC).unwrap_or(0);
+        let mbox0 = bar0.read_u32(falcon_base + falcon::MAILBOX0).unwrap_or(0);
+        let mb1_after = bar0.read_u32(falcon_base + falcon::MAILBOX1).unwrap_or(0xDEAD);
+
+        tracing::info!(
+            method = ?method,
+            data = format_args!("{data:#010x}"),
+            pc_before = format_args!("{pc_before:#010x}"),
+            pc_after = format_args!("{pc_after:#010x}"),
+            pc_changed,
+            mailbox0_core = format_args!("{mbox0:#010x}"),
+            mb1_after = format_args!("{mb1_after:#010x}"),
+            poll_count,
+            "FECS method dispatched (PRI-faulted MAILBOX1-trigger path)"
+        );
+
+        return Ok(FecsMethodResult {
+            success: pc_changed,
+            mailbox0: mbox0,
+            status: 0,
+            poll_count,
+        });
+    }
+
+    // Standard path: MTHD_CMD is readable — poll bit 0
     bar0.write_u32(falcon_base + falcon::MTHD_DATA, 0)
         .map_err(|e| DriverError::SubmitFailed(Cow::Owned(
             format!("FECS MTHD_DATA write: {e}")
@@ -142,7 +214,6 @@ pub fn fecs_method_on(
             format!("FECS MTHD_CMD write: {e}")
         )))?;
 
-    // 3. Poll MTHD_CMD until bit 0 clears (FECS firmware clears it on completion)
     let deadline = std::time::Instant::now()
         + std::time::Duration::from_millis(FECS_METHOD_TIMEOUT_MS);
     let mut poll_count = 0u32;
@@ -178,7 +249,6 @@ pub fn fecs_method_on(
         std::thread::sleep(std::time::Duration::from_millis(FECS_METHOD_POLL_INTERVAL_MS));
     }
 
-    // 4. Read result from GR FECS MAILBOX0
     let mailbox0 = bar0.read_u32(falcon_base + falcon::GR_FECS_MAILBOX0).unwrap_or(0);
     let status = bar0.read_u32(falcon_base + falcon::MTHD_STATUS).unwrap_or(0xDEAD);
 

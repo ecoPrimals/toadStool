@@ -263,6 +263,20 @@ pub trait ComputeDevice: Send + Sync {
     fn dup_anchor_fds(&self) -> Option<vfio::DupAnchorFds> {
         None
     }
+
+    /// Adopt pre-existing VFIO file descriptors from an anchor/ember.
+    ///
+    /// When the device was created by the factory but couldn't open VFIO
+    /// directly (EBUSY — ember already holds the group), this method
+    /// allows injecting dup'd fds from the anchor store to complete the
+    /// VFIO session setup (BAR0 mmap, DMA backend, PFIFO channel).
+    ///
+    /// Default returns `Unsupported` for devices that don't need this.
+    fn adopt_anchor_fds(&mut self, _fds: vfio::ReceivedVfioFds) -> DriverResult<()> {
+        Err(DriverError::Unsupported(
+            "adopt_anchor_fds not supported on this device type".into(),
+        ))
+    }
 }
 
 /// Extension trait for devices with direct VFIO hardware access.
