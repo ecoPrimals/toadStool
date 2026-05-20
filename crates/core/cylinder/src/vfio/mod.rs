@@ -10,6 +10,7 @@
 
 pub mod amd_metal;
 pub mod boot_state;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once CE API stabilizes")]
 pub mod ce_validate;
 pub mod channel;
 pub mod bar_cartography;
@@ -23,21 +24,30 @@ pub mod gpu_vendor;
 pub mod ioctl;
 pub mod irq;
 pub mod isolation;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once kmod API stabilizes")]
 pub mod kmod;
 pub mod memory;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once module_patch API stabilizes")]
 pub mod module_patch;
 pub mod nv_metal;
 pub(crate) mod pci_config;
 pub mod pci_discovery;
+#[allow(
+    missing_docs,
+    dead_code,
+    reason = "WIP upstream — docs and callers follow once PMU API stabilizes"
+)]
 pub mod pmu_investigate;
 pub mod init_kepler;
 pub mod init_pipeline;
 pub mod init_volta;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once handoff API stabilizes")]
 pub mod sovereign_handoff;
 pub mod sovereign_init;
 pub mod sovereign_profile;
 pub mod sovereign_stages;
 pub mod sovereign_strategy;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once tier API stabilizes")]
 pub mod sovereign_tiers;
 pub mod sovereign_types;
 pub mod sysfs_bar0;

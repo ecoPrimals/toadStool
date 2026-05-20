@@ -95,9 +95,10 @@ colored = "2.0"
 # Process management
 # which removed: CLI uses Command::new("which"), not the crate
 
-# Encoding
+# Encoding / integrity
 base64 = { workspace = true }
 sha2 = { workspace = true }
+blake3 = { version = "1.5", default-features = false, features = ["std", "pure"] }
 
 # barracuda removed S94b: nautilus methods are now proxied to barraCuda via
 # capability-based IPC (JSON-RPC over Unix socket). Zero library coupling.

@@ -22,6 +22,7 @@ pub mod identity;
 pub mod ioctl;
 pub mod iova;
 pub mod nv_gsp_bridge;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once pushbuf API stabilizes")]
 pub mod pushbuf;
 pub mod qmd;
 

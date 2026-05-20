@@ -155,7 +155,7 @@ pub fn nm_text_symbols(ko_path: &Path) -> Result<Vec<(String, u64)>, KmodError> 
         .args(["--defined-only", "-n"])
         .arg(ko_path)
         .output()
-        .map_err(|e| KmodError::Io(e))?;
+        .map_err(KmodError::Io)?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -170,10 +170,10 @@ pub fn nm_text_symbols(ko_path: &Path) -> Result<Vec<(String, u64)>, KmodError> 
 
     for line in stdout.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 3 && (parts[1] == "T" || parts[1] == "t") {
-            if let Ok(addr) = u64::from_str_radix(parts[0], 16) {
-                symbols.push((parts[2].to_string(), addr));
-            }
+        if parts.len() >= 3 && (parts[1] == "T" || parts[1] == "t")
+            && let Ok(addr) = u64::from_str_radix(parts[0], 16)
+        {
+            symbols.push((parts[2].to_string(), addr));
         }
     }
 

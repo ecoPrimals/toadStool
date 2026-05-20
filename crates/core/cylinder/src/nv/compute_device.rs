@@ -878,7 +878,7 @@ impl NvVfioComputeDevice {
 
                     // Step 2: Full ungating sequence after reset
                     let cg2 = crate::vfio::sovereign_stages::cg_sweep(&bar0);
-                    let pri2 = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+                    let _pri2 = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
                     let _ = crate::vfio::sovereign_stages::pgob_ungating(&bar0, &bridge);
 
                     // Step 3: Force PRI enumerate again

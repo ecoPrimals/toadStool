@@ -26,6 +26,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::sync::RwLock;
+use toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions;
 use toadstool_ember::VfioAnchor;
 use toadstool_ember::vfio_handle::VfioResourceHandle;
 use toadstool_ember::held_resource::HeldResource;
@@ -157,7 +158,7 @@ impl DispatchHandler {
         let factory = self.local_device_factory.as_ref()?;
         let mut cache = self.cached_devices.lock().await;
         if !cache.contains_key(bdf) {
-            let mut device = factory(bdf)?;
+            let device = factory(bdf)?;
 
             if let Some(anchor_fds) = device.dup_anchor_fds() {
                 let anchor = match anchor_fds {
@@ -173,20 +174,9 @@ impl DispatchHandler {
                 anchors.insert(bdf.to_string(), anchor);
             } else if device.dma_backend().is_none() {
                 // Device is in caps-only mode — VFIO group was EBUSY because
-                // ember holds it via anchors. Try to adopt dup'd fds from the
-                // anchor store to complete the VFIO session.
-                if let Some(received) = self.dup_received_fds_from_anchor(bdf).await {
-                    match device.adopt_anchor_fds(received) {
-                        Ok(()) => {
-                            tracing::info!(bdf, "VFIO session adopted from anchor fds — dispatch ready");
-                        }
-                        Err(e) => {
-                            tracing::warn!(bdf, err = %e, "adopt_anchor_fds failed — caps-only mode persists");
-                        }
-                    }
-                } else {
-                    tracing::debug!(bdf, "no anchor fds available for adoption");
-                }
+                // ember holds it via anchors. Anchor fd adoption removed upstream;
+                // device stays in caps-only until group is released.
+                tracing::debug!(bdf, "device in caps-only mode — no DMA backend");
             }
 
             cache.insert(bdf.to_string(), device);
@@ -609,6 +599,7 @@ impl DispatchHandler {
 
     /// Dup VFIO fds from the anchor store into `ReceivedVfioFds` for
     /// device adoption. Returns `None` if no anchor exists for this BDF.
+    #[allow(dead_code, reason = "adopt_anchor_fds removed upstream; kept for re-integration")]
     async fn dup_received_fds_from_anchor(
         &self,
         bdf: &str,
@@ -687,24 +678,21 @@ impl DispatchHandler {
 
         self.acquire_device_handle(bdf).await;
 
-        // Try clutch from existing anchor
+        // Try clutch from existing anchor; if none, create device + anchor and retry
         let mut clutch = self.try_engage_clutch(bdf).await;
-        let mut used_clutch = clutch.is_some();
-
-        // No anchor yet — run factory to create device + anchor, then retry
         if clutch.is_none() {
-            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+            let cache_guard = self.get_or_create_device(bdf).await.ok_or_else(|| {
                 JsonRpcError::internal_error(format!(
                     "device {bdf} not available — factory returned None"
                 ))
             })?;
-            drop(_cache);
+            drop(cache_guard);
             clutch = self.try_engage_clutch(bdf).await;
-            used_clutch = clutch.is_some();
         }
+        let used_clutch = clutch.is_some();
 
         // Resolve BAR0 + DMA from clutch or sysfs fallback
-        let _sysfs_bar;
+        let sysfs_bar;
         let (bar0_ref, dma_for_opts): (
             &toadstool_cylinder::vfio::device::MappedBar,
             Option<toadstool_cylinder::vfio::device::DmaBackend>,
@@ -725,25 +713,22 @@ impl DispatchHandler {
                 let cache = self.cached_devices.lock().await;
                 cache.get(bdf).and_then(|d| d.dma_backend().cloned())
             };
-            _sysfs_bar = bar;
-            (&_sysfs_bar, dma)
+            sysfs_bar = bar;
+            (&sysfs_bar, dma)
         };
 
         let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
             if let Some(p) = params {
                 serde_json::from_value(p.clone()).unwrap_or_default()
             } else {
-                Default::default()
+                SovereignInitOptions::default()
             };
 
-        if let Some(path) = opts.vbios_rom_path.as_ref() {
-            if let Ok(rom) = std::fs::read(path) {
-                opts.vbios_rom = Some(rom);
-            }
+        if let Some(rom) = opts.vbios_rom_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
+            opts.vbios_rom = Some(rom);
         }
 
         opts.dma_backend = dma_for_opts;
-        opts.skip_cold_memory_training = true;
 
         let sm = opts.sm_version.unwrap_or_else(|| {
             let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
@@ -766,7 +751,7 @@ impl DispatchHandler {
 
         let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
         let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
-            &profile, bridge, sm,
+            profile, bridge, sm,
         );
 
         let pre_channel_stages = strategy.pre_channel_init(bar0_ref);
@@ -837,16 +822,16 @@ impl DispatchHandler {
 
         let mut clutch = self.try_engage_clutch(bdf).await;
         if clutch.is_none() {
-            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+            let cache_guard = self.get_or_create_device(bdf).await.ok_or_else(|| {
                 JsonRpcError::internal_error(format!(
                     "device {bdf} not available — factory returned None"
                 ))
             })?;
-            drop(_cache);
+            drop(cache_guard);
             clutch = self.try_engage_clutch(bdf).await;
         }
 
-        let _sysfs_bar;
+        let sysfs_bar;
         let (bar0_ref, dma_opt): (
             &toadstool_cylinder::vfio::device::MappedBar,
             Option<toadstool_cylinder::vfio::device::DmaBackend>,
@@ -867,8 +852,8 @@ impl DispatchHandler {
                 let cache = self.cached_devices.lock().await;
                 cache.get(bdf).and_then(|d| d.dma_backend().cloned())
             };
-            _sysfs_bar = bar;
-            (&_sysfs_bar, dma)
+            sysfs_bar = bar;
+            (&sysfs_bar, dma)
         };
 
         let dma_backend = dma_opt.ok_or_else(|| {
@@ -907,16 +892,16 @@ impl DispatchHandler {
 
         let mut clutch = self.try_engage_clutch(bdf).await;
         if clutch.is_none() {
-            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+            let cache_guard = self.get_or_create_device(bdf).await.ok_or_else(|| {
                 JsonRpcError::internal_error(format!(
                     "device {bdf} not available — factory returned None"
                 ))
             })?;
-            drop(_cache);
+            drop(cache_guard);
             clutch = self.try_engage_clutch(bdf).await;
         }
 
-        let _sysfs_bar;
+        let sysfs_bar;
         let bar0_ref: &toadstool_cylinder::vfio::device::MappedBar = if let Some(ref engaged) =
             clutch
         {
@@ -932,8 +917,8 @@ impl DispatchHandler {
                     "sysfs BAR0 open failed for {bdf}: {e}"
                 ))
             })?;
-            _sysfs_bar = bar;
-            &_sysfs_bar
+            sysfs_bar = bar;
+            &sysfs_bar
         };
 
         let result =
@@ -1030,16 +1015,16 @@ impl DispatchHandler {
         let mut clutch = self.try_engage_clutch(bdf).await;
 
         if clutch.is_none() {
-            let _cache = self.get_or_create_device(bdf).await.ok_or_else(|| {
+            let cache_guard = self.get_or_create_device(bdf).await.ok_or_else(|| {
                 JsonRpcError::internal_error(format!(
                     "device {bdf} not available — factory returned None"
                 ))
             })?;
-            drop(_cache);
+            drop(cache_guard);
             clutch = self.try_engage_clutch(bdf).await;
         }
 
-        let _sysfs_bar;
+        let sysfs_bar;
         let (bar0_ref, dma_for_opts): (
             &toadstool_cylinder::vfio::device::MappedBar,
             Option<toadstool_cylinder::vfio::device::DmaBackend>,
@@ -1056,24 +1041,21 @@ impl DispatchHandler {
                 let cache = self.cached_devices.lock().await;
                 cache.get(bdf).and_then(|d| d.dma_backend().cloned())
             };
-            _sysfs_bar = bar;
-            (&_sysfs_bar, dma)
+            sysfs_bar = bar;
+            (&sysfs_bar, dma)
         };
 
-        let mut opts: toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions =
+        let mut opts: SovereignInitOptions =
             if let Some(p) = params {
                 serde_json::from_value(p.clone()).unwrap_or_default()
             } else {
-                Default::default()
+                SovereignInitOptions::default()
             };
 
-        if let Some(path) = opts.vbios_rom_path.as_ref() {
-            if let Ok(rom) = std::fs::read(path) {
-                opts.vbios_rom = Some(rom);
-            }
+        if let Some(rom) = opts.vbios_rom_path.as_ref().and_then(|p| std::fs::read(p).ok()) {
+            opts.vbios_rom = Some(rom);
         }
         opts.dma_backend = dma_for_opts;
-        opts.skip_cold_memory_training = true;
 
         let sm = opts.sm_version.unwrap_or_else(|| {
             let boot0 = bar0_ref.read_u32(0).unwrap_or(0);
@@ -1094,7 +1076,7 @@ impl DispatchHandler {
 
         let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
         let strategy = toadstool_cylinder::vfio::sovereign_strategy::strategy_for_profile(
-            &profile, bridge, sm,
+            profile, bridge, sm,
         );
 
         tracing::info!(bdf, "sovereign.profile: starting instrumented pipeline");
@@ -1145,9 +1127,9 @@ impl DispatchHandler {
             let tier = classify_tier_sysfs(bdf);
             devices.insert(bdf.clone(), serde_json::json!({
                 "anchor_held": true,
-                "boot_state": boot_probe.as_ref().map(|s| s.0.as_str()).unwrap_or("unknown"),
-                "pmc_enable": boot_probe.as_ref().map(|s| s.1.as_str()).unwrap_or("n/a"),
-                "pramin_ok": boot_probe.as_ref().map(|s| s.2).unwrap_or(false),
+                "boot_state": boot_probe.as_ref().map_or("unknown", |s| s.0.as_str()),
+                "pmc_enable": boot_probe.as_ref().map_or("n/a", |s| s.1.as_str()),
+                "pramin_ok": boot_probe.as_ref().is_some_and(|s| s.2),
                 "fd_store_capable": fd_store_capable,
                 "sovereign_tier": tier.as_ref().map(|t| t.tier.level()),
                 "sovereign_tier_name": tier.as_ref().map(|t| t.tier.description()),
@@ -1162,9 +1144,9 @@ impl DispatchHandler {
                 let tier = classify_tier_sysfs(bdf);
                 devices.insert(bdf.clone(), serde_json::json!({
                     "anchor_held": false,
-                    "boot_state": boot_probe.as_ref().map(|s| s.0.as_str()).unwrap_or("unknown"),
-                    "pmc_enable": boot_probe.as_ref().map(|s| s.1.as_str()).unwrap_or("n/a"),
-                    "pramin_ok": boot_probe.as_ref().map(|s| s.2).unwrap_or(false),
+                    "boot_state": boot_probe.as_ref().map_or("unknown", |s| s.0.as_str()),
+                    "pmc_enable": boot_probe.as_ref().map_or("n/a", |s| s.1.as_str()),
+                    "pramin_ok": boot_probe.as_ref().is_some_and(|s| s.2),
                     "fd_store_capable": fd_store_capable,
                     "sovereign_tier": tier.as_ref().map(|t| t.tier.level()),
                     "sovereign_tier_name": tier.as_ref().map(|t| t.tier.description()),

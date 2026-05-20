@@ -20,9 +20,9 @@ mod spec;
 
 use crate::Result;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use toadstool::{
@@ -81,6 +81,9 @@ pub async fn execute_workload(
     // Register available runtime engines
     register_runtime_engines(&orchestrator).await?;
 
+    // Validate data dependencies before dispatch
+    validate_data_dependencies(&workload_file).await?;
+
     // Convert workload spec to ToadStool WorkloadSpec
     let workload_spec = convert_to_workload_spec(&workload_file, env_map)?;
 
@@ -120,6 +123,85 @@ pub async fn execute_workload(
         _ => print_text_output(&workload_file, &response, duration)?,
     }
 
+    Ok(())
+}
+
+/// Validate declared data dependencies before workload dispatch.
+///
+/// For each dependency with a local-path source:
+/// - Required deps must exist on disk (error if missing)
+/// - Optional deps log a warning if missing
+/// - BLAKE3 hash is verified when declared
+async fn validate_data_dependencies(workload: &spec::WorkloadFile) -> Result<()> {
+    let deps = match &workload.data_dependencies {
+        Some(d) if !d.is_empty() => d,
+        _ => return Ok(()),
+    };
+
+    info!(
+        "Validating {} data dependenc{}",
+        deps.len(),
+        if deps.len() == 1 { "y" } else { "ies" }
+    );
+
+    for dep in deps {
+        // Skip non-local sources (nestgate://, http://, etc.) — staging TBD
+        if dep.source.contains("://") {
+            debug!(
+                name = dep.name,
+                source = dep.source,
+                "Skipping remote dependency (staging not yet implemented)"
+            );
+            continue;
+        }
+
+        let path = Path::new(&dep.source);
+        if !path.exists() {
+            if dep.required {
+                return Err(crate::CliError::Other(format!(
+                    "Required data dependency '{}' not found at: {}",
+                    dep.name, dep.source
+                )));
+            }
+            warn!(
+                name = dep.name,
+                source = dep.source,
+                "Optional data dependency not found — workload may degrade"
+            );
+            continue;
+        }
+
+        // BLAKE3 integrity check when hash is declared
+        if let Some(expected_hash) = &dep.blake3 {
+            let source = dep.source.clone();
+            let expected = expected_hash.clone();
+            let name = dep.name.clone();
+
+            let actual = tokio::task::spawn_blocking(move || -> Result<String> {
+                let data = std::fs::read(&source).map_err(|e| {
+                    crate::CliError::Other(format!(
+                        "Failed to read dependency '{}' for integrity check: {e}",
+                        name
+                    ))
+                })?;
+                Ok(blake3::hash(&data).to_hex().to_string())
+            })
+            .await
+            .map_err(|e| crate::CliError::Other(format!("BLAKE3 task failed: {e}")))??;
+
+            if actual != expected {
+                return Err(crate::CliError::Other(format!(
+                    "BLAKE3 mismatch for dependency '{}': expected {expected}, got {actual}",
+                    dep.name
+                )));
+            }
+            debug!(name = dep.name, "BLAKE3 integrity verified");
+        }
+
+        debug!(name = dep.name, source = dep.source, "Dependency validated");
+    }
+
+    info!("All data dependencies validated");
     Ok(())
 }
 
@@ -229,5 +311,116 @@ command = "/bin/echo"
         let env = vec!["CUSTOM_VAR=value".to_string()];
         let result = execute_workload(&path, None, &env, 10, "text").await;
         assert!(result.is_ok());
+    }
+
+    // ── data_dependencies validation tests ──
+
+    fn make_workload(deps: Option<Vec<spec::DataDependency>>) -> spec::WorkloadFile {
+        spec::WorkloadFile {
+            metadata: spec::WorkloadMetadata {
+                name: "dep-test".into(),
+                description: None,
+                version: None,
+            },
+            execution: spec::ExecutionSpec::Native {
+                command: "/bin/echo".into(),
+                args: None,
+                working_dir: None,
+                env: None,
+            },
+            resources: None,
+            security: None,
+            data_dependencies: deps,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_validate_no_deps() {
+        let wl = make_workload(None);
+        assert!(validate_data_dependencies(&wl).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_empty_deps() {
+        let wl = make_workload(Some(vec![]));
+        assert!(validate_data_dependencies(&wl).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_required_dep_missing() {
+        let wl = make_workload(Some(vec![spec::DataDependency {
+            name: "missing".into(),
+            source: "/nonexistent/data-78901.bin".into(),
+            blake3: None,
+            required: true,
+        }]));
+        let err = validate_data_dependencies(&wl).await.unwrap_err();
+        assert!(err.to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_optional_dep_missing_ok() {
+        let wl = make_workload(Some(vec![spec::DataDependency {
+            name: "optional".into(),
+            source: "/nonexistent/data-78902.bin".into(),
+            blake3: None,
+            required: false,
+        }]));
+        assert!(validate_data_dependencies(&wl).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_dep_exists() {
+        let tmp = NamedTempFile::new().unwrap();
+        let wl = make_workload(Some(vec![spec::DataDependency {
+            name: "present".into(),
+            source: tmp.path().to_string_lossy().into_owned(),
+            blake3: None,
+            required: true,
+        }]));
+        assert!(validate_data_dependencies(&wl).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_blake3_match() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        write!(tmp, "hello world").unwrap();
+        tmp.flush().unwrap();
+
+        let hash = blake3::hash(b"hello world").to_hex().to_string();
+        let wl = make_workload(Some(vec![spec::DataDependency {
+            name: "hashed".into(),
+            source: tmp.path().to_string_lossy().into_owned(),
+            blake3: Some(hash),
+            required: true,
+        }]));
+        assert!(validate_data_dependencies(&wl).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_validate_blake3_mismatch() {
+        let mut tmp = NamedTempFile::new().unwrap();
+        write!(tmp, "hello world").unwrap();
+        tmp.flush().unwrap();
+
+        let wl = make_workload(Some(vec![spec::DataDependency {
+            name: "bad-hash".into(),
+            source: tmp.path().to_string_lossy().into_owned(),
+            blake3: Some("0000000000000000000000000000000000000000000000000000000000000000".into()),
+            required: true,
+        }]));
+        let err = validate_data_dependencies(&wl).await.unwrap_err();
+        assert!(err.to_string().contains("BLAKE3 mismatch"));
+    }
+
+    #[tokio::test]
+    async fn test_validate_remote_dep_skipped() {
+        let wl = make_workload(Some(vec![spec::DataDependency {
+            name: "remote".into(),
+            source: "nestgate://artifact-12345".into(),
+            blake3: None,
+            required: true,
+        }]));
+        assert!(validate_data_dependencies(&wl).await.is_ok());
     }
 }

@@ -7,10 +7,8 @@
 //!
 //! The only missing piece for full compute is GPC power (the PGRAPH wall).
 
-use std::borrow::Cow;
 use std::time::{Duration, Instant};
 
-use crate::error::{DriverError, DriverResult};
 use crate::nv::pushbuf::PushBuf;
 use crate::vfio::channel::VfioChannel;
 use crate::vfio::channel::pfifo;
@@ -241,7 +239,7 @@ pub fn validate_ce(
     // Write GP_PUT = 1 to USERD (offset 35*4 = 0x8C).
     const USERD_GP_PUT: usize = 35 * 4;
     let userd_buf = match DmaBuffer::new(dma_backend.clone(), 4096, CE_USERD_IOVA) {
-        Ok(mut b) => {
+        Ok(b) => {
             b.volatile_write_u32(USERD_GP_PUT, 1);
             b
         }
@@ -319,7 +317,7 @@ pub fn validate_ce(
             tracing::warn!(
                 nonzero_words = nonzero,
                 total_words = dst_words.len(),
-                sample_0 = format_args!("{:#010x}", dst_words.get(0).copied().unwrap_or(0)),
+                sample_0 = format_args!("{:#010x}", dst_words.first().copied().unwrap_or(0)),
                 "CE DMA copy completed but readback mismatch"
             );
         }

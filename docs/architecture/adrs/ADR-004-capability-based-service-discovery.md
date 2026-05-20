@@ -1,6 +1,6 @@
 # ADR-004: Capability-Based Service Discovery
 
-**Status**: ✅ Accepted  
+**Status**: ✅ Accepted (FOSSIL — S266: `service_discovery.rs` renamed to `capability_discovery/`)  
 **Date**: February 5, 2026  
 **Deciders**: ToadStool/BarraCuda Core Team  
 **Technical Story**: Primals discover other primals at runtime (no hardcoding)

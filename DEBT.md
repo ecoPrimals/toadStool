@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S265
+**Date**: May 2026 — S266
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S266 (Sandbox working_dir Production + Upstream Clippy)**:
+`data_dependencies` validation wired into `execute_workload`: file existence
+check, optional dep degradation, BLAKE3 integrity verification (pure Rust).
+`SandboxSpec.working_directory` consumed in `CrossPlatformSandboxManager::create_sandbox`.
+90+ upstream clippy errors fixed across 4 new cylinder modules (ce_validate,
+sovereign_tiers, pmu_investigate, pushbuf). Upstream API removals absorbed
+(`adopt_anchor_fds`, `skip_cold_memory_training`). Server dispatch lint cleanup.
+9,055 lib tests, 0 clippy warnings, deny clean.
 
 **S253 (Phase C Complete + Deep Debt Sweep)**:
 `VfioResourceHandle` `Option<i32>` → `OwnedFd` (RAII fd ownership).

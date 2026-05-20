@@ -153,7 +153,28 @@ impl SandboxManager for CrossPlatformSandboxManager {
         self.setup_filesystem_mounts(&sandbox_id, &sandbox_dir, &spec.filesystem_mounts)
             .await?;
 
+        // Prepare the sandbox working directory if specified
+        if let Some(ref wd) = spec.working_directory {
+            let wd_path = sandbox_dir.join(wd.strip_prefix("/").unwrap_or(wd));
+            tokio::fs::create_dir_all(&wd_path).await.map_err(|e| {
+                ToadStoolError::configuration(format!(
+                    "Failed to create sandbox working directory {}: {e}",
+                    wd_path.display()
+                ))
+            })?;
+            debug!(
+                sandbox_id = %sandbox_id,
+                working_dir = %wd_path.display(),
+                "Sandbox working directory created"
+            );
+        }
+
         // Create sandbox info
+        let mut metadata = HashMap::new();
+        if let Some(ref wd) = spec.working_directory {
+            metadata.insert("working_directory".to_string(), wd.display().to_string());
+        }
+
         let sandbox_info = SandboxInfo {
             sandbox_id: sandbox_id.clone(),
             status: SandboxStatus::Creating,
@@ -162,7 +183,7 @@ impl SandboxManager for CrossPlatformSandboxManager {
             process_id: None,
             resource_usage: ResourceUsage::default(),
             security_violations: Vec::new(),
-            metadata: HashMap::new(),
+            metadata,
         };
 
         // Store sandbox info

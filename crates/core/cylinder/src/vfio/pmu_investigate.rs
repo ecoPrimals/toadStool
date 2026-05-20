@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use crate::nv::pmu_init::{PmuSnapshot, pmu_reg};
 use crate::nv::pri::is_pri_fault;
 use crate::vfio::device::MappedBar;
-use crate::vfio::sovereign_tiers::{SovereignTier, classify_tier};
+use crate::vfio::sovereign_tiers::classify_tier;
 
 /// Additional PMU registers beyond what `PmuSnapshot` captures.
 mod pmu_ext {
@@ -827,7 +827,7 @@ pub fn investigate_pmu_phase_c(bar0: &MappedBar) -> PhaseC {
     // many nouveau PMU firmware versions), then advance HEAD to
     // sizeof(message) and trigger the doorbell.
     let mut queue_pg_attempted = false;
-    let mut queue_pg_detail = String::new();
+    let queue_pg_detail;
 
     if pio_dmem_writable && queue_head_writable {
         queue_pg_attempted = true;
@@ -872,7 +872,8 @@ pub fn investigate_pmu_phase_c(bar0: &MappedBar) -> PhaseC {
 
         // Message header (4 bytes):
         //   unit=0x03 (PG), size=8, ctrl=0 (CMD queue), seq=0x01
-        let hdr: u32 = 0x03 | (8 << 8) | (0 << 16) | (0x01 << 24);
+        // unit=PG(0x03), size=8, ctrl=CMD_QUEUE(0), seq=1
+        let hdr: u32 = 0x03 | (8 << 8) | (0x01 << 24);
 
         // Payload (4 bytes):
         //   cmd_type=0x08 (PG_CMD_ALLOW), engine=0xFF (all engines)

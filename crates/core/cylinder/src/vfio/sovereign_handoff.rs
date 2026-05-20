@@ -165,7 +165,7 @@ pub fn execute_handoff(
 ) -> HandoffResult {
     let overall = Instant::now();
     let mut steps = Vec::new();
-    let mut module_loaded = false;
+    let module_loaded;
     let mut patch_result = None;
 
     // ── Step 1: Module Preparation ──────────────────────────────────

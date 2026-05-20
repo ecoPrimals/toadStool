@@ -62,10 +62,11 @@ use serde::{Deserialize, Serialize};
 /// `Patched` means the diesel engine finds the stock `.ko`, binary-patches
 /// it at runtime, and loads the patched version via `insmod`. After the
 /// warm handoff completes, the patched module is `rmmod`'d and cleaned up.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModuleSource {
     /// Module already loaded in the kernel (current behavior).
     /// No module lifecycle management needed.
+    #[default]
     System,
 
     /// Load a binary-patched version of a stock module.
@@ -77,12 +78,6 @@ pub enum ModuleSource {
         /// (e.g., "volta_warm_handoff", "kepler_warm_handoff").
         patch_set: String,
     },
-}
-
-impl Default for ModuleSource {
-    fn default() -> Self {
-        Self::System
-    }
 }
 
 /// How a seeder driver is contained.

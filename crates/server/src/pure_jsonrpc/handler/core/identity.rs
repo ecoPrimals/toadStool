@@ -200,8 +200,9 @@ pub(crate) async fn identity_get(
 /// Returns the primal's identity, capabilities, and socket path so
 /// orchestrators and peers can register this primal in the mesh.
 #[allow(
+    dead_code,
     clippy::unused_async,
-    reason = "handler signature requires async for uniform dispatch"
+    reason = "handler dispatch wiring pending — registered in DIRECT_JSONRPC_METHODS"
 )]
 pub(crate) async fn primal_announce(
     version: &str,

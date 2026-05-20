@@ -5,7 +5,24 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 20, 2026 (Sessions 43-265)
+## [Unreleased] - May 20, 2026 (Sessions 43-266)
+
+### Session S266 (May 20, 2026) — Sandbox working_dir Production + Upstream Clippy
+
+primalSpring Wave 31 horizon resolution: data dependency staging + sandbox working_dir + upstream debt.
+
+- ADDED: Pre-dispatch `data_dependencies` validation in `execute_workload` — checks file existence, optional dep degradation, BLAKE3 integrity verification
+- ADDED: `blake3` dependency to CLI crate (pure Rust, no C/asm)
+- WIRED: `SandboxSpec.working_directory` into `CrossPlatformSandboxManager::create_sandbox` — creates directory inside sandbox, stores in metadata
+- FIXED: 90+ upstream clippy errors from new cylinder modules (`ce_validate`, `sovereign_tiers`, `pmu_investigate`, `pushbuf`)
+- FIXED: Upstream API removal — `adopt_anchor_fds` dropped from `ComputeDevice`, `skip_cold_memory_training` dropped from `SovereignInitOptions`
+- FIXED: Server dispatch `Default::default()` → `SovereignInitOptions::default()`, `_sysfs_bar` → `sysfs_bar`, `_cache` → `cache_guard`, collapsed `if let`, `map().unwrap_or()` → `map_or()` / `is_some_and()`
+- FIXED: `primal_announce` re-export lint (function pending handler dispatch wiring)
+- REMOVED: `compute.fan_out` tests (method dropped upstream from `DispatchHandler`)
+- TESTS: 7 new data dependency validation tests (existence, BLAKE3 match/mismatch, optional deps, remote skip)
+- REMOVED: `compute.fan_out` from DIRECT_JSONRPC_METHODS + wire_l3 cost estimates (handler dropped upstream)
+- FIXED: Crate count in sporeprint 64 → 46 (actual workspace members)
+- METRICS: 86 JSON-RPC methods, 9,055 lib tests, 0 clippy warnings, deny clean
 
 ### Session S265 (May 20, 2026) — sporePrint pappusCast Wave 28
 

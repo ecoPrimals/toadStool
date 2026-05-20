@@ -232,10 +232,10 @@ fn resolve_symbols(ko_path: &Path) -> Result<HashMap<String, u64>, PatchError> {
 
     for line in stdout.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 3 && (parts[1] == "T" || parts[1] == "t") {
-            if let Ok(addr) = u64::from_str_radix(parts[0], 16) {
-                symbols.insert(parts[2].to_string(), addr);
-            }
+        if parts.len() >= 3 && (parts[1] == "T" || parts[1] == "t")
+            && let Ok(addr) = u64::from_str_radix(parts[0], 16)
+        {
+            symbols.insert(parts[2].to_string(), addr);
         }
     }
 
