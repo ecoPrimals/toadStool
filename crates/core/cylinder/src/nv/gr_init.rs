@@ -88,6 +88,14 @@ impl ChipFamily {
             _ => BootStrategy::AcrSec2,
         }
     }
+
+    /// Default engine name for ungating sequences derived from this family.
+    pub fn engine_label(&self) -> String {
+        match self {
+            Self::Kepler => "PGRAPH".into(),
+            _ => "GR_INIT".into(),
+        }
+    }
 }
 
 /// A single register write in an init sequence.

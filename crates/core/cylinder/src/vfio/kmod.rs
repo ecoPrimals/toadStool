@@ -33,6 +33,9 @@ pub enum KmodError {
     #[error("stock module not found for '{name}'")]
     StockModuleNotFound { name: String },
 
+    #[error("kernel build environment corrupted: {diagnosis}")]
+    BuildEnvironmentCorrupted { diagnosis: String },
+
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -80,56 +83,65 @@ pub fn find_stock_module(name: &str) -> Result<PathBuf, KmodError> {
     Ok(path)
 }
 
-/// Load a kernel module from a `.ko` file via `insmod`.
+/// Locate a specific DKMS-built `.ko` for a given module name and version.
 ///
+/// DKMS builds land under `/var/lib/dkms/{name}/{version}/{kernel}/x86_64/module/`.
+/// This is used when we need a specific driver version (e.g., nvidia-470) that
+/// differs from the system-installed version.
+pub fn find_dkms_module(name: &str, version: &str) -> Result<PathBuf, KmodError> {
+    let output = Command::new("uname")
+        .arg("-r")
+        .output()
+        .map_err(|e| KmodError::ModinfoFailed {
+            name: name.into(),
+            detail: format!("uname -r failed: {e}"),
+        })?;
+    let kernel = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    let path = PathBuf::from(format!(
+        "/var/lib/dkms/{name}/{version}/{kernel}/x86_64/module/{name}.ko",
+    ));
+    if path.exists() {
+        return Ok(path);
+    }
+    let path_zst = path.with_extension("ko.zst");
+    if path_zst.exists() {
+        return Ok(path_zst);
+    }
+    Err(KmodError::StockModuleNotFound {
+        name: format!("{name}/{version} (DKMS)"),
+    })
+}
+
+/// Load a kernel module from a `.ko` file via guarded `insmod`.
+///
+/// Uses child-process isolation with timeout to prevent D-state hangs.
 /// The caller is responsible for ensuring the module is not already loaded
 /// (or that the module name differs from any loaded module). Use
 /// [`is_module_loaded`] to check first.
 pub fn load_module(path: &Path) -> Result<(), KmodError> {
-    tracing::info!(path = %path.display(), "insmod: loading kernel module");
+    use crate::vfio::guarded_sysfs;
 
-    let output = Command::new("insmod")
-        .arg(path)
-        .output()
-        .map_err(|e| KmodError::LoadFailed {
+    guarded_sysfs::insmod_guarded(path, guarded_sysfs::INSMOD_TIMEOUT).map_err(|e| {
+        KmodError::LoadFailed {
             path: path.display().to_string(),
-            detail: format!("failed to execute insmod: {e}"),
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(KmodError::LoadFailed {
-            path: path.display().to_string(),
-            detail: stderr.trim().to_string(),
-        });
-    }
-
-    tracing::info!(path = %path.display(), "insmod: module loaded successfully");
-    Ok(())
+            detail: e.to_string(),
+        }
+    })
 }
 
-/// Unload a kernel module by name via `rmmod`.
+/// Unload a kernel module by name via guarded `rmmod`.
+///
+/// Uses child-process isolation with timeout to prevent D-state hangs.
 pub fn unload_module(name: &str) -> Result<(), KmodError> {
-    tracing::info!(name, "rmmod: unloading kernel module");
+    use crate::vfio::guarded_sysfs;
 
-    let output = Command::new("rmmod")
-        .arg(name)
-        .output()
-        .map_err(|e| KmodError::UnloadFailed {
+    guarded_sysfs::rmmod_guarded(name, guarded_sysfs::RMMOD_TIMEOUT).map_err(|e| {
+        KmodError::UnloadFailed {
             name: name.into(),
-            detail: format!("failed to execute rmmod: {e}"),
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(KmodError::UnloadFailed {
-            name: name.into(),
-            detail: stderr.trim().to_string(),
-        });
-    }
-
-    tracing::info!(name, "rmmod: module unloaded successfully");
-    Ok(())
+            detail: e.to_string(),
+        }
+    })
 }
 
 /// Ensure a module is loaded, loading it from its stock path if needed.
@@ -143,6 +155,30 @@ pub fn ensure_module_loaded(name: &str) -> Result<bool, KmodError> {
     let stock_path = find_stock_module(name)?;
     load_module(&stock_path)?;
     Ok(true)
+}
+
+/// Validate that the kernel build environment is healthy before any
+/// module compilation or DKMS build. Catches `autoconf.h` corruption
+/// and `struct module` layout mismatches that cause misleading load failures.
+///
+/// See Exp 216 for the full root cause analysis.
+pub fn ensure_build_environment_healthy() -> Result<(), KmodError> {
+    use crate::vfio::kernel_health;
+
+    match kernel_health::full_kernel_health_check() {
+        Ok(report) => {
+            if !report.layout_matches {
+                return Err(KmodError::BuildEnvironmentCorrupted {
+                    diagnosis: report.diagnosis.to_string(),
+                });
+            }
+            Ok(())
+        }
+        Err(e) => {
+            tracing::warn!(err = %e, "kernel health check unavailable — skipping");
+            Ok(())
+        }
+    }
 }
 
 /// Resolve the absolute path of all function symbols in a `.ko` file.

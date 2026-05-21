@@ -357,6 +357,22 @@ pub enum Commands {
         action: ModeCommand,
     },
 
+    /// Check kernel build environment health.
+    ///
+    /// Detects autoconf.h corruption and struct module layout mismatches
+    /// that cause misleading module load failures. Runs 3-layer detection:
+    /// freshness check, struct layout probe, reference cross-check.
+    #[command(name = "kernel-health")]
+    KernelHealth {
+        /// Output format (text, json).
+        #[arg(short, long, default_value = "text")]
+        format: String,
+
+        /// Attempt repair via .deb cache if unhealthy.
+        #[arg(long)]
+        repair: bool,
+    },
+
     /// Execute a workload directly (no biome.yaml required)
     Execute {
         /// Workload specification file (TOML or JSON)

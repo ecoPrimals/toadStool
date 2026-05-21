@@ -84,6 +84,16 @@ pub struct SovereignInitOptions {
     /// if it returns a PRI fault, the ungate is considered failed.
     #[serde(skip)]
     pub engine_init_sequences: Vec<(String, crate::nv::gr_init::GrInitSequence, Option<usize>)>,
+
+    /// File path to a `GrInitSequence` JSON file for engine ungating.
+    ///
+    /// The silicon-deistic replay path: capture what a vendor driver
+    /// initializes via `WarmStateCapture`, save the `GrInitSequence` as
+    /// JSON, then replay it on every subsequent sovereign boot without
+    /// the vendor driver. Loaded by the RPC handler into
+    /// `engine_init_sequences`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub engine_init_path: Option<String>,
 }
 
 /// Outcome of a single pipeline stage.

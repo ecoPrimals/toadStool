@@ -411,7 +411,10 @@ impl JsonRpcHandler {
             "sovereign.warm_handoff" => {
                 return self.dispatch.sovereign_warm_handoff(params).await;
             }
+            "sovereign.classify_tier" => return sovereign::sovereign_classify_tier(params),
+            "sovereign.experiment" => return sovereign::sovereign_experiment(params),
             "sovereign.devinit" => return sovereign::sovereign_devinit(params),
+            "sovereign.kernel_health" => return sovereign::sovereign_kernel_health(params),
 
             "mmio.read32" => return mmio::mmio_read32(params),
             "mmio.write32" => return mmio::mmio_write32(params),

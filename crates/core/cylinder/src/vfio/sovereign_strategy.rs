@@ -266,6 +266,7 @@ pub struct NvKeplerStrategy {
     profile: GenerationProfile,
     gsp_bridge: Arc<dyn GspBridge>,
     sm: u32,
+    golden_sequences: Vec<(String, crate::nv::gr_init::GrInitSequence, Option<usize>)>,
 }
 
 impl NvKeplerStrategy {
@@ -275,7 +276,17 @@ impl NvKeplerStrategy {
             profile,
             gsp_bridge: bridge,
             sm,
+            golden_sequences: Vec::new(),
         }
+    }
+
+    /// Attach golden-state engine init sequences for silicon-deistic replay.
+    pub fn with_golden_sequences(
+        mut self,
+        seqs: Vec<(String, crate::nv::gr_init::GrInitSequence, Option<usize>)>,
+    ) -> Self {
+        self.golden_sequences = seqs;
+        self
     }
 }
 
@@ -311,7 +322,11 @@ impl SovereignStrategy for NvKeplerStrategy {
     fn engine_ungate_sequences(
         &self,
     ) -> Option<&[(String, crate::nv::gr_init::GrInitSequence, Option<usize>)]> {
-        None
+        if self.golden_sequences.is_empty() {
+            None
+        } else {
+            Some(&self.golden_sequences)
+        }
     }
 
     fn sm_version(&self) -> u32 {
@@ -342,6 +357,7 @@ pub struct NvAcrStrategy {
     profile: GenerationProfile,
     gsp_bridge: Arc<dyn GspBridge>,
     sm: u32,
+    golden_sequences: Vec<(String, crate::nv::gr_init::GrInitSequence, Option<usize>)>,
 }
 
 impl NvAcrStrategy {
@@ -351,7 +367,17 @@ impl NvAcrStrategy {
             profile,
             gsp_bridge: bridge,
             sm,
+            golden_sequences: Vec::new(),
         }
+    }
+
+    /// Attach golden-state engine init sequences for silicon-deistic replay.
+    pub fn with_golden_sequences(
+        mut self,
+        seqs: Vec<(String, crate::nv::gr_init::GrInitSequence, Option<usize>)>,
+    ) -> Self {
+        self.golden_sequences = seqs;
+        self
     }
 }
 
@@ -391,7 +417,11 @@ impl SovereignStrategy for NvAcrStrategy {
     fn engine_ungate_sequences(
         &self,
     ) -> Option<&[(String, crate::nv::gr_init::GrInitSequence, Option<usize>)]> {
-        None
+        if self.golden_sequences.is_empty() {
+            None
+        } else {
+            Some(&self.golden_sequences)
+        }
     }
 
     fn sm_version(&self) -> u32 {
@@ -515,5 +545,53 @@ mod tests {
         assert!(strat.needs_gr_init_after_falcon());
         assert_eq!(strat.falcon_boot_style(), FalconBootStyle::AcrDmaHs);
         assert!(!strat.power_profile().rollback_on_devinit_failure);
+    }
+
+    #[test]
+    fn kepler_golden_sequences_wired() {
+        use crate::nv::gr_init::{ChipFamily, GrInitSequence, InitSource};
+        let profile = generation::profile_for_sm(35);
+        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let seq = GrInitSequence::from_bar0_diff(
+            ChipFamily::Kepler,
+            &[(0x400700, 0)],
+            &[(0x400700, 0x42)],
+            &[("PGRAPH", 0x400000, 0x420000)],
+            InitSource::Manual { experiment: 212 },
+        );
+        let strat = NvKeplerStrategy::new(profile.clone(), bridge, 35)
+            .with_golden_sequences(vec![("PGRAPH".into(), seq, Some(0x400700))]);
+        let seqs = strat.engine_ungate_sequences();
+        assert!(seqs.is_some());
+        assert_eq!(seqs.unwrap().len(), 1);
+        assert_eq!(seqs.unwrap()[0].0, "PGRAPH");
+    }
+
+    #[test]
+    fn volta_golden_sequences_wired() {
+        use crate::nv::gr_init::{ChipFamily, GrInitSequence, InitSource};
+        let profile = generation::profile_for_sm(70);
+        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let seq = GrInitSequence::from_bar0_diff(
+            ChipFamily::Volta,
+            &[(0x41A004, 0)],
+            &[(0x41A004, 0x1)],
+            &[("PGRAPH", 0x400000, 0x420000)],
+            InitSource::Manual { experiment: 212 },
+        );
+        let strat = NvAcrStrategy::new(profile.clone(), bridge, 70)
+            .with_golden_sequences(vec![("GR_INIT".into(), seq, None)]);
+        let seqs = strat.engine_ungate_sequences();
+        assert!(seqs.is_some());
+        assert_eq!(seqs.unwrap().len(), 1);
+        assert_eq!(seqs.unwrap()[0].0, "GR_INIT");
+    }
+
+    #[test]
+    fn empty_golden_sequences_returns_none() {
+        let profile = generation::profile_for_sm(70);
+        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let strat = NvAcrStrategy::new(profile.clone(), bridge, 70);
+        assert!(strat.engine_ungate_sequences().is_none());
     }
 }

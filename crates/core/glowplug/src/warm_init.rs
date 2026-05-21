@@ -265,6 +265,81 @@ impl WarmInitPlan {
         }
     }
 
+    /// Create a plan for Titan V (GV100) using nvidia bare-metal seeder.
+    ///
+    /// Uses the already-loaded nvidia module (nvidia-580-open). nvidia's
+    /// legacy RM path for Volta fully initializes: SEC2→ACR→FECS→GR engine
+    /// including all TPC PRI ring stations. This tests whether nvidia's
+    /// standard unbind path preserves more state than nouveau.
+    ///
+    /// Safe for bare-metal: nvidia module is already loaded for the display GPU.
+    #[must_use]
+    pub fn nvidia_bare_metal_titanv(bdf: &str) -> Self {
+        Self {
+            bdf: bdf.to_string(),
+            seeder: SeederDriver {
+                name: "nvidia".into(),
+                module: "nvidia".into(),
+                module_source: ModuleSource::System,
+                initializes: vec![
+                    "SEC2 → ACR → FECS authentication chain".into(),
+                    "GR engine (80 SMs, sm_70, full TPC PRI ring stations)".into(),
+                    "HBM2 memory training (12GB, 3072-bit bus)".into(),
+                    "All Copy Engines".into(),
+                    "PFIFO + PBDMA full configuration".into(),
+                    "PMU power management".into(),
+                ],
+                limitations: vec![
+                    "nvidia's nv_pci_remove MAY tear down TPC state on unbind".into(),
+                    "No teardown NOP — this tests nvidia's native unbind behavior".into(),
+                    "Module cannot be unloaded (display GPU depends on it)".into(),
+                ],
+            },
+            containment: SeederContainment::BareMetal,
+            seeder_settle: Duration::from_secs(10),
+            final_target: "vfio-pci".into(),
+        }
+    }
+
+    /// Create a plan for Titan V (GV100) using patched nvidia injection.
+    ///
+    /// Copies the nvidia-580-open `.ko`, patches teardown functions to NOP,
+    /// and renames the module identity from "nvidia" to "nvsov". This allows
+    /// loading alongside the running nvidia module without conflict.
+    ///
+    /// The "diesel engine injection" approach: sovereign seeder runs in
+    /// parallel with the display GPU's nvidia driver.
+    #[must_use]
+    pub fn nvidia_patched_titanv(bdf: &str) -> Self {
+        Self {
+            bdf: bdf.to_string(),
+            seeder: SeederDriver {
+                name: "nvsov".into(),
+                module: "nvsov".into(),
+                module_source: ModuleSource::Patched {
+                    stock_module: "nvidia".into(),
+                    patch_set: "nvidia_warm_handoff".into(),
+                },
+                initializes: vec![
+                    "SEC2 → ACR → FECS authentication chain (full)".into(),
+                    "GR engine (80 SMs, sm_70, full TPC PRI ring stations)".into(),
+                    "HBM2 memory training (12GB, 3072-bit bus)".into(),
+                    "All Copy Engines".into(),
+                    "PFIFO + PBDMA full configuration".into(),
+                    "PMU power management".into(),
+                ],
+                limitations: vec![
+                    "Dual-load: renamed module runs alongside display GPU's nvidia".into(),
+                    "PCI driver registration may conflict — driver_override required".into(),
+                    "Module rename relies on .modinfo NUL-bounded replacement".into(),
+                ],
+            },
+            containment: SeederContainment::BareMetal,
+            seeder_settle: Duration::from_secs(10),
+            final_target: "vfio-pci".into(),
+        }
+    }
+
     /// Create a plan for Tesla K80 (GK210) using nouveau as the seeder.
     ///
     /// K80 is Kepler (NoAcr): FECS boots via direct PIO without ACR.

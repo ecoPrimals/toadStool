@@ -1,13 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Generation-aware GPU initialization pipeline trait.
+//! Thin cross-vendor probe/verify surface.
 //!
-//! [`InitPipeline`] distills the staged sovereign init pipeline into a
-//! per-generation contract. Each GPU family implements its own strategy
-//! for the four phases: probe, devinit, engine_init, verify.
+//! Full NVIDIA sovereign init goes through [`sovereign_init`](super::sovereign_init)
+//! + [`SovereignStrategy`](super::sovereign_strategy::SovereignStrategy), which is
+//! the production orchestrator with 10+ stages, warm handoff, golden-state replay,
+//! PFIFO channel setup, and tier classification.
 //!
-//! This trait is the "Rust backend driver sketch" — it encodes the patterns
-//! learned from warm/cold experiments into a clean, testable interface that
-//! replaces ad-hoc generation branching throughout `sovereign_stages.rs`.
+//! [`InitPipeline`] exists as a *lightweight abstraction* for:
+//!
+//! 1. **Cross-vendor probing** — a single `probe → devinit → engine_init → verify`
+//!    contract that Kepler, Volta, and future AMD/NPU implementations share.
+//! 2. **Multi-die coordination** — `DeviceInit` / `DieInfo` model the K80 dual-die
+//!    topology where each die runs an independent pipeline instance.
+//! 3. **Experimentation** — fast four-phase pipeline for new hardware bring-up
+//!    before wiring a full `SovereignStrategy`.
+//!
+//! The vendor-agnostic [`BootPipeline`](crate::hardware::BootPipeline) trait
+//! operates over `&dyn RegisterAccess` (no `MappedBar` required), making it
+//! usable from pure unit tests and emulated BAR0 backends.
 //!
 //! # Pipeline stages
 //!
@@ -139,11 +149,15 @@ pub trait InitPipeline: Send + Sync {
 }
 
 /// Select the appropriate `InitPipeline` implementation for a given chip family.
-pub fn pipeline_for_family(family: ChipFamily) -> Box<dyn InitPipeline> {
+///
+/// Returns `None` for families that don't yet have an `InitPipeline`
+/// implementation. Callers should fall back to the full `sovereign_init`
+/// pipeline via `SovereignStrategy` for unsupported families.
+pub fn pipeline_for_family(family: ChipFamily) -> Option<Box<dyn InitPipeline>> {
     match family {
-        ChipFamily::Kepler => Box::new(super::init_kepler::KeplerInit::new()),
-        ChipFamily::Volta => Box::new(super::init_volta::VoltaInit::new()),
-        _ => Box::new(super::init_volta::VoltaInit::new()),
+        ChipFamily::Kepler => Some(Box::new(super::init_kepler::KeplerInit::new())),
+        ChipFamily::Volta => Some(Box::new(super::init_volta::VoltaInit::new())),
+        _ => None,
     }
 }
 

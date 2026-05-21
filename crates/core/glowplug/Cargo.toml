@@ -13,6 +13,7 @@ keywords = ["hardware", "device", "lifecycle", "personality", "firmware"]
 categories.workspace = true
 
 [dependencies]
+toadstool-cylinder = { path = "../cylinder" }
 toadstool-ember = { path = "../ember" }
 serde = { workspace = true }
 serde_json = { workspace = true }

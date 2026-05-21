@@ -192,7 +192,14 @@ impl BootPipeline for VoltaInit {
         let chip_id = (boot0 >> 20) & 0x1FF;
         let sm = sovereign_stages::chip_id_to_sm(chip_id);
         let pmc = bar.read_u32(NV_PMC_ENABLE).unwrap_or(0);
-        let warm = pmc.count_ones() > 8;
+
+        // Match is_warm_gpu() threshold (>= 8, not > 8) and add a
+        // PRAMIN window read as a lightweight VRAM accessibility check.
+        // Full PRAMIN sentinel testing requires MappedBar — this is the
+        // best-effort equivalent for the RegisterAccess surface.
+        let pmc_warm = pmc.count_ones() >= 8;
+        let pramin_accessible = bar.read_u32(0x0070_0000).unwrap_or(0) != 0;
+        let warm = pmc_warm && pramin_accessible;
 
         Ok(ProbeResult {
             boot0,
@@ -262,6 +269,6 @@ impl BootPipeline for VoltaInit {
         let ptimer_hi = bar.read_u32(0x0000_9410).unwrap_or(0);
         let pmc = bar.read_u32(NV_PMC_ENABLE).unwrap_or(0);
         let ptimer_alive = (ptimer_lo | ptimer_hi) != 0;
-        Ok(ptimer_alive && pmc.count_ones() > 8)
+        Ok(ptimer_alive && pmc.count_ones() >= 8)
     }
 }

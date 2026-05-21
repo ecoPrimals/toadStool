@@ -55,9 +55,21 @@ pub struct PbdmaDiagnostics {
 }
 
 /// Run CE validation: discover CE runlist, create channel, submit DMA copy, readback.
+///
+/// Uses the CE DMA class from `profile` when provided, falling back to
+/// `VOLTA_DMA_COPY_A` (0xC3B5) for backward compatibility.
 pub fn validate_ce(
     bar0: &MappedBar,
     dma_backend: DmaBackend,
+) -> CeValidationResult {
+    validate_ce_with_profile(bar0, dma_backend, None)
+}
+
+/// Run CE validation with an explicit generation profile for CE class selection.
+pub fn validate_ce_with_profile(
+    bar0: &MappedBar,
+    dma_backend: DmaBackend,
+    profile: Option<&crate::nv::generation::GenerationProfile>,
 ) -> CeValidationResult {
     let start = Instant::now();
     let mut result = CeValidationResult {
@@ -200,7 +212,9 @@ pub fn validate_ce(
     result.src_sample = bytemuck::cast_slice::<u8, u32>(&src_buf.as_slice()[..16]).to_vec();
 
     // Step 4: Build CE pushbuffer (init + DMA copy).
-    let ce_class = crate::nv::pushbuf::ce::VOLTA_DMA_COPY_A;
+    let ce_class = profile
+        .map(|p| p.ce_class)
+        .unwrap_or(crate::nv::pushbuf::ce::VOLTA_DMA_COPY_A);
     let mut pb = PushBuf::ce_init(ce_class);
     let copy_pb = PushBuf::ce_dma_copy(CE_SRC_IOVA, CE_DST_IOVA, CE_BUF_SIZE as u32);
     pb.append(&copy_pb);

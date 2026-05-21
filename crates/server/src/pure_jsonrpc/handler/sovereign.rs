@@ -7,7 +7,7 @@
 use crate::pure_jsonrpc::types::JsonRpcError;
 use serde_json::Value;
 use toadstool_cylinder::vfio::sovereign_init::SovereignInitOptions;
-use tracing::info;
+use tracing::{info, debug};
 
 const DEFAULT_BAR0_SIZE: usize = 16 * 1024 * 1024;
 
@@ -26,6 +26,8 @@ const DEFAULT_BAR0_SIZE: usize = 16 * 1024 * 1024;
 ///   `"gr_init"`, `"verify"`)
 /// - `skip_gr_init` (optional, default false): Skip GR init stage
 /// - `golden_state_path` (optional): Path to golden-state JSON for HBM2 replay
+/// - `engine_init_path` (optional): Path to `GrInitSequence` JSON for silicon-deistic
+///   engine replay (captured via `WarmStateCapture`, replayed without vendor driver)
 /// - `vbios_rom_path` (optional): Path to raw VBIOS ROM dump
 /// - `sm_version` (optional): SM version override (auto-detected if omitted)
 /// - `fbpa_count` (optional): FBPA partition count override (auto-detected)
@@ -112,6 +114,31 @@ pub fn sovereign_init(params: Option<&Value>) -> Result<Value, JsonRpcError> {
             }
             Err(e) => {
                 info!(path = %path, error = %e, "golden_state_path read failed, continuing without");
+            }
+        }
+    }
+
+    if let Some(path) = opts.engine_init_path.as_ref() {
+        match std::fs::read_to_string(path) {
+            Ok(json_str) => {
+                match toadstool_cylinder::nv::gr_init::GrInitSequence::from_json(&json_str) {
+                    Ok(seq) => {
+                        let engine = seq.chip.engine_label();
+                        info!(path = %path, engine = %engine, writes = seq.len(),
+                              "loaded golden-state GrInitSequence for engine replay");
+                        opts.engine_init_sequences.push((
+                            engine,
+                            seq,
+                            None,
+                        ));
+                    }
+                    Err(e) => {
+                        info!(path = %path, error = %e, "engine_init_path JSON parse failed, continuing without");
+                    }
+                }
+            }
+            Err(e) => {
+                info!(path = %path, error = %e, "engine_init_path read failed, continuing without");
             }
         }
     }
@@ -287,4 +314,196 @@ pub fn sovereign_devinit(params: Option<&Value>) -> Result<Value, JsonRpcError> 
             }))
         }
     }
+}
+
+/// `sovereign.classify_tier` — generation-aware sovereignty tier classification.
+///
+/// Uses `GenerationProfile` offsets instead of hardcoded Volta values.
+/// Auto-detects SM version from BOOT0, falls back to SM 70 (Volta).
+///
+/// Params:
+/// - `bdf` (required): PCI BDF address
+/// - `sm_version` (optional): override SM version for profile lookup
+pub fn sovereign_classify_tier(params: Option<&Value>) -> Result<Value, JsonRpcError> {
+    let bdf = params
+        .and_then(|p| p.get("bdf"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf'"))?;
+
+    let bar0 =
+        toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+            .map_err(|e| JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}")))?;
+
+    let sm_override = params
+        .and_then(|p| p.get("sm_version"))
+        .and_then(Value::as_u64)
+        .map(|v| v as u32);
+
+    let sm = sm_override.unwrap_or_else(|| {
+        let boot0 = bar0.read_u32(0x0000_0000).unwrap_or(0);
+        let chip_id = (boot0 >> 20) & 0x1FF;
+        let synthetic = chip_id << 20;
+        toadstool_cylinder::nv::identity::boot0_to_sm(synthetic).unwrap_or(70)
+    });
+
+    let profile = toadstool_cylinder::nv::generation::profile_for_sm(sm);
+
+    let evidence =
+        toadstool_cylinder::vfio::sovereign_tiers::classify_tier_for_profile(&bar0, profile);
+
+    debug!(bdf = %bdf, sm = sm, tier = ?evidence.tier, generation = profile.name,
+           "sovereign.classify_tier");
+
+    Ok(serde_json::json!({
+        "bdf": bdf,
+        "sm_version": sm,
+        "generation": profile.name,
+        "ce_class": format!("{:#06X}", profile.ce_class),
+        "tier": evidence.tier,
+        "tier_level": evidence.tier.level(),
+        "tier_description": evidence.tier.description(),
+        "evidence": {
+            "pmc_enable": format!("{:#010x}", evidence.pmc_enable),
+            "pmc_popcount": evidence.pmc_popcount,
+            "pramin_accessible": evidence.pramin_accessible,
+            "fecs_pc": evidence.fecs_pc.map(|v| format!("{:#010x}", v)),
+            "gpc_enables": evidence.gpc_enables.map(|v| format!("{:#010x}", v)),
+            "ce_status": evidence.ce_status.map(|v| format!("{:#010x}", v)),
+            "gr_status": evidence.gr_status.map(|v| format!("{:#010x}", v)),
+            "pbdma_intr": evidence.pbdma_intr.map(|v| format!("{:#010x}", v)),
+            "ce_runlist": evidence.ce_runlist,
+        },
+        "profile_offsets": {
+            "fecs_pc": format!("{:#010x}", profile.fecs_pc_offset),
+            "gpc_broadcast": format!("{:#010x}", profile.gpc_broadcast_offset),
+            "ce0_base": format!("{:#010x}", profile.ce0_base_offset),
+            "pgraph_status": format!("{:#010x}", profile.pgraph_status_offset),
+        }
+    }))
+}
+
+/// `sovereign.experiment` — execute a staged warm compute experiment.
+///
+/// Runs a single experiment stage (1-5) on a VFIO-bound GPU, capturing
+/// before/after register snapshots and the writes performed. Designed
+/// for interactive exploration of Tier 1 → Tier 2 transitions.
+///
+/// Params:
+/// - `bdf` (required): PCI BDF address (e.g. `"0000:02:00.0"`)
+/// - `stage` (required): Stage number 1-5
+///
+/// Returns: `ExperimentResult` with before/after snapshots, diff, writes, and notes.
+pub fn sovereign_experiment(params: Option<&Value>) -> Result<Value, JsonRpcError> {
+    let bdf = params
+        .and_then(|p| p.get("bdf"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf'"))?;
+
+    let stage = params
+        .and_then(|p| p.get("stage"))
+        .and_then(Value::as_u64)
+        .ok_or_else(|| JsonRpcError::invalid_params("Missing 'stage' (1-5)"))?
+        as u32;
+
+    info!(bdf, stage, "sovereign.experiment: starting stage");
+
+    let bar0 =
+        toadstool_cylinder::vfio::device::MappedBar::from_sysfs_rw(bdf, DEFAULT_BAR0_SIZE)
+            .map_err(|e| {
+                JsonRpcError::internal_error(format!("BAR0 open failed for {bdf}: {e}"))
+            })?;
+
+    let result = toadstool_cylinder::vfio::sovereign_stages::run_experiment_stage(&bar0, stage)
+        .map_err(|e| JsonRpcError::invalid_params(e))?;
+
+    info!(
+        bdf,
+        stage,
+        diff_count = result.diff.len(),
+        writes = result.writes.len(),
+        "sovereign.experiment: stage complete"
+    );
+
+    // Also run tier classification after the experiment
+    let tier = toadstool_cylinder::vfio::sovereign_tiers::classify_tier(&bar0);
+
+    serde_json::to_value(&serde_json::json!({
+        "bdf": bdf,
+        "stage": result.stage,
+        "stage_name": result.stage_name,
+        "diff": result.diff,
+        "writes": result.writes,
+        "notes": result.notes,
+        "before": result.before,
+        "after": result.after,
+        "tier_after": {
+            "tier": tier.tier,
+            "tier_level": tier.tier.level(),
+            "description": tier.tier.description(),
+            "gpc_enables": tier.gpc_enables.map(|v| format!("{v:#010x}")),
+            "ce_status": tier.ce_status.map(|v| format!("{v:#010x}")),
+        },
+    }))
+    .map_err(|e| JsonRpcError::internal_error(format!("serialization failed: {e}")))
+}
+
+/// `sovereign.kernel_health` — kernel build environment health check.
+///
+/// Runs a 3-layer detection (autoconf freshness, struct layout probe,
+/// reference cross-check) and returns a full health report. Optionally
+/// attempts repair if `repair` is set to `true`.
+///
+/// Params:
+/// - `repair` (optional, bool): attempt to repair via .deb cache if unhealthy
+/// - `repair_strategy` (optional, string): `"PackageRestore"` (default) or `"PackageReinstall"`
+pub fn sovereign_kernel_health(params: Option<&Value>) -> Result<Value, JsonRpcError> {
+    use toadstool_cylinder::vfio::kernel_health;
+
+    let report = kernel_health::full_kernel_health_check()
+        .map_err(|e| JsonRpcError::internal_error(format!("kernel health check failed: {e}")))?;
+
+    let should_repair = params
+        .and_then(|p| p.get("repair"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    let mut repair_result = None;
+
+    if should_repair && !report.layout_matches {
+        let strategy = params
+            .and_then(|p| p.get("repair_strategy"))
+            .and_then(Value::as_str)
+            .unwrap_or("PackageRestore");
+
+        let strat = match strategy {
+            "PackageReinstall" => kernel_health::RepairStrategy::PackageReinstall,
+            _ => kernel_health::RepairStrategy::PackageRestore,
+        };
+
+        match kernel_health::repair_autoconf(strat) {
+            Ok(path) => {
+                info!(path = %path.display(), "autoconf.h repaired");
+                repair_result = Some(serde_json::json!({
+                    "success": true,
+                    "restored_path": path.display().to_string(),
+                    "strategy": strategy,
+                }));
+            }
+            Err(e) => {
+                repair_result = Some(serde_json::json!({
+                    "success": false,
+                    "error": e.to_string(),
+                    "strategy": strategy,
+                }));
+            }
+        }
+    }
+
+    let report_json = serde_json::to_value(&report)
+        .map_err(|e| JsonRpcError::internal_error(format!("serialization: {e}")))?;
+
+    Ok(serde_json::json!({
+        "report": report_json,
+        "repair": repair_result,
+    }))
 }

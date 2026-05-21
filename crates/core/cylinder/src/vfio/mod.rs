@@ -21,9 +21,11 @@ pub mod dma;
 pub mod ember_client;
 pub mod ember_gate;
 pub mod gpu_vendor;
+pub mod guarded_sysfs;
 pub mod ioctl;
 pub mod irq;
 pub mod isolation;
+pub mod kernel_health;
 #[allow(missing_docs, reason = "WIP upstream — docs follow once kmod API stabilizes")]
 pub mod kmod;
 pub mod memory;

@@ -202,10 +202,38 @@ pub struct GenerationProfile {
     pub runlist_format: RunlistFormat,
     /// Power safety profile for PMC_ENABLE sequencing.
     pub power_safety: PowerSafetyProfile,
+
+    // ── Sovereign tier classification offsets ────────────────────────
+    // These drive `classify_tier_for_profile()` so that tier classification
+    // is data-driven rather than hardcoded per generation.
+
+    /// BAR0 offset for FECS program counter (used for FECS liveness check).
+    /// Kepler: 0x409624, Volta+: 0x409624 (same register, same falcon base).
+    pub fecs_pc_offset: u32,
+    /// BAR0 offset for GPC broadcast status (GPC power-gate detection).
+    /// Kepler: 0x41A004, Volta+: 0x41A004.
+    pub gpc_broadcast_offset: u32,
+    /// BAR0 offset for CE0 base register (CE power-gate detection).
+    /// Kepler: 0x104000, Volta+: 0x104000.
+    pub ce0_base_offset: u32,
+    /// BAR0 offset for PGRAPH status register.
+    pub pgraph_status_offset: u32,
+    /// CE DMA class for pushbuffer construction.
+    /// Kepler: 0xA0B5 (KEPLER_DMA_COPY_A), Volta: 0xC3B5 (VOLTA_DMA_COPY_A).
+    pub ce_class: u32,
 }
 
 const LOCAL_MEM_WINDOW_LEGACY: u64 = 0xFF00_0000;
 const LOCAL_MEM_WINDOW_VOLTA: u64 = 0xFF00_0000_0000_0000;
+
+/// Standard FECS program counter offset (same across Kepler–Blackwell).
+const FECS_PC: u32 = 0x0040_9624;
+/// Standard GPC broadcast status offset.
+const GPC_BROADCAST: u32 = 0x0041_A004;
+/// Standard CE0 base offset.
+const CE0_BASE: u32 = 0x0010_4000;
+/// Standard PGRAPH status offset.
+const PGRAPH_STATUS: u32 = 0x0040_0700;
 
 /// Kepler (GK110/GK210) — Tesla K40, Tesla K80.
 pub const KEPLER: GenerationProfile = GenerationProfile {
@@ -231,6 +259,11 @@ pub const KEPLER: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Simple,
     runlist_format: RunlistFormat::Gk104Global,
     power_safety: PowerSafetyProfile::PRE_FIRMWARE,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xA0B5, // KEPLER_DMA_COPY_A
 };
 
 /// Maxwell (GM200) — GTX 980 Ti, Titan X (Maxwell).
@@ -257,6 +290,11 @@ pub const MAXWELL: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Simple,
     runlist_format: RunlistFormat::Gk104Global,
     power_safety: PowerSafetyProfile::PRE_FIRMWARE,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xB0B5, // MAXWELL_DMA_COPY_A
 };
 
 /// Pascal (GP100/GP102) — GTX 1080, Tesla P100.
@@ -286,6 +324,11 @@ pub const PASCAL: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Simple,
     runlist_format: RunlistFormat::Gk104Global,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC0B5, // PASCAL_DMA_COPY_A
 };
 
 /// Volta (GV100) — Titan V, Tesla V100.
@@ -312,6 +355,11 @@ pub const VOLTA: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC3B5, // VOLTA_DMA_COPY_A
 };
 
 /// Turing (TU102/TU104/TU106) — RTX 2080, Tesla T4.
@@ -338,6 +386,11 @@ pub const TURING: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC5B5, // TURING_DMA_COPY_A
 };
 
 /// Ampere A (GA100) — A100 datacenter.
@@ -364,6 +417,11 @@ pub const AMPERE_A: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC6B5, // AMPERE_DMA_COPY_A
 };
 
 /// Ampere B (GA102/GA104/GA106/GA107) — RTX 3090, RTX 3080, etc.
@@ -390,6 +448,11 @@ pub const AMPERE_B: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC7B5, // AMPERE_DMA_COPY_B
 };
 
 /// Ada Lovelace (AD102/AD103/AD104) — RTX 4090, RTX 4080, etc.
@@ -416,6 +479,11 @@ pub const ADA: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC8B5, // ADA_DMA_COPY_A
 };
 
 /// Hopper (GH100) — H100, H200 datacenter.
@@ -442,6 +510,11 @@ pub const HOPPER: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC8B5, // HOPPER_DMA_COPY_A (same as Ada in open-gpu-doc)
 };
 
 /// Blackwell A (GB100/GB102) — B100, B200 datacenter.
@@ -468,6 +541,11 @@ pub const BLACKWELL_A: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC8B5, // BLACKWELL_DMA_COPY_A (provisional)
 };
 
 /// Blackwell B (GB202/GB203/GB205/GB206/GB207) — RTX 5090, RTX 5080, RTX 5060, etc.
@@ -494,6 +572,11 @@ pub const BLACKWELL_B: GenerationProfile = GenerationProfile {
     instance_block_format: InstanceBlockFormat::Subcontexted,
     runlist_format: RunlistFormat::Gv100PerRunlist,
     power_safety: PowerSafetyProfile::FIRMWARE_MANAGED,
+    fecs_pc_offset: FECS_PC,
+    gpc_broadcast_offset: GPC_BROADCAST,
+    ce0_base_offset: CE0_BASE,
+    pgraph_status_offset: PGRAPH_STATUS,
+    ce_class: 0xC8B5, // BLACKWELL_DMA_COPY_B (provisional)
 };
 
 /// All known generation profiles, ordered by SM range.
@@ -723,6 +806,26 @@ mod tests {
         assert_eq!(p.page_table_format, PageTableFormat::V2FiveLevel);
         assert_eq!(p.instance_block_format, InstanceBlockFormat::Simple);
         assert_eq!(p.runlist_format, RunlistFormat::Gk104Global);
+    }
+
+    #[test]
+    fn tier_offsets_present_on_all_profiles() {
+        let sms = [35, 50, 60, 70, 75, 80, 86, 89, 90, 100, 120];
+        for sm in sms {
+            let p = profile_for_sm(sm);
+            assert_eq!(p.fecs_pc_offset, 0x0040_9624, "SM {sm}: FECS PC offset");
+            assert_eq!(p.gpc_broadcast_offset, 0x0041_A004, "SM {sm}: GPC broadcast offset");
+            assert_eq!(p.ce0_base_offset, 0x0010_4000, "SM {sm}: CE0 base offset");
+            assert_eq!(p.pgraph_status_offset, 0x0040_0700, "SM {sm}: PGRAPH status offset");
+            assert!(p.ce_class != 0, "SM {sm}: CE class should be non-zero");
+        }
+    }
+
+    #[test]
+    fn ce_class_varies_by_generation() {
+        assert_eq!(profile_for_sm(35).ce_class, 0xA0B5);
+        assert_eq!(profile_for_sm(70).ce_class, 0xC3B5);
+        assert_eq!(profile_for_sm(75).ce_class, 0xC5B5);
     }
 
     #[test]

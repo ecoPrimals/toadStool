@@ -11,6 +11,7 @@ pub use definitions::{
 pub mod dispatch;
 mod device;
 pub mod doctor;
+mod kernel_health;
 mod mode;
 pub mod transport;
 

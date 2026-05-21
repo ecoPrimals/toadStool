@@ -151,6 +151,10 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
             super::mode::execute_mode_command(ctx, action.clone()).await?;
         }
 
+        Commands::KernelHealth { format, repair } => {
+            super::kernel_health::execute_kernel_health(&format, *repair).await?;
+        }
+
         Commands::Server {
             register,
             bind,

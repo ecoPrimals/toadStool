@@ -973,17 +973,52 @@ impl DispatchHandler {
             "sovereign.warm_handoff: starting driver rotation pipeline"
         );
 
+        // Release VFIO anchor and cached device before handoff.
+        // The IOMMU group is locked while we hold VFIO container/group FDs —
+        // nouveau cannot bind until we release them.
+        {
+            let mut anchors = self.anchor_store.lock().await;
+            if anchors.remove(bdf).is_some() {
+                tracing::info!(bdf, "released VFIO anchor for warm handoff");
+            }
+        }
+        {
+            let mut cache = self.cached_devices.lock().await;
+            if cache.remove(bdf).is_some() {
+                tracing::info!(bdf, "released cached device for warm handoff");
+            }
+        }
+
         // The handoff changes the GPU's driver binding (vfio → nouveau →
         // vfio), so any pre-existing VFIO BAR0 mapping is invalidated.
         // Pass None — the orchestrator uses sysfs BAR0 for post-handoff
         // tier classification after vfio-pci rebind.
-        let result = tokio::task::spawn_blocking(move || {
+        //
+        // Wrapped in tokio::time::timeout to prevent indefinite RPC hangs.
+        // The handoff itself has internal deadlines via guarded_sysfs, but
+        // this outer timeout is the last line of defense.
+        let rpc_timeout = std::time::Duration::from_secs(90);
+        let blocking_future = tokio::task::spawn_blocking(move || {
             execute_handoff(&config, None)
-        })
-        .await
-        .map_err(|e| {
-            JsonRpcError::internal_error(format!("handoff task panicked: {e}"))
-        })?;
+        });
+
+        let result = match tokio::time::timeout(rpc_timeout, blocking_future).await {
+            Ok(Ok(handoff_result)) => handoff_result,
+            Ok(Err(e)) => {
+                return Err(JsonRpcError::internal_error(
+                    format!("handoff task panicked: {e}"),
+                ));
+            }
+            Err(_elapsed) => {
+                tracing::error!(bdf, timeout_s = rpc_timeout.as_secs(),
+                    "sovereign.warm_handoff RPC timeout — blocking thread abandoned");
+                return Err(JsonRpcError::internal_error(format!(
+                    "warm_handoff timed out after {}s (blocking thread abandoned, \
+                     internal guarded operations will self-terminate)",
+                    rpc_timeout.as_secs(),
+                )));
+            }
+        };
 
         tracing::info!(
             bdf,

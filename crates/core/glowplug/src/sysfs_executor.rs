@@ -47,6 +47,8 @@ pub enum SysfsSwapError {
     },
 }
 
+use toadstool_cylinder::vfio::guarded_sysfs;
+
 impl SysfsSwapExecutor {
     fn bdf_from_id(device: &DeviceId) -> Result<&str, SysfsSwapError> {
         match device {
@@ -55,98 +57,20 @@ impl SysfsSwapExecutor {
         }
     }
 
-    fn read_current_driver(bdf: &str) -> Option<String> {
-        let link = format!("/sys/bus/pci/devices/{bdf}/driver");
-        std::fs::read_link(&link)
-            .ok()
-            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
-    }
-
     fn sysfs_write(path: &str, value: &str) -> Result<(), SysfsSwapError> {
-        std::fs::write(path, value).map_err(|e| SysfsSwapError::SysfsWrite {
+        guarded_sysfs::sysfs_write(path, value).map_err(|e| SysfsSwapError::SysfsWrite {
             path: path.into(),
             reason: e.to_string(),
         })
     }
 
-    /// Walk the sysfs device path upward, pinning `power/control=on` and
-    /// `d3cold_allowed=0` on every ancestor PCI bridge. This prevents PLX
-    /// (and similar PCIe switch) bridges from entering D3cold when the
-    /// downstream endpoint is unbound — critical for the Tesla K80 whose
-    /// PLX PEX 8747 fabric goes dark instantly on unbind.
-    fn pin_bridge_hierarchy(bdf: &str) {
-        let device_link = format!("/sys/bus/pci/devices/{bdf}");
-        let Ok(canonical) = std::fs::canonicalize(&device_link) else {
-            return;
-        };
-
-        let mut current = canonical.as_path().parent();
-        while let Some(parent) = current {
-            let Some(name) = parent.file_name().and_then(|n| n.to_str()) else {
-                break;
-            };
-
-            if !name.contains(':') {
-                break;
-            }
-
-            let control = parent.join("power/control");
-            let d3cold = parent.join("d3cold_allowed");
-            if control.exists() {
-                let _ = std::fs::write(&control, "on");
-                let _ = std::fs::write(&d3cold, "0");
-                tracing::debug!(bridge = name, "pinned bridge power (d3cold_allowed=0)");
-            }
-
-            let pm_state_path = parent.join("power_state");
-            if let Ok(state) = std::fs::read_to_string(&pm_state_path) {
-                tracing::debug!(bridge = name, state = state.trim(), "bridge power state");
-            }
-
-            current = parent.parent();
-        }
-
-        let control = format!("/sys/bus/pci/devices/{bdf}/power/control");
-        let d3cold = format!("/sys/bus/pci/devices/{bdf}/d3cold_allowed");
-        let _ = std::fs::write(&control, "on");
-        let _ = std::fs::write(&d3cold, "0");
-        tracing::debug!(bdf, "pinned device power pre-swap");
+    fn sysfs_write_guarded(path: &str, value: &str, timeout: std::time::Duration) -> Result<(), SysfsSwapError> {
+        guarded_sysfs::sysfs_write_guarded(path, value, timeout).map_err(|e| SysfsSwapError::SysfsWrite {
+            path: path.into(),
+            reason: e.to_string(),
+        })
     }
 
-    /// Disable FLR (Function Level Reset) for a PCI device by clearing its
-    /// `reset_method` sysfs attribute. When swapping from an initializing
-    /// driver (nouveau/nvidia/amdgpu) to vfio-pci, FLR destroys the warm
-    /// state that the driver set up (PRI Ring, clock trees, memory training).
-    /// Clearing `reset_method` before the swap prevents this.
-    ///
-    /// Validated on Titan V (Exp 194): 27/27 registers preserved through
-    /// nouveau→vfio-pci swap with FLR disabled.
-    fn disable_flr(bdf: &str) {
-        let path = format!("/sys/bus/pci/devices/{bdf}/reset_method");
-        if std::path::Path::new(&path).exists() {
-            match std::fs::write(&path, "") {
-                Ok(()) => tracing::info!(bdf, "FLR disabled (reset_method cleared)"),
-                Err(e) => tracing::warn!(bdf, error = %e, "failed to clear reset_method"),
-            }
-        }
-    }
-
-    /// Re-enable default reset methods for a PCI device after a warm swap
-    /// is complete and the device is stable.
-    #[expect(dead_code, reason = "called by future stable-state restore path")]
-    fn restore_flr(bdf: &str) {
-        let path = format!("/sys/bus/pci/devices/{bdf}/reset_method");
-        if std::path::Path::new(&path).exists() {
-            match std::fs::write(&path, "flr,bus") {
-                Ok(()) => tracing::debug!(bdf, "reset_method restored to flr,bus"),
-                Err(e) => tracing::debug!(bdf, error = %e, "could not restore reset_method"),
-            }
-        }
-    }
-
-    /// Returns `true` if this swap should preserve warm state (no-FLR).
-    /// A warm-preserving swap goes FROM an initializing driver (nouveau,
-    /// nvidia, amdgpu) TO vfio-pci, keeping the GPU's register state intact.
     fn is_warm_preserving_swap(from: &str, to: &str) -> bool {
         let is_init_driver = matches!(from, "nouveau" | "nvidia" | "amdgpu" | "xe" | "i915");
         let is_vfio = to == "vfio-pci";
@@ -204,13 +128,13 @@ impl SysfsSwapExecutor {
         let mut steps = Vec::new();
         let bdf = plan.bdf.as_str();
 
-        // Step 1: Unbind current driver (if any)
+        // Step 1: Unbind current driver (if any) — guarded to prevent D-state hang
         let t = Instant::now();
-        let prev_driver = Self::read_current_driver(bdf);
+        let prev_driver = guarded_sysfs::read_current_driver(bdf);
         if let Some(ref current) = prev_driver {
-            let unbind_path = format!("/sys/bus/pci/drivers/{current}/unbind");
-            if let Err(e) = Self::sysfs_write(&unbind_path, bdf) {
-                tracing::warn!(bdf, driver = current.as_str(), error = %e, "unbind failed (continuing)");
+            let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
+            if let Err(e) = Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT) {
+                tracing::warn!(bdf, driver = current.as_str(), error = %e, "guarded unbind failed (continuing)");
             }
         }
         steps.push(WarmInitStep {
@@ -223,7 +147,7 @@ impl SysfsSwapExecutor {
         // Step 2: Bind seeder driver
         let t = Instant::now();
         let seeder_module = Self::driver_name_for_target(&plan.seeder.name);
-        let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
+        let override_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
         if let Err(e) = Self::sysfs_write(&override_path, seeder_module) {
             steps.push(WarmInitStep {
                 name: "seeder_bind".into(),
@@ -233,17 +157,18 @@ impl SysfsSwapExecutor {
             });
             return halt_result(bdf, &plan.seeder.name, "seeder_bind", steps, overall);
         }
-        if let Err(e) = Self::sysfs_write("/sys/bus/pci/drivers_probe", bdf) {
+        let drivers_probe_path = toadstool_cylinder::linux_paths::sysfs_pci_drivers_probe();
+        if let Err(e) = Self::sysfs_write_guarded(&drivers_probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT) {
             steps.push(WarmInitStep {
                 name: "seeder_bind".into(),
                 ok: false,
-                detail: Some(format!("drivers_probe failed: {e}")),
+                detail: Some(format!("guarded drivers_probe failed: {e}")),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
             return halt_result(bdf, &plan.seeder.name, "seeder_bind", steps, overall);
         }
 
-        let bound = Self::read_current_driver(bdf);
+        let bound = guarded_sysfs::read_current_driver(bdf);
         let bind_ok = bound.as_deref() == Some(seeder_module);
         steps.push(WarmInitStep {
             name: "seeder_bind".into(),
@@ -277,8 +202,8 @@ impl SysfsSwapExecutor {
 
         // Step 4: Pin bridges + disable FLR for warm swap
         let t = Instant::now();
-        Self::pin_bridge_hierarchy(bdf);
-        Self::disable_flr(bdf);
+        guarded_sysfs::pin_bridge_hierarchy(bdf);
+        guarded_sysfs::disable_flr(bdf);
         steps.push(WarmInitStep {
             name: "prepare_warm_swap".into(),
             ok: true,
@@ -290,13 +215,13 @@ impl SysfsSwapExecutor {
         let t = Instant::now();
         let final_driver = Self::driver_name_for_target(&plan.final_target);
 
-        if let Some(ref current) = Self::read_current_driver(bdf) {
-            let unbind_path = format!("/sys/bus/pci/drivers/{current}/unbind");
-            if let Err(e) = Self::sysfs_write(&unbind_path, bdf) {
+        if let Some(ref current) = guarded_sysfs::read_current_driver(bdf) {
+            let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
+            if let Err(e) = Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT) {
                 steps.push(WarmInitStep {
                     name: "warm_swap".into(),
                     ok: false,
-                    detail: Some(format!("unbind {current} failed: {e}")),
+                    detail: Some(format!("guarded unbind {current} failed: {e}")),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
                 return halt_result(bdf, &plan.seeder.name, "warm_swap", steps, overall);
@@ -312,9 +237,17 @@ impl SysfsSwapExecutor {
             });
             return halt_result(bdf, &plan.seeder.name, "warm_swap", steps, overall);
         }
-        let _ = Self::sysfs_write("/sys/bus/pci/drivers_probe", bdf);
+        if let Err(e) = Self::sysfs_write_guarded(&drivers_probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT) {
+            steps.push(WarmInitStep {
+                name: "warm_swap".into(),
+                ok: false,
+                detail: Some(format!("guarded drivers_probe for {final_driver} failed: {e}")),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+            return halt_result(bdf, &plan.seeder.name, "warm_swap", steps, overall);
+        }
 
-        let final_bound = Self::read_current_driver(bdf);
+        let final_bound = guarded_sysfs::read_current_driver(bdf);
         let swap_ok = final_bound.as_deref() == Some(final_driver);
         steps.push(WarmInitStep {
             name: "warm_swap".into(),
@@ -368,33 +301,33 @@ impl SwapExecutor for SysfsSwapExecutor {
     ) -> Result<SwapObservation, Self::Error> {
         let bdf = Self::bdf_from_id(device)?;
         let start = Instant::now();
-        let from = Self::read_current_driver(bdf)
+        let from = guarded_sysfs::read_current_driver(bdf)
             .unwrap_or_else(|| "unbound".to_string());
 
         let target_driver = Self::driver_name_for_target(target_personality);
         let warm_swap = Self::is_warm_preserving_swap(&from, target_driver);
 
-        Self::pin_bridge_hierarchy(bdf);
+        guarded_sysfs::pin_bridge_hierarchy(bdf);
 
         if warm_swap {
-            Self::disable_flr(bdf);
+            guarded_sysfs::disable_flr(bdf);
             tracing::info!(bdf, from = from.as_str(), to = target_driver, "warm-preserving swap (FLR disabled)");
         }
 
-        if let Some(ref current) = Self::read_current_driver(bdf) {
-            let unbind_path = format!("/sys/bus/pci/drivers/{current}/unbind");
-            tracing::info!(bdf, driver = current.as_str(), "unbinding current driver");
-            Self::sysfs_write(&unbind_path, bdf)?;
+        if let Some(ref current) = guarded_sysfs::read_current_driver(bdf) {
+            let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
+            tracing::info!(bdf, driver = current.as_str(), "unbinding current driver (guarded)");
+            Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT)?;
         }
 
         if target_personality != "unbound" {
-            let override_path = format!("/sys/bus/pci/devices/{bdf}/driver_override");
+            let override_path = toadstool_cylinder::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
             Self::sysfs_write(&override_path, target_driver)?;
 
-            let probe_path = "/sys/bus/pci/drivers_probe";
-            Self::sysfs_write(probe_path, bdf)?;
+            let probe_path = toadstool_cylinder::linux_paths::sysfs_pci_drivers_probe();
+            Self::sysfs_write_guarded(&probe_path, bdf, guarded_sysfs::PROBE_TIMEOUT)?;
 
-            let bound = Self::read_current_driver(bdf);
+            let bound = guarded_sysfs::read_current_driver(bdf);
             if bound.as_deref() != Some(target_driver) {
                 return Err(SysfsSwapError::BindFailed {
                     bdf: bdf.into(),
@@ -422,10 +355,10 @@ impl SwapExecutor for SysfsSwapExecutor {
 
     async fn release(&self, device: &DeviceId) -> Result<(), Self::Error> {
         let bdf = Self::bdf_from_id(device)?;
-        if let Some(ref current) = Self::read_current_driver(bdf) {
-            let unbind_path = format!("/sys/bus/pci/drivers/{current}/unbind");
-            Self::sysfs_write(&unbind_path, bdf)?;
-            tracing::info!(bdf, driver = current.as_str(), "device released (unbound)");
+        if let Some(ref current) = guarded_sysfs::read_current_driver(bdf) {
+            let unbind_path = toadstool_cylinder::linux_paths::sysfs_pci_driver_unbind(current);
+            Self::sysfs_write_guarded(&unbind_path, bdf, guarded_sysfs::UNBIND_TIMEOUT)?;
+            tracing::info!(bdf, driver = current.as_str(), "device released (unbound, guarded)");
         }
         Ok(())
     }
@@ -495,5 +428,67 @@ mod tests {
         let id = DeviceId::PciBdf("ffff:ff:ff.f".into());
         let result = exec.release(&id).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn execute_swap_nonexistent_device_errors() {
+        let exec = SysfsSwapExecutor;
+        let id = DeviceId::PciBdf("ffff:ff:ff.f".into());
+        let result = exec.execute_swap(&id, "vfio-pci").await;
+        // No driver bound on nonexistent device, so it tries to write
+        // driver_override and drivers_probe — which should fail (not hang)
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn execute_swap_unbound_target_succeeds_on_nonexistent() {
+        let exec = SysfsSwapExecutor;
+        let id = DeviceId::PciBdf("ffff:ff:ff.f".into());
+        // "unbound" target skips bind, so the swap is a no-op
+        let result = exec.execute_swap(&id, "unbound").await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to, "unbound");
+    }
+
+    #[test]
+    fn halt_result_records_correct_step() {
+        let steps = vec![
+            crate::warm_init::WarmInitStep {
+                name: "seeder_bind".into(),
+                ok: false,
+                detail: Some("guarded drivers_probe failed: timeout".into()),
+                duration_ms: 30000,
+            },
+        ];
+        let result = halt_result(
+            "0000:02:00.0",
+            "nouveau",
+            "seeder_bind",
+            steps,
+            std::time::Instant::now(),
+        );
+        assert!(!result.success);
+        assert_eq!(result.halted_at.as_deref(), Some("seeder_bind"));
+        assert_eq!(result.seeder_used, "nouveau");
+        assert!(!result.warm_preserved);
+        assert_eq!(result.steps.len(), 1);
+        assert_eq!(result.steps[0].name, "seeder_bind");
+        assert!(!result.steps[0].ok);
+    }
+
+    #[test]
+    fn driver_name_mapping_exhaustive() {
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("vfio"), "vfio-pci");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("vfio-pci"), "vfio-pci");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nouveau"), "nouveau");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia"), "nvidia");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia-open"), "nvidia");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("nvidia_open"), "nvidia");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("amdgpu"), "amdgpu");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("xe"), "xe");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("i915"), "i915");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("akida"), "akida-pcie");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("akida-pcie"), "akida-pcie");
+        assert_eq!(SysfsSwapExecutor::driver_name_for_target("unknown_driver"), "unknown_driver");
     }
 }

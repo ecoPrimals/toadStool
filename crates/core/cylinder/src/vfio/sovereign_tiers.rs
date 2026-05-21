@@ -209,17 +209,41 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     // Check FECS liveness
     let fecs_pc = bar0.read_u32(0x409624).ok(); // FECS_BASE + PC
 
-    // Check GPC power state
+    // Check GPC power state — primary check via broadcast, fallback to per-unit
     let gpc_enables = bar0.read_u32(0x41A004).ok(); // GPC broadcast status
-    let gpc_alive = gpc_enables
-        .map(|v| v & 0xBADF_0000 != 0xBADF_0000 && v != 0)
-        .unwrap_or(false);
+    let gpc_alive = {
+        let bcast_alive = gpc_enables
+            .map(|v| v & 0xBADF_0000 != 0xBADF_0000 && v != 0)
+            .unwrap_or(false);
+        if bcast_alive {
+            true
+        } else {
+            // Fallback: probe individual GPC per-unit registers.
+            // GPC_BCAST may read zero even when individual GPCs are accessible
+            // (observed on Titan V after nouveau warm handoff).
+            (0..6u32).any(|gpc| {
+                let val = bar0.read_u32(0x500000 + gpc as usize * 0x8000).unwrap_or(0xDEAD_DEAD);
+                !crate::nv::pri::is_pri_fault(val) && val != 0
+            })
+        }
+    };
 
-    // Check CE engine status
+    // Check CE engine status — primary CE0, fallback to per-instance scan
     let ce_status = bar0.read_u32(0x104000).ok(); // CE0 base
-    let ce_alive = ce_status
-        .map(|v| v & 0xBADF_0000 != 0xBADF_0000)
-        .unwrap_or(false);
+    let ce_alive = {
+        let ce0_alive = ce_status
+            .map(|v| v & 0xBADF_0000 != 0xBADF_0000)
+            .unwrap_or(false);
+        if ce0_alive {
+            true
+        } else {
+            // Fallback: scan CE1-CE5 for any alive instance
+            (1..6u32).any(|i| {
+                let val = bar0.read_u32(0x104000 + i as usize * 0x1000).unwrap_or(0xDEAD_DEAD);
+                !crate::nv::pri::is_pri_fault(val) && val != 0
+            })
+        }
+    };
 
     // Check PGRAPH status
     let gr_status = bar0.read_u32(0x400700).ok(); // PGRAPH_STATUS
@@ -236,6 +260,98 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     };
 
     // Read first active PBDMA interrupt status for evidence
+    let pbdma_map = bar0.read_u32(0x2004).unwrap_or(0);
+    let first_pbdma = (0..32_u32).find(|&p| pbdma_map & (1 << p) != 0);
+    let pbdma_intr = first_pbdma.and_then(|p| {
+        bar0.read_u32(0x0004_0000 + (p as usize) * 0x2000 + 0x100).ok()
+    });
+
+    TierEvidence {
+        tier,
+        pmc_enable,
+        pmc_popcount,
+        pramin_accessible,
+        fecs_pc,
+        gpc_enables,
+        ce_status,
+        gr_status,
+        pbdma_intr,
+        ce_runlist,
+    }
+}
+
+/// Classify the sovereignty tier using generation-aware register offsets.
+///
+/// Uses offsets from `GenerationProfile` instead of hardcoded Volta values,
+/// enabling correct tier classification across Kepler, Volta, Turing, and
+/// future architectures. The `classify_tier()` function is kept as a
+/// convenience wrapper for the Volta default case.
+pub fn classify_tier_for_profile(
+    bar0: &crate::vfio::device::MappedBar,
+    profile: &crate::nv::generation::GenerationProfile,
+) -> TierEvidence {
+    let pmc_enable = bar0.read_u32(0x200).unwrap_or(0);
+    let pmc_popcount = pmc_enable.count_ones();
+
+    if pmc_popcount < 8 {
+        return TierEvidence {
+            tier: SovereignTier::Cold,
+            pmc_enable,
+            pmc_popcount,
+            pramin_accessible: false,
+            fecs_pc: None,
+            gpc_enables: None,
+            ce_status: None,
+            gr_status: None,
+            pbdma_intr: None,
+            ce_runlist: None,
+        };
+    }
+
+    let pramin_accessible = crate::vfio::sovereign_stages::pramin_sentinel_test(bar0);
+
+    let fecs_pc = bar0.read_u32(profile.fecs_pc_offset as usize).ok();
+    let gpc_enables = bar0.read_u32(profile.gpc_broadcast_offset as usize).ok();
+    let gpc_alive = {
+        let bcast_alive = gpc_enables
+            .map(|v| v & 0xBADF_0000 != 0xBADF_0000 && v != 0)
+            .unwrap_or(false);
+        if bcast_alive {
+            true
+        } else {
+            (0..6u32).any(|gpc| {
+                let val = bar0.read_u32(0x500000 + gpc as usize * 0x8000).unwrap_or(0xDEAD_DEAD);
+                !crate::nv::pri::is_pri_fault(val) && val != 0
+            })
+        }
+    };
+
+    let ce_status = bar0.read_u32(profile.ce0_base_offset as usize).ok();
+    let ce_alive = {
+        let ce0_alive = ce_status
+            .map(|v| v & 0xBADF_0000 != 0xBADF_0000)
+            .unwrap_or(false);
+        if ce0_alive {
+            true
+        } else {
+            (1..6u32).any(|i| {
+                let val = bar0.read_u32(0x104000 + i as usize * 0x1000).unwrap_or(0xDEAD_DEAD);
+                !crate::nv::pri::is_pri_fault(val) && val != 0
+            })
+        }
+    };
+
+    let gr_status = bar0.read_u32(profile.pgraph_status_offset as usize).ok();
+    let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
+
+    let tier = if gpc_alive && ce_alive {
+        SovereignTier::WarmCompute
+    } else if pramin_accessible {
+        SovereignTier::WarmInfrastructure
+    } else {
+        SovereignTier::Cold
+    };
+
     let pbdma_map = bar0.read_u32(0x2004).unwrap_or(0);
     let first_pbdma = (0..32_u32).find(|&p| pbdma_map & (1 << p) != 0);
     let pbdma_intr = first_pbdma.and_then(|p| {
