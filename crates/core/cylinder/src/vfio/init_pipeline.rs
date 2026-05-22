@@ -2,9 +2,9 @@
 //! Thin cross-vendor probe/verify surface.
 //!
 //! Full NVIDIA sovereign init goes through [`sovereign_init`](super::sovereign_init)
-//! + [`SovereignStrategy`](super::sovereign_strategy::SovereignStrategy), which is
-//! the production orchestrator with 10+ stages, warm handoff, golden-state replay,
-//! PFIFO channel setup, and tier classification.
+//! and [`SovereignStrategy`](super::sovereign_strategy::SovereignStrategy), the production
+//! orchestrator with 10+ stages, warm handoff, golden-state replay, PFIFO channel setup,
+//! and tier classification.
 //!
 //! [`InitPipeline`] exists as a *lightweight abstraction* for:
 //!

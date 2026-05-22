@@ -85,6 +85,44 @@ pub struct TenantQuota {
     pub max_concurrent_workloads: u32,
     /// Maximum compute time per accounting period.
     pub max_compute_time: Duration,
+    /// Maximum guest load before yield semantics activate.
+    ///
+    /// When current load exceeds this threshold, new workloads are either
+    /// queued (soft yield) or rejected (hard yield). This enables power-cycle-aware
+    /// scheduling on shared gates (e.g. flockGate) where hardware availability
+    /// fluctuates with host power state.
+    ///
+    /// `None` means no guest load limit (default — unlimited).
+    #[serde(default)]
+    pub max_guest_load: Option<GuestLoadPolicy>,
+}
+
+/// Guest load yield policy — controls how the orchestrator handles
+/// workloads when guest load exceeds the configured threshold.
+///
+/// Designed for shared-hardware gates (flockGate) where GPUs may
+/// become unavailable during host power cycles. The orchestrator
+/// checks current load before dispatch and applies the yield strategy.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GuestLoadPolicy {
+    /// Maximum concurrent GPU-bound workloads before yield activates.
+    pub max_concurrent_gpu: u32,
+    /// What to do when load exceeds the threshold.
+    #[serde(default)]
+    pub yield_strategy: YieldStrategy,
+}
+
+/// Strategy applied when guest load exceeds `max_concurrent_gpu`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum YieldStrategy {
+    /// Queue the workload until load drops below threshold.
+    #[default]
+    Queue,
+    /// Reject the workload immediately with a resource-exhausted error.
+    Reject,
+    /// Defer the workload until the next power-cycle window completes.
+    DeferUntilPowerCycle,
 }
 
 impl Default for TenantQuota {
@@ -94,6 +132,7 @@ impl Default for TenantQuota {
             max_vram_bytes: u64::MAX,
             max_concurrent_workloads: u32::MAX,
             max_compute_time: Duration::from_secs(u64::MAX),
+            max_guest_load: None,
         }
     }
 }

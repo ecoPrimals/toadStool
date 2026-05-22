@@ -2,6 +2,7 @@
 
 mod core_dispatch;
 mod envelope;
+mod fan_out;
 mod shader;
 mod trio_contract;
 

@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S268
+**Date**: May 2026 — S269
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S269 (Wave 38: Fan-Out + Guest Load + Upstream Debt)**:
+`compute.fan_out` re-implemented from S263 wire contract — handler, types,
+10 tests, wire L3, semantic alias dispatch. `GuestLoadPolicy` + `YieldStrategy`
+types on `TenantQuota` for flockGate power-cycle-aware scheduling. 21+ upstream
+clippy errors absorbed from S268 rebase (guarded_sysfs, kernel_health, sovereign_handoff).
+9,122 lib tests, 87 JSON-RPC methods, 0 clippy warnings.
 
 **S266 (Sandbox working_dir Production + Upstream Clippy)**:
 `data_dependencies` validation wired into `execute_workload`: file existence

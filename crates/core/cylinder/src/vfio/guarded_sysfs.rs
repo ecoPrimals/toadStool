@@ -432,12 +432,10 @@ fn parse_module_stuck(name: &str, contents: &str) -> bool {
                                "module in stuck state");
                 return true;
             }
-            if let Ok(refcount) = fields[2].parse::<i64>() {
-                if refcount < 0 {
-                    tracing::warn!(module = name, refcount,
-                                   "module has negative refcount");
-                    return true;
-                }
+            if let Ok(refcount) = fields[2].parse::<i64>() && refcount < 0 {
+                tracing::warn!(module = name, refcount,
+                               "module has negative refcount");
+                return true;
             }
         }
     }
@@ -488,14 +486,14 @@ pub fn iommu_group_ready(bdf: &str) -> Result<(), GuardedSysfsError> {
         let Ok(fds) = std::fs::read_dir(&fd_dir) else { continue };
 
         for fd in fds.filter_map(|f| f.ok()) {
-            if let Ok(target) = std::fs::read_link(fd.path()) {
-                if target == Path::new(&vfio_path) || target == vfio_path_canonical {
-                    return Err(GuardedSysfsError::PreFlightFailed {
-                        reason: format!(
-                            "IOMMU group {group_id} held by PID {pid} (fd → {vfio_path})"
-                        ),
-                    });
-                }
+            if let Ok(target) = std::fs::read_link(fd.path())
+                && (target == Path::new(&vfio_path) || target == vfio_path_canonical)
+            {
+                return Err(GuardedSysfsError::PreFlightFailed {
+                    reason: format!(
+                        "IOMMU group {group_id} held by PID {pid} (fd → {vfio_path})"
+                    ),
+                });
             }
         }
     }
@@ -520,14 +518,14 @@ pub fn handoff_rollback(
     tracing::warn!(bdf, "handoff rollback: attempting recovery");
 
     // 1. Try to unload the module if we loaded it
-    if let Some(name) = module_name {
-        if crate::vfio::kmod::is_module_loaded(name) {
-            tracing::info!(module = name, "rollback: attempting guarded rmmod");
-            match rmmod_guarded(name, RMMOD_TIMEOUT) {
-                Ok(()) => tracing::info!(module = name, "rollback: rmmod succeeded"),
-                Err(e) => tracing::warn!(module = name, error = %e,
-                                         "rollback: rmmod failed (module may be stuck)"),
-            }
+    if let Some(name) = module_name
+        && crate::vfio::kmod::is_module_loaded(name)
+    {
+        tracing::info!(module = name, "rollback: attempting guarded rmmod");
+        match rmmod_guarded(name, RMMOD_TIMEOUT) {
+            Ok(()) => tracing::info!(module = name, "rollback: rmmod succeeded"),
+            Err(e) => tracing::warn!(module = name, error = %e,
+                                     "rollback: rmmod failed (module may be stuck)"),
         }
     }
 

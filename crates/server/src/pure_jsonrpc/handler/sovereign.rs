@@ -414,7 +414,7 @@ pub fn sovereign_experiment(params: Option<&Value>) -> Result<Value, JsonRpcErro
             })?;
 
     let result = toadstool_cylinder::vfio::sovereign_stages::run_experiment_stage(&bar0, stage)
-        .map_err(|e| JsonRpcError::invalid_params(e))?;
+        .map_err(JsonRpcError::invalid_params)?;
 
     info!(
         bdf,
@@ -427,7 +427,7 @@ pub fn sovereign_experiment(params: Option<&Value>) -> Result<Value, JsonRpcErro
     // Also run tier classification after the experiment
     let tier = toadstool_cylinder::vfio::sovereign_tiers::classify_tier(&bar0);
 
-    serde_json::to_value(&serde_json::json!({
+    serde_json::to_value(serde_json::json!({
         "bdf": bdf,
         "stage": result.stage,
         "stage_name": result.stage_name,

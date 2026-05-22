@@ -156,6 +156,64 @@ impl std::fmt::Display for PipelineStatus {
     }
 }
 
+// ═══════════════════════════════════════════════════════════
+// Fan-out dispatch types — parallel clone processing (Wave 8 / Wave 38)
+// ═══════════════════════════════════════════════════════════
+
+/// A single work unit in a fan-out dispatch request.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub(super) struct FanOutWorkUnit {
+    /// Caller-provided unit identifier. Auto-generated if omitted.
+    #[serde(default)]
+    pub(super) unit_id: Option<String>,
+    /// Optional per-unit parameters passed to the dispatch.
+    #[serde(default)]
+    pub(super) params: Option<serde_json::Value>,
+}
+
+/// Substrate filter for fan-out dispatch — controls which units
+/// get assigned vs queued based on available hardware.
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
+pub(super) struct SubstrateFilter {
+    /// Minimum CPU cores required per unit.
+    #[serde(default)]
+    pub(super) min_cores: Option<u32>,
+    /// Whether GPU is required (units queue when no GPU available).
+    #[serde(default)]
+    pub(super) gpu_required: bool,
+}
+
+/// Assignment status for a single work unit in a fan-out dispatch.
+#[derive(Debug, Clone, serde::Serialize)]
+pub(super) struct FanOutAssignment {
+    pub(super) unit_id: String,
+    pub(super) status: FanOutUnitStatus,
+    pub(super) substrate: &'static str,
+}
+
+/// Status of a fan-out work unit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum FanOutUnitStatus {
+    Assigned,
+    Queued,
+}
+
+impl FanOutUnitStatus {
+    pub(super) fn as_str(self) -> &'static str {
+        match self {
+            Self::Assigned => "assigned",
+            Self::Queued => "queued",
+        }
+    }
+}
+
+impl std::fmt::Display for FanOutUnitStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -319,6 +319,9 @@ impl JsonRpcHandler {
                     .dispatch_submit_with_context(params, &caller_ctx)
                     .await;
             }
+            "compute.fan_out" => {
+                return self.dispatch.fan_out(params, &caller_ctx).await;
+            }
             "compute.dispatch.status" => return self.dispatch.dispatch_status(params).await,
             "compute.dispatch.result" => return self.dispatch.dispatch_result(params).await,
             "compute.dispatch.forward" => return self.dispatch.dispatch_forward(params).await,
@@ -472,6 +475,7 @@ impl JsonRpcHandler {
                     .dispatch_submit_with_context(params, ctx)
                     .await
             }
+            "compute_fan_out" => self.dispatch.fan_out(params, ctx).await,
             "dispatch_status" => self.dispatch.dispatch_status(params).await,
             "dispatch_result" => self.dispatch.dispatch_result(params).await,
             "dispatch_capabilities" => self.dispatch.dispatch_capabilities(params).await,

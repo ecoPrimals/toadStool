@@ -386,5 +386,4 @@ async fn device_gr_init_rejects_empty_entries() {
     assert_eq!(err.code, JsonRpcError::INVALID_PARAMS);
 }
 
-// NOTE: compute.fan_out tests removed — method implementation dropped upstream.
-// Tests will be restored when the method is re-implemented on DispatchHandler.
+// NOTE: compute.fan_out tests live in fan_out.rs (re-implemented S269 / Wave 38).

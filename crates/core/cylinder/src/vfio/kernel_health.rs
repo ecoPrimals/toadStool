@@ -335,7 +335,7 @@ fn find_note_section_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelHealth
 /// the current build environment.
 fn probe_from_dkms_module() -> Option<(u64, u64)> {
     let krel = kernel_release().ok()?;
-    let dkms_base = format!("/var/lib/dkms");
+    let dkms_base = "/var/lib/dkms".to_string();
 
     let entries = std::fs::read_dir(&dkms_base).ok()?;
     for entry in entries.flatten() {
@@ -348,16 +348,16 @@ fn probe_from_dkms_module() -> Option<(u64, u64)> {
                 .join(&krel)
                 .join("x86_64/module")
                 .join(format!("{mod_name}.ko"));
-            if ko_path.exists() {
-                if let Ok((i, e)) = reference_module_offsets(&ko_path) {
-                    tracing::info!(
-                        ko = %ko_path.display(),
-                        init = format_args!("0x{i:x}"),
-                        exit = format_args!("0x{e:x}"),
-                        "Layer 2 fallback: using DKMS module as probe"
-                    );
-                    return Some((i, e));
-                }
+            if ko_path.exists()
+                && let Ok((i, e)) = reference_module_offsets(&ko_path)
+            {
+                tracing::info!(
+                    ko = %ko_path.display(),
+                    init = format_args!("0x{i:x}"),
+                    exit = format_args!("0x{e:x}"),
+                    "Layer 2 fallback: using DKMS module as probe"
+                );
+                return Some((i, e));
             }
         }
     }
@@ -464,15 +464,17 @@ fn parse_this_module_rela_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelH
                 u32::from_le_bytes(elf_data[sym_entry..sym_entry + 4].try_into().unwrap())
                     as usize;
             let sym_name = read_cstr(elf_data, strtab_off + st_name);
+            let is_exit_sym =
+                sym_name.contains("cleanup_module") || sym_name.ends_with("_exit");
+            let should_capture_exit =
+                exit_offset.is_none() || sym_name.contains("cleanup_module");
 
             if sym_name.contains("init_module") || sym_name.ends_with("_init") {
                 if init_offset.is_none() || sym_name.contains("init_module") {
                     init_offset = Some(r_offset);
                 }
-            } else if sym_name.contains("cleanup_module") || sym_name.ends_with("_exit") {
-                if exit_offset.is_none() || sym_name.contains("cleanup_module") {
-                    exit_offset = Some(r_offset);
-                }
+            } else if is_exit_sym && should_capture_exit {
+                exit_offset = Some(r_offset);
             }
         }
     }
@@ -527,14 +529,14 @@ fn read_cstr(data: &[u8], start: usize) -> String {
 fn find_reference_ko() -> Option<PathBuf> {
     // Try modinfo for well-known modules
     for name in &["nvidia", "nouveau", "snd_hda_intel", "i915"] {
-        if let Ok(out) = Command::new("modinfo").args(["-n", name]).output() {
-            if out.status.success() {
-                let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !path_str.is_empty() && path_str != "(builtin)" {
-                    let p = PathBuf::from(&path_str);
-                    if p.exists() {
-                        return Some(p);
-                    }
+        if let Ok(out) = Command::new("modinfo").args(["-n", name]).output()
+            && out.status.success()
+        {
+            let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !path_str.is_empty() && path_str != "(builtin)" {
+                let p = PathBuf::from(&path_str);
+                if p.exists() {
+                    return Some(p);
                 }
             }
         }
@@ -548,14 +550,13 @@ fn find_reference_ko() -> Option<PathBuf> {
             .arg("-print")
             .arg("-quit")
             .output()
+            && out.status.success()
         {
-            if out.status.success() {
-                let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !path_str.is_empty() {
-                    let p = PathBuf::from(&path_str);
-                    if p.exists() {
-                        return Some(p);
-                    }
+            let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !path_str.is_empty() {
+                let p = PathBuf::from(&path_str);
+                if p.exists() {
+                    return Some(p);
                 }
             }
         }
@@ -565,12 +566,11 @@ fn find_reference_ko() -> Option<PathBuf> {
             .arg("-print")
             .arg("-quit")
             .output()
+            && out.status.success()
         {
-            if out.status.success() {
-                let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !path_str.is_empty() {
-                    return decompress_zst_ko(&path_str);
-                }
+            let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !path_str.is_empty() {
+                return decompress_zst_ko(&path_str);
             }
         }
     }
@@ -753,11 +753,10 @@ fn repair_from_deb_cache(krel: &str, target: &Path) -> Result<PathBuf, KernelHea
         .arg(&deb_path)
         .arg(&extract_dir)
         .status()
-        .map_err(|e| KernelHealthError::Io(e))?;
+        .map_err(KernelHealthError::Io)?;
 
     if !status.success() {
-        return Err(KernelHealthError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(KernelHealthError::Io(std::io::Error::other(
             "dpkg-deb extraction failed",
         )));
     }
@@ -802,11 +801,10 @@ fn repair_via_reinstall(krel: &str, target: &Path) -> Result<PathBuf, KernelHeal
         .args(["install", "--reinstall", "-y"])
         .arg(&pkg)
         .status()
-        .map_err(|e| KernelHealthError::Io(e))?;
+        .map_err(KernelHealthError::Io)?;
 
     if !status.success() {
-        return Err(KernelHealthError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(KernelHealthError::Io(std::io::Error::other(
             format!("apt-get install --reinstall {pkg} failed"),
         )));
     }

@@ -146,6 +146,10 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         cost("medium", true, 20, "medium", "low"),
     );
     map.insert(
+        "compute.fan_out".into(),
+        cost("high", true, 200, "high", "medium"),
+    );
+    map.insert(
         "compute.dispatch.status".into(),
         cost("negligible", false, 1, "negligible", "none"),
     );

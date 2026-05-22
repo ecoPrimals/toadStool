@@ -39,6 +39,7 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashSet;
+use std::fmt::Write;
 use std::sync::Mutex;
 
 use crate::vfio::guarded_sysfs;
@@ -70,10 +71,10 @@ impl HandoffGuard {
 
 impl Drop for HandoffGuard {
     fn drop(&mut self) {
-        if let Ok(mut guard) = HANDOFF_LOCKS.lock() {
-            if let Some(set) = guard.as_mut() {
-                set.remove(&self.bdf);
-            }
+        if let Ok(mut guard) = HANDOFF_LOCKS.lock()
+            && let Some(set) = guard.as_mut()
+        {
+            set.remove(&self.bdf);
         }
     }
 }
@@ -269,7 +270,6 @@ pub fn execute_handoff(
     let module_loaded;
     let mut patch_result = None;
     let mut sibling_state: Vec<(String, Option<String>)> = Vec::new();
-    let mut needs_device_rollback = false;
 
     // ── Step 0: Pre-flight checks ───────────────────────────────────
 
@@ -596,7 +596,7 @@ pub fn execute_handoff(
     let mut detail_msg = prev_driver.map(|d| format!("was: {d}"))
         .unwrap_or_else(|| "unbound".into());
     if !sibling_summary.is_empty() {
-        detail_msg.push_str(&format!("; siblings: [{}]", sibling_summary.join(", ")));
+        let _ = write!(detail_msg, "; siblings: [{}]", sibling_summary.join(", "));
     }
 
     // Verify all siblings actually unbound
@@ -623,7 +623,7 @@ pub fn execute_handoff(
     }
 
     // Device has been unbound — rollback must restore to vfio-pci on any failure
-    needs_device_rollback = true;
+    let needs_device_rollback = true;
 
     // ── Step 3: Bind seeder driver (GUARDED) ────────────────────────
 
@@ -854,6 +854,7 @@ pub fn execute_handoff(
 /// - `sibling_state` is non-empty (siblings were unbound)
 /// - `needs_device_rollback` is true (device was unbound from its original
 ///   driver and needs to be restored to vfio-pci)
+#[allow(clippy::too_many_arguments, reason = "WIP upstream — parameter struct refactor pending")]
 fn halt_result(
     bdf: &str,
     halted_at: &str,

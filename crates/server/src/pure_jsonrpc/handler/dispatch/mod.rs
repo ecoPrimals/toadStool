@@ -10,6 +10,7 @@
 
 mod capabilities;
 mod dag;
+mod fan_out;
 mod forward;
 mod pipeline;
 mod queries;

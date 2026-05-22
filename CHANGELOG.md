@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 20, 2026 (Sessions 43-266)
+## [Unreleased] - May 22, 2026 (Sessions 43-269)
+
+### Session S269 (May 22, 2026) — Wave 38: Fan-Out + Guest Load + Upstream Debt
+
+primalSpring Wave 38 response: re-implement fan-out dispatch, add guest load yield types, absorb upstream clippy.
+
+- ADDED: `compute.fan_out` handler re-implementation per S263 wire contract — `FanOutWorkUnit`, `SubstrateFilter`, `FanOutAssignment`, `FanOutUnitStatus` types
+- ADDED: `compute.fan_out` back to `DIRECT_JSONRPC_METHODS` + wire L3 cost estimates + direct routing in `handle_method`
+- ADDED: `compute_fan_out` arm in `dispatch_by_impl_name` for semantic alias dispatch
+- ADDED: `GuestLoadPolicy` + `YieldStrategy` types on `TenantQuota.max_guest_load` for power-cycle-aware scheduling
+- ADDED: 10 fan-out tests (`dispatch/tests/fan_out.rs`)
+- ADDED: Wave 38 items to NEXT_STEPS.md
+- FIXED: 21+ upstream clippy errors from S268 rebase (guarded_sysfs, kernel_health, sovereign_handoff, sovereign_stages, module_patch, init_pipeline)
+- FIXED: Redundant closure + needless borrow in sovereign.rs and CLI dispatch
+- METRICS: 87 JSON-RPC methods, 9,122 lib tests, 0 clippy warnings, deny clean
 
 ### Session S266 (May 20, 2026) — Sandbox working_dir Production + Upstream Clippy
 

@@ -21,10 +21,12 @@ pub mod dma;
 pub mod ember_client;
 pub mod ember_gate;
 pub mod gpu_vendor;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once guarded sysfs API stabilizes")]
 pub mod guarded_sysfs;
 pub mod ioctl;
 pub mod irq;
 pub mod isolation;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once kernel health API stabilizes")]
 pub mod kernel_health;
 #[allow(missing_docs, reason = "WIP upstream — docs follow once kmod API stabilizes")]
 pub mod kmod;
@@ -47,6 +49,7 @@ pub mod init_volta;
 pub mod sovereign_handoff;
 pub mod sovereign_init;
 pub mod sovereign_profile;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once sovereign stages API stabilizes")]
 pub mod sovereign_stages;
 pub mod sovereign_strategy;
 #[allow(missing_docs, reason = "WIP upstream — docs follow once tier API stabilizes")]

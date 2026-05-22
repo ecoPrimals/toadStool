@@ -57,6 +57,7 @@ pub const DIRECT_JSONRPC_METHODS: &[&str] = &[
     "compute.list",
     "compute.dispatch",
     "compute.dispatch.submit",
+    "compute.fan_out",
     "compute.dispatch.status",
     "compute.dispatch.result",
     "compute.dispatch.forward",

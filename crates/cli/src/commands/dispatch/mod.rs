@@ -152,7 +152,7 @@ pub async fn execute_command(cli: &Cli, ctx: &CliContext) -> Result<()> {
         }
 
         Commands::KernelHealth { format, repair } => {
-            super::kernel_health::execute_kernel_health(&format, *repair).await?;
+            super::kernel_health::execute_kernel_health(format, *repair).await?;
         }
 
         Commands::Server {

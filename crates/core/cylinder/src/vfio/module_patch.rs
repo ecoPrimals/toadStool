@@ -774,7 +774,7 @@ pub fn rename_module_identity(
             } else {
                 0
             };
-            if before == 0 && (after == 0 || after == b'=' || after == b'\0') {
+            if before == 0 && (after == 0 || after == b'=') {
                 module_bytes[pos..pos + old_bytes.len()].copy_from_slice(&new_padded);
                 replacements += 1;
                 tracing::debug!(
