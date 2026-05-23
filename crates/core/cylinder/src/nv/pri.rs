@@ -46,6 +46,35 @@ pub fn domain_for_offset(offset: usize, domains: &[(&str, usize, usize)]) -> Str
     "UNKNOWN".to_string()
 }
 
+/// Volta (GV100) BAR0 domain map for register labeling.
+///
+/// Covers the primary domains observed in Titan V register captures.
+/// Used by `GrInitSequence::from_bar0_diff` and catalyst capture.
+pub const VOLTA_BAR0_DOMAINS: &[(&str, usize, usize)] = &[
+    ("PMC", 0x0000_0000, 0x0000_1000),
+    ("PBUS", 0x0000_1000, 0x0000_2000),
+    ("PFIFO", 0x0000_2000, 0x0000_4000),
+    ("PTIMER", 0x0000_9000, 0x0000_A000),
+    ("PFB", 0x0010_0000, 0x0010_2000),
+    ("CE", 0x0010_4000, 0x0010_A000),
+    ("PTHERM", 0x0002_0000, 0x0002_1000),
+    ("PCLOCK", 0x0013_7000, 0x0013_8000),
+    ("PRIV_RING", 0x0012_0000, 0x0013_0000),
+    ("PBDMA", 0x0004_0000, 0x0006_0000),
+    ("PDISP", 0x0061_0000, 0x006C_0000),
+    ("PGRAPH", 0x0040_0000, 0x0042_0000),
+    ("GPC_BCAST", 0x0041_8000, 0x0042_0000),
+    ("GPC", 0x0050_0000, 0x0054_0000),
+    ("SEC2", 0x0008_7000, 0x0008_8000),
+    ("PMU", 0x0010_A000, 0x0010_C000),
+    ("FECS", 0x0040_9000, 0x0040_A000),
+    ("GPCCS", 0x0041_A000, 0x0041_B000),
+    ("LTC", 0x0017_0000, 0x0018_0000),
+    ("FBPA", 0x0009_A000, 0x000A_0000),
+    ("PRAMIN", 0x0070_0000, 0x0080_0000),
+    ("BAR0_WINDOW", 0x0000_0700, 0x0000_0800),
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;

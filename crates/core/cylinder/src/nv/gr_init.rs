@@ -135,6 +135,15 @@ pub enum InitSource {
         /// Source descriptions.
         sources: Vec<String>,
     },
+    /// Captured from a catalyst driver session (proprietary driver used
+    /// to initialize GPU, then removed). The catalyst's product — the
+    /// register state — is preserved and replayed without the driver.
+    Catalyst {
+        /// Driver version used as catalyst (e.g. "470.256.02").
+        driver_version: String,
+        /// BDF of the GPU that was catalyzed.
+        bdf: String,
+    },
 }
 
 /// An ordered sequence of BAR0 register writes that initializes the
@@ -521,5 +530,35 @@ mod tests {
     fn unknown_domain_offset() {
         let d = domain_for_offset(0xFFFF_FF00, &sample_domains());
         assert_eq!(d, "UNKNOWN");
+    }
+
+    #[test]
+    fn catalyst_source_serde_roundtrip() {
+        let seq = GrInitSequence {
+            chip: ChipFamily::Volta,
+            writes: vec![RegWrite {
+                offset: 0x504000,
+                value: 0x0000_8042,
+                domain: "GPC".into(),
+                mask: None,
+            }],
+            source: InitSource::Catalyst {
+                driver_version: "470.256.02".into(),
+                bdf: "0000:49:00.0".into(),
+            },
+            description: "catalyst test".into(),
+        };
+        let json = seq.to_json().unwrap();
+        assert!(json.contains("Catalyst"));
+        assert!(json.contains("470.256.02"));
+        let back = GrInitSequence::from_json(&json).unwrap();
+        assert_eq!(back.writes.len(), 1);
+        assert_eq!(back.writes[0].offset, 0x504000);
+        if let InitSource::Catalyst { driver_version, bdf } = &back.source {
+            assert_eq!(driver_version, "470.256.02");
+            assert_eq!(bdf, "0000:49:00.0");
+        } else {
+            panic!("expected Catalyst source");
+        }
     }
 }

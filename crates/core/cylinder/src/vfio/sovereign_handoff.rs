@@ -47,6 +47,7 @@ use crate::vfio::kernel_health;
 use crate::vfio::kmod;
 use crate::vfio::module_patch::{self, PatchSet, ModulePatchResult};
 use crate::vfio::sovereign_tiers::{TierEvidence, classify_tier};
+use crate::vfio::warm_capture::Bar0Snapshot;
 
 /// Per-BDF handoff concurrency guard. Only one handoff per device at a time.
 static HANDOFF_LOCKS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
@@ -99,6 +100,17 @@ pub struct HandoffConfig {
 
     /// Final driver target (e.g., "vfio-pci").
     pub final_driver: String,
+
+    /// Optional JSON-serialized [`PatchSet`] override. When present, the
+    /// pipeline uses this instead of resolving the patch set by name from
+    /// [`ModuleSourceConfig`]. Enables runtime-defined patch sets via RPC.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub patch_set_override: Option<String>,
+
+    /// Whether to skip the preflight health check. Useful for experiments
+    /// that intentionally operate outside normal safety bounds.
+    #[serde(default)]
+    pub skip_preflight: bool,
 }
 
 /// Module source configuration (cylinder-side, no glowplug dependency).
@@ -145,6 +157,17 @@ pub struct HandoffResult {
     pub module_loaded: bool,
     /// Whether the module was successfully unloaded after handoff.
     pub module_unloaded: bool,
+    /// Catalyst capture: BAR0 snapshot taken while the catalyst driver
+    /// owned the GPU (between settle and warm swap). Present only for
+    /// catalyst strategies. Persisted to disk as JSON.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catalyst_snapshot_path: Option<String>,
+    /// Catalyst capture: register count in the snapshot.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catalyst_alive_count: Option<usize>,
+    /// Catalyst capture: tier evidence from the pre-swap snapshot.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catalyst_tier: Option<TierEvidence>,
     /// Total wall-clock time in milliseconds.
     pub total_ms: u64,
 }
@@ -172,6 +195,8 @@ impl HandoffConfig {
             },
             settle: Duration::from_secs(5),
             final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
         }
     }
 
@@ -185,6 +210,8 @@ impl HandoffConfig {
             module_source: ModuleSourceConfig::System,
             settle: Duration::from_secs(5),
             final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
         }
     }
 
@@ -206,6 +233,8 @@ impl HandoffConfig {
             module_source: ModuleSourceConfig::System,
             settle: Duration::from_secs(10),
             final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
         }
     }
 
@@ -233,6 +262,33 @@ impl HandoffConfig {
             },
             settle: Duration::from_secs(10),
             final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
+        }
+    }
+
+    /// Create a config for Titan V catalyst handoff via selectively un-NOPed nvidia-470.
+    ///
+    /// Uses the catalyst patch set (`nvidia_catalyst_handoff`) which removes
+    /// `nv_cap_init` and `nv_cap_drv_init` from the NOP set, allowing RM to
+    /// fully initialize the compute pipeline (SEC2/ACR/PMU/GPCCS/FECS/TPC).
+    /// The pipeline captures BAR0 state while the catalyst owns the GPU,
+    /// then warm-swaps to vfio-pci and classifies.
+    #[must_use]
+    pub fn nvidia_catalyst_titanv(bdf: &str) -> Self {
+        Self {
+            bdf: bdf.into(),
+            seeder_driver: "nvsov".into(),
+            module_name: "nvsov".into(),
+            module_source: ModuleSourceConfig::DkmsPatched {
+                dkms_module: "nvidia".into(),
+                dkms_version: "470.256.02".into(),
+                patch_set: "nvidia_catalyst_handoff".into(),
+            },
+            settle: Duration::from_secs(15),
+            final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
         }
     }
 
@@ -244,6 +300,7 @@ impl HandoffConfig {
             "nouveau_k80" => Some(Self::nouveau_k80(bdf)),
             "nvidia_titanv" => Some(Self::nvidia_titanv(bdf)),
             "nvidia_patched_titanv" => Some(Self::nvidia_patched_titanv(bdf)),
+            "nvidia_catalyst_titanv" => Some(Self::nvidia_catalyst_titanv(bdf)),
             _ => None,
         }
     }
@@ -267,9 +324,12 @@ pub fn execute_handoff(
     let overall = Instant::now();
     let deadline = guarded_sysfs::HANDOFF_DEADLINE;
     let mut steps = Vec::new();
-    let module_loaded;
+    let mut module_loaded = false;
     let mut patch_result = None;
     let mut sibling_state: Vec<(String, Option<String>)> = Vec::new();
+    let mut catalyst_snapshot_path: Option<String> = None;
+    let mut catalyst_alive_count: Option<usize> = None;
+    let mut catalyst_tier: Option<TierEvidence> = None;
 
     // ── Step 0: Pre-flight checks ───────────────────────────────────
 
@@ -288,65 +348,73 @@ pub fn execute_handoff(
         }
     };
 
-    // 0b. Module stuck state check
-    if guarded_sysfs::is_module_stuck(&config.module_name) {
-        steps.push(HandoffStep {
-            name: "preflight".into(), ok: false,
-            detail: Some(format!(
-                "module '{}' is stuck (Unloading/negative refcount) — reboot required",
-                config.module_name
-            )),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
+    if config.skip_preflight {
+        tracing::warn!("skip_preflight=true — skipping module stuck, IOMMU, and kernel health checks");
+    } else {
+        // 0b. Module stuck state check
+        if guarded_sysfs::is_module_stuck(&config.module_name) {
+            steps.push(HandoffStep {
+                name: "preflight".into(), ok: false,
+                detail: Some(format!(
+                    "module '{}' is stuck (Unloading/negative refcount) — reboot required",
+                    config.module_name
+                )),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
 
-        return halt_result(&config.bdf, "preflight", steps, None, false, false, overall, &[], &config.module_name, false);
-    }
+            return halt_result(&config.bdf, "preflight", steps, None, false, false, overall, &[], &config.module_name, false);
+        }
 
-    // 0c. IOMMU group availability
-    if let Err(e) = guarded_sysfs::iommu_group_ready(&config.bdf) {
-        steps.push(HandoffStep {
-            name: "preflight".into(), ok: false,
-            detail: Some(format!("IOMMU group not ready: {e}")),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
+        // 0c. IOMMU group availability
+        if let Err(e) = guarded_sysfs::iommu_group_ready(&config.bdf) {
+            steps.push(HandoffStep {
+                name: "preflight".into(), ok: false,
+                detail: Some(format!("IOMMU group not ready: {e}")),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
 
-        return halt_result(&config.bdf, "preflight", steps, None, false, false, overall, &[], &config.module_name, false);
-    }
+            return halt_result(&config.bdf, "preflight", steps, None, false, false, overall, &[], &config.module_name, false);
+        }
 
-    // 0d. Kernel build environment health (only for module sources that compile/load)
-    if !matches!(config.module_source, ModuleSourceConfig::System) {
-        match kernel_health::full_kernel_health_check() {
-            Ok(report) => {
-                if !report.layout_matches {
-                    tracing::error!(
-                        diagnosis = %report.diagnosis,
-                        "kernel build environment unhealthy — module loading will fail"
+        // 0d. Kernel build environment health (only for module sources that compile/load)
+        if !matches!(config.module_source, ModuleSourceConfig::System) {
+            match kernel_health::full_kernel_health_check() {
+                Ok(report) => {
+                    if !report.layout_matches {
+                        tracing::error!(
+                            diagnosis = %report.diagnosis,
+                            "kernel build environment unhealthy — module loading will fail"
+                        );
+                        steps.push(HandoffStep {
+                            name: "preflight".into(), ok: false,
+                            detail: Some(format!(
+                                "kernel health check failed: {}",
+                                report.diagnosis
+                            )),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return halt_result(&config.bdf, "preflight", steps, None, false, false, overall, &[], &config.module_name, false);
+                    }
+                    tracing::info!(
+                        autoconf_fresh = report.autoconf_fresh,
+                        exit_offset = report.struct_module_exit_offset,
+                        "kernel health check passed"
                     );
-                    steps.push(HandoffStep {
-                        name: "preflight".into(), ok: false,
-                        detail: Some(format!(
-                            "kernel health check failed: {}",
-                            report.diagnosis
-                        )),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-                    return halt_result(&config.bdf, "preflight", steps, None, false, false, overall, &[], &config.module_name, false);
                 }
-                tracing::info!(
-                    autoconf_fresh = report.autoconf_fresh,
-                    exit_offset = report.struct_module_exit_offset,
-                    "kernel health check passed"
-                );
-            }
-            Err(e) => {
-                tracing::warn!(err = %e, "kernel health check could not run — proceeding with caution");
+                Err(e) => {
+                    tracing::warn!(err = %e, "kernel health check could not run — proceeding with caution");
+                }
             }
         }
     }
 
     steps.push(HandoffStep {
         name: "preflight".into(), ok: true,
-        detail: Some("module clean, IOMMU group free, no concurrent handoff, kernel healthy".into()),
+        detail: Some(if config.skip_preflight {
+            "preflight skipped (skip_preflight=true)".into()
+        } else {
+            "module clean, IOMMU group free, no concurrent handoff, kernel healthy".into()
+        }),
         duration_ms: t.elapsed().as_millis() as u64,
     });
 
@@ -371,16 +439,29 @@ pub fn execute_handoff(
                 }
             }
 
-            let ps = match PatchSet::by_name(patch_set) {
-                Some(ps) => ps,
-                None => {
-                    steps.push(HandoffStep {
-                        name: "module_prep".into(), ok: false,
-                        detail: Some(format!("unknown patch set: {patch_set}")),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-            
-                    return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+            let ps = if let Some(ref json) = config.patch_set_override {
+                match PatchSet::from_json(json) {
+                    Ok(ps) => ps,
+                    Err(e) => {
+                        steps.push(HandoffStep {
+                            name: "module_prep".into(), ok: false,
+                            detail: Some(format!("invalid patch_set_override JSON: {e}")),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+                    }
+                }
+            } else {
+                match PatchSet::by_name(patch_set) {
+                    Some(ps) => ps,
+                    None => {
+                        steps.push(HandoffStep {
+                            name: "module_prep".into(), ok: false,
+                            detail: Some(format!("unknown patch set: {patch_set}")),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+                    }
                 }
             };
 
@@ -467,16 +548,29 @@ pub fn execute_handoff(
                 }
             }
 
-            let ps = match PatchSet::by_name(patch_set) {
-                Some(ps) => ps,
-                None => {
-                    steps.push(HandoffStep {
-                        name: "module_prep".into(), ok: false,
-                        detail: Some(format!("unknown patch set: {patch_set}")),
-                        duration_ms: t.elapsed().as_millis() as u64,
-                    });
-
-                    return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+            let ps = if let Some(ref json) = config.patch_set_override {
+                match PatchSet::from_json(json) {
+                    Ok(ps) => ps,
+                    Err(e) => {
+                        steps.push(HandoffStep {
+                            name: "module_prep".into(), ok: false,
+                            detail: Some(format!("invalid patch_set_override JSON: {e}")),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+                    }
+                }
+            } else {
+                match PatchSet::by_name(patch_set) {
+                    Some(ps) => ps,
+                    None => {
+                        steps.push(HandoffStep {
+                            name: "module_prep".into(), ok: false,
+                            detail: Some(format!("unknown patch set: {patch_set}")),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                        return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+                    }
                 }
             };
 
@@ -499,23 +593,87 @@ pub fn execute_handoff(
                 None
             };
 
-            match module_patch::patch_module_with_rename(&stock_path, &ps, rename_pair) {
-                Ok(pr) => {
-                    let patched_path = PathBuf::from(&pr.patched_path);
-                    patch_result = Some(pr);
-
-                    if let Err(e) = guarded_sysfs::insmod_guarded(
-                        &patched_path, guarded_sysfs::INSMOD_TIMEOUT,
-                    ) {
-                        steps.push(HandoffStep {
-                            name: "module_prep".into(), ok: false,
-                            detail: Some(format!("guarded insmod DKMS module failed: {e}")),
-                            duration_ms: t.elapsed().as_millis() as u64,
-                        });
-
-                        return halt_result(&config.bdf, "module_prep", steps, patch_result, false, false, overall, &[], &config.module_name, false);
+            // For dual-load (renamed) modules, run objcopy BEFORE patching.
+            // This strips __ksymtab export sections that cause "duplicate
+            // symbol" errors, and ensures that all subsequent ELF
+            // manipulation (normalization, NOPs, relocation nullification)
+            // operates on the final ELF layout.
+            let patch_source = if rename_pair.is_some() {
+                let staging = PathBuf::from(format!(
+                    "/tmp/toadstool-staging-{}.ko", config.module_name
+                ));
+                if let Err(e) = std::fs::copy(&stock_path, &staging) {
+                    steps.push(HandoffStep {
+                        name: "module_prep".into(), ok: false,
+                        detail: Some(format!("failed to copy DKMS module to staging: {e}")),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                    return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
+                }
+                let strip_result = std::process::Command::new("objcopy")
+                    .arg("--remove-section=__ksymtab")
+                    .arg("--remove-section=__kcrctab")
+                    .arg("--remove-section=__ksymtab_strings")
+                    .arg("--remove-section=.rela__ksymtab")
+                    .arg(staging.as_os_str())
+                    .output();
+                match strip_result {
+                    Ok(out) if out.status.success() => {
+                        tracing::info!(
+                            path = %staging.display(),
+                            "pre-patch: stripped ksymtab export sections via objcopy"
+                        );
                     }
-                    module_loaded = true;
+                    Ok(out) => {
+                        tracing::warn!(
+                            stderr = %String::from_utf8_lossy(&out.stderr),
+                            "objcopy ksymtab strip returned non-zero (continuing)"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "objcopy not available for ksymtab strip (continuing)"
+                        );
+                    }
+                }
+                staging
+            } else {
+                stock_path.clone()
+            };
+
+            // For dual-load (renamed) modules, the nvidia proprietary
+            // driver probes PCI during init. The target GPU must be unbound
+            // from vfio-pci BEFORE insmod so the driver can find it.
+            // We defer insmod to after the unbind step below.
+            let deferred_insmod = rename_pair.is_some();
+
+            match module_patch::patch_module_with_rename(&patch_source, &ps, rename_pair) {
+                Ok(pr) => {
+                    // Clean up staging file
+                    if rename_pair.is_some() {
+                        let staging = PathBuf::from(format!(
+                            "/tmp/toadstool-staging-{}.ko", config.module_name
+                        ));
+                        let _ = std::fs::remove_file(&staging);
+                    }
+
+                    if !deferred_insmod {
+                        let patched_path = PathBuf::from(&pr.patched_path);
+                        if let Err(e) = guarded_sysfs::insmod_guarded(
+                            &patched_path, guarded_sysfs::INSMOD_TIMEOUT,
+                        ) {
+                            steps.push(HandoffStep {
+                                name: "module_prep".into(), ok: false,
+                                detail: Some(format!("guarded insmod DKMS module failed: {e}")),
+                                duration_ms: t.elapsed().as_millis() as u64,
+                            });
+                            patch_result = Some(pr);
+                            return halt_result(&config.bdf, "module_prep", steps, patch_result, false, false, overall, &[], &config.module_name, false);
+                        }
+                        module_loaded = true;
+                    }
+                    patch_result = Some(pr);
                 }
                 Err(e) => {
                     steps.push(HandoffStep {
@@ -529,10 +687,11 @@ pub fn execute_handoff(
             }
 
             let patch_detail = patch_result.as_ref()
-                .map(|pr| format!("DKMS patched module loaded ({}/{} patches, {})",
+                .map(|pr| format!("DKMS patched module {} ({}/{} patches, {})",
+                    if deferred_insmod { "prepared" } else { "loaded" },
                     pr.applied_count, pr.total_count,
                     rename_pair.map(|(o, n)| format!("renamed {o}→{n}")).unwrap_or_else(|| "no rename".into())))
-                .unwrap_or_else(|| "DKMS patched module loaded".into());
+                .unwrap_or_else(|| "DKMS patched module prepared".into());
             steps.push(HandoffStep {
                 name: "module_prep".into(), ok: true,
                 detail: Some(patch_detail),
@@ -625,6 +784,99 @@ pub fn execute_handoff(
     // Device has been unbound — rollback must restore to vfio-pci on any failure
     let needs_device_rollback = true;
 
+    // ── Deferred insmod for dual-load ───────────────────────────────
+    // The GPU is now unbound from vfio-pci. Set driver_override to our
+    // renamed module name so the kernel binds this device to our module
+    // (not the host nvidia) when we insmod.
+    if let ModuleSourceConfig::DkmsPatched { .. } = &config.module_source {
+        if !module_loaded {
+            if let Some(ref pr) = patch_result {
+                // Disable the PCI device so the kernel releases its
+                // BAR resource claims. Without this, nvidia's direct
+                // request_mem_region call on BAR0 fails because the
+                // PCI subsystem still has the region reserved from the
+                // previous driver's pci_enable_device.
+                let enable_path = crate::linux_paths::sysfs_pci_device_file(
+                    &config.bdf, "enable",
+                );
+                if let Err(e) = guarded_sysfs::sysfs_write_guarded(
+                    &enable_path, "0",
+                    guarded_sysfs::UNBIND_TIMEOUT,
+                ) {
+                    tracing::warn!(bdf = config.bdf.as_str(), error = %e,
+                        "pci disable failed (continuing — request_mem_region may fail)");
+                } else {
+                    tracing::info!(bdf = config.bdf.as_str(),
+                        "pci device disabled — BAR resources released for driver takeover");
+                }
+
+                let override_path = crate::linux_paths::sysfs_pci_device_file(
+                    &config.bdf, "driver_override",
+                );
+                if let Err(e) = guarded_sysfs::sysfs_write_guarded(
+                    &override_path, &config.module_name,
+                    guarded_sysfs::UNBIND_TIMEOUT,
+                ) {
+                    tracing::warn!(error = %e, "driver_override write failed (continuing)");
+                }
+
+                let patched_path = PathBuf::from(&pr.patched_path);
+                let t = Instant::now();
+                match guarded_sysfs::insmod_guarded(&patched_path, guarded_sysfs::INSMOD_TIMEOUT) {
+                    Ok(()) => {
+                        module_loaded = true;
+                        // Trigger re-probe so the device binds to our module
+                        let probe_path = format!(
+                            "/sys/bus/pci/drivers/{}/bind", config.module_name
+                        );
+                        let _ = guarded_sysfs::sysfs_write_guarded(
+                            &probe_path, &config.bdf,
+                            guarded_sysfs::PROBE_TIMEOUT,
+                        );
+                        steps.push(HandoffStep {
+                            name: "deferred_insmod".into(), ok: true,
+                            detail: Some(format!("dual-load module loaded + bound via driver_override")),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+                    }
+                    Err(e) => {
+                        let poisoned = matches!(
+                            e, guarded_sysfs::GuardedSysfsError::KmodTimeout { .. }
+                        );
+
+                        if poisoned {
+                            tracing::error!(bdf = config.bdf.as_str(),
+                                "insmod TIMED OUT — device likely D-state poisoned. \
+                                 Skipping all sysfs ops to protect ember.");
+                        } else {
+                            // Safe to touch sysfs — insmod failed fast (e.g. ENODEV, EBUSY)
+                            let _ = guarded_sysfs::sysfs_write_guarded(
+                                &override_path, "",
+                                guarded_sysfs::UNBIND_TIMEOUT,
+                            );
+                        }
+
+                        steps.push(HandoffStep {
+                            name: "deferred_insmod".into(), ok: false,
+                            detail: Some(format!("deferred insmod failed: {e}")),
+                            duration_ms: t.elapsed().as_millis() as u64,
+                        });
+
+                        if poisoned {
+                            return halt_result_poisoned(
+                                &config.bdf, "deferred_insmod", steps, patch_result,
+                                false, false, overall, &sibling_state,
+                                &config.module_name, true);
+                        }
+                        return halt_result(&config.bdf, "deferred_insmod", steps, patch_result,
+                                           false, false, overall, &sibling_state,
+                                           &config.module_name, true);
+                    }
+                }
+            }
+        }
+    }
+
     // ── Step 3: Bind seeder driver (GUARDED) ────────────────────────
 
     let t = Instant::now();
@@ -690,6 +942,78 @@ pub fn execute_handoff(
 
         return deadline_exceeded(&config.bdf, steps, patch_result, module_loaded,
                                  &config.module_name, &sibling_state, overall);
+    }
+
+    // ── Step 4b: Catalyst Capture (if catalyst strategy) ──────────
+    //
+    // While the catalyst driver owns the GPU and has fully initialized
+    // the compute pipeline, capture BAR0 state for preservation.
+    // This is the "golden snapshot" — the catalyst's product.
+
+    let is_catalyst = matches!(
+        &config.module_source,
+        ModuleSourceConfig::DkmsPatched { patch_set, .. }
+            if patch_set == "nvidia_catalyst_handoff"
+    );
+
+    if is_catalyst {
+        let t = Instant::now();
+        let bar0_size = 16 * 1024 * 1024; // 16 MiB
+        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, bar0_size) {
+            Ok(catalyst_bar0) => {
+                // Quick targeted reads: tier classification + sovereign snapshot.
+                // These read ~20 specific registers and complete in microseconds.
+                // The full 16MB capture is deferred to after warm swap (back on
+                // vfio-pci), because bulk MMIO reads while the nvidia RM is
+                // active can hit PRI fault regions and hang the thread.
+                let sovereign_snap = crate::vfio::sovereign_stages::SovereignSnapshot::capture(&catalyst_bar0);
+                let tier_ev = classify_tier(&catalyst_bar0);
+
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    tier = ?tier_ev.tier,
+                    pmc_enable = format_args!("{:#010x}", tier_ev.pmc_enable),
+                    tpc_alive = tier_ev.tpc_alive,
+                    "catalyst capture: tier evidence while catalyst owns GPU"
+                );
+
+                tracing::info!(
+                    pmc_enable = format_args!("{:#010x}", sovereign_snap.pmc_enable),
+                    fecs_cpuctl = format_args!("{:#010x}", sovereign_snap.fecs_cpuctl),
+                    fecs_pc = format_args!("{:#010x}", sovereign_snap.fecs_pc),
+                    gpccs_cpuctl = format_args!("{:#010x}", sovereign_snap.gpccs_cpuctl),
+                    pmu_cpuctl = format_args!("{:#010x}", sovereign_snap.pmu_cpuctl),
+                    pgraph_status = format_args!("{:#010x}", sovereign_snap.pgraph_status),
+                    "catalyst capture: sovereign snapshot registers (pre-swap)"
+                );
+
+                catalyst_tier = Some(tier_ev);
+
+                // Drop the BAR0 mapping before warm swap to release the fd
+                drop(catalyst_bar0);
+
+                steps.push(HandoffStep {
+                    name: "catalyst_capture".into(), ok: true,
+                    detail: Some(format!(
+                        "pre-swap tier={:?} (full capture deferred to post-swap)",
+                        catalyst_tier.as_ref().map(|t| &t.tier),
+                    )),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                tracing::warn!(
+                    bdf = config.bdf.as_str(),
+                    err = %e,
+                    "catalyst capture: failed to open BAR0 — skipping capture"
+                );
+                steps.push(HandoffStep {
+                    name: "catalyst_capture".into(), ok: false,
+                    detail: Some(format!("BAR0 open failed: {e}")),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
     }
 
     // ── Step 5: Pin bridges + disable FLR ───────────────────────────
@@ -805,6 +1129,157 @@ pub fn execute_handoff(
         }
     };
 
+    // ── Step 7a: Deferred catalyst full capture ───────────────────
+    //
+    // The full 16MB BAR0 snapshot is deferred to here (post warm swap)
+    // because bulk MMIO reads while the nvidia RM was active caused
+    // thread hangs from PRI fault regions. Now that the device is back
+    // on vfio-pci, sysfs resource0 reads are safe and the GPU registers
+    // still hold the catalyst driver's initialized state (warm preserved).
+
+    if is_catalyst {
+        let t = Instant::now();
+        let bar0_size = 16 * 1024 * 1024;
+        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, bar0_size) {
+            Ok(post_swap_bar0) => {
+                let full_snapshot = Bar0Snapshot::capture_full(
+                    &post_swap_bar0, &config.bdf, "catalyst-post-swap", bar0_size,
+                );
+                let alive = full_snapshot.alive_count();
+
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    total_regs = full_snapshot.len(),
+                    alive_regs = alive,
+                    "catalyst capture: full BAR0 snapshot (post-swap, vfio-pci safe)"
+                );
+
+                let snapshot_path = format!(
+                    "/tmp/toadstool-catalyst-{}.json",
+                    config.bdf.replace(':', "-").replace('.', "-")
+                );
+                if let Ok(json) = full_snapshot.to_json() {
+                    if let Err(e) = std::fs::write(&snapshot_path, &json) {
+                        tracing::warn!(err = %e, path = snapshot_path.as_str(),
+                                       "catalyst capture: failed to persist snapshot");
+                    } else {
+                        tracing::info!(path = snapshot_path.as_str(),
+                                       bytes = json.len(),
+                                       "catalyst capture: snapshot persisted");
+                        catalyst_snapshot_path = Some(snapshot_path.clone());
+                    }
+                }
+
+                let replay = full_snapshot.to_catalyst_replay(
+                    crate::nv::gr_init::ChipFamily::Volta,
+                    "470.256.02",
+                    &crate::nv::pri::VOLTA_BAR0_DOMAINS,
+                );
+                let replay_path = format!(
+                    "/tmp/toadstool-catalyst-replay-{}.json",
+                    config.bdf.replace(':', "-").replace('.', "-")
+                );
+                if let Ok(json) = replay.to_json() {
+                    if let Err(e) = std::fs::write(&replay_path, &json) {
+                        tracing::warn!(err = %e, "catalyst capture: failed to persist replay");
+                    } else {
+                        tracing::info!(
+                            path = replay_path.as_str(),
+                            writes = replay.len(),
+                            domains = replay.domains().len(),
+                            "catalyst capture: replay sequence persisted"
+                        );
+                    }
+                }
+
+                catalyst_alive_count = Some(alive);
+
+                steps.push(HandoffStep {
+                    name: "catalyst_full_capture".into(), ok: true,
+                    detail: Some(format!(
+                        "BAR0 post-swap: {} alive regs, snapshot={}",
+                        alive,
+                        catalyst_snapshot_path.as_deref().unwrap_or("none"),
+                    )),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                tracing::warn!(
+                    bdf = config.bdf.as_str(),
+                    err = %e,
+                    "catalyst capture: post-swap BAR0 open failed"
+                );
+                steps.push(HandoffStep {
+                    name: "catalyst_full_capture".into(), ok: false,
+                    detail: Some(format!("post-swap BAR0 open failed: {e}")),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
+    }
+
+    // ── Step 7b: Catalyst Preservation ────────────────────────────
+    //
+    // For catalyst strategies: archive the patched .ko (frozen starter)
+    // and recipe JSON before module cleanup deletes the tmpfile.
+
+    if is_catalyst {
+        if let Some(ref pr) = patch_result {
+            let t = Instant::now();
+            let frozen_dir = "/var/lib/toadstool/catalysts/frozen";
+            let _ = std::fs::create_dir_all(frozen_dir);
+            let krel = std::process::Command::new("uname")
+                .arg("-r")
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap_or_else(|_| "unknown".into());
+            let frozen_dest = format!(
+                "{}/nvsov_gv100_470.256.02_k{}.ko",
+                frozen_dir, krel,
+            );
+            match std::fs::copy(&pr.patched_path, &frozen_dest) {
+                Ok(bytes) => {
+                    tracing::info!(
+                        src = pr.patched_path.as_str(),
+                        dest = frozen_dest.as_str(),
+                        bytes,
+                        "catalyst preserve: frozen .ko archived"
+                    );
+                    steps.push(HandoffStep {
+                        name: "catalyst_preserve".into(), ok: true,
+                        detail: Some(format!("frozen .ko: {} ({bytes} bytes)", frozen_dest)),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!(err = %e, "catalyst preserve: failed to archive frozen .ko");
+                    steps.push(HandoffStep {
+                        name: "catalyst_preserve".into(), ok: false,
+                        detail: Some(format!("frozen .ko copy failed: {e}")),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                }
+            }
+
+            // Persist recipe JSON (PatchSet serialization)
+            let recipe_dir = "/var/lib/toadstool/catalysts/recipes";
+            let _ = std::fs::create_dir_all(recipe_dir);
+            let patch_set_name = match &config.module_source {
+                ModuleSourceConfig::DkmsPatched { patch_set, .. } => patch_set.clone(),
+                ModuleSourceConfig::Patched { patch_set, .. } => patch_set.clone(),
+                ModuleSourceConfig::System => "system".into(),
+            };
+            if let Some(ps) = module_patch::PatchSet::by_name(&patch_set_name) {
+                if let Ok(json) = ps.to_json() {
+                    let recipe_path = format!("{recipe_dir}/gv100_nvidia470_patchset.json");
+                    let _ = std::fs::write(&recipe_path, &json);
+                    tracing::info!(path = recipe_path.as_str(), "catalyst preserve: recipe JSON persisted");
+                }
+            }
+        }
+    }
+
     // ── Step 8: Module Cleanup (GUARDED) ────────────────────────────
 
     let mut module_unloaded = false;
@@ -832,6 +1307,12 @@ pub fn execute_handoff(
         }
     }
 
+    // ── Step 9: Restore FLR ───────────────────────────────────────────
+    //
+    // Re-enable default PCI reset methods so that subsequent cold resets
+    // (e.g. VFIO group teardown) can issue FLR normally.
+    guarded_sysfs::restore_flr(&config.bdf);
+
     // _handoff_guard drops here, releasing the per-BDF lock
 
     HandoffResult {
@@ -843,6 +1324,9 @@ pub fn execute_handoff(
         tier,
         module_loaded,
         module_unloaded,
+        catalyst_snapshot_path,
+        catalyst_alive_count,
+        catalyst_tier,
         total_ms: overall.elapsed().as_millis() as u64,
     }
 }
@@ -867,15 +1351,51 @@ fn halt_result(
     module_name: &str,
     needs_device_rollback: bool,
 ) -> HandoffResult {
+    halt_result_inner(bdf, halted_at, steps, patch_result, module_loaded,
+                      module_unloaded, start, sibling_state, module_name,
+                      needs_device_rollback, false)
+}
+
+fn halt_result_poisoned(
+    bdf: &str,
+    halted_at: &str,
+    mut steps: Vec<HandoffStep>,
+    patch_result: Option<ModulePatchResult>,
+    module_loaded: bool,
+    module_unloaded: bool,
+    start: Instant,
+    sibling_state: &[(String, Option<String>)],
+    module_name: &str,
+    needs_device_rollback: bool,
+) -> HandoffResult {
+    halt_result_inner(bdf, halted_at, steps, patch_result, module_loaded,
+                      module_unloaded, start, sibling_state, module_name,
+                      needs_device_rollback, true)
+}
+
+fn halt_result_inner(
+    bdf: &str,
+    halted_at: &str,
+    mut steps: Vec<HandoffStep>,
+    patch_result: Option<ModulePatchResult>,
+    module_loaded: bool,
+    module_unloaded: bool,
+    start: Instant,
+    sibling_state: &[(String, Option<String>)],
+    module_name: &str,
+    needs_device_rollback: bool,
+    device_poisoned: bool,
+) -> HandoffResult {
     let needs_rollback = module_loaded || !sibling_state.is_empty() || needs_device_rollback;
     if needs_rollback {
         let t = Instant::now();
         let mod_name = if module_loaded { Some(module_name) } else { None };
-        guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state);
+        guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state, device_poisoned);
+        let kind = if device_poisoned { "poisoned-abandon" } else { "best-effort recovery" };
         steps.push(HandoffStep {
-            name: "rollback".into(), ok: true,
-            detail: Some(format!("best-effort recovery (module={}, siblings={}, device={})",
-                module_loaded, sibling_state.len(), needs_device_rollback)),
+            name: "rollback".into(), ok: !device_poisoned,
+            detail: Some(format!("{kind} (module={}, siblings={}, device={}, poisoned={})",
+                module_loaded, sibling_state.len(), needs_device_rollback, device_poisoned)),
             duration_ms: t.elapsed().as_millis() as u64,
         });
     }
@@ -889,6 +1409,9 @@ fn halt_result(
         tier: None,
         module_loaded,
         module_unloaded,
+        catalyst_snapshot_path: None,
+        catalyst_alive_count: None,
+        catalyst_tier: None,
         total_ms: start.elapsed().as_millis() as u64,
     }
 }
@@ -914,7 +1437,7 @@ fn deadline_exceeded(
     });
 
     let mod_name = if module_loaded { Some(module_name) } else { None };
-    guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state);
+    guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state, false);
 
     HandoffResult {
         bdf: bdf.into(),
@@ -925,6 +1448,9 @@ fn deadline_exceeded(
         tier: None,
         module_loaded,
         module_unloaded: false,
+        catalyst_snapshot_path: None,
+        catalyst_alive_count: None,
+        catalyst_tier: None,
         total_ms: start.elapsed().as_millis() as u64,
     }
 }
@@ -1065,6 +1591,25 @@ mod tests {
     }
 
     #[test]
+    fn nvidia_catalyst_titanv_uses_catalyst_patch_set() {
+        let cfg = HandoffConfig::nvidia_catalyst_titanv("0000:49:00.0");
+        assert!(matches!(cfg.module_source, ModuleSourceConfig::DkmsPatched { .. }));
+        assert_eq!(cfg.seeder_driver, "nvsov");
+        assert_eq!(cfg.module_name, "nvsov");
+        assert_eq!(cfg.settle.as_secs(), 15);
+        if let ModuleSourceConfig::DkmsPatched { dkms_module, dkms_version, patch_set } = &cfg.module_source {
+            assert_eq!(dkms_module, "nvidia");
+            assert_eq!(dkms_version, "470.256.02");
+            assert_eq!(patch_set, "nvidia_catalyst_handoff");
+        }
+    }
+
+    #[test]
+    fn from_strategy_resolves_catalyst() {
+        assert!(HandoffConfig::from_strategy("nvidia_catalyst_titanv", "0000:02:00.0").is_some());
+    }
+
+    #[test]
     fn handoff_result_display_success() {
         let r = HandoffResult {
             bdf: "0000:02:00.0".into(),
@@ -1083,9 +1628,14 @@ mod tests {
                 gr_status: None,
                 pbdma_intr: None,
                 ce_runlist: None,
+                tpc_status: None,
+                tpc_alive: false,
             }),
             module_loaded: true,
             module_unloaded: true,
+            catalyst_snapshot_path: None,
+            catalyst_alive_count: None,
+            catalyst_tier: None,
             total_ms: 6000,
         };
         let s = r.to_string();
@@ -1104,6 +1654,9 @@ mod tests {
             tier: None,
             module_loaded: false,
             module_unloaded: false,
+            catalyst_snapshot_path: None,
+            catalyst_alive_count: None,
+            catalyst_tier: None,
             total_ms: 100,
         };
         let s = r.to_string();
@@ -1126,6 +1679,9 @@ mod tests {
             tier: None,
             module_loaded: true,
             module_unloaded: true,
+            catalyst_snapshot_path: None,
+            catalyst_alive_count: None,
+            catalyst_tier: None,
             total_ms: 5000,
         };
         let json = serde_json::to_string(&r).unwrap();

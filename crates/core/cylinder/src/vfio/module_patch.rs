@@ -29,9 +29,35 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use serde::{Deserialize, Serialize};
+
+/// Abstraction over symbol resolution for `.ko` files.
+///
+/// Separates the mechanism of finding symbol offsets from the patching logic,
+/// enabling alternative implementations (e.g. pure-Rust ELF parsing) without
+/// touching the patcher.
+pub trait SymbolResolver {
+    fn resolve(&self, ko_path: &Path) -> Result<HashMap<String, u64>, PatchError>;
+}
+
+/// Symbol resolver backed by the `nm` command-line tool.
+///
+/// Delegates to [`crate::vfio::kmod::nm_text_symbols`] — the canonical
+/// implementation — to avoid duplication.
+pub struct NmResolver;
+
+impl SymbolResolver for NmResolver {
+    fn resolve(&self, ko_path: &Path) -> Result<HashMap<String, u64>, PatchError> {
+        let syms = crate::vfio::kmod::nm_text_symbols(ko_path).map_err(|e| {
+            PatchError::NmFailed {
+                path: ko_path.display().to_string(),
+                detail: format!("{e}"),
+            }
+        })?;
+        Ok(syms.into_iter().collect())
+    }
+}
 
 /// How to patch a function's entry point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,6 +71,28 @@ pub enum PatchStrategy {
     /// displacement target (which occupies bytes 1-4).
     /// Use for functions where `RetAfterFtrace` hits a relocation at +5.
     RetAtEntry,
+    /// Like `RetAtEntry` but returns 1 instead of 0. Uses `xor eax,eax;
+    /// inc eax; ret` (4 bytes: `31 c0 ff c0 c3`). For nvidia functions
+    /// where 0 signals failure (e.g. `nv_cap_init` returns an opaque handle).
+    Ret1AtEntry,
+    /// NOP a `call` instruction at a fixed byte offset from function entry.
+    /// Writes `xor eax,eax; 0f 1f 00` (5 bytes: 31 c0 0f 1f 00) to make
+    /// the call a no-op that returns 0 in eax. Used to suppress specific
+    /// kernel API calls (e.g., __register_chrdev) inside a function we
+    /// cannot fully stub.
+    NopCallAt(usize),
+    /// Patch a single byte at a fixed offset from function entry. Used to
+    /// change an immediate argument (e.g. chrdev major number) without
+    /// disturbing relocations. The call itself remains intact so the
+    /// kernel module loader fills in the target address normally.
+    PatchByteAt {
+        /// Byte offset from function entry.
+        fn_offset: usize,
+        /// Expected original byte (for verification).
+        expected: u8,
+        /// Replacement byte.
+        replacement: u8,
+    },
 }
 
 /// A single function to patch in a kernel module.
@@ -182,6 +230,7 @@ impl PatchSet {
             name: "nvidia_warm_handoff".into(),
             module_name: "nvidia".into(),
             targets: vec![
+                // Teardown NOPs — preserve GPU state on unbind
                 PatchTarget {
                     symbol: "nv_pci_remove".into(),
                     strategy: PatchStrategy::RetAtEntry,
@@ -206,6 +255,155 @@ impl PatchSet {
                     symbol: "fecsBufferTeardown".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
+                // Co-load isolation NOPs — prevent conflicts with host nvidia.
+                // nv_cap_init returns an opaque handle; nvidia_init_module
+                // treats 0 as failure. Use Ret1AtEntry so the init check
+                // passes while skipping the procfs registration that
+                // conflicts with host nvidia's /proc/driver/nvidia/.
+                PatchTarget {
+                    symbol: "nv_cap_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_drv_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_procfs_init".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // nvidia_register_module must run — it populates the
+                // module instance table that nv_pci_probe needs.
+                PatchTarget {
+                    symbol: "nv_cap_procfs_init".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // nvlink/nvswitch subsystem procfs conflicts
+                PatchTarget {
+                    symbol: "nvlink_core_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nvswitch_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                // ACPI init tries to register duplicate handlers
+                PatchTarget {
+                    symbol: "nv_acpi_init".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // Cap subsystem stubs — RM calls these but we NOPed
+                // the init; return NULL so RM skips cap operations.
+                PatchTarget {
+                    symbol: "nv_cap_create_dir_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_create_file_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_destroy_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // NOP the __register_chrdev call inside init_module
+                // (nvidia_frontend_init_module). Host nvidia owns major 195;
+                // a second registration fails, causing module init failure.
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::NopCallAt(0x7f),
+                },
+            ],
+            min_applied: 1,
+        }
+    }
+
+    /// Catalyst variant — allows RM capability table creation for full
+    /// GPU compute init. Removes `nv_cap_init` and `nv_cap_drv_init`
+    /// from the NOP set so RM's internal cap handles are real, while
+    /// keeping procfs/chardev isolation NOPs to prevent host conflicts.
+    pub fn nvidia_catalyst_handoff() -> Self {
+        Self {
+            name: "nvidia_catalyst_handoff".into(),
+            module_name: "nvidia".into(),
+            targets: vec![
+                // Teardown NOPs — preserve GPU state on unbind
+                PatchTarget {
+                    symbol: "nv_pci_remove".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "gpuStateUnload_IMPL".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "gpuStateDestroy_IMPL".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "_deviceTeardown".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "clTeardown_IMPL".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "fecsBufferTeardown".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // Co-load isolation NOPs — prevent host conflicts.
+                // nv_cap_init and nv_cap_drv_init are REMOVED vs
+                // nvidia_warm_handoff — RM capability tables must
+                // initialize for full engine init (SEC2/ACR/PMU/
+                // GPCCS/FECS/TPC).
+                PatchTarget {
+                    symbol: "nv_procfs_init".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_procfs_init".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nvlink_core_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nvswitch_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_acpi_init".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_create_dir_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_create_file_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_destroy_entry".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // Remap chrdev major 195→185 in the __register_chrdev
+                // call inside init_module. Host nvidia owns major 195;
+                // changing the immediate avoids conflict without NOP-ing
+                // the call, so RM's chardev is created (major 185) and
+                // userspace can trigger GPU init via device open.
+                // Layout: `bf c3 00 00 00` = `mov $0xc3, %edi` at fn+0x7a;
+                // the immediate 0xC3 is at fn+0x7b.
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x7b,
+                        expected: 0xC3,
+                        replacement: 0xB9,
+                    },
+                },
             ],
             min_applied: 1,
         }
@@ -218,8 +416,22 @@ impl PatchSet {
             "volta_warm_handoff" => Some(Self::volta_warm_handoff()),
             "kepler_warm_handoff" => Some(Self::kepler_warm_handoff()),
             "nvidia_warm_handoff" => Some(Self::nvidia_warm_handoff()),
+            "nvidia_catalyst_handoff" => Some(Self::nvidia_catalyst_handoff()),
             _ => None,
         }
+    }
+
+    /// Deserialize a patch set from a JSON string.
+    ///
+    /// Enables runtime-defined patch sets — experiments can iterate on
+    /// target lists and strategies without recompiling.
+    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(json)
+    }
+
+    /// Serialize to JSON for recipe persistence.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
     }
 }
 
@@ -293,40 +505,95 @@ pub struct ModulePatchResult {
     pub total_count: usize,
 }
 
-/// Resolve text symbol offsets in a `.ko` file via `nm`.
+/// Resolve text symbol offsets in a `.ko` file.
 ///
-/// Returns a map of symbol_name → file_offset for all defined text symbols.
+/// Delegates to [`NmResolver`] (backed by `kmod::nm_text_symbols`).
 fn resolve_symbols(ko_path: &Path) -> Result<HashMap<String, u64>, PatchError> {
-    let output = Command::new("nm")
-        .args(["--defined-only", "-n"])
-        .arg(ko_path)
-        .output()
-        .map_err(|e| PatchError::NmFailed {
-            path: ko_path.display().to_string(),
-            detail: format!("failed to execute nm: {e}"),
-        })?;
+    NmResolver.resolve(ko_path)
+}
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(PatchError::NmFailed {
-            path: ko_path.display().to_string(),
-            detail: stderr.trim().to_string(),
-        });
+/// Resolve symbol FILE offsets by parsing ELF structures directly.
+///
+/// Unlike `nm` (which returns section-relative virtual addresses), this
+/// computes the actual byte offset within the `.ko` file by adding the
+/// symbol's st_value to the target section's sh_offset. This correctly
+/// handles symbols in .text, .init.text, and any other section.
+fn resolve_symbol_file_offsets(elf: &[u8]) -> HashMap<String, u64> {
+    let mut result = HashMap::new();
+    if elf.len() < 64 { return result; }
+
+    let e_shoff = u64::from_le_bytes(elf[40..48].try_into().unwrap_or([0; 8])) as usize;
+    let e_shentsize = u16::from_le_bytes(elf[58..60].try_into().unwrap_or([0; 2])) as usize;
+    let e_shnum = u16::from_le_bytes(elf[60..62].try_into().unwrap_or([0; 2])) as usize;
+
+    if e_shentsize == 0 || e_shoff == 0 || e_shnum == 0 { return result; }
+
+    const SHT_SYMTAB: u32 = 2;
+    const STT_FUNC: u8 = 2;
+    const STB_GLOBAL: u8 = 1;
+
+    // Build section offset table: section_index -> sh_offset
+    let mut section_offsets = Vec::with_capacity(e_shnum);
+    for i in 0..e_shnum {
+        let sh = e_shoff + i * e_shentsize;
+        if sh + 32 > elf.len() {
+            section_offsets.push(0u64);
+            continue;
+        }
+        let off = u64::from_le_bytes(elf[sh + 24..sh + 32].try_into().unwrap_or([0; 8]));
+        section_offsets.push(off);
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut symbols = HashMap::new();
+    // Find symtab section
+    for i in 0..e_shnum {
+        let sh = e_shoff + i * e_shentsize;
+        if sh + e_shentsize > elf.len() { break; }
 
-    for line in stdout.lines() {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 3 && (parts[1] == "T" || parts[1] == "t")
-            && let Ok(addr) = u64::from_str_radix(parts[0], 16)
-        {
-            symbols.insert(parts[2].to_string(), addr);
+        let sh_type = u32::from_le_bytes(elf[sh + 4..sh + 8].try_into().unwrap_or([0; 4]));
+        if sh_type != SHT_SYMTAB { continue; }
+
+        let sym_offset = u64::from_le_bytes(elf[sh + 24..sh + 32].try_into().unwrap_or([0; 8])) as usize;
+        let sym_size = u64::from_le_bytes(elf[sh + 32..sh + 40].try_into().unwrap_or([0; 8])) as usize;
+        let sym_link = u32::from_le_bytes(elf[sh + 40..sh + 44].try_into().unwrap_or([0; 4])) as usize;
+
+        // sh_link points to the associated strtab section
+        if sym_link >= e_shnum { continue; }
+        let strtab_sh = e_shoff + sym_link * e_shentsize;
+        if strtab_sh + 32 > elf.len() { continue; }
+        let strtab_off = u64::from_le_bytes(
+            elf[strtab_sh + 24..strtab_sh + 32].try_into().unwrap_or([0; 8]),
+        ) as usize;
+
+        let entry_size = 24usize; // sizeof(Elf64_Sym)
+        let num_syms = sym_size / entry_size;
+
+        for j in 0..num_syms {
+            let sym = sym_offset + j * entry_size;
+            if sym + entry_size > elf.len() { break; }
+
+            let st_name = u32::from_le_bytes(elf[sym..sym + 4].try_into().unwrap_or([0; 4])) as usize;
+            let st_info = elf[sym + 4];
+            let st_shndx = u16::from_le_bytes(elf[sym + 6..sym + 8].try_into().unwrap_or([0; 2])) as usize;
+            let st_value = u64::from_le_bytes(elf[sym + 8..sym + 16].try_into().unwrap_or([0; 8]));
+
+            let st_type = st_info & 0xf;
+            let _st_bind = st_info >> 4;
+            if st_type != STT_FUNC { continue; }
+            if st_shndx == 0 || st_shndx >= section_offsets.len() { continue; }
+
+            let name_off = strtab_off + st_name;
+            if name_off >= elf.len() { continue; }
+            let name_end = elf[name_off..].iter().position(|&b| b == 0)
+                .map(|p| name_off + p)
+                .unwrap_or(elf.len());
+            if let Ok(name) = std::str::from_utf8(&elf[name_off..name_end]) {
+                let file_offset = section_offsets[st_shndx] + st_value;
+                result.insert(name.to_string(), file_offset);
+            }
         }
     }
 
-    Ok(symbols)
+    result
 }
 
 /// The x86_64 ftrace call prologue: `call __fentry__` = `e8 00 00 00 00`
@@ -388,7 +655,11 @@ pub fn patch_module_with_rename(
         );
     }
 
-    let symbols = resolve_symbols(source_ko)?;
+    let symbols = resolve_symbol_file_offsets(&module_bytes);
+    tracing::info!(
+        symbols_resolved = symbols.len(),
+        "resolved symbol file offsets from ELF (section-aware)"
+    );
 
     let mut patches = Vec::new();
     let mut applied_count = 0;
@@ -400,6 +671,7 @@ pub fn patch_module_with_rename(
             &symbols,
             target,
             source_ko,
+            0, // offsets are already file-absolute
         );
 
         match result {
@@ -451,6 +723,40 @@ pub fn patch_module_with_rename(
             offset: None,
             detail: format!("{rename_count} identity replacements"),
         });
+
+        // Strip __ksymtab to prevent "exports duplicate symbol" on co-load
+        let ksym_zeroed = strip_ksymtab(&mut module_bytes).unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "ksymtab stripping failed (non-fatal)");
+            0
+        });
+        if ksym_zeroed > 0 {
+            patches.push(PatchResult {
+                symbol: "__ksymtab_strip".into(),
+                applied: true,
+                offset: None,
+                detail: format!("{ksym_zeroed} bytes zeroed in ksymtab/kcrctab/ksymtab_strings"),
+            });
+        }
+    }
+
+    // Nullify relocation entries that target our NOP patches.
+    // Kernel 6.17+ rejects nonzero values at relocation targets, and
+    // our NOP bytes (0xC3, 0x31, etc.) would be treated as violations.
+    let patch_ranges: Vec<(usize, usize)> = patches.iter()
+        .filter(|p| p.applied && p.offset.is_some())
+        .filter(|p| p.detail.starts_with("ret") || p.detail.starts_with("nopcall"))
+        .map(|p| {
+            let off = p.offset.unwrap() as usize;
+            let len = if p.detail.contains("6B") { 6 }
+                      else if p.detail.starts_with("ret1") { 5 }
+                      else if p.detail.starts_with("nopcall") { 5 }
+                      else if p.detail.starts_with("ret@") { 1 }
+                      else { 3 };
+            (off, len)
+        })
+        .collect();
+    if !patch_ranges.is_empty() {
+        nullify_relocations_at(&mut module_bytes, &patch_ranges);
     }
 
     let output_name = rename
@@ -487,6 +793,43 @@ pub fn patch_module(source_ko: &Path, patch_set: &PatchSet) -> Result<ModulePatc
     patch_module_with_rename(source_ko, patch_set, None)
 }
 
+/// Find the file offset of the `.text` section in an ELF module.
+///
+/// `nm` reports section-relative virtual addresses. To convert them to
+/// byte offsets within the file we need the section's `sh_offset`.
+/// Returns 0 if the section cannot be found (graceful fallback for
+/// non-standard layouts).
+fn find_text_section_offset(elf: &[u8]) -> usize {
+    if elf.len() < 64 { return 0; }
+    let e_shoff = u64::from_le_bytes(elf[40..48].try_into().unwrap_or([0; 8])) as usize;
+    let e_shentsize = u16::from_le_bytes(elf[58..60].try_into().unwrap_or([0; 2])) as usize;
+    let e_shnum = u16::from_le_bytes(elf[60..62].try_into().unwrap_or([0; 2])) as usize;
+    let e_shstrndx = u16::from_le_bytes(elf[62..64].try_into().unwrap_or([0; 2])) as usize;
+
+    if e_shentsize == 0 || e_shoff == 0 || e_shstrndx >= e_shnum { return 0; }
+
+    let shstrtab_sh = e_shoff + e_shstrndx * e_shentsize;
+    if shstrtab_sh + 40 > elf.len() { return 0; }
+    let shstrtab_off = u64::from_le_bytes(
+        elf[shstrtab_sh + 24..shstrtab_sh + 32].try_into().unwrap_or([0; 8]),
+    ) as usize;
+
+    for i in 0..e_shnum {
+        let sh = e_shoff + i * e_shentsize;
+        if sh + e_shentsize > elf.len() { break; }
+        let sh_name = u32::from_le_bytes(
+            elf[sh..sh + 4].try_into().unwrap_or([0; 4]),
+        ) as usize;
+        let name_off = shstrtab_off + sh_name;
+        if name_off + 6 <= elf.len() && &elf[name_off..name_off + 6] == b".text\0" {
+            return u64::from_le_bytes(
+                elf[sh + 24..sh + 32].try_into().unwrap_or([0; 8]),
+            ) as usize;
+        }
+    }
+    0
+}
+
 /// Apply a single patch target to the module bytes.
 fn apply_single_patch(
     module_bytes: &mut [u8],
@@ -494,6 +837,7 @@ fn apply_single_patch(
     symbols: &HashMap<String, u64>,
     target: &PatchTarget,
     source_path: &Path,
+    text_section_offset: usize,
 ) -> Result<PatchResult, PatchError> {
     let &sym_offset = symbols.get(&target.symbol).ok_or_else(|| {
         PatchError::SymbolNotFound {
@@ -502,7 +846,7 @@ fn apply_single_patch(
         }
     })?;
 
-    let offset = sym_offset as usize;
+    let offset = sym_offset as usize + text_section_offset;
 
     if offset + FTRACE_CALL_SIZE >= module_size {
         return Err(PatchError::OffsetOutOfBounds {
@@ -560,22 +904,160 @@ fn apply_single_patch(
             })
         }
         PatchStrategy::RetAtEntry => {
-            let original_byte = module_bytes[offset];
-            module_bytes[offset] = RET_OPCODE;
+            let first_byte = module_bytes[offset];
+            let has_ftrace = first_byte == FTRACE_CALL_OPCODE
+                || first_byte == MULTIBYTE_NOP_LEAD
+                || first_byte == NOP_OPCODE;
 
-            tracing::debug!(
-                symbol = target.symbol.as_str(),
-                offset = format_args!("{offset:#x}"),
-                original = format_args!("{original_byte:#04x}"),
-                "patched: ret at entry"
-            );
+            if has_ftrace && offset + FTRACE_CALL_SIZE + 1 <= module_bytes.len() {
+                let patch_off = offset + FTRACE_CALL_SIZE;
+                let original_byte = module_bytes[patch_off];
+                module_bytes[patch_off] = RET_OPCODE;
+
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: true,
+                    offset: Some(patch_off),
+                    detail: format!(
+                        "ret@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
+                    ),
+                })
+            } else if offset + 1 <= module_bytes.len() {
+                let original_byte = module_bytes[offset];
+                module_bytes[offset] = RET_OPCODE;
+
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: true,
+                    offset: Some(offset),
+                    detail: format!(
+                        "ret@{offset:#x} (was {original_byte:#04x}, entry+0)"
+                    ),
+                })
+            } else {
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: false,
+                    offset: None,
+                    detail: format!("insufficient space for ret at {offset:#x}"),
+                })
+            }
+        }
+        PatchStrategy::Ret1AtEntry => {
+            let first_byte = module_bytes[offset];
+            let has_ftrace = first_byte == FTRACE_CALL_OPCODE
+                || first_byte == MULTIBYTE_NOP_LEAD
+                || first_byte == NOP_OPCODE;
+
+            if has_ftrace && offset + FTRACE_CALL_SIZE + 5 <= module_bytes.len() {
+                // Ftrace preamble present: patch at entry+5 with
+                // `xor eax,eax; inc eax; ret` (5 bytes).
+                let patch_off = offset + FTRACE_CALL_SIZE;
+                let original_byte = module_bytes[patch_off];
+                module_bytes[patch_off] = 0x31;         // xor
+                module_bytes[patch_off + 1] = 0xc0;     // eax, eax
+                module_bytes[patch_off + 2] = 0xff;     // inc
+                module_bytes[patch_off + 3] = 0xc0;     // eax
+                module_bytes[patch_off + 4] = RET_OPCODE;
+
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: true,
+                    offset: Some(patch_off),
+                    detail: format!(
+                        "ret1@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
+                    ),
+                })
+            } else if offset + 6 <= module_bytes.len() {
+                // No ftrace preamble (proprietary blob function): patch
+                // at entry+0 with `mov eax, 1; ret` (6 bytes).
+                let original_byte = module_bytes[offset];
+                module_bytes[offset] = 0xb8;         // mov eax,
+                module_bytes[offset + 1] = 0x01;     // 1
+                module_bytes[offset + 2] = 0x00;
+                module_bytes[offset + 3] = 0x00;
+                module_bytes[offset + 4] = 0x00;
+                module_bytes[offset + 5] = RET_OPCODE;
+
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: true,
+                    offset: Some(offset),
+                    detail: format!(
+                        "ret1@{offset:#x} (was {original_byte:#04x}, entry+0, 6B)"
+                    ),
+                })
+            } else {
+                Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: false,
+                    offset: None,
+                    detail: format!(
+                        "insufficient space for ret1 at {offset:#x}"
+                    ),
+                })
+            }
+        }
+        PatchStrategy::NopCallAt(call_offset) => {
+            let patch_off = offset + call_offset;
+            if patch_off + 5 > module_bytes.len() {
+                return Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: false,
+                    offset: None,
+                    detail: format!(
+                        "NopCallAt offset {call_offset:#x} out of bounds at {offset:#x}"
+                    ),
+                });
+            }
+
+            let orig = module_bytes[patch_off];
+            // xor eax,eax (2B) + 3-byte NOP (0f 1f 00)
+            module_bytes[patch_off] = 0x31;
+            module_bytes[patch_off + 1] = 0xc0;
+            module_bytes[patch_off + 2] = 0x0f;
+            module_bytes[patch_off + 3] = 0x1f;
+            module_bytes[patch_off + 4] = 0x00;
 
             Ok(PatchResult {
                 symbol: target.symbol.clone(),
                 applied: true,
-                offset: Some(offset),
+                offset: Some(patch_off),
                 detail: format!(
-                    "ret@{offset:#x} (was {original_byte:#04x}, entry-direct)"
+                    "nopcall@{patch_off:#x} (was {orig:#04x}, fn+{call_offset:#x}, 5B)"
+                ),
+            })
+        }
+        PatchStrategy::PatchByteAt { fn_offset, expected, replacement } => {
+            let patch_off = offset + fn_offset;
+            if patch_off >= module_bytes.len() {
+                return Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: false,
+                    offset: None,
+                    detail: format!(
+                        "PatchByteAt offset {fn_offset:#x} out of bounds at {offset:#x}"
+                    ),
+                });
+            }
+            let actual = module_bytes[patch_off];
+            if actual != expected {
+                return Ok(PatchResult {
+                    symbol: target.symbol.clone(),
+                    applied: false,
+                    offset: Some(patch_off),
+                    detail: format!(
+                        "byte@{patch_off:#x} is {actual:#04x}, expected {expected:#04x}"
+                    ),
+                });
+            }
+            module_bytes[patch_off] = replacement;
+            Ok(PatchResult {
+                symbol: target.symbol.clone(),
+                applied: true,
+                offset: Some(patch_off),
+                detail: format!(
+                    "byte@{patch_off:#x}: {expected:#04x}\u{2192}{replacement:#04x} (fn+{fn_offset:#x})"
                 ),
             })
         }
@@ -586,6 +1068,174 @@ fn apply_single_patch(
 #[must_use]
 pub fn patched_module_path(module_name: &str) -> PathBuf {
     PathBuf::from(format!("/tmp/toadstool-patched-{module_name}.ko"))
+}
+
+/// Nullify relocation entries that target the given byte ranges.
+///
+/// When we write NOP bytes at function entries, we clobber relocation
+/// targets. Kernel 6.17+ rejects nonzero relocation targets, so we must
+/// zero out the corresponding Elf64_Rela entries (set r_info to 0 =
+/// R_X86_64_NONE). This effectively tells the kernel to skip them.
+pub fn nullify_relocations_at(module_bytes: &mut [u8], patch_ranges: &[(usize, usize)]) -> usize {
+    let e_shoff = u64::from_le_bytes(
+        module_bytes.get(40..48)
+            .and_then(|s| s.try_into().ok())
+            .unwrap_or([0; 8]),
+    ) as usize;
+    let e_shentsize = u16::from_le_bytes(
+        module_bytes.get(58..60)
+            .and_then(|s| s.try_into().ok())
+            .unwrap_or([0; 2]),
+    ) as usize;
+    let e_shnum = u16::from_le_bytes(
+        module_bytes.get(60..62)
+            .and_then(|s| s.try_into().ok())
+            .unwrap_or([0; 2]),
+    ) as usize;
+
+    if e_shentsize == 0 || e_shoff == 0 { return 0; }
+
+    const SHT_RELA: u32 = 4;
+    let mut nullified = 0usize;
+
+    for i in 0..e_shnum {
+        let sh_start = e_shoff + i * e_shentsize;
+        if sh_start + e_shentsize > module_bytes.len() { break; }
+
+        let sh_type = u32::from_le_bytes(
+            module_bytes[sh_start + 4..sh_start + 8].try_into().unwrap_or([0; 4]),
+        );
+        if sh_type != SHT_RELA { continue; }
+
+        let sh_offset = u64::from_le_bytes(
+            module_bytes[sh_start + 24..sh_start + 32].try_into().unwrap_or([0; 8]),
+        ) as usize;
+        let sh_size = u64::from_le_bytes(
+            module_bytes[sh_start + 32..sh_start + 40].try_into().unwrap_or([0; 8]),
+        ) as usize;
+        let sh_info = u32::from_le_bytes(
+            module_bytes[sh_start + 44..sh_start + 48].try_into().unwrap_or([0; 4]),
+        ) as usize;
+
+        // Resolve the target section's file offset so we can convert
+        // r_offset (section-relative) to file offset for comparison
+        // with our patch ranges (which use file offsets from nm).
+        let target_sh_start = e_shoff + sh_info * e_shentsize;
+        let target_sh_offset = if target_sh_start + 32 <= module_bytes.len() {
+            u64::from_le_bytes(
+                module_bytes[target_sh_start + 24..target_sh_start + 32]
+                    .try_into()
+                    .unwrap_or([0; 8]),
+            ) as usize
+        } else {
+            continue;
+        };
+
+        let entry_size = 24usize;
+        let num_entries = sh_size / entry_size;
+
+        for j in 0..num_entries {
+            let rela_off = sh_offset + j * entry_size;
+            if rela_off + entry_size > module_bytes.len() { break; }
+
+            let r_offset = u64::from_le_bytes(
+                module_bytes[rela_off..rela_off + 8].try_into().unwrap_or([0; 8]),
+            ) as usize;
+            let r_info = u64::from_le_bytes(
+                module_bytes[rela_off + 8..rela_off + 16].try_into().unwrap_or([0; 8]),
+            );
+            if r_info == 0 { continue; } // already nullified
+
+            let target_file_off = target_sh_offset + r_offset;
+
+            let r_type = (r_info & 0xFFFF_FFFF) as u32;
+            let reloc_size: usize = match r_type {
+                1 => 8,        // R_X86_64_64
+                2 | 4 | 11 => 4, // PC32, PLT32, 32S
+                _ => continue,
+            };
+
+            for &(range_start, range_len) in patch_ranges {
+                let range_end = range_start + range_len;
+                let reloc_end = target_file_off + reloc_size;
+                // Check if the relocation's target bytes overlap our patch
+                if target_file_off < range_end && reloc_end > range_start {
+                    module_bytes[rela_off + 8..rela_off + 16]
+                        .copy_from_slice(&0u64.to_le_bytes());
+                    nullified += 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    if nullified > 0 {
+        tracing::info!(nullified, "nullified relocation entries overlapping NOP patches");
+    }
+    nullified
+}
+
+/// Re-apply NOP patches after post-objcopy relocation normalization.
+///
+/// Normalization zeros relocation target bytes, which can overwrite NOP
+/// patches that were applied earlier. This function re-stamps the NOP
+/// bytes at each successfully applied patch offset.
+/// Re-apply NOP patches after post-objcopy relocation normalization.
+///
+/// Normalization zeros relocation target bytes, which can overwrite NOP
+/// patches that were applied earlier. This function re-stamps the NOP
+/// bytes at each successfully applied patch offset.
+pub fn reapply_nops(module_bytes: &mut [u8], result: &ModulePatchResult) {
+    let mut restored = 0usize;
+    for patch in &result.patches {
+        if !patch.applied {
+            continue;
+        }
+        let Some(off) = patch.offset else { continue };
+        let off = off as usize;
+
+        if patch.detail.contains("entry+0, 6B") {
+            // mov eax,1; ret (6 bytes at entry+0)
+            if off + 6 <= module_bytes.len() {
+                module_bytes[off] = 0xb8;
+                module_bytes[off + 1] = 0x01;
+                module_bytes[off + 2] = 0x00;
+                module_bytes[off + 3] = 0x00;
+                module_bytes[off + 4] = 0x00;
+                module_bytes[off + 5] = RET_OPCODE;
+                restored += 1;
+            }
+        } else if patch.detail.starts_with("ret1") {
+            // xor eax,eax; inc eax; ret (5 bytes at entry+5)
+            if off + 5 <= module_bytes.len() {
+                module_bytes[off] = 0x31;
+                module_bytes[off + 1] = 0xc0;
+                module_bytes[off + 2] = 0xff;
+                module_bytes[off + 3] = 0xc0;
+                module_bytes[off + 4] = RET_OPCODE;
+                restored += 1;
+            }
+        } else if patch.detail.starts_with("ret@") {
+            // Single ret byte
+            if off < module_bytes.len() {
+                module_bytes[off] = RET_OPCODE;
+                restored += 1;
+            }
+        } else if patch.detail.starts_with("nopcall@") {
+            // xor eax,eax + 3-byte NOP (5 bytes)
+            if off + 5 <= module_bytes.len() {
+                module_bytes[off] = 0x31;
+                module_bytes[off + 1] = 0xc0;
+                module_bytes[off + 2] = 0x0f;
+                module_bytes[off + 3] = 0x1f;
+                module_bytes[off + 4] = 0x00;
+                restored += 1;
+            }
+        }
+    }
+    if restored > 0 {
+        tracing::info!(restored, "re-applied NOP patches after post-objcopy normalization");
+    }
 }
 
 /// Normalize R_X86_64_64 relocations for kernel 6.17+ compatibility.
@@ -629,6 +1279,9 @@ pub fn normalize_relocations(module_bytes: &mut [u8]) -> Result<usize, PatchErro
 
     const SHT_RELA: u32 = 4;
     const R_X86_64_64: u32 = 1;
+    const R_X86_64_PC32: u32 = 2;
+    const R_X86_64_PLT32: u32 = 4;
+    const R_X86_64_32S: u32 = 11;
 
     let mut normalized = 0usize;
 
@@ -657,7 +1310,6 @@ pub fn normalize_relocations(module_bytes: &mut [u8]) -> Result<usize, PatchErro
                 .try_into()
                 .unwrap_or([0; 8]),
         ) as usize;
-        // sh_info is at offset 44 in the section header (after sh_link at 40)
         let sh_info = u32::from_le_bytes(
             module_bytes[sh_start + 44..sh_start + 48]
                 .try_into()
@@ -696,11 +1348,40 @@ pub fn normalize_relocations(module_bytes: &mut [u8]) -> Result<usize, PatchErro
             );
             let r_type = (r_info & 0xFFFF_FFFF) as u32;
 
+            let target_file_off = target_sh_offset + r_offset as usize;
+
+            // Handle 32-bit relocations (PC32, PLT32, 32S)
+            if r_type == R_X86_64_PC32 || r_type == R_X86_64_PLT32 || r_type == R_X86_64_32S {
+                if target_file_off + 4 > module_bytes.len() || target_file_off < 64 {
+                    continue;
+                }
+                let existing = i32::from_le_bytes(
+                    module_bytes[target_file_off..target_file_off + 4]
+                        .try_into()
+                        .unwrap_or([0; 4]),
+                );
+                if existing == 0 {
+                    continue;
+                }
+                let old_addend = i64::from_le_bytes(
+                    module_bytes[rela_off + 16..rela_off + 24]
+                        .try_into()
+                        .unwrap_or([0; 8]),
+                );
+                let new_addend = old_addend.wrapping_add(existing as i64);
+                module_bytes[rela_off + 16..rela_off + 24]
+                    .copy_from_slice(&new_addend.to_le_bytes());
+                module_bytes[target_file_off..target_file_off + 4]
+                    .copy_from_slice(&0i32.to_le_bytes());
+                normalized += 1;
+                continue;
+            }
+
+            // Handle 64-bit absolute relocations (R_X86_64_64)
             if r_type != R_X86_64_64 {
                 continue;
             }
 
-            let target_file_off = target_sh_offset + r_offset as usize;
             if target_file_off + 8 > module_bytes.len() || target_file_off < 64 {
                 continue;
             }
@@ -731,7 +1412,7 @@ pub fn normalize_relocations(module_bytes: &mut [u8]) -> Result<usize, PatchErro
         }
     }
 
-    tracing::info!(normalized, "R_X86_64_64 relocations normalized for kernel 6.17+ compat");
+    tracing::info!(normalized, "relocations normalized for kernel 6.17+ compat (types 1,2,4,11)");
     Ok(normalized)
 }
 
@@ -798,6 +1479,116 @@ pub fn rename_module_identity(
     Ok(replacements)
 }
 
+/// Strip kernel symbol export tables from a `.ko` binary.
+///
+/// Zeros the content of `__ksymtab`, `__kcrctab`, and `__ksymtab_strings`
+/// ELF sections. This prevents the module from exporting symbols that would
+/// collide with an already-loaded copy (e.g. `nvsov` alongside `nvidia`).
+///
+/// The kernel loader checks `__ksymtab` entries against all loaded modules;
+/// any duplicate causes `ENOEXEC` ("exports duplicate symbol"). Since
+/// renamed modules used for warm handoff are leaf modules (nothing depends
+/// on them), stripping exports is safe.
+///
+/// Returns the total bytes zeroed.
+pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
+    let elf_class = module_bytes.get(4).copied().unwrap_or(0);
+    if elf_class != 2 {
+        return Err(PatchError::NmFailed {
+            path: "(in-memory)".into(),
+            detail: "not a 64-bit ELF".into(),
+        });
+    }
+
+    let e_shoff = u64::from_le_bytes(
+        module_bytes[40..48].try_into().unwrap_or([0; 8]),
+    ) as usize;
+    let e_shentsize = u16::from_le_bytes(
+        module_bytes[58..60].try_into().unwrap_or([0; 2]),
+    ) as usize;
+    let e_shnum = u16::from_le_bytes(
+        module_bytes[60..62].try_into().unwrap_or([0; 2]),
+    ) as usize;
+    let e_shstrndx = u16::from_le_bytes(
+        module_bytes[62..64].try_into().unwrap_or([0; 2]),
+    ) as usize;
+
+    if e_shoff == 0 || e_shentsize < 64 || e_shnum == 0 || e_shstrndx >= e_shnum {
+        return Err(PatchError::NmFailed {
+            path: "(in-memory)".into(),
+            detail: "invalid ELF section header table".into(),
+        });
+    }
+
+    let shstr_hdr_off = e_shoff + e_shstrndx * e_shentsize;
+    let shstr_offset = u64::from_le_bytes(
+        module_bytes[shstr_hdr_off + 24..shstr_hdr_off + 32]
+            .try_into().unwrap_or([0; 8]),
+    ) as usize;
+    let shstr_size = u64::from_le_bytes(
+        module_bytes[shstr_hdr_off + 32..shstr_hdr_off + 40]
+            .try_into().unwrap_or([0; 8]),
+    ) as usize;
+
+    let mut total_zeroed = 0usize;
+
+    for i in 0..e_shnum {
+        let sh_start = e_shoff + i * e_shentsize;
+        if sh_start + e_shentsize > module_bytes.len() {
+            break;
+        }
+
+        let sh_name_idx = u32::from_le_bytes(
+            module_bytes[sh_start..sh_start + 4]
+                .try_into().unwrap_or([0; 4]),
+        ) as usize;
+
+        let name_off = shstr_offset + sh_name_idx;
+        if name_off >= module_bytes.len() {
+            continue;
+        }
+
+        let name_end = module_bytes[name_off..]
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(0);
+        let name_str = std::str::from_utf8(
+            &module_bytes[name_off..name_off + name_end]
+        ).unwrap_or("");
+
+        let matched = name_str.contains("ksymtab") || name_str.contains("kcrctab");
+        if !matched {
+            continue;
+        }
+
+        let sh_offset = u64::from_le_bytes(
+            module_bytes[sh_start + 24..sh_start + 32]
+                .try_into().unwrap_or([0; 8]),
+        ) as usize;
+        let sh_size = u64::from_le_bytes(
+            module_bytes[sh_start + 32..sh_start + 40]
+                .try_into().unwrap_or([0; 8]),
+        ) as usize;
+
+        if sh_offset + sh_size <= module_bytes.len() && sh_size > 0 {
+            tracing::info!(
+                section = name_str,
+                offset = format_args!("{sh_offset:#x}"),
+                size = sh_size,
+                "zeroing export section to prevent symbol collisions"
+            );
+            module_bytes[sh_offset..sh_offset + sh_size].fill(0);
+            total_zeroed += sh_size;
+        }
+    }
+
+    if total_zeroed > 0 {
+        tracing::info!(total_zeroed, "stripped kernel symbol exports for dual-load isolation");
+    }
+
+    Ok(total_zeroed)
+}
+
 /// Clean up a previously patched module from /tmp.
 pub fn cleanup_patched_module(module_name: &str) -> Result<(), std::io::Error> {
     let path = patched_module_path(module_name);
@@ -840,17 +1631,29 @@ mod tests {
     fn nvidia_patch_set_targets_correct_functions() {
         let ps = PatchSet::nvidia_warm_handoff();
         assert_eq!(ps.module_name, "nvidia");
-        assert_eq!(ps.targets.len(), 6);
+        assert_eq!(ps.targets.len(), 17);
 
         let names: Vec<&str> = ps.targets.iter().map(|t| t.symbol.as_str()).collect();
+        // Teardown NOPs
         assert!(names.contains(&"nv_pci_remove"));
         assert!(names.contains(&"gpuStateUnload_IMPL"));
         assert!(names.contains(&"gpuStateDestroy_IMPL"));
         assert!(names.contains(&"_deviceTeardown"));
         assert!(names.contains(&"clTeardown_IMPL"));
         assert!(names.contains(&"fecsBufferTeardown"));
+        // Co-load isolation NOPs
+        assert!(names.contains(&"nv_cap_init"));
+        assert!(names.contains(&"nv_cap_drv_init"));
+        assert!(names.contains(&"nv_procfs_init"));
+        assert!(names.contains(&"nv_cap_procfs_init"));
+        assert!(names.contains(&"nvlink_core_init"));
+        assert!(names.contains(&"nvswitch_init"));
+        assert!(names.contains(&"nv_acpi_init"));
 
-        assert!(ps.targets.iter().all(|t| t.strategy == PatchStrategy::RetAtEntry));
+        assert!(ps.targets.iter().all(|t| matches!(
+            t.strategy,
+            PatchStrategy::RetAtEntry | PatchStrategy::Ret1AtEntry | PatchStrategy::NopCallAt(_)
+        )));
     }
 
     #[test]
@@ -888,6 +1691,7 @@ mod tests {
             &symbols,
             &target,
             Path::new("test.ko"),
+            0,
         )
         .unwrap();
 
@@ -913,6 +1717,7 @@ mod tests {
             &symbols,
             &target,
             Path::new("test.ko"),
+            0,
         );
 
         assert!(matches!(result, Err(PatchError::NoFtraceCallSite { .. })));
@@ -935,6 +1740,7 @@ mod tests {
             &symbols,
             &target,
             Path::new("test.ko"),
+            0,
         );
 
         assert!(matches!(result, Err(PatchError::SymbolNotFound { .. })));
@@ -942,7 +1748,6 @@ mod tests {
 
     #[test]
     fn apply_single_patch_accepts_nop_sled() {
-        // 0x90 x5 (single-byte NOP sled) + 0x55 (push rbp)
         let mut bytes = vec![0x90, 0x90, 0x90, 0x90, 0x90, 0x55, 0x48, 0x89];
         let len = bytes.len();
         let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
@@ -952,7 +1757,7 @@ mod tests {
             strategy: PatchStrategy::RetAfterFtrace,
         };
 
-        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"))
+        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
             .unwrap();
 
         assert!(result.applied);
@@ -963,7 +1768,6 @@ mod tests {
 
     #[test]
     fn apply_single_patch_accepts_zero_pad() {
-        // 0x00 x5 (null-padded ftrace site) + 0x55
         let mut bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0x48, 0x89];
         let len = bytes.len();
         let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
@@ -973,7 +1777,7 @@ mod tests {
             strategy: PatchStrategy::RetAfterFtrace,
         };
 
-        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"))
+        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
             .unwrap();
 
         assert!(result.applied);
@@ -984,7 +1788,6 @@ mod tests {
 
     #[test]
     fn apply_single_patch_accepts_multibyte_nop() {
-        // 0x0f 0x1f 0x44 0x00 0x00 (5-byte NOP) + 0x55
         let mut bytes = vec![0x0f, 0x1f, 0x44, 0x00, 0x00, 0x55, 0x48, 0x89];
         let len = bytes.len();
         let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
@@ -994,7 +1797,7 @@ mod tests {
             strategy: PatchStrategy::RetAfterFtrace,
         };
 
-        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"))
+        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0)
             .unwrap();
 
         assert!(result.applied);
@@ -1005,7 +1808,6 @@ mod tests {
 
     #[test]
     fn apply_single_patch_rejects_mid_instruction() {
-        // 0xE5 is not a valid ftrace lead byte
         let mut bytes = vec![0xe5, 0x48, 0x89, 0xe5, 0x41, 0x57, 0x41, 0x56];
         let len = bytes.len();
         let symbols: HashMap<String, u64> = [("test_fn".into(), 0u64)].into_iter().collect();
@@ -1015,7 +1817,7 @@ mod tests {
             strategy: PatchStrategy::RetAfterFtrace,
         };
 
-        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"));
+        let result = apply_single_patch(&mut bytes, len, &symbols, &target, Path::new("test.ko"), 0);
         assert!(matches!(result, Err(PatchError::NoFtraceCallSite { found: 0xe5, .. })));
     }
 

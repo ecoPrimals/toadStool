@@ -72,7 +72,8 @@ impl SysfsSwapExecutor {
     }
 
     fn is_warm_preserving_swap(from: &str, to: &str) -> bool {
-        let is_init_driver = matches!(from, "nouveau" | "nvidia" | "amdgpu" | "xe" | "i915");
+        let is_init_driver = matches!(from, "nouveau" | "nvidia" | "amdgpu" | "xe" | "i915")
+            || from.starts_with("nvsov");
         let is_vfio = to == "vfio-pci";
         is_init_driver && is_vfio
     }
@@ -414,6 +415,8 @@ mod tests {
     fn warm_preserving_swap_detection() {
         assert!(SysfsSwapExecutor::is_warm_preserving_swap("nouveau", "vfio-pci"));
         assert!(SysfsSwapExecutor::is_warm_preserving_swap("nvidia", "vfio-pci"));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap("nvsov", "vfio-pci"));
+        assert!(SysfsSwapExecutor::is_warm_preserving_swap("nvsov2", "vfio-pci"));
         assert!(SysfsSwapExecutor::is_warm_preserving_swap("amdgpu", "vfio-pci"));
         assert!(SysfsSwapExecutor::is_warm_preserving_swap("xe", "vfio-pci"));
         assert!(!SysfsSwapExecutor::is_warm_preserving_swap("vfio-pci", "nouveau"));

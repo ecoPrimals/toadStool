@@ -1171,6 +1171,82 @@ impl SovereignSnapshot {
         }
         lines
     }
+
+    /// Produce a structured diff between two snapshots.
+    ///
+    /// Returns one [`SnapshotDelta`] per field that differs, suitable for
+    /// JSON serialization and programmatic comparison.
+    pub fn diff_structured(a: &Self, b: &Self) -> Vec<SnapshotDelta> {
+        let mut deltas = Vec::new();
+        macro_rules! cmp_field {
+            ($field:ident, $name:expr) => {
+                if a.$field != b.$field {
+                    deltas.push(SnapshotDelta {
+                        field: $name.into(),
+                        before: a.$field,
+                        after: b.$field,
+                    });
+                }
+            };
+        }
+        cmp_field!(pmc_enable, "PMC_ENABLE");
+        cmp_field!(pmc_intr_en, "PMC_INTR_EN");
+        cmp_field!(pfifo_enable, "PFIFO_ENABLE");
+        cmp_field!(pgraph_status, "PGRAPH_STATUS");
+        cmp_field!(gpc_bcast, "GPC_BCAST");
+        cmp_field!(fecs_cpuctl, "FECS_CPUCTL");
+        cmp_field!(fecs_cpuctl_alias, "FECS_CPUCTL_ALIAS");
+        cmp_field!(fecs_pc, "FECS_PC");
+        cmp_field!(fecs_mailbox0, "FECS_MAILBOX0");
+        cmp_field!(gpccs_cpuctl, "GPCCS_CPUCTL");
+        cmp_field!(gpccs_pc, "GPCCS_PC");
+        cmp_field!(pmu_cpuctl, "PMU_CPUCTL");
+        cmp_field!(pmu_pc, "PMU_PC");
+        cmp_field!(pbdma0_intr, "PBDMA0_INTR");
+        cmp_field!(therm_gate, "THERM_GATE");
+        cmp_field!(pri_ringmaster_intr, "PRI_RM_INTR");
+
+        for (i, (va, vb)) in a.gpc_per_unit.iter().zip(&b.gpc_per_unit).enumerate() {
+            if va != vb {
+                deltas.push(SnapshotDelta {
+                    field: format!("GPC{i}_UNIT"),
+                    before: *va,
+                    after: *vb,
+                });
+            }
+        }
+        for (i, (va, vb)) in a.gpc_tpc0.iter().zip(&b.gpc_tpc0).enumerate() {
+            if va != vb {
+                deltas.push(SnapshotDelta {
+                    field: format!("GPC{i}_TPC0"),
+                    before: *va,
+                    after: *vb,
+                });
+            }
+        }
+        for (i, (va, vb)) in a.ce.iter().zip(&b.ce).enumerate() {
+            if va != vb {
+                deltas.push(SnapshotDelta {
+                    field: format!("CE{i}"),
+                    before: *va,
+                    after: *vb,
+                });
+            }
+        }
+
+        deltas
+    }
+}
+
+/// A single field difference between two [`SovereignSnapshot`]s.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SnapshotDelta {
+    /// Register/field name (e.g. "PMC_ENABLE", "GPC0_TPC0").
+    pub field: String,
+    /// Value in the first snapshot.
+    pub before: u32,
+    /// Value in the second snapshot.
+    pub after: u32,
 }
 
 /// Result of a single experiment stage execution.
@@ -1203,6 +1279,18 @@ impl ExperimentWrite {
             readback: format!("{readback:#010x}"),
         }
     }
+}
+
+/// Read-only snapshot capture — no mutating writes.
+///
+/// Returns the current [`SovereignSnapshot`] and [`TierEvidence`] for the
+/// given BAR0 mapping. Used by the `sovereign.snapshot` RPC.
+pub fn sovereign_snapshot_only(
+    bar0: &MappedBar,
+) -> (SovereignSnapshot, crate::vfio::sovereign_tiers::TierEvidence) {
+    let snapshot = SovereignSnapshot::capture(bar0);
+    let tier = crate::vfio::sovereign_tiers::classify_tier(bar0);
+    (snapshot, tier)
 }
 
 /// Stage 1: PFIFO enable + CG sweep.
@@ -1358,9 +1446,16 @@ pub fn experiment_stage_3(bar0: &MappedBar) -> ExperimentResult {
 /// registers and replays sw_nonctx.bin firmware blob. Higher risk — large
 /// write sequence.
 pub fn experiment_stage_4(bar0: &MappedBar) -> ExperimentResult {
+    experiment_stage_4_with_chip(bar0, "gv100", 70)
+}
+
+/// Stage 4 with explicit chip/SM version parameters.
+pub fn experiment_stage_4_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
     let before = SovereignSnapshot::capture(bar0);
     let mut writes = Vec::new();
     let mut notes = Vec::new();
+
+    notes.push(format!("chip={chip}, sm={sm}"));
 
     // Pre-check: is GPC domain alive?
     let gpc0 = bar0.read_u32(0x500000).unwrap_or(0xDEAD_DEAD);
@@ -1401,12 +1496,25 @@ pub fn experiment_stage_4(bar0: &MappedBar) -> ExperimentResult {
     }
     notes.push(format!("GPC MMU init: {} writes applied", mmu_writes.len()));
 
-    let stub = crate::nv::gsp_bridge::StubGspBridge::default();
+    let bridge = crate::nv::nv_gsp_bridge::NvGspBridge::new(chip);
     use crate::nv::gsp_bridge::GspBridge;
-    match stub.apply_gr_bar0_init(bar0, 70) {
-        Ok(()) => notes.push("sw_nonctx replay: completed (stub, no sequence loaded)".into()),
+    let has_fw = bridge.has_gr_firmware();
+    notes.push(format!("NvGspBridge({chip}): firmware present = {has_fw}"));
+    match bridge.apply_gr_bar0_init(bar0, sm) {
+        Ok(()) => notes.push("sw_nonctx replay: completed with REAL firmware data".into()),
         Err(e) => notes.push(format!("sw_nonctx replay: {e}")),
     }
+
+    // Probe TPC registers after sw_nonctx broadcast writes
+    let tpc0_post = bar0.read_u32(0x504000).unwrap_or(0xDEAD_DEAD);
+    let tpc0_sm_post = bar0.read_u32(0x504200).unwrap_or(0xDEAD_DEAD);
+    let bcast_tpc_post = bar0.read_u32(0x419C04).unwrap_or(0xDEAD_DEAD);
+    notes.push(format!(
+        "Post-sw_nonctx TPC probe: tpc0_ctrl={tpc0_post:#010x}, \
+         tpc0_sm={tpc0_sm_post:#010x}, bcast_tpc={bcast_tpc_post:#010x}"
+    ));
+    let tpc_alive = !crate::nv::pri::is_pri_fault(tpc0_post);
+    notes.push(format!("TPC PRI station alive = {tpc_alive}"));
 
     // Post-init PRI recovery
     let pri = pri_bus_recover(bar0);
@@ -1564,14 +1672,190 @@ pub fn experiment_stage_5(bar0: &MappedBar) -> ExperimentResult {
     }
 }
 
-/// Execute an experiment stage by number (1-5).
-pub fn run_experiment_stage(bar0: &MappedBar, stage: u32) -> Result<ExperimentResult, String> {
+/// Stage 6: Full 5-phase ungating sequence (Exp 217).
+///
+/// Combines CG sweep + PRI recovery + PGOB + real `sw_nonctx.bin` +
+/// destructive PGRAPH reset + PRI re-enumerate + second `sw_nonctx.bin`
+/// replay. This is the "throw everything at it" sequence from
+/// `compute_device.rs`, extracted here for controlled experiment use.
+///
+/// Higher risk than stages 1-5 — includes PGRAPH engine reset which
+/// may change FECS state. Use after stages 1-3 confirm GPC fabric is
+/// alive but TPCs remain PRI-faulted.
+pub fn experiment_stage_6(bar0: &MappedBar) -> ExperimentResult {
+    experiment_stage_6_with_chip(bar0, "gv100", 70)
+}
+
+/// Stage 6 with explicit chip/SM version parameters.
+pub fn experiment_stage_6_with_chip(bar0: &MappedBar, chip: &str, sm: u32) -> ExperimentResult {
+    use std::time::Duration;
+
+    let before = SovereignSnapshot::capture(bar0);
+    let mut writes = Vec::new();
+    let mut notes = Vec::new();
+
+    notes.push(format!("chip={chip}, sm={sm}"));
+
+    let bridge = crate::nv::nv_gsp_bridge::NvGspBridge::new(chip);
+    use crate::nv::gsp_bridge::GspBridge;
+
+    // Phase 1: CG sweep + PRI recovery + PGOB
+    let cg = cg_sweep(bar0);
+    notes.push(format!(
+        "Phase 1a: CG sweep — {} changes, {} faulted",
+        cg.changes, cg.faulted
+    ));
+
+    let pri1 = pri_bus_recover(bar0);
+    notes.push(format!(
+        "Phase 1b: PRI recovery — alive={}, faulted={}",
+        pri1.alive, pri1.faulted
+    ));
+
+    // PGOB ungate via GPC broadcast
+    let pgob_regs: &[(usize, u32)] = &[
+        (0x000260, 0x0000_0000), // PMC_CLKGATE_DISABLE
+        (0x41A028, 0x0000_0000), // GPC_BCAST_PGOB
+        (0x419000, 0x0000_0110), // GPC_BCAST_ENGCTL
+    ];
+    for &(off, val) in pgob_regs {
+        writes.push(ExperimentWrite::new(bar0, off, val));
+    }
+    notes.push("Phase 1c: PGOB ungate broadcast writes applied".into());
+
+    // Phase 2: Force PRI enumerate
+    writes.push(ExperimentWrite::new(bar0, 0x12004c, 2));
+    std::thread::sleep(Duration::from_millis(10));
+    notes.push("Phase 2: Forced PRI ringmaster enumerate".into());
+
+    // Phase 3: GPC MMU init
+    let mmu_writes: &[(usize, u32)] = &[
+        (0x418880, 0x0000_0001),
+        (0x418890, 0x0000_0000),
+        (0x418894, 0x0000_0000),
+        (0x4188B0, 0x0000_0000),
+        (0x4188B4, 0xFFFF_FFFF),
+        (0x4188B8, 0x0000_0007),
+    ];
+    for &(off, val) in mmu_writes {
+        writes.push(ExperimentWrite::new(bar0, off, val));
+    }
+
+    // Extra GPC MMU writes from nouveau gm200_gr_init_gpc_mmu
+    let a4 = bar0.read_u32(0x4188a4).unwrap_or(0);
+    writes.push(ExperimentWrite::new(bar0, 0x4188a4, a4 | 0x0300_0000));
+    notes.push("Phase 3: GPC MMU init + extended MMU writes".into());
+
+    // Phase 4: sw_nonctx.bin replay
+    match bridge.apply_gr_bar0_init(bar0, sm) {
+        Ok(()) => notes.push("Phase 4: sw_nonctx.bin replay completed".into()),
+        Err(e) => notes.push(format!("Phase 4: sw_nonctx.bin replay failed: {e}")),
+    }
+
+    // Phase 5: Second PRI recovery after sw_nonctx writes
+    let pri2 = pri_bus_recover(bar0);
+    notes.push(format!(
+        "Phase 5: Post-init PRI recovery — alive={}, faulted={}",
+        pri2.alive, pri2.faulted
+    ));
+
+    // Probe TPC + CE state post-ungating
+    let tpc0 = bar0.read_u32(0x504000).unwrap_or(0xDEAD_DEAD);
+    let tpc0_sm = bar0.read_u32(0x504200).unwrap_or(0xDEAD_DEAD);
+    let ce0 = bar0.read_u32(0x104000).unwrap_or(0xDEAD_DEAD);
+    let ce4 = bar0.read_u32(0x108000).unwrap_or(0xDEAD_DEAD);
+    let fecs_pc = bar0.read_u32(0x409400).unwrap_or(0);
+    let gpc0 = bar0.read_u32(0x500000).unwrap_or(0xDEAD_DEAD);
+
+    notes.push(format!("Final TPC probe: tpc0_ctrl={tpc0:#010x}, tpc0_sm={tpc0_sm:#010x}"));
+    notes.push(format!("Final CE probe: ce0={ce0:#010x}, ce4={ce4:#010x}"));
+    notes.push(format!("Final state: gpc0={gpc0:#010x}, fecs_pc={fecs_pc:#010x}"));
+
+    let tpc_alive = !crate::nv::pri::is_pri_fault(tpc0);
+    notes.push(format!("TPC PRI station alive = {tpc_alive}"));
+
+    // If TPC still faulted, try destructive PGRAPH reset as last resort
+    if !tpc_alive {
+        notes.push("TPC still faulted — attempting destructive PGRAPH reset".into());
+
+        // PMC GR engine reset: clear bit 12, wait, set bit 12
+        let pmc = bar0.read_u32(0x200).unwrap_or(0);
+        let _ = bar0.write_u32(0x200_usize, pmc & !(1 << 12));
+        std::thread::sleep(Duration::from_millis(10));
+        let _ = bar0.write_u32(0x200_usize, pmc | (1 << 12));
+        std::thread::sleep(Duration::from_millis(50));
+        notes.push("PGRAPH reset: PMC bit 12 toggled".into());
+
+        // PRI re-enumerate after reset
+        let _ = bar0.write_u32(0x12004c_usize, 2);
+        std::thread::sleep(Duration::from_millis(10));
+
+        // Re-apply sw_nonctx.bin after reset
+        match bridge.apply_gr_bar0_init(bar0, 70) {
+            Ok(()) => notes.push("Post-reset sw_nonctx.bin replay completed".into()),
+            Err(e) => notes.push(format!("Post-reset sw_nonctx.bin replay failed: {e}")),
+        }
+
+        // Final PRI recovery
+        let pri3 = pri_bus_recover(bar0);
+        notes.push(format!(
+            "Post-reset PRI recovery — alive={}, faulted={}",
+            pri3.alive, pri3.faulted
+        ));
+
+        let tpc0_final = bar0.read_u32(0x504000).unwrap_or(0xDEAD_DEAD);
+        let tpc_alive_final = !crate::nv::pri::is_pri_fault(tpc0_final);
+        notes.push(format!(
+            "Post-reset TPC: tpc0={tpc0_final:#010x}, alive={tpc_alive_final}"
+        ));
+    }
+
+    let after = SovereignSnapshot::capture(bar0);
+    let diff = SovereignSnapshot::diff(&before, &after);
+
+    ExperimentResult {
+        stage: 6,
+        stage_name: "Full 5-phase ungating + PGRAPH reset (Exp 217)".into(),
+        before,
+        after,
+        diff,
+        writes,
+        notes,
+    }
+}
+
+/// Auto-detect chip name and SM version from BOOT0 register.
+///
+/// Returns `(chip_name, sm_version)`. Falls back to `("gv100", 70)` if
+/// BOOT0 is unreadable or unrecognized.
+pub fn detect_chip(bar0: &MappedBar) -> (&'static str, u32) {
+    let boot0 = bar0.read_u32(0x0000_0000).unwrap_or(0);
+    let chip_id = (boot0 >> 20) & 0x1FF;
+    let sm = chip_id_to_sm(chip_id);
+    let chip = crate::nv::identity::chip_name(sm);
+    (chip, sm)
+}
+
+/// Execute an experiment stage by number (1-6).
+///
+/// Accepts an optional `chip` override (e.g. `"gv100"`, `"gk210"`).
+/// When `None`, auto-detects from BOOT0.
+pub fn run_experiment_stage(
+    bar0: &MappedBar,
+    stage: u32,
+    chip_override: Option<&str>,
+) -> Result<ExperimentResult, String> {
+    let (auto_chip, auto_sm) = detect_chip(bar0);
+    let chip = chip_override.unwrap_or(auto_chip);
+    let sm = auto_sm;
+
     match stage {
         1 => Ok(experiment_stage_1(bar0)),
         2 => Ok(experiment_stage_2(bar0)),
         3 => Ok(experiment_stage_3(bar0)),
-        4 => Ok(experiment_stage_4(bar0)),
+        4 => Ok(experiment_stage_4_with_chip(bar0, chip, sm)),
         5 => Ok(experiment_stage_5(bar0)),
-        _ => Err(format!("invalid stage {stage}: must be 1-5")),
+        6 => Ok(experiment_stage_6_with_chip(bar0, chip, sm)),
+        _ => Err(format!("invalid stage {stage}: must be 1-6")),
     }
 }

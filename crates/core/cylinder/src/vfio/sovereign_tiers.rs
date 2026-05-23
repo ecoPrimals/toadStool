@@ -7,21 +7,23 @@
 //! ┌─────────────────────────────────────────────────────────────────┐
 //! │ Tier 3: Full Sovereign Cold Boot                               │
 //! │   HBM2 training without VBIOS, DEVINIT from software.          │
-//! │   Status: long-term research goal.                              │
+//! │   Status: long-term research goal (~100 VBIOS opcodes, Exp204) │
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 2: Warm Sovereign Compute                                  │
-//! │   GPC ungating → FECS → GR dispatch → shader execution.        │
-//! │   Status: BLOCKED by GPC power gating after nouveau unbind.     │
-//! │   The PRI ring to the GPC domain is dead; registers at          │
-//! │   0x41xxxx (GPCCS) and 0x104xxx (CE) return 0xbadfXXXX.        │
-//! │   Evidence: PBDMA intr_0=0x10011111 (DEVICE error, bit 28).    │
+//! │   GPC fabric + TPC stations → FECS dispatch → shader execution. │
+//! │   Status: CLASSIFIED (Exp 215) — GPC fabric alive (6/6 GPCs),  │
+//! │   but TPC PRI ring stations MISSING (0xBADF5040 at 0x504000+). │
+//! │   SM registers accessible via different PRI sub-path.           │
+//! │   FECS runs (HS poll loop) but cannot dispatch without TPCs.    │
+//! │   PMU software path CLOSED (Exp 211) — HS-locked.              │
+//! │   nouveau never creates TPC stations on Volta (no PMU FW).     │
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 1: Warm Sovereign Infrastructure                           │
 //! │   VFIO bind, BAR0 MMIO, DMA allocation, PRAMIN read/write,     │
 //! │   PFIFO scheduling, channel creation, pushbuffer encoding,      │
-//! │   QMD building, FECS liveness (PC-confirm fire-and-forget).     │
-//! │   CE runlist discovered but CE engine also power-gated.         │
-//! │   Status: VALIDATED — everything up to dispatch works.           │
+//! │   QMD building, FECS liveness (PC-confirm). 183ms pipeline.     │
+//! │   CE4/CE5 alive, CE0-1 PRI-faulted.                            │
+//! │   Status: VALIDATED (Exp 210) — production-grade.               │
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 0: Cold Boot (Vendor Wall)                                 │
 //! │   Power-on reset → Boot ROM → HBM2 training.                   │
@@ -31,21 +33,37 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 //!
-//! # Paths to Tier 2
+//! # Paths to Tier 2 (updated May 2026, post-Exp 211/215)
 //!
-//! 1. **PMU command**: Send a power-on command through the PMU falcon
-//!    (which IS alive after warm handoff) to ungate the GPC power domain.
-//!    Requires reverse-engineering the PMU mailbox protocol.
+//! ## Active (post-Exp 217)
 //!
-//! 2. **Kernel patch**: Modify nouveau to NOT power-gate GPCs during
-//!    unbind. This preserves GPC state for VFIO passthrough.
+//! 1. **nvidia-470 nvsov dual-load injection (Exp 218, PRIMARY)**:
+//!    HandoffConfig::nvidia_patched_titanv() — DKMS 470.256.02 → patch
+//!    teardown NOPs → rename nvsov → insmod alongside nvidia-580 → bind
+//!    Titan V → settle → warm swap to vfio-pci. Infrastructure 95%
+//!    complete. Blocker: co-load conflicts (symbols, procfs, chardev).
+//!    Resolution via compile-time MODULE_BASE_NAME=nvsov (agentReagents)
+//!    or expanded runtime NOP set for procfs/chardev/UVM registration.
 //!
-//! 3. **nvidia-470 handoff**: Use the proprietary nvidia-470 driver
-//!    (which keeps GPCs powered) and then hand off to VFIO.
+//! 2. **agentReagents VM compute**: nvidia-470 inside VM for immediate
+//!    Titan V compute. SBR on exit destroys state (no host handoff).
 //!
-//! 4. **DRM dispatch**: Keep one GPU on a kernel driver (nouveau/nvidia)
-//!    and dispatch compute through DRM instead of sovereign VFIO.
-//!    Works for the RTX 5060 but not Titan V (NVK requires SM75+).
+//! 3. **K80 cross-gen**: Replacement K80 incoming. Unsigned falcons (no
+//!    HS lock), `gk110_pmu_pgob()` available — expected easiest path.
+//!
+//! ## Closed
+//!
+//! - **BAR0 register writes**: CLOSED — Exp 217: sw_nonctx.bin broadcast
+//!   writes accepted (0x419xxx returns values) but per-GPC TPC control
+//!   at 0x504xxx remains 0xBADF5040. Full 5-phase ungating + PGRAPH
+//!   reset also failed. Twin study confirmed on both Titan Vs.
+//!   Definitive: TPC PRI stations are firmware-mediated.
+//! - **PMU mailbox protocol**: CLOSED — HS-locked, DMEM returns
+//!   0xDEAD5EC2, queue inaccessible (Exp 211 Phase B/C).
+//! - **nouveau fini patch**: MOOT — `gv100_gr_fini` does not exist;
+//!   nouveau never creates TPC stations on Volta in the first place.
+//! - **PRI ringmaster enumerate**: INSUFFICIENT — re-registers existing
+//!   stations, cannot create missing ones (Exp 215 Stage 3).
 
 use serde::{Deserialize, Serialize};
 
@@ -178,6 +196,14 @@ pub struct TierEvidence {
     pub gr_status: Option<u32>,
     pub pbdma_intr: Option<u32>,
     pub ce_runlist: Option<u32>,
+    /// TPC0 control register (`GPC0+0x4000`). When `0xBADF5040`, TPC PRI
+    /// ring stations are missing — dispatch is blocked even if GPC fabric
+    /// is alive. Added Exp 217 to distinguish "classified Tier 2" from
+    /// "dispatch-ready Tier 2".
+    pub tpc_status: Option<u32>,
+    /// Whether any TPC control register across GPC0-5 is alive (non-fault).
+    /// False means TPC PRI ring wall is active — shader dispatch impossible.
+    pub tpc_alive: bool,
 }
 
 /// Classify the sovereignty tier from live register state.
@@ -201,6 +227,8 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
             gr_status: None,
             pbdma_intr: None,
             ce_runlist: None,
+            tpc_status: None,
+            tpc_alive: false,
         };
     }
 
@@ -251,7 +279,20 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     // Discover CE runlist
     let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
 
-    let tier = if gpc_alive && ce_alive {
+    // Check TPC PRI ring stations — the key dispatch-readiness indicator.
+    // TPC control at GPC0+0x4000 (= 0x504000). Scan across GPCs for any
+    // alive TPC. If all return 0xBADF5040, TPC PRI stations are missing
+    // and shader dispatch is impossible even if GPC fabric is alive.
+    let tpc_status = bar0.read_u32(0x504000).ok(); // GPC0_TPC0 control
+    let tpc_alive = (0..6u32).any(|gpc| {
+        let addr = 0x504000 + gpc as usize * 0x8000; // GPC{n}_TPC0
+        let val = bar0.read_u32(addr).unwrap_or(0xDEAD_DEAD);
+        !crate::nv::pri::is_pri_fault(val) && val != 0
+    });
+
+    // Tier 2 requires GPC + CE + TPC all alive for actual dispatch.
+    // If GPC/CE alive but TPC missing, we stay at Tier 1 — the TPC wall.
+    let tier = if gpc_alive && ce_alive && tpc_alive {
         SovereignTier::WarmCompute
     } else if pramin_accessible {
         SovereignTier::WarmInfrastructure
@@ -277,6 +318,8 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
         gr_status,
         pbdma_intr,
         ce_runlist,
+        tpc_status,
+        tpc_alive,
     }
 }
 
@@ -305,6 +348,8 @@ pub fn classify_tier_for_profile(
             gr_status: None,
             pbdma_intr: None,
             ce_runlist: None,
+            tpc_status: None,
+            tpc_alive: false,
         };
     }
 
@@ -344,7 +389,14 @@ pub fn classify_tier_for_profile(
     let gr_status = bar0.read_u32(profile.pgraph_status_offset as usize).ok();
     let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
 
-    let tier = if gpc_alive && ce_alive {
+    let tpc_status = bar0.read_u32(0x504000).ok();
+    let tpc_alive = (0..6u32).any(|gpc| {
+        let addr = 0x504000 + gpc as usize * 0x8000;
+        let val = bar0.read_u32(addr).unwrap_or(0xDEAD_DEAD);
+        !crate::nv::pri::is_pri_fault(val) && val != 0
+    });
+
+    let tier = if gpc_alive && ce_alive && tpc_alive {
         SovereignTier::WarmCompute
     } else if pramin_accessible {
         SovereignTier::WarmInfrastructure
@@ -369,6 +421,8 @@ pub fn classify_tier_for_profile(
         gr_status,
         pbdma_intr,
         ce_runlist,
+        tpc_status,
+        tpc_alive,
     }
 }
 

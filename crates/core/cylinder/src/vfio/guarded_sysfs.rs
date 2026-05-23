@@ -21,6 +21,7 @@
 //! entering uninterruptible kernel sleep (D-state), which bricked both
 //! Titan V GPUs during Exp 213.
 
+use std::os::fd::FromRawFd as _;
 use std::path::Path;
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
@@ -37,7 +38,9 @@ pub const INSMOD_TIMEOUT: Duration = Duration::from_secs(15);
 /// Default timeout for `rmmod` operations.
 pub const RMMOD_TIMEOUT: Duration = Duration::from_secs(10);
 /// Default overall handoff deadline.
-pub const HANDOFF_DEADLINE: Duration = Duration::from_secs(60);
+/// 150s: catalyst cold-boot on Volta needs ~30s deferred probe delay,
+/// 15s settle, and 30-60s RM cold init (HBM2 + falcon + FECS).
+pub const HANDOFF_DEADLINE: Duration = Duration::from_secs(150);
 
 /// Errors from guarded sysfs operations.
 #[derive(Debug, thiserror::Error)]
@@ -501,6 +504,57 @@ pub fn iommu_group_ready(bdf: &str) -> Result<(), GuardedSysfsError> {
     Ok(())
 }
 
+// ── BAR0 resource fd cleanup ────────────────────────────────────────
+
+/// Close all leaked sysfs `resource0` file descriptors for a PCI device
+/// held by the current process.
+///
+/// The sovereign pipeline opens BAR0 via sysfs `resource0` for health
+/// monitoring and profiling. These fds are intentionally leaked by
+/// `MappedBar` (the mmap outlives the File). Before a warm handoff, the
+/// kernel's `request_mem_region()` in the seeder driver will fail if any
+/// process still holds the BAR region open. This function scans
+/// `/proc/self/fd` and closes matching descriptors.
+///
+/// Returns the number of fds closed.
+pub fn release_bar0_fds(bdf: &str) -> usize {
+    let resource_path = crate::linux_paths::sysfs_pci_device_file(bdf, "resource0");
+    let resource_canonical = std::fs::canonicalize(&resource_path).ok();
+
+    let self_fd_dir = format!("{}/self/fd", crate::linux_paths::proc_root());
+    let Ok(entries) = std::fs::read_dir(&self_fd_dir) else {
+        return 0;
+    };
+
+    let mut closed = 0;
+    for entry in entries.filter_map(|e| e.ok()) {
+        let Ok(target) = std::fs::read_link(entry.path()) else {
+            continue;
+        };
+        let matches = target == Path::new(&resource_path)
+            || resource_canonical
+                .as_ref()
+                .is_some_and(|c| target == **c);
+        if !matches {
+            continue;
+        }
+        let Some(fd_num) = entry.file_name().to_str().and_then(|s| s.parse::<i32>().ok()) else {
+            continue;
+        };
+        // SAFETY: we own this fd (it's in /proc/self/fd). Closing a leaked
+        // sysfs resource0 fd is safe — the corresponding MmioRegion mmap
+        // remains valid until munmap (the kernel keeps the mapping alive
+        // independently of the fd). The fd was leaked intentionally by
+        // MappedBar; we are reclaiming it before driver rotation.
+        unsafe {
+            drop(std::os::fd::OwnedFd::from_raw_fd(fd_num));
+        }
+        closed += 1;
+        tracing::info!(bdf, fd = fd_num, "closed leaked BAR0 resource0 fd");
+    }
+    closed
+}
+
 // ── Handoff rollback ────────────────────────────────────────────────
 
 /// Attempt best-effort rollback after a failed handoff.
@@ -510,11 +564,36 @@ pub fn iommu_group_ready(bdf: &str) -> Result<(), GuardedSysfsError> {
 /// 2. Clear driver_override on the target device
 /// 3. Rebind target to vfio-pci
 /// 4. Rebind IOMMU siblings to vfio-pci
+///
+/// When `device_poisoned` is true the device is assumed to be locked
+/// by a D-state kernel thread (e.g. a stuck insmod probe). All sysfs
+/// operations on the **target device** are skipped because they would
+/// cascade the D-state to ember's own thread. Only sibling rebinding
+/// is attempted. The device is effectively sacrificed until reboot.
 pub fn handoff_rollback(
     bdf: &str,
     module_name: Option<&str>,
     siblings: &[(String, Option<String>)],
+    device_poisoned: bool,
 ) {
+    if device_poisoned {
+        tracing::error!(bdf,
+            "handoff rollback: device POISONED (D-state) — skipping all \
+             sysfs ops on target to protect ember. Device is lost until reboot.");
+
+        if let Some(name) = module_name {
+            tracing::warn!(bdf, module = name,
+                "rollback: skipping rmmod (device poisoned, module likely stuck)");
+        }
+
+        if !siblings.is_empty() {
+            rebind_siblings_to_vfio(siblings);
+            tracing::info!(bdf, count = siblings.len(),
+                "rollback: siblings rebound (device itself abandoned)");
+        }
+        return;
+    }
+
     tracing::warn!(bdf, "handoff rollback: attempting recovery");
 
     // 1. Try to unload the module if we loaded it
@@ -529,12 +608,12 @@ pub fn handoff_rollback(
         }
     }
 
-    // 2. Clear driver_override
+    // 2–3. Clear driver_override and rebind — use guarded writes to
+    //      avoid D-state cascade if the device is partially stuck.
     let override_path = crate::linux_paths::sysfs_pci_device_file(bdf, "driver_override");
-    let _ = sysfs_write(&override_path, "");
+    let _ = sysfs_write_guarded(&override_path, "", UNBIND_TIMEOUT);
+    let _ = sysfs_write_guarded(&override_path, "vfio-pci", UNBIND_TIMEOUT);
 
-    // 3. Rebind target to vfio-pci
-    let _ = sysfs_write(&override_path, "vfio-pci");
     let probe_path = crate::linux_paths::sysfs_pci_drivers_probe();
     match sysfs_write_guarded(&probe_path, bdf, Duration::from_secs(5)) {
         Ok(()) => tracing::info!(bdf, "rollback: target rebound to vfio-pci"),

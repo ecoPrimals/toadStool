@@ -81,6 +81,55 @@ impl Bar0Snapshot {
             .filter(|(_, v)| !is_error_or_zero(*v))
             .count()
     }
+
+    /// Convert a catalyst snapshot into a replay sequence.
+    ///
+    /// Filters to non-zero, non-PRI-fault registers — the catalyst's
+    /// product. The resulting `GrInitSequence` can be persisted as JSON
+    /// and replayed on future boots without the catalyst driver.
+    pub fn to_catalyst_replay(
+        &self,
+        chip: ChipFamily,
+        driver_version: &str,
+        domains: &[(&str, usize, usize)],
+    ) -> GrInitSequence {
+        use crate::nv::gr_init::{InitSource, RegWrite};
+        use crate::nv::pri::{domain_for_offset, is_pri_fault};
+
+        let writes: Vec<RegWrite> = self
+            .registers
+            .iter()
+            .filter(|(_, v)| *v != 0 && !is_pri_fault(*v))
+            .map(|(off, val)| RegWrite {
+                offset: *off as u32,
+                value: *val,
+                domain: domain_for_offset(*off, domains),
+                mask: None,
+            })
+            .collect();
+
+        let description = format!(
+            "{chip:?} catalyst replay: {} writes from {} capture of {}",
+            writes.len(),
+            driver_version,
+            self.bdf,
+        );
+
+        GrInitSequence {
+            chip,
+            writes,
+            source: InitSource::Catalyst {
+                driver_version: driver_version.to_string(),
+                bdf: self.bdf.clone(),
+            },
+            description,
+        }
+    }
+
+    /// Serialize to JSON for archival.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
+    }
 }
 
 /// Diff between two BAR0 snapshots.
@@ -124,6 +173,52 @@ impl Bar0Diff {
             .iter()
             .filter(|(off, _, _)| *off >= start && *off < end)
             .collect()
+    }
+
+    /// Convert a cold-vs-catalyst diff into a minimal replay sequence.
+    ///
+    /// Only includes registers that changed to non-zero, non-PRI-fault
+    /// values — the catalyst's product. Uses the warm (catalyst) value.
+    pub fn to_replay_sequence(
+        &self,
+        chip: ChipFamily,
+        source: InitSource,
+        domains: &[(&str, usize, usize)],
+    ) -> GrInitSequence {
+        use crate::nv::gr_init::RegWrite;
+        use crate::nv::pri::{domain_for_offset, is_pri_fault};
+
+        let writes: Vec<RegWrite> = self
+            .changed
+            .iter()
+            .filter(|(_, _, warm_val)| *warm_val != 0 && !is_pri_fault(*warm_val))
+            .map(|(off, _, warm_val)| RegWrite {
+                offset: *off as u32,
+                value: *warm_val,
+                domain: domain_for_offset(*off, domains),
+                mask: None,
+            })
+            .collect();
+
+        let description = format!(
+            "{chip:?} catalyst delta: {} writes from {} changed registers ({} → {})",
+            writes.len(),
+            self.changed.len(),
+            self.cold_label,
+            self.warm_label,
+        );
+
+        GrInitSequence {
+            chip,
+            writes,
+            source,
+            description,
+        }
+    }
+
+    /// Serialize to JSON for archival.
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
     }
 }
 
@@ -410,5 +505,81 @@ mod tests {
         let back: Bar0Snapshot = serde_json::from_str(&json).unwrap();
         assert_eq!(back.bdf, snap.bdf);
         assert_eq!(back.registers, snap.registers);
+    }
+
+    #[test]
+    fn catalyst_replay_filters_errors() {
+        let snap = Bar0Snapshot {
+            bdf: "0000:49:00.0".into(),
+            label: "catalyst-warm".into(),
+            registers: vec![
+                (0x200, 0x5fec_dff1),   // alive — included
+                (0x204, 0x0000_0000),   // zero — excluded
+                (0x2200, 0xBADF_5040),  // PRI fault — excluded
+                (0x400700, 0x0000_0042), // alive — included
+            ],
+            timestamp_ms: 0,
+        };
+        let replay = snap.to_catalyst_replay(
+            ChipFamily::Volta,
+            "470.256.02",
+            &sample_domains(),
+        );
+        assert_eq!(replay.len(), 2);
+        assert_eq!(replay.writes[0].offset, 0x200);
+        assert_eq!(replay.writes[1].offset, 0x400700);
+        assert!(replay.description.contains("catalyst replay"));
+        assert!(replay.description.contains("470.256.02"));
+    }
+
+    #[test]
+    fn diff_to_replay_sequence() {
+        let cold = Bar0Snapshot {
+            bdf: "0000:02:00.0".into(),
+            label: "cold".into(),
+            registers: vec![
+                (0x200, 0x0000_0000),
+                (0x204, 0x1111_1111),
+                (0x2200, 0x0000_0000),
+            ],
+            timestamp_ms: 0,
+        };
+        let warm = Bar0Snapshot {
+            bdf: "0000:49:00.0".into(),
+            label: "catalyst".into(),
+            registers: vec![
+                (0x200, 0x5fec_dff1),    // changed, alive
+                (0x204, 0x1111_1111),    // unchanged
+                (0x2200, 0xBADF_5040),   // changed but PRI fault — excluded
+            ],
+            timestamp_ms: 0,
+        };
+        let diff = Bar0Diff::from_snapshots(&cold, &warm);
+        let replay = diff.to_replay_sequence(
+            ChipFamily::Volta,
+            InitSource::Catalyst {
+                driver_version: "470.256.02".into(),
+                bdf: "0000:49:00.0".into(),
+            },
+            &sample_domains(),
+        );
+        assert_eq!(replay.len(), 1);
+        assert_eq!(replay.writes[0].offset, 0x200);
+        assert_eq!(replay.writes[0].value, 0x5fec_dff1);
+        assert!(replay.description.contains("catalyst delta"));
+    }
+
+    #[test]
+    fn snapshot_to_json_roundtrip() {
+        let snap = Bar0Snapshot {
+            bdf: "0000:41:00.0".into(),
+            label: "test-json".into(),
+            registers: vec![(0x200, 0x1234), (0x204, 0x5678)],
+            timestamp_ms: 99999,
+        };
+        let json = snap.to_json().unwrap();
+        let back: Bar0Snapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.bdf, "0000:41:00.0");
+        assert_eq!(back.registers.len(), 2);
     }
 }

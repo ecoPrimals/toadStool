@@ -56,17 +56,18 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+use toadstool_cylinder::vfio::sovereign_handoff::{HandoffConfig, ModuleSourceConfig};
+
 /// Where the seeder's kernel module comes from.
 ///
 /// `System` means the module is already loaded (or loadable via `modprobe`).
 /// `Patched` means the diesel engine finds the stock `.ko`, binary-patches
 /// it at runtime, and loads the patched version via `insmod`. After the
 /// warm handoff completes, the patched module is `rmmod`'d and cleaned up.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModuleSource {
     /// Module already loaded in the kernel (current behavior).
     /// No module lifecycle management needed.
-    #[default]
     System,
 
     /// Load a binary-patched version of a stock module.
@@ -78,6 +79,12 @@ pub enum ModuleSource {
         /// (e.g., "volta_warm_handoff", "kepler_warm_handoff").
         patch_set: String,
     },
+}
+
+impl Default for ModuleSource {
+    fn default() -> Self {
+        Self::System
+    }
 }
 
 /// How a seeder driver is contained.
@@ -370,6 +377,47 @@ impl WarmInitPlan {
             containment: SeederContainment::BareMetal,
             seeder_settle: Duration::from_secs(5),
             final_target: "vfio-pci".into(),
+        }
+    }
+
+    /// Derive a `WarmInitPlan` from the diesel engine's [`HandoffConfig`].
+    ///
+    /// This is the canonical conversion path: the `HandoffConfig` (cylinder)
+    /// is the authoritative source for BDF, driver, module source, settle
+    /// time, and final target. `WarmInitPlan` adds glowplug-specific
+    /// documentation (initializes/limitations) and containment policy.
+    ///
+    /// All bare-metal strategies (nouveau, nvidia system, nvidia patched/nvsov)
+    /// produce `SeederContainment::BareMetal`. Only the agentReagents VM path
+    /// uses `Contained`, which the diesel engine doesn't handle.
+    #[must_use]
+    pub fn from_handoff_config(config: &HandoffConfig) -> Self {
+        let module_source = match &config.module_source {
+            ModuleSourceConfig::System => ModuleSource::System,
+            ModuleSourceConfig::Patched { stock_module, patch_set } => ModuleSource::Patched {
+                stock_module: stock_module.clone(),
+                patch_set: patch_set.clone(),
+            },
+            ModuleSourceConfig::DkmsPatched { dkms_module, patch_set, .. } => {
+                ModuleSource::Patched {
+                    stock_module: dkms_module.clone(),
+                    patch_set: patch_set.clone(),
+                }
+            }
+        };
+
+        Self {
+            bdf: config.bdf.clone(),
+            seeder: SeederDriver {
+                name: config.seeder_driver.clone(),
+                module: config.module_name.clone(),
+                module_source,
+                initializes: vec![format!("derived from HandoffConfig strategy")],
+                limitations: vec![],
+            },
+            containment: SeederContainment::BareMetal,
+            seeder_settle: config.settle,
+            final_target: config.final_driver.clone(),
         }
     }
 
