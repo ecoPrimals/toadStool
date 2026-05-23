@@ -796,18 +796,16 @@ pub fn execute_handoff(
                 // request_mem_region call on BAR0 fails because the
                 // PCI subsystem still has the region reserved from the
                 // previous driver's pci_enable_device.
+                // Direct sysfs_write is safe here: the device is unbound
+                // and the `enable` attribute is a non-blocking kernel op.
                 let enable_path = crate::linux_paths::sysfs_pci_device_file(
                     &config.bdf, "enable",
                 );
-                if let Err(e) = guarded_sysfs::sysfs_write_guarded(
-                    &enable_path, "0",
-                    guarded_sysfs::UNBIND_TIMEOUT,
-                ) {
-                    tracing::warn!(bdf = config.bdf.as_str(), error = %e,
-                        "pci disable failed (continuing — request_mem_region may fail)");
-                } else {
-                    tracing::info!(bdf = config.bdf.as_str(),
-                        "pci device disabled — BAR resources released for driver takeover");
+                match guarded_sysfs::sysfs_write(&enable_path, "0") {
+                    Ok(()) => tracing::info!(bdf = config.bdf.as_str(),
+                        "pci device disabled — BAR resources released for driver takeover"),
+                    Err(e) => tracing::warn!(bdf = config.bdf.as_str(), error = %e,
+                        "pci disable failed (continuing — request_mem_region may fail)"),
                 }
 
                 let override_path = crate::linux_paths::sysfs_pci_device_file(

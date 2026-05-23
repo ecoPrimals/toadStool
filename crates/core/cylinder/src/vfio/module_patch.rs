@@ -389,20 +389,14 @@ impl PatchSet {
                     symbol: "nv_cap_destroy_entry".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
-                // Remap chrdev major 195→185 in the __register_chrdev
-                // call inside init_module. Host nvidia owns major 195;
-                // changing the immediate avoids conflict without NOP-ing
-                // the call, so RM's chardev is created (major 185) and
-                // userspace can trigger GPU init via device open.
-                // Layout: `bf c3 00 00 00` = `mov $0xc3, %edi` at fn+0x7a;
-                // the immediate 0xC3 is at fn+0x7b.
+                // NOP the __register_chrdev call inside init_module.
+                // Host nvidia owns majors 185 and 195; any remap still
+                // conflicts. For the catalyst pattern we don't need the
+                // chardev — the PCI match triggers probe during insmod.
+                // Layout: `call __register_chrdev` at fn+0x7f (5 bytes).
                 PatchTarget {
                     symbol: "init_module".into(),
-                    strategy: PatchStrategy::PatchByteAt {
-                        fn_offset: 0x7b,
-                        expected: 0xC3,
-                        replacement: 0xB9,
-                    },
+                    strategy: PatchStrategy::NopCallAt(0x7f),
                 },
             ],
             min_applied: 1,
