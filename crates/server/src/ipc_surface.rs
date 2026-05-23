@@ -2,11 +2,11 @@
 //! IPC surface constants for Neural API self-announcement.
 //!
 //! Provides the `compute.*`, `science.*`, and `inference.*` method names
-//! that toadStool announces to biomeOS on startup (Wave 43).
+//! that toadStool announces to biomeOS on startup (Wave 43/44).
 
 /// Methods announced to biomeOS Neural API via `primal.announce`.
 ///
-/// Filtered to the `compute.*`, `science.*`, and `inference.*` namespaces
+/// Covers the `compute.*`, `inference.*`, and `science.*` namespaces
 /// that toadStool provides as a node-tier compute primal.
 pub const ANNOUNCED_METHODS: &[&str] = &[
     "compute.cancel",
@@ -41,6 +41,20 @@ pub const ANNOUNCED_METHODS: &[&str] = &[
     "compute.status",
     "compute.submit",
     "compute.version",
+    "inference.execute",
+    "inference.list_models",
+    "inference.load_model",
+    "inference.unload_model",
+    "science.compute.cancel",
+    "science.compute.result",
+    "science.compute.status",
+    "science.compute.submit",
+    "science.gpu.capabilities",
+    "science.gpu.dispatch",
+    "science.npu.capabilities",
+    "science.npu.dispatch",
+    "science.substrate.discover",
+    "science.substrate.probe",
 ];
 
 #[cfg(test)]
@@ -55,12 +69,32 @@ mod tests {
     }
 
     #[test]
-    fn announced_methods_all_compute_namespace() {
+    fn announced_methods_all_in_announced_namespaces() {
         for m in ANNOUNCED_METHODS {
             assert!(
-                m.starts_with("compute.") || m.starts_with("science.") || m.starts_with("inference."),
+                m.starts_with("compute.")
+                    || m.starts_with("science.")
+                    || m.starts_with("inference."),
                 "method {m} is not in compute/science/inference namespace"
             );
         }
+    }
+
+    #[test]
+    fn announced_methods_covers_all_three_capabilities() {
+        assert!(
+            ANNOUNCED_METHODS.iter().any(|m| m.starts_with("compute.")),
+            "no compute.* methods"
+        );
+        assert!(
+            ANNOUNCED_METHODS.iter().any(|m| m.starts_with("science.")),
+            "no science.* methods"
+        );
+        assert!(
+            ANNOUNCED_METHODS
+                .iter()
+                .any(|m| m.starts_with("inference.")),
+            "no inference.* methods"
+        );
     }
 }

@@ -54,6 +54,32 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         cost("variable", true, 100, "variable", "variable"),
     );
 
+    // Science domain — aliases routing to compute handlers
+    for m in [
+        "science.compute.submit",
+        "science.compute.status",
+        "science.compute.result",
+        "science.compute.cancel",
+        "science.gpu.dispatch",
+        "science.gpu.capabilities",
+        "science.npu.dispatch",
+        "science.npu.capabilities",
+        "science.substrate.discover",
+        "science.substrate.probe",
+    ] {
+        map.insert(m.into(), cost("variable", true, 100, "variable", "variable"));
+    }
+
+    // Inference domain — model lifecycle
+    for m in [
+        "inference.execute",
+        "inference.list_models",
+        "inference.load_model",
+        "inference.unload_model",
+    ] {
+        map.insert(m.into(), cost("variable", true, 200, "variable", "variable"));
+    }
+
     // toadstool-prefixed resource methods (aliases to resources.*)
     for (prefixed, canonical) in [
         ("toadstool.resources.estimate", "resources.estimate"),

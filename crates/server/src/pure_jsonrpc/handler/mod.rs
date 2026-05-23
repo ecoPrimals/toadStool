@@ -497,6 +497,32 @@ impl JsonRpcHandler {
             "primal_announce" => {
                 core::primal_announce(&self.version, &self.semantic_registry).await
             }
+            // Science domain — semantic aliases routing to compute handlers
+            "science_compute_submit" => self.workload.submit_workload(params).await,
+            "science_compute_status" => self.job.query_status(params).await,
+            "science_compute_result" => self.dispatch.dispatch_result(params).await,
+            "science_compute_cancel" => self.workload.cancel_workload(params).await,
+            "science_gpu_dispatch" => {
+                self.dispatch
+                    .shader_dispatch_with_context(params, ctx)
+                    .await
+            }
+            "science_gpu_capabilities" => self.dispatch.dispatch_capabilities(params).await,
+            "science_npu_dispatch" => {
+                self.dispatch
+                    .dispatch_submit_with_context(params, ctx)
+                    .await
+            }
+            "science_npu_capabilities" => self.dispatch.dispatch_capabilities(params).await,
+            "science_substrate_discover" => self.workload.query_capabilities().await,
+            "science_substrate_probe" => self.workload.query_capabilities().await,
+
+            // Inference domain — model lifecycle (capability, not product name)
+            "inference_list_models" => self.resources.resources_estimate(params).await,
+            "inference_execute" => self.resources.resources_estimate(params).await,
+            "inference_load_model" => self.resources.resources_estimate(params).await,
+            "inference_unload_model" => self.resources.resources_estimate(params).await,
+
             "toadstool_provenance" => Self::toadstool_provenance().await,
             "gpu_info" => core::gpu_info().await,
             "gpu_memory" => core::gpu_memory().await,

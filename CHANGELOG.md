@@ -5,7 +5,19 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 23, 2026 (Sessions 43-270)
+## [Unreleased] - May 23, 2026 (Sessions 43-271)
+
+### Session S271 (May 23, 2026) — Wave 44: Neural API Announce Fix — science/inference Methods
+
+primalSpring Wave 44 response: expand announced IPC surface to cover all three claimed capabilities.
+
+- ADDED: 14 `science.*` and `inference.*` methods to `ANNOUNCED_METHODS` (now 47 methods)
+- ADDED: `science_compute_*`, `science_gpu_*`, `science_npu_*`, `science_substrate_*` impl dispatch arms routing to existing compute handlers
+- ADDED: `inference_list_models`, `inference_execute`, `inference_load_model`, `inference_unload_model` impl dispatch arms
+- ADDED: Wire L3 cost estimates for all `science.*` and `inference.*` methods
+- ADDED: `announced_methods_covers_all_three_capabilities` test
+- FIXED: Capabilities claim `["compute", "science", "inference"]` now matches announced method surface (Wave 44 P2 fix)
+- METRICS: 88 JSON-RPC methods, 9,126 lib tests, 0 clippy warnings, deny clean
 
 ### Session S270 (May 23, 2026) — Wave 43: Neural API primal.announce Wiring
 
