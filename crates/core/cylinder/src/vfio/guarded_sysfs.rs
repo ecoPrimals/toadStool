@@ -187,6 +187,64 @@ pub fn sysfs_write_guarded(
     }
 }
 
+/// Fire-and-forget unbind with driver-state polling.
+///
+/// For nvidia catalyst teardown, the kernel-side `remove` callback takes
+/// 160-400s (HBM2 dealloc, falcon halt). `sysfs_write_guarded` would block
+/// the calling thread for the entire duration. Instead:
+///   1. Spawn the unbind write child (returns immediately to us)
+///   2. Poll `read_current_driver` every 2s until driver clears
+///   3. The child stays alive in kernel D-state — we don't wait for it
+///
+/// This keeps ember responsive during the entire teardown.
+pub fn sysfs_unbind_fire_and_poll(
+    bdf: &str,
+    driver: &str,
+    deadline: Duration,
+) -> Result<Duration, GuardedSysfsError> {
+    let unbind_path = crate::linux_paths::sysfs_pci_driver_unbind(driver);
+    tracing::info!(
+        bdf, driver, deadline_s = deadline.as_secs(),
+        "fire-and-poll unbind: initiating driver teardown"
+    );
+
+    let _child = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(format!("printf '%s' '{}' > '{}'", bdf, unbind_path))
+        .spawn()
+        .map_err(|e| GuardedSysfsError::WriteFailed {
+            path: unbind_path.clone(),
+            reason: format!("failed to spawn unbind child: {e}"),
+        })?;
+
+    let start = Instant::now();
+    let poll_interval = Duration::from_secs(2);
+
+    loop {
+        if read_current_driver(bdf).is_none() {
+            let elapsed = start.elapsed();
+            tracing::info!(
+                bdf, elapsed_s = elapsed.as_secs(),
+                "fire-and-poll unbind: driver cleared"
+            );
+            return Ok(elapsed);
+        }
+
+        if start.elapsed() >= deadline {
+            tracing::error!(
+                bdf, deadline_s = deadline.as_secs(),
+                "fire-and-poll unbind: deadline exceeded — device still bound"
+            );
+            return Err(GuardedSysfsError::Timeout {
+                path: unbind_path,
+                timeout_ms: deadline.as_millis() as u64,
+            });
+        }
+
+        std::thread::sleep(poll_interval);
+    }
+}
+
 // ── Tier 3: Guarded kmod operations ─────────────────────────────────
 
 /// Run a kernel module command (`insmod`/`rmmod`) with timeout.

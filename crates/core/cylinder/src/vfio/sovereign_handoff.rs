@@ -1029,18 +1029,31 @@ pub fn execute_handoff(
 
     let t = Instant::now();
     if let Some(ref current) = guarded_sysfs::read_current_driver(&config.bdf) {
-        let unbind_path = crate::linux_paths::sysfs_pci_driver_unbind(current);
-        let unbind_timeout = if is_catalyst {
-            guarded_sysfs::CATALYST_TEARDOWN_TIMEOUT
+        let remaining = deadline.saturating_sub(overall.elapsed());
+        let unbind_result = if is_catalyst {
+            // nvidia RM teardown takes 160-400s on GV100. Fire-and-poll
+            // avoids blocking ember's thread — we just poll the driver
+            // symlink every 2s until it clears.
+            guarded_sysfs::sysfs_unbind_fire_and_poll(
+                &config.bdf, current, remaining,
+            )
+            .map(|elapsed| {
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    elapsed_s = elapsed.as_secs(),
+                    "catalyst teardown completed via fire-and-poll"
+                );
+            })
         } else {
-            guarded_sysfs::UNBIND_TIMEOUT
+            let unbind_path = crate::linux_paths::sysfs_pci_driver_unbind(current);
+            guarded_sysfs::sysfs_write_guarded(
+                &unbind_path, &config.bdf, guarded_sysfs::UNBIND_TIMEOUT,
+            )
         };
-        if let Err(e) = guarded_sysfs::sysfs_write_guarded(
-            &unbind_path, &config.bdf, unbind_timeout,
-        ) {
+        if let Err(e) = unbind_result {
             steps.push(HandoffStep {
                 name: "warm_swap".into(), ok: false,
-                detail: Some(format!("guarded unbind {current} failed: {e}")),
+                detail: Some(format!("unbind {current} failed: {e}")),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
 
@@ -1050,46 +1063,89 @@ pub fn execute_handoff(
         }
     }
 
-    if let Err(e) = guarded_sysfs::sysfs_write(&override_path, &config.final_driver) {
+    if is_catalyst {
+        // After fire-and-poll, the driver symlink is gone but nvidia RM
+        // teardown still holds the PCI device lock. Any sysfs write
+        // (override, probe) would block until teardown finishes.
+        // Instead, poll for the final driver to appear — vfio-pci auto-
+        // claims via boot config once the lock releases.
+        let poll_deadline = deadline.saturating_sub(overall.elapsed());
+        let poll_start = Instant::now();
+        let poll_interval = Duration::from_secs(2);
+        let mut final_driver = guarded_sysfs::read_current_driver(&config.bdf);
+
+        while final_driver.as_deref() != Some(config.final_driver.as_str()) {
+            if poll_start.elapsed() >= poll_deadline {
+                steps.push(HandoffStep {
+                    name: "warm_swap".into(), ok: false,
+                    detail: Some(format!(
+                        "poll for {} timed out (driver={:?})",
+                        config.final_driver, final_driver,
+                    )),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+                return halt_result(&config.bdf, "warm_swap", steps, patch_result,
+                                   module_loaded, false, overall, &sibling_state,
+                                   &config.module_name, needs_device_rollback);
+            }
+            std::thread::sleep(poll_interval);
+            final_driver = guarded_sysfs::read_current_driver(&config.bdf);
+        }
+
+        let swap_elapsed = t.elapsed();
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            final_driver = config.final_driver.as_str(),
+            elapsed_s = swap_elapsed.as_secs(),
+            "catalyst warm_swap: final driver bound via poll"
+        );
         steps.push(HandoffStep {
-            name: "warm_swap".into(), ok: false,
-            detail: Some(format!("override to {} failed: {e}", config.final_driver)),
+            name: "warm_swap".into(), ok: true,
+            detail: Some(format!("{} → {} (poll-waited {}s)",
+                config.seeder_driver, config.final_driver, swap_elapsed.as_secs())),
+            duration_ms: swap_elapsed.as_millis() as u64,
+        });
+    } else {
+        if let Err(e) = guarded_sysfs::sysfs_write(&override_path, &config.final_driver) {
+            steps.push(HandoffStep {
+                name: "warm_swap".into(), ok: false,
+                detail: Some(format!("override to {} failed: {e}", config.final_driver)),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+
+            return halt_result(&config.bdf, "warm_swap", steps, patch_result,
+                               module_loaded, false, overall, &sibling_state,
+                               &config.module_name, needs_device_rollback);
+        }
+
+        if let Err(e) = guarded_sysfs::sysfs_write_guarded(
+            &probe_path, &config.bdf, guarded_sysfs::PROBE_TIMEOUT,
+        ) {
+            steps.push(HandoffStep {
+                name: "warm_swap".into(), ok: false,
+                detail: Some(format!("guarded drivers_probe for {} failed: {e}", config.final_driver)),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+
+            return halt_result(&config.bdf, "warm_swap", steps, patch_result,
+                               module_loaded, false, overall, &sibling_state,
+                               &config.module_name, needs_device_rollback);
+        }
+
+        let final_bound = guarded_sysfs::read_current_driver(&config.bdf);
+        let swap_ok = final_bound.as_deref() == Some(config.final_driver.as_str());
+        steps.push(HandoffStep {
+            name: "warm_swap".into(), ok: swap_ok,
+            detail: Some(format!("{} → {} (warm_preserved={})",
+                config.seeder_driver, final_bound.as_deref().unwrap_or("none"), swap_ok)),
             duration_ms: t.elapsed().as_millis() as u64,
         });
 
-        return halt_result(&config.bdf, "warm_swap", steps, patch_result,
-                           module_loaded, false, overall, &sibling_state,
-                           &config.module_name, needs_device_rollback);
-    }
-
-    if let Err(e) = guarded_sysfs::sysfs_write_guarded(
-        &probe_path, &config.bdf, guarded_sysfs::PROBE_TIMEOUT,
-    ) {
-        steps.push(HandoffStep {
-            name: "warm_swap".into(), ok: false,
-            detail: Some(format!("guarded drivers_probe for {} failed: {e}", config.final_driver)),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
-
-        return halt_result(&config.bdf, "warm_swap", steps, patch_result,
-                           module_loaded, false, overall, &sibling_state,
-                           &config.module_name, needs_device_rollback);
-    }
-
-    let final_bound = guarded_sysfs::read_current_driver(&config.bdf);
-    let swap_ok = final_bound.as_deref() == Some(config.final_driver.as_str());
-    steps.push(HandoffStep {
-        name: "warm_swap".into(), ok: swap_ok,
-        detail: Some(format!("{} → {} (warm_preserved={})",
-            config.seeder_driver, final_bound.as_deref().unwrap_or("none"), swap_ok)),
-        duration_ms: t.elapsed().as_millis() as u64,
-    });
-
-    if !swap_ok {
-
-        return halt_result(&config.bdf, "warm_swap", steps, patch_result,
-                           module_loaded, false, overall, &sibling_state,
-                           &config.module_name, needs_device_rollback);
+        if !swap_ok {
+            return halt_result(&config.bdf, "warm_swap", steps, patch_result,
+                               module_loaded, false, overall, &sibling_state,
+                               &config.module_name, needs_device_rollback);
+        }
     }
 
     // ── Step 6b: Rebind IOMMU siblings to vfio-pci ─────────────────
