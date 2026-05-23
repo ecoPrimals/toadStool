@@ -1077,9 +1077,10 @@ impl DispatchHandler {
         // Wrapped in tokio::time::timeout to prevent indefinite RPC hangs.
         // The handoff itself has internal deadlines via guarded_sysfs, but
         // this outer timeout is the last line of defense.
-        // 180s: catalyst cold-boot on Volta requires ~30s PCI probe delay
-        // + 15s settle + 30-60s RM init (HBM2 training, falcon boot, FECS).
-        let rpc_timeout = std::time::Duration::from_secs(180);
+        // 420s: catalyst teardown on GV100 needs ~160s for nvidia RM
+        // shutdown (HBM2 dealloc, falcon halt) + 15s settle + 30s probe
+        // + 30s BAR0 capture margin.
+        let rpc_timeout = std::time::Duration::from_secs(420);
         let blocking_future = tokio::task::spawn_blocking(move || {
             execute_handoff(&config, None)
         });

@@ -37,10 +37,14 @@ pub const UNBIND_TIMEOUT: Duration = Duration::from_secs(10);
 pub const INSMOD_TIMEOUT: Duration = Duration::from_secs(15);
 /// Default timeout for `rmmod` operations.
 pub const RMMOD_TIMEOUT: Duration = Duration::from_secs(10);
+/// Extended timeout for nvidia RM teardown during catalyst unbind.
+/// nvidia-470's RM on GV100 takes ~160s to fully teardown (HBM2 dealloc,
+/// falcon shutdown, FECS/GPCCS halt). Must exceed this or the child gets
+/// killed and the probe/rebind races with still-running kernel teardown.
+pub const CATALYST_TEARDOWN_TIMEOUT: Duration = Duration::from_secs(200);
 /// Default overall handoff deadline.
-/// 150s: catalyst cold-boot on Volta needs ~30s deferred probe delay,
-/// 15s settle, and 30-60s RM cold init (HBM2 + falcon + FECS).
-pub const HANDOFF_DEADLINE: Duration = Duration::from_secs(150);
+/// 400s for catalyst: 15s settle + 160s RM teardown + 30s BAR0 capture.
+pub const HANDOFF_DEADLINE: Duration = Duration::from_secs(400);
 
 /// Errors from guarded sysfs operations.
 #[derive(Debug, thiserror::Error)]

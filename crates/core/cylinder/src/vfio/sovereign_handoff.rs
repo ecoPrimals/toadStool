@@ -1030,15 +1030,20 @@ pub fn execute_handoff(
     let t = Instant::now();
     if let Some(ref current) = guarded_sysfs::read_current_driver(&config.bdf) {
         let unbind_path = crate::linux_paths::sysfs_pci_driver_unbind(current);
+        let unbind_timeout = if is_catalyst {
+            guarded_sysfs::CATALYST_TEARDOWN_TIMEOUT
+        } else {
+            guarded_sysfs::UNBIND_TIMEOUT
+        };
         if let Err(e) = guarded_sysfs::sysfs_write_guarded(
-            &unbind_path, &config.bdf, guarded_sysfs::UNBIND_TIMEOUT,
+            &unbind_path, &config.bdf, unbind_timeout,
         ) {
             steps.push(HandoffStep {
                 name: "warm_swap".into(), ok: false,
                 detail: Some(format!("guarded unbind {current} failed: {e}")),
                 duration_ms: t.elapsed().as_millis() as u64,
             });
-    
+
             return halt_result(&config.bdf, "warm_swap", steps, patch_result,
                                module_loaded, false, overall, &sibling_state,
                                &config.module_name, needs_device_rollback);
