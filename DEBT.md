@@ -1,12 +1,20 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S269
+**Date**: May 2026 — S270
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S270 (Wave 43: Neural API primal.announce Wiring)**:
+`primal.announce` wired into JSON-RPC dispatch table — direct route,
+semantic alias, DIRECT_JSONRPC_METHODS, wire L3 cost. Startup self-
+announcement to biomeOS Neural API via `self_announce_to_biomeos()`
+with capabilities (compute, science, inference), cost hints, latency
+estimates, signal tier (node). `#[allow(dead_code)]` removed.
+9,125 lib tests, 88 JSON-RPC methods, 0 clippy warnings.
 
 **S269 (Wave 38: Fan-Out + Guest Load + Upstream Debt)**:
 `compute.fan_out` re-implemented from S263 wire contract — handler, types,

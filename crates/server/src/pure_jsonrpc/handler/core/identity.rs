@@ -195,32 +195,45 @@ pub(crate) async fn identity_get(
     }))
 }
 
-/// `primal.announce` — self-registration broadcast for discovery.
+/// `primal.announce` — self-registration broadcast for Neural API discovery.
 ///
-/// Returns the primal's identity, capabilities, and socket path so
-/// orchestrators and peers can register this primal in the mesh.
-#[allow(
-    dead_code,
-    clippy::unused_async,
-    reason = "handler dispatch wiring pending — registered in DIRECT_JSONRPC_METHODS"
-)]
+/// Returns the primal's identity, capabilities, socket path, cost hints,
+/// and latency estimates so biomeOS Neural API can build routing weights
+/// and utilization tracking. Wire format per Wave 42/43 Neural API standard.
+#[allow(clippy::unused_async)]
 pub(crate) async fn primal_announce(
     version: &str,
     semantic_registry: &SemanticMethodRegistry,
 ) -> JsonRpcResult {
     let methods = all_callable_methods(semantic_registry);
+    let socket_name = format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN);
+    let socket = std::env::var("XDG_RUNTIME_DIR").map_or_else(
+        |_| format!("/tmp/biomeos/{socket_name}"),
+        |d| format!("{d}/biomeos/{socket_name}"),
+    );
 
     Ok(serde_json::json!({
         "primal": PRIMAL_NAME,
         "version": version,
         "domain": "compute",
-        "capabilities": ["compute", "workload", "gpu", "shader_dispatch",
-                         "hardware_transport", "hardware_learning"],
+        "capabilities": ["compute", "science", "inference"],
         "methods": methods,
         "count": methods.len(),
         "protocol": "jsonrpc-2.0",
         "transport": ["uds", "tcp"],
-        "socket_name": format!("{}.sock", toadstool_common::constants::CAPABILITY_DOMAIN),
+        "socket": socket,
+        "socket_name": socket_name,
+        "signal_tiers": ["node"],
+        "cost_hints": {
+            "compute": 100.0,
+            "science": 50.0,
+            "inference": 80.0,
+        },
+        "latency_estimates": {
+            "compute": 200,
+            "science": 100,
+            "inference": 150,
+        },
         "status": "ready",
     }))
 }
@@ -357,5 +370,33 @@ mod tests {
         assert_eq!(count as usize, result["methods"].as_array().unwrap().len());
         let transport = result["transport"].as_array().unwrap();
         assert!(transport.iter().any(|t| t == "uds"));
+    }
+
+    #[tokio::test]
+    async fn test_primal_announce_wave43_neural_api_fields() {
+        let reg = empty_registry();
+        let result = primal_announce("0.2.0", &reg).await.unwrap();
+
+        assert!(result["socket"].is_string());
+        assert!(result["socket"].as_str().unwrap().contains("compute.sock"));
+
+        let caps = result["capabilities"].as_array().unwrap();
+        let cap_strs: Vec<&str> = caps.iter().filter_map(|v| v.as_str()).collect();
+        assert!(cap_strs.contains(&"compute"));
+        assert!(cap_strs.contains(&"science"));
+        assert!(cap_strs.contains(&"inference"));
+
+        let tiers = result["signal_tiers"].as_array().unwrap();
+        assert!(tiers.iter().any(|t| t == "node"));
+
+        let cost = &result["cost_hints"];
+        assert_eq!(cost["compute"], 100.0);
+        assert_eq!(cost["science"], 50.0);
+        assert_eq!(cost["inference"], 80.0);
+
+        let latency = &result["latency_estimates"];
+        assert_eq!(latency["compute"], 200);
+        assert_eq!(latency["science"], 100);
+        assert_eq!(latency["inference"], 150);
     }
 }

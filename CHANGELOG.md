@@ -5,7 +5,23 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 22, 2026 (Sessions 43-269)
+## [Unreleased] - May 23, 2026 (Sessions 43-270)
+
+### Session S270 (May 23, 2026) — Wave 43: Neural API primal.announce Wiring
+
+primalSpring Wave 43 response: wire existing `primal_announce` stub into JSON-RPC dispatch, add Neural API self-announcement on startup.
+
+- ADDED: `primal.announce` wired into direct `handle_method` match + `dispatch_by_impl_name` semantic alias
+- ADDED: `primal.announce` to `DIRECT_JSONRPC_METHODS` array (88 methods)
+- ADDED: `primal.announce` to wire L3 cost estimates (negligible — pure in-memory)
+- ADDED: Neural API self-announcement on startup via `self_announce_to_biomeos()` — sends capabilities (compute, science, inference), cost hints, latency estimates, signal tier (node) to biomeOS
+- ADDED: `ipc_surface.rs` module with `ANNOUNCED_METHODS` constant (compute.* namespace)
+- CHANGED: `primal_announce()` payload updated per Wave 43 schema — added `socket`, `signal_tiers`, `cost_hints`, `latency_estimates` fields; capabilities now `["compute", "science", "inference"]`
+- REMOVED: `#[allow(dead_code)]` from `primal_announce` function (now actively dispatched)
+- ADDED: `test_primal_announce_wave43_neural_api_fields` test validating Neural API fields
+- ADDED: `announced_methods_sorted` + `announced_methods_all_compute_namespace` tests
+- FIXED: `map_unwrap_or` clippy lint in socket path construction
+- METRICS: 88 JSON-RPC methods, 9,125 lib tests, 0 clippy warnings, deny clean
 
 ### Session S269 (May 22, 2026) — Wave 38: Fan-Out + Guest Load + Upstream Debt
 

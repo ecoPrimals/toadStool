@@ -183,6 +183,78 @@ pub async fn find_by_capability(capability: &str) -> ToadStoolResult<Vec<String>
     Ok(primals)
 }
 
+/// Self-announce to biomeOS Neural API via `primal.announce` JSON-RPC.
+///
+/// Sends capabilities, methods, signal tier, cost hints, and latency estimates
+/// so the Neural API can build routing weights and utilization tracking.
+/// Fire-and-forget at call site — if biomeOS is unreachable we continue
+/// in standalone mode.
+///
+/// # Errors
+///
+/// Returns error if the Neural API socket is unreachable or JSON-RPC framing fails.
+pub async fn self_announce_to_biomeos(
+    methods: &[&str],
+    socket_path: &str,
+) -> ToadStoolResult<()> {
+    let biomeos_dir = toadstool_common::primal_sockets::get_biomeos_dir();
+    let neural_sock = biomeos_dir.join("neural-api-ecoPrimal.sock");
+    let neural_path = neural_sock.to_string_lossy().to_string();
+
+    info!("Self-announcing to biomeOS Neural API at {}", neural_path);
+
+    let mut stream = match timeout(IPC_TIMEOUT, UnixStream::connect(neural_sock.as_path())).await {
+        Ok(Ok(s)) => s,
+        Ok(Err(e)) => {
+            return Err(ToadStoolError::integration(format!(
+                "Failed to connect to Neural API at {neural_path}: {e}"
+            )));
+        }
+        Err(_) => {
+            return Err(ToadStoolError::integration(
+                "Timeout connecting to Neural API socket",
+            ));
+        }
+    };
+
+    let request = json!({
+        "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
+        "method": "primal.announce",
+        "params": {
+            "primal": PRIMAL_NAME,
+            "capabilities": ["compute", "science", "inference"],
+            "methods": methods,
+            "socket": socket_path,
+            "signal_tiers": ["node"],
+            "cost_hints": {
+                "compute": 100.0,
+                "science": 50.0,
+                "inference": 80.0
+            },
+            "latency_estimates": {
+                "compute": 200,
+                "science": 100,
+                "inference": 150
+            }
+        },
+        "id": 1
+    });
+
+    framing::write_json_rpc(&mut stream, &request).await?;
+    let response: Value = framing::read_json_rpc(&mut stream).await?;
+
+    if let Some(error) = response.get("error") {
+        return Err(ToadStoolError::integration(format!(
+            "Neural API announce rejected: {error}"
+        )));
+    }
+
+    info!("Self-announced to biomeOS Neural API (capabilities: compute, science, inference)");
+    debug!("Neural API announce response: {:?}", response);
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

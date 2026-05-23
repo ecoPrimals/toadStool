@@ -1,7 +1,7 @@
 # ToadStool -- Next Steps
 
 **Updated**: May 2026 — S268 (Kernel Health Preflight: 3-layer `autoconf.h` mismatch detection in `cylinder::vfio::kernel_health`. Blocks warm handoff / DKMS builds on corrupted build env. `sovereign.kernel_health` RPC + `toadstool kernel-health` CLI. 700 cylinder tests.)
-**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,122+ lib-only) | **87 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S263)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **700 cylinder tests** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
+**Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,125+ lib-only) | **88 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S263)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **700 cylinder tests** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
 **Latest**: S268 — **Kernel Health Preflight**: `kernel_health.rs` 3-layer build env check (autoconf freshness, struct probe, RELA cross-check). Integrated into sovereign handoff step 0d, DKMS build guard, `sovereign.kernel_health` RPC, `toadstool kernel-health` CLI. Post-fix audit: all 20 DKMS + 10 installed modules clean. S267 — Sovereign driver rotation via diesel engine.
 **Previous**: S266 — PLX keepalive root cause fix. S265r — Driver Lab + Containment. S264 — PCIe bridge keepalive. S263 — CPUCTL_ALIAS breakthrough, GR context scheduler, warm handoff on Titan V.
 
@@ -64,6 +64,15 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on coralReef FECS firmware loading; extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### Wave 43 Neural API primal.announce (S270)
+
+| Item | Status |
+|------|--------|
+| Wire `primal_announce()` into JSON-RPC dispatch table | **DONE** — direct route + semantic alias + DIRECT_JSONRPC_METHODS |
+| Startup self-announcement to biomeOS Neural API | **DONE** — `self_announce_to_biomeos()` with capabilities, cost_hints, latency_estimates |
+| Remove `#[allow(dead_code)]` from announce function | **DONE** |
+| Add `socket`, `signal_tiers`, `cost_hints`, `latency_estimates` fields | **DONE** — per Wave 43 schema |
 
 ### Wave 38 Horizon Items (S269)
 

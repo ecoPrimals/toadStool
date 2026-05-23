@@ -295,6 +295,10 @@ impl JsonRpcHandler {
             "capabilities.list" | "capability.list" | "primal.capabilities" => {
                 return core::capabilities_list(&self.semantic_registry, &self.version).await;
             }
+            "primal.announce" => {
+                return core::primal_announce(&self.version, &self.semantic_registry)
+                    .await;
+            }
             "compute.capabilities" => return self.workload.query_capabilities().await,
             "compute.discover_capabilities" => {
                 return core::discover_capabilities(&self.semantic_registry, &self.version).await;
@@ -490,6 +494,9 @@ impl JsonRpcHandler {
                     .await
             }
             "pipeline_status" => self.dispatch.pipeline_status(params).await,
+            "primal_announce" => {
+                core::primal_announce(&self.version, &self.semantic_registry).await
+            }
             "toadstool_provenance" => Self::toadstool_provenance().await,
             "gpu_info" => core::gpu_info().await,
             "gpu_memory" => core::gpu_memory().await,

@@ -39,6 +39,7 @@ pub(super) fn cost_estimates() -> serde_json::Value {
         "compute.discover_capabilities",
         "compute.dispatch.capabilities",
         "provenance.query",
+        "primal.announce",
     ] {
         map.insert(m.into(), cost("negligible", false, 0, "negligible", "none"));
     }

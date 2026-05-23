@@ -308,6 +308,21 @@ pub async fn run_server_main(
         info!("sd_notify(READY=1) sent to systemd");
     }
 
+    // Wave 43: Neural API self-announcement — register capabilities, cost hints,
+    // and latency estimates with biomeOS so routing weights are built.
+    {
+        let announce_socket = jsonrpc_socket.to_string_lossy().to_string();
+        match toadstool::ipc_helpers::self_announce_to_biomeos(
+            crate::ipc_surface::ANNOUNCED_METHODS,
+            &announce_socket,
+        )
+        .await
+        {
+            Ok(()) => info!("Neural API: announced to biomeOS (compute, science, inference)"),
+            Err(e) => info!("Neural API: announce skipped — {e} (standalone mode)"),
+        }
+    }
+
     info!("Ready for shutdown (Ctrl+C or SIGTERM)");
     let shutdown_signal = execution::wait_for_shutdown_signal().await;
 

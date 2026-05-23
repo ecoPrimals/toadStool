@@ -145,6 +145,7 @@ pub mod resource_validator;
 #[cfg(feature = "tarpc")]
 pub mod rpc_types; // Pure RPC types (depends on tarpc service definitions)
 // server: REMOVED — axum HTTP server is not the JSON-RPC surface here; use pure_jsonrpc
+pub mod ipc_surface;
 pub mod runtime_engine_dispatch;
 pub mod state;
 #[cfg(feature = "tarpc")]

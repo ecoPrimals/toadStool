@@ -30,6 +30,7 @@ use tracing::debug;
 pub use connection::register_with_coordination;
 pub use connection::{
     find_by_capability, get_default_coordination_socket, register_with_discovery,
+    self_announce_to_biomeos,
 };
 
 /// Global semantic method registry (initialized once)
