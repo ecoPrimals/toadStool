@@ -1,12 +1,18 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S271
+**Date**: May 2026 — S272
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S272 (Wave 47: health.liveness Always Alive + Upstream Debt)**:
+`health.liveness` now always returns `{"status":"alive"}` — liveness means
+the socket is listening. Boot-phase signaling stays in `health.readiness`.
+49 upstream clippy errors absorbed (27 cylinder, 22 server dispatch).
+9,131 lib tests, 88 JSON-RPC methods, 0 clippy warnings.
 
 **S271 (Wave 44: Neural API Announce Fix — science/inference Methods)**:
 `ANNOUNCED_METHODS` expanded from 33 compute-only to 47 methods spanning

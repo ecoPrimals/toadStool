@@ -46,8 +46,8 @@ pub struct JsonRpcHandler {
     version: Arc<str>,
     start_time: std::time::Instant,
     error_count: Arc<AtomicU64>,
-    /// PG-62 fast-path: set to `true` once the server is fully initialized.
-    /// `health.liveness` returns `"starting"` until this is set.
+    /// PG-62: set to `true` once the server is fully initialized.
+    /// `health.readiness` returns `"starting"` until this is set.
     ready: Arc<AtomicBool>,
     /// Drain flag: set by `health.drain` to reject new dispatches.
     draining: Arc<AtomicBool>,
@@ -70,8 +70,8 @@ impl JsonRpcHandler {
     /// Create new handler with executor.
     ///
     /// Pass `error_count` to share the counter with other servers for unified monitoring.
-    /// Pass `ready` to share the readiness flag — `health.liveness` returns `"starting"`
-    /// until this flag is set to `true` (PG-62 fast-path).
+    /// Pass `ready` to share the readiness flag — `health.readiness` returns `"starting"`
+    /// until this flag is set to `true` (PG-62).
     pub fn new(
         executor: Arc<crate::tarpc_server::WorkloadExecutorDispatch>,
         version: impl Into<Arc<str>>,
@@ -254,7 +254,7 @@ impl JsonRpcHandler {
                 return core::health(&self.version, self.start_time, &self.error_count).await;
             }
             "health.liveness" => {
-                return core::health_liveness(self.ready.load(Ordering::Relaxed)).await;
+                return core::health_liveness().await;
             }
             "health.readiness" => {
                 return core::health_readiness(

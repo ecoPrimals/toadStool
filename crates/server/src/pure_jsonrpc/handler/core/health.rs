@@ -11,19 +11,17 @@ use super::JsonRpcResult;
 
 /// Wire Standard L1: minimal liveness probe (`health.liveness`).
 ///
-/// Returns `{"status": "starting"}` during initialization (before discovery
-/// registration completes) and `{"status": "alive"}` once fully ready.
-/// This fast-path lets callers distinguish "socket exists but still
-/// initializing" from "fully operational" without timing out (PG-62).
-///
-/// Recommended caller timeout: >= 3 seconds.
+/// Always returns `{"status":"alive"}` — if the caller can reach this
+/// handler, the socket is listening and the process is alive. Boot-phase
+/// signaling is handled by `health.readiness` (returns `"starting"` vs
+/// `"ready"`). This separation aligns with the DEPLOYMENT_BEHAVIOR_STANDARD
+/// so nucleus health sweeps pass immediately on socket bind (Wave 47).
 #[allow(
     clippy::unused_async,
     reason = "handler signature requires async for uniform dispatch"
 )]
-pub(crate) async fn health_liveness(ready: bool) -> JsonRpcResult {
-    let status = if ready { "alive" } else { "starting" };
-    Ok(serde_json::json!({ "status": status }))
+pub(crate) async fn health_liveness() -> JsonRpcResult {
+    Ok(serde_json::json!({ "status": "alive" }))
 }
 
 /// Wire Standard L2: readiness probe with version (`health.readiness`).

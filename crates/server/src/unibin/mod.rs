@@ -162,7 +162,7 @@ pub async fn run_server_main(
     let version = env!("CARGO_PKG_VERSION").to_string();
 
     let error_count = Arc::new(AtomicU64::new(0));
-    // PG-62: readiness flag — health.liveness returns "starting" until this is set
+    // PG-62: readiness flag — health.readiness returns "starting" until this is set
     let ready = Arc::new(AtomicBool::new(false));
 
     // Pass &version to server (borrow), move version to handler

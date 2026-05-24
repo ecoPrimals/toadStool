@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 23, 2026 (Sessions 43-271)
+## [Unreleased] - May 24, 2026 (Sessions 43-272)
+
+### Session S272 (May 24, 2026) — Wave 47: health.liveness Always Alive + Upstream Debt
+
+primalSpring Wave 47 response: align health.liveness with DEPLOYMENT_BEHAVIOR_STANDARD for nucleus health sweeps.
+
+- CHANGED: `health.liveness` now always returns `{"status":"alive"}` — liveness means "socket is up", boot state signaling moved to `health.readiness` (Wave 47 MEDIUM fix)
+- REMOVED: `ready` parameter from `health_liveness()` function — no longer needed
+- FIXED: 27 upstream clippy errors in `toadstool-cylinder` (module_patch.rs, sovereign_handoff.rs) from rebase — dead code, collapsible_if, too_many_arguments, unused vars, format!, casts
+- FIXED: 22 upstream clippy errors in `toadstool-server` dispatch/mod.rs from rebase — map_unwrap_or, used_underscore_binding, default_trait_access, collapsible_if, needless_borrow
+- FIXED: `ModuleSource` derive regression (manual Default → `#[derive(Default)]`) in glowplug
+- METRICS: 88 JSON-RPC methods, 9,131 lib tests, 0 clippy warnings, deny clean
 
 ### Session S271 (May 23, 2026) — Wave 44: Neural API Announce Fix — science/inference Methods
 

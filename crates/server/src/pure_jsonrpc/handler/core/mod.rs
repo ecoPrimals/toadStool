@@ -122,15 +122,9 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn health_liveness_is_minimal_alive() {
-        let v = health_liveness(true).await.expect("ok");
+    async fn health_liveness_always_alive() {
+        let v = health_liveness().await.expect("ok");
         assert_eq!(v, serde_json::json!({ "status": "alive" }));
-    }
-
-    #[tokio::test]
-    async fn health_liveness_starting_before_ready() {
-        let v = health_liveness(false).await.expect("ok");
-        assert_eq!(v, serde_json::json!({ "status": "starting" }));
     }
 
     #[tokio::test]

@@ -788,9 +788,10 @@ pub fn execute_handoff(
     // The GPU is now unbound from vfio-pci. Set driver_override to our
     // renamed module name so the kernel binds this device to our module
     // (not the host nvidia) when we insmod.
-    if let ModuleSourceConfig::DkmsPatched { .. } = &config.module_source {
-        if !module_loaded {
-            if let Some(ref pr) = patch_result {
+    if let ModuleSourceConfig::DkmsPatched { .. } = &config.module_source
+        && !module_loaded
+        && let Some(ref pr) = patch_result
+    {
                 // Disable the PCI device so the kernel releases its
                 // BAR resource claims. Without this, nvidia's direct
                 // request_mem_region call on BAR0 fails because the
@@ -833,7 +834,7 @@ pub fn execute_handoff(
                         );
                         steps.push(HandoffStep {
                             name: "deferred_insmod".into(), ok: true,
-                            detail: Some(format!("dual-load module loaded + bound via driver_override")),
+                            detail: Some("dual-load module loaded + bound via driver_override".to_string()),
                             duration_ms: t.elapsed().as_millis() as u64,
                         });
                     }
@@ -871,8 +872,6 @@ pub fn execute_handoff(
                                            &config.module_name, true);
                     }
                 }
-            }
-        }
     }
 
     // ── Step 3: Bind seeder driver (GUARDED) ────────────────────────
@@ -1093,26 +1092,32 @@ pub fn execute_handoff(
                                    &config.module_name, needs_device_rollback);
             }
 
-            if !override_set {
-                if let Ok(()) = guarded_sysfs::sysfs_write_guarded(
-                    &override_path, &config.final_driver,
-                    Duration::from_secs(5),
-                ) {
-                    override_set = true;
-                    tracing::info!(bdf = config.bdf.as_str(),
-                        "catalyst poll: driver_override set to {}", config.final_driver);
-                }
+            if !override_set
+                && matches!(
+                    guarded_sysfs::sysfs_write_guarded(
+                        &override_path, &config.final_driver,
+                        Duration::from_secs(5),
+                    ),
+                    Ok(()),
+                )
+            {
+                override_set = true;
+                tracing::info!(bdf = config.bdf.as_str(),
+                    "catalyst poll: driver_override set to {}", config.final_driver);
             }
 
-            if override_set && !probe_sent {
-                if let Ok(()) = guarded_sysfs::sysfs_write_guarded(
-                    &probe_path, &config.bdf,
-                    Duration::from_secs(5),
-                ) {
-                    probe_sent = true;
-                    tracing::info!(bdf = config.bdf.as_str(),
-                        "catalyst poll: drivers_probe sent");
-                }
+            if override_set && !probe_sent
+                && matches!(
+                    guarded_sysfs::sysfs_write_guarded(
+                        &probe_path, &config.bdf,
+                        Duration::from_secs(5),
+                    ),
+                    Ok(()),
+                )
+            {
+                probe_sent = true;
+                tracing::info!(bdf = config.bdf.as_str(),
+                    "catalyst poll: drivers_probe sent");
             }
 
             std::thread::sleep(poll_interval);
@@ -1242,7 +1247,10 @@ pub fn execute_handoff(
 
                 let snapshot_path = format!(
                     "/tmp/toadstool-catalyst-{}.json",
-                    config.bdf.replace(':', "-").replace('.', "-")
+                    {
+                        #[allow(clippy::collapsible_str_replace)]
+                        config.bdf.replace(':', "-").replace('.', "-")
+                    }
                 );
                 if let Ok(json) = full_snapshot.to_json() {
                     if let Err(e) = std::fs::write(&snapshot_path, &json) {
@@ -1259,11 +1267,14 @@ pub fn execute_handoff(
                 let replay = full_snapshot.to_catalyst_replay(
                     crate::nv::gr_init::ChipFamily::Volta,
                     "470.256.02",
-                    &crate::nv::pri::VOLTA_BAR0_DOMAINS,
+                    crate::nv::pri::VOLTA_BAR0_DOMAINS,
                 );
                 let replay_path = format!(
                     "/tmp/toadstool-catalyst-replay-{}.json",
-                    config.bdf.replace(':', "-").replace('.', "-")
+                    {
+                        #[allow(clippy::collapsible_str_replace)]
+                        config.bdf.replace(':', "-").replace('.', "-")
+                    }
                 );
                 if let Ok(json) = replay.to_json() {
                     if let Err(e) = std::fs::write(&replay_path, &json) {
@@ -1310,8 +1321,9 @@ pub fn execute_handoff(
     // For catalyst strategies: archive the patched .ko (frozen starter)
     // and recipe JSON before module cleanup deletes the tmpfile.
 
-    if is_catalyst {
-        if let Some(ref pr) = patch_result {
+    if is_catalyst
+        && let Some(ref pr) = patch_result
+    {
             let t = Instant::now();
             let frozen_dir = "/var/lib/toadstool/catalysts/frozen";
             let _ = std::fs::create_dir_all(frozen_dir);
@@ -1356,14 +1368,13 @@ pub fn execute_handoff(
                 ModuleSourceConfig::Patched { patch_set, .. } => patch_set.clone(),
                 ModuleSourceConfig::System => "system".into(),
             };
-            if let Some(ps) = module_patch::PatchSet::by_name(&patch_set_name) {
-                if let Ok(json) = ps.to_json() {
-                    let recipe_path = format!("{recipe_dir}/gv100_nvidia470_patchset.json");
-                    let _ = std::fs::write(&recipe_path, &json);
-                    tracing::info!(path = recipe_path.as_str(), "catalyst preserve: recipe JSON persisted");
-                }
+            if let Some(ps) = module_patch::PatchSet::by_name(&patch_set_name)
+                && let Ok(json) = ps.to_json()
+            {
+                let recipe_path = format!("{recipe_dir}/gv100_nvidia470_patchset.json");
+                let _ = std::fs::write(&recipe_path, &json);
+                tracing::info!(path = recipe_path.as_str(), "catalyst preserve: recipe JSON persisted");
             }
-        }
     }
 
     // ── Step 8: Module Cleanup (GUARDED) ────────────────────────────
@@ -1428,7 +1439,7 @@ pub fn execute_handoff(
 fn halt_result(
     bdf: &str,
     halted_at: &str,
-    mut steps: Vec<HandoffStep>,
+    steps: Vec<HandoffStep>,
     patch_result: Option<ModulePatchResult>,
     module_loaded: bool,
     module_unloaded: bool,
@@ -1442,10 +1453,11 @@ fn halt_result(
                       needs_device_rollback, false)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn halt_result_poisoned(
     bdf: &str,
     halted_at: &str,
-    mut steps: Vec<HandoffStep>,
+    steps: Vec<HandoffStep>,
     patch_result: Option<ModulePatchResult>,
     module_loaded: bool,
     module_unloaded: bool,
@@ -1459,6 +1471,7 @@ fn halt_result_poisoned(
                       needs_device_rollback, true)
 }
 
+#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 fn halt_result_inner(
     bdf: &str,
     halted_at: &str,

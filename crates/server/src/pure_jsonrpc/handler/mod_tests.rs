@@ -66,9 +66,10 @@ async fn test_health_triad_liveness_readiness_check() {
     assert_eq!(r["status"], "alive");
 }
 
-/// PG-62: health.liveness returns "starting" when the readiness flag is false.
+/// Wave 47: health.liveness always returns "alive" (liveness = socket is up).
+/// health.readiness returns "starting" → "ready" based on ready flag (PG-62).
 #[tokio::test]
-async fn test_health_liveness_returns_starting_before_ready() {
+async fn test_health_liveness_always_alive_readiness_tracks_boot() {
     use std::sync::atomic::Ordering;
 
     let ready = Arc::new(AtomicBool::new(false));
@@ -81,8 +82,8 @@ async fn test_health_liveness_returns_starting_before_ready() {
         .handle_request(&mk_request("health.liveness", None, 20))
         .await;
     assert!(live.error.is_none());
-    let r = live.result.expect("liveness starting");
-    assert_eq!(r["status"], "starting");
+    let r = live.result.expect("liveness alive before ready");
+    assert_eq!(r["status"], "alive");
 
     let rdns = handler
         .handle_request(&mk_request("health.readiness", None, 21))
@@ -97,7 +98,7 @@ async fn test_health_liveness_returns_starting_before_ready() {
         .handle_request(&mk_request("health.liveness", None, 22))
         .await;
     assert!(live.error.is_none());
-    let r = live.result.expect("liveness alive");
+    let r = live.result.expect("liveness alive after ready");
     assert_eq!(r["status"], "alive");
 
     let rdns = handler

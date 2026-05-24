@@ -502,6 +502,7 @@ pub struct ModulePatchResult {
 /// Resolve text symbol offsets in a `.ko` file.
 ///
 /// Delegates to [`NmResolver`] (backed by `kmod::nm_text_symbols`).
+#[allow(dead_code)]
 fn resolve_symbols(ko_path: &Path) -> Result<HashMap<String, u64>, PatchError> {
     NmResolver.resolve(ko_path)
 }
@@ -524,6 +525,7 @@ fn resolve_symbol_file_offsets(elf: &[u8]) -> HashMap<String, u64> {
 
     const SHT_SYMTAB: u32 = 2;
     const STT_FUNC: u8 = 2;
+    #[allow(dead_code)]
     const STB_GLOBAL: u8 = 1;
 
     // Build section offset table: section_index -> sh_offset
@@ -571,7 +573,6 @@ fn resolve_symbol_file_offsets(elf: &[u8]) -> HashMap<String, u64> {
             let st_value = u64::from_le_bytes(elf[sym + 8..sym + 16].try_into().unwrap_or([0; 8]));
 
             let st_type = st_info & 0xf;
-            let _st_bind = st_info >> 4;
             if st_type != STT_FUNC { continue; }
             if st_shndx == 0 || st_shndx >= section_offsets.len() { continue; }
 
@@ -740,10 +741,9 @@ pub fn patch_module_with_rename(
         .filter(|p| p.applied && p.offset.is_some())
         .filter(|p| p.detail.starts_with("ret") || p.detail.starts_with("nopcall"))
         .map(|p| {
-            let off = p.offset.unwrap() as usize;
+            let off = p.offset.unwrap();
             let len = if p.detail.contains("6B") { 6 }
-                      else if p.detail.starts_with("ret1") { 5 }
-                      else if p.detail.starts_with("nopcall") { 5 }
+                      else if p.detail.starts_with("ret1") || p.detail.starts_with("nopcall") { 5 }
                       else if p.detail.starts_with("ret@") { 1 }
                       else { 3 };
             (off, len)
@@ -793,6 +793,7 @@ pub fn patch_module(source_ko: &Path, patch_set: &PatchSet) -> Result<ModulePatc
 /// byte offsets within the file we need the section's `sh_offset`.
 /// Returns 0 if the section cannot be found (graceful fallback for
 /// non-standard layouts).
+#[allow(dead_code)]
 fn find_text_section_offset(elf: &[u8]) -> usize {
     if elf.len() < 64 { return 0; }
     let e_shoff = u64::from_le_bytes(elf[40..48].try_into().unwrap_or([0; 8])) as usize;
@@ -903,7 +904,7 @@ fn apply_single_patch(
                 || first_byte == MULTIBYTE_NOP_LEAD
                 || first_byte == NOP_OPCODE;
 
-            if has_ftrace && offset + FTRACE_CALL_SIZE + 1 <= module_bytes.len() {
+            if has_ftrace && offset + FTRACE_CALL_SIZE < module_bytes.len() {
                 let patch_off = offset + FTRACE_CALL_SIZE;
                 let original_byte = module_bytes[patch_off];
                 module_bytes[patch_off] = RET_OPCODE;
@@ -916,7 +917,7 @@ fn apply_single_patch(
                         "ret@{patch_off:#x} (was {original_byte:#04x}, entry+5)"
                     ),
                 })
-            } else if offset + 1 <= module_bytes.len() {
+            } else if offset < module_bytes.len() {
                 let original_byte = module_bytes[offset];
                 module_bytes[offset] = RET_OPCODE;
 
@@ -1186,7 +1187,6 @@ pub fn reapply_nops(module_bytes: &mut [u8], result: &ModulePatchResult) {
             continue;
         }
         let Some(off) = patch.offset else { continue };
-        let off = off as usize;
 
         if patch.detail.contains("entry+0, 6B") {
             // mov eax,1; ret (6 bytes at entry+0)
@@ -1519,7 +1519,7 @@ pub fn strip_ksymtab(module_bytes: &mut [u8]) -> Result<usize, PatchError> {
         module_bytes[shstr_hdr_off + 24..shstr_hdr_off + 32]
             .try_into().unwrap_or([0; 8]),
     ) as usize;
-    let shstr_size = u64::from_le_bytes(
+    let _shstr_size = u64::from_le_bytes(
         module_bytes[shstr_hdr_off + 32..shstr_hdr_off + 40]
             .try_into().unwrap_or([0; 8]),
     ) as usize;
