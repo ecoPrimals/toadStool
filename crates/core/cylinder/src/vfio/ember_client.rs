@@ -138,8 +138,12 @@ impl EmberSession {
                 )? as u32;
                 let mut it = fds.into_iter();
                 ReceivedVfioFds::Iommufd {
-                    iommufd: it.next().expect("checked len"),
-                    device: it.next().expect("checked len"),
+                    iommufd: it.next().ok_or(DriverError::DeviceNotFound(Cow::Borrowed(
+                        "ember: iommufd fd missing from SCM_RIGHTS",
+                    )))?,
+                    device: it.next().ok_or(DriverError::DeviceNotFound(Cow::Borrowed(
+                        "ember: device fd missing from SCM_RIGHTS",
+                    )))?,
                     ioas_id,
                 }
             }
@@ -152,9 +156,15 @@ impl EmberSession {
                 }
                 let mut it = fds.into_iter();
                 ReceivedVfioFds::Legacy {
-                    container: it.next().expect("checked len"),
-                    group: it.next().expect("checked len"),
-                    device: it.next().expect("checked len"),
+                    container: it.next().ok_or(DriverError::DeviceNotFound(Cow::Borrowed(
+                        "ember: container fd missing from SCM_RIGHTS",
+                    )))?,
+                    group: it.next().ok_or(DriverError::DeviceNotFound(Cow::Borrowed(
+                        "ember: group fd missing from SCM_RIGHTS",
+                    )))?,
+                    device: it.next().ok_or(DriverError::DeviceNotFound(Cow::Borrowed(
+                        "ember: device fd missing from SCM_RIGHTS",
+                    )))?,
                 }
             }
         };

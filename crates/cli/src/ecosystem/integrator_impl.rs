@@ -70,21 +70,26 @@ impl EcosystemIntegrator {
                 capability_categories::ORCHESTRATION.to_string(), // Orchestration capabilities
             ]
         } else {
-            // Capability-based: pass through capability names.
-            // Legacy primal names resolved via capability discovery.
-            use toadstool_common::constants::ecosystem::well_known;
-            service_types.into_iter()
+            use crate::ecosystem::constants::capability_categories;
+            use crate::templates::capability_helpers::dependency_label_to_capability;
+
+            service_types
+                .into_iter()
                 .map(|st| {
-                    use crate::ecosystem::constants::capability_categories;
-                    match st.as_str() {
-                        s if s == well_known::SONGBIRD || s == "orchestration" || s == "coordination" => {
+                    if capability_categories::ALL.contains(&st.as_str()) {
+                        return st;
+                    }
+                    match dependency_label_to_capability(&st) {
+                        "crypto" | "security" => capability_categories::CRYPTO.to_string(),
+                        "coordination" | "orchestration" | "discovery" => {
                             capability_categories::NETWORK.to_string()
                         }
-                        s if s == well_known::BEARDOG || s == "pki" || s == "security" => {
-                            capability_categories::CRYPTO.to_string()
+                        "storage" => capability_categories::STORAGE.to_string(),
+                        "compute" | "os" => capability_categories::COMPUTE.to_string(),
+                        "routing" | "intelligence" => {
+                            capability_categories::ORCHESTRATION.to_string()
                         }
-                        s if s == well_known::NESTGATE => capability_categories::STORAGE.to_string(),
-                        _ => st, // Already a capability name — pass through
+                        _ => st,
                     }
                 })
                 .collect()

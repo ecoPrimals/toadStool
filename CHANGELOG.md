@@ -5,7 +5,24 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 24, 2026 (Sessions 43-272)
+## [Unreleased] - May 24, 2026 (Sessions 43-273)
+
+### Session S273 (May 24, 2026) — Deep Debt Evolution: Panic Surface, Refactoring, Capability Discovery
+
+Comprehensive deep debt evolution pass across 6 dimensions: production panics, large file refactoring, hardcoded primal names, unsafe consolidation, stale docs, dead code.
+
+- FIXED: 29 `.unwrap()` in `kernel_health.rs` ELF parsing replaced with `?` + `KernelHealthError::ElfParse` — malformed kernel modules now return errors instead of panicking
+- FIXED: `.expect("just inserted")` in dispatch cache lookup replaced with `ok_or_else(JsonRpcError::internal_error)` — race/logic bugs return JSON-RPC errors instead of crashing
+- FIXED: 5 `.expect("checked len")` in `ember_client.rs` SCM_RIGHTS FD extraction replaced with `?` + `DriverError::DeviceNotFound`
+- REMOVED: 2 fallible `Default` impls in `secure_enclave` (`EphemeralKeyStore`, `SecureEnclaveRuntime`) — types already expose `::new() -> Result`
+- REFACTORED: `dispatch/mod.rs` 1,638→839 lines — extracted 7 sovereign GPU handlers + 2 helpers into `dispatch/sovereign.rs` (814 lines)
+- REFACTORED: `warm_init.rs` 1,439 lines → module directory: `mod.rs` (372L core types), `seeders.rs` (389L seeder strategies), `trials.rs` (699L trial types)
+- EVOLVED: 6 CLI `well_known::*` call sites migrated to capability-based discovery with legacy fallback — `cli_root.rs`, `start.rs`, `checks.rs`, `config.rs`, `integrator_impl.rs`, `basic_templates.rs`
+- ADDED: `PrimalConfig::has_capability()` and `BiomeManifest::has_primal_with_capability()`/`find_primal_with_capability()` helpers
+- WIRED: `activity_tracker().record()` into 7 VFIO dispatch paths (device_vfio_open, device_vfio_roundtrip, sovereign_init/ce_validate/pmu_investigate/catalyst_boot/profile)
+- REMOVED: `#[allow(dead_code)]` from `activity_tracker()` — now has external callers
+- FIXED: `CONTEXT.md` health.liveness description updated from S225 stale wording to S272 always-alive behavior
+- VALIDATED: `hw-safe` already contains `DeviceMmap`, `VolatileMmio`, `vfio_setup` abstractions — cylinder migration deferred to avoid upstream merge conflicts
 
 ### Session S272 (May 24, 2026) — Wave 47: health.liveness Always Alive + Upstream Debt
 

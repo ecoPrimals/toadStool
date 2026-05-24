@@ -225,14 +225,6 @@ impl SecureEnclaveRuntime {
     }
 }
 
-impl Default for SecureEnclaveRuntime {
-    fn default() -> Self {
-        Self::new().expect(
-            "Failed to create default SecureEnclaveRuntime: ephemeral key store allocation failed (check available memory and mlock limits)",
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

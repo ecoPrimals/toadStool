@@ -53,7 +53,6 @@ static ACTIVITY: std::sync::OnceLock<ActivityTracker> = std::sync::OnceLock::new
 /// Any code performing real PCIe traffic should call
 /// `activity_tracker().record()` so the keepalive loop can skip
 /// redundant synthetic heartbeats.
-#[allow(dead_code)]
 pub fn activity_tracker() -> &'static ActivityTracker {
     ACTIVITY.get_or_init(ActivityTracker::new)
 }

@@ -9,16 +9,10 @@
 //!
 //! ⚠️ **MIGRATION NOTICE**: Uses deprecated hardcoded ports during transition to capability-based discovery.
 
-#![expect(
-    deprecated,
-    reason = "module uses deprecated fields during capability migration"
-)]
-
 use std::collections::HashMap;
 use toadstool_config::env_config::EnvironmentConfig;
 
-#[expect(deprecated, reason = "protocol compatibility: default PKI image")]
-use toadstool_common::constants::ecosystem::well_known::BEARDOG;
+use super::constants::service_names;
 
 use crate::{
     BiomeNetworking, BiomeResources, BiomeSecurity, BiomeStorage, HealthCheck, PrimalConfig,
@@ -52,7 +46,7 @@ pub fn create_basic_template() -> TemplateComponents {
             version: "latest".to_string(),
             source: WorkloadSource::Container {
                 registry: "registry.ecosystem.sovereignscience.org".to_string(),
-                image: BEARDOG.to_string(), // Default implementation for PKI capability
+                image: service_names::CRYPTO.to_string(), // Default implementation for PKI capability
                 tag: "latest".to_string(),
                 digest: None,
             },

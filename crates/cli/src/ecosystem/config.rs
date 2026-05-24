@@ -183,18 +183,14 @@ impl ServiceDiscoveryConfig {
     /// Create example configuration file
     ///
     /// Uses capability-based endpoint discovery: Unix socket paths from
-    /// biomeOS runtime directory. Services are discovered at runtime via
-    /// well-known capability constants (primal_identity, ecosystem).
-    #[expect(deprecated, reason = "IPC addressing requires well-known names")]
+    /// biomeOS runtime directory with legacy identity fallbacks via
+    /// [`toadstool_common::primal_sockets::get_socket_path_for_capability`].
     pub fn create_example() -> Self {
-        use toadstool_common::constants::ecosystem::well_known;
-        use toadstool_common::primal_sockets::get_biomeos_dir;
+        use toadstool_common::primal_sockets::get_socket_path_for_capability;
 
         let mut services = HashMap::new();
-        let biomeos_dir = get_biomeos_dir();
 
-        // Security service: Unix socket basename uses legacy well-known label for IPC compat
-        let security_service_socket = biomeos_dir.join(format!("{}.sock", well_known::BEARDOG));
+        let security_service_socket = get_socket_path_for_capability("crypto");
         services.insert(
             "crypto".to_string(),
             ServiceConfig {
@@ -214,8 +210,7 @@ impl ServiceDiscoveryConfig {
             },
         );
 
-        // Storage service: legacy basename for IPC compat
-        let storage_service_socket = biomeos_dir.join(format!("{}.sock", well_known::NESTGATE));
+        let storage_service_socket = get_socket_path_for_capability("storage");
         services.insert(
             "storage".to_string(),
             ServiceConfig {
@@ -235,9 +230,7 @@ impl ServiceDiscoveryConfig {
             },
         );
 
-        // Coordination service: legacy basename for IPC compat
-        let coordination_service_socket =
-            biomeos_dir.join(format!("{}.sock", well_known::SONGBIRD));
+        let coordination_service_socket = get_socket_path_for_capability("coordination");
         services.insert(
             "coordination".to_string(),
             ServiceConfig {

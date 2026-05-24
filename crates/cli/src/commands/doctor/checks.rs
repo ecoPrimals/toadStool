@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use toadstool_common::constants::ecosystem::well_known;
-use toadstool_common::constants::primal_identity::PRIMAL_NAME;
-
 use super::types::{ConfigReport, EcosystemReport, HardwareReport, PrimalStatus};
 
 pub(crate) async fn check_hardware_health() -> HardwareReport {
@@ -90,10 +87,6 @@ async fn check_gpu_available() -> bool {
     }
 }
 
-#[expect(
-    deprecated,
-    reason = "health check uses legacy EcosystemService enum for status display"
-)]
 pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
     let mut issues = vec![];
 
@@ -131,16 +124,6 @@ pub(crate) async fn check_ecosystem_health() -> EcosystemReport {
                 }
             }
         }
-    }
-
-    let well_known_primals = [
-        PRIMAL_NAME,
-        well_known::SONGBIRD,
-        well_known::BEARDOG,
-        well_known::NESTGATE,
-    ];
-    for name in &well_known_primals {
-        discovered_primal_names.insert((*name).to_string());
     }
 
     let mut primals_reachable = vec![];

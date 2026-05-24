@@ -1,12 +1,27 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S272
+**Date**: May 2026 — S273
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S273 (Deep Debt Evolution — Panic Surface, Refactoring, Capability Discovery)**:
+Production panic surface eliminated: 29 `.unwrap()` in kernel_health.rs ELF
+parsing → `?` with `KernelHealthError::ElfParse`; `.expect("just inserted")`
+in dispatch cache → `ok_or_else(JsonRpcError::internal_error)`; 5 `.expect("checked
+len")` in ember_client.rs → `?` with `DriverError::DeviceNotFound`; 2 fallible
+`Default` impls in secure_enclave removed (types already expose `::new() -> Result`).
+Large file refactoring: dispatch/mod.rs 1,638→839L (sovereign handlers → dispatch/
+sovereign.rs 814L); warm_init.rs 1,439L → module dir (mod.rs 372L + seeders.rs 389L
++ trials.rs 699L). CLI hardcoded primals evolved: 6 `well_known::*` call sites
+migrated to capability-based discovery with legacy fallback. `activity_tracker()`
+wired into 7 VFIO dispatch paths, `#[allow(dead_code)]` removed. CONTEXT.md
+health.liveness updated to S272 behavior. Unsafe consolidation: hw-safe abstractions
+validated (DeviceMmap, VolatileMmio, vfio_setup all present); cylinder migration
+deferred to avoid upstream merge conflicts.
 
 **S272 (Wave 47: health.liveness Always Alive + Upstream Debt)**:
 `health.liveness` now always returns `{"status":"alive"}` — liveness means

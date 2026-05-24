@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //! Start operations: biome, primal, and service startup
 
-#![expect(
-    deprecated,
-    reason = "legacy well-known endpoints during capability migration"
-)]
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 const DEFAULT_WORKLOAD_TIMEOUT_SECS: u64 = 3600;
 
-use toadstool_common::constants::ecosystem::well_known;
 use toadstool_common::platform_paths::{PathEnv, PlatformPaths};
 use tokio::fs;
 use tracing::info;
@@ -37,7 +31,6 @@ pub(super) fn parse_env_vars(env_vars: &[String]) -> HashMap<String, String> {
 }
 
 impl BiomeExecutor {
-    #[expect(deprecated, reason = "IPC addressing requires well-known names")]
     pub(in crate::executor) async fn start_biome_internal(
         &self,
         biome_name: &str,
@@ -62,17 +55,20 @@ impl BiomeExecutor {
         let mut processes = Vec::new();
         let mut log_files = HashMap::new();
 
+        let mut started_crypto_provider: Option<String> = None;
+
         if manifest.security.security_required {
             info!(
                 "🔐 Security provider required - use UniversalServiceAdapter.discover(\"security\")"
             );
 
-            if let Some(security_config) = manifest.primals.get(well_known::BEARDOG) {
-                let primal_name = "security-provider";
-                info!("🐻 Starting security primal (discovered by capability)");
+            if let Some((manifest_key, security_config)) =
+                manifest.find_primal_with_capability("crypto")
+            {
+                info!("🔐 Starting crypto capability provider: {manifest_key}");
                 let process = self
                     .start_primal(
-                        primal_name,
+                        manifest_key,
                         security_config,
                         &environment,
                         &log_dir,
@@ -81,14 +77,15 @@ impl BiomeExecutor {
                     .await?;
                 processes.push(process);
                 log_files.insert(
-                    primal_name.to_string(),
-                    log_dir.join(format!("{primal_name}.log")),
+                    manifest_key.to_string(),
+                    log_dir.join(format!("{manifest_key}.log")),
                 );
+                started_crypto_provider = Some(manifest_key.to_string());
             }
         }
 
         for (primal_name, primal_config) in &manifest.primals {
-            if primal_name == well_known::BEARDOG {
+            if started_crypto_provider.as_deref() == Some(primal_name.as_str()) {
                 continue;
             }
 

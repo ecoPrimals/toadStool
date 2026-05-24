@@ -91,6 +91,34 @@ pub enum KernelHealthError {
     ElfParse(String),
 }
 
+fn elf_parse_err(detail: impl Into<String>) -> KernelHealthError {
+    KernelHealthError::ElfParse(detail.into())
+}
+
+fn read_u16_le(data: &[u8], off: usize) -> Result<u16, KernelHealthError> {
+    let bytes: [u8; 2] = data
+        .get(off..off + 2)
+        .and_then(|s| s.try_into().ok())
+        .ok_or_else(|| elf_parse_err(format!("invalid u16 at offset 0x{off:x}")))?;
+    Ok(u16::from_le_bytes(bytes))
+}
+
+fn read_u32_le(data: &[u8], off: usize) -> Result<u32, KernelHealthError> {
+    let bytes: [u8; 4] = data
+        .get(off..off + 4)
+        .and_then(|s| s.try_into().ok())
+        .ok_or_else(|| elf_parse_err(format!("invalid u32 at offset 0x{off:x}")))?;
+    Ok(u32::from_le_bytes(bytes))
+}
+
+fn read_u64_le(data: &[u8], off: usize) -> Result<u64, KernelHealthError> {
+    let bytes: [u8; 8] = data
+        .get(off..off + 8)
+        .and_then(|s| s.try_into().ok())
+        .ok_or_else(|| elf_parse_err(format!("invalid u64 at offset 0x{off:x}")))?;
+    Ok(u64::from_le_bytes(bytes))
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 fn kernel_release() -> Result<String, KernelHealthError> {
@@ -281,32 +309,27 @@ fn find_note_section_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelHealth
         ));
     }
 
-    let e_shoff = u64::from_le_bytes(elf_data[40..48].try_into().unwrap()) as usize;
-    let e_shentsize = u16::from_le_bytes(elf_data[58..60].try_into().unwrap()) as usize;
-    let e_shnum = u16::from_le_bytes(elf_data[60..62].try_into().unwrap()) as usize;
-    let e_shstrndx = u16::from_le_bytes(elf_data[62..64].try_into().unwrap()) as usize;
+    let e_shoff = read_u64_le(elf_data, 40)? as usize;
+    let e_shentsize = read_u16_le(elf_data, 58)? as usize;
+    let e_shnum = read_u16_le(elf_data, 60)? as usize;
+    let e_shstrndx = read_u16_le(elf_data, 62)? as usize;
 
     if e_shstrndx >= e_shnum {
         return Err(KernelHealthError::ElfParse("invalid shstrndx".into()));
     }
 
     let shstrtab_hdr = e_shoff + e_shstrndx * e_shentsize;
-    let shstrtab_off =
-        u64::from_le_bytes(elf_data[shstrtab_hdr + 24..shstrtab_hdr + 32].try_into().unwrap())
-            as usize;
+    let shstrtab_off = read_u64_le(elf_data, shstrtab_hdr + 24)? as usize;
 
     for i in 0..e_shnum {
         let sh = e_shoff + i * e_shentsize;
-        let sh_name_off =
-            u32::from_le_bytes(elf_data[sh..sh + 4].try_into().unwrap()) as usize;
+        let sh_name_off = read_u32_le(elf_data, sh)? as usize;
         let name_start = shstrtab_off + sh_name_off;
 
         let name = read_cstr(elf_data, name_start);
         if name == ".note.module_offsets" {
-            let sh_offset =
-                u64::from_le_bytes(elf_data[sh + 24..sh + 32].try_into().unwrap()) as usize;
-            let sh_size =
-                u64::from_le_bytes(elf_data[sh + 32..sh + 40].try_into().unwrap()) as usize;
+            let sh_offset = read_u64_le(elf_data, sh + 24)? as usize;
+            let sh_size = read_u64_le(elf_data, sh + 32)? as usize;
 
             if sh_size < 16 {
                 return Err(KernelHealthError::ElfParse(
@@ -314,11 +337,8 @@ fn find_note_section_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelHealth
                 ));
             }
 
-            let init_off =
-                u64::from_le_bytes(elf_data[sh_offset..sh_offset + 8].try_into().unwrap());
-            let exit_off = u64::from_le_bytes(
-                elf_data[sh_offset + 8..sh_offset + 16].try_into().unwrap(),
-            );
+            let init_off = read_u64_le(elf_data, sh_offset)?;
+            let exit_off = read_u64_le(elf_data, sh_offset + 8)?;
 
             return Ok((init_off, exit_off));
         }
@@ -383,21 +403,19 @@ fn parse_this_module_rela_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelH
         return Err(KernelHealthError::ElfParse("invalid 64-bit ELF".into()));
     }
 
-    let e_shoff = u64::from_le_bytes(elf_data[40..48].try_into().unwrap()) as usize;
-    let e_shentsize = u16::from_le_bytes(elf_data[58..60].try_into().unwrap()) as usize;
-    let e_shnum = u16::from_le_bytes(elf_data[60..62].try_into().unwrap()) as usize;
-    let e_shstrndx = u16::from_le_bytes(elf_data[62..64].try_into().unwrap()) as usize;
+    let e_shoff = read_u64_le(elf_data, 40)? as usize;
+    let e_shentsize = read_u16_le(elf_data, 58)? as usize;
+    let e_shnum = read_u16_le(elf_data, 60)? as usize;
+    let e_shstrndx = read_u16_le(elf_data, 62)? as usize;
 
     let shstrtab_hdr = e_shoff + e_shstrndx * e_shentsize;
-    let shstrtab_off =
-        u64::from_le_bytes(elf_data[shstrtab_hdr + 24..shstrtab_hdr + 32].try_into().unwrap())
-            as usize;
+    let shstrtab_off = read_u64_le(elf_data, shstrtab_hdr + 24)? as usize;
 
     // Find the .gnu.linkonce.this_module section index
     let mut this_module_idx: Option<usize> = None;
     for i in 0..e_shnum {
         let sh = e_shoff + i * e_shentsize;
-        let sh_name_off = u32::from_le_bytes(elf_data[sh..sh + 4].try_into().unwrap()) as usize;
+        let sh_name_off = read_u32_le(elf_data, sh)? as usize;
         let name = read_cstr(elf_data, shstrtab_off + sh_name_off);
         if name == ".gnu.linkonce.this_module" {
             this_module_idx = Some(i);
@@ -416,31 +434,27 @@ fn parse_this_module_rela_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelH
 
     for i in 0..e_shnum {
         let sh = e_shoff + i * e_shentsize;
-        let sh_type = u32::from_le_bytes(elf_data[sh + 4..sh + 8].try_into().unwrap());
+        let sh_type = read_u32_le(elf_data, sh + 4)?;
         if sh_type != 4 {
             continue; // not SHT_RELA
         }
         // Elf64_Shdr: sh_info is at offset 44
-        let sh_info = u32::from_le_bytes(elf_data[sh + 44..sh + 48].try_into().unwrap()) as usize;
+        let sh_info = read_u32_le(elf_data, sh + 44)? as usize;
         if sh_info != target_idx {
             continue;
         }
 
         // sh_offset at 24, sh_size at 32, sh_entsize at 56
-        let rela_off =
-            u64::from_le_bytes(elf_data[sh + 24..sh + 32].try_into().unwrap()) as usize;
-        let rela_size =
-            u64::from_le_bytes(elf_data[sh + 32..sh + 40].try_into().unwrap()) as usize;
-        let rela_entsize =
-            u64::from_le_bytes(elf_data[sh + 56..sh + 64].try_into().unwrap()) as usize;
+        let rela_off = read_u64_le(elf_data, sh + 24)? as usize;
+        let rela_size = read_u64_le(elf_data, sh + 32)? as usize;
+        let rela_entsize = read_u64_le(elf_data, sh + 56)? as usize;
 
         if rela_entsize == 0 {
             continue;
         }
 
         // sh_link at offset 40 — points to the associated symtab
-        let sh_link =
-            u32::from_le_bytes(elf_data[sh + 40..sh + 44].try_into().unwrap()) as usize;
+        let sh_link = read_u32_le(elf_data, sh + 40)? as usize;
         let (symtab_off, symtab_entsize, strtab_off) =
             resolve_symtab(elf_data, e_shoff, e_shentsize, sh_link)?;
 
@@ -450,19 +464,15 @@ fn parse_this_module_rela_offsets(elf_data: &[u8]) -> Result<(u64, u64), KernelH
             if entry + 24 > elf_data.len() {
                 break;
             }
-            let r_offset =
-                u64::from_le_bytes(elf_data[entry..entry + 8].try_into().unwrap());
-            let r_info =
-                u64::from_le_bytes(elf_data[entry + 8..entry + 16].try_into().unwrap());
+            let r_offset = read_u64_le(elf_data, entry)?;
+            let r_info = read_u64_le(elf_data, entry + 8)?;
             let sym_idx = (r_info >> 32) as usize;
 
             let sym_entry = symtab_off + sym_idx * symtab_entsize;
             if sym_entry + 24 > elf_data.len() {
                 continue;
             }
-            let st_name =
-                u32::from_le_bytes(elf_data[sym_entry..sym_entry + 4].try_into().unwrap())
-                    as usize;
+            let st_name = read_u32_le(elf_data, sym_entry)? as usize;
             let sym_name = read_cstr(elf_data, strtab_off + st_name);
             let is_exit_sym =
                 sym_name.contains("cleanup_module") || sym_name.ends_with("_exit");
@@ -494,18 +504,13 @@ fn resolve_symtab(
     symtab_idx: usize,
 ) -> Result<(usize, usize, usize), KernelHealthError> {
     let sh = e_shoff + symtab_idx * e_shentsize;
-    let symtab_off =
-        u64::from_le_bytes(elf_data[sh + 24..sh + 32].try_into().unwrap()) as usize;
-    let symtab_entsize =
-        u64::from_le_bytes(elf_data[sh + 56..sh + 64].try_into().unwrap()) as usize;
+    let symtab_off = read_u64_le(elf_data, sh + 24)? as usize;
+    let symtab_entsize = read_u64_le(elf_data, sh + 56)? as usize;
 
     // sh_link of symtab points to its strtab
-    let strtab_idx =
-        u32::from_le_bytes(elf_data[sh + 24 + 16..sh + 28 + 16].try_into().unwrap()) as usize;
+    let strtab_idx = read_u32_le(elf_data, sh + 40)? as usize;
     let strtab_sh = e_shoff + strtab_idx * e_shentsize;
-    let strtab_off =
-        u64::from_le_bytes(elf_data[strtab_sh + 24..strtab_sh + 32].try_into().unwrap())
-            as usize;
+    let strtab_off = read_u64_le(elf_data, strtab_sh + 24)? as usize;
 
     Ok((symtab_off, symtab_entsize, strtab_off))
 }

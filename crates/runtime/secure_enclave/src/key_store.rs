@@ -96,12 +96,6 @@ impl EphemeralKeyStore {
     }
 }
 
-impl Default for EphemeralKeyStore {
-    fn default() -> Self {
-        Self::new().expect("Failed to create default key store")
-    }
-}
-
 impl Drop for EphemeralKeyStore {
     fn drop(&mut self) {
         // Explicit wipe before drop

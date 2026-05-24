@@ -69,6 +69,64 @@ pub struct PrimalConfig {
     pub health_check: Option<HealthCheck>,
 }
 
+impl PrimalConfig {
+    /// Returns true if this config declares the given capability.
+    ///
+    /// Checks the manifest `capabilities` config field (comma-separated labels).
+    pub fn has_capability(&self, capability: &str) -> bool {
+        let target = capability.to_ascii_lowercase();
+        let Some(serde_yaml_ng::Value::String(caps)) = self.config.get("capabilities") else {
+            return false;
+        };
+        caps.split(',')
+            .map(str::trim)
+            .any(|declared| capability_labels_match(declared, &target))
+    }
+}
+
+fn capability_labels_match(declared: &str, target: &str) -> bool {
+    let declared_lower = declared.to_ascii_lowercase();
+    if declared_lower == target {
+        return true;
+    }
+    use toadstool_common::interned_strings::CapabilityDomain;
+    CapabilityDomain::from_label(&declared_lower).is_some_and(|domain| domain.as_str() == target)
+}
+
+impl BiomeManifest {
+    /// Returns true if any primal entry provides the given capability.
+    pub fn has_primal_with_capability(&self, capability: &str) -> bool {
+        self.primals
+            .iter()
+            .any(|(name, config)| Self::entry_provides_capability(name, config, capability))
+    }
+
+    /// Find the first manifest primal that provides the given capability.
+    pub fn find_primal_with_capability(
+        &self,
+        capability: &str,
+    ) -> Option<(&str, &PrimalConfig)> {
+        self.primals.iter().find_map(|(name, config)| {
+            Self::entry_provides_capability(name, config, capability)
+                .then_some((name.as_str(), config))
+        })
+    }
+
+    fn entry_provides_capability(name: &str, config: &PrimalConfig, capability: &str) -> bool {
+        if config.has_capability(capability) {
+            return true;
+        }
+        let target = capability.to_ascii_lowercase();
+        use toadstool_common::interned_strings::CapabilityDomain;
+        if CapabilityDomain::from_label(name).is_some_and(|domain| domain.as_str() == target) {
+            return true;
+        }
+        let name_lower = name.to_ascii_lowercase();
+        name_lower.contains(&target)
+            || (target == "crypto" && (name_lower.contains("pki") || name_lower.contains("security")))
+    }
+}
+
 /// Configuration for a service in the biome manifest
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceConfig {

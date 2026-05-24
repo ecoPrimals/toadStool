@@ -3,7 +3,6 @@
 
 use clap::Parser;
 use std::path::PathBuf;
-use toadstool_common::constants::ecosystem::well_known;
 use tokio::fs;
 
 use crate::biome_model::BiomeManifest;
@@ -102,12 +101,11 @@ pub async fn load_biome_manifest(path: &PathBuf) -> Result<BiomeManifest> {
 }
 
 /// Validate biome manifest
-#[expect(deprecated, reason = "IPC addressing requires well-known names")]
 pub fn validate_manifest(manifest: &BiomeManifest) -> Result<Vec<String>> {
     let mut warnings = Vec::new();
 
-    // Check for required primals
-    if !manifest.primals.contains_key(well_known::BEARDOG) && manifest.security.security_required {
+    // Check for required crypto/security capability provider
+    if !manifest.has_primal_with_capability("crypto") && manifest.security.security_required {
         warnings.push("A security service is required but not configured".to_string());
     }
 
