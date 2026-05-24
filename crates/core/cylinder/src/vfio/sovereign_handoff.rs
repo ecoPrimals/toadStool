@@ -1064,14 +1064,18 @@ pub fn execute_handoff(
     }
 
     if is_catalyst {
-        // After fire-and-poll, the driver symlink is gone but nvidia RM
-        // teardown still holds the PCI device lock. Any sysfs write
-        // (override, probe) would block until teardown finishes.
-        // Instead, poll for the final driver to appear — vfio-pci auto-
-        // claims via boot config once the lock releases.
+        // After fire-and-poll, the driver symlink clears in ~2s but nvidia
+        // RM teardown still holds the PCI lock for 160-400s. We need to:
+        //   1. Wait for driver=None (done by fire-and-poll)
+        //   2. Set driver_override to final_driver via guarded write (may
+        //      block until PCI lock releases — use 5s timeout, retry)
+        //   3. Write drivers_probe to trigger rebind
+        //   4. Poll for final_driver to appear
         let poll_deadline = deadline.saturating_sub(overall.elapsed());
         let poll_start = Instant::now();
-        let poll_interval = Duration::from_secs(2);
+        let poll_interval = Duration::from_secs(5);
+        let mut override_set = false;
+        let mut probe_sent = false;
         let mut final_driver = guarded_sysfs::read_current_driver(&config.bdf);
 
         while final_driver.as_deref() != Some(config.final_driver.as_str()) {
@@ -1079,8 +1083,8 @@ pub fn execute_handoff(
                 steps.push(HandoffStep {
                     name: "warm_swap".into(), ok: false,
                     detail: Some(format!(
-                        "poll for {} timed out (driver={:?})",
-                        config.final_driver, final_driver,
+                        "poll for {} timed out (driver={:?}, override_set={}, probe_sent={})",
+                        config.final_driver, final_driver, override_set, probe_sent,
                     )),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
@@ -1088,6 +1092,29 @@ pub fn execute_handoff(
                                    module_loaded, false, overall, &sibling_state,
                                    &config.module_name, needs_device_rollback);
             }
+
+            if !override_set {
+                if let Ok(()) = guarded_sysfs::sysfs_write_guarded(
+                    &override_path, &config.final_driver,
+                    Duration::from_secs(5),
+                ) {
+                    override_set = true;
+                    tracing::info!(bdf = config.bdf.as_str(),
+                        "catalyst poll: driver_override set to {}", config.final_driver);
+                }
+            }
+
+            if override_set && !probe_sent {
+                if let Ok(()) = guarded_sysfs::sysfs_write_guarded(
+                    &probe_path, &config.bdf,
+                    Duration::from_secs(5),
+                ) {
+                    probe_sent = true;
+                    tracing::info!(bdf = config.bdf.as_str(),
+                        "catalyst poll: drivers_probe sent");
+                }
+            }
+
             std::thread::sleep(poll_interval);
             final_driver = guarded_sysfs::read_current_driver(&config.bdf);
         }
