@@ -445,9 +445,47 @@ impl ResourceOrchestrator {
                     request.tenant_id, quota.max_devices
                 )));
             }
+
+            if let Some(ref policy) = quota.max_guest_load {
+                self.check_guest_load(request, current, policy)?;
+            }
         }
 
         Ok(())
+    }
+
+    /// Check guest-load policy. When GPU-bound workloads exceed the
+    /// threshold, apply the configured yield strategy.
+    fn check_guest_load(
+        &self,
+        request: &ResourceRequest,
+        current: &TenantUsage,
+        policy: &GuestLoadPolicy,
+    ) -> Result<(), OrchestrationError> {
+        let gpu_workloads = u32::try_from(current.device_allocations.len()).unwrap_or(u32::MAX);
+        if gpu_workloads < policy.max_concurrent_gpu {
+            return Ok(());
+        }
+
+        match policy.yield_strategy {
+            YieldStrategy::Reject => Err(OrchestrationError::GuestLoadExceeded(format!(
+                "Tenant {} rejected: {} GPU workloads >= max_concurrent_gpu {} (strategy: reject)",
+                request.tenant_id, gpu_workloads, policy.max_concurrent_gpu
+            ))),
+            YieldStrategy::Queue => Err(OrchestrationError::GuestLoadExceeded(format!(
+                "Tenant {} queued: {} GPU workloads >= max_concurrent_gpu {} (strategy: queue — \
+                 caller should retry after load drops)",
+                request.tenant_id, gpu_workloads, policy.max_concurrent_gpu
+            ))),
+            YieldStrategy::DeferUntilPowerCycle => {
+                Err(OrchestrationError::GuestLoadExceeded(format!(
+                    "Tenant {} deferred: {} GPU workloads >= max_concurrent_gpu {} \
+                     (strategy: defer_until_power_cycle — caller should retry after \
+                     host power-cycle window)",
+                    request.tenant_id, gpu_workloads, policy.max_concurrent_gpu
+                )))
+            }
+        }
     }
 }
 

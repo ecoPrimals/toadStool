@@ -150,3 +150,171 @@ fn test_free_vram_saturates() {
     };
     assert_eq!(dev.free_vram_bytes(), 0);
 }
+
+#[test]
+fn test_guest_load_reject_strategy() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-a",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 1,
+                yield_strategy: YieldStrategy::Reject,
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let req = test_request("guest-a", 3);
+    let _alloc1 = orch.allocate(&req).unwrap();
+    let result = orch.allocate(&req);
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("strategy: reject"), "got: {err}");
+}
+
+#[test]
+fn test_guest_load_queue_strategy() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-b",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 1,
+                yield_strategy: YieldStrategy::Queue,
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let req = test_request("guest-b", 3);
+    let _alloc1 = orch.allocate(&req).unwrap();
+    let result = orch.allocate(&req);
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("strategy: queue"), "got: {err}");
+}
+
+#[test]
+fn test_guest_load_defer_power_cycle_strategy() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-c",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 1,
+                yield_strategy: YieldStrategy::DeferUntilPowerCycle,
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let req = test_request("guest-c", 3);
+    let _alloc1 = orch.allocate(&req).unwrap();
+    let result = orch.allocate(&req);
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("strategy: defer_until_power_cycle"),
+        "got: {err}"
+    );
+}
+
+#[test]
+fn test_guest_load_under_threshold_passes() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-d",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 2,
+                yield_strategy: YieldStrategy::Reject,
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let req = test_request("guest-d", 3);
+    let alloc1 = orch.allocate(&req).unwrap();
+    assert!(!alloc1.exclusive);
+}
+
+#[test]
+fn test_guest_load_none_means_unlimited() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-e",
+        TenantQuota {
+            max_guest_load: None,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let req = test_request("guest-e", 3);
+    let _alloc1 = orch.allocate(&req).unwrap();
+    let alloc2 = orch.allocate(&req);
+    assert!(alloc2.is_ok());
+}
+
+#[test]
+fn test_guest_load_release_allows_reallocation() {
+    let orch = ResourceOrchestrator::new(DeploymentModel::LocalMulti, two_gpu_devices());
+    orch.register_tenant(
+        "guest-f",
+        TenantQuota {
+            max_guest_load: Some(GuestLoadPolicy {
+                max_concurrent_gpu: 1,
+                yield_strategy: YieldStrategy::Reject,
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let req = test_request("guest-f", 3);
+    let alloc1 = orch.allocate(&req).unwrap();
+    let result = orch.allocate(&req);
+    assert!(result.is_err());
+
+    orch.release("guest-f", alloc1.device_index).unwrap();
+    let alloc2 = orch.allocate(&req);
+    assert!(alloc2.is_ok());
+}
+
+#[test]
+fn test_guest_load_default_strategy_is_queue() {
+    assert_eq!(YieldStrategy::default(), YieldStrategy::Queue);
+}
+
+#[test]
+fn test_guest_load_policy_serde_roundtrip() {
+    let policy = GuestLoadPolicy {
+        max_concurrent_gpu: 4,
+        yield_strategy: YieldStrategy::DeferUntilPowerCycle,
+    };
+    let json = serde_json::to_string(&policy).unwrap();
+    let parsed: GuestLoadPolicy = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.max_concurrent_gpu, 4);
+    assert_eq!(parsed.yield_strategy, YieldStrategy::DeferUntilPowerCycle);
+}
+
+#[test]
+fn test_yield_strategy_serde_names() {
+    assert_eq!(
+        serde_json::to_string(&YieldStrategy::Queue).unwrap(),
+        "\"queue\""
+    );
+    assert_eq!(
+        serde_json::to_string(&YieldStrategy::Reject).unwrap(),
+        "\"reject\""
+    );
+    assert_eq!(
+        serde_json::to_string(&YieldStrategy::DeferUntilPowerCycle).unwrap(),
+        "\"defer_until_power_cycle\""
+    );
+}

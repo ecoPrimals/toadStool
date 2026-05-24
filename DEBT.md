@@ -1,12 +1,21 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S273
+**Date**: May 2026 — S274
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S274 (Glacial Horizon: Yield-to-Owner Dispatch)**:
+`max_guest_load` yield semantics evolved from types-only (S269) to enforced:
+`check_guest_load()` in `ResourceOrchestrator::check_quota()` branches on
+`YieldStrategy` (Queue, Reject, DeferUntilPowerCycle). `GuestLoadExceeded`
+error variant added. `GuestLoadPolicy` and `YieldStrategy` re-exported from
+crate root. 10 new tests (strategy enforcement, serde roundtrip, release-
+reallocation, default validation). Server dispatch wiring deferred pending
+flockGate integration spec. 9,140 lib tests, 88 JSON-RPC methods, 0 clippy.
 
 **S273 (Deep Debt Evolution — Panic Surface, Refactoring, Capability Discovery)**:
 Production panic surface eliminated: 29 `.unwrap()` in kernel_health.rs ELF

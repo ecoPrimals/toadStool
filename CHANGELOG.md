@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 24, 2026 (Sessions 43-273)
+## [Unreleased] - May 24, 2026 (Sessions 43-274)
+
+### Session S274 (May 24, 2026) — Glacial Horizon: Yield-to-Owner Dispatch
+
+primalSpring glacial horizon response: implement `max_guest_load` yield semantics for shared-hardware covalent deployments.
+
+- ADDED: `check_guest_load()` enforcement in `ResourceOrchestrator::check_quota()` — branches on `YieldStrategy` (Queue, Reject, DeferUntilPowerCycle)
+- ADDED: `GuestLoadExceeded` error variant in `OrchestrationError` — distinct from `QuotaExceeded` for yield-to-owner semantics
+- ADDED: `GuestLoadPolicy` and `YieldStrategy` re-exported from `toadstool-runtime-orchestration` crate root
+- ADDED: 10 new tests — strategy enforcement (reject, queue, defer), under-threshold pass, unlimited (None), release-reallocation, default strategy validation, serde roundtrip, wire name verification
+- DEFERRED: Server dispatch wiring (`ResourceOrchestrator` → `DispatchHandler`) pending flockGate integration spec from upstream
+- METRICS: 88 JSON-RPC methods, 9,140 lib tests, 0 clippy warnings, deny clean
 
 ### Session S273 (May 24, 2026) — Deep Debt Evolution: Panic Surface, Refactoring, Capability Discovery
 

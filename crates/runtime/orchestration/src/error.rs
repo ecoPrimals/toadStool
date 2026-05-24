@@ -30,6 +30,16 @@ pub enum OrchestrationError {
     #[error("Quota exceeded: {0}")]
     QuotaExceeded(String),
 
+    /// Guest load exceeds threshold — workload yielded to owner.
+    ///
+    /// Returned when `max_guest_load` policy is active and the current
+    /// GPU-bound workload count exceeds `max_concurrent_gpu`. The yield
+    /// strategy determines the action: `Queue` defers, `Reject` fails
+    /// immediately, `DeferUntilPowerCycle` waits for a host power-cycle
+    /// window to complete.
+    #[error("Guest load exceeded: {0}")]
+    GuestLoadExceeded(String),
+
     /// Internal lock was poisoned by a prior panic.
     #[error("Internal lock poisoned: {0}")]
     LockPoisoned(String),

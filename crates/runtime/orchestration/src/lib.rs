@@ -87,8 +87,8 @@ pub use orchestrator::{
 };
 pub use policy::SelectionPolicy;
 pub use resource_orchestrator::{
-    AvailableDevice, DeploymentModel, ResourceAllocation, ResourceOrchestrator, ResourceRequest,
-    TenantQuota, TenantUsage,
+    AvailableDevice, DeploymentModel, GuestLoadPolicy, ResourceAllocation, ResourceOrchestrator,
+    ResourceRequest, TenantQuota, TenantUsage, YieldStrategy,
 };
 pub use scheduler::{ExecutionSchedule, ScheduledTask, SchedulingStrategy, WorkloadScheduler};
 pub use workload_health::{
