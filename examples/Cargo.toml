@@ -63,9 +63,6 @@ path = "simple_demo.rs"
 name = "simplified_distributed_demo"
 path = "simplified_distributed_demo.rs"
 
-[[bin]]
-name = "squirrel_mcp_coordination_demo"
-path = "squirrel_mcp_coordination_demo.rs"
 
 [[bin]]
 name = "standalone_universal_compute"

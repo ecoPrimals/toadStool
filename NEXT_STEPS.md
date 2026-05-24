@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S268 (Kernel Health Preflight: 3-layer `autoconf.h` mismatch detection in `cylinder::vfio::kernel_health`. Blocks warm handoff / DKMS builds on corrupted build env. `sovereign.kernel_health` RPC + `toadstool kernel-health` CLI. 700 cylinder tests.)
+**Updated**: May 2026 — S273 (Deep Debt Evolution: production panic surface eliminated, dispatch/sovereign.rs extraction, warm_init module split, CLI capability-based discovery migration, VFIO activity tracking wired. 88 JSON-RPC methods. 9,131+ lib tests. 700 cylinder tests.)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,131+ lib-only) | **88 JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Phase C complete — all blocking items resolved (S253)** | **Phase D dispatch live — QMD-based VFIO PBDMA dispatch wired (S258–S263)** | **`OwnedFd` VFIO fd ownership (S253)** | **`toadstool device` CLI (S253)** | **CORALREEF_* env vars deprecated with TOADSTOOL_* primaries (S253)** | **Zero `#[allow(deprecated)]` remaining** | **700 cylinder tests** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
-**Latest**: S268 — **Kernel Health Preflight**: `kernel_health.rs` 3-layer build env check (autoconf freshness, struct probe, RELA cross-check). Integrated into sovereign handoff step 0d, DKMS build guard, `sovereign.kernel_health` RPC, `toadstool kernel-health` CLI. Post-fix audit: all 20 DKMS + 10 installed modules clean. S267 — Sovereign driver rotation via diesel engine.
-**Previous**: S266 — PLX keepalive root cause fix. S265r — Driver Lab + Containment. S264 — PCIe bridge keepalive. S263 — CPUCTL_ALIAS breakthrough, GR context scheduler, warm handoff on Titan V.
+**Latest**: S273 — **Deep Debt Evolution**: Production panic surface eliminated — 29 `unwrap()` in `kernel_health.rs` → error propagation, dispatch cache `.expect()` → `Result`, 5 `.expect()` in `ember_client.rs` → `?`, 2 fallible `Default` impls removed from `secure_enclave`. `dispatch/mod.rs` 1,638→839L via 7 sovereign handlers extracted to `dispatch/sovereign.rs` (814L). `warm_init.rs` 1,439L → module dir (`mod.rs` + `seeders.rs` + `trials.rs`). 6 CLI `well_known::*` sites migrated to capability-based discovery with legacy fallback. `activity_tracker().record()` wired into 7 VFIO dispatch paths. hw-safe abstractions validated; cylinder migration deferred.
+**Previous**: S268 — Kernel Health Preflight. S267 — Sovereign driver rotation. S266 — PLX keepalive root cause fix. S265r — Driver Lab + Containment. S264 — PCIe bridge keepalive. S263 — CPUCTL_ALIAS breakthrough, GR context scheduler, warm handoff on Titan V.
 
 ---
 
@@ -34,7 +34,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **22,900+ tests** (0 failures, 8,849+ lib-only). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **23,000+ tests** (0 failures, 9,131+ lib-only). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -64,6 +64,17 @@ names directly. Deprecated API definitions retained for backward compatibility o
 | **Phase B: Silicon discovery + performance surface** | ✅ COMPLETE — `SiliconUnit` model (9 units), wgpu adapter probe, sysfs PCI device ID tables, `compute.performance_surface.{report,query,list}` JSON-RPC handlers |
 | **Phase C: Multi-unit routing engine** | ✅ LANDED — `compute.route.multi_unit` handler, tolerance-based routing, heuristic fallback, shader-core fallback on every decision |
 | **Phase D: Mixed command streams** | Planned — blocked on coralReef FECS firmware loading; extends PBDMA with draw/RT/texture/tensor/framebuffer commands |
+
+### S273 Deep Debt Evolution
+
+| Item | Status |
+|------|--------|
+| Production panic surface eliminated (`kernel_health.rs`, dispatch cache, `ember_client.rs`, `secure_enclave`) | **DONE** |
+| `dispatch/mod.rs` 1,638→839L — sovereign handlers extracted to `dispatch/sovereign.rs` (814L) | **DONE** |
+| `warm_init.rs` 1,439L → module dir (`mod.rs` + `seeders.rs` + `trials.rs`) | **DONE** |
+| 6 CLI `well_known::*` hardcoded primal name sites → capability-based discovery with legacy fallback | **DONE** |
+| `activity_tracker().record()` wired into 7 VFIO dispatch paths | **DONE** |
+| hw-safe abstractions validated; cylinder migration deferred | **DONE** |
 
 ### Wave 47 Behavioral Convergence (S272)
 
@@ -199,7 +210,7 @@ after Phase D.
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 22,900+ tests (8,849+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 23,000+ tests (9,131+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)
@@ -235,4 +246,4 @@ after Phase D.
 
 ## Completed Sessions (Archived)
 
-Session history for S43–S266 lives in [CHANGELOG.md](CHANGELOG.md). Fossil record for S87–S240 archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
+Session history for S43–S273 lives in [CHANGELOG.md](CHANGELOG.md). Fossil record for S87–S240 archived to `ecoPrimals/infra/wateringHole/fossilRecord/toadstool/`.
