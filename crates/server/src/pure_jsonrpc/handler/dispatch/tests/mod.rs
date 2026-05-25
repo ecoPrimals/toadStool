@@ -3,6 +3,7 @@
 mod core_dispatch;
 mod envelope;
 mod fan_out;
+mod orchestrator;
 mod shader;
 mod trio_contract;
 

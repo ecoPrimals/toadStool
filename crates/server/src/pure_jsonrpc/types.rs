@@ -139,6 +139,15 @@ impl JsonRpcError {
         }
     }
 
+    /// Creates an application-defined server error with a custom code.
+    pub fn server_error(code: i32, msg: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            code,
+            message: msg.into(),
+            data: None,
+        }
+    }
+
     /// Unauthorized (-32000): caller has no identity/token (ecosystem standard).
     pub fn unauthorized(msg: impl Into<Cow<'static, str>>) -> Self {
         Self {

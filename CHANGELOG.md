@@ -7,16 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - May 24, 2026 (Sessions 43-274)
 
-### Session S274 (May 24, 2026) — Glacial Horizon: Yield-to-Owner Dispatch
+### Session S274 (May 24, 2026) — Glacial Horizon: Yield-to-Owner Dispatch (Fully Wired)
 
-primalSpring glacial horizon response: implement `max_guest_load` yield semantics for shared-hardware covalent deployments.
+primalSpring glacial horizon response: implement `max_guest_load` yield semantics for shared-hardware covalent deployments, wired into local dispatch.
 
 - ADDED: `check_guest_load()` enforcement in `ResourceOrchestrator::check_quota()` — branches on `YieldStrategy` (Queue, Reject, DeferUntilPowerCycle)
 - ADDED: `GuestLoadExceeded` error variant in `OrchestrationError` — distinct from `QuotaExceeded` for yield-to-owner semantics
 - ADDED: `GuestLoadPolicy` and `YieldStrategy` re-exported from `toadstool-runtime-orchestration` crate root
-- ADDED: 10 new tests — strategy enforcement (reject, queue, defer), under-threshold pass, unlimited (None), release-reallocation, default strategy validation, serde roundtrip, wire name verification
-- DEFERRED: Server dispatch wiring (`ResourceOrchestrator` → `DispatchHandler`) pending flockGate integration spec from upstream
-- METRICS: 88 JSON-RPC methods, 9,140 lib tests, 0 clippy warnings, deny clean
+- WIRED: `ResourceOrchestrator` into `DispatchHandler` — `pre_dispatch_resource_check()` gates `device_vfio_open` and `device_vfio_roundtrip` before ember handle acquisition
+- WIRED: `TOADSTOOL_DEPLOYMENT_MODEL` env var (`multi`/`rental`) triggers orchestrator construction from discovered GPUs; `LocalDirect` (default) = zero overhead
+- ADDED: `toadstool-runtime-orchestration` dependency to `toadstool-server`
+- ADDED: `JsonRpcError::server_error(code, msg)` for application-defined error codes (-32003 `CAPABILITY_NOT_AVAILABLE`, -32004 `RESOURCE_EXHAUSTED`)
+- ADDED: 19 new tests — 10 orchestrator core (strategy enforcement, serde roundtrip, release-reallocation, default validation) + 9 dispatch integration (no-op, quota, guest-load reject/queue/defer, threshold, model)
+- METRICS: 88 JSON-RPC methods, 9,149+ lib tests, 0 clippy warnings, deny clean
 
 ### Session S273 (May 24, 2026) — Deep Debt Evolution: Panic Surface, Refactoring, Capability Discovery
 

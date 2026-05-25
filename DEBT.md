@@ -8,14 +8,20 @@ with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
 
-**S274 (Glacial Horizon: Yield-to-Owner Dispatch)**:
-`max_guest_load` yield semantics evolved from types-only (S269) to enforced:
-`check_guest_load()` in `ResourceOrchestrator::check_quota()` branches on
-`YieldStrategy` (Queue, Reject, DeferUntilPowerCycle). `GuestLoadExceeded`
-error variant added. `GuestLoadPolicy` and `YieldStrategy` re-exported from
-crate root. 10 new tests (strategy enforcement, serde roundtrip, release-
-reallocation, default validation). Server dispatch wiring deferred pending
-flockGate integration spec. 9,140 lib tests, 88 JSON-RPC methods, 0 clippy.
+**S274 (Glacial Horizon: Yield-to-Owner Dispatch — FULLY WIRED)**:
+`max_guest_load` yield semantics evolved from types-only (S269) to enforced
+and wired into production dispatch. `check_guest_load()` in
+`ResourceOrchestrator::check_quota()` branches on `YieldStrategy` (Queue,
+Reject, DeferUntilPowerCycle). `GuestLoadExceeded` error variant added.
+`GuestLoadPolicy` and `YieldStrategy` re-exported from crate root. Server
+dispatch wiring complete: `ResourceOrchestrator` field on `DispatchHandler`,
+`pre_dispatch_resource_check()` gating `device_vfio_open` and
+`device_vfio_roundtrip`, `TOADSTOOL_DEPLOYMENT_MODEL` env (multi/rental)
+triggers orchestrator construction from discovered GPUs. `LocalDirect`
+(default) = zero overhead (no orchestrator). `JsonRpcError::server_error()`
+added for application error codes (-32003 CAPABILITY_NOT_AVAILABLE, -32004
+RESOURCE_EXHAUSTED). 19 new tests (10 orchestrator core + 9 dispatch
+integration). 9,149+ lib tests, 88 JSON-RPC methods, 0 clippy.
 
 **S273 (Deep Debt Evolution — Panic Surface, Refactoring, Capability Discovery)**:
 Production panic surface eliminated: 29 `.unwrap()` in kernel_health.rs ELF

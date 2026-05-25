@@ -109,6 +109,38 @@ impl JsonRpcHandler {
             dispatch.set_local_device_factory(factory);
         }
 
+        // Build resource orchestrator for multi-tenant GPU scheduling.
+        // Deployment model from TOADSTOOL_DEPLOYMENT_MODEL env:
+        //   "multi" → LocalMulti, "rental" → CloudRental, else LocalDirect (no enforcement)
+        let deployment_model = match std::env::var("TOADSTOOL_DEPLOYMENT_MODEL").as_deref() {
+            Ok("multi") => toadstool_runtime_orchestration::DeploymentModel::LocalMulti,
+            Ok("rental") => toadstool_runtime_orchestration::DeploymentModel::CloudRental,
+            _ => toadstool_runtime_orchestration::DeploymentModel::LocalDirect,
+        };
+
+        if deployment_model != toadstool_runtime_orchestration::DeploymentModel::LocalDirect {
+            let gpus = toadstool_sysmon::discover_gpus();
+            let devices: Vec<toadstool_runtime_orchestration::AvailableDevice> = gpus
+                .iter()
+                .map(|gpu| toadstool_runtime_orchestration::AvailableDevice {
+                    index: gpu.card_index,
+                    total_vram_bytes: gpu.telemetry().vram_total_bytes.unwrap_or(0),
+                    allocated_vram_bytes: 0,
+                    current_tenant: None,
+                })
+                .collect();
+            let orchestrator = toadstool_runtime_orchestration::ResourceOrchestrator::new(
+                deployment_model,
+                devices,
+            );
+            dispatch.set_resource_orchestrator(Arc::new(orchestrator));
+            tracing::info!(
+                model = ?deployment_model,
+                gpu_count = gpus.len(),
+                "Resource orchestrator initialized for multi-tenant dispatch"
+            );
+        }
+
         let anchor_store = dispatch.anchor_store();
 
         Self {

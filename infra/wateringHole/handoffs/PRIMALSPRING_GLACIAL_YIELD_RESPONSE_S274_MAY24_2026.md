@@ -63,24 +63,54 @@ hard quota violations.
 | `guest_load_policy_serde_roundtrip` | JSON serialize/deserialize roundtrip |
 | `yield_strategy_serde_names` | Wire names: `queue`, `reject`, `defer_until_power_cycle` |
 
+## Server Dispatch Wiring (S274 continued)
+
+`ResourceOrchestrator` is now wired into the server dispatch path for
+local and LAN deployments (flockGate not required for local enforcement):
+
+- `DispatchHandler` gains `resource_orchestrator: Option<Arc<ResourceOrchestrator>>`
+- `pre_dispatch_resource_check(bdf)` called before `acquire_device_handle` in
+  `device_vfio_open` and `device_vfio_roundtrip`
+- `TOADSTOOL_DEPLOYMENT_MODEL` env var: `multi` → `LocalMulti`, `rental` →
+  `CloudRental`, else `LocalDirect` (default, zero overhead — no orchestrator)
+- `LocalDirect` = `None` orchestrator, all pre-dispatch checks are no-ops
+- `GuestLoadExceeded` → JSON-RPC error `-32003` (`CAPABILITY_NOT_AVAILABLE`)
+- `QuotaExceeded` → JSON-RPC error `-32004` (`RESOURCE_EXHAUSTED`)
+- GPU devices discovered via `toadstool_sysmon::discover_gpus()` at startup
+- Caller identity is `"anonymous"` until BearDog JH-1 ships `CallerContext`
+
+### Dispatch integration tests (9 new)
+
+| Test | Validates |
+|------|-----------|
+| `no_orchestrator_pre_dispatch_is_noop` | `LocalDirect` no-op path |
+| `orchestrator_allows_dispatch_within_quota` | Allocation succeeds under quota |
+| `guest_load_reject_returns_capability_not_available` | `-32003` on reject |
+| `guest_load_queue_returns_capability_not_available` | `-32003` on queue |
+| `quota_exceeded_returns_resource_exhausted` | `-32004` on quota exceeded |
+| `local_direct_handler_has_no_orchestrator` | Default has `None` orchestrator |
+| `multi_handler_reports_local_multi_model` | Model accessor |
+| `guest_load_under_threshold_allows_dispatch` | Below threshold passes |
+| `guest_load_defer_power_cycle_returns_error` | `-32003` on defer |
+
 ## What Remains (deferred)
 
 | Item | Blocked on |
 |------|------------|
-| Wire `ResourceOrchestrator` into `DispatchHandler` | flockGate integration spec |
 | Power-cycle event hook → `DeferUntilPowerCycle` | Host suspend/resume event source |
 | Cross-gate load reporting via `gate.queue_depth` | flockGate primal coordination |
-| Tenant registration / config loading with `max_guest_load` | Deployment model decision |
+| Authenticated tenant identity in `CallerContext` | BearDog JH-1 (ionic tokens) |
 
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Lib tests | 9,140+ |
+| Lib tests | 9,149+ |
 | Workspace tests | 23,000+ |
 | JSON-RPC methods | 88 |
 | Clippy warnings | 0 |
-| Orchestration crate tests | 77 (was 67) |
+| Orchestration crate tests | 86 (was 67) |
+| Dispatch orchestrator tests | 9 (new) |
 
 ---
 

@@ -26,6 +26,7 @@ toadstool-runtime-gpu = { path = "../runtime/gpu" }
 toadstool-runtime-native = { path = "../runtime/native" }
 toadstool-runtime-specialty = { path = "../runtime/specialty" }
 toadstool-runtime-wasm = { path = "../runtime/wasm" }
+toadstool-runtime-orchestration = { path = "../runtime/orchestration" }
 
 # JSON-RPC server
 # jsonrpsee removed (pulls ring C dependency). pure_jsonrpc is canonical (Pure Rust).

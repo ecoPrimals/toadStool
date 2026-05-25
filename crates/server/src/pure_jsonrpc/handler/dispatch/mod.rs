@@ -77,6 +77,8 @@ pub struct DispatchHandler {
     /// Warm-keepalive anchors — dup'd VFIO fds that persist independently
     /// of cached_devices. On SIGTERM, these are leaked to prevent bus reset.
     anchor_store: AnchorStore,
+    /// Multi-tenant GPU resource orchestrator (`None` = LocalDirect, zero overhead).
+    resource_orchestrator: Option<Arc<toadstool_runtime_orchestration::ResourceOrchestrator>>,
 }
 
 #[expect(
@@ -100,6 +102,7 @@ impl DispatchHandler {
             local_device_factory: None,
             cached_devices: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             anchor_store,
+            resource_orchestrator: None,
         }
     }
 
@@ -141,6 +144,63 @@ impl DispatchHandler {
         factory: LocalDeviceFactory,
     ) {
         self.local_device_factory = Some(factory);
+    }
+
+    pub fn set_resource_orchestrator(
+        &mut self,
+        orchestrator: Arc<toadstool_runtime_orchestration::ResourceOrchestrator>,
+    ) {
+        self.resource_orchestrator = Some(orchestrator);
+    }
+
+    /// Pre-dispatch resource check via the orchestrator (no-op when unset).
+    ///
+    /// Caller identity is always `"anonymous"` until BearDog JH-1 ships
+    /// `CallerContext` through these entry points.
+    fn pre_dispatch_resource_check(
+        &self,
+        bdf: &str,
+    ) -> Result<
+        Option<toadstool_runtime_orchestration::ResourceAllocation>,
+        super::super::types::JsonRpcError,
+    > {
+        use super::super::types::JsonRpcError;
+        use toadstool_common::constants::jsonrpc::error_codes;
+
+        let Some(orchestrator) = self.resource_orchestrator.as_ref() else {
+            return Ok(None);
+        };
+
+        let preferred_devices = toadstool_sysmon::discover_gpus()
+            .into_iter()
+            .find(|gpu| gpu.pci_slot == bdf)
+            .map(|gpu| vec![gpu.card_index])
+            .unwrap_or_default();
+
+        let request = toadstool_runtime_orchestration::ResourceRequest {
+            tenant_id: String::from("anonymous"),
+            priority: 3,
+            preferred_devices,
+            min_vram_bytes: 0,
+            estimated_duration: std::time::Duration::from_secs(60),
+        };
+
+        match orchestrator.allocate(&request) {
+            Ok(allocation) => Ok(Some(allocation)),
+            Err(toadstool_runtime_orchestration::OrchestrationError::GuestLoadExceeded(msg)) => {
+                Err(JsonRpcError::server_error(
+                    error_codes::CAPABILITY_NOT_AVAILABLE,
+                    msg,
+                ))
+            }
+            Err(toadstool_runtime_orchestration::OrchestrationError::QuotaExceeded(msg)) => {
+                Err(JsonRpcError::server_error(
+                    error_codes::RESOURCE_EXHAUSTED,
+                    msg,
+                ))
+            }
+            Err(err) => Err(JsonRpcError::internal_error(err.to_string())),
+        }
     }
 
     /// Get a cached device or create one via the factory.
@@ -374,6 +434,7 @@ impl DispatchHandler {
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| JsonRpcError::invalid_params("Missing 'bdf' string parameter"))?;
 
+        self.pre_dispatch_resource_check(bdf)?;
         self.acquire_device_handle(bdf).await;
         crate::background::pcie_keepalive::activity_tracker().record();
 
@@ -434,6 +495,7 @@ impl DispatchHandler {
             return Err(JsonRpcError::invalid_params("binary must not be empty"));
         }
 
+        self.pre_dispatch_resource_check(bdf)?;
         self.acquire_device_handle(bdf).await;
         crate::background::pcie_keepalive::activity_tracker().record();
 
