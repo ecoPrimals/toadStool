@@ -27,7 +27,7 @@ mod connection;
 mod handler;
 mod types;
 
-pub use connection::{process_request, serve_tcp, serve_unix};
+pub use connection::{prebind_unix_listener, process_request, serve_tcp, serve_unix, serve_unix_prebound};
 pub use handler::HwLearnHandler;
 pub use handler::JsonRpcHandler;
 pub use types::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, JsonWorkloadSubmission};

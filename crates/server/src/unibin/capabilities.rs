@@ -7,35 +7,45 @@
 //! across handlers (clone is refcount bump, not memcpy).
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 static CACHED_CAPABILITIES: std::sync::OnceLock<Vec<Arc<str>>> = std::sync::OnceLock::new();
+static GPU_DISCOVERY_STARTED: AtomicBool = AtomicBool::new(false);
 
 /// Query local GPU and compute capabilities.
 ///
 /// Uses toadstool-sysmon and wgpu for pure Rust discovery (zero C).
 /// Returns `Arc<str>` per capability — clone is cheap (refcount bump).
 ///
-/// Results are cached after first call (hardware doesn't change at runtime).
+/// **Lazy GPU discovery (Wave 49 startup optimization):**
+/// First call returns a fast baseline (CPU, memory, orchestration) and
+/// spawns wgpu GPU enumeration in the background. Subsequent calls after
+/// GPU discovery completes return the full cached result including GPU
+/// capabilities. This prevents wgpu's Vulkan driver init (1–5s) from
+/// blocking the server startup path.
 pub async fn query_local_capabilities() -> Vec<Arc<str>> {
     if let Some(cached) = CACHED_CAPABILITIES.get() {
         return cached.clone();
     }
-    let caps = query_local_capabilities_uncached().await;
-    CACHED_CAPABILITIES.get_or_init(|| caps).clone()
+
+    // Kick off GPU discovery in background (once)
+    if !GPU_DISCOVERY_STARTED.swap(true, Ordering::Relaxed) {
+        tokio::spawn(async {
+            let full = discover_all_capabilities().await;
+            let _ = CACHED_CAPABILITIES.set(full);
+        });
+    }
+
+    query_baseline_capabilities()
 }
 
-/// Uncached capability detection — scans hardware every call.
-#[expect(
-    clippy::unused_async,
-    reason = "async required when gpu-discovery feature enables wgpu adapter enumeration"
-)]
-async fn query_local_capabilities_uncached() -> Vec<Arc<str>> {
+/// Fast baseline: CPU + memory + orchestration — no GPU probing.
+fn query_baseline_capabilities() -> Vec<Arc<str>> {
     let mut capabilities: Vec<Arc<str>> = vec![Arc::from("compute"), Arc::from("cpu")];
 
     let cpus = toadstool_sysmon::cpu_count();
     if cpus >= 16 {
         capabilities.push(Arc::from("high-core-count"));
-        tracing::info!("High core count detected: {cpus} cores");
     }
 
     if let Ok(mem) = toadstool_sysmon::memory_info() {
@@ -46,9 +56,24 @@ async fn query_local_capabilities_uncached() -> Vec<Arc<str>> {
         let total_memory_gb = mem.total as f64 / 1024.0 / 1024.0 / 1024.0;
         if total_memory_gb >= 32.0 {
             capabilities.push(Arc::from("high-memory"));
-            tracing::info!("High memory detected: {total_memory_gb:.1} GB");
         }
     }
+
+    capabilities.push(Arc::from("orchestration"));
+    capabilities
+}
+
+/// Full capability detection including GPU discovery via wgpu.
+///
+/// Runs in a background task to avoid blocking server startup.
+#[expect(
+    clippy::unused_async,
+    reason = "async required when gpu-discovery feature enables wgpu adapter enumeration"
+)]
+async fn discover_all_capabilities() -> Vec<Arc<str>> {
+    let mut capabilities = query_baseline_capabilities();
+
+    tracing::info!("🔍 Starting GPU discovery (background)...");
 
     #[cfg(feature = "gpu-discovery")]
     {
@@ -104,8 +129,7 @@ async fn query_local_capabilities_uncached() -> Vec<Arc<str>> {
         tracing::info!("GPU discovery disabled (compile with --features gpu-discovery)");
     }
 
-    capabilities.push(Arc::from("orchestration"));
-    tracing::info!("📊 Local capabilities: {:?}", capabilities);
+    tracing::info!("📊 Full capabilities: {:?}", capabilities);
     capabilities
 }
 

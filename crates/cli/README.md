@@ -6,16 +6,18 @@ A powerful command-line interface for managing ToadStool workloads, monitoring r
 
 ## Installation
 
+Production binaries are distributed via **plasmidBin** — the NUCLEUS binary depot:
+
 ```bash
-cargo install toadstool-cli
+# plasmidBin auto-harvests from CI on every push to main.
+# Binary lands at /opt/toadstool/bin/toadstool (includes CLI).
 ```
 
-Or build from source:
+For development builds:
 
 ```bash
-git clone https://github.com/your-org/toadstool.git
-cd toadstool/crates/cli
-cargo install --path .
+cargo build -p toadstool-cli
+# Binary: target/debug/toadstool
 ```
 
 ## Quick Start

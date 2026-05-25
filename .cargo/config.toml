@@ -8,7 +8,7 @@
 # This enables proper override via [lints.clippy] for transitive dep conflicts
 # genomeBin PIE compliance: verified — x86_64 and aarch64 Linux default to PIE.
 # Explicit flag not needed; would conflict with target-specific rustflags.
-# Verified: `file target/release/toadstool` → "ELF 64-bit LSB pie executable"
+# Verified: PIE output via `file` on plasmidBin-built binary → "ELF 64-bit LSB pie executable"
 
 # ============================================================================
 # DEV LINKER SELECTION (x86_64 Linux native target)

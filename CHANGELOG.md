@@ -5,7 +5,18 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 24, 2026 (Sessions 43-274)
+## [Unreleased] - May 25, 2026 (Sessions 43-275)
+
+### Session S275 (May 25, 2026) — Wave 49: Ecosystem Tightening
+
+primalSpring Wave 49 response: three cleanup vectors (showcase fossilization, wateringHole consolidation, stale deploy patterns) plus startup latency pipeline debt.
+
+- FOSSILIZED: `showcase/` (35 files, 8 progressive API demos) archived to `fossilRecord/primals/toadStool/showcase_wave49/`, replaced with pointer README
+- MIRRORED: 36 wateringHole handoffs to central `infra/wateringHole/` — 8 active to `handoffs/`, 28 historical to `handoffs/archive/`
+- FIXED: Stale deploy patterns — `target/release/toadstool` in `.cargo/config.toml` and `AKIDA_DRIVER_DEPLOYMENT.md`, `cargo install` in CLI README, akida install script now prefers plasmidBin depot binary
+- OPTIMIZED: Startup latency (>8s cold launch → ~3s) via deferred wgpu GPU enumeration (`tokio::spawn` background discovery, fast baseline returned immediately) and JSON-RPC socket pre-bind (`prebind_unix_listener` + `serve_unix_prebound` — socket bound before `create_executor`, health probes connect during init)
+- VERIFIED: `notify-plasmidbin.yml` active on `main` push, no `which toadstool` patterns
+- METRICS: 88 JSON-RPC methods, 9,149 lib tests, 0 clippy warnings, deny clean
 
 ### Session S274 (May 24, 2026) — Glacial Horizon: Yield-to-Owner Dispatch (Fully Wired)
 

@@ -110,9 +110,9 @@ let output = backend.infer(&input)?;
 # Option 1: Automated installer (recommended)
 sudo ./scripts/install-akida-driver.sh
 
-# Option 2: Manual steps
+# Option 2: Manual steps (development only — production uses plasmidBin)
 sudo cargo build --release -p akida-setup
-sudo ./target/release/akida-setup
+sudo ./target/debug/akida-setup
 ```
 
 **Systemd Service:**
@@ -157,8 +157,8 @@ Use **userspace driver** (no installation):
 ```dockerfile
 FROM rust:latest
 
-# Copy ToadStool binary
-COPY target/release/toadstool /usr/local/bin/
+# Copy ToadStool binary from plasmidBin depot
+COPY --from=plasmidbin /opt/toadstool/bin/toadstool /usr/local/bin/
 
 # No driver installation needed!
 # Userspace driver works immediately

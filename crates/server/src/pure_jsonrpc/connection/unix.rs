@@ -33,8 +33,19 @@ use super::process_request;
 ///
 /// Returns [`ServerError`] if directory creation, socket bind, or permission setting fails.
 pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> ServerResult<()> {
+    let listener = prebind_unix_listener(&socket_path).await?;
+    serve_unix_prebound(handler, listener).await
+}
+
+/// Bind a Unix socket listener early (Wave 49 startup optimization).
+///
+/// Returns the bound listener so the caller can pass it to
+/// [`serve_unix_prebound`] after constructing the handler. This
+/// ensures `connect()` succeeds as soon as the socket path exists,
+/// even before the full handler is ready.
+pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResult<UnixListener> {
     info!(
-        "Starting pure JSON-RPC 2.0 server on Unix socket: {:?}",
+        "Pre-binding JSON-RPC Unix socket: {:?}",
         socket_path
     );
 
@@ -45,18 +56,17 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
                 parent.display()
             ))
         })?;
-        info!("Ensured JSON-RPC socket directory exists: {:?}", parent);
     }
 
     if socket_path.exists() {
         warn!("Removing old JSON-RPC socket: {:?}", socket_path);
-        tokio::fs::remove_file(&socket_path)
+        tokio::fs::remove_file(socket_path)
             .await
             .map_err(|e| ServerError::Network(e.to_string()))?;
     }
 
     let listener =
-        UnixListener::bind(&socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
+        UnixListener::bind(socket_path).map_err(|e| ServerError::Network(e.to_string()))?;
 
     #[cfg(unix)]
     {
@@ -68,30 +78,36 @@ pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> S
                     u32::from_str_radix(s.trim_start_matches("0o").trim_start_matches('0'), 8).ok()
                 })
                 .unwrap_or(0o600);
-        let mut perms = tokio::fs::metadata(&socket_path)
+        let mut perms = tokio::fs::metadata(socket_path)
             .await
             .map_err(|e| ServerError::Internal(e.to_string()))?
             .permissions();
         perms.set_mode(mode);
-        tokio::fs::set_permissions(&socket_path, perms)
+        tokio::fs::set_permissions(socket_path, perms)
             .await
             .map_err(|e| ServerError::Internal(e.to_string()))?;
         info!("Set JSON-RPC socket permissions to {mode:04o}");
     }
 
+    info!("✅ JSON-RPC socket bound: {:?}", socket_path);
+    Ok(listener)
+}
+
+/// Serve JSON-RPC on a pre-bound Unix socket listener.
+///
+/// Used with [`prebind_unix_listener`] to start accepting connections
+/// on a listener that was bound before the full handler was constructed.
+pub async fn serve_unix_prebound(
+    handler: Arc<JsonRpcHandler>,
+    listener: UnixListener,
+) -> ServerResult<()> {
     let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
     let btsp_required = toadstool_common::primal_sockets::is_btsp_required(&env);
 
     if btsp_required {
-        info!(
-            "✅ BTSP mode: length-prefixed framing on: {:?}",
-            socket_path
-        );
+        info!("✅ BTSP mode active on pre-bound socket");
     } else {
-        info!(
-            "✅ Pure JSON-RPC 2.0 server (NDJSON) listening on: {:?}",
-            socket_path
-        );
+        info!("✅ Pure JSON-RPC 2.0 server (NDJSON) accepting on pre-bound socket");
     }
 
     loop {

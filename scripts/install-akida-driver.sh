@@ -37,15 +37,18 @@ check_root() {
 install_binary() {
     log_info "Installing akida-setup binary..."
     
-    # Build if not exists
-    if [[ ! -f "$SCRIPT_DIR/../target/release/akida-setup" ]]; then
-        log_info "Building akida-setup..."
+    # Prefer plasmidBin depot binary, fall back to local build for development
+    local PLASMIDBIN_PATH="/opt/toadstool/bin/akida-setup"
+    if [[ -f "$PLASMIDBIN_PATH" ]]; then
+        log_info "Using plasmidBin depot binary"
+        mkdir -p "$INSTALL_DIR/bin"
+        cp "$PLASMIDBIN_PATH" "$INSTALL_DIR/bin/"
+    else
+        log_info "plasmidBin binary not found, building locally (development mode)..."
         cd "$SCRIPT_DIR/.." && cargo build --release -p akida-setup
+        mkdir -p "$INSTALL_DIR/bin"
+        cp "$SCRIPT_DIR/../target/release/akida-setup" "$INSTALL_DIR/bin/"
     fi
-    
-    # Install to system directory
-    mkdir -p "$INSTALL_DIR/bin"
-    cp "$SCRIPT_DIR/../target/release/akida-setup" "$INSTALL_DIR/bin/"
     chmod 755 "$INSTALL_DIR/bin/akida-setup"
     
     log_info "Binary installed to $INSTALL_DIR/bin/akida-setup"

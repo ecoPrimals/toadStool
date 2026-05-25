@@ -1,12 +1,23 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S274
+**Date**: May 2026 — S275
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S275 (Wave 49: Ecosystem Tightening)**:
+Showcase fossilized (35 files → `fossilRecord/primals/toadStool/showcase_wave49/`).
+36 wateringHole handoffs mirrored to central (8 active, 28 archived). Stale
+deploy patterns fixed: `target/release/toadstool` refs → plasmidBin,
+`cargo install` → plasmidBin depot docs, akida install script prefers depot
+binary. Startup latency (>8s cold launch) reduced via two optimizations:
+deferred wgpu GPU enumeration (1–5s saved — background `tokio::spawn`),
+JSON-RPC socket pre-bind before executor creation (health probes connect
+during init). `prebind_unix_listener` + `serve_unix_prebound` added.
+`notify-plasmidbin.yml` confirmed active. 9,149 lib tests, 0 clippy.
 
 **S274 (Glacial Horizon: Yield-to-Owner Dispatch — FULLY WIRED)**:
 `max_guest_load` yield semantics evolved from types-only (S269) to enforced

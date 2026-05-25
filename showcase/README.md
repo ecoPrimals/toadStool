@@ -1,94 +1,16 @@
-# ToadStool Showcase Collection
+# Showcase (Fossilized)
 
-**Hardware Discovery, Compute Orchestration, and Inter-Primal Compute Patterns**
+Contents archived to `ecoPrimals/fossilRecord/primals/toadStool/showcase_wave49/`
+as part of Wave 49 ecosystem tightening (May 2026).
 
-**Status**: Active | **Updated**: May 2026 — S253
-**License**: AGPL-3.0-or-later
+## What was here
 
----
+Progressive API demos for toadStool — 8 working examples across 2 levels:
 
-## Quick Start
+- **Level 00 — Local Primal**: hello-compute, hardware-discovery, workload-lifecycle,
+  resource-management, gpu-job-queue
+- **Level 03 — Ecosystem Integration**: coordination-registration,
+  security-secured-compute, storage-artifact-pipeline
 
-### Run the Local Primal Showcase (30 minutes automated tour)
-
-```bash
-cd showcase/00-local-primal
-./01-hello-compute/demo.sh          # 30s  - Health, version, capabilities
-./02-hardware-discovery/demo.sh     # 60s  - CPU, memory, disk, network probing
-./03-workload-lifecycle/demo.sh     # 60s  - Submit, status, result, cancel
-./04-resource-management/demo.sh    # 30s  - Resource estimation and optimization
-./05-gpu-job-queue/demo.sh          # 60s  - GPU dispatch and queue management
-```
-
-### ~~Compute Triangle Demo~~ (ARCHIVED S169)
-
-Levels 01 and 02 are archived — the JSON-RPC methods they demonstrated (`shader.compile.*`,
-`discovery.*`, `science.*`, `deploy.*`) were removed in S169 (compile → coralReef,
-science/deploy → biomeOS). See `00-local-primal/` for current demos.
-
----
-
-## Showcase Levels
-
-### Level 00: Local Primal (no external services needed)
-
-Demonstrates toadStool's core capabilities in isolation. Each demo uses library
-APIs directly and runs on any machine with Rust installed.
-
-| Demo | Time | What It Shows |
-|------|------|---------------|
-| 01-hello-compute | 30s | Health check, version, capability enumeration |
-| 02-hardware-discovery | 60s | CPU/memory/disk/network substrate probing via toadstool_sysmon |
-| 03-workload-lifecycle | 60s | Full compute.submit -> status -> result -> cancel |
-| 04-resource-management | 30s | Resource estimation, validation, optimization suggestions |
-| 05-gpu-job-queue | 60s | GPU job dispatch, queue management, capabilities |
-
-### Level 01: Shader Pipeline — DELETED (archived S169, deleted S253)
-
-`shader.compile.*` methods removed from toadStool in S169 (compile is coralReef's domain).
-Directory deleted S253 — stale demo code referencing removed JSON-RPC methods.
-
-### Level 02: Compute Patterns — DELETED (archived S169, deleted S253)
-
-`discovery.*`, `science.*`, `deploy.*` methods removed from toadStool in S169
-(science/deploy routing is biomeOS's domain). Directory deleted S253.
-
-### Level 03: Ecosystem Integration (toadStool + phase1 primals)
-
-Demonstrates toadStool interacting with the broader ecoPrimals ecosystem.
-
-| Demo | Time | What It Shows |
-|------|------|---------------|
-| 01-coordination-registration | 60s | Register compute capabilities for cross-tower discovery |
-| 02-security-secured-compute | 60s | Signed workload submission via security service tokens |
-| 03-storage-artifact-pipeline | 60s | Store/retrieve compute artifacts via storage service |
-
----
-
-## Archived Hardware Showcases
-
-Pre-progressive hardware showcases archived to `ecoPrimals/infra/wateringHole/fossilRecord/` (S139).
-These predate the progressive showcase and required specialized hardware: neuromorphic, gpu-universal, homomorphic-computing, akida-characterization, barracuda-validation, whitePaper.
-
----
-
-## Building
-
-All showcases are excluded from the main workspace build.
-Build individually:
-
-```bash
-cd showcase/00-local-primal/01-hello-compute
-cargo build --release
-```
-
-Or run a demo directly:
-
-```bash
-./demo.sh
-```
-
----
-
-*See [00_SHOWCASE_INDEX.md](00_SHOWCASE_INDEX.md) for the full learning path.*
-*See [QUICK_START.md](QUICK_START.md) for a 5-minute guided tour.*
+These demos powered the prokaryotic → post-primordial evolution and are
+preserved as fossil record. Active patterns live in `primalSpring/wateringHole/`.

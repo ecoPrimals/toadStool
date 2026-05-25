@@ -134,8 +134,21 @@ pub async fn run_server_main(
         std::env::var(socket_env::XDG_RUNTIME_DIR).ok()
     );
 
-    let socket_path = format::get_socket_path(&family_id, &node_id)?;
-    info!("✅ Final socket path: {:?}", socket_path);
+    let jsonrpc_socket_path = format::get_socket_path(&family_id, &node_id)?;
+    info!("✅ Final socket path: {:?}", jsonrpc_socket_path);
+
+    // Wave 49 startup optimization: pre-bind JSON-RPC socket BEFORE heavy init.
+    // This ensures health probes can connect immediately while wgpu + mDNS run.
+    let jsonrpc_listener = match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path).await {
+        Ok(listener) => {
+            info!("⚡ JSON-RPC socket pre-bound — health probes accepted during init");
+            Some(listener)
+        }
+        Err(e) => {
+            warn!("Pre-bind failed (will bind later): {e}");
+            None
+        }
+    };
 
     let mut unibin_config = execution::UnibinExecutionConfig::from_env();
 
@@ -174,38 +187,38 @@ pub async fn run_server_main(
 
     info!("🔌 Starting IPC servers (isomorphic mode)...");
 
-    // JSON-RPC (primary) uses the domain stem: compute.sock / compute-{fid}.sock
-    let jsonrpc_socket = socket_path.clone();
+    // JSON-RPC (primary) uses the pre-bound socket path from above.
+    let jsonrpc_socket = jsonrpc_socket_path;
 
     // tarpc (secondary) uses a separate socket to avoid bind collision (LD-05):
     //   compute-tarpc.sock / compute-{fid}-tarpc.sock
     let tarpc_filename = format::tarpc_socket_filename_for_family(&family_id);
-    let socket_path = socket_path.parent().map_or_else(
-        || socket_path.with_extension("tarpc.sock"),
+    let tarpc_socket_path = jsonrpc_socket.parent().map_or_else(
+        || jsonrpc_socket.with_extension("tarpc.sock"),
         |dir| dir.join(tarpc_filename),
     );
 
     // Legacy symlink: toadstool.sock → compute.sock for callers still using
     // primal-named discovery. Self-Knowledge v1.1 §Migration allows this.
     let legacy_filename = format::legacy_socket_filename_for_family(&family_id);
-    let legacy_socket = socket_path.parent().map(|dir| dir.join(legacy_filename));
+    let legacy_socket = tarpc_socket_path.parent().map(|dir| dir.join(legacy_filename));
     if let Some(ref legacy) = legacy_socket
-        && legacy != &socket_path
+        && legacy != &tarpc_socket_path
     {
         let _ = std::fs::remove_file(legacy);
         #[cfg(unix)]
         {
-            if let Err(e) = std::os::unix::fs::symlink(&socket_path, legacy) {
+            if let Err(e) = std::os::unix::fs::symlink(&tarpc_socket_path, legacy) {
                 warn!(
                     "Could not create legacy symlink {} → {}: {e}",
                     legacy.display(),
-                    socket_path.display()
+                    tarpc_socket_path.display()
                 );
             } else {
                 info!(
                     "🔗 Legacy symlink: {} → {}",
                     legacy.display(),
-                    socket_path
+                    tarpc_socket_path
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
@@ -236,7 +249,7 @@ pub async fn run_server_main(
         info!(count, "restored VfioAnchor(s) from previous daemon instance");
     }
 
-    let socket_path_for_server = socket_path.clone();
+    let tarpc_path_for_server = tarpc_socket_path.clone();
     let jsonrpc_socket_for_server = jsonrpc_socket.clone();
     let unibin_for_server = unibin_config.clone();
 
@@ -244,10 +257,11 @@ pub async fn run_server_main(
         match execution::start_servers_with_fallback(
             server,
             jsonrpc_handler,
-            socket_path_for_server,
+            tarpc_path_for_server,
             jsonrpc_socket_for_server,
             tcp_port,
             &unibin_for_server,
+            jsonrpc_listener,
         )
         .await
         {
@@ -362,8 +376,8 @@ pub async fn run_server_main(
     info!("Shutting down ToadStool server...");
     server_handle.abort();
 
-    if socket_path.exists()
-        && let Err(e) = tokio::fs::remove_file(&socket_path).await
+    if tarpc_socket_path.exists()
+        && let Err(e) = tokio::fs::remove_file(&tarpc_socket_path).await
     {
         warn!("Failed to remove tarpc socket: {}", e);
     }

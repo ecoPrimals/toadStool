@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::CoordinatorExecutor;
 use crate::errors::{ServerError, ServerResult};
-use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix};
+use crate::pure_jsonrpc::{JsonRpcHandler, serve_tcp, serve_unix, serve_unix_prebound};
 use crate::tarpc_server::{StandaloneExecutor, ToadStoolTarpcServer, WorkloadExecutorDispatch};
 
 use super::capabilities;
@@ -165,7 +165,10 @@ pub async fn create_executor(
     }
 }
 
-/// Start servers with Unix socket or TCP fallback
+/// Start servers with Unix socket or TCP fallback.
+///
+/// When `jsonrpc_listener` is `Some`, the JSON-RPC server uses the pre-bound
+/// listener (Wave 49 fast-bind optimization). Otherwise it binds its own.
 ///
 /// # Errors
 ///
@@ -177,8 +180,8 @@ pub async fn start_servers_with_fallback(
     jsonrpc_socket: PathBuf,
     tcp_port: Option<u16>,
     cfg: &UnibinExecutionConfig,
+    jsonrpc_listener: Option<tokio::net::UnixListener>,
 ) -> ServerResult<()> {
-    // When --port is explicitly provided, always start TCP alongside Unix sockets (UniBin std).
     if let Some(port) = tcp_port {
         info!("   --port {port} specified: starting TCP JSON-RPC (UniBin standard)");
         let tcp_handler = Arc::clone(&jsonrpc_handler);
@@ -192,7 +195,7 @@ pub async fn start_servers_with_fallback(
 
     info!("   Trying Unix socket IPC (optimal)...");
 
-    match try_unix_servers(&server, &jsonrpc_handler, &socket_path, &jsonrpc_socket).await {
+    match try_unix_servers(&server, &jsonrpc_handler, &socket_path, &jsonrpc_socket, jsonrpc_listener).await {
         Ok(()) => Ok(()),
         Err(e) => {
             let error_str = e.to_string();
@@ -213,13 +216,16 @@ async fn try_unix_servers(
     jsonrpc_handler: &Arc<JsonRpcHandler>,
     socket_path: &PathBuf,
     jsonrpc_socket: &PathBuf,
+    jsonrpc_listener: Option<tokio::net::UnixListener>,
 ) -> ServerResult<()> {
     if let Some(parent) = socket_path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
             .map_err(|e| ServerError::Initialization(e.to_string()))?;
     }
-    if let Some(parent) = jsonrpc_socket.parent() {
+    if jsonrpc_listener.is_none()
+        && let Some(parent) = jsonrpc_socket.parent()
+    {
         tokio::fs::create_dir_all(parent)
             .await
             .map_err(|e| ServerError::Initialization(e.to_string()))?;
@@ -228,7 +234,9 @@ async fn try_unix_servers(
     if let Err(e) = tokio::fs::remove_file(socket_path).await {
         tracing::debug!("Socket cleanup: {e}");
     }
-    if let Err(e) = tokio::fs::remove_file(jsonrpc_socket).await {
+    if jsonrpc_listener.is_none()
+        && let Err(e) = tokio::fs::remove_file(jsonrpc_socket).await
+    {
         tracing::debug!("Socket cleanup: {e}");
     }
 
@@ -237,12 +245,20 @@ async fn try_unix_servers(
     info!("   Socket (tarpc): {:?}", socket_path);
 
     let jsonrpc_handler = Arc::clone(jsonrpc_handler);
-    let jsonrpc_socket_clone = jsonrpc_socket.clone();
-    tokio::spawn(async move {
-        if let Err(e) = serve_unix(jsonrpc_handler, jsonrpc_socket_clone).await {
-            error!("JSON-RPC server error: {}", e);
-        }
-    });
+    if let Some(listener) = jsonrpc_listener {
+        tokio::spawn(async move {
+            if let Err(e) = serve_unix_prebound(jsonrpc_handler, listener).await {
+                error!("JSON-RPC server error: {}", e);
+            }
+        });
+    } else {
+        let jsonrpc_socket_clone = jsonrpc_socket.clone();
+        tokio::spawn(async move {
+            if let Err(e) = serve_unix(jsonrpc_handler, jsonrpc_socket_clone).await {
+                error!("JSON-RPC server error: {}", e);
+            }
+        });
+    }
 
     server.clone().serve_unix(socket_path).await?;
     Ok(())
