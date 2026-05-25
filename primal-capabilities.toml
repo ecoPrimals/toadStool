@@ -6,6 +6,11 @@
 # Usage:
 #   let services = discovery.find_by_capability("cryptographic-operations").await?;
 #   // No hardcoded "beardog" - discovered by capability!
+#
+# NOTE (Wave 49, S275): External primal sections below (beardog, songbird, nestgate, etc.)
+# use legacy primal names and HTTP/gRPC protocols from pre-IPC era. These are retained
+# as reference for capability *names* only. Actual discovery is now via Unix socket
+# capability-based lookup. See CAPABILITY_BASED_DISCOVERY_STANDARD.md v1.2.
 
 [registry]
 version = "1.0.0"

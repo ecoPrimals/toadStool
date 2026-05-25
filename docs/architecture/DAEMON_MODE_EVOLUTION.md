@@ -6,7 +6,7 @@
 > That proposal was for the HTTP-based daemon. The daemon is now fully IPC-first
 > (JSON-RPC 2.0 over Unix sockets) as of S169.
 
-## Current Architecture (S170→S263)
+## Current Architecture (S170→S275)
 
 ```
 toadstool daemon start

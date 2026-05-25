@@ -1,8 +1,8 @@
 # ToadStool Types Reference Guide
 ## Canonical Type Definitions and Usage Patterns
 
-**Last Updated**: April 2026 — S177  
-**Status**: Production-Ready
+**Last Updated**: April 2026 — S177 (fossilized S275)  
+**Status**: 📦 Reference — types are canonical but session tag is historical
 
 ---
 

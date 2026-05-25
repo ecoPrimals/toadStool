@@ -372,7 +372,7 @@ pub struct VegaInitResult {
 /// to AMD GCN/CDNA hardware with completely different register semantics.
 #[derive(Debug)]
 pub struct VegaInit {
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "BDF stored for future AMD metal init pipeline")]
     bdf: Option<String>,
 }
 

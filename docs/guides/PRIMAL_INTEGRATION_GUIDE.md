@@ -1,8 +1,13 @@
 # 🔗 Primal Integration Guide
 
+> **FOSSIL (S275).** This guide predates the S273 capability-based migration. Primal
+> integration is now capability-first — primals discover each other by capability at
+> runtime, not by name. BearDog/SongBird/NestGate names below are legacy references.
+> See `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.2 for current patterns.
+
 **Date**: January 14, 2026  
-**Status**: ✅ **ACTIVE**  
-**Purpose**: Runtime integration with ecoPrimals and external systems
+**Status**: 📦 **FOSSILIZED** (Wave 49)  
+**Purpose**: Runtime integration with ecoPrimals and external systems (historical)
 
 ---
 

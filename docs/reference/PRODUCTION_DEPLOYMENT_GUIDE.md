@@ -9,16 +9,17 @@
 ## Current Deployment
 
 ToadStool is a single binary (`toadstool`) following the UniBin standard.
+Distributed via **plasmidBin** depot (post-primordial mandate, Wave 49).
 
 ### Environment Variables
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `XDG_RUNTIME_DIR` | Socket directory | `/run/user/$UID` |
-| `TOADSTOOL_DAEMON_API_PORT` | Optional TCP port (0 = OS-assigned) | `0` |
-| `COORDINATION_PORT` | Songbird capability port | `8080` |
-| `SECURITY_PORT` | BearDog capability port | `8082` |
-| `STORAGE_PORT` | NestGate capability port | `8083` |
+| `TOADSTOOL_SOCKET` | Override JSON-RPC socket path | biomeOS convention |
+| `TOADSTOOL_DEPLOYMENT_MODEL` | `multi` / `rental` for multi-tenant GPU scheduling | unset (LocalDirect) |
+| `TOADSTOOL_STANDALONE` | `1` to skip distributed coordinator | unset (distributed) |
+| `TOADSTOOL_FAMILY_ID` | Family ID for BTSP production mode | unset (development) |
 
 ### Running
 

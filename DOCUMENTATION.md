@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S273
+**Last Updated**: May 2026 — S275
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S273 — May 2026)
+## Current State (S275 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,000+ tests** (9,131+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **23,000+ tests** (9,149+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **88 JSON-RPC methods** (direct) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. **Recommended caller timeout: ≥3 seconds** for health probes during startup.
 - **Phase C complete** (S245–S253) — toadstool-cylinder (153 .rs, 700 tests), DRM/MMIO/AMD/NVIDIA/VFIO hardware modules absorbed from `coral-driver`. `OwnedFd` VFIO fd ownership (S253). SwapOrchestrator real quiesce/persist/restore (S253). `toadstool device` CLI with swap/list/status/warm subcommands (S253). GspBridge trait boundary.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — `try_local_dispatch()` via `ComputeDevice` trait before `coral_client` IPC forward. Full buffer lifecycle. AMD DRM dispatch live. **NV VFIO e2e dispatch validated on Titan V** (S263): warm handoff → VFIO open → channel → DMA roundtrip → GR init. Current frontier: FECS PENDING_CTX_RELOAD.
@@ -49,7 +49,7 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S273).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S275).
 
 ---
 
