@@ -59,6 +59,94 @@ impl SymbolResolver for NmResolver {
     }
 }
 
+/// Remove ksymtab export sections from an ELF `.ko` file.
+///
+/// Strips `__ksymtab`, `__kcrctab`, `__ksymtab_strings`, and
+/// `.rela__ksymtab` — the same sections that `objcopy --remove-section`
+/// would remove. This prevents duplicate-symbol errors when dual-loading
+/// a DKMS module alongside the host driver.
+///
+/// Pure Rust via the `object` crate — no external `objcopy` process.
+pub fn strip_ksymtab_sections(
+    input: &std::path::Path,
+    output: &std::path::Path,
+) -> Result<(), PatchError> {
+    const STRIP_SECTIONS: &[&str] = &[
+        "__ksymtab",
+        "__kcrctab",
+        "__ksymtab_strings",
+        ".rela__ksymtab",
+    ];
+
+    let data = std::fs::read(input).map_err(PatchError::ReadFailed)?;
+
+    let mut patched = data;
+    zero_elf_sections_by_name(&mut patched, STRIP_SECTIONS).map_err(|e| PatchError::NmFailed {
+        path: input.display().to_string(),
+        detail: e,
+    })?;
+
+    std::fs::write(output, &patched).map_err(|e| PatchError::WriteFailed {
+        path: output.display().to_string(),
+        source: e,
+    })?;
+
+    Ok(())
+}
+
+/// Zero out sections by name in raw ELF bytes (in-place).
+///
+/// Zeroes both the section content and sets `sh_size = 0` in the section
+/// header. This effectively removes the section's payload while preserving
+/// ELF structure integrity (section count, string table, etc. unchanged).
+fn zero_elf_sections_by_name(data: &mut [u8], names: &[&str]) -> Result<(), String> {
+    if data.len() < 64 || &data[0..4] != b"\x7fELF" || data[4] != 2 || data[5] != 1 {
+        return Err("not a 64-bit little-endian ELF".into());
+    }
+
+    let e_shoff = u64::from_le_bytes(data[40..48].try_into().unwrap()) as usize;
+    let e_shentsize = u16::from_le_bytes(data[58..60].try_into().unwrap()) as usize;
+    let e_shnum = u16::from_le_bytes(data[60..62].try_into().unwrap()) as usize;
+    let e_shstrndx = u16::from_le_bytes(data[62..64].try_into().unwrap()) as usize;
+
+    if e_shstrndx >= e_shnum {
+        return Err("invalid shstrndx".into());
+    }
+
+    let shstrtab_hdr = e_shoff + e_shstrndx * e_shentsize;
+    let shstrtab_off = u64::from_le_bytes(
+        data[shstrtab_hdr + 24..shstrtab_hdr + 32].try_into().unwrap(),
+    ) as usize;
+
+    for i in 0..e_shnum {
+        let sh = e_shoff + i * e_shentsize;
+        let sh_name_idx = u32::from_le_bytes(data[sh..sh + 4].try_into().unwrap()) as usize;
+        let name_start = shstrtab_off + sh_name_idx;
+
+        let mut end = name_start;
+        while end < data.len() && data[end] != 0 {
+            end += 1;
+        }
+        let name = String::from_utf8_lossy(&data[name_start..end]).to_string();
+
+        if !names.iter().any(|&n| n == name) {
+            continue;
+        }
+
+        let sh_offset = u64::from_le_bytes(data[sh + 24..sh + 32].try_into().unwrap()) as usize;
+        let sh_size = u64::from_le_bytes(data[sh + 32..sh + 40].try_into().unwrap()) as usize;
+
+        if sh_offset + sh_size <= data.len() {
+            data[sh_offset..sh_offset + sh_size].fill(0);
+        }
+        data[sh + 32..sh + 40].copy_from_slice(&0u64.to_le_bytes());
+
+        tracing::debug!(section = name.as_str(), "zeroed ksymtab section ({sh_size} bytes)");
+    }
+
+    Ok(())
+}
+
 /// How to patch a function's entry point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PatchStrategy {

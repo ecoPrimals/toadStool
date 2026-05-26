@@ -121,15 +121,11 @@ fn read_u64_le(data: &[u8], off: usize) -> Result<u64, KernelHealthError> {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-fn kernel_release() -> Result<String, KernelHealthError> {
-    let out = Command::new("uname")
-        .arg("-r")
-        .output()
-        .map_err(|e| KernelHealthError::KernelRelease(e.to_string()))?;
-    if !out.status.success() {
-        return Err(KernelHealthError::KernelRelease("uname -r failed".into()));
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+fn kernel_release() -> Result<&'static str, KernelHealthError> {
+    crate::linux_paths::kernel_release()
+        .ok_or_else(|| KernelHealthError::KernelRelease(
+            "could not read /proc/sys/kernel/osrelease".into(),
+        ))
 }
 
 fn headers_dir(krel: &str) -> PathBuf {
@@ -222,62 +218,21 @@ pub fn probe_struct_module_layout() -> Result<(u64, u64), KernelHealthError> {
     probe_struct_module_layout_for(&krel)
 }
 
-fn probe_struct_module_layout_for(krel: &str) -> Result<(u64, u64), KernelHealthError> {
+fn probe_struct_module_layout_for(_krel: &str) -> Result<(u64, u64), KernelHealthError> {
+    use crate::vfio::guarded_sysfs::KmodBuilder;
+
     let tmpdir = std::env::temp_dir().join("toadstool_kernel_probe");
-    std::fs::create_dir_all(&tmpdir)?;
+    let tmpdir_str = tmpdir.display().to_string();
 
-    let src = tmpdir.join("probe.c");
-    let makefile = tmpdir.join("Makefile");
-    let ko = tmpdir.join("probe.ko");
-
-    std::fs::write(&src, PROBE_SOURCE)?;
-    std::fs::write(
-        &makefile,
-        format!(
-            "obj-m := probe.o\n\
-             KDIR := /lib/modules/{krel}/build\n\
-             all:\n\
-             \t$(MAKE) -C $(KDIR) M=$(PWD) modules\n\
-             clean:\n\
-             \t$(MAKE) -C $(KDIR) M=$(PWD) clean\n"
-        ),
-    )?;
-
-    let output = Command::new("make")
-        .arg("-C")
-        .arg(&tmpdir)
-        .arg("clean")
-        .output();
-    let _ = output; // ignore clean errors
-
-    let output = Command::new("make")
-        .arg("-C")
-        .arg(&tmpdir)
-        .output()
-        .map_err(|e| KernelHealthError::ProbeCompile(format!("make exec: {e}")))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(KernelHealthError::ProbeCompile(
-            stderr.lines().take(20).collect::<Vec<_>>().join("\n"),
-        ));
-    }
-
-    if !ko.exists() {
-        return Err(KernelHealthError::ProbeCompile(
-            "probe.ko not produced".into(),
-        ));
-    }
+    let ko = KmodBuilder::new("probe")
+        .source(PROBE_SOURCE)
+        .tmpdir(&tmpdir_str)
+        .compile_only()
+        .map_err(|e| KernelHealthError::ProbeCompile(e.to_string()))?;
 
     let offsets = read_probe_offsets(&ko)?;
 
-    // cleanup
-    let _ = Command::new("make")
-        .arg("-C")
-        .arg(&tmpdir)
-        .arg("clean")
-        .output();
-    let _ = std::fs::remove_dir_all(&tmpdir);
+    KmodBuilder::clean(&tmpdir_str);
 
     Ok(offsets)
 }
@@ -528,74 +483,70 @@ fn read_cstr(data: &[u8], start: usize) -> String {
 /// Find a reference `.ko` file from a module known to be loadable on this kernel.
 ///
 /// Tries (in order):
-/// 1. The stock `nvidia` module via `modinfo -n`
-/// 2. Any DKMS-built module under `/var/lib/dkms/`
-/// 3. A random module from `/lib/modules/$(uname -r)/kernel/`
+/// 1. Well-known modules via `modinfo -n` (shared helper in `kmod`)
+/// 2. Rust directory walk under `/lib/modules/{krel}/kernel/` for `.ko` or `.ko.zst`
 fn find_reference_ko() -> Option<PathBuf> {
-    // Try modinfo for well-known modules
     for name in &["nvidia", "nouveau", "snd_hda_intel", "i915"] {
-        if let Ok(out) = Command::new("modinfo").args(["-n", name]).output()
-            && out.status.success()
-        {
-            let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !path_str.is_empty() && path_str != "(builtin)" {
-                let p = PathBuf::from(&path_str);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
+        if let Some(p) = crate::vfio::kmod::modinfo_path(name) {
+            return Some(p);
         }
     }
 
-    // Fallback: find any .ko under /lib/modules/
-    if let Ok(krel) = kernel_release() {
-        let search = format!("/lib/modules/{krel}/kernel");
-        if let Ok(out) = Command::new("find")
-            .args([&search, "-name", "*.ko", "-type", "f"])
-            .arg("-print")
-            .arg("-quit")
-            .output()
-            && out.status.success()
-        {
-            let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !path_str.is_empty() {
-                let p = PathBuf::from(&path_str);
-                if p.exists() {
-                    return Some(p);
-                }
-            }
-        }
-        // Also try compressed .ko.zst
-        if let Ok(out) = Command::new("find")
-            .args([&search, "-name", "*.ko.zst", "-type", "f"])
-            .arg("-print")
-            .arg("-quit")
-            .output()
-            && out.status.success()
-        {
-            let path_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !path_str.is_empty() {
-                return decompress_zst_ko(&path_str);
-            }
-        }
+    // Fallback: walk the kernel module tree for any .ko or .ko.zst
+    let krel = kernel_release().ok()?;
+    let search_root = format!("/lib/modules/{krel}/kernel");
+    let search_path = Path::new(&search_root);
+    if !search_path.is_dir() {
+        return None;
+    }
+
+    if let Some(ko) = walk_first_matching(search_path, "ko") {
+        return Some(ko);
+    }
+    if let Some(zst) = walk_first_matching(search_path, "ko.zst") {
+        return decompress_zst_ko(&zst.display().to_string());
     }
 
     None
 }
 
-fn decompress_zst_ko(zst_path: &str) -> Option<PathBuf> {
-    let dest = std::env::temp_dir().join("toadstool_ref_module.ko");
-    let status = Command::new("zstd")
-        .args(["-d", "-f", "-o"])
-        .arg(&dest)
-        .arg(zst_path)
-        .status()
-        .ok()?;
-    if status.success() && dest.exists() {
-        Some(dest)
-    } else {
-        None
+/// Recursively walk a directory tree and return the first file matching
+/// the given extension. Equivalent to `find dir -name '*.ext' -type f -print -quit`.
+fn walk_first_matching(root: &Path, ext: &str) -> Option<PathBuf> {
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let ft = match entry.file_type() {
+                Ok(ft) => ft,
+                Err(_) => continue,
+            };
+            let path = entry.path();
+            if ft.is_dir() {
+                stack.push(path);
+            } else if ft.is_file() {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if name.ends_with(&format!(".{ext}")) {
+                    return Some(path);
+                }
+            }
+        }
     }
+    None
+}
+
+fn decompress_zst_ko(zst_path: &str) -> Option<PathBuf> {
+    let compressed = std::fs::read(zst_path).ok()?;
+    let mut decoder = ruzstd::decoding::StreamingDecoder::new(compressed.as_slice()).ok()?;
+    let mut decompressed = Vec::new();
+    std::io::Read::read_to_end(&mut decoder, &mut decompressed).ok()?;
+    let dest = std::env::temp_dir().join("toadstool_ref_module.ko");
+    std::fs::write(&dest, &decompressed).ok()?;
+    Some(dest)
 }
 
 // ── Full health check ───────────────────────────────────────────────

@@ -49,6 +49,35 @@ pub fn proc_root() -> &'static str {
     proc_root_storage()
 }
 
+/// Running kernel release string (e.g. `"6.17.9-76061709-generic"`).
+///
+/// Pure-Rust alternative to `uname -r`: reads `/proc/sys/kernel/osrelease`
+/// once and caches the result. No process fork, no shell — the kernel
+/// release goes through the Rust compiler like everything else.
+///
+/// Returns `None` only if procfs is unavailable (container without /proc,
+/// non-Linux, or test environment with overridden proc root).
+#[must_use]
+pub fn kernel_release() -> Option<&'static str> {
+    static KREL: OnceLock<Option<String>> = OnceLock::new();
+    KREL.get_or_init(|| {
+        let path = format!("{}/sys/kernel/osrelease", proc_root());
+        std::fs::read_to_string(path)
+            .ok()
+            .map(|s| s.trim().to_string())
+    })
+    .as_deref()
+}
+
+/// Kernel build directory for out-of-tree module compilation.
+///
+/// Returns `/lib/modules/{krel}/build` where `{krel}` is from
+/// [`kernel_release`]. This is the standard kbuild entry point.
+#[must_use]
+pub fn kbuild_dir() -> Option<String> {
+    kernel_release().map(|krel| format!("/lib/modules/{krel}/build"))
+}
+
 /// Optional data directory for VBIOS dumps and similar assets.
 #[must_use]
 pub fn optional_data_dir() -> Option<String> {
@@ -286,5 +315,23 @@ mod tests {
     fn sysfs_join_single_segment() {
         let path = sysfs_join(&["kernel"]);
         assert_eq!(path, format!("{}/kernel", sysfs_root()));
+    }
+
+    #[test]
+    fn kernel_release_returns_nonempty_string() {
+        if let Some(krel) = kernel_release() {
+            assert!(!krel.is_empty());
+            assert!(!krel.contains('\n'));
+            assert!(!krel.contains(' '));
+        }
+    }
+
+    #[test]
+    fn kbuild_dir_matches_kernel_release() {
+        if let (Some(krel), Some(dir)) = (kernel_release(), kbuild_dir()) {
+            assert!(dir.contains(krel));
+            assert!(dir.starts_with("/lib/modules/"));
+            assert!(dir.ends_with("/build"));
+        }
     }
 }

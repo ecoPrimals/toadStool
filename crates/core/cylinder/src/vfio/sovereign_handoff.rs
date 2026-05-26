@@ -390,7 +390,7 @@ pub struct RuntimeServicesProbe {
 /// When nvidia is loaded as a runtime service, toadStool needs to discover
 /// what nvidia has established: FECS context, TPC stations, channel state.
 pub fn probe_runtime_services(bdf: &str) -> RuntimeServicesProbe {
-    let driver_path = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let driver_path = crate::linux_paths::sysfs_pci_device_file(bdf, "driver");
     let driver = std::fs::read_link(&driver_path)
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
@@ -587,14 +587,15 @@ pub fn execute_handoff(
                         bdf = config.bdf.as_str(),
                         pmc = format_args!("0x{pmc:08x}"),
                         popcount,
-                        "GPU went cold after anchor release — FLR was not \
-                         suppressed before VfioAnchor drop (Exp 225)"
+                        "GPU went cold after anchor release — bus reset (SBR) \
+                         not suppressed (check no_bus_reset.ko, Exp 226)"
                     );
                     steps.push(HandoffStep {
                         name: "anchor_release_guard".into(), ok: false,
                         detail: Some(format!(
                             "GPU cold: PMC_ENABLE=0x{pmc:08x} (popcount={popcount}). \
-                             FLR not suppressed before anchor release — Exp 225 regression"
+                             Bus reset (SBR) not suppressed before anchor release — \
+                             check no_bus_reset.ko load (Exp 226)"
                         )),
                         duration_ms: t.elapsed().as_millis() as u64,
                     });
@@ -814,30 +815,17 @@ pub fn execute_handoff(
                     });
                     return halt_result(&config.bdf, "module_prep", steps, None, false, false, overall, &[], &config.module_name, false);
                 }
-                let strip_result = std::process::Command::new("objcopy")
-                    .arg("--remove-section=__ksymtab")
-                    .arg("--remove-section=__kcrctab")
-                    .arg("--remove-section=__ksymtab_strings")
-                    .arg("--remove-section=.rela__ksymtab")
-                    .arg(staging.as_os_str())
-                    .output();
-                match strip_result {
-                    Ok(out) if out.status.success() => {
+                match module_patch::strip_ksymtab_sections(&staging, &staging) {
+                    Ok(()) => {
                         tracing::info!(
                             path = %staging.display(),
-                            "pre-patch: stripped ksymtab export sections via objcopy"
-                        );
-                    }
-                    Ok(out) => {
-                        tracing::warn!(
-                            stderr = %String::from_utf8_lossy(&out.stderr),
-                            "objcopy ksymtab strip returned non-zero (continuing)"
+                            "pre-patch: stripped ksymtab export sections (pure Rust)"
                         );
                     }
                     Err(e) => {
                         tracing::warn!(
                             error = %e,
-                            "objcopy not available for ksymtab strip (continuing)"
+                            "ksymtab strip failed (continuing)"
                         );
                     }
                 }
@@ -1029,8 +1017,8 @@ pub fn execute_handoff(
                     Ok(()) => {
                         module_loaded = true;
                         // Trigger re-probe so the device binds to our module
-                        let probe_path = format!(
-                            "/sys/bus/pci/drivers/{}/bind", config.module_name
+                        let probe_path = crate::linux_paths::sysfs_pci_driver_bind(
+                            &config.module_name,
                         );
                         let _ = guarded_sysfs::sysfs_write_guarded(
                             &probe_path, &config.bdf,
@@ -1417,8 +1405,8 @@ pub fn execute_handoff(
     if is_catalyst {
         // Diagnostic: probe PCI config space and BAR0 between unbind and rebind.
         // Read PCI command register to check if bus mastering was disabled.
-        let pci_config_path = format!(
-            "/sys/bus/pci/devices/{}/config", config.bdf
+        let pci_config_path = crate::linux_paths::sysfs_pci_device_file(
+            &config.bdf, "config",
         );
         let pci_cmd = std::fs::read(&pci_config_path)
             .ok()
@@ -1825,11 +1813,7 @@ pub fn execute_handoff(
             let t = Instant::now();
             let frozen_dir = "/var/lib/toadstool/catalysts/frozen";
             let _ = std::fs::create_dir_all(frozen_dir);
-            let krel = std::process::Command::new("uname")
-                .arg("-r")
-                .output()
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-                .unwrap_or_else(|_| "unknown".into());
+            let krel = crate::linux_paths::kernel_release().unwrap_or("unknown");
             let frozen_dest = format!(
                 "{}/nvsov_gv100_470.256.02_k{}.ko",
                 frozen_dir, krel,
@@ -1902,11 +1886,15 @@ pub fn execute_handoff(
         }
     }
 
-    // ── Step 9: Restore FLR ───────────────────────────────────────────
+    // ── Step 9: Restore reset capabilities ─────────────────────────────
     //
     // Re-enable default PCI reset methods so that subsequent cold resets
-    // (e.g. VFIO group teardown) can issue FLR normally.
+    // (e.g. VFIO group teardown) can issue FLR normally, and unload the
+    // no_bus_reset module to re-enable SBR.
     guarded_sysfs::restore_flr(&config.bdf);
+    if let Err(e) = guarded_sysfs::restore_bus_reset() {
+        tracing::warn!(error = %e, "failed to unload no_bus_reset module (non-fatal)");
+    }
 
     // _handoff_guard drops here, releasing the per-BDF lock
 
@@ -2228,28 +2216,20 @@ fn deadline_exceeded(
     }
 }
 
-/// Load all dependencies for a kernel module using `modprobe --show-depends`.
+/// Load all dependencies for a kernel module.
 ///
-/// Parses the dependency chain and loads each dependency module in order
-/// using `insmod`. This is necessary because `insmod` (used for patched
-/// modules) doesn't resolve dependencies like `modprobe` does.
+/// Resolves dependencies via `modules.dep` (pure Rust) with fallback to
+/// `modprobe --show-depends`, then loads each in order via `insmod`.
+/// This is necessary because `insmod` (used for patched modules) doesn't
+/// resolve dependencies like `modprobe` does.
 fn load_module_dependencies(module_name: &str) -> Result<(), String> {
-    let output = std::process::Command::new("modprobe")
-        .args(["--show-depends", module_name])
-        .output()
-        .map_err(|e| format!("modprobe --show-depends failed: {e}"))?;
+    let deps = kmod::resolve_module_dependencies(module_name)
+        .map_err(|e| format!("dependency resolution failed for {module_name}: {e}"))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("modprobe --show-depends {module_name}: {}", stderr.trim()));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let deps = parse_modprobe_deps(&stdout, module_name);
     let mut loaded = 0;
 
     for ko_path in &deps {
-        let dep_name = std::path::Path::new(ko_path)
+        let dep_name = ko_path
             .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("")
@@ -2259,10 +2239,9 @@ fn load_module_dependencies(module_name: &str) -> Result<(), String> {
             continue;
         }
 
-        tracing::debug!(dep = ko_path.as_str(), "loading module dependency");
-        let dep_path = std::path::Path::new(ko_path.as_str());
-        if let Err(e) = guarded_sysfs::insmod_guarded(dep_path, guarded_sysfs::INSMOD_TIMEOUT) {
-            tracing::warn!(dep = ko_path.as_str(), error = %e, "dependency load failed (continuing)");
+        tracing::debug!(dep = %ko_path.display(), "loading module dependency");
+        if let Err(e) = guarded_sysfs::insmod_guarded(ko_path, guarded_sysfs::INSMOD_TIMEOUT) {
+            tracing::warn!(dep = %ko_path.display(), error = %e, "dependency load failed (continuing)");
         } else {
             loaded += 1;
         }
@@ -2273,7 +2252,9 @@ fn load_module_dependencies(module_name: &str) -> Result<(), String> {
 }
 
 /// Parse `modprobe --show-depends` output into a list of dependency `.ko` paths,
-/// excluding the target module itself. Testable without kernel access.
+/// excluding the target module itself. Kept for test coverage of the fallback
+/// parser in `kmod::resolve_from_modprobe`.
+#[cfg(test)]
 fn parse_modprobe_deps(output: &str, target_module: &str) -> Vec<String> {
     output
         .lines()

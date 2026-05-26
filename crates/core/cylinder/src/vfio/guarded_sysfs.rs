@@ -10,10 +10,11 @@
 //!
 //! 1. **`sysfs_write`** — direct `std::fs::write`, for fast attributes
 //!    (power/control, d3cold_allowed, reset_method).
-//! 2. **`sysfs_write_guarded`** — child-process isolation with timeout.
-//!    For `drivers_probe`, `bind`, `unbind` — operations that run full
-//!    driver probe/teardown and can enter D-state.
-//! 3. **`kmod_guarded`** — child-process isolation for `insmod`/`rmmod`.
+//! 2. **`sysfs_write_guarded`** — fork + `open(O_WRONLY)` + `write()` with
+//!    timeout. For `drivers_probe`, `bind`, `unbind` — operations that run
+//!    full driver probe/teardown and can enter D-state.
+//! 3. **`insmod_guarded`/`rmmod_guarded`** — fork + `finit_module(2)` /
+//!    `delete_module(2)` syscalls with timeout.
 //!
 //! The guarded variants spawn a child process to perform the kernel-touching
 //! write. If the child doesn't complete within the deadline, the parent
@@ -21,8 +22,9 @@
 //! entering uninterruptible kernel sleep (D-state), which bricked both
 //! Titan V GPUs during Exp 213.
 
+use std::ffi::CString;
 use std::os::fd::FromRawFd as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
 
@@ -120,46 +122,79 @@ pub fn sysfs_write(path: &str, value: &str) -> Result<(), GuardedSysfsError> {
     })
 }
 
-// ── Tier 2: Guarded sysfs write (child-process + timeout) ───────────
+// ── Tier 2: Guarded sysfs write (fork + direct write + timeout) ─────
+//
+// Phase 3 evolution: replaced `/bin/sh -c "printf ... > sysfs"` with
+// fork + open(O_WRONLY) + write(). Same D-state isolation — the child
+// is a disposable process that gets killed on timeout — but no shell
+// process, no quoting, no PATH dependency.
 
-/// Sysfs write via child process with timeout. If the child doesn't
-/// complete within `timeout`, it is killed and `Timeout` is returned.
+/// Fork a child that opens `path` and writes `value` to it.
 ///
-/// The calling thread never enters kernel D-state — only the child does.
-/// This is the fix for the Exp 213 cascade where `drivers_probe` blocked
-/// the tokio-rt-worker thread indefinitely.
-pub fn sysfs_write_guarded(
+/// The child is async-signal-safe: CStrings are prepared before fork,
+/// the child only calls open/write/close/exit_group. If the write
+/// enters D-state (e.g. `drivers_probe` blocking on driver init),
+/// the parent kills the child after `timeout`.
+///
+/// Returns the child PID (for fire-and-forget callers) or waits for
+/// completion (for synchronous callers).
+fn fork_sysfs_child(
+    path_c: &CString,
+    value: &[u8],
+) -> Result<rustix::process::Pid, GuardedSysfsError> {
+    let path_str = path_c.to_string_lossy();
+
+    // SAFETY: fork in multi-threaded context. The child only calls
+    // open/write/close/exit_group — all async-signal-safe.
+    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+
+    match fork_result {
+        Err(e) => Err(GuardedSysfsError::WriteFailed {
+            path: path_str.into_owned(),
+            reason: format!("fork failed: {e}"),
+        }),
+        Ok(rustix::runtime::Fork::Child(_)) => {
+            use rustix::fs::{open, Mode, OFlags};
+            let fd = match open(path_c.as_c_str(), OFlags::WRONLY, Mode::empty()) {
+                Ok(fd) => fd,
+                Err(e) => {
+                    let code = e.raw_os_error() as i32;
+                    rustix::runtime::exit_group(code.min(255) as u8 as i32)
+                },
+            };
+            let _ = rustix::io::write(&fd, value);
+            drop(fd);
+            rustix::runtime::exit_group(0)
+        }
+        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => Ok(child_pid),
+    }
+}
+
+/// Wait for a forked child with timeout, kill on timeout.
+fn wait_for_child(
+    child_pid: rustix::process::Pid,
     path: &str,
-    value: &str,
     timeout: Duration,
 ) -> Result<(), GuardedSysfsError> {
-    tracing::debug!(path, value, timeout_ms = timeout.as_millis() as u64, "guarded sysfs write");
-
-    let mut child = Command::new("/bin/sh")
-        .arg("-c")
-        .arg(format!("printf '%s' '{}' > '{}'", value, path))
-        .spawn()
-        .map_err(|e| GuardedSysfsError::WriteFailed {
-            path: path.into(),
-            reason: format!("failed to spawn guard process: {e}"),
-        })?;
+    use rustix::process::{Signal, WaitOptions, waitpid};
 
     let start = Instant::now();
     let poll_interval = Duration::from_millis(50);
 
     loop {
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                if status.success() {
+        match waitpid(Some(child_pid), WaitOptions::NOHANG) {
+            Ok(Some((_pid, status))) => {
+                if status.exited() && status.exit_status() == Some(0) {
                     tracing::debug!(
                         path, elapsed_ms = start.elapsed().as_millis() as u64,
                         "guarded sysfs write completed"
                     );
                     return Ok(());
                 }
+                let code = status.exit_status().unwrap_or(-1);
                 return Err(GuardedSysfsError::WriteFailed {
                     path: path.into(),
-                    reason: format!("child exited with {status}"),
+                    reason: format!("child exited with code {code}"),
                 });
             }
             Ok(None) => {
@@ -168,8 +203,8 @@ pub fn sysfs_write_guarded(
                         path, timeout_ms = timeout.as_millis() as u64,
                         "guarded sysfs write timed out — killing child"
                     );
-                    let _ = child.kill();
-                    reap_or_orphan(&mut child, "sysfs_write_guarded");
+                    let _ = rustix::process::kill_process(child_pid, Signal::KILL);
+                    reap_forked_child(child_pid);
                     return Err(GuardedSysfsError::Timeout {
                         path: path.into(),
                         timeout_ms: timeout.as_millis() as u64,
@@ -180,9 +215,122 @@ pub fn sysfs_write_guarded(
             Err(e) => {
                 return Err(GuardedSysfsError::WriteFailed {
                     path: path.into(),
-                    reason: format!("failed to poll child: {e}"),
+                    reason: format!("waitpid failed: {e}"),
                 });
             }
+        }
+    }
+}
+
+/// Non-blocking reap of a killed forked child. If the child is in D-state,
+/// SIGKILL won't take effect until the kernel code returns — a blocking
+/// waitpid would deadlock us too. Poll briefly, then abandon the zombie.
+fn reap_forked_child(child_pid: rustix::process::Pid) {
+    use rustix::process::{WaitOptions, waitpid};
+
+    let deadline = Instant::now() + REAP_POLL_CAP;
+    loop {
+        match waitpid(Some(child_pid), WaitOptions::NOHANG) {
+            Ok(Some(_)) => return,
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    tracing::warn!(
+                        pid = child_pid.as_raw_nonzero().get(),
+                        "fork guard: child stuck in D-state after SIGKILL — abandoning zombie"
+                    );
+                    return;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(_) => return,
+        }
+    }
+}
+
+/// Sysfs write via forked child with timeout. If the child doesn't
+/// complete within `timeout`, it is killed and `Timeout` is returned.
+///
+/// The calling thread never enters kernel D-state — only the child does.
+/// This is the fix for the Exp 213 cascade where `drivers_probe` blocked
+/// the tokio-rt-worker thread indefinitely.
+///
+/// Phase 3: pure Rust fork+write — no `/bin/sh`, no shell quoting.
+pub fn sysfs_write_guarded(
+    path: &str,
+    value: &str,
+    timeout: Duration,
+) -> Result<(), GuardedSysfsError> {
+    tracing::debug!(path, value, timeout_ms = timeout.as_millis() as u64, "guarded sysfs write");
+
+    let path_c = CString::new(path).map_err(|_| GuardedSysfsError::WriteFailed {
+        path: path.into(),
+        reason: "path contains NUL byte".into(),
+    })?;
+
+    let child_pid = fork_sysfs_child(&path_c, value.as_bytes())?;
+    wait_for_child(child_pid, path, timeout)
+}
+
+/// Sysfs read via forked child with timeout. If the child doesn't
+/// complete within `timeout`, it is killed and `Timeout` is returned.
+///
+/// Reads from certain sysfs attributes (e.g. `power/runtime_status` on a
+/// D3cold device) can block indefinitely in kernel D-state. This provides
+/// the same fork isolation as [`sysfs_write_guarded`] but for reads.
+///
+/// Returns the file contents as a trimmed string on success.
+pub fn sysfs_read_guarded(
+    path: &str,
+    timeout: Duration,
+) -> Result<String, GuardedSysfsError> {
+    tracing::debug!(path, timeout_ms = timeout.as_millis() as u64, "guarded sysfs read");
+
+    let path_c = CString::new(path).map_err(|_| GuardedSysfsError::WriteFailed {
+        path: path.into(),
+        reason: "path contains NUL byte".into(),
+    })?;
+
+    let (pipe_read, pipe_write) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)
+        .map_err(|e| GuardedSysfsError::WriteFailed {
+            path: path.into(),
+            reason: format!("pipe creation failed: {e}"),
+        })?;
+
+    // SAFETY: fork in multi-threaded context. Child calls only
+    // open/read/write(pipe)/close/exit_group — all async-signal-safe.
+    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+
+    match fork_result {
+        Err(e) => Err(GuardedSysfsError::WriteFailed {
+            path: path.into(),
+            reason: format!("fork failed: {e}"),
+        }),
+        Ok(rustix::runtime::Fork::Child(_)) => {
+            drop(pipe_read);
+            use rustix::fs::{open, Mode, OFlags};
+            let fd = match open(path_c.as_c_str(), OFlags::RDONLY, Mode::empty()) {
+                Ok(fd) => fd,
+                Err(_) => rustix::runtime::exit_group(1),
+            };
+            let mut buf = [0u8; 4096];
+            let n = match rustix::io::read(&fd, &mut buf) {
+                Ok(n) => n,
+                Err(_) => { drop(fd); rustix::runtime::exit_group(2) },
+            };
+            drop(fd);
+            let _ = rustix::io::write(&pipe_write, &buf[..n]);
+            drop(pipe_write);
+            rustix::runtime::exit_group(0)
+        }
+        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
+            drop(pipe_write);
+            wait_for_child(child_pid, path, timeout)?;
+            let mut buf = [0u8; 4096];
+            let n = match rustix::io::read(&pipe_read, &mut buf) {
+                Ok(n) => n,
+                Err(_) => 0,
+            };
+            Ok(String::from_utf8_lossy(&buf[..n]).trim().to_string())
         }
     }
 }
@@ -192,11 +340,13 @@ pub fn sysfs_write_guarded(
 /// For nvidia catalyst teardown, the kernel-side `remove` callback takes
 /// 160-400s (HBM2 dealloc, falcon halt). `sysfs_write_guarded` would block
 /// the calling thread for the entire duration. Instead:
-///   1. Spawn the unbind write child (returns immediately to us)
+///   1. Fork a child to write the unbind (returns immediately to parent)
 ///   2. Poll `read_current_driver` every 2s until driver clears
 ///   3. The child stays alive in kernel D-state — we don't wait for it
 ///
 /// This keeps ember responsive during the entire teardown.
+///
+/// Phase 3: pure Rust fork+write — no `/bin/sh`.
 pub fn sysfs_unbind_fire_and_poll(
     bdf: &str,
     driver: &str,
@@ -208,14 +358,12 @@ pub fn sysfs_unbind_fire_and_poll(
         "fire-and-poll unbind: initiating driver teardown"
     );
 
-    let _child = Command::new("/bin/sh")
-        .arg("-c")
-        .arg(format!("printf '%s' '{}' > '{}'", bdf, unbind_path))
-        .spawn()
-        .map_err(|e| GuardedSysfsError::WriteFailed {
-            path: unbind_path.clone(),
-            reason: format!("failed to spawn unbind child: {e}"),
-        })?;
+    let path_c = CString::new(unbind_path.as_str()).map_err(|_| GuardedSysfsError::WriteFailed {
+        path: unbind_path.clone(),
+        reason: "path contains NUL byte".into(),
+    })?;
+
+    let _child_pid = fork_sysfs_child(&path_c, bdf.as_bytes())?;
 
     let start = Instant::now();
     let poll_interval = Duration::from_secs(2);
@@ -245,13 +393,16 @@ pub fn sysfs_unbind_fire_and_poll(
     }
 }
 
-// ── Tier 3: Guarded kmod operations ─────────────────────────────────
+// ── Tier 3: Guarded kmod operations (fork + syscall) ────────────────
+//
+// Phase 3 evolution: replaced `Command::new("insmod")` / `Command::new("rmmod")`
+// with fork + `finit_module(2)` / `delete_module(2)` syscalls via rustix.
+// Same D-state isolation — child is killed on timeout — but no PATH
+// dependency on the `kmod` package.
 
-/// Run a kernel module command (`insmod`/`rmmod`) with timeout.
+/// Run an arbitrary command with timeout (legacy fallback for non-kmod uses).
 ///
-/// If the command doesn't complete within `timeout`, the child process
-/// is killed and `KmodTimeout` is returned. This prevents `rmmod` from
-/// permanently blocking a thread when a module has a stuck probe.
+/// Kept for `KmodBuilder` which still needs `make` via `Command::new`.
 pub fn kmod_guarded(
     cmd: &str,
     args: &[&str],
@@ -325,17 +476,215 @@ pub fn kmod_guarded(
     }
 }
 
-/// Guarded `insmod` — load a kernel module with timeout.
-pub fn insmod_guarded(ko_path: &Path, timeout: Duration) -> Result<(), GuardedSysfsError> {
-    let path_str = ko_path.display().to_string();
-    kmod_guarded("insmod", &[&path_str], timeout)?;
-    Ok(())
+/// Wait for a forked kmod child with timeout, kill on timeout.
+fn wait_for_kmod_child(
+    child_pid: rustix::process::Pid,
+    label: &str,
+    args_str: &str,
+    timeout: Duration,
+) -> Result<(), GuardedSysfsError> {
+    use rustix::process::{Signal, WaitOptions, waitpid};
+
+    let start = Instant::now();
+    let poll_interval = Duration::from_millis(100);
+
+    loop {
+        match waitpid(Some(child_pid), WaitOptions::NOHANG) {
+            Ok(Some((_pid, status))) => {
+                if status.exited() && status.exit_status() == Some(0) {
+                    tracing::info!(label, args = args_str,
+                                   elapsed_ms = start.elapsed().as_millis() as u64,
+                                   "kmod operation completed");
+                    return Ok(());
+                }
+                let code = status.exit_status().unwrap_or(-1);
+                return Err(GuardedSysfsError::KmodFailed {
+                    cmd: label.into(),
+                    args: args_str.into(),
+                    reason: format!("child exited with code {code}"),
+                });
+            }
+            Ok(None) => {
+                if start.elapsed() >= timeout {
+                    tracing::warn!(label, args = args_str,
+                                   timeout_ms = timeout.as_millis() as u64,
+                                   "kmod operation timed out — killing child");
+                    let _ = rustix::process::kill_process(child_pid, Signal::KILL);
+                    reap_forked_child(child_pid);
+                    return Err(GuardedSysfsError::KmodTimeout {
+                        cmd: label.into(),
+                        args: args_str.into(),
+                        timeout_ms: timeout.as_millis() as u64,
+                    });
+                }
+                std::thread::sleep(poll_interval);
+            }
+            Err(e) => {
+                return Err(GuardedSysfsError::KmodFailed {
+                    cmd: label.into(),
+                    args: args_str.into(),
+                    reason: format!("waitpid failed: {e}"),
+                });
+            }
+        }
+    }
 }
 
-/// Guarded `rmmod` — unload a kernel module with timeout.
+/// Guarded `insmod` — load a kernel module via `finit_module(2)` in a
+/// forked child. Pure Rust, no `insmod` binary dependency.
+pub fn insmod_guarded(ko_path: &Path, timeout: Duration) -> Result<(), GuardedSysfsError> {
+    insmod_guarded_with_params(ko_path, "", timeout)
+}
+
+/// Guarded `insmod` with module parameters.
+pub fn insmod_guarded_with_params(
+    ko_path: &Path,
+    params: &str,
+    timeout: Duration,
+) -> Result<(), GuardedSysfsError> {
+    let path_str = ko_path.display().to_string();
+    tracing::info!(path = path_str.as_str(), params,
+                   timeout_ms = timeout.as_millis() as u64,
+                   "guarded insmod (finit_module)");
+
+    let ko_file = std::fs::File::open(ko_path).map_err(|e| GuardedSysfsError::KmodFailed {
+        cmd: "finit_module".into(),
+        args: path_str.clone(),
+        reason: format!("failed to open .ko: {e}"),
+    })?;
+
+    let params_c = CString::new(params).map_err(|_| GuardedSysfsError::KmodFailed {
+        cmd: "finit_module".into(),
+        args: path_str.clone(),
+        reason: "params contain NUL byte".into(),
+    })?;
+
+    // Pipe for errno propagation: child writes raw errno (4 bytes) on
+    // failure, nothing on success. Parent reads after waitpid.
+    let (pipe_read, pipe_write) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)
+        .map_err(|e| GuardedSysfsError::KmodFailed {
+            cmd: "finit_module".into(),
+            args: path_str.clone(),
+            reason: format!("pipe failed: {e}"),
+        })?;
+
+    // SAFETY: fork in multi-threaded context. Child calls only
+    // finit_module (syscall) + write (pipe) + exit_group — all async-signal-safe.
+    // ko_file fd is inherited by the child (not CLOEXEC).
+    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+
+    match fork_result {
+        Err(e) => Err(GuardedSysfsError::KmodFailed {
+            cmd: "finit_module".into(),
+            args: path_str,
+            reason: format!("fork failed: {e}"),
+        }),
+        Ok(rustix::runtime::Fork::Child(_)) => {
+            drop(pipe_read);
+            match rustix::system::finit_module(&ko_file, &params_c, 0) {
+                Ok(()) => rustix::runtime::exit_group(0),
+                Err(e) => {
+                    let errno = e.raw_os_error() as i32;
+                    let _ = rustix::io::write(&pipe_write, &errno.to_ne_bytes());
+                    rustix::runtime::exit_group(1)
+                }
+            }
+        }
+        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
+            drop(ko_file);
+            drop(pipe_write);
+            let result = wait_for_kmod_child(child_pid, "finit_module", &path_str, timeout);
+            if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result {
+                if reason.starts_with("child exited with code") {
+                    let mut buf = [0u8; 4];
+                    if let Ok(4) = rustix::io::read(&pipe_read, &mut buf) {
+                        let errno = i32::from_ne_bytes(buf);
+                        return Err(GuardedSysfsError::KmodFailed {
+                            cmd: "finit_module".into(),
+                            args: path_str,
+                            reason: format!("finit_module errno {errno} ({})",
+                                errno_name(errno)),
+                        });
+                    }
+                }
+            }
+            result
+        }
+    }
+}
+
+/// Map common finit_module/delete_module errnos to human-readable names.
+fn errno_name(errno: i32) -> &'static str {
+    match errno {
+        1 => "EPERM",
+        2 => "ENOENT",
+        12 => "ENOMEM",
+        16 => "EBUSY",
+        17 => "EEXIST",
+        22 => "EINVAL",
+        _ => "unknown",
+    }
+}
+
+/// Guarded `rmmod` — unload a kernel module via `delete_module(2)` in a
+/// forked child. Pure Rust, no `rmmod` binary dependency.
 pub fn rmmod_guarded(name: &str, timeout: Duration) -> Result<(), GuardedSysfsError> {
-    kmod_guarded("rmmod", &[name], timeout)?;
-    Ok(())
+    tracing::info!(module = name, timeout_ms = timeout.as_millis() as u64,
+                   "guarded rmmod (delete_module)");
+
+    let name_c = CString::new(name).map_err(|_| GuardedSysfsError::KmodFailed {
+        cmd: "delete_module".into(),
+        args: name.into(),
+        reason: "name contains NUL byte".into(),
+    })?;
+
+    let (pipe_read, pipe_write) = rustix::pipe::pipe_with(rustix::pipe::PipeFlags::CLOEXEC)
+        .map_err(|e| GuardedSysfsError::KmodFailed {
+            cmd: "delete_module".into(),
+            args: name.into(),
+            reason: format!("pipe failed: {e}"),
+        })?;
+
+    // SAFETY: fork + delete_module syscall — async-signal-safe.
+    let fork_result = unsafe { rustix::runtime::kernel_fork() };
+
+    match fork_result {
+        Err(e) => Err(GuardedSysfsError::KmodFailed {
+            cmd: "delete_module".into(),
+            args: name.into(),
+            reason: format!("fork failed: {e}"),
+        }),
+        Ok(rustix::runtime::Fork::Child(_)) => {
+            drop(pipe_read);
+            match rustix::system::delete_module(&name_c, 0) {
+                Ok(()) => rustix::runtime::exit_group(0),
+                Err(e) => {
+                    let errno = e.raw_os_error() as i32;
+                    let _ = rustix::io::write(&pipe_write, &errno.to_ne_bytes());
+                    rustix::runtime::exit_group(1)
+                }
+            }
+        }
+        Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
+            drop(pipe_write);
+            let result = wait_for_kmod_child(child_pid, "delete_module", name, timeout);
+            if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result {
+                if reason.starts_with("child exited with code") {
+                    let mut buf = [0u8; 4];
+                    if let Ok(4) = rustix::io::read(&pipe_read, &mut buf) {
+                        let errno = i32::from_ne_bytes(buf);
+                        return Err(GuardedSysfsError::KmodFailed {
+                            cmd: "delete_module".into(),
+                            args: name.into(),
+                            reason: format!("delete_module errno {errno} ({})",
+                                errno_name(errno)),
+                        });
+                    }
+                }
+            }
+            result
+        }
+    }
 }
 
 // ── Unified sysfs helpers (replace duplicates) ──────────────────────
@@ -419,18 +768,304 @@ pub fn restore_flr(bdf: &str) {
 
 /// Prepare a device for VFIO anchor release without triggering a reset.
 ///
-/// Must be called BEFORE dropping the `VfioAnchor`. Disables FLR and pins
-/// bridge power to prevent the kernel from resetting the GPU when the
-/// last VFIO fd closes. Without this, `vfio_pci_core_release()` destroys
-/// the VBIOS warm state on Volta+ (Exp 225 root cause: PMC_ENABLE dropped
-/// from 0x5fecdff1 to 0x40000020 during anchor release).
+/// Must be called BEFORE dropping the `VfioAnchor`. Three layers of defense:
+///
+/// 1. Pin bridge power hierarchy (prevent D3cold)
+/// 2. Clear `reset_method` to suppress per-device FLR/PM reset (Exp 225)
+/// 3. Load `no_bus_reset.ko` to set `PCI_DEV_FLAGS_NO_BUS_RESET`,
+///    preventing the kernel's dev_set `pci_reset_bus()` SBR (Exp 226)
+///
+/// Without layers 1+2, `vfio_pci_core_release()` fires per-device FLR.
+/// Without layer 3, `vfio_pci_dev_set_try_reset()` fires bus-level SBR
+/// when all devices in the dev_set have open_count==0.
 pub fn prepare_anchor_release(bdf: &str) {
-    tracing::info!(bdf, "preparing anchor release: pinning bridges + disabling FLR");
+    tracing::info!(bdf, "preparing anchor release: pinning bridges + disabling FLR + suppressing SBR");
     pin_bridge_hierarchy(bdf);
     disable_flr(bdf);
     for sib in iommu_group_siblings(bdf) {
         disable_flr(&sib);
     }
+    // Exp 226: FLR suppression alone is insufficient — the kernel also
+    // fires pci_reset_bus() (SBR) when the last dev_set fd closes.
+    // Load a tiny module to set PCI_DEV_FLAGS_NO_BUS_RESET on the device.
+    if let Err(e) = suppress_bus_reset(bdf) {
+        tracing::error!(bdf, error = %e, "failed to suppress bus reset — SBR may destroy warm state");
+    }
+}
+
+// ── Kbuild module builder ───────────────────────────────────────────
+//
+// Typed Rust abstraction over Linux kbuild — the irreducible kernel-space
+// interface. C source and Makefile content are string literals (kernel ABI
+// boundary), but everything around them — path resolution, compilation
+// orchestration, parameter passing, load/unload lifecycle, cleanup —
+// goes through the Rust compiler.
+
+/// Builder for out-of-tree Linux kernel modules via kbuild.
+///
+/// Encapsulates the full lifecycle: stage source → compile via
+/// `make -C /lib/modules/{krel}/build M=$PWD` → `insmod` with
+/// parameters → `rmmod` → cleanup. Each step is typed and
+/// compiler-verified; the only non-Rust artifacts are the C source
+/// literal and the generated Makefile (irreducible kernel ABI boundary).
+///
+/// ```text
+/// KmodBuilder::new("no_bus_reset")
+///     .source(C_SOURCE)
+///     .tmpdir("/tmp/toadstool-no-bus-reset")
+///     .param("bdf", "0000:02:00.0")
+///     .build_and_load()?;
+/// ```
+pub struct KmodBuilder {
+    name: String,
+    source: &'static str,
+    tmpdir: String,
+    params: Vec<(String, String)>,
+}
+
+impl KmodBuilder {
+    /// Create a builder for a kernel module with the given name.
+    ///
+    /// The name determines the `.c` filename, `.ko` output, and
+    /// `obj-m` target in the generated Makefile.
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            source: "",
+            tmpdir: format!("/tmp/toadstool-kmod-{name}"),
+            params: Vec::new(),
+        }
+    }
+
+    /// Set the C source code for the module.
+    pub fn source(mut self, src: &'static str) -> Self {
+        self.source = src;
+        self
+    }
+
+    /// Override the build directory (default: `/tmp/toadstool-kmod-{name}`).
+    pub fn tmpdir(mut self, dir: &str) -> Self {
+        self.tmpdir = dir.to_string();
+        self
+    }
+
+    /// Add a module parameter (passed to `insmod` as `key=value`).
+    pub fn param(mut self, key: &str, value: &str) -> Self {
+        self.params.push((key.to_string(), value.to_string()));
+        self
+    }
+
+    /// If the module is already loaded, unload it first (idempotent reload).
+    fn ensure_unloaded(&self) -> Result<(), GuardedSysfsError> {
+        let sys_path = format!("/sys/module/{}", self.name);
+        if Path::new(&sys_path).exists() {
+            tracing::info!(module = self.name.as_str(),
+                           "kmod already loaded — unloading for reload");
+            let _ = rmmod_guarded(&self.name, RMMOD_TIMEOUT);
+        }
+        Ok(())
+    }
+
+    /// Stage source and Makefile, then compile via kbuild.
+    ///
+    /// Returns the path to the compiled `.ko` file. Does not load the
+    /// module — use [`build_and_load`] for the full lifecycle, or call
+    /// this when you only need the compiled artifact (e.g. ELF inspection
+    /// in kernel health probes).
+    pub fn compile_only(&self) -> Result<PathBuf, GuardedSysfsError> {
+        let krel = crate::linux_paths::kernel_release().ok_or_else(|| {
+            GuardedSysfsError::KmodFailed {
+                cmd: "kernel_release".into(),
+                args: String::new(),
+                reason: "could not read /proc/sys/kernel/osrelease".into(),
+            }
+        })?;
+        let kbuild = crate::linux_paths::kbuild_dir().ok_or_else(|| {
+            GuardedSysfsError::KmodFailed {
+                cmd: "kbuild_dir".into(),
+                args: String::new(),
+                reason: "kernel release unavailable for kbuild path".into(),
+            }
+        })?;
+
+        let tmpdir = Path::new(&self.tmpdir);
+        std::fs::create_dir_all(tmpdir)?;
+
+        // Stage source
+        let src_path = tmpdir.join(format!("{}.c", self.name));
+        std::fs::write(&src_path, self.source)?;
+
+        // Generate Makefile
+        let makefile_path = tmpdir.join("Makefile");
+        std::fs::write(
+            &makefile_path,
+            format!(
+                "obj-m := {name}.o\n\
+                 KDIR := {kbuild}\n\
+                 all:\n\
+                 \t$(MAKE) -C $(KDIR) M=$(PWD) modules\n\
+                 clean:\n\
+                 \t$(MAKE) -C $(KDIR) M=$(PWD) clean\n",
+                name = self.name,
+            ),
+        )?;
+
+        // Compile
+        tracing::info!(module = self.name.as_str(), krel,
+                       "kmod builder: compiling via kbuild");
+        let compile_out = Command::new("make")
+            .arg("-C")
+            .arg(tmpdir)
+            .output()
+            .map_err(|e| GuardedSysfsError::KmodFailed {
+                cmd: "make".into(),
+                args: format!("-C {}", self.tmpdir),
+                reason: format!("failed to spawn: {e}"),
+            })?;
+
+        if !compile_out.status.success() {
+            let stderr = String::from_utf8_lossy(&compile_out.stderr);
+            let snippet: String = stderr.lines().take(15).collect::<Vec<_>>().join("\n");
+            return Err(GuardedSysfsError::KmodFailed {
+                cmd: "make".into(),
+                args: format!("-C {}", self.tmpdir),
+                reason: format!("compilation failed:\n{snippet}"),
+            });
+        }
+
+        let ko_path = tmpdir.join(format!("{}.ko", self.name));
+        if !ko_path.exists() {
+            return Err(GuardedSysfsError::KmodFailed {
+                cmd: "make".into(),
+                args: format!("-C {}", self.tmpdir),
+                reason: format!("{}.ko not produced", self.name),
+            });
+        }
+
+        Ok(ko_path)
+    }
+
+    /// Stage source and Makefile, compile via kbuild, and load the module.
+    pub fn build_and_load(&self) -> Result<(), GuardedSysfsError> {
+        self.ensure_unloaded()?;
+
+        let ko_path = self.compile_only()?;
+
+        let params_str: String = self.params.iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        insmod_guarded_with_params(&ko_path, &params_str, INSMOD_TIMEOUT)?;
+
+        tracing::info!(module = self.name.as_str(),
+                       params = ?self.params,
+                       "kmod builder: module loaded");
+        Ok(())
+    }
+
+    /// Remove build artifacts from the tmpdir.
+    ///
+    /// Deletes the entire build directory. Use after [`compile_only`] when
+    /// the `.ko` has been consumed and is no longer needed.
+    pub fn clean(tmpdir: &str) {
+        let path = Path::new(tmpdir);
+        if path.exists() {
+            let _ = std::fs::remove_dir_all(path);
+        }
+    }
+
+    /// Unload the module and clean up build artifacts.
+    pub fn unload_and_clean(name: &str, tmpdir: &str) -> Result<(), GuardedSysfsError> {
+        let sys_path = format!("/sys/module/{name}");
+        if !Path::new(&sys_path).exists() {
+            return Ok(());
+        }
+        rmmod_guarded(name, RMMOD_TIMEOUT)?;
+        tracing::info!(module = name, "kmod builder: module unloaded");
+
+        KmodBuilder::clean(tmpdir);
+        Ok(())
+    }
+}
+
+// ── Bus-level reset (SBR) suppression ───────────────────────────────
+//
+// Exp 226: Clearing per-device `reset_method` (FLR/PM) is insufficient —
+// when the last VFIO fd in a dev_set closes, the kernel's
+// `vfio_pci_dev_set_try_reset()` fires `pci_reset_bus()` which performs a
+// Secondary Bus Reset (SBR) at the PCIe bridge level.  SBR bypasses
+// per-device `reset_method` entirely.
+//
+// `pci_reset_bus()` calls `pci_bus_resetable()` which checks
+// `PCI_DEV_FLAGS_NO_BUS_RESET` on the bridge and all downstream devices.
+// If any device has this flag, the bus is not resetable and SBR is skipped.
+//
+// Kernel 6.17 does not expose `no_bus_reset` via sysfs, so we compile and
+// load a tiny GPL module that sets the flag on the target device.
+
+const NO_BUS_RESET_MODULE: &str = "no_bus_reset";
+const NO_BUS_RESET_TMPDIR: &str = "/tmp/toadstool-no-bus-reset";
+
+const NO_BUS_RESET_SOURCE: &str = r#"
+#include <linux/module.h>
+#include <linux/pci.h>
+
+static char *bdf = "";
+module_param(bdf, charp, 0444);
+MODULE_PARM_DESC(bdf, "PCI BDF to suppress bus reset for");
+
+static struct pci_dev *target;
+
+static int __init no_bus_reset_init(void) {
+    struct pci_dev *dev = NULL;
+    while ((dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, dev))) {
+        if (strcmp(dev_name(&dev->dev), bdf) == 0) {
+            dev->dev_flags |= PCI_DEV_FLAGS_NO_BUS_RESET;
+            target = dev;
+            pr_info("no_bus_reset: suppressed on %s\n", bdf);
+            return 0;
+        }
+    }
+    pr_warn("no_bus_reset: device %s not found\n", bdf);
+    return -ENODEV;
+}
+
+static void __exit no_bus_reset_exit(void) {
+    if (target) {
+        target->dev_flags &= ~PCI_DEV_FLAGS_NO_BUS_RESET;
+        pci_dev_put(target);
+        pr_info("no_bus_reset: restored on %s\n", bdf);
+    }
+}
+
+module_init(no_bus_reset_init);
+module_exit(no_bus_reset_exit);
+MODULE_LICENSE("GPL");
+"#;
+
+/// Compile and load the `no_bus_reset` kernel module for a device.
+///
+/// Sets `PCI_DEV_FLAGS_NO_BUS_RESET` on the target device, which makes
+/// `pci_bus_resetable()` return false and prevents `pci_reset_bus()` from
+/// performing a Secondary Bus Reset (SBR) through the upstream bridge.
+///
+/// Must be called BEFORE dropping VFIO device fds. The module should be
+/// unloaded via [`restore_bus_reset`] after the handoff is complete and
+/// vfio-pci is re-bound.
+pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
+    KmodBuilder::new(NO_BUS_RESET_MODULE)
+        .source(NO_BUS_RESET_SOURCE)
+        .tmpdir(NO_BUS_RESET_TMPDIR)
+        .param("bdf", bdf)
+        .build_and_load()
+}
+
+/// Unload the `no_bus_reset` kernel module and clean up build artifacts.
+///
+/// Clears `PCI_DEV_FLAGS_NO_BUS_RESET` on the target device (via the
+/// module's exit handler) and removes the tmpdir.
+pub fn restore_bus_reset() -> Result<(), GuardedSysfsError> {
+    KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, NO_BUS_RESET_TMPDIR)
 }
 
 /// Discover IOMMU group siblings (other PCI functions sharing the group).
