@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S275 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S276 | v0.2.0
 
 ---
 
@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,149+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,158+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -273,7 +273,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (9,131+ lib-only) |
+| Workspace tests | **23,000+**, 0 failures (9,158+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -295,13 +295,15 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,131+ lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,158+ lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S276 (May 26, 2026)**: **Deep Debt Evolution II — Unwrap Elimination, Sovereign Split, memmap2 Removal** — Eliminated remaining production unwrap/expect/unreachable: sovereign.rs 2x unwrap, mmio_region.rs expect, dma.rs Drop expect, diagnostic interpreter 6x expect, permissions.rs expect, dispatch unreachable!(). `handler/sovereign.rs` (1,003L, 11 handlers) → module directory (init/snapshot/capture). `memmap2` removed from hw-safe — `safe_mmap.rs` rewritten on rustix. 3 stale primal-name type aliases deprecated. `ipc.register` capability list aligned to Node Atomic set. 13 upstream clippy warnings absorbed. **88+ JSON-RPC methods. 9,158+ lib tests, zero clippy.**
+- **S275 (May 25, 2026)**: **Wave 49: Ecosystem Tightening** — Showcase fossilized (35 files → fossilRecord). wateringHole consolidated (36 handoffs mirrored, archive/ created). Stale deploy patterns fixed (4 files → plasmidBin). Startup latency optimized (deferred wgpu, pre-bound socket). toadstool.toml HTTP-era template fossilized. Docs fossil-tagged.
 - **S273 (May 24, 2026)**: **Deep Debt Evolution — Production Panic Surface Eliminated + Module Extraction** — Eliminated remaining production panic surface: 29 `unwrap()` in `kernel_health.rs` → error propagation, `.expect()` in dispatch cache → `Result`, 5 `.expect()` in `ember_client.rs` → `?`, 2 fallible `Default` impls removed from `secure_enclave`. Refactored `dispatch/mod.rs` 1,638→839L — 7 sovereign handlers extracted to `dispatch/sovereign.rs` (814L). Refactored `warm_init.rs` 1,439L → module dir (`mod.rs` + `seeders.rs` + `trials.rs`). 6 CLI `well_known::*` hardcoded primal name sites migrated to capability-based discovery with legacy fallback. `activity_tracker().record()` wired into 7 VFIO dispatch paths; `#[allow(dead_code)]` removed. `health.liveness` always-alive behavior documented (S272). hw-safe abstractions validated; cylinder migration deferred. **88 JSON-RPC methods. 9,131+ lib tests, 700 cylinder tests, zero clippy.**
 - **S259 (May 13, 2026)**: **Universal Sovereign Dispatch: Last Mile + Deep Debt** — Wired `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints with `ember.vfio.*` semantic aliases. `NvVfioComputeDevice::dispatch()` → QMD-based (generation-aware via SM version). `try_vfio_nvidia` auto-calls `open_vfio()` after warm FECS detection. `TOADSTOOL_SOCKET_MODE` env var on tarpc socket. Refactored `compute_device.rs` 825→753L via helper extraction. Fixed 6 `#[expect]` without `reason`. **79 JSON-RPC methods. 8,837 lib tests, zero clippy.**
 - **S258 (May 13, 2026)**: **PBDMA Dispatch Wiring** — Full `ComputeDevice` trait impl for `NvVfioComputeDevice`: `alloc`/`upload`/`dispatch`/`readback`/`sync` via VFIO DMA + GPFIFO. Two-stage FECS/VFIO gate model. `open_vfio()` initializes full dispatch state.
@@ -349,7 +351,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,131+ lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,158+ lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)

@@ -5,7 +5,20 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 25, 2026 (Sessions 43-275)
+## [Unreleased] - May 26, 2026 (Sessions 43-276)
+
+### Session S276 (May 26, 2026) — Deep Debt Evolution II
+
+Production unwrap/expect/unreachable surface eliminated; large file refactoring; external dependency evolution; primal-name deprecation.
+
+- ELIMINATED: Production unwrap/expect in sovereign.rs (2x), mmio_region.rs (1x), dma.rs Drop (1x), diagnostic interpreter (6x), permissions.rs (1x)
+- ELIMINATED: Production unreachable!() in dispatch/mod.rs — replaced with Option return + error log
+- REFACTORED: `handler/sovereign.rs` (1,003L, 11 handlers) → module directory: `init.rs` (454L), `snapshot.rs` (250L), `capture.rs` (304L), `mod.rs` (15L)
+- REMOVED: `memmap2` dependency from hw-safe — `safe_mmap.rs` rewritten on `rustix::mm::mmap/munmap` (same pattern as `device_mmap.rs`)
+- DEPRECATED: 3 stale primal-name type aliases: `SongbirdNetworkConfigurator`, `SongbirdNetworkConfig`, `NestGateResult`
+- ALIGNED: `ipc.register` discovery capability list updated to full Node Atomic set (9 capabilities)
+- ABSORBED: 13 upstream clippy warnings from VFIO reagent/sovereign expansion
+- Metrics: 9,158+ lib tests, 0 clippy warnings, 0 external mmap dependencies
 
 ### Session S275 (May 25, 2026) — Wave 49: Ecosystem Tightening
 
