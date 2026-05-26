@@ -282,12 +282,14 @@ pub fn classify_tier(bar0: &crate::vfio::device::MappedBar) -> TierEvidence {
     let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
 
     // Check TPC PRI ring stations — the key dispatch-readiness indicator.
-    // TPC control at GPC0+0x4000 (= 0x504000). Scan across GPCs for any
-    // alive TPC. If all return 0xBADF5040, TPC PRI stations are missing
-    // and shader dispatch is impossible even if GPC fabric is alive.
-    let tpc_status = bar0.read_u32(0x504000).ok(); // GPC0_TPC0 control
+    // Probe GPC{n}_TPC0+0xC (0x50400c + gpc*0x8000) which is a TPC ID/status
+    // register. The base register at +0x0 (0x504000) PRI-faults even when
+    // TPC stations are present — it maps to a compute control register that
+    // requires full GR context init. The +0xC register reliably indicates
+    // PRI station routing is active.
+    let tpc_status = bar0.read_u32(0x50400c).ok(); // GPC0_TPC0+0xC status
     let tpc_alive = (0..6u32).any(|gpc| {
-        let addr = 0x504000 + gpc as usize * 0x8000; // GPC{n}_TPC0
+        let addr = 0x50400c + gpc as usize * 0x8000; // GPC{n}_TPC0+0xC
         let val = bar0.read_u32(addr).unwrap_or(0xDEAD_DEAD);
         !crate::nv::pri::is_pri_fault(val) && val != 0
     });
@@ -391,9 +393,9 @@ pub fn classify_tier_for_profile(
     let gr_status = bar0.read_u32(profile.pgraph_status_offset as usize).ok();
     let ce_runlist = crate::vfio::channel::pfifo::discover_ce_runlist(bar0);
 
-    let tpc_status = bar0.read_u32(0x504000).ok();
+    let tpc_status = bar0.read_u32(0x50400c).ok();
     let tpc_alive = (0..6u32).any(|gpc| {
-        let addr = 0x504000 + gpc as usize * 0x8000;
+        let addr = 0x50400c + gpc as usize * 0x8000;
         let val = bar0.read_u32(addr).unwrap_or(0xDEAD_DEAD);
         !crate::nv::pri::is_pri_fault(val) && val != 0
     });

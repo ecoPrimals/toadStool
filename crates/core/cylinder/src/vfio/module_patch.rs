@@ -441,10 +441,21 @@ impl PatchSet {
                     strategy: PatchStrategy::NopCallAt(0x2a0),
                 },
                 // Co-load isolation NOPs — prevent host conflicts.
-                // nv_cap_init and nv_cap_drv_init are REMOVED vs
-                // nvidia_warm_handoff — RM capability tables must
-                // initialize for full engine init (SEC2/ACR/PMU/
-                // GPCCS/FECS/TPC).
+                // nv_cap_init/drv_init are NOPed to Ret1 (return success)
+                // because their internal calls to nv_cap_create_dir_entry
+                // (also NOPed) would return NULL, causing nv_cap_init to
+                // fail. The cap system is for /dev/nvidia-caps access
+                // control, not GPU hardware init. RM proceeds to probe
+                // and full compute init (SEC2/ACR/FECS/GPCCS/TPC)
+                // without functional caps.
+                PatchTarget {
+                    symbol: "nv_cap_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
+                PatchTarget {
+                    symbol: "nv_cap_drv_init".into(),
+                    strategy: PatchStrategy::Ret1AtEntry,
+                },
                 PatchTarget {
                     symbol: "nv_procfs_init".into(),
                     strategy: PatchStrategy::RetAtEntry,
@@ -465,26 +476,60 @@ impl PatchSet {
                     symbol: "nv_acpi_init".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
+                // Return non-NULL fake handle (1) so RM's NULL checks
+                // pass during nvidia_frontend_open → nv_check_caps_access.
+                // The previous oops from Ret1AtEntry was caused by
+                // init_module returning 504 (corrupted module state), not
+                // by cap pointer dereferencing. With init_module forced
+                // to return 0 via PatchByteAt, module state is clean.
                 PatchTarget {
                     symbol: "nv_cap_create_dir_entry".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    strategy: PatchStrategy::Ret1AtEntry,
                 },
                 PatchTarget {
                     symbol: "nv_cap_create_file_entry".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    strategy: PatchStrategy::Ret1AtEntry,
                 },
                 PatchTarget {
                     symbol: "nv_cap_destroy_entry".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
-                // NOP the __register_chrdev call inside init_module.
-                // Host nvidia owns majors 185 and 195; any remap still
-                // conflicts. For the catalyst pattern we don't need the
-                // chardev — the PCI match triggers probe during insmod.
-                // Layout: `call __register_chrdev` at fn+0x7f (5 bytes).
+                // Change the chardev major from 195 (0xc3) to 0 (dynamic
+                // allocation) so nvsov gets its own chardev that doesn't
+                // conflict with the host nvidia-580 module.
+                // Layout: `mov $0xc3, %edi` at init_module+0x7a (5 bytes:
+                // bf c3 00 00 00). We patch byte +0x7b (the immediate)
+                // from 0xc3 to 0x00. The __register_chrdev call at +0x7f
+                // remains intact and runs with major=0 → dynamic alloc.
                 PatchTarget {
                     symbol: "init_module".into(),
-                    strategy: PatchStrategy::NopCallAt(0x7f),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x7b,
+                        expected: 0xc3,
+                        replacement: 0x00,
+                    },
+                },
+                // Force init_module to return 0 after chrdev registration.
+                // __register_chrdev(0, ...) returns the assigned major (>0),
+                // which init_module leaks as its return value. The kernel
+                // rejects non-zero returns from init_module. Fix: change
+                // `mov %ebx,%eax` (89 d8) at +0x8a to `xor %eax,%eax`
+                // (31 c0), forcing return 0.
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x8a,
+                        expected: 0x89,
+                        replacement: 0x31,
+                    },
+                },
+                PatchTarget {
+                    symbol: "init_module".into(),
+                    strategy: PatchStrategy::PatchByteAt {
+                        fn_offset: 0x8b,
+                        expected: 0xd8,
+                        replacement: 0xc0,
+                    },
                 },
             ],
             min_applied: 1,

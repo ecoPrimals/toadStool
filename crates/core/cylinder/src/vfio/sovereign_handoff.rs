@@ -437,6 +437,109 @@ pub fn probe_runtime_services(bdf: &str) -> RuntimeServicesProbe {
 
 /// Execute the full sovereign warm handoff pipeline.
 ///
+/// Trigger nvidia RM's GPU initialization by opening its dynamically-assigned chardev.
+///
+/// After the catalyst module loads with `__register_chrdev(0, ...)` (dynamic major),
+/// we read `/proc/devices` to find the assigned major, create a temporary device node,
+/// and open+close it. This triggers `nv_open()` → `nv_start_device()` → full RM init
+/// (SEC2 → ACR → FECS → GPCCS → TPC PRI station creation).
+fn trigger_rm_init(module_name: &str) -> Result<String, String> {
+    let devices = std::fs::read_to_string("/proc/devices")
+        .map_err(|e| format!("failed to read /proc/devices: {e}"))?;
+    let mut majors: Vec<u32> = Vec::new();
+    for line in devices.lines() {
+        let line = line.trim();
+        if line.ends_with("nvidia-frontend") || line.ends_with(module_name) {
+            if let Some(num_str) = line.split_whitespace().next() {
+                if let Ok(n) = num_str.parse::<u32>() {
+                    majors.push(n);
+                }
+            }
+        }
+    }
+    let major = majors.iter()
+        .copied()
+        .max()
+        .ok_or_else(|| format!(
+            "{module_name} chardev not found in /proc/devices — \
+             __register_chrdev may have been NOPed"
+        ))?;
+
+    tracing::info!(module_name, major, "found catalyst chardev major");
+
+    // Use an external C helper (`rm_trigger`) for RM ioctl allocation.
+    // The helper creates chardev nodes, opens them (triggering rm_init_adapter),
+    // then issues NV_ESC_RM_ALLOC ioctls for root → device → subdevice →
+    // GR control, which triggers full GR initialization (GPCCS + TPC).
+    // This avoids raw ioctl ABI issues in Rust inline asm.
+    let rm_trigger_bin = "/usr/local/bin/rm_trigger";
+    if std::path::Path::new(rm_trigger_bin).exists() {
+        tracing::info!(major, "spawning rm_trigger helper for RM ioctl sequence");
+        match std::process::Command::new(rm_trigger_bin)
+            .arg(major.to_string())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .output()
+        {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                tracing::info!(
+                    exit_code = output.status.code(),
+                    stdout = %stdout,
+                    stderr = %stderr,
+                    "rm_trigger helper completed"
+                );
+                // Give RM extra time for async GR init after helper exits
+                std::thread::sleep(Duration::from_millis(3000));
+                return Ok(format!(
+                    "RM triggered via rm_trigger helper (major={major}), exit={}",
+                    output.status.code().unwrap_or(-1)
+                ));
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "rm_trigger helper spawn failed — falling back to open-only");
+            }
+        }
+    } else {
+        tracing::warn!("rm_trigger binary not found at {rm_trigger_bin} — using open-only fallback");
+    }
+
+    // Fallback: just open the GPU device (minor 0) to trigger rm_init_adapter.
+    let dev_path = format!("/dev/toadstool-{module_name}-ctl");
+    let _ = std::fs::remove_file(&dev_path);
+
+    let dev = rustix::fs::makedev(major, 0);
+    match rustix::fs::mknodat(
+        rustix::fs::CWD,
+        &*dev_path,
+        rustix::fs::FileType::CharacterDevice,
+        rustix::fs::Mode::from_raw_mode(0o666),
+        dev,
+    ) {
+        Ok(()) => {}
+        Err(e) => return Err(format!("mknodat({dev_path}): {e}")),
+    }
+
+    tracing::info!(dev_path, major, "opening catalyst chardev to trigger RM init (fallback)");
+    let fd = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&dev_path);
+    match fd {
+        Ok(f) => {
+            std::thread::sleep(Duration::from_millis(5000));
+            drop(f);
+            let _ = std::fs::remove_file(&dev_path);
+            Ok(format!("RM triggered via {dev_path} (major={major})"))
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&dev_path);
+            Err(format!("failed to open {dev_path}: {e}"))
+        }
+    }
+}
+
 /// This is the top-level entry point called from the dispatch handler.
 /// It manages the entire lifecycle: pre-flight → module prep → bind →
 /// settle → swap → classify → cleanup.
@@ -1112,6 +1215,38 @@ pub fn execute_handoff(
                            &config.module_name, needs_device_rollback);
     }
 
+    // ── Step 3b: Catalyst RM trigger — open chardev to start GPU init ──
+    //
+    // nvidia RM defers GPU initialization to userspace open. With the
+    // catalyst PatchByteAt(0x7b) patch, __register_chrdev uses major 0
+    // (dynamic allocation). We find the assigned major, create a device
+    // node, and open it to trigger rm_init_adapter → full GPU init
+    // (SEC2 → ACR → FECS → GPCCS → TPC PRI station creation).
+    // The chardev name is "nvidia-frontend" (from .rodata), not the renamed
+    // module name. trigger_rm_init searches for "nvidia-frontend" entries.
+    if is_catalyst && module_loaded {
+        let t = Instant::now();
+        match trigger_rm_init(&config.module_name) {
+            Ok(detail) => {
+                tracing::info!(bdf = config.bdf.as_str(), detail, "catalyst RM init triggered");
+                steps.push(HandoffStep {
+                    name: "rm_trigger".into(), ok: true,
+                    detail: Some(detail),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                tracing::warn!(bdf = config.bdf.as_str(), error = %e,
+                    "catalyst RM trigger failed — RM may not initialize GPU");
+                steps.push(HandoffStep {
+                    name: "rm_trigger".into(), ok: false,
+                    detail: Some(format!("RM trigger failed: {e}")),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
+    }
+
     // ── Step 4: Settle — wait for hardware initialization ───────────
 
     let t = Instant::now();
@@ -1133,7 +1268,8 @@ pub fn execute_handoff(
     // continue to capture whatever state exists for forensics.
     if is_catalyst {
         let t = Instant::now();
-        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, 4096) {
+        // Map full 16MB BAR0 — FECS is at 0x409xxx, TPC at 0x504xxx.
+        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, 16 * 1024 * 1024) {
             Ok(bar0) => {
                 let pmc = bar0.read_u32(0x200).unwrap_or(0);
                 let popcount = pmc.count_ones();
@@ -1678,6 +1814,113 @@ pub fn execute_handoff(
                     )),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
+
+                // ── FECS INIT_CTXSW: trigger GR init while BAR0 is warm ──
+                //
+                // CRITICAL: this must happen NOW, using the same BAR0 mapping
+                // that captured alive registers. The PRI ring recovery step
+                // (below) issues enumerate/start commands that destroy the
+                // PRI routing RM set up, causing FECS/TPC reads to PRI-fault.
+                // By sending INIT_CTXSW here, FECS is still accessible.
+                let fecs_t = Instant::now();
+                let fecs_pc = post_swap_bar0.read_u32(0x409624).unwrap_or(0);
+                let fecs_cpuctl = post_swap_bar0.read_u32(0x409100).unwrap_or(0);
+                let fecs_os = post_swap_bar0.read_u32(0x409030).unwrap_or(0);
+                let gpccs_cpuctl = post_swap_bar0.read_u32(0x41a100).unwrap_or(0);
+                let gpc_en = post_swap_bar0.read_u32(0x41a004).unwrap_or(0);
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    fecs_pc = format_args!("0x{fecs_pc:08x}"),
+                    fecs_os = format_args!("0x{fecs_os:08x}"),
+                    fecs_cpuctl = format_args!("0x{fecs_cpuctl:08x}"),
+                    gpccs_cpuctl = format_args!("0x{gpccs_cpuctl:08x}"),
+                    gpc_enables = format_args!("0x{gpc_en:08x}"),
+                    "pre-INIT_CTXSW: FECS state (using warm post-swap BAR0)"
+                );
+
+                let fecs_halted = fecs_cpuctl & 0x10 != 0;
+                let fecs_alive = fecs_cpuctl & 0xBADF_0000 != 0xBADF_0000;
+                if fecs_alive {
+                    if fecs_halted {
+                        // FECS is halted but accessible — try to unhalt and
+                        // restart from its current PC. CPUCTL bit 1 = START_CPU.
+                        tracing::info!(bdf = config.bdf.as_str(),
+                            "FECS halted — attempting unhalt (CPUCTL START_CPU)");
+                        let _ = post_swap_bar0.write_u32(0x409100, 0x2); // START_CPU
+                        std::thread::sleep(Duration::from_millis(200));
+                        let pc_after = post_swap_bar0.read_u32(0x409624).unwrap_or(0);
+                        let cpuctl_after = post_swap_bar0.read_u32(0x409100).unwrap_or(0);
+                        tracing::info!(
+                            bdf = config.bdf.as_str(),
+                            fecs_pc_after = format_args!("0x{pc_after:08x}"),
+                            fecs_cpuctl_after = format_args!("0x{cpuctl_after:08x}"),
+                            "FECS unhalt result"
+                        );
+                    }
+
+                    tracing::info!(bdf = config.bdf.as_str(),
+                        "FECS accessible — sending INIT_CTXSW");
+                    match crate::vfio::channel::fecs::fecs_init_ctxsw(&post_swap_bar0) {
+                        Ok(r) => {
+                            std::thread::sleep(Duration::from_millis(1000));
+                            let tpc0 = post_swap_bar0.read_u32(0x504100).unwrap_or(0xdead);
+                            let gpc_en_post = post_swap_bar0.read_u32(0x41a004).unwrap_or(0);
+                            let gpccs_post = post_swap_bar0.read_u32(0x41a100).unwrap_or(0);
+                            tracing::info!(
+                                bdf = config.bdf.as_str(),
+                                status = r.status,
+                                mailbox0 = format_args!("0x{:08x}", r.mailbox0),
+                                tpc0_ctrl = format_args!("0x{tpc0:08x}"),
+                                gpc_enables = format_args!("0x{gpc_en_post:08x}"),
+                                gpccs_cpuctl = format_args!("0x{gpccs_post:08x}"),
+                                "FECS INIT_CTXSW result (pre-PRI-recovery)"
+                            );
+                            steps.push(HandoffStep {
+                                name: "fecs_init_ctxsw".into(), ok: r.status == 0,
+                                detail: Some(format!(
+                                    "status={}, mb0=0x{:08x}, tpc0=0x{tpc0:08x}, gpc_en=0x{gpc_en_post:08x}",
+                                    r.status, r.mailbox0
+                                )),
+                                duration_ms: fecs_t.elapsed().as_millis() as u64,
+                            });
+                        }
+                        Err(e) => {
+                            tracing::warn!(error = %e, "FECS INIT_CTXSW failed");
+                            steps.push(HandoffStep {
+                                name: "fecs_init_ctxsw".into(), ok: false,
+                                detail: Some(format!("failed: {e}")),
+                                duration_ms: fecs_t.elapsed().as_millis() as u64,
+                            });
+                        }
+                    }
+                } else {
+                    tracing::warn!(
+                        bdf = config.bdf.as_str(),
+                        fecs_cpuctl = format_args!("0x{fecs_cpuctl:08x}"),
+                        "FECS not accessible post-swap — skipping INIT_CTXSW"
+                    );
+                    steps.push(HandoffStep {
+                        name: "fecs_init_ctxsw".into(), ok: false,
+                        detail: Some(format!("FECS PRI fault: cpuctl=0x{fecs_cpuctl:08x}")),
+                        duration_ms: fecs_t.elapsed().as_millis() as u64,
+                    });
+                }
+
+                // ── Early tier classification using warm BAR0 ──
+                // The PRI ring recovery step below issues enumerate/start
+                // commands that destroy RM's PRI routing. Classify tier NOW
+                // while the BAR0 still reflects RM's warm state.
+                let tier_t = Instant::now();
+                let warm_tier = classify_tier(&post_swap_bar0);
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    tier = ?warm_tier.tier,
+                    tpc_alive = warm_tier.tpc_alive,
+                    gpc_enables = warm_tier.gpc_enables,
+                    tpc_status = warm_tier.tpc_status.map(|v| format!("0x{v:08x}")),
+                    "early tier classification (warm BAR0, pre-PRI-recovery)"
+                );
+                catalyst_tier = Some(warm_tier);
             }
             Err(e) => {
                 tracing::warn!(
@@ -1754,22 +1997,17 @@ pub fn execute_handoff(
 
     // ── Step 7: Tier Classification ─────────────────────────────────
 
-    let tier = if is_catalyst {
-        // For catalyst, we already captured the tier from pre-swap registers.
-        // Skip the sysfs BAR0 open — it would just duplicate work and the
-        // pre-swap tier evidence is more accurate (taken while RM was active).
+    let tier = if is_catalyst && catalyst_tier.is_some() {
+        // Use the early tier classification captured with warm BAR0
+        // (before PRI ring recovery destroyed PRI routing).
         let t = Instant::now();
-        tracing::info!(
-            bdf = config.bdf.as_str(),
-            pipeline_elapsed_s = overall.elapsed().as_secs(),
-            "catalyst profile: skipping sysfs tier classify (using pre-swap)"
-        );
+        let ct = catalyst_tier.as_ref().unwrap();
         steps.push(HandoffStep {
             name: "tier_classify".into(), ok: true,
-            detail: Some("skipped (catalyst pre-swap tier used)".into()),
+            detail: Some(format!("{} (warm BAR0, pre-PRI-recovery)", ct.tier)),
             duration_ms: t.elapsed().as_millis() as u64,
         });
-        None
+        catalyst_tier.take()
     } else if let Some(b) = bar0 {
         let t = Instant::now();
         let evidence = classify_tier(b);
