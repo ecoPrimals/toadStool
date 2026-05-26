@@ -365,6 +365,27 @@ pub(crate) async fn run() {
     // Pin immediately — before the first interval tick
     let pinned = pin_hierarchy_for_gpus(&downstream);
 
+    // Exp 226: Pre-load SBR suppression for all VFIO VGA GPUs at startup.
+    // When the daemon later releases a VfioAnchor (warm_handoff, catalyst_boot),
+    // PCI_DEV_FLAGS_NO_BUS_RESET prevents pci_reset_bus() from firing SBR
+    // and destroying warm state. The module is compiled once and cached in
+    // /var/lib/toadstool/kmod-cache/ for instant reload across reboots.
+    // FLR is already disabled by ExecStartPre in the systemd unit.
+    let vga_gpus: Vec<String> = vfio_gpus.iter().filter(|bdf| {
+        read_config_u32(bdf, 0x08)
+            .map_or(false, |c| pci_base_subclass(c) == PCI_CLASS_VGA
+                            || pci_base_subclass(c) == PCI_CLASS_3D)
+    }).cloned().collect();
+    if !vga_gpus.is_empty() {
+        let all_bdfs = vga_gpus.join(",");
+        match toadstool_cylinder::vfio::guarded_sysfs::suppress_bus_reset(&all_bdfs) {
+            Ok(()) => info!(bdfs = %all_bdfs, count = vga_gpus.len(),
+                           "startup SBR suppression: PCI_DEV_FLAGS_NO_BUS_RESET set (Exp 226)"),
+            Err(e) => warn!(bdfs = %all_bdfs, error = %e,
+                           "startup SBR suppression failed — warm handoff may trigger bus reset (Exp 226)"),
+        }
+    }
+
     info!(
         bridge_count = bridges.len(),
         gpu_count = downstream.len(),

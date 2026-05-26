@@ -855,6 +855,26 @@ impl KmodBuilder {
         self
     }
 
+    /// Check if the module is already loaded with matching parameters.
+    ///
+    /// Reads `/sys/module/{name}/parameters/{key}` for each configured
+    /// parameter and compares against the expected value. Returns true
+    /// only if the module is loaded AND all parameters match.
+    fn is_loaded_with_matching_params(&self) -> bool {
+        let sys_path = format!("/sys/module/{}", self.name);
+        if !Path::new(&sys_path).exists() {
+            return false;
+        }
+        for (key, value) in &self.params {
+            let param_path = format!("{sys_path}/parameters/{key}");
+            match std::fs::read_to_string(&param_path) {
+                Ok(contents) if contents.trim() == value => {}
+                _ => return false,
+            }
+        }
+        true
+    }
+
     /// If the module is already loaded, unload it first (idempotent reload).
     fn ensure_unloaded(&self) -> Result<(), GuardedSysfsError> {
         let sys_path = format!("/sys/module/{}", self.name);
@@ -880,6 +900,20 @@ impl KmodBuilder {
                 reason: "could not read /proc/sys/kernel/osrelease".into(),
             }
         })?;
+
+        // Check persistent cache first — survives reboots, avoids kbuild
+        // entirely when the kernel version hasn't changed.
+        let cache_dir = PathBuf::from(format!(
+            "/var/lib/toadstool/kmod-cache/{krel}"
+        ));
+        let cached_ko = cache_dir.join(format!("{}.ko", self.name));
+        if cached_ko.exists() {
+            tracing::info!(module = self.name.as_str(), krel,
+                           path = %cached_ko.display(),
+                           "kmod builder: using cached .ko");
+            return Ok(cached_ko);
+        }
+
         let kbuild = crate::linux_paths::kbuild_dir().ok_or_else(|| {
             GuardedSysfsError::KmodFailed {
                 cmd: "kbuild_dir".into(),
@@ -895,7 +929,7 @@ impl KmodBuilder {
         let src_path = tmpdir.join(format!("{}.c", self.name));
         std::fs::write(&src_path, self.source)?;
 
-        // Generate Makefile
+        // Generate Makefile — call kbuild directly, no wrapper
         let makefile_path = tmpdir.join("Makefile");
         std::fs::write(
             &makefile_path,
@@ -925,10 +959,10 @@ impl KmodBuilder {
 
         if !compile_out.status.success() {
             let stderr = String::from_utf8_lossy(&compile_out.stderr);
-            let snippet: String = stderr.lines().take(15).collect::<Vec<_>>().join("\n");
+            let snippet: String = stderr.lines().take(20).collect::<Vec<_>>().join("\n");
             return Err(GuardedSysfsError::KmodFailed {
-                cmd: "make".into(),
-                args: format!("-C {}", self.tmpdir),
+                cmd: format!("kmod make -C {}", self.tmpdir),
+                args: String::new(),
                 reason: format!("compilation failed:\n{snippet}"),
             });
         }
@@ -942,11 +976,32 @@ impl KmodBuilder {
             });
         }
 
+        // Cache the compiled .ko for future use
+        if let Err(e) = std::fs::create_dir_all(&cache_dir) {
+            tracing::warn!(error = %e, "failed to create kmod cache dir (non-fatal)");
+        } else if let Err(e) = std::fs::copy(&ko_path, &cached_ko) {
+            tracing::warn!(error = %e, "failed to cache compiled .ko (non-fatal)");
+        } else {
+            tracing::info!(module = self.name.as_str(), krel,
+                           path = %cached_ko.display(),
+                           "kmod builder: cached compiled .ko");
+        }
+
         Ok(ko_path)
     }
 
     /// Stage source and Makefile, compile via kbuild, and load the module.
+    ///
+    /// If the module is already loaded with matching parameters, this is a
+    /// no-op. This prevents the destructive sequence of rmmod → failed
+    /// compile → unprotected device (Exp 226 regression).
     pub fn build_and_load(&self) -> Result<(), GuardedSysfsError> {
+        if self.is_loaded_with_matching_params() {
+            tracing::info!(module = self.name.as_str(),
+                           "kmod already loaded with correct params — skipping rebuild");
+            return Ok(());
+        }
+
         self.ensure_unloaded()?;
 
         let ko_path = self.compile_only()?;
@@ -1009,50 +1064,101 @@ const NO_BUS_RESET_TMPDIR: &str = "/tmp/toadstool-no-bus-reset";
 const NO_BUS_RESET_SOURCE: &str = r#"
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/string.h>
 
 static char *bdf = "";
 module_param(bdf, charp, 0444);
-MODULE_PARM_DESC(bdf, "PCI BDF to suppress bus reset for");
+MODULE_PARM_DESC(bdf, "Comma-separated PCI BDFs to suppress bus reset for");
 
-static struct pci_dev *target;
+#define MAX_TARGETS 8
+static struct pci_dev *targets[MAX_TARGETS];
+static int ntargets;
 
 static int __init no_bus_reset_init(void) {
-    struct pci_dev *dev = NULL;
-    while ((dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, dev))) {
-        if (strcmp(dev_name(&dev->dev), bdf) == 0) {
-            dev->dev_flags |= PCI_DEV_FLAGS_NO_BUS_RESET;
-            target = dev;
-            pr_info("no_bus_reset: suppressed on %s\n", bdf);
-            return 0;
+    char buf[256], *p, *tok;
+    struct pci_dev *dev;
+
+    strscpy(buf, bdf, sizeof(buf));
+    p = buf;
+    while ((tok = strsep(&p, ",")) != NULL && ntargets < MAX_TARGETS) {
+        while (*tok == ' ') tok++;
+        if (*tok == '\0') continue;
+        dev = NULL;
+        while ((dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, dev))) {
+            if (strcmp(dev_name(&dev->dev), tok) == 0) {
+                dev->dev_flags |= PCI_DEV_FLAGS_NO_BUS_RESET;
+                targets[ntargets++] = dev;
+                pr_info("no_bus_reset: suppressed on %s\n", tok);
+                break;
+            }
         }
+        if (!dev)
+            pr_warn("no_bus_reset: device %s not found\n", tok);
     }
-    pr_warn("no_bus_reset: device %s not found\n", bdf);
-    return -ENODEV;
+    return ntargets > 0 ? 0 : -ENODEV;
 }
 
 static void __exit no_bus_reset_exit(void) {
-    if (target) {
-        target->dev_flags &= ~PCI_DEV_FLAGS_NO_BUS_RESET;
-        pci_dev_put(target);
-        pr_info("no_bus_reset: restored on %s\n", bdf);
+    int i;
+    for (i = 0; i < ntargets; i++) {
+        if (targets[i]) {
+            targets[i]->dev_flags &= ~PCI_DEV_FLAGS_NO_BUS_RESET;
+            pr_info("no_bus_reset: restored on %s\n", dev_name(&targets[i]->dev));
+            pci_dev_put(targets[i]);
+        }
     }
 }
 
 module_init(no_bus_reset_init);
 module_exit(no_bus_reset_exit);
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Suppress PCI bus reset for specified devices");
 "#;
 
-/// Compile and load the `no_bus_reset` kernel module for a device.
+/// Compile and load the `no_bus_reset` kernel module for one or more devices.
 ///
-/// Sets `PCI_DEV_FLAGS_NO_BUS_RESET` on the target device, which makes
+/// Sets `PCI_DEV_FLAGS_NO_BUS_RESET` on each target device, which makes
 /// `pci_bus_resetable()` return false and prevents `pci_reset_bus()` from
 /// performing a Secondary Bus Reset (SBR) through the upstream bridge.
+///
+/// Accepts a single BDF or a comma-separated list. If the module is already
+/// loaded with parameters covering the requested BDF(s), this is a no-op.
 ///
 /// Must be called BEFORE dropping VFIO device fds. The module should be
 /// unloaded via [`restore_bus_reset`] after the handoff is complete and
 /// vfio-pci is re-bound.
 pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
+    // If the module is already loaded, check if this BDF is already covered
+    let sys_param = format!("/sys/module/{NO_BUS_RESET_MODULE}/parameters/bdf");
+    if Path::new(&sys_param).exists() {
+        if let Ok(loaded_bdfs) = std::fs::read_to_string(&sys_param) {
+            let loaded = loaded_bdfs.trim();
+            let already_covered = bdf.split(',')
+                .all(|b| loaded.split(',').any(|l| l.trim() == b.trim()));
+            if already_covered {
+                tracing::info!(bdf, loaded, "no_bus_reset already covers this device");
+                return Ok(());
+            }
+            // Need to reload with the union of old + new BDFs
+            let mut all_bdfs: Vec<&str> = loaded.split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+            for b in bdf.split(',').map(|s| s.trim()) {
+                if !all_bdfs.contains(&b) {
+                    all_bdfs.push(b);
+                }
+            }
+            let combined = all_bdfs.join(",");
+            tracing::info!(bdf, combined, "reloading no_bus_reset with expanded device list");
+            return KmodBuilder::new(NO_BUS_RESET_MODULE)
+                .source(NO_BUS_RESET_SOURCE)
+                .tmpdir(NO_BUS_RESET_TMPDIR)
+                .param("bdf", &combined)
+                .build_and_load();
+        }
+    }
+
     KmodBuilder::new(NO_BUS_RESET_MODULE)
         .source(NO_BUS_RESET_SOURCE)
         .tmpdir(NO_BUS_RESET_TMPDIR)
