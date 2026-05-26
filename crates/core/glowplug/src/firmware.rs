@@ -25,11 +25,32 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
+/// Evidence captured when firmware exits boot services mode.
+///
+/// Re-exported from `ember::pri_ring_anchor`. This is the receipt proving
+/// what the firmware initialized before handing off to the sovereign
+/// runtime — analogous to UEFI's memory map.
+pub use toadstool_ember::pri_ring_anchor::BootServiceEvidence;
+
 /// The interface between toadStool and opaque firmware running on a device.
 ///
 /// Everything below this trait is firmware that we interface with but do not
 /// reimplement. Everything above is pure Rust. The trait itself is safe —
 /// any unsafe transport (MMIO, ioctl) is encapsulated in the implementation.
+///
+/// # Boot Service Lifecycle (UEFI model)
+///
+/// Firmware may provide boot services that initialize hardware (PRI ring
+/// stations, TPC fabric, engine routing). The lifecycle is:
+///
+/// 1. Firmware boots and initializes hardware (driver loads, settles)
+/// 2. `boot_services_complete()` returns true when init is done
+/// 3. `exit_boot_services()` captures evidence and prepares for handoff
+/// 4. Driver unbind preserves the initialized state
+/// 5. `runtime_services_available()` indicates post-handoff firmware state
+///
+/// Not all firmware supports boot services — the default implementations
+/// return `false` / `Err` for devices without this capability.
 pub trait FirmwareInterface: Send + Sync + fmt::Debug {
     /// Status snapshot returned by [`probe_status`](FirmwareInterface::probe_status).
     type Status: fmt::Debug + Serialize + for<'de> Deserialize<'de>;
@@ -64,6 +85,39 @@ pub trait FirmwareInterface: Send + Sync + fmt::Debug {
     /// Human-readable name for this firmware engine (e.g. `"FECS"`, `"PMU"`,
     /// `"UEFI"`, `"Akida-v2"`).
     fn engine_name(&self) -> &str;
+
+    // ── Boot Service Lifecycle (UEFI model) ─────────────────────────
+
+    /// Whether firmware boot services have completed initialization.
+    ///
+    /// For GPU: returns true when ACR→FECS→GPCCS boot chain has finished
+    /// and PRI ring stations are created. For UEFI: returns true when
+    /// all boot services drivers have been loaded.
+    fn boot_services_complete(&self) -> bool {
+        false
+    }
+
+    /// Exit boot services mode — capture evidence of what hardware state
+    /// the firmware initialized, then prepare for sovereign handoff.
+    ///
+    /// This is the GPU analog of UEFI `ExitBootServices()`. After this
+    /// call, the firmware's boot-time work (PRI ring, TPC stations) should
+    /// be preserved through the driver swap, but boot services are no
+    /// longer callable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if boot services haven't completed or if the
+    /// evidence capture fails.
+    fn exit_boot_services(&self) -> Result<BootServiceEvidence, Self::Error>;
+
+    /// Whether runtime services remain available after `exit_boot_services`.
+    ///
+    /// For GPU: false (falcon firmware stops executing after driver unbind).
+    /// For UEFI: true (UEFI runtime services persist for the OS).
+    fn runtime_services_available(&self) -> bool {
+        false
+    }
 }
 
 /// Firmware status when the engine is not present or not applicable.
@@ -98,6 +152,10 @@ impl FirmwareInterface for NoFirmwareInterface {
 
     fn engine_name(&self) -> &'static str {
         "none"
+    }
+
+    fn exit_boot_services(&self) -> Result<BootServiceEvidence, Self::Error> {
+        Ok(BootServiceEvidence::new("none", "no firmware — boot services trivially complete"))
     }
 }
 

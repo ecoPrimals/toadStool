@@ -327,30 +327,30 @@ impl PatchSet {
             name: "nvidia_catalyst_handoff".into(),
             module_name: "nvidia".into(),
             targets: vec![
-                // Teardown NOPs — preserve GPU state on unbind
+                // Surgical teardown NOPs inside nv_pci_remove — NOP only
+                // GPU-state-destroying calls while letting PCI resource
+                // cleanup (__release_region, pci_disable_device) run
+                // normally. This prevents stale BAR0 claims in the kernel
+                // iomem tree that cause request_mem_region failures on
+                // subsequent catalyst cycles.
+                //
+                // Call offsets verified against nvidia-470.256.02 on
+                // kernel 6.17.9 via objdump + readelf relocation table.
                 PatchTarget {
                     symbol: "nv_pci_remove".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    strategy: PatchStrategy::NopCallAt(0x374),
                 },
                 PatchTarget {
-                    symbol: "gpuStateUnload_IMPL".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    symbol: "nv_pci_remove".into(),
+                    strategy: PatchStrategy::NopCallAt(0x3a0),
                 },
                 PatchTarget {
-                    symbol: "gpuStateDestroy_IMPL".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    symbol: "nv_pci_remove".into(),
+                    strategy: PatchStrategy::NopCallAt(0x1fe),
                 },
                 PatchTarget {
-                    symbol: "_deviceTeardown".into(),
-                    strategy: PatchStrategy::RetAtEntry,
-                },
-                PatchTarget {
-                    symbol: "clTeardown_IMPL".into(),
-                    strategy: PatchStrategy::RetAtEntry,
-                },
-                PatchTarget {
-                    symbol: "fecsBufferTeardown".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    symbol: "nv_pci_remove".into(),
+                    strategy: PatchStrategy::NopCallAt(0x2a0),
                 },
                 // Co-load isolation NOPs — prevent host conflicts.
                 // nv_cap_init and nv_cap_drv_init are REMOVED vs
@@ -403,6 +403,25 @@ impl PatchSet {
         }
     }
 
+    /// Boot-services variant of the catalyst — uses nvidia RM as a UEFI-like
+    /// boot service to initialize compute engines (ACR→FECS→GPCCS→TPC), then
+    /// performs a clean unbind + PRI ring recovery post-swap.
+    ///
+    /// Key finding (Exp 221): PRI ring destruction happens in the kernel's PCI
+    /// framework during unbind (PMC_ENABLE cleared), NOT in nv_pci_remove.
+    /// RetAtEntry on nv_pci_remove was tried but only leaked iomem without
+    /// preserving the PRI ring. Clean catalyst unbind + post-swap PRI ring
+    /// re-enumeration is the correct approach.
+    ///
+    /// Same co-load isolation NOPs as catalyst, allowing full RM compute init.
+    pub fn nvidia_boot_services() -> Self {
+        // Identical to nvidia_catalyst_handoff — the "boot services" concept
+        // is now about post-swap PRI ring recovery, not teardown NOP'ing.
+        let mut ps = Self::nvidia_catalyst_handoff();
+        ps.name = "nvidia_boot_services".into();
+        ps
+    }
+
     /// Look up a predefined patch set by name.
     #[must_use]
     pub fn by_name(name: &str) -> Option<Self> {
@@ -411,6 +430,7 @@ impl PatchSet {
             "kepler_warm_handoff" => Some(Self::kepler_warm_handoff()),
             "nvidia_warm_handoff" => Some(Self::nvidia_warm_handoff()),
             "nvidia_catalyst_handoff" => Some(Self::nvidia_catalyst_handoff()),
+            "nvidia_boot_services" => Some(Self::nvidia_boot_services()),
             _ => None,
         }
     }

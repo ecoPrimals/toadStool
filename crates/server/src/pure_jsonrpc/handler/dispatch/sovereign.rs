@@ -383,13 +383,19 @@ impl DispatchHandler {
             "sovereign.warm_handoff: starting driver rotation pipeline"
         );
 
-        // Release VFIO anchor and cached device before handoff.
-        // The IOMMU group is locked while we hold VFIO container/group FDs —
-        // nouveau cannot bind until we release them.
+        // Suppress FLR BEFORE releasing anchor — dropping the anchor closes
+        // the VFIO device fd, which triggers vfio_pci_core_release(). Without
+        // FLR suppression, the kernel resets the GPU and destroys VBIOS warm
+        // state. Exp 225: PMC_ENABLE dropped from 0x5fecdff1 to 0x40000020.
+        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf);
+
+        // Release VFIO anchor and cached device. The IOMMU group is locked
+        // while we hold VFIO container/group FDs — the seeder driver cannot
+        // bind until we release them. FLR is already suppressed above.
         {
             let mut anchors = self.anchor_store.lock().await;
-            if anchors.remove(bdf).is_some() {
-                tracing::info!(bdf, "released VFIO anchor for warm handoff");
+            if let Some(anchor) = anchors.remove(bdf) {
+                anchor.release_prepared();
             }
         }
         {
@@ -514,11 +520,14 @@ impl DispatchHandler {
             config.settle = std::time::Duration::from_secs(secs);
         }
 
-        // Release VFIO resources
+        // Suppress FLR before releasing anchor (Exp 225 fix)
+        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf);
+
+        // Release VFIO resources — FLR already suppressed above
         {
             let mut anchors = self.anchor_store.lock().await;
-            if anchors.remove(bdf).is_some() {
-                tracing::info!(bdf, "catalyst_boot: released VFIO anchor");
+            if let Some(anchor) = anchors.remove(bdf) {
+                anchor.release_prepared();
             }
         }
         {

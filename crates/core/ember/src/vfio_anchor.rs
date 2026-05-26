@@ -95,6 +95,38 @@ impl VfioAnchor {
         std::mem::forget(self);
     }
 
+    /// Release the anchor after FLR has been suppressed via
+    /// `prepare_anchor_release()`.
+    ///
+    /// Dropping a `VfioAnchor` closes the VFIO device fd, which normally
+    /// triggers `vfio_pci_core_release()` → device reset. Callers must
+    /// clear `reset_method` first to prevent this. In debug builds, this
+    /// method asserts that `reset_method` is empty.
+    ///
+    /// Exp 225: anchor drop without FLR suppression destroyed VBIOS warm
+    /// state (PMC_ENABLE 0x5fecdff1 → 0x40000020).
+    pub fn release_prepared(self) {
+        #[cfg(debug_assertions)]
+        {
+            let reset_path = format!(
+                "/sys/bus/pci/devices/{}/reset_method",
+                self.bdf
+            );
+            if let Ok(method) = std::fs::read_to_string(&reset_path) {
+                let trimmed = method.trim();
+                assert!(
+                    trimmed.is_empty(),
+                    "release_prepared called on {} but reset_method is '{}' — \
+                     call prepare_anchor_release first",
+                    self.bdf,
+                    trimmed,
+                );
+            }
+        }
+        tracing::info!(bdf = %self.bdf, "VfioAnchor: releasing with FLR suppressed");
+        drop(self);
+    }
+
     /// Get the BDF address this anchor holds.
     #[must_use]
     pub fn bdf(&self) -> &str {

@@ -70,10 +70,10 @@ pub use boot::{BootResult, BootStep, StepStatus};
 pub use device_id::DeviceId;
 pub use device_slot::DeviceSlot;
 pub use discovery::DeviceDiscovery;
-pub use firmware::FirmwareInterface;
+pub use firmware::{BootServiceEvidence, FirmwareInterface};
 pub use health::{HealthProbe, HealthStatus};
 pub use personality::DevicePersonality;
-pub use swap::{SwapExecutor, SwapObservation, SwapOrchestrator};
+pub use swap::{ExitBootServicesFn, SwapExecutor, SwapObservation, SwapOrchestrator};
 pub use plx::{BridgeDeviceStatus, BridgeGuardian, PlxDeviceStatus, PlxGuardian};
 pub use sysfs_executor::SysfsSwapExecutor;
 pub use warm_init::{

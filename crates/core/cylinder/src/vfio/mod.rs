@@ -57,6 +57,8 @@ pub mod sovereign_tiers;
 pub mod sovereign_types;
 pub mod sysfs_bar0;
 pub mod types;
+#[allow(missing_docs, reason = "WIP upstream — docs follow once reagent API stabilizes")]
+pub mod reagent;
 pub mod warm_capture;
 
 pub use boot_state::{BootCapability, ColdBootReason, SovereignBootState, probe_boot_state};

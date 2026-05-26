@@ -460,6 +460,11 @@ impl JsonRpcHandler {
             "sovereign.snapshot" => return sovereign::sovereign_snapshot(params),
             "sovereign.compare" => return sovereign::sovereign_compare(params),
             "sovereign.catalyst_diff" => return sovereign::sovereign_catalyst_diff(params),
+            "sovereign.reagent_capture" => return sovereign::sovereign_reagent_capture(params),
+            "sovereign.recipe_replay" => return sovereign::sovereign_recipe_replay(params),
+            "sovereign.runtime_services_probe" => {
+                return sovereign::sovereign_runtime_services_probe(params);
+            }
 
             "mmio.read32" => return mmio::mmio_read32(params),
             "mmio.write32" => return mmio::mmio_write32(params),

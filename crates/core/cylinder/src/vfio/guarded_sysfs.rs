@@ -417,6 +417,22 @@ pub fn restore_flr(bdf: &str) {
     }
 }
 
+/// Prepare a device for VFIO anchor release without triggering a reset.
+///
+/// Must be called BEFORE dropping the `VfioAnchor`. Disables FLR and pins
+/// bridge power to prevent the kernel from resetting the GPU when the
+/// last VFIO fd closes. Without this, `vfio_pci_core_release()` destroys
+/// the VBIOS warm state on Volta+ (Exp 225 root cause: PMC_ENABLE dropped
+/// from 0x5fecdff1 to 0x40000020 during anchor release).
+pub fn prepare_anchor_release(bdf: &str) {
+    tracing::info!(bdf, "preparing anchor release: pinning bridges + disabling FLR");
+    pin_bridge_hierarchy(bdf);
+    disable_flr(bdf);
+    for sib in iommu_group_siblings(bdf) {
+        disable_flr(&sib);
+    }
+}
+
 /// Discover IOMMU group siblings (other PCI functions sharing the group).
 ///
 /// Returns BDFs of sibling devices (excludes the target BDF itself).

@@ -148,12 +148,16 @@ impl BootTrace {
                 continue;
             }
 
-            // Detect MAP lines to find BAR0 base address
-            if parts[0] == "MAP" && parts.len() >= 4 {
-                if let Ok(addr) = u64::from_str_radix(parts[2].trim_start_matches("0x"), 16)
-                    && bar0_base.is_none()
+            // Detect MAP lines to find BAR0 base address.
+            // Format: MAP timestamp entry phys_addr virt_addr size flags ...
+            // We want the largest mapping (16MB BAR0) — take the one with size >= 0x1000000.
+            if parts[0] == "MAP" && parts.len() >= 6 {
+                if let Ok(addr) = u64::from_str_radix(parts[3].trim_start_matches("0x"), 16)
+                    && let Ok(size) = u64::from_str_radix(parts[5].trim_start_matches("0x"), 16)
                 {
-                    bar0_base = Some(addr);
+                    if bar0_base.is_none() || size >= 0x100_0000 {
+                        bar0_base = Some(addr);
+                    }
                 }
                 continue;
             }

@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::boot::{BootResult, BootStep, StepStatus};
 use crate::device_id::DeviceId;
+use crate::firmware::BootServiceEvidence;
 
 /// Result of a personality swap attempt.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,14 +82,48 @@ pub trait SwapExecutor: Send + Sync + fmt::Debug {
     async fn release(&self, device: &DeviceId) -> Result<(), Self::Error>;
 }
 
+/// Callback invoked between Persist and Drop to capture firmware
+/// boot service evidence before the driver swap destroys it.
+///
+/// When `Some`, the orchestrator calls this after persisting device state
+/// but before releasing the handle. This is the ExitBootServices slot
+/// from the UEFI model — the firmware is still running, and this is the
+/// last chance to capture what it initialized.
+pub type ExitBootServicesFn =
+    Box<dyn Fn(&DeviceId) -> Option<BootServiceEvidence> + Send + Sync>;
+
 /// Orchestrates the full swap lifecycle.
 ///
 /// Wraps a [`SwapExecutor`] with quiescence, persistence, restoration, and
 /// health checking. This is the high-level API that the ecosystem calls.
-#[derive(Debug)]
+///
+/// The lifecycle is 7 steps (8 when ExitBootServices is configured):
+///
+/// 1. **Quiesce** — drain in-flight operations
+/// 2. **Persist** — snapshot device state
+/// 3. **ExitBootServices** (optional) — capture firmware evidence
+/// 4. **Drop** — release the current handle
+/// 5. **Delegate** — execute the bus-specific swap
+/// 6. **Reacquire** — get the new handle
+/// 7. **Restore** — replay persisted state
+/// 8. **Health** — verify the device is healthy
 pub struct SwapOrchestrator<E: SwapExecutor> {
     executor: E,
     quiescence_timeout: Duration,
+    exit_boot_services: Option<ExitBootServicesFn>,
+}
+
+impl<E: SwapExecutor> fmt::Debug for SwapOrchestrator<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SwapOrchestrator")
+            .field("executor", &self.executor)
+            .field("quiescence_timeout", &self.quiescence_timeout)
+            .field(
+                "exit_boot_services",
+                &self.exit_boot_services.as_ref().map(|_| "<fn>"),
+            )
+            .finish()
+    }
 }
 
 impl<E: SwapExecutor> SwapOrchestrator<E> {
@@ -100,13 +135,26 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         Self {
             executor,
             quiescence_timeout: Duration::from_secs(Self::DEFAULT_QUIESCENCE_TIMEOUT_SECS),
+            exit_boot_services: None,
         }
     }
 
     /// Set the quiescence timeout.
     #[must_use]
-    pub const fn with_quiescence_timeout(mut self, timeout: Duration) -> Self {
+    pub fn with_quiescence_timeout(mut self, timeout: Duration) -> Self {
         self.quiescence_timeout = timeout;
+        self
+    }
+
+    /// Configure the ExitBootServices callback.
+    ///
+    /// When set, the orchestrator calls this after persisting state but
+    /// before releasing the handle. This captures firmware-initialized
+    /// hardware state (PRI ring, TPC stations) as evidence before the
+    /// driver swap can destroy it.
+    #[must_use]
+    pub fn with_exit_boot_services(mut self, f: ExitBootServicesFn) -> Self {
+        self.exit_boot_services = Some(f);
         self
     }
 
@@ -271,7 +319,43 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
             step_start.elapsed().as_millis() as u64,
         ));
 
-        // Step 3: Drop (release current handle)
+        // Step 3 (optional): ExitBootServices — capture firmware evidence
+        if let Some(ref ebs_fn) = self.exit_boot_services {
+            let step_start = Instant::now();
+            match ebs_fn(device) {
+                Some(evidence) => {
+                    let n_preserved = evidence.preserved_state.len();
+                    tracing::info!(
+                        device = device_label.as_str(),
+                        engine = evidence.engine.as_str(),
+                        preserved_keys = n_preserved,
+                        "ExitBootServices: firmware evidence captured"
+                    );
+                    steps.push(BootStep::ok(
+                        "exit_boot_services",
+                        Some(format!(
+                            "engine={} preserved={n_preserved} keys",
+                            evidence.engine
+                        )),
+                        step_start.elapsed().as_millis() as u64,
+                    ));
+                }
+                None => {
+                    tracing::debug!(
+                        device = device_label.as_str(),
+                        "ExitBootServices: no evidence (firmware not in boot services mode)"
+                    );
+                    steps.push(BootStep {
+                        name: "exit_boot_services".into(),
+                        status: StepStatus::Skipped,
+                        detail: Some("firmware not in boot services mode".into()),
+                        duration_ms: step_start.elapsed().as_millis() as u64,
+                    });
+                }
+            }
+        }
+
+        // Step 4: Drop (release current handle)
         let step_start = Instant::now();
         match self.executor.release(device).await {
             Ok(()) => {

@@ -48,6 +48,7 @@ use crate::vfio::kmod;
 use crate::vfio::module_patch::{self, PatchSet, ModulePatchResult};
 use crate::vfio::sovereign_tiers::{TierEvidence, classify_tier};
 use crate::vfio::warm_capture::Bar0Snapshot;
+use toadstool_ember::pri_ring_anchor::{BootServiceEvidence, PriRingAnchor, PriRingHealth};
 
 /// Per-BDF handoff concurrency guard. Only one handoff per device at a time.
 static HANDOFF_LOCKS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
@@ -168,6 +169,15 @@ pub struct HandoffResult {
     /// Catalyst capture: tier evidence from the pre-swap snapshot.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub catalyst_tier: Option<TierEvidence>,
+    /// Boot service evidence captured during ExitBootServices (UEFI model).
+    /// Present when a catalyst/boot_services strategy runs and firmware was
+    /// alive during the settle phase.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boot_service_evidence: Option<BootServiceEvidence>,
+    /// PRI ring anchor created from boot service evidence. Tracks PRI ring
+    /// health across the driver swap.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pri_ring_anchor: Option<PriRingAnchor>,
     /// Total wall-clock time in milliseconds.
     pub total_ms: u64,
 }
@@ -260,7 +270,7 @@ impl HandoffConfig {
                 dkms_version: "470.256.02".into(),
                 patch_set: "nvidia_warm_handoff".into(),
             },
-            settle: Duration::from_secs(10),
+            settle: Duration::from_secs(60),
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
@@ -274,6 +284,9 @@ impl HandoffConfig {
     /// fully initialize the compute pipeline (SEC2/ACR/PMU/GPCCS/FECS/TPC).
     /// The pipeline captures BAR0 state while the catalyst owns the GPU,
     /// then warm-swaps to vfio-pci and classifies.
+    ///
+    /// Settle time is 60s to ensure RM completes the full init chain on
+    /// GV100 (SEC2→ACR→FECS→GPCCS→TPC PRI station creation).
     #[must_use]
     pub fn nvidia_catalyst_titanv(bdf: &str) -> Self {
         Self {
@@ -285,7 +298,28 @@ impl HandoffConfig {
                 dkms_version: "470.256.02".into(),
                 patch_set: "nvidia_catalyst_handoff".into(),
             },
-            settle: Duration::from_secs(15),
+            settle: Duration::from_secs(60),
+            final_driver: "vfio-pci".into(),
+            patch_set_override: None,
+            skip_preflight: false,
+        }
+    }
+
+    /// Create a config for Titan V boot-services handoff — preserves PRI
+    /// ring stations across the swap by NOPing all state-destroying calls
+    /// in nv_pci_remove. This is the ExitBootServices pattern.
+    #[must_use]
+    pub fn nvidia_boot_services_titanv(bdf: &str) -> Self {
+        Self {
+            bdf: bdf.into(),
+            seeder_driver: "nvsov".into(),
+            module_name: "nvsov".into(),
+            module_source: ModuleSourceConfig::DkmsPatched {
+                dkms_module: "nvidia".into(),
+                dkms_version: "470.256.02".into(),
+                patch_set: "nvidia_boot_services".into(),
+            },
+            settle: Duration::from_secs(60),
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
@@ -301,8 +335,103 @@ impl HandoffConfig {
             "nvidia_titanv" => Some(Self::nvidia_titanv(bdf)),
             "nvidia_patched_titanv" => Some(Self::nvidia_patched_titanv(bdf)),
             "nvidia_catalyst_titanv" => Some(Self::nvidia_catalyst_titanv(bdf)),
+            "nvidia_boot_services_titanv" => Some(Self::nvidia_boot_services_titanv(bdf)),
+            "nvidia_runtime_services" => Some(Self::nvidia_runtime_services(bdf)),
             _ => None,
         }
+    }
+
+    /// Create a config for nvidia runtime services mode — nvidia stays
+    /// bound as a persistent compute backend. No unbind/swap occurs.
+    ///
+    /// toadStool manages infrastructure (PFIFO, DMA, VRAM, PRI ring)
+    /// while nvidia's FECS/GPCCS context remains live for Tier 2 compute.
+    /// Reagent capture runs in parallel to extract firmware chemical agents.
+    #[must_use]
+    pub fn nvidia_runtime_services(bdf: &str) -> Self {
+        Self {
+            bdf: bdf.into(),
+            seeder_driver: "nvidia".into(),
+            module_name: "nvidia".into(),
+            module_source: ModuleSourceConfig::System,
+            settle: Duration::from_secs(0),
+            final_driver: "nvidia".into(),
+            patch_set_override: None,
+            skip_preflight: true,
+        }
+    }
+
+    /// Whether this config uses runtime services mode (nvidia stays bound).
+    #[must_use]
+    pub fn is_runtime_services(&self) -> bool {
+        self.final_driver == "nvidia" || self.final_driver == self.seeder_driver
+    }
+}
+
+/// Result of probing nvidia's live FECS/GPCCS state for runtime services.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuntimeServicesProbe {
+    /// PCI BDF probed.
+    pub bdf: String,
+    /// Currently bound driver.
+    pub driver: String,
+    /// Whether nvidia module is loaded.
+    pub nvidia_loaded: bool,
+    /// FECS firmware state (from /proc/driver/nvidia/ or BAR0 probe).
+    pub fecs_state: String,
+    /// TPC station liveness (from nvidia's perspective).
+    pub tpc_alive: bool,
+    /// Number of nvidia GPU channels established (from /proc/driver/nvidia/gpus/).
+    pub nvidia_channels: u32,
+}
+
+/// Probe nvidia's live state for runtime services dispatch.
+///
+/// When nvidia is loaded as a runtime service, toadStool needs to discover
+/// what nvidia has established: FECS context, TPC stations, channel state.
+pub fn probe_runtime_services(bdf: &str) -> RuntimeServicesProbe {
+    let driver_path = format!("/sys/bus/pci/devices/{bdf}/driver");
+    let driver = std::fs::read_link(&driver_path)
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "unbound".to_owned());
+
+    let nvidia_loaded = std::path::Path::new("/proc/driver/nvidia/version").exists();
+
+    let gpu_dir = format!("/proc/driver/nvidia/gpus/{bdf}");
+    let nvidia_channels = if std::path::Path::new(&gpu_dir).is_dir() {
+        std::fs::read_to_string(format!("{gpu_dir}/information"))
+            .ok()
+            .and_then(|info| {
+                for line in info.lines() {
+                    if line.contains("GPU UUID") || line.contains("Bus Location") {
+                        return Some(1);
+                    }
+                }
+                None
+            })
+            .unwrap_or(0)
+    } else {
+        0
+    };
+
+    let fecs_state = if nvidia_loaded && driver.contains("nvidia") {
+        "running (nvidia owns FECS context)".to_owned()
+    } else if driver == "vfio-pci" {
+        "unknown (vfio-pci bound, no FECS probe without BAR0)".to_owned()
+    } else {
+        format!("unknown (driver={driver})")
+    };
+
+    let tpc_alive = nvidia_loaded && driver.contains("nvidia");
+
+    RuntimeServicesProbe {
+        bdf: bdf.to_owned(),
+        driver,
+        nvidia_loaded,
+        fecs_state,
+        tpc_alive,
+        nvidia_channels,
     }
 }
 
@@ -330,6 +459,7 @@ pub fn execute_handoff(
     let mut catalyst_snapshot_path: Option<String> = None;
     let mut catalyst_alive_count: Option<usize> = None;
     let mut catalyst_tier: Option<TierEvidence> = None;
+    let mut boot_evidence: Option<BootServiceEvidence> = None;
 
     // ── Step 0: Pre-flight checks ───────────────────────────────────
 
@@ -417,6 +547,79 @@ pub fn execute_handoff(
         }),
         duration_ms: t.elapsed().as_millis() as u64,
     });
+
+    // Detect catalyst strategies early — used for anchor-release guard
+    // and later for pre-swap capture + diagnostics.
+    let is_catalyst = matches!(
+        &config.module_source,
+        ModuleSourceConfig::DkmsPatched { patch_set, .. }
+            if patch_set == "nvidia_catalyst_handoff"
+                || patch_set == "nvidia_boot_services"
+                || patch_set == "nvidia_warm_handoff"
+    );
+
+    // ── Step 0e: Verify GPU survived anchor release (Exp 225 guard) ──
+    //
+    // The RPC handler drops the VfioAnchor before calling execute_handoff.
+    // If FLR was not suppressed, vfio_pci_core_release() resets the GPU
+    // and PMC_ENABLE drops from ~23 engines to ~2. Detect this early
+    // rather than wasting 60s on a doomed catalyst settle.
+    if is_catalyst {
+        let t = Instant::now();
+        let pmc_check = crate::vfio::device::MappedBar::from_sysfs_rw(
+            &config.bdf, 4096,
+        ).map(|bar| {
+            let pmc = bar.read_u32(0x200).unwrap_or(0);
+            let popcount = pmc.count_ones();
+            (pmc, popcount)
+        });
+        match pmc_check {
+            Ok((pmc, popcount)) => {
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    pmc = format_args!("0x{pmc:08x}"),
+                    popcount,
+                    "anchor release guard: PMC_ENABLE health check"
+                );
+                if popcount < 10 {
+                    tracing::error!(
+                        bdf = config.bdf.as_str(),
+                        pmc = format_args!("0x{pmc:08x}"),
+                        popcount,
+                        "GPU went cold after anchor release — FLR was not \
+                         suppressed before VfioAnchor drop (Exp 225)"
+                    );
+                    steps.push(HandoffStep {
+                        name: "anchor_release_guard".into(), ok: false,
+                        detail: Some(format!(
+                            "GPU cold: PMC_ENABLE=0x{pmc:08x} (popcount={popcount}). \
+                             FLR not suppressed before anchor release — Exp 225 regression"
+                        )),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                    return halt_result(
+                        &config.bdf, "anchor_release_guard", steps,
+                        None, false, false, overall, &sibling_state,
+                        &config.module_name, false,
+                    );
+                }
+                steps.push(HandoffStep {
+                    name: "anchor_release_guard".into(), ok: true,
+                    detail: Some(format!(
+                        "PMC_ENABLE=0x{pmc:08x} (popcount={popcount}) — GPU warm"
+                    )),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                tracing::warn!(
+                    bdf = config.bdf.as_str(),
+                    error = %e,
+                    "anchor release guard: cannot read PMC_ENABLE — proceeding"
+                );
+            }
+        }
+    }
 
     // ── Step 1: Module Preparation ──────────────────────────────────
 
@@ -933,6 +1136,59 @@ pub fn execute_handoff(
         duration_ms: t.elapsed().as_millis() as u64,
     });
 
+    // ── Post-settle GPU health check (catalyst only) ─────────────
+    //
+    // After the settle period, verify the seeder driver (RM) actually
+    // completed DEVINIT. If PMC_ENABLE is still cold (popcount < 10),
+    // the driver failed to initialize — log a clear diagnostic but
+    // continue to capture whatever state exists for forensics.
+    if is_catalyst {
+        let t = Instant::now();
+        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, 4096) {
+            Ok(bar0) => {
+                let pmc = bar0.read_u32(0x200).unwrap_or(0);
+                let popcount = pmc.count_ones();
+                if popcount < 10 {
+                    tracing::error!(
+                        bdf = config.bdf.as_str(),
+                        pmc = format_args!("0x{pmc:08x}"),
+                        popcount,
+                        "catalyst settle: RM did NOT complete DEVINIT — GPU still cold"
+                    );
+                    steps.push(HandoffStep {
+                        name: "settle_health".into(), ok: false,
+                        detail: Some(format!(
+                            "RM failed DEVINIT: PMC_ENABLE=0x{pmc:08x} (popcount={popcount})"
+                        )),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                } else {
+                    tracing::info!(
+                        bdf = config.bdf.as_str(),
+                        pmc = format_args!("0x{pmc:08x}"),
+                        popcount,
+                        "catalyst settle: RM DEVINIT healthy"
+                    );
+                    steps.push(HandoffStep {
+                        name: "settle_health".into(), ok: true,
+                        detail: Some(format!(
+                            "PMC_ENABLE=0x{pmc:08x} (popcount={popcount}) — RM initialized"
+                        )),
+                        duration_ms: t.elapsed().as_millis() as u64,
+                    });
+                }
+                drop(bar0);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    bdf = config.bdf.as_str(),
+                    error = %e,
+                    "settle health: cannot open BAR0 — RM may be holding resource0"
+                );
+            }
+        }
+    }
+
     // ── Deadline check ──────────────────────────────────────────────
 
     if overall.elapsed() >= deadline {
@@ -946,12 +1202,7 @@ pub fn execute_handoff(
     // While the catalyst driver owns the GPU and has fully initialized
     // the compute pipeline, capture BAR0 state for preservation.
     // This is the "golden snapshot" — the catalyst's product.
-
-    let is_catalyst = matches!(
-        &config.module_source,
-        ModuleSourceConfig::DkmsPatched { patch_set, .. }
-            if patch_set == "nvidia_catalyst_handoff"
-    );
+    // (is_catalyst already set at Step 0e)
 
     if is_catalyst {
         let t = Instant::now();
@@ -986,6 +1237,101 @@ pub fn execute_handoff(
 
                 catalyst_tier = Some(tier_ev);
 
+                // ── ExitBootServices: capture firmware evidence ──
+                let mut evidence = BootServiceEvidence::new(
+                    "gpu-falcon",
+                    "FECS/GPCCS/PMU state captured pre-swap (ExitBootServices)",
+                );
+                evidence.record("bdf", &config.bdf);
+                evidence.record("fecs_cpuctl", format!("{:#010x}", sovereign_snap.fecs_cpuctl));
+                evidence.record("fecs_pc", format!("{:#010x}", sovereign_snap.fecs_pc));
+                evidence.record("gpccs_cpuctl", format!("{:#010x}", sovereign_snap.gpccs_cpuctl));
+                evidence.record("pmu_cpuctl", format!("{:#010x}", sovereign_snap.pmu_cpuctl));
+                evidence.record("pmc_enable", format!("{:#010x}", sovereign_snap.pmc_enable));
+                evidence.record("pgraph_status", format!("{:#010x}", sovereign_snap.pgraph_status));
+                // Probe TPC status across GPCs
+                for gpc in 0..6u32 {
+                    let addr = 0x50_4000usize + gpc as usize * 0x8000;
+                    if let Ok(tpc_val) = catalyst_bar0.read_u32(addr) {
+                        let is_fault = tpc_val & 0xBADF_0000 == 0xBADF_0000;
+                        evidence.record(
+                            format!("gpc{gpc}_tpc0"),
+                            format!("{:#010x}{}", tpc_val, if is_fault { " FAULT" } else { " ALIVE" }),
+                        );
+                    }
+                }
+
+                // ── FECS IMEM capture attempt (while nvidia still loaded) ──
+                // Falcon PIO: set IMEMC once with auto-increment read
+                // (bit 25), then read IMEMD sequentially.
+                let fecs_base = 0x40_9000usize;
+                let imemc = fecs_base + 0x180;
+                let imemd = fecs_base + 0x184;
+                // Set IMEMC: start at address 0, auto-increment read (bit 25)
+                let _ = catalyst_bar0.write_u32(imemc, 0x0200_0000);
+                std::thread::sleep(std::time::Duration::from_micros(100));
+                let mut imem_probe = Vec::with_capacity(16);
+                for _ in 0..16 {
+                    let word = catalyst_bar0.read_u32(imemd).unwrap_or(0xDEAD_DEAD);
+                    imem_probe.push(word);
+                }
+                let imem_nonzero = imem_probe.iter().filter(|&&w| w != 0 && w != 0xDEAD_DEAD).count();
+                let imem_faulted = imem_probe.iter().filter(|&&w| w & 0xBADF_0000 == 0xBADF_0000).count();
+                evidence.record("fecs_imem_probe_nonzero", imem_nonzero.to_string());
+                evidence.record("fecs_imem_probe_faulted", imem_faulted.to_string());
+                evidence.record("fecs_imem_word0", format!("{:#010x}", imem_probe[0]));
+                evidence.record("fecs_imem_word1", format!("{:#010x}", imem_probe[1]));
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    nonzero = imem_nonzero,
+                    faulted = imem_faulted,
+                    word0 = format_args!("{:#010x}", imem_probe[0]),
+                    word1 = format_args!("{:#010x}", imem_probe[1]),
+                    word2 = format_args!("{:#010x}", imem_probe[2]),
+                    word3 = format_args!("{:#010x}", imem_probe[3]),
+                    "FECS IMEM probe (PIO read) while nvidia loaded"
+                );
+
+                // If IMEM is readable, do full FECS + GPCCS capture
+                if imem_nonzero > 0 && imem_faulted == 0 {
+                    let fw_dir = "/var/lib/toadstool/catalysts/firmware";
+                    let _ = std::fs::create_dir_all(fw_dir);
+                    for (name, base) in [("fecs", 0x40_9000usize), ("gpccs", 0x41_a000usize)] {
+                        let imemc_r = base + 0x180;
+                        let imemd_r = base + 0x184;
+                        let imem_size = 32 * 1024usize;
+                        let word_count = imem_size / 4;
+                        let _ = catalyst_bar0.write_u32(imemc_r, 0x0200_0000);
+                        std::thread::sleep(std::time::Duration::from_micros(100));
+                        let mut fw_data = Vec::with_capacity(word_count);
+                        for _ in 0..word_count {
+                            fw_data.push(catalyst_bar0.read_u32(imemd_r).unwrap_or(0));
+                        }
+                        let fw_bytes: Vec<u8> = fw_data.iter()
+                            .flat_map(|w| w.to_le_bytes()).collect();
+                        let nonzero_bytes = fw_bytes.iter().filter(|&&b| b != 0).count();
+                        let fw_path = format!("{fw_dir}/{name}_imem_gv100.bin");
+                        if let Ok(()) = std::fs::write(&fw_path, &fw_bytes) {
+                            evidence.record(
+                                format!("{name}_imem_captured"),
+                                format!("{} bytes, {} nonzero", fw_bytes.len(), nonzero_bytes),
+                            );
+                            tracing::info!(
+                                engine = name, path = fw_path.as_str(),
+                                size = fw_bytes.len(), nonzero = nonzero_bytes,
+                                "{name} IMEM firmware captured to disk"
+                            );
+                        }
+                    }
+                }
+
+                boot_evidence = Some(evidence);
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    preserved_keys = boot_evidence.as_ref().map(|e| e.preserved_state.len()).unwrap_or(0),
+                    "ExitBootServices: firmware evidence captured"
+                );
+
                 // Drop the BAR0 mapping before warm swap to release the fd
                 drop(catalyst_bar0);
 
@@ -1013,7 +1359,12 @@ pub fn execute_handoff(
         }
     }
 
-    // ── Step 5: Pin bridges + disable FLR ───────────────────────────
+    // ── Step 5: Pin bridges + disable FLR (safety belt) ────────────
+    //
+    // The RPC handler already calls prepare_anchor_release() before
+    // dropping the VfioAnchor. This is a safety belt for callers that
+    // invoke execute_handoff directly. Idempotent — writing the same
+    // sysfs value is harmless.
 
     let t = Instant::now();
     guarded_sysfs::pin_bridge_hierarchy(&config.bdf);
@@ -1063,6 +1414,65 @@ pub fn execute_handoff(
     }
 
     if is_catalyst {
+        // Diagnostic: probe PCI config space and BAR0 between unbind and rebind.
+        // Read PCI command register to check if bus mastering was disabled.
+        let pci_config_path = format!(
+            "/sys/bus/pci/devices/{}/config", config.bdf
+        );
+        let pci_cmd = std::fs::read(&pci_config_path)
+            .ok()
+            .and_then(|data| {
+                if data.len() >= 6 {
+                    Some(u16::from_le_bytes([data[4], data[5]]))
+                } else {
+                    None
+                }
+            });
+        let pci_pm_ctrl = std::fs::read(&pci_config_path)
+            .ok()
+            .and_then(|data| {
+                // PM cap at offset 0x60, PMCSR at +0x04 = 0x64
+                if data.len() >= 0x66 {
+                    Some(u16::from_le_bytes([data[0x64], data[0x65]]))
+                } else {
+                    None
+                }
+            });
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            pci_cmd = pci_cmd.map(|v| format!("{:#06x}", v)),
+            bus_master = pci_cmd.map(|v| v & 0x4 != 0),
+            mem_space = pci_cmd.map(|v| v & 0x2 != 0),
+            pm_state = pci_pm_ctrl.map(|v| format!("D{}", v & 0x3)),
+            "post-unbind PCI config: command register and power state"
+        );
+
+        if let Ok(diag_bar0) = crate::vfio::device::MappedBar::from_sysfs_rw(
+            &config.bdf, 16 * 1024 * 1024,
+        ) {
+            let fecs_cpuctl = diag_bar0.read_u32(0x409100).unwrap_or(0xDEAD);
+            let fecs_hw_pc = diag_bar0.read_u32(0x40911c).unwrap_or(0xDEAD);
+            let fecs_ctxsw = diag_bar0.read_u32(0x409624).unwrap_or(0xDEAD);
+            let gpccs_cpuctl = diag_bar0.read_u32(0x41a100).unwrap_or(0xDEAD);
+            let pri_intr = diag_bar0.read_u32(0x120048).unwrap_or(0xDEAD);
+            let pri_status = diag_bar0.read_u32(0x120050).unwrap_or(0xDEAD);
+            let pmc_enable = diag_bar0.read_u32(0x200).unwrap_or(0xDEAD);
+            let tpc0 = diag_bar0.read_u32(0x504000).unwrap_or(0xDEAD);
+            tracing::info!(
+                bdf = config.bdf.as_str(),
+                fecs_cpuctl = format_args!("{:#010x}", fecs_cpuctl),
+                fecs_hw_pc = format_args!("{:#010x}", fecs_hw_pc),
+                fecs_ctxsw = format_args!("{:#010x}", fecs_ctxsw),
+                gpccs_cpuctl = format_args!("{:#010x}", gpccs_cpuctl),
+                pmc_enable = format_args!("{:#010x}", pmc_enable),
+                pri_ring_intr = format_args!("{:#010x}", pri_intr),
+                pri_ring_status = format_args!("{:#010x}", pri_status),
+                tpc0_ctrl = format_args!("{:#010x}", tpc0),
+                "catalyst diagnostic: BAR0 state AFTER unbind, BEFORE rebind"
+            );
+            drop(diag_bar0);
+        }
+
         // After fire-and-poll, the driver symlink clears in ~2s but nvidia
         // RM teardown still holds the PCI lock for 160-400s. We need to:
         //   1. Wait for driver=None (done by fire-and-poll)
@@ -1180,61 +1590,35 @@ pub fn execute_handoff(
         }
     }
 
-    // ── Step 6b: Rebind IOMMU siblings to vfio-pci ─────────────────
-
-    if !sibling_state.is_empty() {
-        guarded_sysfs::rebind_siblings_to_vfio(&sibling_state);
-    }
-
-    // ── Step 7: Tier Classification ─────────────────────────────────
-
-    let tier = if let Some(b) = bar0 {
-        let t = Instant::now();
-        let evidence = classify_tier(b);
-        steps.push(HandoffStep {
-            name: "tier_classify".into(), ok: true,
-            detail: Some(format!("{}", evidence.tier)),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
-        Some(evidence)
-    } else {
-        let t = Instant::now();
-        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, 16 * 1024 * 1024) {
-            Ok(sysfs_bar) => {
-                let evidence = classify_tier(&sysfs_bar);
-                steps.push(HandoffStep {
-                    name: "tier_classify".into(), ok: true,
-                    detail: Some(format!("{} (via sysfs)", evidence.tier)),
-                    duration_ms: t.elapsed().as_millis() as u64,
-                });
-                Some(evidence)
-            }
-            Err(e) => {
-                steps.push(HandoffStep {
-                    name: "tier_classify".into(), ok: false,
-                    detail: Some(format!("BAR0 access failed: {e}")),
-                    duration_ms: t.elapsed().as_millis() as u64,
-                });
-                None
-            }
-        }
-    };
-
-    // ── Step 7a: Deferred catalyst full capture ───────────────────
+    // ── Step 7a: Deferred catalyst full capture (BEFORE sibling rebind) ──
     //
-    // The full 16MB BAR0 snapshot is deferred to here (post warm swap)
-    // because bulk MMIO reads while the nvidia RM was active caused
-    // thread hangs from PRI fault regions. Now that the device is back
-    // on vfio-pci, sysfs resource0 reads are safe and the GPU registers
-    // still hold the catalyst driver's initialized state (warm preserved).
+    // For catalyst: capture BAR0 immediately after warm_swap while the
+    // register state is warm-preserved. This MUST happen before sibling
+    // rebind (step 6b) because rebind_siblings_to_vfio does sysfs
+    // writes that contend with the nvidia RM teardown's PCI device lock,
+    // blocking for 7+ minutes. The BAR0 mmap via resource0 is safe once
+    // vfio-pci owns the device — it bypasses the PCI config lock path.
 
     if is_catalyst {
         let t = Instant::now();
         let bar0_size = 16 * 1024 * 1024;
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            pipeline_elapsed_s = overall.elapsed().as_secs(),
+            "catalyst profile: starting BAR0 open (from_sysfs_rw)"
+        );
         match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, bar0_size) {
             Ok(post_swap_bar0) => {
-                let full_snapshot = Bar0Snapshot::capture_full(
-                    &post_swap_bar0, &config.bdf, "catalyst-post-swap", bar0_size,
+                tracing::info!(
+                    bdf = config.bdf.as_str(),
+                    open_ms = t.elapsed().as_millis() as u64,
+                    "catalyst profile: BAR0 mmap open succeeded"
+                );
+
+                let cap_start = Instant::now();
+                let domains = &crate::nv::pri::VOLTA_BAR0_DOMAINS;
+                let full_snapshot = Bar0Snapshot::capture_domains(
+                    &post_swap_bar0, &config.bdf, "catalyst-post-swap", domains,
                 );
                 let alive = full_snapshot.alive_count();
 
@@ -1242,7 +1626,10 @@ pub fn execute_handoff(
                     bdf = config.bdf.as_str(),
                     total_regs = full_snapshot.len(),
                     alive_regs = alive,
-                    "catalyst capture: full BAR0 snapshot (post-swap, vfio-pci safe)"
+                    capture_ms = cap_start.elapsed().as_millis() as u64,
+                    open_ms = t.elapsed().as_millis() as u64,
+                    num_domains = domains.len(),
+                    "catalyst capture: domain-scoped BAR0 snapshot (post-swap, vfio-pci safe)"
                 );
 
                 let snapshot_path = format!(
@@ -1294,9 +1681,11 @@ pub fn execute_handoff(
                 steps.push(HandoffStep {
                     name: "catalyst_full_capture".into(), ok: true,
                     detail: Some(format!(
-                        "BAR0 post-swap: {} alive regs, snapshot={}",
+                        "BAR0 post-swap: {} alive regs, snapshot={}, open_ms={}, capture_ms={}",
                         alive,
                         catalyst_snapshot_path.as_deref().unwrap_or("none"),
+                        t.elapsed().as_millis(),
+                        cap_start.elapsed().as_millis(),
                     )),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
@@ -1305,16 +1694,124 @@ pub fn execute_handoff(
                 tracing::warn!(
                     bdf = config.bdf.as_str(),
                     err = %e,
+                    open_ms = t.elapsed().as_millis() as u64,
                     "catalyst capture: post-swap BAR0 open failed"
                 );
                 steps.push(HandoffStep {
                     name: "catalyst_full_capture".into(), ok: false,
-                    detail: Some(format!("post-swap BAR0 open failed: {e}")),
+                    detail: Some(format!("post-swap BAR0 open failed ({}ms): {e}",
+                        t.elapsed().as_millis())),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
             }
         }
     }
+
+    // ── Step 6b: Rebind IOMMU siblings to vfio-pci ─────────────────
+
+    {
+        let t = Instant::now();
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            num_siblings = sibling_state.len(),
+            pipeline_elapsed_s = overall.elapsed().as_secs(),
+            "catalyst profile: starting sibling rebind"
+        );
+        if !sibling_state.is_empty() {
+            guarded_sysfs::rebind_siblings_to_vfio(&sibling_state);
+        }
+        let sib_ms = t.elapsed().as_millis() as u64;
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            elapsed_ms = sib_ms,
+            "catalyst profile: sibling rebind complete"
+        );
+        if sib_ms > 1000 {
+            steps.push(HandoffStep {
+                name: "sibling_rebind".into(), ok: true,
+                detail: Some(format!("{} siblings, {}ms", sibling_state.len(), sib_ms)),
+                duration_ms: sib_ms,
+            });
+        }
+    }
+
+    // ── Step 6c: PRI Ring Recovery ────────────────────────────────────
+    //
+    // After PCI unbind, the kernel PCI framework disables PGRAPH, which
+    // kills PRI ring routing to GPC/TPC/FECS/GPCCS. We re-enable PGRAPH
+    // and re-enumerate PRI ring stations to restore hardware accessibility.
+
+    if is_catalyst {
+        let t = Instant::now();
+        match recover_pri_ring(&config.bdf) {
+            Ok(detail) => {
+                steps.push(HandoffStep {
+                    name: "pri_ring_recovery".into(), ok: true,
+                    detail: Some(detail),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+            Err(e) => {
+                tracing::warn!(bdf = config.bdf.as_str(), error = %e,
+                    "PRI ring recovery failed (non-fatal)");
+                steps.push(HandoffStep {
+                    name: "pri_ring_recovery".into(), ok: false,
+                    detail: Some(format!("recovery failed: {e}")),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+            }
+        }
+    }
+
+    // ── Step 7: Tier Classification ─────────────────────────────────
+
+    let tier = if is_catalyst {
+        // For catalyst, we already captured the tier from pre-swap registers.
+        // Skip the sysfs BAR0 open — it would just duplicate work and the
+        // pre-swap tier evidence is more accurate (taken while RM was active).
+        let t = Instant::now();
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            pipeline_elapsed_s = overall.elapsed().as_secs(),
+            "catalyst profile: skipping sysfs tier classify (using pre-swap)"
+        );
+        steps.push(HandoffStep {
+            name: "tier_classify".into(), ok: true,
+            detail: Some("skipped (catalyst pre-swap tier used)".into()),
+            duration_ms: t.elapsed().as_millis() as u64,
+        });
+        None
+    } else if let Some(b) = bar0 {
+        let t = Instant::now();
+        let evidence = classify_tier(b);
+        steps.push(HandoffStep {
+            name: "tier_classify".into(), ok: true,
+            detail: Some(format!("{}", evidence.tier)),
+            duration_ms: t.elapsed().as_millis() as u64,
+        });
+        Some(evidence)
+    } else {
+        let t = Instant::now();
+        match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, 16 * 1024 * 1024) {
+            Ok(sysfs_bar) => {
+                let evidence = classify_tier(&sysfs_bar);
+                steps.push(HandoffStep {
+                    name: "tier_classify".into(), ok: true,
+                    detail: Some(format!("{} (via sysfs)", evidence.tier)),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+                Some(evidence)
+            }
+            Err(e) => {
+                steps.push(HandoffStep {
+                    name: "tier_classify".into(), ok: false,
+                    detail: Some(format!("BAR0 access failed: {e}")),
+                    duration_ms: t.elapsed().as_millis() as u64,
+                });
+                None
+            }
+        }
+    };
 
     // ── Step 7b: Catalyst Preservation ────────────────────────────
     //
@@ -1412,6 +1909,42 @@ pub fn execute_handoff(
 
     // _handoff_guard drops here, releasing the per-BDF lock
 
+    // ── Build PRI ring anchor from boot service evidence ─────────
+    let pri_ring_anchor = boot_evidence.as_ref().map(|ev| {
+        let mut anchor = PriRingAnchor::from_evidence(&config.bdf, ev.clone());
+        // Post-recovery health: probe current BAR0 state to classify
+        let health = if let Ok(bar0) = crate::vfio::device::MappedBar::from_sysfs_rw(
+            &config.bdf, 16 * 1024 * 1024,
+        ) {
+            let pmc = bar0.read_u32(0x200).unwrap_or(0);
+            let fecs = bar0.read_u32(0x409100).unwrap_or(0xDEAD);
+            let pgraph_on = pmc & (1 << 12) != 0;
+            let fecs_ok = fecs & 0xBADF_0000 != 0xBADF_0000;
+            let tpc0 = bar0.read_u32(0x504000).unwrap_or(0xBADF);
+            let tpc_ok = tpc0 & 0xBADF_0000 != 0xBADF_0000;
+            if pgraph_on && fecs_ok && tpc_ok {
+                PriRingHealth::Healthy
+            } else if pgraph_on && fecs_ok {
+                // PGRAPH on, falcons accessible, but TPC/GPC sub-ring not working
+                // This is the expected state after PRI ring recovery (falcon HS-locked)
+                PriRingHealth::Degraded { faulted_domains: 1 }
+            } else {
+                PriRingHealth::Destroyed
+            }
+        } else {
+            PriRingHealth::Destroyed
+        };
+        anchor.update_health(health);
+        tracing::info!(
+            bdf = config.bdf.as_str(),
+            health = ?anchor.health,
+            compute_ready = anchor.is_compute_ready(),
+            needs_reboot = anchor.needs_reboot(),
+            "PRI ring anchor created from post-recovery state"
+        );
+        anchor
+    });
+
     HandoffResult {
         bdf: config.bdf.clone(),
         success: true,
@@ -1424,8 +1957,144 @@ pub fn execute_handoff(
         catalyst_snapshot_path,
         catalyst_alive_count,
         catalyst_tier,
+        boot_service_evidence: boot_evidence,
+        pri_ring_anchor,
         total_ms: overall.elapsed().as_millis() as u64,
     }
+}
+
+/// Recover the GPU's PRI ring after PCI driver unbind.
+///
+/// The kernel's PCI framework clears PMC_ENABLE during unbind, which disables
+/// PGRAPH and kills PRI ring routing to GPC/TPC/FECS/GPCCS. This function:
+/// 1. Re-enables PGRAPH in PMC_ENABLE (bit 12)
+/// 2. Acknowledges any pending PRI ring interrupts
+/// 3. Enumerates PRI ring stations
+/// 4. Starts the PRI ring
+/// 5. Verifies top-level falcon registers are accessible
+fn recover_pri_ring(bdf: &str) -> Result<String, String> {
+    let bar0 = crate::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
+        .map_err(|e| format!("BAR0 open failed: {e}"))?;
+
+    // Read current PMC_ENABLE
+    let pmc_before = bar0.read_u32(0x200).unwrap_or(0);
+    let pgraph_was_on = pmc_before & (1 << 12) != 0;
+
+    // Enable PGRAPH (bit 12) if not already set
+    if !pgraph_was_on {
+        let new_pmc = pmc_before | (1 << 12);
+        bar0.write_u32(0x200, new_pmc)
+            .map_err(|e| format!("PMC_ENABLE write failed: {e}"))?;
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    let pmc_after = bar0.read_u32(0x200).unwrap_or(0);
+
+    // Acknowledge pending PRI ring interrupts
+    let pri_intr = bar0.read_u32(0x120048).unwrap_or(0);
+    if pri_intr != 0 {
+        bar0.write_u32(0x12004c, 0x2)
+            .map_err(|e| format!("PRI ring ack failed: {e}"))?;
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+
+    // Enumerate PRI ring stations
+    bar0.write_u32(0x12004c, 0x4)
+        .map_err(|e| format!("PRI ring enumerate failed: {e}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    let status_enum = bar0.read_u32(0x120050).unwrap_or(0xFF);
+
+    // Start PRI ring
+    bar0.write_u32(0x12004c, 0x1)
+        .map_err(|e| format!("PRI ring start failed: {e}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    let status_start = bar0.read_u32(0x120050).unwrap_or(0xFF);
+
+    // Verify falcon accessibility
+    let fecs_cpuctl = bar0.read_u32(0x409100).unwrap_or(0xDEAD);
+    let fecs_pc = bar0.read_u32(0x40911c).unwrap_or(0xDEAD);
+    let gpccs_cpuctl = bar0.read_u32(0x41a100).unwrap_or(0xDEAD);
+    let fecs_accessible = fecs_cpuctl & 0xBADF_0000 != 0xBADF_0000;
+    let gpccs_accessible = gpccs_cpuctl & 0xBADF_0000 != 0xBADF_0000;
+
+    tracing::info!(
+        bdf,
+        pmc_before = format_args!("{:#010x}", pmc_before),
+        pmc_after = format_args!("{:#010x}", pmc_after),
+        pgraph_was_on,
+        pri_intr_before = format_args!("{:#010x}", pri_intr),
+        status_after_enum = format_args!("{:#010x}", status_enum),
+        status_after_start = format_args!("{:#010x}", status_start),
+        fecs_cpuctl = format_args!("{:#010x}", fecs_cpuctl),
+        fecs_pc = format_args!("{:#010x}", fecs_pc),
+        gpccs_cpuctl = format_args!("{:#010x}", gpccs_cpuctl),
+        fecs_accessible,
+        gpccs_accessible,
+        "PRI ring recovery complete"
+    );
+
+    // ── Post-recovery IMEM capture ──
+    // Now that PGRAPH is enabled and falcon PIO is unblocked (no RM),
+    // try to read FECS IMEM. If firmware survived unbind, we capture it.
+    let fecs_base = 0x40_9000usize;
+    let imemc_reg = fecs_base + 0x180;
+    let imemd_reg = fecs_base + 0x184;
+    // Set IMEMC: address 0, auto-increment read (bit 25)
+    let _ = bar0.write_u32(imemc_reg, 0x0200_0000);
+    std::thread::sleep(std::time::Duration::from_micros(100));
+    let mut imem_probe = [0u32; 8];
+    for slot in &mut imem_probe {
+        *slot = bar0.read_u32(imemd_reg).unwrap_or(0xDEAD_DEAD);
+    }
+    let imem_nonzero = imem_probe.iter().filter(|&&w| w != 0).count();
+    tracing::info!(
+        bdf,
+        imem_nonzero,
+        w0 = format_args!("{:#010x}", imem_probe[0]),
+        w1 = format_args!("{:#010x}", imem_probe[1]),
+        w2 = format_args!("{:#010x}", imem_probe[2]),
+        w3 = format_args!("{:#010x}", imem_probe[3]),
+        "post-recovery FECS IMEM probe"
+    );
+
+    let imem_status = if imem_nonzero > 0 {
+        // Full FECS + GPCCS IMEM dump
+        let fw_dir = "/var/lib/toadstool/catalysts/firmware";
+        let _ = std::fs::create_dir_all(fw_dir);
+        for (name, eng_base) in [("fecs", 0x40_9000usize), ("gpccs", 0x41_a000usize)] {
+            let ic = eng_base + 0x180;
+            let id = eng_base + 0x184;
+            let imem_size = 32 * 1024usize;
+            let _ = bar0.write_u32(ic, 0x0200_0000);
+            std::thread::sleep(std::time::Duration::from_micros(100));
+            let mut fw_words = Vec::with_capacity(imem_size / 4);
+            for _ in 0..(imem_size / 4) {
+                fw_words.push(bar0.read_u32(id).unwrap_or(0));
+            }
+            let fw_bytes: Vec<u8> = fw_words.iter()
+                .flat_map(|w| w.to_le_bytes()).collect();
+            let nz = fw_bytes.iter().filter(|&&b| b != 0).count();
+            let fw_path = format!("{fw_dir}/{name}_imem_gv100.bin");
+            let _ = std::fs::write(&fw_path, &fw_bytes);
+            tracing::info!(engine = name, path = fw_path.as_str(),
+                size = fw_bytes.len(), nonzero = nz,
+                "{name} IMEM captured post-recovery");
+        }
+        format!(", IMEM={imem_nonzero}/8 words alive")
+    } else {
+        ", IMEM=wiped".into()
+    };
+
+    Ok(format!(
+        "PMC {:#010x}→{:#010x}, PGRAPH={}, ring_status={:#x}, \
+         FECS={} GPCCS={}{}",
+        pmc_before, pmc_after,
+        if pmc_after & (1 << 12) != 0 { "ON" } else { "OFF" },
+        status_start,
+        if fecs_accessible { "accessible" } else { "FAULT" },
+        if gpccs_accessible { "accessible" } else { "FAULT" },
+        imem_status,
+    ))
 }
 
 /// Halt result with rollback. Runs best-effort recovery before returning.
@@ -1511,6 +2180,8 @@ fn halt_result_inner(
         catalyst_snapshot_path: None,
         catalyst_alive_count: None,
         catalyst_tier: None,
+        boot_service_evidence: None,
+        pri_ring_anchor: None,
         total_ms: start.elapsed().as_millis() as u64,
     }
 }
@@ -1550,6 +2221,8 @@ fn deadline_exceeded(
         catalyst_snapshot_path: None,
         catalyst_alive_count: None,
         catalyst_tier: None,
+        boot_service_evidence: None,
+        pri_ring_anchor: None,
         total_ms: start.elapsed().as_millis() as u64,
     }
 }
@@ -1695,7 +2368,7 @@ mod tests {
         assert!(matches!(cfg.module_source, ModuleSourceConfig::DkmsPatched { .. }));
         assert_eq!(cfg.seeder_driver, "nvsov");
         assert_eq!(cfg.module_name, "nvsov");
-        assert_eq!(cfg.settle.as_secs(), 15);
+        assert_eq!(cfg.settle.as_secs(), 60);
         if let ModuleSourceConfig::DkmsPatched { dkms_module, dkms_version, patch_set } = &cfg.module_source {
             assert_eq!(dkms_module, "nvidia");
             assert_eq!(dkms_version, "470.256.02");
@@ -1735,6 +2408,8 @@ mod tests {
             catalyst_snapshot_path: None,
             catalyst_alive_count: None,
             catalyst_tier: None,
+            boot_service_evidence: None,
+            pri_ring_anchor: None,
             total_ms: 6000,
         };
         let s = r.to_string();
@@ -1756,6 +2431,8 @@ mod tests {
             catalyst_snapshot_path: None,
             catalyst_alive_count: None,
             catalyst_tier: None,
+            boot_service_evidence: None,
+            pri_ring_anchor: None,
             total_ms: 100,
         };
         let s = r.to_string();
@@ -1781,6 +2458,8 @@ mod tests {
             catalyst_snapshot_path: None,
             catalyst_alive_count: None,
             catalyst_tier: None,
+            boot_service_evidence: None,
+            pri_ring_anchor: None,
             total_ms: 5000,
         };
         let json = serde_json::to_string(&r).unwrap();

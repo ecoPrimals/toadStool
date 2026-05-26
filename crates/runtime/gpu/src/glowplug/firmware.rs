@@ -25,7 +25,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use toadstool_glowplug::firmware::FirmwareInterface;
+use toadstool_glowplug::firmware::{BootServiceEvidence, FirmwareInterface};
 
 /// Falcon engine register block offsets within BAR0.
 mod regs {
@@ -38,8 +38,12 @@ mod regs {
 
     /// CPUCTL register offset within a Falcon block.
     pub const FALCON_CPUCTL: u64 = 0x100;
-    /// PC / BOOTVEC register offset within a Falcon block.
-    pub const FALCON_PC: u64 = 0x104;
+    /// BOOTVEC register offset within a Falcon block.
+    pub const FALCON_BOOTVEC: u64 = 0x104;
+    /// Falcon STATUS register (execution state flags).
+    pub const FALCON_STATUS: u64 = 0x108;
+    /// Falcon hardware PC (trace PC on Volta+).
+    pub const FALCON_PC: u64 = 0x11c;
 
     /// CPUCTL bit 5: engine is halted (software halt / context-switch freeze).
     /// Bit 4 (0x10) is HRESET — distinct from HALTED.
@@ -125,12 +129,14 @@ impl GpuFirmwareAccess {
         let cpuctl = bar0
             .read_u32(base + regs::FALCON_CPUCTL)
             .map_err(|e| GpuFirmwareError::RegisterReadFailed(e.to_string()))?;
-        let pc = bar0
-            .read_u32(base + regs::FALCON_PC)
-            .map_err(|e| GpuFirmwareError::RegisterReadFailed(e.to_string()))?;
+        // Read both BOOTVEC (entry point) and PC (trace/hw PC)
+        let bootvec = bar0.read_u32(base + regs::FALCON_BOOTVEC).unwrap_or(0);
+        let pc = bar0.read_u32(base + regs::FALCON_PC).unwrap_or(0);
+        // Use BOOTVEC as primary indicator when falcon is in reset (PC=0)
+        let effective_pc = if pc != 0 { pc } else { bootvec };
         let halted = cpuctl & regs::CPUCTL_HALTED != 0;
 
-        Ok(FalconState { cpuctl, pc, halted })
+        Ok(FalconState { cpuctl, pc: effective_pc, halted })
     }
 }
 
@@ -187,6 +193,75 @@ impl FirmwareInterface for GpuFirmwareAccess {
 
     fn engine_name(&self) -> &str {
         "gpu-falcon"
+    }
+
+    fn boot_services_complete(&self) -> bool {
+        let Ok(status) = self.probe_status() else {
+            return false;
+        };
+        // Boot services are complete when FECS firmware is loaded and
+        // executing (cpuctl has the HRESET bit set, indicating firmware
+        // was loaded via ACR, and PC is at a valid address — not a PRI
+        // fault like 0xBADF5040).
+        let fecs_ok = status.fecs.as_ref().is_some_and(|f| {
+            f.cpuctl & 0x10 != 0 && f.pc & 0xBADF_0000 != 0xBADF_0000
+        });
+        let gpccs_ok = status.gpccs.as_ref().is_some_and(|g| {
+            g.cpuctl & 0x10 != 0
+        });
+        fecs_ok && gpccs_ok
+    }
+
+    fn exit_boot_services(&self) -> Result<BootServiceEvidence, Self::Error> {
+        if self.bdf.is_empty() {
+            return Err(GpuFirmwareError::Bar0Unavailable(
+                "no BDF configured".into(),
+            ));
+        }
+
+        let bar0 = nvpmu::Bar0Access::open(&self.bdf)
+            .map_err(|e| GpuFirmwareError::Bar0Unavailable(format!("{}: {e}", self.bdf)))?;
+
+        let fecs = Self::read_falcon(&bar0, regs::FECS_BASE)?;
+        let gpccs = Self::read_falcon(&bar0, regs::GPCCS_BASE)?;
+        let pmu = Self::read_falcon(&bar0, regs::PMU_BASE).ok();
+
+        let pmc_enable = bar0.read_u32(0x200)
+            .map_err(|e| GpuFirmwareError::RegisterReadFailed(e.to_string()))?;
+
+        let mut evidence = BootServiceEvidence::new(
+            "gpu-falcon",
+            "FECS/GPCCS/PMU state captured before ExitBootServices",
+        );
+        evidence.record("bdf", &self.bdf);
+        evidence.record("fecs_cpuctl", format!("{:#010x}", fecs.cpuctl));
+        evidence.record("fecs_pc", format!("{:#010x}", fecs.pc));
+        evidence.record("gpccs_cpuctl", format!("{:#010x}", gpccs.cpuctl));
+        evidence.record("gpccs_pc", format!("{:#010x}", gpccs.pc));
+        evidence.record("pmc_enable", format!("{:#010x}", pmc_enable));
+        if let Some(ref p) = pmu {
+            evidence.record("pmu_cpuctl", format!("{:#010x}", p.cpuctl));
+        }
+
+        // PGRAPH status and PRI ring state
+        evidence.record("pgraph_status",
+            format!("{:#010x}", bar0.read_u32(0x400700).unwrap_or(0xDEAD)));
+        evidence.record("pri_ring_master_status",
+            format!("{:#010x}", bar0.read_u32(0x120050).unwrap_or(0xDEAD)));
+
+        // Probe TPC status across GPCs
+        for gpc in 0..6u32 {
+            let addr = 0x50_4000u64 + u64::from(gpc) * 0x8000;
+            if let Ok(tpc_val) = bar0.read_u32(addr) {
+                let is_fault = tpc_val & 0xBADF_0000 == 0xBADF_0000;
+                evidence.record(
+                    format!("gpc{gpc}_tpc0"),
+                    format!("{:#010x}{}", tpc_val, if is_fault { " FAULT" } else { " ALIVE" }),
+                );
+            }
+        }
+
+        Ok(evidence)
     }
 }
 

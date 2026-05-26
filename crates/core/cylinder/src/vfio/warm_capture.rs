@@ -64,6 +64,24 @@ impl Bar0Snapshot {
         Self::capture(bar0, bdf, label, &offsets)
     }
 
+    /// Capture only known register domains (skipping dead inter-domain gaps).
+    ///
+    /// Reading unmapped MMIO regions causes PCIe completion timeouts (~100μs
+    /// each). A full 16MB scan hits 4M reads, ~7 minutes on GV100. Scanning
+    /// only known domains (641K regs for Volta) finishes in seconds.
+    pub fn capture_domains(
+        bar0: &MappedBar,
+        bdf: &str,
+        label: &str,
+        domains: &[(&str, usize, usize)],
+    ) -> Self {
+        let mut offsets = Vec::new();
+        for &(_, start, end) in domains {
+            offsets.extend((start..end).step_by(4));
+        }
+        Self::capture(bar0, bdf, label, &offsets)
+    }
+
     /// Number of registers captured.
     pub fn len(&self) -> usize {
         self.registers.len()

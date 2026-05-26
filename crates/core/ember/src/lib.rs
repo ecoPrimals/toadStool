@@ -46,6 +46,7 @@ pub mod resource_handle;
 pub mod ring_meta;
 pub mod sysfs;
 pub mod vendor_lifecycle;
+pub mod pri_ring_anchor;
 pub mod vfio_anchor;
 pub mod vfio_handle;
 pub mod warm_keepalive;
@@ -64,6 +65,9 @@ pub use vendor_lifecycle::{
 pub use plx_keepalive::{
     ActivityTracker, KeepaliveHandle, PcieBridgeKeepalive, PlxKeepalive,
     detect_pcie_bridges, detect_plx_bridge, is_pci_bdf, PLX_VENDOR_ID,
+};
+pub use pri_ring_anchor::{
+    BootServiceEvidence as EmberBootServiceEvidence, PriRingAnchor, PriRingHealth,
 };
 pub use vfio_anchor::{AnchorBackendRef, VfioAnchor};
 pub use vfio_handle::{VfioHandleError, VfioResourceHandle};
