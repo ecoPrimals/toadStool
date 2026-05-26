@@ -30,6 +30,12 @@
 //!
 //! The pipeline returns [`SovereignInitResult`] with per-stage outcomes.
 //! Glowplug expects `all_ok`, `compute_ready`, and `halted_at` fields.
+//!
+//! **Important:** `compute_ready` means the init pipeline passed (PTIMER,
+//! PRAMIN, PMC readback), NOT that shader dispatch is possible. On VFIO GPUs
+//! where GPCCS is HS fuse-locked (Volta+), `compute_ready=true` coexists with
+//! `classify_tier()` returning Tier 1 (WarmInfrastructure). Use
+//! `sovereign.classify_tier` for dispatch readiness assessment.
 
 use std::time::Instant;
 

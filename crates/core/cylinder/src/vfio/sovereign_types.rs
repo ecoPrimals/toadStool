@@ -135,7 +135,14 @@ pub struct SovereignInitResult {
     pub identity_raw: u32,
     /// True if every executed stage passed.
     pub all_ok: bool,
-    /// True if the full pipeline completed and GPU is compute-ready.
+    /// True if the full init pipeline completed without errors.
+    ///
+    /// **This is an init health check, NOT a compute dispatch readiness signal.**
+    /// The pipeline verifies PTIMER, PRAMIN sentinel, and PMC_ENABLE readback,
+    /// but does NOT check TPC PRI stations (`0x504000`) or whether shaders can
+    /// actually dispatch. On VFIO Titan V, `compute_ready=true` with
+    /// `classify_tier()` returning Tier 1 (WarmInfrastructure) is expected —
+    /// TPC stations require GPCCS firmware execution which is HS fuse-locked.
     pub compute_ready: bool,
     /// Stage name at which the pipeline was halted (by request or failure).
     #[serde(skip_serializing_if = "Option::is_none")]

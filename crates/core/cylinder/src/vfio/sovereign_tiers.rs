@@ -11,12 +11,14 @@
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 2: Warm Sovereign Compute                                  │
 //! │   GPC fabric + TPC stations → FECS dispatch → shader execution. │
-//! │   Status: CLASSIFIED (Exp 215) — GPC fabric alive (6/6 GPCs),  │
-//! │   but TPC PRI ring stations MISSING (0xBADF5040 at 0x504000+). │
-//! │   SM registers accessible via different PRI sub-path.           │
-//! │   FECS runs (HS poll loop) but cannot dispatch without TPCs.    │
+//! │   Status: NOT ACHIEVED (Exp 224 audit) — classify_tier confirms │
+//! │   tpc_alive=false, tpc_status=0xBADF5040, gpc_enables=0x0.     │
+//! │   TPC PRI ring stations require GPCCS firmware execution.       │
+//! │   GPCCS is HS fuse-locked on GV100 (Volta+).                   │
+//! │   NOTE: sovereign.init compute_ready=true is an init health     │
+//! │   check (PTIMER/PRAMIN/PMC), NOT dispatch readiness.            │
 //! │   PMU software path CLOSED (Exp 211) — HS-locked.              │
-//! │   nouveau never creates TPC stations on Volta (no PMU FW).     │
+//! │   BAR0 register path CLOSED (Exp 217) — firmware-mediated.     │
 //! ├─────────────────────────────────────────────────────────────────┤
 //! │ Tier 1: Warm Sovereign Infrastructure                           │
 //! │   VFIO bind, BAR0 MMIO, DMA allocation, PRAMIN read/write,     │
