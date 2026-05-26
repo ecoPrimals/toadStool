@@ -817,8 +817,7 @@ pub fn sovereign_reagent_capture(params: Option<&Value>) -> Result<Value, JsonRp
         if trace.exists() {
             let output = result.manifest.store_path().join("mmiotrace").join(
                 format!("{}_recipe.json", trace.file_stem()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "trace".to_owned()))
+                    .map_or_else(|| "trace".to_owned(), |s| s.to_string_lossy().to_string()))
             );
             match reagent::distill_mmiotrace_to_reagent(trace, &output) {
                 Ok(summary) => {

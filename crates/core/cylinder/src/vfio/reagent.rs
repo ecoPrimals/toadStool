@@ -112,7 +112,7 @@ pub struct FirmwareBlob {
 }
 
 /// How complete the reagent capture was.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct ReagentCompleteness {
     /// BAR0 register snapshot captured.
     pub bar0_snapshot: bool,
@@ -151,19 +151,7 @@ impl ReagentCompleteness {
     }
 }
 
-impl Default for ReagentCompleteness {
-    fn default() -> Self {
-        Self {
-            bar0_snapshot: false,
-            bar0_replay: false,
-            patch_set: false,
-            falcon_firmware: false,
-            linux_firmware: false,
-            mmiotrace_recipe: false,
-            vram_firmware: false,
-        }
-    }
-}
+// Default derived — all fields are bool (default false).
 
 impl ReagentManifest {
     /// Create a new empty manifest for a capture session.
@@ -266,15 +254,13 @@ impl ReagentManifest {
             &self.patch_set,
             &self.mmiotrace_recipe,
         ];
-        for src_opt in &json_sources {
-            if let Some(src) = src_opt {
-                if src.exists() {
-                    let size = std::fs::metadata(src).map(|m| m.len()).unwrap_or(u64::MAX);
-                    if size < MAX_MIRROR_SIZE {
-                        if let Some(name) = src.file_name() {
-                            std::fs::copy(src, dest_dir.join(name)).ok();
-                        }
-                    }
+        for src in json_sources.into_iter().flatten() {
+            if src.exists() {
+                let size = std::fs::metadata(src).map(|m| m.len()).unwrap_or(u64::MAX);
+                if size < MAX_MIRROR_SIZE
+                    && let Some(name) = src.file_name()
+                {
+                    std::fs::copy(src, dest_dir.join(name)).ok();
                 }
             }
         }
@@ -673,8 +659,7 @@ pub fn execute_reagent_capture(
         StrategyResult {
             success: bar0_result.is_ok(),
             detail: bar0_result
-                .as_ref()
-                .map(|s| s.clone())
+                .clone()
                 .unwrap_or_else(|e| format!("Failed: {e}")),
             artifacts: HashMap::new(),
         },
@@ -682,7 +667,7 @@ pub fn execute_reagent_capture(
 
     // Strategy 3: Copy existing catalyst artifacts if available
     let catalyst_dir = PathBuf::from("/var/lib/toadstool/catalysts");
-    if let Ok(()) = copy_catalyst_artifacts(&catalyst_dir, &store_dir, &mut manifest) {
+    if copy_catalyst_artifacts(&catalyst_dir, &store_dir, &mut manifest).is_ok() {
         strategy_results.insert(
             "catalyst_artifacts".to_owned(),
             StrategyResult {
@@ -745,16 +730,16 @@ fn copy_catalyst_artifacts(
 
     // Copy patch set recipe if available
     let recipes_dir = catalyst_dir.join("recipes");
-    if recipes_dir.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(&recipes_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().is_some_and(|e| e == "json") {
-                    let dest = reagent_dir.join(path.file_name().unwrap());
-                    if std::fs::copy(&path, &dest).is_ok() {
-                        manifest.patch_set = Some(dest);
-                        manifest.completeness.patch_set = true;
-                    }
+    if recipes_dir.is_dir()
+        && let Ok(entries) = std::fs::read_dir(&recipes_dir)
+    {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "json") {
+                let dest = reagent_dir.join(path.file_name().unwrap());
+                if std::fs::copy(&path, &dest).is_ok() {
+                    manifest.patch_set = Some(dest);
+                    manifest.completeness.patch_set = true;
                 }
             }
         }

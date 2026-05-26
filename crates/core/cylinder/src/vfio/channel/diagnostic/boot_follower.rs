@@ -154,10 +154,9 @@ impl BootTrace {
             if parts[0] == "MAP" && parts.len() >= 6 {
                 if let Ok(addr) = u64::from_str_radix(parts[3].trim_start_matches("0x"), 16)
                     && let Ok(size) = u64::from_str_radix(parts[5].trim_start_matches("0x"), 16)
+                    && (bar0_base.is_none() || size >= 0x100_0000)
                 {
-                    if bar0_base.is_none() || size >= 0x100_0000 {
-                        bar0_base = Some(addr);
-                    }
+                    bar0_base = Some(addr);
                 }
                 continue;
             }

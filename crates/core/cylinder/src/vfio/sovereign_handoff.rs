@@ -446,6 +446,7 @@ pub fn probe_runtime_services(bdf: &str) -> RuntimeServicesProbe {
 /// operation exceeds its deadline, the child is killed and rollback runs.
 ///
 /// The overall pipeline has a 60s wall-clock deadline.
+#[allow(clippy::too_many_lines, reason = "sovereign handoff is a linear hardware init pipeline — splitting would obscure the sequencing")]
 pub fn execute_handoff(
     config: &HandoffConfig,
     bar0: Option<&crate::vfio::device::MappedBar>,
@@ -1311,7 +1312,7 @@ pub fn execute_handoff(
                             .flat_map(|w| w.to_le_bytes()).collect();
                         let nonzero_bytes = fw_bytes.iter().filter(|&&b| b != 0).count();
                         let fw_path = format!("{fw_dir}/{name}_imem_gv100.bin");
-                        if let Ok(()) = std::fs::write(&fw_path, &fw_bytes) {
+                        if std::fs::write(&fw_path, &fw_bytes).is_ok() {
                             evidence.record(
                                 format!("{name}_imem_captured"),
                                 format!("{} bytes, {} nonzero", fw_bytes.len(), nonzero_bytes),

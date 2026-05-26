@@ -21,6 +21,20 @@ use super::framing;
 /// Request timeout for IPC operations (from config defaults)
 pub const IPC_TIMEOUT: Duration = timeouts::TCP_CONNECT_TIMEOUT;
 
+/// Capabilities advertised to Songbird via `ipc.register`.
+/// Must stay aligned with the `primal.announce` handler in `identity.rs`.
+pub const DISCOVERY_CAPABILITIES: &[&str] = &[
+    "compute",
+    "workload",
+    "orchestration",
+    "gpu",
+    "wasm",
+    "container",
+    "hardware_transport",
+    "shader_dispatch",
+    "hardware_learning",
+];
+
 /// Get runtime directory: `$XDG_RUNTIME_DIR` → `$BIOMEOS_RUNTIME_DIR` → `/run/user/$UID` → temp dir.
 fn get_runtime_dir() -> String {
     std::env::var("XDG_RUNTIME_DIR")
@@ -79,7 +93,7 @@ pub async fn register_with_discovery() -> ToadStoolResult<()> {
         "method": "ipc.register",
         "params": {
             "primal_id": PRIMAL_NAME,
-            "capabilities": ["compute.dispatch", "compute.capabilities"],
+            "capabilities": DISCOVERY_CAPABILITIES,
             "endpoint": endpoint
         },
         "id": 1

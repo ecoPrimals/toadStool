@@ -48,12 +48,14 @@ async fn test_find_by_capability_graceful_failure() {
 
 #[test]
 fn test_json_rpc_request_format() {
+    use super::connection::DISCOVERY_CAPABILITIES;
+
     let request = json!({
         "jsonrpc": toadstool_common::constants::jsonrpc::VERSION,
         "method": "ipc.register",
         "params": {
             "primal_id": "toadstool",
-            "capabilities": ["compute.dispatch", "compute.capabilities"]
+            "capabilities": DISCOVERY_CAPABILITIES
         },
         "id": 1
     });
@@ -62,9 +64,11 @@ fn test_json_rpc_request_format() {
     let params = request.get("params").unwrap();
     assert_eq!(params.get("primal_id").unwrap(), "toadstool");
     let caps = params.get("capabilities").unwrap().as_array().unwrap();
-    assert_eq!(caps.len(), 2);
-    assert_eq!(caps[0], "compute.dispatch");
-    assert_eq!(caps[1], "compute.capabilities");
+    assert!(caps.len() >= 5, "Node Atomic capability set should have 5+ entries");
+    assert!(caps.contains(&json!("compute")));
+    assert!(caps.contains(&json!("workload")));
+    assert!(caps.contains(&json!("orchestration")));
+    assert!(caps.contains(&json!("gpu")));
 }
 
 #[test]
@@ -420,8 +424,9 @@ async fn test_register_with_discovery_sends_ipc_register_method() {
     let params = req.get("params").unwrap();
     assert_eq!(params.get("primal_id").unwrap(), "toadstool");
     let caps = params.get("capabilities").unwrap().as_array().unwrap();
-    assert!(caps.contains(&json!("compute.dispatch")));
-    assert!(caps.contains(&json!("compute.capabilities")));
+    assert!(caps.contains(&json!("compute")));
+    assert!(caps.contains(&json!("workload")));
+    assert!(caps.contains(&json!("orchestration")));
     let endpoint = params.get("endpoint").unwrap().as_str().unwrap();
     assert!(
         endpoint.starts_with("unix://"),

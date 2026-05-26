@@ -1610,10 +1610,11 @@ Daemon routes now accept canonical `health.liveness`, `health.readiness`, `healt
 in addition to `daemon.health`, aligning with main server health routing and wateringHole
 semantic method naming standard.
 
-### D-IPC-NEURAL-API — RESOLVED S172-4
-IPC registration evolved from legacy `ipc.register` / `ipc.resolve` / `ipc.capabilities`
-to wateringHole Neural API naming: `capability.register` / `capability.resolve` /
-`capability.find` (`connection.rs`).
+### D-IPC-NEURAL-API — RESOLVED S172-4, updated S275
+IPC registration uses `ipc.register` (outbound to Songbird via `register_with_discovery()`)
+and `ipc.find_capability` (outbound via `find_by_capability()`). Capability list aligned
+with Node Atomic set in S275 (`DISCOVERY_CAPABILITIES` constant in `connection.rs`).
+`primal.announce` (Neural API, S270) is a separate inbound handler + outbound self-announce.
 
 ### D-CAPABILITY-SYMLINKS — RESOLVED S172-4
 `ipc/platform/unix.rs` `bind()` now creates capability symlinks (e.g. `compute.sock` →

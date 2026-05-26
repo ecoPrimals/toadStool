@@ -41,6 +41,7 @@ mod regs {
     /// BOOTVEC register offset within a Falcon block.
     pub const FALCON_BOOTVEC: u64 = 0x104;
     /// Falcon STATUS register (execution state flags).
+    #[expect(dead_code, reason = "architectural register offset — consumed when falcon status polling lands")]
     pub const FALCON_STATUS: u64 = 0x108;
     /// Falcon hardware PC (trace PC on Volta+).
     pub const FALCON_PC: u64 = 0x11c;

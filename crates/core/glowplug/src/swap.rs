@@ -322,36 +322,33 @@ impl<E: SwapExecutor> SwapOrchestrator<E> {
         // Step 3 (optional): ExitBootServices — capture firmware evidence
         if let Some(ref ebs_fn) = self.exit_boot_services {
             let step_start = Instant::now();
-            match ebs_fn(device) {
-                Some(evidence) => {
-                    let n_preserved = evidence.preserved_state.len();
-                    tracing::info!(
-                        device = device_label.as_str(),
-                        engine = evidence.engine.as_str(),
-                        preserved_keys = n_preserved,
-                        "ExitBootServices: firmware evidence captured"
-                    );
-                    steps.push(BootStep::ok(
-                        "exit_boot_services",
-                        Some(format!(
-                            "engine={} preserved={n_preserved} keys",
-                            evidence.engine
-                        )),
-                        step_start.elapsed().as_millis() as u64,
-                    ));
-                }
-                None => {
-                    tracing::debug!(
-                        device = device_label.as_str(),
-                        "ExitBootServices: no evidence (firmware not in boot services mode)"
-                    );
-                    steps.push(BootStep {
-                        name: "exit_boot_services".into(),
-                        status: StepStatus::Skipped,
-                        detail: Some("firmware not in boot services mode".into()),
-                        duration_ms: step_start.elapsed().as_millis() as u64,
-                    });
-                }
+            if let Some(evidence) = ebs_fn(device) {
+                let n_preserved = evidence.preserved_state.len();
+                tracing::info!(
+                    device = device_label.as_str(),
+                    engine = evidence.engine.as_str(),
+                    preserved_keys = n_preserved,
+                    "ExitBootServices: firmware evidence captured"
+                );
+                steps.push(BootStep::ok(
+                    "exit_boot_services",
+                    Some(format!(
+                        "engine={} preserved={n_preserved} keys",
+                        evidence.engine
+                    )),
+                    step_start.elapsed().as_millis() as u64,
+                ));
+            } else {
+                tracing::debug!(
+                    device = device_label.as_str(),
+                    "ExitBootServices: no evidence (firmware not in boot services mode)"
+                );
+                steps.push(BootStep {
+                    name: "exit_boot_services".into(),
+                    status: StepStatus::Skipped,
+                    detail: Some("firmware not in boot services mode".into()),
+                    duration_ms: step_start.elapsed().as_millis() as u64,
+                });
             }
         }
 
