@@ -719,7 +719,7 @@ impl DispatchHandler {
         let anchors = self.anchor_store.lock().await;
         let anchor = anchors.get(bdf)?;
         let view = toadstool_ember::WarmKeepalive::from_ref(anchor);
-        let dma = dma_from_keepalive(&view);
+        let dma = dma_from_keepalive(&view)?;
 
         match toadstool_cylinder::vfio::clutch::Clutch::engage(bdf, view.device_fd(), dma.clone()) {
             Ok(engaged) => {
@@ -875,14 +875,15 @@ pub(super) fn create_cylinder_device_factory() -> Option<LocalDeviceFactory> {
 /// Convert a `WarmKeepaliveRef`'s DMA spec into cylinder's `DmaBackend`.
 fn dma_from_keepalive(
     view: &toadstool_ember::warm_keepalive::WarmKeepaliveRef<'_>,
-) -> toadstool_cylinder::vfio::DmaBackend {
+) -> Option<toadstool_cylinder::vfio::DmaBackend> {
     let spec = view.make_dma_backend();
     if let Some((iommufd, ioas_id)) = spec.as_iommufd() {
-        toadstool_cylinder::vfio::clutch::Clutch::dma_backend_from_iommufd(iommufd, ioas_id)
+        Some(toadstool_cylinder::vfio::clutch::Clutch::dma_backend_from_iommufd(iommufd, ioas_id))
     } else if let Some(container) = spec.as_legacy_container() {
-        toadstool_cylinder::vfio::clutch::Clutch::dma_backend_from_legacy(container)
+        Some(toadstool_cylinder::vfio::clutch::Clutch::dma_backend_from_legacy(container))
     } else {
-        unreachable!("DmaSpec must be either iommufd or legacy")
+        tracing::error!("DmaSpec is neither iommufd nor legacy — cannot create DMA backend");
+        None
     }
 }
 

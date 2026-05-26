@@ -48,9 +48,10 @@ impl MmioRegion {
     /// - `len` must match the length passed to `mmap`.
     #[must_use]
     pub(crate) unsafe fn new(ptr: *mut u8, len: usize) -> Self {
-        let ptr = NonNull::new(ptr).expect("MmioRegion::new: mmap pointer must be non-null");
+        assert!(!ptr.is_null(), "MmioRegion::new: mmap pointer must be non-null (caller broke safety contract)");
         Self {
-            ptr,
+            // SAFETY: asserted non-null above
+            ptr: unsafe { NonNull::new_unchecked(ptr) },
             len,
             backing: Backing::Mmap,
         }

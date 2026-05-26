@@ -73,25 +73,15 @@ pub fn probe_channel(
     let mut pd0 = DmaBuffer::new(container.clone(), 4096, l5_pd0_iova).ok();
     let mut pt0 = DmaBuffer::new(container.clone(), 4096, l5_pt0_iova).ok();
 
-    let pt_ok = pd3.is_some() && pd2.is_some() && pd1.is_some() && pd0.is_some() && pt0.is_some();
-
-    if pt_ok {
+    if let (Some(pd3), Some(pd2), Some(pd1), Some(pd0), Some(pt0)) =
+        (&mut pd3, &mut pd2, &mut pd1, &mut pd0, &mut pt0)
+    {
         crate::vfio::channel::page_tables::populate_page_tables_custom(
-            pd3.as_mut()
-                .expect("pt_ok guarantees all page table buffers are Some")
-                .as_mut_slice(),
-            pd2.as_mut()
-                .expect("pt_ok guarantees all page table buffers are Some")
-                .as_mut_slice(),
-            pd1.as_mut()
-                .expect("pt_ok guarantees all page table buffers are Some")
-                .as_mut_slice(),
-            pd0.as_mut()
-                .expect("pt_ok guarantees all page table buffers are Some")
-                .as_mut_slice(),
-            pt0.as_mut()
-                .expect("pt_ok guarantees all page table buffers are Some")
-                .as_mut_slice(),
+            pd3.as_mut_slice(),
+            pd2.as_mut_slice(),
+            pd1.as_mut_slice(),
+            pd0.as_mut_slice(),
+            pt0.as_mut_slice(),
             l5_pd2_iova,
             l5_pd1_iova,
             l5_pd0_iova,
@@ -257,11 +247,10 @@ pub fn probe_channel(
             crate::vfio::cache_ops::clflush_range(&userd.as_slice()[ramuserd::GP_GET..]);
             crate::vfio::cache_ops::memory_fence();
         }
-        let userd_gp_get = u32::from_le_bytes(
-            userd.as_slice()[ramuserd::GP_GET..ramuserd::GP_GET + 4]
-                .try_into()
-                .expect("4-byte slice always fits [u8; 4]"),
-        );
+        let gp_get_bytes: [u8; 4] = userd.as_slice()[ramuserd::GP_GET..ramuserd::GP_GET + 4]
+            .try_into()
+            .unwrap_or([0; 4]);
+        let userd_gp_get = u32::from_le_bytes(gp_get_bytes);
 
         let context_loaded = sig != 0xBEEF_0010 && gpbase != 0xBEEF_0048;
         let sig_correct = sig == 0x0000_FACE;

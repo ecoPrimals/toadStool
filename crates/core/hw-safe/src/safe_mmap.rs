@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![allow(
     unsafe_code,
-    reason = "memmap2 map_raw requires unsafe — containment zone"
+    reason = "mmap/munmap require unsafe — containment zone"
 )]
 
 //! RAII memory-mapped file region.
 //!
-//! [`SafeMmapRegion`] wraps [`memmap2::MmapRaw`] for device BAR files, sysfs
-//! resource files, and similar file-backed hardware mappings. The mapping
-//! lifetime (munmap on drop) is handled by `memmap2`.
+//! [`SafeMmapRegion`] wraps `rustix::mm::mmap`/`munmap` for device BAR files,
+//! sysfs resource files, and similar file-backed hardware mappings. The mapping
+//! lifetime (munmap on drop) is managed by the RAII struct.
 //!
 //! This replaces the duplicate mmap patterns in:
 //! - `akida-driver` `MmapRegion`
@@ -16,11 +16,11 @@
 //! - `display` V4L2 device mappings
 
 use std::fs::File;
+use std::os::fd::AsFd;
 use std::path::Path;
 use std::ptr::NonNull;
 
-use memmap2::{MmapOptions, MmapRaw};
-
+use crate::ExclusivePtr;
 use crate::volatile_mmio::VolatileMmio;
 
 /// Error type for mmap operations.
@@ -48,20 +48,26 @@ pub enum MmapError {
         /// Underlying I/O error.
         source: std::io::Error,
     },
+    /// mmap returned a null pointer.
+    #[error("mmap returned null for {path}")]
+    NullPointer {
+        /// Path with null mmap result.
+        path: String,
+    },
 }
 
 /// RAII memory-mapped file region.
 ///
 /// Maps a file (typically a PCI BAR resource, sysfs attribute, or device
-/// node) into the process address space. Unmaps automatically on drop
-/// (handled by [`memmap2`]).
+/// node) into the process address space. Unmaps automatically on drop.
 ///
 /// ## Volatile MMIO
 ///
 /// For hardware register access, use [`as_volatile`](SafeMmapRegion::as_volatile)
 /// to get a [`VolatileMmio`] view with bounds-checked volatile reads and writes.
 pub struct SafeMmapRegion {
-    mmap: MmapRaw,
+    ptr: ExclusivePtr,
+    size: usize,
     _file: File,
 }
 
@@ -74,15 +80,32 @@ impl SafeMmapRegion {
     /// the mmap syscall fails.
     pub fn map_shared_rw(path: &Path) -> Result<Self, MmapError> {
         let (file, size) = Self::open_validated(path, true)?;
-        let mmap = MmapOptions::new()
-            .len(size)
-            .map_raw(&file)
-            .map_err(|source| MmapError::MmapFailed {
-                path: path.display().to_string(),
-                source,
-            })?;
+        let path_str = path.display().to_string();
+
+        // SAFETY: file is a valid open descriptor; size > 0 validated above;
+        // PROT_READ|PROT_WRITE + MAP_SHARED are correct for device BAR files.
+        let raw = unsafe {
+            rustix::mm::mmap(
+                std::ptr::null_mut(),
+                size,
+                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
+                rustix::mm::MapFlags::SHARED,
+                file.as_fd(),
+                0,
+            )
+        }
+        .map_err(|e| MmapError::MmapFailed {
+            path: path_str.clone(),
+            source: e.into(),
+        })?;
+
+        let ptr = NonNull::new(raw.cast()).ok_or(MmapError::NullPointer { path: path_str })?;
         tracing::debug!(path = %path.display(), size, "mmap region created (rw)");
-        Ok(Self { mmap, _file: file })
+        Ok(Self {
+            ptr: ExclusivePtr::new(ptr),
+            size,
+            _file: file,
+        })
     }
 
     /// Map a file as a shared read-only memory region.
@@ -93,15 +116,32 @@ impl SafeMmapRegion {
     /// the mmap syscall fails.
     pub fn map_shared_ro(path: &Path) -> Result<Self, MmapError> {
         let (file, size) = Self::open_validated(path, false)?;
-        let mmap = MmapOptions::new()
-            .len(size)
-            .map_raw_read_only(&file)
-            .map_err(|source| MmapError::MmapFailed {
-                path: path.display().to_string(),
-                source,
-            })?;
+        let path_str = path.display().to_string();
+
+        // SAFETY: file is a valid open descriptor; size > 0 validated above;
+        // PROT_READ + MAP_SHARED is correct for read-only device mappings.
+        let raw = unsafe {
+            rustix::mm::mmap(
+                std::ptr::null_mut(),
+                size,
+                rustix::mm::ProtFlags::READ,
+                rustix::mm::MapFlags::SHARED,
+                file.as_fd(),
+                0,
+            )
+        }
+        .map_err(|e| MmapError::MmapFailed {
+            path: path_str.clone(),
+            source: e.into(),
+        })?;
+
+        let ptr = NonNull::new(raw.cast()).ok_or(MmapError::NullPointer { path: path_str })?;
         tracing::debug!(path = %path.display(), size, "mmap region created (ro)");
-        Ok(Self { mmap, _file: file })
+        Ok(Self {
+            ptr: ExclusivePtr::new(ptr),
+            size,
+            _file: file,
+        })
     }
 
     fn open_validated(path: &Path, writable: bool) -> Result<(File, usize), MmapError> {
@@ -134,53 +174,41 @@ impl SafeMmapRegion {
     /// Size of the mapped region in bytes.
     #[must_use]
     pub fn size(&self) -> usize {
-        self.mmap.len()
+        self.size
     }
 
     /// Get a [`VolatileMmio`] view for bounds-checked volatile register access.
     ///
     /// The returned view borrows this region — the mapping stays alive.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `memmap2` returned a null pointer, which should never happen
-    /// after a successful `map_raw` call.
     #[must_use]
     pub fn as_volatile(&self) -> VolatileMmio<'_> {
-        debug_assert!(
-            self.mmap.len() > 0,
-            "SafeMmapRegion invariant: non-empty mapping (see open_validated)"
-        );
-        // SAFETY: mmap is valid (from a successful map_raw call). as_mut_ptr
-        // returns a valid pointer for len() bytes. The VolatileMmio borrows
-        // self, preventing use-after-unmap.
-        unsafe {
-            VolatileMmio::new(
-                NonNull::new(self.mmap.as_mut_ptr())
-                    .expect("memmap2 returned null — mapping was successful"),
-                self.mmap.len(),
-            )
-        }
+        // SAFETY: ptr is valid for `size` bytes from the successful mmap.
+        // The VolatileMmio borrows self, preventing use-after-unmap.
+        unsafe { VolatileMmio::new(self.ptr.as_non_null(), self.size) }
     }
 
     /// Raw pointer to the mapped region. Use [`as_volatile`](Self::as_volatile)
     /// for safe register access instead.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `memmap2` returned a null pointer, which should never happen
-    /// after a successful `map_raw` call.
     #[must_use]
     pub fn as_ptr(&self) -> NonNull<u8> {
-        NonNull::new(self.mmap.as_mut_ptr())
-            .expect("memmap2 returned null — mapping was successful")
+        self.ptr.as_non_null()
+    }
+}
+
+impl Drop for SafeMmapRegion {
+    fn drop(&mut self) {
+        // SAFETY: ptr and size from a successful mmap in constructor;
+        // Drop runs exactly once; no outstanding borrows possible.
+        unsafe {
+            let _ = rustix::mm::munmap(self.ptr.as_ptr().cast(), self.size);
+        }
     }
 }
 
 impl std::fmt::Debug for SafeMmapRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SafeMmapRegion")
-            .field("size", &self.mmap.len())
+            .field("size", &self.size)
             .finish_non_exhaustive()
     }
 }
@@ -238,7 +266,7 @@ mod tests {
 
         assert!(mmio.read_u32(0).is_ok());
         assert!(mmio.read_u32(4).is_ok());
-        assert!(mmio.read_u32(8).is_err()); // out of bounds
+        assert!(mmio.read_u32(8).is_err());
     }
 
     #[test]

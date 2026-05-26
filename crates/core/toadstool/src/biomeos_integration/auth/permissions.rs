@@ -125,7 +125,9 @@ impl<'de> Deserialize<'de> for PrimalTypeConfig {
                 map.len()
             )));
         }
-        let (k, v) = map.into_iter().next().expect("len checked");
+        let Some((k, v)) = map.into_iter().next() else {
+            return Err(D::Error::custom("empty manifest map after len check"));
+        };
         match k.as_str() {
             manifest_serde::TOADSTOOL => ToadStoolConfig::deserialize(v)
                 .map(Self::ToadStool)

@@ -51,6 +51,7 @@ pub mod types;
 mod utils;
 
 // Re-export core types and functionality
+#[allow(deprecated, reason = "re-exporting deprecated NestGateResult for backward compatibility")]
 pub use types::{
     ArtifactFilters, ArtifactMetadata, ArtifactType, CachedArtifact, CompressionType,
     EncryptionType, NestGateResult, StorageError, StorageInfo, StorageServiceResult, StorageTier,
