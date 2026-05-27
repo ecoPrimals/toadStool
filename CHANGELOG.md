@@ -21,8 +21,11 @@ Comprehensive deep debt audit and execution: eliminated all remaining P0/P1 prod
 - FIXED: `module_patch/mod.rs` — P1 `offset.unwrap()` after filter → `.filter_map()` with `p.offset?`
 - DEPRECATED: `get_capability_to_legacy_map()`, `capabilities_to_dependencies()` in `capability_helpers.rs` — legacy primal name mapping
 - DOCUMENTED: `get_platform_status()` — intentional design: sovereign primal is alive iff process runs
+- FIXED: `workload_executor_test.rs` — 2 `WorkloadFile` literals missing `data_dependencies` field (added S269, tests not updated)
+- FIXED: 3 `unibin_*_tests.rs` files — `start_servers_with_fallback()` calls missing 7th arg `jsonrpc_listener` (added S277, tests not updated)
+- CLEANED: `showcase/` directory removed (fossilized S275, pointer README only). Stale ignore patterns scrubbed (.gitignore, .cursorignore, .cleanignore, tarpaulin.toml). Dangling `[[bench]] jsonrpc_throughput` removed from server Cargo.toml. Migration doc `TODO`/`todo!()` replaced with completed code. S278B handoff archived.
 - VERIFIED: All 3 `unsafe` blocks in `hw-learn/nouveau_drm.rs` already have SAFETY comments
-- VERIFIED: 9,156+ lib tests pass, 0 clippy warnings
+- VERIFIED: All test targets compile (`cargo test --workspace --tests --no-run`). 9,156+ lib tests pass, 0 clippy warnings
 
 ### Session S279 (May 27, 2026) — Exp 229: Catalyst Channel — RM Compute Channel Before Warm Swap
 

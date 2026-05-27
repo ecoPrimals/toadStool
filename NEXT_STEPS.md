@@ -34,7 +34,7 @@ syntax fixed in 3 server files. Test suite fully unblocked.
 
 ### P1: Test Coverage → 90% (D-COV) — Ongoing (S164)
 
-**~83.6% line coverage** (lib-only, 185K lines instrumented). **23,000+ tests** (0 failures, 9,131+ lib-only). Target 90%.
+**~83.6% line coverage** (lib-only, 185K lines instrumented). **23,000+ tests** (0 failures, 9,156+ lib-only). Target 90%.
 
 **S164** expanded coverage with **+94 new tests** across 7 low-coverage files:
 - `resource_validator.rs` 20% → ~75% (+19 tests)
@@ -210,7 +210,7 @@ after Phase D.
 - [x] **Clippy pedantic clean** -- `cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic` zero warnings (S130+)
 - [x] **`#[expect]` evolution** -- production `#[allow]` evolved to `#[expect(lint, reason)]` where the lint fires; ~80 justified `#[allow]` remain (S198); S131+ removed stale suppressions
 - [x] **Spring sync S131+** -- all 5 springs pinned to latest, SPRING_ABSORPTION_TRACKER updated (S131+)
-- [ ] **Test coverage target 90%** -- 23,000+ tests (9,131+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
+- [ ] **Test coverage target 90%** -- 23,000+ tests (9,156+ lib-only); ~83.6% line; mock hardware layers for V4L2/VFIO (MockV4l2Device, MockVfioDevice); push to 90% ongoing
 - [x] **C dep elimination** -- flate2 → rust_backend, procfs default features disabled (S129)
 - [x] **Capability-based ports** -- `resolve_capability_or_legacy_port()` with graceful legacy fallback (S129)
 - [x] **God file splits (round 4)** -- ipc/server.rs, container/lib.rs, ecosystem.rs, handler/mod.rs, nestgate/client.rs (S129)

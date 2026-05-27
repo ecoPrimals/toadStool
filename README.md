@@ -59,7 +59,7 @@ Nest    = Tower  + Storage            <- storage
 | Hardware transport | Implemented | DRM display, V4L2 capture, serial — frame protocol + router |
 | JSON-RPC surface | **88** JSON-RPC methods (direct) + semantic registry |
 | License | AGPL-3.0-or-later -- root LICENSE file + SPDX headers on all files |
-| File size limit | All production files target **< 500 lines** (S203i+S173: 52 production files refactored via test extraction; 3 specialty >700L files smart-refactored into directory modules; remaining >500L files are pure production — hardware drivers, type defs, all <700 lines) |
+| File size limit | Non-hardware production files target **< 500 lines**. 11 files >800L remain — all in `cylinder` VFIO hardware init (single-concern GPU bring-up sequences: pipeline, pfifo, pmu_investigate, sovereign_init, kernel_health, generation profiles, nv_gsp_bridge, reagent). S278 split 7 oversized files (~12,500L) into module dirs. |
 | Test concurrency | Unlimited parallelism (removed global throttle); zero `#[serial]`; test-time mDNS/TCP timeouts via `cfg!(test)`; zero fixed sleeps in non-chaos tests |
 | Environment safety | All env-var tests use `temp_env` (thread-safe), zero `std::env::set_var` in tests |
 
@@ -277,7 +277,7 @@ toadStool/
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
-| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (confirmed S223) |
+| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (confirmed S279) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
