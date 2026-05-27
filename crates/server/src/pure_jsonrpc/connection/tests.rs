@@ -598,3 +598,85 @@ fn test_tcp_idle_timeout_env_override() {
         assert_eq!(timeout, std::time::Duration::from_secs(42));
     });
 }
+
+// ═══════════════════════════════════════════════════════════
+// Early health responder (Wave 54)
+// ═══════════════════════════════════════════════════════════
+
+#[tokio::test]
+async fn early_health_liveness_responds_alive() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock = dir.path().join("test-early-health.sock");
+    let listener = Arc::new(tokio::net::UnixListener::bind(&sock).unwrap());
+    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+
+    let handle = super::spawn_early_health_responder(&listener, stop_rx);
+
+    let mut stream = UnixStream::connect(&sock).await.unwrap();
+    stream
+        .write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"health.liveness\",\"id\":1}\n")
+        .await
+        .unwrap();
+    stream.flush().await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let n = stream.read(&mut buf).await.unwrap();
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap();
+    assert_eq!(resp["result"]["status"], "alive");
+    assert_eq!(resp["id"], 1);
+
+    let _ = stop_tx.send(true);
+    handle.await.unwrap();
+}
+
+#[tokio::test]
+async fn early_health_check_responds_starting() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock = dir.path().join("test-early-check.sock");
+    let listener = Arc::new(tokio::net::UnixListener::bind(&sock).unwrap());
+    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+
+    let handle = super::spawn_early_health_responder(&listener, stop_rx);
+
+    let mut stream = UnixStream::connect(&sock).await.unwrap();
+    stream
+        .write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"health.check\",\"id\":42}\n")
+        .await
+        .unwrap();
+    stream.flush().await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let n = stream.read(&mut buf).await.unwrap();
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap();
+    assert_eq!(resp["result"]["status"], "starting");
+    assert_eq!(resp["id"], 42);
+
+    let _ = stop_tx.send(true);
+    handle.await.unwrap();
+}
+
+#[tokio::test]
+async fn early_health_unknown_method_returns_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let sock = dir.path().join("test-early-unknown.sock");
+    let listener = Arc::new(tokio::net::UnixListener::bind(&sock).unwrap());
+    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+
+    let handle = super::spawn_early_health_responder(&listener, stop_rx);
+
+    let mut stream = UnixStream::connect(&sock).await.unwrap();
+    stream
+        .write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"compute.submit\",\"id\":99}\n")
+        .await
+        .unwrap();
+    stream.flush().await.unwrap();
+
+    let mut buf = vec![0u8; 4096];
+    let n = stream.read(&mut buf).await.unwrap();
+    let resp: serde_json::Value = serde_json::from_slice(&buf[..n]).unwrap();
+    assert_eq!(resp["error"]["code"], -32002);
+    assert!(resp["error"]["message"].as_str().unwrap().contains("initializing"));
+
+    let _ = stop_tx.send(true);
+    handle.await.unwrap();
+}

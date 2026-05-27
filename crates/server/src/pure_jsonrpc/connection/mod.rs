@@ -10,7 +10,7 @@ mod tests;
 mod unix;
 
 pub use tcp::serve_tcp;
-pub use unix::{prebind_unix_listener, serve_unix, serve_unix_prebound};
+pub use unix::{prebind_unix_listener, serve_unix, serve_unix_prebound, spawn_early_health_responder};
 
 use crate::errors::{ServerError, ServerResult};
 use crate::pure_jsonrpc::types::JsonRpcError;

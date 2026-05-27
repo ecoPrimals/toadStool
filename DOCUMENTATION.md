@@ -1,6 +1,6 @@
 # ToadStool Documentation Hub
 
-**Last Updated**: May 2026 — S276
+**Last Updated**: May 2026 — S277
 
 ---
 
@@ -30,11 +30,11 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 
 ---
 
-## Current State (S276 — May 2026)
+## Current State (S277 — May 2026)
 
 **Post-budding, dependency-sovereign, IPC-first, fully concurrent, capability-based.** barraCuda is a separate primal at `ecoPrimals/barraCuda/`. ToadStool is the hardware infrastructure layer — GPU/NPU/CPU discovery, capability probing, workload orchestration, and shader dispatch.
 
-- **23,000+ tests** (9,158+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
+- **23,000+ tests** (9,161+ lib-only), 0 failures, 0 clippy warnings, 0 fmt diffs. Full workspace concurrent test suite.
 - **88 JSON-RPC methods** (direct) + semantic registry. Wire Standard L3 (partial): `cost_estimates`, `operation_dependencies`. **Recommended caller timeout: ≥3 seconds** for health probes during startup.
 - **Phase C complete** (S245–S253) — toadstool-cylinder (153 .rs, 700 tests), DRM/MMIO/AMD/NVIDIA/VFIO hardware modules absorbed from `coral-driver`. `OwnedFd` VFIO fd ownership (S253). SwapOrchestrator real quiesce/persist/restore (S253). `toadstool device` CLI with swap/list/status/warm subcommands (S253). GspBridge trait boundary.
 - **Phase D: Sovereign dispatch validated** (S250–S263) — `try_local_dispatch()` via `ComputeDevice` trait before `coral_client` IPC forward. Full buffer lifecycle. AMD DRM dispatch live. **NV VFIO e2e dispatch validated on Titan V** (S263): warm handoff → VFIO open → channel → DMA roundtrip → GR init. Current frontier: FECS PENDING_CTX_RELOAD.
@@ -44,13 +44,14 @@ These root documents were **fully resolved** and **fossilized** in wateringHole 
 - **Sandbox working_dir production** (S269) — `data_dependencies` pre-dispatch validation with BLAKE3 integrity. `SandboxSpec.working_directory` wired into sandbox manager. 90+ upstream clippy errors absorbed.
 - **Deep Debt** (S240–S273) — All Duration literals extracted to named constants. `CORALREEF_*` env vars deprecated with `TOADSTOOL_*` primaries + deprecation warnings (S253). Zero `#[allow(deprecated)]` remaining. All lint attrs have `reason`. Zero production mocks/TODO/FIXME/unreachable!(). All unsafe SAFETY-documented. `cargo deny check bans` passes clean.
 - **Deep Debt Evolution** (S273) — Production panic surface eliminated (`kernel_health.rs`, dispatch cache, `ember_client.rs`, `secure_enclave`). `dispatch/mod.rs` 1,638→839L via `dispatch/sovereign.rs` extraction. `warm_init.rs` → module dir. 6 CLI `well_known::*` sites migrated to capability-based discovery. VFIO `activity_tracker().record()` wired. hw-safe abstractions validated.
+- **Wave 54: Early Health Responder** (S277) — Health check unresponsive on southGate fixed. Early health responder on pre-bound socket during startup. BTSP not required for health probes.
 - **Deep Debt Evolution II** (S276) — Remaining production unwrap/expect/unreachable eliminated. `handler/sovereign.rs` 1,003L → module directory. `memmap2` removed from hw-safe (rustix mmap). 3 primal-name type aliases deprecated. `ipc.register` capability list aligned to Node Atomic set.
 - **Capability-based everywhere**: 6 CLI hardcoded primal name sites migrated to capability-based discovery (S273); ~400 intentional legacy-compat refs remain (env fallbacks, serde aliases). 0 production mocks. All production logging via `tracing`.
 - **ecoBin v3.0** — Zero C FFI deps. `deny.toml` ring + async-trait + zstd-sys bans active.
 - **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented. Workspace `unsafe_code = "deny"`, **41 crates `forbid`**.
 - **Dual-socket IPC** — `compute.sock` (JSON-RPC primary) + `compute-tarpc.sock` (tarpc hot-path).
 
-See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S276).
+See [CHANGELOG.md](CHANGELOG.md) for full session-by-session history (S43–S277).
 
 ---
 

@@ -137,11 +137,18 @@ pub async fn run_server_main(
     let jsonrpc_socket_path = format::get_socket_path(&family_id, &node_id)?;
     info!("✅ Final socket path: {:?}", jsonrpc_socket_path);
 
-    // Wave 49 startup optimization: pre-bind JSON-RPC socket BEFORE heavy init.
-    // This ensures health probes can connect immediately while wgpu + mDNS run.
+    // Wave 49/54 startup optimization: pre-bind JSON-RPC socket BEFORE heavy init
+    // and start an early health responder so launchers get immediate health.liveness
+    // responses while wgpu + mDNS + executor construction run in the background.
+    let (early_stop_tx, early_stop_rx) = tokio::sync::watch::channel(false);
     let jsonrpc_listener = match crate::pure_jsonrpc::prebind_unix_listener(&jsonrpc_socket_path).await {
         Ok(listener) => {
-            info!("⚡ JSON-RPC socket pre-bound — health probes accepted during init");
+            let listener = Arc::new(listener);
+            let _early_health = crate::pure_jsonrpc::spawn_early_health_responder(
+                &listener,
+                early_stop_rx,
+            );
+            info!("⚡ JSON-RPC socket pre-bound — early health responder active");
             Some(listener)
         }
         Err(e) => {
@@ -252,6 +259,10 @@ pub async fn run_server_main(
     let tarpc_path_for_server = tarpc_socket_path.clone();
     let jsonrpc_socket_for_server = jsonrpc_socket.clone();
     let unibin_for_server = unibin_config.clone();
+
+    // Stop the early health responder — full handler is ready to accept.
+    let _ = early_stop_tx.send(true);
+    tokio::task::yield_now().await;
 
     let server_handle = tokio::spawn(async move {
         match execution::start_servers_with_fallback(

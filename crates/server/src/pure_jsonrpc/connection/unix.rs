@@ -33,7 +33,7 @@ use super::process_request;
 ///
 /// Returns [`ServerError`] if directory creation, socket bind, or permission setting fails.
 pub async fn serve_unix(handler: Arc<JsonRpcHandler>, socket_path: PathBuf) -> ServerResult<()> {
-    let listener = prebind_unix_listener(&socket_path).await?;
+    let listener = Arc::new(prebind_unix_listener(&socket_path).await?);
     serve_unix_prebound(handler, listener).await
 }
 
@@ -93,13 +93,87 @@ pub async fn prebind_unix_listener(socket_path: &std::path::Path) -> ServerResul
     Ok(listener)
 }
 
+/// Spawn a minimal health-only accept loop on a pre-bound listener.
+///
+/// Accepts connections and responds to `health.liveness` / `health.check` /
+/// `health.readiness` with immediate JSON-RPC responses while the full
+/// `JsonRpcHandler` is still being constructed. All other methods return
+/// a `-32002` "server initializing" error.
+///
+/// Returns a `JoinHandle` that resolves when `stop` receives a value. The
+/// caller should send to `stop` once the full handler is ready, then
+/// pass the same `listener` to [`serve_unix_prebound`].
+pub fn spawn_early_health_responder(
+    listener: &Arc<UnixListener>,
+    mut stop: tokio::sync::watch::Receiver<bool>,
+) -> tokio::task::JoinHandle<()> {
+    let listener = Arc::clone(listener);
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                biased;
+                _ = stop.changed() => break,
+                result = listener.accept() => {
+                    match result {
+                        Ok((stream, _)) => {
+                            tokio::spawn(handle_early_health(stream));
+                        }
+                        Err(e) => {
+                            warn!("Early health accept error: {e}");
+                        }
+                    }
+                }
+            }
+        }
+        info!("Early health responder stopped — full handler taking over");
+    })
+}
+
+async fn handle_early_health(stream: UnixStream) {
+    let (reader, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(reader);
+    let mut line = String::new();
+    if reader.read_line(&mut line).await.is_err() || line.trim().is_empty() {
+        return;
+    }
+    let trimmed = line.trim();
+
+    let method = serde_json::from_str::<serde_json::Value>(trimmed)
+        .ok()
+        .and_then(|v| v.get("method")?.as_str().map(String::from));
+    let id = serde_json::from_str::<serde_json::Value>(trimmed)
+        .ok()
+        .and_then(|v| v.get("id").cloned())
+        .unwrap_or(serde_json::Value::Null);
+
+    let response = match method.as_deref() {
+        Some("health.liveness") => {
+            serde_json::json!({"jsonrpc":"2.0","result":{"status":"alive"},"id":id})
+        }
+        Some("health.check" | "toadstool.health" | "compute.health") => {
+            serde_json::json!({"jsonrpc":"2.0","result":{"status":"starting","uptime_secs":0},"id":id})
+        }
+        Some("health.readiness") => {
+            serde_json::json!({"jsonrpc":"2.0","result":{"status":"starting"},"id":id})
+        }
+        _ => {
+            serde_json::json!({"jsonrpc":"2.0","error":{"code":-32002,"message":"Server initializing"},"id":id})
+        }
+    };
+
+    let mut buf = serde_json::to_vec(&response).unwrap_or_default();
+    buf.push(b'\n');
+    let _ = writer.write_all(&buf).await;
+    let _ = writer.flush().await;
+}
+
 /// Serve JSON-RPC on a pre-bound Unix socket listener.
 ///
 /// Used with [`prebind_unix_listener`] to start accepting connections
 /// on a listener that was bound before the full handler was constructed.
 pub async fn serve_unix_prebound(
     handler: Arc<JsonRpcHandler>,
-    listener: UnixListener,
+    listener: Arc<UnixListener>,
 ) -> ServerResult<()> {
     let env = toadstool_common::primal_sockets::SocketPathEnv::from_env();
     let btsp_required = toadstool_common::primal_sockets::is_btsp_required(&env);

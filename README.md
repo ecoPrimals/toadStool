@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S276 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S277 | v0.2.0
 
 ---
 

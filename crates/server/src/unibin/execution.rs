@@ -180,7 +180,7 @@ pub async fn start_servers_with_fallback(
     jsonrpc_socket: PathBuf,
     tcp_port: Option<u16>,
     cfg: &UnibinExecutionConfig,
-    jsonrpc_listener: Option<tokio::net::UnixListener>,
+    jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
 ) -> ServerResult<()> {
     if let Some(port) = tcp_port {
         info!("   --port {port} specified: starting TCP JSON-RPC (UniBin standard)");
@@ -216,7 +216,7 @@ async fn try_unix_servers(
     jsonrpc_handler: &Arc<JsonRpcHandler>,
     socket_path: &PathBuf,
     jsonrpc_socket: &PathBuf,
-    jsonrpc_listener: Option<tokio::net::UnixListener>,
+    jsonrpc_listener: Option<Arc<tokio::net::UnixListener>>,
 ) -> ServerResult<()> {
     if let Some(parent) = socket_path.parent() {
         tokio::fs::create_dir_all(parent)

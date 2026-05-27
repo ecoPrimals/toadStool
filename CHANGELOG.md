@@ -5,7 +5,17 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 26, 2026 (Sessions 43-276)
+## [Unreleased] - May 27, 2026 (Sessions 43-277)
+
+### Session S277 (May 27, 2026) — Wave 54: Early Health Responder
+
+primalSpring Wave 54 response: health check unresponsive on southGate fixed.
+
+- FIXED: Health probes unresponsive during startup — pre-bound socket accepted connections but nobody called accept() until full handler was ready (~4-8s gap)
+- ADDED: `spawn_early_health_responder()` — accepts connections on pre-bound socket immediately, responds to `health.liveness`/`health.check`/`health.readiness` while executor initializes
+- CHANGED: `serve_unix_prebound()` now takes `Arc<UnixListener>` — shared between early responder and full handler
+- DOCUMENTED: BTSP is NOT required for health probes (plaintext auto-detection), socket naming (TOADSTOOL_SOCKET env var override)
+- METRICS: 9,161+ lib tests, 0 clippy warnings
 
 ### Session S276 (May 26, 2026) — Deep Debt Evolution II
 
