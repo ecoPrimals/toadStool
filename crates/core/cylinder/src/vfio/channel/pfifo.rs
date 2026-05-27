@@ -868,7 +868,7 @@ use crate::vfio::device::DmaBackend;
 
 use super::mmu;
 use super::page_tables;
-use super::registers::{self, falcon, pbdma, pccsr, ramfc, usermode};
+use super::registers::{self, falcon, pbdma, pccsr, ramfc};
 use super::VfioChannel;
 
 impl VfioChannel {
@@ -1383,6 +1383,7 @@ impl VfioChannel {
         Ok(chan)
     }
 
+    /// Create a PFIFO channel on the specified runlist.
     pub fn create_on_runlist(
         container: DmaBackend,
         bar0: &MappedBar,

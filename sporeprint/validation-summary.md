@@ -10,8 +10,8 @@ springs = ["hotspring", "wetspring", "airspring", "groundspring", "neuralspring"
 
 ## Status
 
-- **Version**: 0.2.0 (Session S277, May 27, 2026)
-- **Lib tests**: 9,161+ (0 failures, unlimited parallelism)
+- **Version**: 0.2.0 (Session S278, May 27, 2026)
+- **Lib tests**: 9,156+ (0 failures, unlimited parallelism)
 - **Workspace tests**: 23,000+ (0 failures, ~222 hardware-gated ignores)
 - **JSON-RPC methods**: 88 (direct) + semantic registry aliases
 - **Workspace crates**: 47

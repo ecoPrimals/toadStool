@@ -4,7 +4,7 @@
 //! This module is the **canonical source** for RM ABI definitions in toadStool.
 //! Local duplicates in `src/bin/rm_trigger.rs` (and elsewhere) should migrate here.
 
-#![allow(dead_code)]
+#![allow(dead_code, missing_docs, reason = "RM ABI definitions — hardware constants and ioctl structs")]
 
 use bytemuck::Zeroable;
 
@@ -149,7 +149,7 @@ pub struct NvRmAllocParams {
     pub params_size: u32,
     pub flags: u32,
     pub status: u32,
-    pub _pad: u32,
+    _pad: u32,
 }
 
 const _: () = assert!(core::mem::size_of::<NvRmAllocParams>() == 48);
@@ -236,12 +236,12 @@ pub struct Nv0080AllocParams {
     pub h_target_client: u32,
     pub h_target_device: u32,
     pub flags: u32,
-    pub _pad0: u32,
+    _pad0: u32,
     pub va_space_size: u64,
     pub va_start_internal: u64,
     pub va_limit_internal: u64,
     pub va_mode: u32,
-    pub _pad1: u32,
+    _pad1: u32,
 }
 
 /// NV2080 subdevice allocation parameters.
@@ -284,7 +284,7 @@ pub struct NvChannelGroupAllocParams {
     pub h_vaspace: u32,
     pub engine_type: u32,
     pub b_is_calling_context_vgpu_plugin: u8,
-    pub _pad0: [u8; 7],
+    _pad0: [u8; 7],
     pub p_gpu_grp_info: u64,
 }
 
@@ -343,17 +343,17 @@ pub struct NvMemoryAllocParams {
     pub owner: u32,
     pub mem_type: u32,
     pub flags: u32,
-    pub _reserved0: u32,
-    pub _reserved1: u64,
+    _reserved0: u32,
+    _reserved1: u64,
     pub attr: u32,
     pub attr2: u32,
     pub format: u32,
-    pub _reserved2: [u32; 7],
+    _reserved2: [u32; 7],
     pub size: u64,
     pub alignment: u64,
     pub offset: u64,
     pub limit: u64,
-    pub _tail: [u64; 4],
+    _tail: [u64; 4],
 }
 
 /// NV01_MEMORY_VIRTUAL allocation parameters.
@@ -441,7 +441,7 @@ pub struct NvGpuPromoteCtxParams {
     pub virt_address: u64,
     pub size: u64,
     pub entry_count: u32,
-    pub _pad: u32,
+    _pad: u32,
     pub promote_entry: [NvPromoteCtxBufferEntry; GPU_PROMOTE_CONTEXT_MAX_ENTRIES],
 }
 

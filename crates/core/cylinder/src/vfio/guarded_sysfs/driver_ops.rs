@@ -6,8 +6,8 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use super::GuardedSysfsError;
-use super::kmod_build::{insmod_guarded, rmmod_guarded, suppress_bus_reset};
-use super::{PROBE_TIMEOUT, REAP_POLL_CAP, RMMOD_TIMEOUT, UNBIND_TIMEOUT};
+use super::kmod_build::{rmmod_guarded, suppress_bus_reset};
+use super::{REAP_POLL_CAP, RMMOD_TIMEOUT, UNBIND_TIMEOUT};
 
 pub fn sysfs_write(path: &str, value: &str) -> Result<(), GuardedSysfsError> {
     std::fs::write(path, value).map_err(|e| GuardedSysfsError::WriteFailed {
@@ -45,7 +45,7 @@ fn fork_sysfs_child(
             let fd = match open(path_c.as_c_str(), OFlags::WRONLY, Mode::empty()) {
                 Ok(fd) => fd,
                 Err(e) => {
-                    let code = e.raw_os_error() as i32;
+                    let code = e.raw_os_error();
                     rustix::runtime::exit_group(code.min(255) as u8 as i32)
                 },
             };
@@ -213,10 +213,7 @@ pub fn sysfs_read_guarded(
             drop(pipe_write);
             wait_for_child(child_pid, path, timeout)?;
             let mut buf = [0u8; 4096];
-            let n = match rustix::io::read(&pipe_read, &mut buf) {
-                Ok(n) => n,
-                Err(_) => 0,
-            };
+            let n = rustix::io::read(&pipe_read, &mut buf).unwrap_or_default();
             Ok(String::from_utf8_lossy(&buf[..n]).trim().to_string())
         }
     }

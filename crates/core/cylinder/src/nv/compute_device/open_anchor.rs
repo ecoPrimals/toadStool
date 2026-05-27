@@ -58,7 +58,7 @@ impl NvVfioComputeDevice {
         let init = init_channel_buffers(
             &dma_backend,
             &bar0,
-            &profile,
+            profile,
             is_kepler,
             self.fecs_ready,
             &self.bdf,
@@ -71,11 +71,11 @@ impl NvVfioComputeDevice {
                 &bar0,
                 &dma_backend,
                 &init.channel,
-                &profile,
+                profile,
                 &self.bdf,
             );
         } else if fecs_running && !is_kepler {
-            handle_anchor_fecs_running_ungating(&bar0, &init.channel, &profile, &self.bdf)?;
+            handle_anchor_fecs_running_ungating(&bar0, &init.channel, profile, &self.bdf)?;
         } else if fecs_running {
             fecs_setup_channel(&bar0, &init.channel)?;
         }
@@ -127,7 +127,7 @@ fn handle_anchor_catalyst_ungating(
     let _ = ungate_gr_engine(
         bar0,
         &bridge,
-        &profile,
+        profile,
         UngatingLog {
             prefix: "anchor catalyst",
             log_phases: false,
@@ -155,7 +155,7 @@ fn handle_anchor_fecs_running_ungating(
     let result = ungate_gr_engine(
         bar0,
         &bridge,
-        &profile,
+        profile,
         UngatingLog {
             prefix: "anchor",
             log_phases: true,

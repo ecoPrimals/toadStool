@@ -13,6 +13,7 @@ use super::super::nv_gsp_bridge::NvGspBridge;
 pub(crate) struct UngatingResult {
     pub cg_changes: u32,
     pub pri_alive: usize,
+    #[expect(dead_code, reason = "diagnostic field — populated for tracing, not consumed yet")]
     pub pri_faulted: usize,
 }
 

@@ -68,7 +68,7 @@ impl NvVfioComputeDevice {
         let init = init_channel_buffers(
             &dma_backend,
             &bar0,
-            &profile,
+            profile,
             is_kepler,
             self.fecs_ready,
             &self.bdf,
@@ -100,7 +100,7 @@ impl NvVfioComputeDevice {
                 &bar0,
                 &dma_backend,
                 &init.channel,
-                &profile,
+                profile,
                 &self.bdf,
                 fecs_hs_booted,
             )?;
@@ -113,7 +113,7 @@ impl NvVfioComputeDevice {
                 &bar0,
                 &dma_backend,
                 &init.channel,
-                &profile,
+                profile,
                 &self.bdf,
             );
         }
@@ -252,7 +252,7 @@ fn handle_pgraph_ungating_and_fecs_setup(
         let _ = ungate_gr_engine(
             bar0,
             &bridge,
-            &profile,
+            profile,
             UngatingLog {
                 prefix: "ungating",
                 log_phases: true,
@@ -373,7 +373,7 @@ fn handle_catalyst_path(
     let _ = ungate_gr_engine(
         bar0,
         &bridge,
-        &profile,
+        profile,
         UngatingLog {
             prefix: "catalyst",
             log_phases: true,

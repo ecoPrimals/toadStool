@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use super::driver_ops::reap_forked_child;
 use super::GuardedSysfsError;
-use super::{reap_or_orphan, INSMOD_TIMEOUT, REAP_POLL_CAP, RMMOD_TIMEOUT};
+use super::{reap_or_orphan, INSMOD_TIMEOUT, RMMOD_TIMEOUT};
 
 /// Run an arbitrary command with timeout (legacy fallback for non-kmod uses).
 ///
@@ -194,7 +194,7 @@ pub fn insmod_guarded_with_params(
             match rustix::system::finit_module(&ko_file, &params_c, 0) {
                 Ok(()) => rustix::runtime::exit_group(0),
                 Err(e) => {
-                    let errno = e.raw_os_error() as i32;
+                    let errno = e.raw_os_error();
                     let _ = rustix::io::write(&pipe_write, &errno.to_ne_bytes());
                     rustix::runtime::exit_group(1)
                 }
@@ -204,18 +204,18 @@ pub fn insmod_guarded_with_params(
             drop(ko_file);
             drop(pipe_write);
             let result = wait_for_kmod_child(child_pid, "finit_module", &path_str, timeout);
-            if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result {
-                if reason.starts_with("child exited with code") {
-                    let mut buf = [0u8; 4];
-                    if let Ok(4) = rustix::io::read(&pipe_read, &mut buf) {
-                        let errno = i32::from_ne_bytes(buf);
-                        return Err(GuardedSysfsError::KmodFailed {
-                            cmd: "finit_module".into(),
-                            args: path_str,
-                            reason: format!("finit_module errno {errno} ({})",
-                                errno_name(errno)),
-                        });
-                    }
+            if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result
+                && reason.starts_with("child exited with code")
+            {
+                let mut buf = [0u8; 4];
+                if rustix::io::read(&pipe_read, &mut buf) == Ok(4) {
+                    let errno = i32::from_ne_bytes(buf);
+                    return Err(GuardedSysfsError::KmodFailed {
+                        cmd: "finit_module".into(),
+                        args: path_str,
+                        reason: format!("finit_module errno {errno} ({})",
+                            errno_name(errno)),
+                    });
                 }
             }
             result
@@ -269,7 +269,7 @@ pub fn rmmod_guarded(name: &str, timeout: Duration) -> Result<(), GuardedSysfsEr
             match rustix::system::delete_module(&name_c, 0) {
                 Ok(()) => rustix::runtime::exit_group(0),
                 Err(e) => {
-                    let errno = e.raw_os_error() as i32;
+                    let errno = e.raw_os_error();
                     let _ = rustix::io::write(&pipe_write, &errno.to_ne_bytes());
                     rustix::runtime::exit_group(1)
                 }
@@ -278,18 +278,18 @@ pub fn rmmod_guarded(name: &str, timeout: Duration) -> Result<(), GuardedSysfsEr
         Ok(rustix::runtime::Fork::ParentOf(child_pid)) => {
             drop(pipe_write);
             let result = wait_for_kmod_child(child_pid, "delete_module", name, timeout);
-            if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result {
-                if reason.starts_with("child exited with code") {
-                    let mut buf = [0u8; 4];
-                    if let Ok(4) = rustix::io::read(&pipe_read, &mut buf) {
-                        let errno = i32::from_ne_bytes(buf);
-                        return Err(GuardedSysfsError::KmodFailed {
-                            cmd: "delete_module".into(),
-                            args: name.into(),
-                            reason: format!("delete_module errno {errno} ({})",
-                                errno_name(errno)),
-                        });
-                    }
+            if let Err(GuardedSysfsError::KmodFailed { ref reason, .. }) = result
+                && reason.starts_with("child exited with code")
+            {
+                let mut buf = [0u8; 4];
+                if rustix::io::read(&pipe_read, &mut buf) == Ok(4) {
+                    let errno = i32::from_ne_bytes(buf);
+                    return Err(GuardedSysfsError::KmodFailed {
+                        cmd: "delete_module".into(),
+                        args: name.into(),
+                        reason: format!("delete_module errno {errno} ({})",
+                            errno_name(errno)),
+                    });
                 }
             }
             result
@@ -611,33 +611,33 @@ MODULE_DESCRIPTION("Suppress PCI bus reset for specified devices");
 pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
     // If the module is already loaded, check if this BDF is already covered
     let sys_param = format!("/sys/module/{NO_BUS_RESET_MODULE}/parameters/bdf");
-    if Path::new(&sys_param).exists() {
-        if let Ok(loaded_bdfs) = std::fs::read_to_string(&sys_param) {
-            let loaded = loaded_bdfs.trim();
-            let already_covered = bdf.split(',')
-                .all(|b| loaded.split(',').any(|l| l.trim() == b.trim()));
-            if already_covered {
-                tracing::info!(bdf, loaded, "no_bus_reset already covers this device");
-                return Ok(());
-            }
-            // Need to reload with the union of old + new BDFs
-            let mut all_bdfs: Vec<&str> = loaded.split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .collect();
-            for b in bdf.split(',').map(|s| s.trim()) {
-                if !all_bdfs.contains(&b) {
-                    all_bdfs.push(b);
-                }
-            }
-            let combined = all_bdfs.join(",");
-            tracing::info!(bdf, combined, "reloading no_bus_reset with expanded device list");
-            return KmodBuilder::new(NO_BUS_RESET_MODULE)
-                .source(NO_BUS_RESET_SOURCE)
-                .tmpdir(NO_BUS_RESET_TMPDIR)
-                .param("bdf", &combined)
-                .build_and_load();
+    if Path::new(&sys_param).exists()
+        && let Ok(loaded_bdfs) = std::fs::read_to_string(&sys_param)
+    {
+        let loaded = loaded_bdfs.trim();
+        let already_covered = bdf.split(',')
+            .all(|b| loaded.split(',').any(|l| l.trim() == b.trim()));
+        if already_covered {
+            tracing::info!(bdf, loaded, "no_bus_reset already covers this device");
+            return Ok(());
         }
+        // Need to reload with the union of old + new BDFs
+        let mut all_bdfs: Vec<&str> = loaded.split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+        for b in bdf.split(',').map(|s| s.trim()) {
+            if !all_bdfs.contains(&b) {
+                all_bdfs.push(b);
+            }
+        }
+        let combined = all_bdfs.join(",");
+        tracing::info!(bdf, combined, "reloading no_bus_reset with expanded device list");
+        return KmodBuilder::new(NO_BUS_RESET_MODULE)
+            .source(NO_BUS_RESET_SOURCE)
+            .tmpdir(NO_BUS_RESET_TMPDIR)
+            .param("bdf", &combined)
+            .build_and_load();
     }
 
     KmodBuilder::new(NO_BUS_RESET_MODULE)

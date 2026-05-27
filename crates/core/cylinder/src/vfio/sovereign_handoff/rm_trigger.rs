@@ -20,12 +20,11 @@ pub(crate) fn trigger_rm_init(module_name: &str) -> Result<String, String> {
     let mut majors: Vec<u32> = Vec::new();
     for line in devices.lines() {
         let line = line.trim();
-        if line.ends_with("nvidia-frontend") || line.ends_with(module_name) {
-            if let Some(num_str) = line.split_whitespace().next() {
-                if let Ok(n) = num_str.parse::<u32>() {
-                    majors.push(n);
-                }
-            }
+        if (line.ends_with("nvidia-frontend") || line.ends_with(module_name))
+            && let Some(num_str) = line.split_whitespace().next()
+            && let Ok(n) = num_str.parse::<u32>()
+        {
+            majors.push(n);
         }
     }
     let major = majors.iter()

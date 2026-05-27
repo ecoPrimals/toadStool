@@ -373,7 +373,7 @@ pub(crate) async fn run() {
     // FLR is already disabled by ExecStartPre in the systemd unit.
     let vga_gpus: Vec<String> = vfio_gpus.iter().filter(|bdf| {
         read_config_u32(bdf, 0x08)
-            .map_or(false, |c| pci_base_subclass(c) == PCI_CLASS_VGA
+            .is_some_and(|c| pci_base_subclass(c) == PCI_CLASS_VGA
                             || pci_base_subclass(c) == PCI_CLASS_3D)
     }).cloned().collect();
     if !vga_gpus.is_empty() {

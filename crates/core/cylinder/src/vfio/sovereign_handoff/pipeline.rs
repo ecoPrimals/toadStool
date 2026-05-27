@@ -1424,7 +1424,7 @@ pub fn execute_handoff(
                 // The PRI ring recovery step below issues enumerate/start
                 // commands that destroy RM's PRI routing. Classify tier NOW
                 // while the BAR0 still reflects RM's warm state.
-                let tier_t = Instant::now();
+                let _tier_t = Instant::now();
                 let warm_tier = classify_tier(&post_swap_bar0);
                 tracing::info!(
                     bdf = config.bdf.as_str(),

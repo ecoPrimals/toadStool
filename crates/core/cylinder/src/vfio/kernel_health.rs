@@ -148,7 +148,7 @@ fn kernel_image_path(krel: &str) -> PathBuf {
 /// autoconf.h is older or same age as the kernel image (the expected state).
 pub fn check_autoconf_freshness() -> Result<(bool, i64), KernelHealthError> {
     let krel = kernel_release()?;
-    check_autoconf_freshness_for(&krel)
+    check_autoconf_freshness_for(krel)
 }
 
 fn check_autoconf_freshness_for(krel: &str) -> Result<(bool, i64), KernelHealthError> {
@@ -215,7 +215,7 @@ module_exit(probe_exit);
 /// Returns `(init_offset, exit_offset)`.
 pub fn probe_struct_module_layout() -> Result<(u64, u64), KernelHealthError> {
     let krel = kernel_release()?;
-    probe_struct_module_layout_for(&krel)
+    probe_struct_module_layout_for(krel)
 }
 
 fn probe_struct_module_layout_for(_krel: &str) -> Result<(u64, u64), KernelHealthError> {
@@ -670,11 +670,11 @@ pub enum RepairStrategy {
 /// Returns the path to the restored file on success.
 pub fn repair_autoconf(strategy: RepairStrategy) -> Result<PathBuf, KernelHealthError> {
     let krel = kernel_release()?;
-    let target = autoconf_path(&krel);
+    let target = autoconf_path(krel);
 
     match strategy {
-        RepairStrategy::PackageRestore => repair_from_deb_cache(&krel, &target),
-        RepairStrategy::PackageReinstall => repair_via_reinstall(&krel, &target),
+        RepairStrategy::PackageRestore => repair_from_deb_cache(krel, &target),
+        RepairStrategy::PackageReinstall => repair_via_reinstall(krel, &target),
     }
 }
 

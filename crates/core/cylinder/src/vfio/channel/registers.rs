@@ -36,7 +36,6 @@ pub(crate) mod pfifo {
     pub const INTR_RL_COMPLETE: u32 = 0x4000_0000;
     /// PBDMA active map — bit N = 1 means PBDMA N exists.
     pub const PBDMA_MAP: usize = 0x0000_2004;
-    #[expect(dead_code, reason = "diagnostic matrix migration in progress")]
     /// PBDMA-to-runlist mapping table. Entry at `+seq*4` for each active PBDMA.
     pub const PBDMA_RUNL_MAP: usize = 0x0000_2390;
     /// GK104 runlist base address (global pair — GK104/GK110, NOT Volta).
@@ -147,13 +146,6 @@ pub(crate) mod pbdma {
     pub const STRIDE: usize = 0x2000;
 
     /// Base address for a specific PBDMA in BAR0.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "hardware register map — used by unit tests and bring-up"
-        )
-    )]
     pub const fn base(id: usize) -> usize {
         BASE + id * STRIDE
     }

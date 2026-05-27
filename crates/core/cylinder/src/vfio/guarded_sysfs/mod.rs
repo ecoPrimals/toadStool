@@ -22,10 +22,7 @@
 //! entering uninterruptible kernel sleep (D-state), which bricked both
 //! Titan V GPUs during Exp 213.
 
-use std::ffi::CString;
-use std::os::fd::FromRawFd as _;
-use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::Child;
 use std::time::{Duration, Instant};
 
 /// How long to poll a killed child before orphaning it.

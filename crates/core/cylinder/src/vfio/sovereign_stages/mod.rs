@@ -24,11 +24,10 @@ pub(crate) use memory::{
 };
 pub use memory::{MemoryTrainingResult, MemoryTrainingStrategy};
 pub(crate) use pmc::{
-    ISOLATE_TIMEOUT, PMC_BOOT_0, PMC_ENABLE, PMC_INTR_EN_0, PTIMER_TIME_0, PTIMER_TIME_1,
-    PmcEnableResult, bar0_probe, pgraph_engine_reset, pmc_enable, pmc_enable_full,
-    pmc_enable_rollback,
+    PMC_ENABLE, PMC_INTR_EN_0, PmcEnableResult, bar0_probe, pgraph_engine_reset, pmc_enable,
+    pmc_enable_full, pmc_enable_rollback,
 };
-pub(crate) use power::{CgSweepResult, PriRecoveryResult, cg_sweep, pgob_ungating, pri_bus_recover};
+pub(crate) use power::{cg_sweep, pgob_ungating, pri_bus_recover};
 
 // ── Sovereign Experiment Infrastructure ──────────────────────────────
 
