@@ -23,11 +23,10 @@ no-default-features = false
 # `crates/runtime/gpu`: optional `cuda` / cudarc — omit from coverage runs (no CUDA toolkit required).
 exclude = ["toadstool-runtime-gpu"]
 
-# Mirrors llvm-cov `--ignore-filename-regex "tests/"` and drops examples/showcase trees.
+# Mirrors llvm-cov `--ignore-filename-regex "tests/"` and drops examples trees.
 exclude-files = [
     "**/tests/**",
     "**/examples/**",
-    "**/showcase/**",
 ]
 
 # Default tarpaulin behavior: do not count #[test] bodies toward coverage.

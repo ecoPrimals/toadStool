@@ -42,7 +42,7 @@ Nest    = Tower  + Storage            <- storage
 | `cargo fmt --all -- --check` | 0 diffs |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo doc --workspace --no-deps` (RUSTDOCFLAGS="-D warnings") | 0 warnings |
-| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,158+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
+| `cargo test --workspace` | **23,000+ tests, 0 failures** (9,156+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
@@ -243,7 +243,7 @@ toadStool/
 |   +-- testing/                   Chaos, fault, property-based testing (proptest)
 |   +-- management/                Analytics, monitoring, resources (real ResourceManager with toadstool-sysmon)
 +-- (fossils at ecoPrimals/infra/wateringHole/fossilRecord/)
-+-- showcase/                      Demos (RBF, neuromorphic, GPU, FHE)
++-- (showcase/ fossilized S275 → fossilRecord/primals/toadStool/showcase_wave49/)
 +-- docs/                          Architecture, guides, audits, ADRs
 +-- specs/                         Technical specifications
 ```
@@ -273,7 +273,7 @@ toadStool/
 | Clippy pedantic warnings | 0 (workspace-wide `clippy::pedantic` clean; `#[expect]` evolution S131+) |
 | Doc warnings | 0 |
 | Build warnings | 0 |
-| Workspace tests | **23,000+**, 0 failures (9,158+ lib-only) |
+| Workspace tests | **23,000+**, 0 failures (9,156+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
 | `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
@@ -295,13 +295,15 @@ toadStool/
 **We are still evolving.** barraCuda (separate primal) owns all math and shaders. ToadStool focuses on hardware discovery, capability probing, and workload orchestration. All 5 spring handoffs absorbed.
 
 ### Active / Next
-- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,158+ lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
+- **Test coverage** -- pushing toward 90% target; 23,000+ tests (9,156+ lib); ~83.6% lib-only line (185K lines instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2), specialty runtimes
 - **Sovereign VFIO dispatch** -- NVIDIA VFIO PBDMA dispatch wired via QMD (S258–S259); `device.vfio.open` + `device.vfio.roundtrip` JSON-RPC endpoints live; e2e validated on Titan V (S263)
 - **DF64 / ComputeDispatch** -- transferred to barraCuda team (S93); toadStool serves hardware capabilities
 - **Sovereign compiler Phase 4+** -- register pressure estimation, loop software pipelining (barraCuda)
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
+- **S279 (May 27, 2026)**: **Deep Debt Evolution III: Panic Path Elimination + Capability Hardening** — All P0/P1 production panic paths eliminated (sovereign handoff handler, pipeline tier, CE validate, ELF parsing, reagent, signal handlers, network config, module_patch). Legacy capability→primal roundtrip helpers deprecated. Platform status documented as intentional design. SAFETY comments verified complete. **9,156+ lib tests, zero clippy.**
+- **S279 (May 27, 2026)**: **Exp 229: Catalyst Channel** — Full RM compute channel before warm swap (FECS ACR blocker). rm_trigger --channel 16-step Volta recipe. RmChannelEvidence + PCCSR scan. Phase A/B fallback in open_vfio.rs. 705+864 tests.
 - **S278 (May 27, 2026)**: **Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption** — Split 7 oversized files into module directories (sovereign_handoff 2,860L→11 modules, module_patch 2,020L→11, compute_device 2,072L→11 with gr_ungating/pbdma dedup, sovereign_stages 1,861L→7, guarded_sysfs 1,561L→5, channel/mod 1,117L→4, handler/sovereign 1,004L→6). Ported 4 userspace C tools to Rust bins (rm_trigger, sovereign_acr_boot, sovereign_pmu_boot, capture_pmu_falcon). Created `nv/registers/` (12 domain submodules) and `nv/rm_abi.rs` (canonical RM ABI types from coral-kmod). Evolved `StubGspBridge` → `NoopGspBridge` with capability guidance. Gated AMD Vega behind feature. Fossilized coral-kmod. **705 cylinder tests, zero clippy, zero userspace C.**
 - **S276 (May 26, 2026)**: **Deep Debt Evolution II — Unwrap Elimination, Sovereign Split, memmap2 Removal** — Eliminated remaining production unwrap/expect/unreachable: sovereign.rs 2x unwrap, mmio_region.rs expect, dma.rs Drop expect, diagnostic interpreter 6x expect, permissions.rs expect, dispatch unreachable!(). `handler/sovereign.rs` (1,003L, 11 handlers) → module directory (init/snapshot/capture). `memmap2` removed from hw-safe — `safe_mmap.rs` rewritten on rustix. 3 stale primal-name type aliases deprecated. `ipc.register` capability list aligned to Node Atomic set. 13 upstream clippy warnings absorbed. **88+ JSON-RPC methods. 9,158+ lib tests, zero clippy.**
 - **S275 (May 25, 2026)**: **Wave 49: Ecosystem Tightening** — Showcase fossilized (35 files → fossilRecord). wateringHole consolidated (36 handoffs mirrored, archive/ created). Stale deploy patterns fixed (4 files → plasmidBin). Startup latency optimized (deferred wgpu, pre-bound socket). toadstool.toml HTTP-era template fossilized. Docs fossil-tagged.
@@ -352,7 +354,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full session-by-session detail.
 
 | ID | Description | Status |
 |----|-------------|--------|
-| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,158+ lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
+| D-COV | Test coverage → 90% | Active — 23,000+ tests (9,156+ lib); ~83.6% lib-only line (185K instrumented); remaining gap: hardware-dependent paths (VFIO, DRM, V4L2, akida) |
 | D-BTSP-PHASE3 | BTSP encrypted post-handshake channel | **RESOLVED** (S215+S218) — ChaCha20-Poly1305 encrypted channel implemented, transport switch verified |
 
 ### Resolved (S94b)
@@ -395,7 +397,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S276. **23,000+** workspace tests, 0 failures (9,149+ lib-only). ~83.6% lib-only line coverage (target 90%). **88 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Zero userspace C in primal codebases. **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. **705 cylinder tests.** `nv/registers/` (12 domain submodules), `nv/rm_abi.rs` (canonical RM ABI). `NoopGspBridge` (was `StubGspBridge`). AMD Vega feature-gated. coral-kmod fossilized. IPC-first JSON-RPC. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
+**Last Updated**: May 2026 — S279. **23,000+** workspace tests, 0 failures (9,156+ lib-only). ~83.6% lib-only line coverage (target 90%). **88 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Zero userspace C in primal codebases. **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. **705 cylinder tests.** `nv/registers/` (12 domain submodules), `nv/rm_abi.rs` (canonical RM ABI). `NoopGspBridge` (was `StubGspBridge`). AMD Vega feature-gated. coral-kmod fossilized. IPC-first JSON-RPC. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
 
 ---
 

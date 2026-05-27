@@ -1,14 +1,11 @@
 # =============================================================
 # Cursor index reduction — source code only.
-# Archived showcase/doc directories removed from tree (S139+).
 # =============================================================
 
 # --- Build artifacts ---
 target/
 
 # --- Binary/data files ---
-showcase/**/*.bin
-showcase/**/*.npz
 **/*.csv
 **/*.json
 !biome.yaml

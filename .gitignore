@@ -50,10 +50,6 @@ credentials.json
 *.idx1-ubyte
 *.gz
 
-# Binary showcase data (688 MB)
-showcase/**/*.bin
-showcase/**/*.npz
-
 # Pipeline validation output (generated, not source)
 pipeline_validation_actual_hardware.*
 actual_gpu_validation.*

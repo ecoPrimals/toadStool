@@ -78,15 +78,39 @@ impl AuthBackend for SecurityProviderBackend {
     }
 
     async fn request_token(&self, request: &TokenRequest) -> ToadStoolResult<AuthenticationToken> {
-        // Use SecurityProvider to create token (via permission system)
-        // TODO: Implement using provider.create_permission()
-        todo!("Implement token request via SecurityProvider")
+        // Migration complete: issue token via SecurityProvider permission system
+        use toadstool_distributed::security_provider::{
+            PermissionRequest, PermissionScope,
+        };
+
+        let permission_request = PermissionRequest {
+            requester_id: request.requesting_primal.clone(),
+            target: ExternalTarget::BiomeOs,
+            scope: PermissionScope::from_scopes(&request.scope),
+            validity_duration: std::time::Duration::from_secs(3600),
+            delegation_info: None,
+        };
+
+        let permission = self.provider.create_permission(permission_request).await?;
+        AuthenticationToken::from_security_permission(permission, request)
     }
 
     async fn refresh_token(&self, request: &TokenRefreshRequest) -> ToadStoolResult<AuthenticationToken> {
-        // Use SecurityProvider to refresh token
-        // TODO: Implement using provider.validate_permission() + create_permission()
-        todo!("Implement token refresh via SecurityProvider")
+        // Migration complete: validate existing permission, then re-issue
+        let existing = self.provider
+            .validate_permission(&request.existing_permission)
+            .await?;
+
+        let permission_request = PermissionRequest {
+            requester_id: request.requesting_primal.clone(),
+            target: existing.target,
+            scope: existing.scope,
+            validity_duration: std::time::Duration::from_secs(3600),
+            delegation_info: None,
+        };
+
+        let permission = self.provider.create_permission(permission_request).await?;
+        AuthenticationToken::from_security_permission(permission, &request.into())
     }
 }
 ```

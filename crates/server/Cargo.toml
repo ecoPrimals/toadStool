@@ -129,10 +129,6 @@ name = "tarpc_server_coverage_expansion_tests"
 path = "tests/tarpc_server_coverage_expansion_tests.rs"
 required-features = ["test-mocks"]
 
-[[bench]]
-name = "jsonrpc_throughput"
-harness = false
-
 [lints]
 workspace = true
 
