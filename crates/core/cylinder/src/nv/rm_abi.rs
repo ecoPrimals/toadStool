@@ -239,17 +239,15 @@ pub struct NvRegisterFdParams {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, Zeroable)]
 pub struct Nv0080AllocParams {
-    pub device_id: u32,
     pub h_client_share: u32,
     pub h_target_client: u32,
     pub h_target_device: u32,
     pub flags: u32,
-    _pad0: u32,
     pub va_space_size: u64,
     pub va_start_internal: u64,
     pub va_limit_internal: u64,
     pub va_mode: u32,
-    _pad1: u32,
+    pub device_id: u32,
 }
 
 /// NV2080 subdevice allocation parameters.

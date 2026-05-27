@@ -384,10 +384,6 @@ impl DispatchHandler {
         );
 
         // Read PMC_ENABLE before releasing anchor to detect cold GPU.
-        // On a cold GPU (popcount < 10), we intentionally allow SBR during
-        // anchor release — the PCIe bus reset gives RM a clean post-reset
-        // state for DEVINIT. On a warm GPU, SBR is suppressed to preserve
-        // the existing engine state. (Exp 229: cold DEVINIT fix)
         let gpu_warm = {
             use toadstool_cylinder::vfio::device::MappedBar;
             if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
@@ -396,16 +392,25 @@ impl DispatchHandler {
                 tracing::info!(bdf, pmc = format_args!("0x{pmc:08x}"), popcount, "pre-release PMC_ENABLE");
                 popcount >= 10
             } else {
-                true // can't read BAR0 → conservative, suppress SBR
+                true
             }
         };
 
-        // Suppress FLR BEFORE releasing anchor — dropping the anchor closes
-        // the VFIO device fd, which triggers vfio_pci_core_release(). Without
-        // FLR suppression, the kernel resets the GPU and destroys VBIOS warm
-        // state. Exp 225: PMC_ENABLE dropped from 0x5fecdff1 to 0x40000020.
-        // Exp 229: For cold GPUs, allow SBR so RM gets a clean state for DEVINIT.
-        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf, gpu_warm);
+        // Catalyst strategies ALWAYS need SBR: RM's rm_init_adapter must
+        // probe a clean post-reset GPU to populate the GPU manager's probed
+        // table. Without SBR, RM sees stale engine state from previous
+        // catalyst cycles and silently skips GPU instance registration —
+        // GPU_GET_PROBED_IDS returns empty, device_alloc fails with 0x22.
+        // Non-catalyst strategies preserve warm state (FLR/SBR suppressed).
+        let is_catalyst_strategy = strategy.contains("catalyst");
+        let suppress_sbr = if is_catalyst_strategy {
+            tracing::info!(bdf, gpu_warm, "catalyst strategy: allowing SBR for clean RM probe");
+            false
+        } else {
+            gpu_warm
+        };
+
+        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf, suppress_sbr);
 
         // Release VFIO anchor and cached device. The IOMMU group is locked
         // while we hold VFIO container/group FDs — the seeder driver cannot

@@ -206,6 +206,14 @@ impl PatchSet {
                     symbol: "nv_cap_close_fd".into(),
                     strategy: PatchStrategy::RetAtEntry,
                 },
+                // os_is_administrator calls capable(CAP_SYS_ADMIN) and returns
+                // the raw bool (1=admin). RM expects NV_STATUS where NV_OK=0.
+                // Result: 1 != NV_OK → INSUFFICIENT_PERMISSIONS on every alloc.
+                // RetAtEntry returns 0 (NV_OK) unconditionally.
+                PatchTarget {
+                    symbol: "os_is_administrator".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
                 // Change the chardev major from 195 (0xc3) to 0 (dynamic
                 // allocation) so nvsov gets its own chardev that doesn't
                 // conflict with the host nvidia-580 module.

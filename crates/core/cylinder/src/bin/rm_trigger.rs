@@ -413,55 +413,98 @@ fn main() -> ExitCode {
     if !root_ok { success = false; }
 
     // Step 2: device — use rm_root as both h_root and h_parent
-    // Try with GPU_ID from GET_ATTACHED_IDS if available.
+    // device_id is a GPU INSTANCE INDEX (0, 1, ...), NOT the PCI-encoded
+    // GPU ID from GET_ATTACHED_IDS. hClientShare must be the root handle.
     let mut rm_device = 0u32;
     if root_ok {
-        // First get the GPU ID
+        eprintln!("\n[Phase 1] Step 2: device alloc (parent=0x{rm_root:08x})...");
+        eprintln!("  sizeof(Nv0080AllocParams) = {}", size_of::<rm_abi::Nv0080AllocParams>());
+
+        // First, get the GPU ID and try to attach it
         let mut gpu_ids = [0u32; 32];
         rm_ctrl(fd, rm_root, rm_root, 0x0000_0201,
             gpu_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
         let gpu_id = gpu_ids.iter().copied().find(|&id| id != 0 && id != 0xFFFF_FFFF).unwrap_or(0);
+        eprintln!("  GPU ID from GET_ATTACHED_IDS: 0x{gpu_id:x}");
 
-        eprintln!("\n[Phase 1] Step 2: device (parent=0x{rm_root:08x}, gpu_id=0x{gpu_id:x})...");
-        let mut dp = rm_abi::Nv0080AllocParams::default();
-        dp.device_id = gpu_id;
-        dp.h_client_share = rm_root;
-        let r = rm_alloc(fd, rm_root, rm_root, H_DEVICE, class::NV01_DEVICE_0,
-            &dp as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32);
-        rm_device = r.h_object_new;
-        let dev_ok = r.rc == 0 && r.status == 0;
-        steps.push(step_json("device_alloc", dev_ok, serde_json::json!({
-            "class": "NV01_DEVICE_0",
-            "status": format!("0x{:x}", r.status),
-            "kernel_handle": format!("0x{rm_device:08x}"),
-            "device_id": format!("0x{gpu_id:x}"),
-        })));
-        if !dev_ok {
-            // Retry with device_id=0
-            eprintln!("[Diag] Retrying device alloc with device_id=0...");
-            let dp0 = rm_abi::Nv0080AllocParams::default();
-            let r2 = rm_alloc(fd, rm_root, rm_root, H_DEVICE + 1, class::NV01_DEVICE_0,
-                &dp0 as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32);
-            eprintln!("[Diag] device_alloc(id=0): status=0x{:x}", r2.status);
+        // Try NV0000_CTRL_CMD_GPU_ATTACH_IDS (0x0280)
+        let mut attach_ids = [0u32; 32];
+        attach_ids[0] = gpu_id;
+        let (_, attach_st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0280,
+            attach_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+        eprintln!("  GPU_ATTACH_IDS(0x{gpu_id:x}): status=0x{attach_st:x}");
 
-            // Try with NULL params (let RM use defaults)
-            eprintln!("[Diag] Retrying device alloc with NULL params...");
-            let r3 = rm_alloc(fd, rm_root, rm_root, H_DEVICE + 2, class::NV01_DEVICE_0, 0, 0);
-            eprintln!("[Diag] device_alloc(null): status=0x{:x}", r3.status);
+        // Try NV0000_CTRL_CMD_GPU_GET_PROBED_IDS (0x0214)
+        let mut probed_ids = [0u32; 32];
+        let (_, probed_st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0214,
+            probed_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+        let probed: Vec<u32> = probed_ids.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
+        eprintln!("  GPU_GET_PROBED_IDS: status=0x{probed_st:x} ids={probed:?}");
 
-            steps.push(step_json("device_alloc_retries", true, serde_json::json!({
-                "id0_status": format!("0x{:x}", r2.status),
-                "null_status": format!("0x{:x}", r3.status),
+        let mut device_ok = false;
+        for (label, dev_id, share) in [
+            ("id=0,share=root", 0u32, rm_root),
+            ("gpu_id,share=root", gpu_id, rm_root),
+            ("id=0,share=0", 0, 0u32),
+            ("null_params", 0, 0u32),
+        ] {
+            let is_null = label == "null_params";
+            let mut dp = rm_abi::Nv0080AllocParams::default();
+            dp.device_id = dev_id;
+            dp.h_client_share = share;
+
+            let (ptr, sz) = if is_null {
+                (0u64, 0u32)
+            } else {
+                (&dp as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32)
+            };
+
+            let handle = H_DEVICE + dev_id;
+            let r = rm_alloc(fd, rm_root, rm_root, handle, class::NV01_DEVICE_0, ptr, sz);
+            eprintln!("  device_alloc({label}): status=0x{:x} handle=0x{:08x}", r.status, r.h_object_new);
+
+            if r.rc == 0 && r.status == 0 {
+                rm_device = r.h_object_new;
+                device_ok = true;
+                steps.push(step_json("device_alloc", true, serde_json::json!({
+                    "class": "NV01_DEVICE_0",
+                    "status": "0x0",
+                    "kernel_handle": format!("0x{rm_device:08x}"),
+                    "variant": label,
+                })));
+                break;
+            }
+
+            steps.push(step_json(&format!("device_alloc_{label}"), false, serde_json::json!({
+                "class": "NV01_DEVICE_0",
+                "status": format!("0x{:x}", r.status),
+                "variant": label,
+            })));
+        }
+
+        if !device_ok {
+            // Diagnostic: try NV0000_CTRL_CMD_GPU_GET_ID_INFO to translate GPU ID
+            let mut gpu_ids = [0u32; 32];
+            rm_ctrl(fd, rm_root, rm_root, 0x0000_0201,
+                gpu_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+            let gpu_id = gpu_ids.iter().copied().find(|&id| id != 0 && id != 0xFFFF_FFFF).unwrap_or(0);
+
+            // NV0000_CTRL_CMD_GPU_GET_ID_INFO (0x0202) — 24 bytes: { gpuId, gpuFlags, deviceInst, subDeviceInst, boardId, gpuInstance }
+            let mut id_info = [0u32; 6];
+            id_info[0] = gpu_id;
+            let (_, st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0202,
+                id_info.as_mut_ptr() as u64, 24);
+            eprintln!("[Diag] GPU_GET_ID_INFO(gpu_id=0x{gpu_id:x}): status=0x{st:x} devInst={} subDevInst={} gpuInst={}",
+                id_info[2], id_info[3], id_info[5]);
+            steps.push(step_json("gpu_id_info", st == 0, serde_json::json!({
+                "gpu_id": format!("0x{gpu_id:x}"),
+                "device_inst": id_info[2],
+                "sub_device_inst": id_info[3],
+                "gpu_inst": id_info[5],
+                "status": format!("0x{st:x}"),
             })));
 
-            // Use whichever succeeded
-            if r2.status == 0 {
-                rm_device = r2.h_object_new;
-            } else if r3.status == 0 {
-                rm_device = r3.h_object_new;
-            } else {
-                success = false;
-            }
+            success = false;
         }
     }
 
