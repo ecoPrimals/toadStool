@@ -309,10 +309,12 @@ pub fn validate_ce_with_profile(
                 method0: bar0.read_u32(pb_base + 0x064).unwrap_or(0xDEAD),
                 status: bar0.read_u32(pb_base + 0x068).unwrap_or(0xDEAD),
             });
-            tracing::warn!(
-                intr_0 = format_args!("{:#010x}", result.pbdma_diagnostics.as_ref().unwrap().intr_0),
-                "CE PBDMA GP_GET did not advance — PBDMA diagnostics captured"
-            );
+            if let Some(diag) = &result.pbdma_diagnostics {
+                tracing::warn!(
+                    intr_0 = format_args!("{:#010x}", diag.intr_0),
+                    "CE PBDMA GP_GET did not advance — PBDMA diagnostics captured"
+                );
+            }
         }
         result.error = Some("GP_GET did not advance within timeout".into());
     }

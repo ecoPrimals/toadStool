@@ -46,10 +46,26 @@ pub(crate) fn zero_elf_sections_by_name(data: &mut [u8], names: &[&str]) -> Resu
         return Err("not a 64-bit little-endian ELF".into());
     }
 
-    let e_shoff = u64::from_le_bytes(data[40..48].try_into().unwrap()) as usize;
-    let e_shentsize = u16::from_le_bytes(data[58..60].try_into().unwrap()) as usize;
-    let e_shnum = u16::from_le_bytes(data[60..62].try_into().unwrap()) as usize;
-    let e_shstrndx = u16::from_le_bytes(data[62..64].try_into().unwrap()) as usize;
+    let e_shoff = u64::from_le_bytes(
+        data[40..48]
+            .try_into()
+            .map_err(|e| format!("malformed ELF e_shoff: {e}"))?,
+    ) as usize;
+    let e_shentsize = u16::from_le_bytes(
+        data[58..60]
+            .try_into()
+            .map_err(|e| format!("malformed ELF e_shentsize: {e}"))?,
+    ) as usize;
+    let e_shnum = u16::from_le_bytes(
+        data[60..62]
+            .try_into()
+            .map_err(|e| format!("malformed ELF e_shnum: {e}"))?,
+    ) as usize;
+    let e_shstrndx = u16::from_le_bytes(
+        data[62..64]
+            .try_into()
+            .map_err(|e| format!("malformed ELF e_shstrndx: {e}"))?,
+    ) as usize;
 
     if e_shstrndx >= e_shnum {
         return Err("invalid shstrndx".into());
@@ -57,12 +73,22 @@ pub(crate) fn zero_elf_sections_by_name(data: &mut [u8], names: &[&str]) -> Resu
 
     let shstrtab_hdr = e_shoff + e_shstrndx * e_shentsize;
     let shstrtab_off = u64::from_le_bytes(
-        data[shstrtab_hdr + 24..shstrtab_hdr + 32].try_into().unwrap(),
+        data.get(shstrtab_hdr + 24..shstrtab_hdr + 32)
+            .ok_or_else(|| "truncated ELF section string table header".to_string())?
+            .try_into()
+            .map_err(|e| format!("malformed ELF shstrtab offset: {e}"))?,
     ) as usize;
 
     for i in 0..e_shnum {
         let sh = e_shoff + i * e_shentsize;
-        let sh_name_idx = u32::from_le_bytes(data[sh..sh + 4].try_into().unwrap()) as usize;
+        if sh + 40 > data.len() {
+            return Err(format!("truncated ELF section header {i}"));
+        }
+        let sh_name_idx = u32::from_le_bytes(
+            data[sh..sh + 4]
+                .try_into()
+                .map_err(|e| format!("malformed ELF sh_name for section {i}: {e}"))?,
+        ) as usize;
         let name_start = shstrtab_off + sh_name_idx;
 
         let mut end = name_start;
@@ -75,8 +101,16 @@ pub(crate) fn zero_elf_sections_by_name(data: &mut [u8], names: &[&str]) -> Resu
             continue;
         }
 
-        let sh_offset = u64::from_le_bytes(data[sh + 24..sh + 32].try_into().unwrap()) as usize;
-        let sh_size = u64::from_le_bytes(data[sh + 32..sh + 40].try_into().unwrap()) as usize;
+        let sh_offset = u64::from_le_bytes(
+            data[sh + 24..sh + 32]
+                .try_into()
+                .map_err(|e| format!("malformed ELF sh_offset for section {i}: {e}"))?,
+        ) as usize;
+        let sh_size = u64::from_le_bytes(
+            data[sh + 32..sh + 40]
+                .try_into()
+                .map_err(|e| format!("malformed ELF sh_size for section {i}: {e}"))?,
+        ) as usize;
 
         if sh_offset + sh_size <= data.len() {
             data[sh_offset..sh_offset + sh_size].fill(0);

@@ -938,8 +938,9 @@ pub fn execute_handoff(
                 }
 
                 // ── PCCSR scan: verify RM channel is ACTIVE (Exp 229) ──
-                if let Some(ref ev) = rm_channel_evidence {
-                    if ev.all_ok {
+                if let Some(ref ev) = rm_channel_evidence
+                    && ev.all_ok
+                {
                         let pccsr_base = 0x80_0004usize;
                         let mut active_channels = Vec::new();
                         let mut pending_channels = Vec::new();
@@ -977,7 +978,6 @@ pub fn execute_handoff(
                             rm_channel_id = ?ev.channel_id,
                             "PCCSR channel scan while catalyst loaded (Exp 229)"
                         );
-                    }
                 }
 
                 boot_evidence = Some(evidence);
@@ -1560,18 +1560,26 @@ pub fn execute_handoff(
 
     // ── Step 7: Tier Classification ─────────────────────────────────
 
-    let tier = if is_catalyst && catalyst_tier.is_some() {
-        // Use the early tier classification captured with warm BAR0
-        // (before PRI ring recovery destroyed PRI routing).
-        let t = Instant::now();
-        let ct = catalyst_tier.as_ref().unwrap();
-        steps.push(HandoffStep {
-            name: "tier_classify".into(), ok: true,
-            detail: Some(format!("{} (warm BAR0, pre-PRI-recovery)", ct.tier)),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
-        catalyst_tier.take()
-    } else if let Some(b) = bar0 {
+    let mut tier = if is_catalyst {
+        if let Some(ref ct) = catalyst_tier {
+            // Use the early tier classification captured with warm BAR0
+            // (before PRI ring recovery destroyed PRI routing).
+            let t = Instant::now();
+            steps.push(HandoffStep {
+                name: "tier_classify".into(), ok: true,
+                detail: Some(format!("{} (warm BAR0, pre-PRI-recovery)", ct.tier)),
+                duration_ms: t.elapsed().as_millis() as u64,
+            });
+            catalyst_tier.take()
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    if tier.is_none() {
+        tier = if let Some(b) = bar0 {
         let t = Instant::now();
         let evidence = classify_tier(b);
         steps.push(HandoffStep {
@@ -1602,6 +1610,7 @@ pub fn execute_handoff(
             }
         }
     };
+    }
 
     // ── Step 7b: Catalyst Preservation ────────────────────────────
     //

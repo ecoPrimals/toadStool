@@ -316,12 +316,17 @@ pub fn sovereign_recipe_replay(params: Option<&Value>) -> Result<Value, JsonRpcE
     if take_snapshot {
         match super::capture::sovereign_snapshot(Some(&serde_json::json!({"bdf": bdf}))) {
             Ok(snap) => {
-                resp.as_object_mut().unwrap().insert("post_snapshot".to_owned(), snap);
+                if let Some(obj) = resp.as_object_mut() {
+                    obj.insert("post_snapshot".to_owned(), snap);
+                }
             }
             Err(e) => {
-                resp.as_object_mut()
-                    .unwrap()
-                    .insert("snapshot_error".to_owned(), Value::String(e.message.to_string()));
+                if let Some(obj) = resp.as_object_mut() {
+                    obj.insert(
+                        "snapshot_error".to_owned(),
+                        Value::String(e.message.to_string()),
+                    );
+                }
             }
         }
     }

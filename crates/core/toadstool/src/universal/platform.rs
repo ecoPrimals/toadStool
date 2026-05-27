@@ -262,9 +262,19 @@ pub async fn init_with_runtime_engines<E: RuntimeEngine>(
     Ok(platform)
 }
 
-/// Get platform status
+/// Report process-level status for the sovereign compute primal.
+///
+/// Always returns [`PlatformStatus::Running`]. This is intentional, not a stub:
+/// ToadStool's universal platform is alive if and only if this process is running.
+/// There is no separate platform daemon or global lifecycle registry for this
+/// free function to query.
+///
+/// [`PlatformStatus::Stopped`] and [`PlatformStatus::Degraded`] are not reported
+/// here because a stopped or fatally degraded primal is detected when the process
+/// exits (or is terminated by a supervisor), not via an in-process status poll.
+/// Per-instance state—registered runtime engines, scheduler health, and similar—
+/// lives on [`UniversalComputePlatform`] when callers hold a platform handle.
 pub async fn get_platform_status() -> PlatformStatus {
-    // For now, always return running
     PlatformStatus::Running
 }
 
@@ -322,7 +332,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_platform_status_returns_running() {
+    async fn test_get_platform_status_is_running_by_design() {
+        // Process-liveness model: alive iff this process is running.
         let status = get_platform_status().await;
         assert_eq!(status, PlatformStatus::Running);
     }

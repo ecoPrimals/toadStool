@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - May 27, 2026 (Sessions 43-279)
 
+### Session S279 (May 27, 2026) — Deep Debt Evolution III: Panic Path Elimination + Capability Hardening
+
+Comprehensive deep debt audit and execution: eliminated all remaining P0/P1 production panic paths, deprecated legacy capability→primal name roundtrip helpers, documented intentional design choices for platform status, verified all SAFETY comments on unsafe blocks.
+
+- FIXED: `sovereign/handoff.rs` — 2 P0 `.as_object_mut().unwrap()` in hot JSON-RPC handler → `if let Some(obj)` guards
+- FIXED: `sovereign_handoff/pipeline.rs` — P0 `catalyst_tier.as_ref().unwrap()` → `if let Some(ref ct)` with safe `take()`
+- FIXED: `ce_validate.rs` — P0 `pbdma_diagnostics.as_ref().unwrap()` in tracing → `if let Some(diag)` guard
+- FIXED: `module_patch/elf/sections.rs` — 8 P1 `.try_into().unwrap()` in ELF parsing → `?` with descriptive error messages + bounds check
+- FIXED: `reagent.rs` — 3 P1 `file_name().unwrap()` → `let Some(name) = ... else { continue }` guards
+- FIXED: `daemon/server.rs` — P1 signal handler `.expect()` → `?` error propagation (returns `Result`)
+- FIXED: `config/types/network.rs` — P1 `.parse().expect()` → const `Ipv4Addr::UNSPECIFIED` (no runtime parsing)
+- FIXED: `module_patch/mod.rs` — P1 `offset.unwrap()` after filter → `.filter_map()` with `p.offset?`
+- DEPRECATED: `get_capability_to_legacy_map()`, `capabilities_to_dependencies()` in `capability_helpers.rs` — legacy primal name mapping
+- DOCUMENTED: `get_platform_status()` — intentional design: sovereign primal is alive iff process runs
+- VERIFIED: All 3 `unsafe` blocks in `hw-learn/nouveau_drm.rs` already have SAFETY comments
+- VERIFIED: 9,156+ lib tests pass, 0 clippy warnings
+
 ### Session S279 (May 27, 2026) — Exp 229: Catalyst Channel — RM Compute Channel Before Warm Swap
 
 Full RM compute channel creation before warm swap to overcome FECS ACR blocker (Exp 228). 16-step Volta RM channel recipe via `rm_trigger --channel`.

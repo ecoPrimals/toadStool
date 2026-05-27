@@ -736,7 +736,10 @@ fn copy_catalyst_artifacts(
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().is_some_and(|e| e == "json") {
-                let dest = reagent_dir.join(path.file_name().unwrap());
+                let Some(name) = path.file_name() else {
+                    continue;
+                };
+                let dest = reagent_dir.join(name);
                 if std::fs::copy(&path, &dest).is_ok() {
                     manifest.patch_set = Some(dest);
                     manifest.completeness.patch_set = true;
@@ -755,9 +758,12 @@ fn copy_catalyst_artifacts(
         if let Ok(entries) = std::fs::read_dir(&fw_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                let dest = reagent_fw_dir.join(path.file_name().unwrap());
+                let Some(name) = path.file_name() else {
+                    continue;
+                };
+                let dest = reagent_fw_dir.join(name);
                 if std::fs::copy(&path, &dest).is_ok() {
-                    let name = path.file_name().unwrap().to_string_lossy();
+                    let name = name.to_string_lossy();
                     if name.contains("fecs_imem") {
                         manifest.firmware.fecs_imem = Some(dest.clone());
                     } else if name.contains("gpccs_imem") {

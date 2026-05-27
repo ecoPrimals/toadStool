@@ -178,16 +178,26 @@ pub fn patch_module_with_rename(
     // Nullify relocation entries that target our NOP patches.
     // Kernel 6.17+ rejects nonzero values at relocation targets, and
     // our NOP bytes (0xC3, 0x31, etc.) would be treated as violations.
-    let patch_ranges: Vec<(usize, usize)> = patches.iter()
-        .filter(|p| p.applied && p.offset.is_some())
-        .filter(|p| p.detail.starts_with("ret") || p.detail.starts_with("nopcall"))
-        .map(|p| {
-            let off = p.offset.unwrap();
-            let len = if p.detail.contains("6B") { 6 }
-                      else if p.detail.starts_with("ret1") || p.detail.starts_with("nopcall") { 5 }
-                      else if p.detail.starts_with("ret@") { 1 }
-                      else { 3 };
-            (off, len)
+    let patch_ranges: Vec<(usize, usize)> = patches
+        .iter()
+        .filter_map(|p| {
+            if !p.applied {
+                return None;
+            }
+            let off = p.offset?;
+            if !(p.detail.starts_with("ret") || p.detail.starts_with("nopcall")) {
+                return None;
+            }
+            let len = if p.detail.contains("6B") {
+                6
+            } else if p.detail.starts_with("ret1") || p.detail.starts_with("nopcall") {
+                5
+            } else if p.detail.starts_with("ret@") {
+                1
+            } else {
+                3
+            };
+            Some((off, len))
         })
         .collect();
     if !patch_ranges.is_empty() {

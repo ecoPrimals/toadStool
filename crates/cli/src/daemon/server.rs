@@ -125,7 +125,7 @@ impl DaemonServer {
         info!("✨ JSON-RPC over UDS per wateringHole standard");
 
         // Wait for SIGINT or SIGTERM
-        wait_for_shutdown().await;
+        wait_for_shutdown().await?;
 
         info!("🛑 Shutdown signal received");
 
@@ -153,15 +153,13 @@ impl DaemonServer {
 }
 
 /// Wait for SIGINT (Ctrl+C) or SIGTERM.
-async fn wait_for_shutdown() {
+async fn wait_for_shutdown() -> Result<()> {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{SignalKind, signal};
 
-        let mut sigint =
-            signal(SignalKind::interrupt()).expect("failed to register SIGINT handler");
-        let mut sigterm =
-            signal(SignalKind::terminate()).expect("failed to register SIGTERM handler");
+        let mut sigint = signal(SignalKind::interrupt())?;
+        let mut sigterm = signal(SignalKind::terminate())?;
 
         tokio::select! {
             _ = sigint.recv() => info!("Received SIGINT"),
@@ -171,8 +169,10 @@ async fn wait_for_shutdown() {
 
     #[cfg(not(unix))]
     {
-        let _ = tokio::signal::ctrl_c().await;
+        tokio::signal::ctrl_c().await?;
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

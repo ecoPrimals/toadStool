@@ -8,14 +8,18 @@
 //! - TLS/SSL configuration
 
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use crate::network;
-use toadstool_common::constants::network::{BIND_ALL_IPV4, HTTP_PROTOCOL, LOCALHOST_IPV4};
+use toadstool_common::constants::network::{BIND_ALL_IPV4, HTTP_PROTOCOL};
 
 /// Last-resort bind port when parsing the configured bind address fails (development fallback only).
 const BIND_FALLBACK_PORT: u16 = 3000;
+
+/// Guaranteed-valid fallback when string parsing of bind address fails.
+const BIND_ALL_FALLBACK: SocketAddr =
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), BIND_FALLBACK_PORT);
 
 /// Network configuration
 ///
@@ -46,16 +50,9 @@ impl Default for NetworkConfig {
         .parse()
         .unwrap_or_else(|e| {
             tracing::error!("Invalid default bind address, using fallback: {}", e);
-            // Fallback to BIND_ALL_IPV4:BIND_FALLBACK_PORT, which should always parse
-            let fallback = format!("{BIND_ALL_IPV4}:{BIND_FALLBACK_PORT}");
-            fallback.parse().unwrap_or_else(|_| {
-                // Last resort: LOCALHOST_IPV4:BIND_FALLBACK_PORT is guaranteed valid by IP spec
-                // This expect is justified: it's a compile-time constant that must be valid
-                #[expect(clippy::expect_used, reason = "compile-time constants must parse; panicking on invalid constants is correct")]
-                format!("{LOCALHOST_IPV4}:{BIND_FALLBACK_PORT}").parse().expect(
-                    "Constants LOCALHOST_IPV4:BIND_FALLBACK_PORT must parse - language guarantee",
-                )
-            })
+            format!("{BIND_ALL_IPV4}:{BIND_FALLBACK_PORT}")
+                .parse()
+                .unwrap_or(BIND_ALL_FALLBACK)
         });
 
         Self {

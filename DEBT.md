@@ -8,6 +8,16 @@ with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
 
+**S279 (Deep Debt Evolution III: Panic Path Elimination + Capability Hardening)**:
+Eliminated all remaining P0/P1 production panic paths: 4 P0 unwraps in
+sovereign handoff/CE validation hot paths, 8 ELF parsing unwraps, 3
+reagent file_name unwraps, signal handler expects, network config parse
+expect, module_patch offset unwrap. Deprecated legacy capability→primal
+name roundtrip helpers (`get_capability_to_legacy_map`,
+`capabilities_to_dependencies`). Documented `get_platform_status` as
+intentional design. Verified all SAFETY comments. 9,156+ lib tests,
+zero clippy, zero production panics.
+
 **S279 (Exp 229: Catalyst Channel — RM Compute Channel Before Warm Swap)**:
 Extended `rm_trigger` to 16-step Volta RM channel recipe (--channel mode).
 `RmChannelEvidence` struct + PCCSR scan in catalyst_capture. Phase A/B

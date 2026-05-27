@@ -37,6 +37,10 @@ pub fn service_to_capability(service_name: &str) -> &'static str {
 }
 
 /// Capability-first map: canonical capability id → optional legacy orchestrator label.
+#[deprecated(
+    since = "0.2.0",
+    note = "use capability-based discovery — legacy primal name mapping"
+)]
 #[must_use]
 pub fn get_capability_to_legacy_map() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
@@ -59,6 +63,10 @@ pub fn get_capability_to_legacy_map() -> HashMap<&'static str, &'static str> {
 /// Optional legacy orchestrator service name for a capability (compatibility only).
 #[deprecated(
     note = "Prefer capability ids in manifests; legacy orchestrator labels are not stable identities."
+)]
+#[allow(
+    deprecated,
+    reason = "delegates to get_capability_to_legacy_map for wire-compat"
 )]
 #[must_use]
 pub fn legacy_service_name_for_capability(capability: &str) -> Option<&'static str> {
@@ -92,6 +100,14 @@ pub fn dependencies_to_capabilities(service_names: &[String]) -> Vec<&'static st
 }
 
 /// Convert capability ids to legacy service names for older orchestrators
+#[deprecated(
+    since = "0.2.0",
+    note = "use capability-based discovery — legacy primal name mapping"
+)]
+#[allow(
+    deprecated,
+    reason = "uses get_capability_to_legacy_map for wire-compat roundtrip"
+)]
 pub fn capabilities_to_dependencies(capabilities: &[&str]) -> Vec<String> {
     let m = get_capability_to_legacy_map();
     capabilities
@@ -166,6 +182,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        deprecated,
+        reason = "tests exercise deprecated capabilities_to_dependencies roundtrip"
+    )]
     fn test_dependencies_conversion() {
         let deps = vec!["beardog".to_string(), "nestgate".to_string()];
         let caps = dependencies_to_capabilities(&deps);
@@ -176,6 +196,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        deprecated,
+        reason = "tests exercise deprecated get_capability_to_legacy_map"
+    )]
     fn test_get_capability_to_legacy_map() {
         let mappings = get_capability_to_legacy_map();
         assert_eq!(mappings.get("crypto"), Some(&"beardog"));

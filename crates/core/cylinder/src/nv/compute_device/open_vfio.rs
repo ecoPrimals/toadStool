@@ -132,7 +132,7 @@ impl NvVfioComputeDevice {
                     "Phase B: sovereign channel still PENDING — attempting Phase A (RM channel adoption)"
                 );
                 match channel_init::adopt_rm_channel(
-                    &dma_backend, &bar0, &profile, &self.bdf,
+                    &dma_backend, &bar0, profile, &self.bdf,
                     self.rm_channel_id,
                 ) {
                     Ok(Some(adopted_init)) => {

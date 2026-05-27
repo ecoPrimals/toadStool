@@ -163,7 +163,7 @@ pub(crate) fn build_dispatch_state(
 pub(crate) fn adopt_rm_channel(
     dma_backend: &DmaBackend,
     bar0: &MappedBar,
-    profile: &GenerationProfile,
+    _profile: &GenerationProfile,
     bdf: &str,
     rm_channel_id: Option<u32>,
 ) -> DriverResult<Option<ChannelInitResult>> {
