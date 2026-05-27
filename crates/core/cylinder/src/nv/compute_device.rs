@@ -1003,75 +1003,183 @@ impl NvVfioComputeDevice {
             }
         }
 
-        // Catalyst path: FECS was booted by RM and is halted. Try to unhalt
-        // and send channel binding methods. Skip all destructive ungating —
-        // the catalyst pipeline already established the correct PRI routing.
+        // Catalyst path: RM firmware booted FECS/TPCs but RM's FECS idle loop
+        // doesn't process our context-switch protocol. We need to ungated the
+        // GPC PRI ring (so GPCCS registers are accessible), boot nouveau
+        // FECS/GPCCS firmware, and then send channel setup methods.
+        //
+        // The catalyst state has TPC PRI stations alive but GPC PRI ring gated.
+        // We do a targeted PRI recovery + GPC ungating WITHOUT full PGRAPH
+        // engine reset, then boot nouveau falcons and check if TPC survived.
         if catalyst_mode && !is_kepler && gr_ctx.is_some() {
-            use crate::vfio::channel::registers::falcon;
+            use crate::nv::gsp_bridge::GspBridge;
+            use crate::vfio::channel::registers::{falcon, pri};
 
-            let fecs_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
-            let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
-            let halted = fecs_alias & falcon::CPUCTL_HALTED != 0;
-            let in_hreset = fecs_alias & falcon::CPUCTL_HRESET != 0;
+            let bridge = super::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
 
+            // Check TPC state before ungating
+            let tpc_before = (0..6u32).map(|gpc| {
+                let addr = 0x50400c + gpc as usize * 0x8000;
+                bar0.read_u32(addr).unwrap_or(0xDEAD_DEAD)
+            }).collect::<Vec<_>>();
             tracing::info!(
                 bdf = %self.bdf,
-                fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
-                fecs_pc = format_args!("{fecs_pc:#010x}"),
-                halted, in_hreset,
-                "catalyst dispatch: FECS state before unhalt attempt"
+                tpc_before = ?tpc_before,
+                "catalyst: TPC state before PRI ungating"
             );
 
-            if halted && !in_hreset {
-                // FECS firmware ran to completion and halted. Write the
-                // start bit to CPUCTL_ALIAS to resume the idle loop.
-                tracing::info!(bdf = %self.bdf, "catalyst dispatch: unhalting FECS via CPUCTL_ALIAS start bit");
-                let _ = bar0.write_u32(
-                    falcon::FECS_BASE + falcon::CPUCTL_ALIAS,
-                    falcon::CPUCTL_STARTCPU,
-                );
-                std::thread::sleep(std::time::Duration::from_millis(100));
+            // Phase 1: CG sweep to disable clock gating on GPC PRI
+            let cg = crate::vfio::sovereign_stages::cg_sweep(&bar0);
+            tracing::info!(changes = cg.changes, faulted = cg.faulted, "catalyst: CG sweep");
 
-                let alias_after = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
-                let pc_after = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
-                let still_halted = alias_after & falcon::CPUCTL_HALTED != 0;
-                tracing::info!(
-                    bdf = %self.bdf,
-                    fecs_cpuctl_alias = format_args!("{alias_after:#010x}"),
-                    fecs_pc = format_args!("{pc_after:#010x}"),
-                    still_halted,
-                    pc_changed = (pc_after != fecs_pc),
-                    "catalyst dispatch: FECS state after unhalt"
-                );
+            // Phase 2: PRI ring recovery to re-enumerate ring stations
+            let pri_r = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+            tracing::info!(alive = pri_r.alive, faulted = pri_r.faulted, "catalyst: PRI recovery");
+
+            // Phase 3: PGOB ungating
+            match crate::vfio::sovereign_stages::pgob_ungating(&bar0, &bridge) {
+                Ok(detail) => tracing::info!(%detail, "catalyst: PGOB"),
+                Err(e) => tracing::warn!(%e, "catalyst: PGOB failed"),
             }
 
-            // Check if FECS is now alive (not halted, not in hreset).
-            let fecs_alive = crate::vfio::channel::fecs::fecs_is_alive(&bar0);
+            // Phase 4: Force PRI ring enumerate
+            let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
+            let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let _ = bar0.write_u32(0x0001_2004_usize, 2);
+            let pmc_intr = bar0.read_u32(0x100).unwrap_or(0);
+            if pmc_intr & (1 << 26) != 0 {
+                let _ = bar0.write_u32(0x100, 1 << 26);
+            }
+
+            // Phase 5: GPC MMU init (required for GPCCS register access)
+            let fb_mmu = bar0.read_u32(0x100c80).unwrap_or(0);
+            let _ = bar0.write_u32(0x418880, fb_mmu & 0x0001_FFFF);
+            let _ = bar0.write_u32(0x418890, 0);
+            let _ = bar0.write_u32(0x418894, 0);
+            let _ = bar0.write_u32(0x4188b0, bar0.read_u32(0x100cc4).unwrap_or(0));
+            let _ = bar0.write_u32(0x4188b4, bar0.read_u32(0x100cc8).unwrap_or(0));
+            let _ = bar0.write_u32(0x4188b8, bar0.read_u32(0x100ccc).unwrap_or(0));
+            let a4 = bar0.read_u32(0x4188a4).unwrap_or(0);
+            let _ = bar0.write_u32(0x4188a4, a4 | 0x0300_0000);
+
+            // Phase 6: sw_nonctx.bin replay
+            let _ = bridge.apply_gr_bar0_init(&bar0, *profile.sm_range.start());
+
+            // Phase 7: Post-init PRI recovery
+            let pri2 = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+            tracing::info!(alive = pri2.alive, "catalyst: post-init PRI recovery");
+
+            // Check TPC state after ungating
+            let tpc_after = (0..6u32).map(|gpc| {
+                let addr = 0x50400c + gpc as usize * 0x8000;
+                bar0.read_u32(addr).unwrap_or(0xDEAD_DEAD)
+            }).collect::<Vec<_>>();
+            let tpc_survived = tpc_after.iter().any(|&v| v != 0 && v != 0xDEAD_DEAD && v & 0xBADF_0000 != 0xBADF_0000);
             tracing::info!(
                 bdf = %self.bdf,
-                fecs_alive,
-                "catalyst dispatch: FECS liveness after unhalt — attempting channel setup"
+                tpc_after = ?tpc_after,
+                tpc_survived,
+                "catalyst: TPC state after PRI ungating (no PGRAPH reset)"
             );
 
-            // Even if fecs_is_alive returns false (HS-locked falcon may report
-            // halted via CPUCTL_ALIAS even when responsive to methods), try
-            // the channel setup — FECS INIT_CTXSW succeeded during catalyst
-            // capture with the same "halted" state.
-            match Self::fecs_setup_channel(&bar0, &channel) {
-                Ok(()) => {
-                    tracing::info!(
-                        bdf = %self.bdf,
-                        "catalyst dispatch: FECS channel setup succeeded"
-                    );
+            // Phase 8: Boot GPCCS + FECS with nouveau firmware
+            if bridge.has_gr_firmware() {
+                tracing::info!(bdf = %self.bdf, "catalyst: booting GPCCS + FECS with nouveau firmware");
+
+                match bridge.boot_falcon_hs(
+                    &bar0, "GPCCS", falcon::GPCCS_BASE, &dma_backend,
+                    super::nv_gsp_bridge::GPCCS_FW_CODE_IOVA,
+                    super::nv_gsp_bridge::GPCCS_FW_DATA_IOVA,
+                ) {
+                    Ok((ctl, mb0)) => {
+                        tracing::info!(
+                            bdf = %self.bdf,
+                            gpccs_cpuctl = format_args!("{ctl:#010x}"),
+                            gpccs_mb0 = format_args!("{mb0:#010x}"),
+                            "catalyst: GPCCS boot complete"
+                        );
+                    }
+                    Err(e) => tracing::warn!(bdf = %self.bdf, error = %e, "catalyst: GPCCS boot failed"),
                 }
-                Err(e) => {
-                    tracing::warn!(
-                        bdf = %self.bdf,
-                        error = %e,
-                        fecs_alive,
-                        "catalyst dispatch: FECS channel setup failed — \
-                         dispatch may produce zero readback"
+
+                match bridge.boot_falcon_hs(
+                    &bar0, "FECS", falcon::FECS_BASE, &dma_backend,
+                    super::nv_gsp_bridge::FECS_FW_CODE_IOVA,
+                    super::nv_gsp_bridge::FECS_FW_DATA_IOVA,
+                ) {
+                    Ok((ctl, mb0)) => {
+                        tracing::info!(
+                            bdf = %self.bdf,
+                            fecs_cpuctl = format_args!("{ctl:#010x}"),
+                            fecs_mb0 = format_args!("{mb0:#010x}"),
+                            "catalyst: FECS boot complete"
+                        );
+                    }
+                    Err(e) => tracing::warn!(bdf = %self.bdf, error = %e, "catalyst: FECS boot failed"),
+                }
+
+                std::thread::sleep(std::time::Duration::from_millis(100));
+
+                let fecs_alive = crate::vfio::channel::fecs::fecs_is_alive(&bar0);
+                let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
+                let fecs_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_alive,
+                    fecs_pc = format_args!("{fecs_pc:#010x}"),
+                    fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
+                    "catalyst: FECS state after nouveau boot"
+                );
+
+                if fecs_alive {
+                    match Self::fecs_setup_channel(&bar0, &channel) {
+                        Ok(()) => {
+                            tracing::info!(bdf = %self.bdf, "catalyst: FECS channel setup succeeded");
+                        }
+                        Err(e) => {
+                            tracing::warn!(bdf = %self.bdf, error = %e, "catalyst: FECS channel setup failed");
+                        }
+                    }
+                } else {
+                    // Last resort: if still not alive, try full PGRAPH reset path
+                    tracing::info!(bdf = %self.bdf, "catalyst: FECS not alive — attempting PGRAPH engine reset");
+                    match crate::vfio::sovereign_stages::pgraph_engine_reset(&bar0) {
+                        Ok(detail) => tracing::info!(%detail, "catalyst: PGRAPH reset"),
+                        Err(e) => tracing::warn!(%e, "catalyst: PGRAPH reset failed"),
+                    }
+
+                    // Re-enumerate PRI after reset
+                    let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
+                    let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    let _ = bar0.write_u32(0x0001_2004_usize, 2);
+
+                    // Re-apply sw_nonctx.bin
+                    let _ = bridge.apply_gr_bar0_init(&bar0, *profile.sm_range.start());
+                    let _ = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+
+                    // Retry FECS boot
+                    let _ = bridge.boot_falcon_hs(
+                        &bar0, "GPCCS", falcon::GPCCS_BASE, &dma_backend,
+                        super::nv_gsp_bridge::GPCCS_FW_CODE_IOVA,
+                        super::nv_gsp_bridge::GPCCS_FW_DATA_IOVA,
                     );
+                    if let Ok((ctl, _)) = bridge.boot_falcon_hs(
+                        &bar0, "FECS", falcon::FECS_BASE, &dma_backend,
+                        super::nv_gsp_bridge::FECS_FW_CODE_IOVA,
+                        super::nv_gsp_bridge::FECS_FW_DATA_IOVA,
+                    ) {
+                        tracing::info!(
+                            bdf = %self.bdf,
+                            fecs_cpuctl = format_args!("{ctl:#010x}"),
+                            "catalyst: FECS boot after PGRAPH reset"
+                        );
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        if crate::vfio::channel::fecs::fecs_is_alive(&bar0) {
+                            let _ = Self::fecs_setup_channel(&bar0, &channel);
+                        }
+                    }
                 }
             }
         }
@@ -1226,27 +1334,60 @@ impl NvVfioComputeDevice {
         // In catalyst mode, skip destructive ungating — catalyst pipeline
         // already established correct PRI routing via RM.
         if self.catalyst_warm && !is_kepler && gr_ctx.is_some() {
-            use crate::vfio::channel::registers::falcon;
+            use crate::nv::gsp_bridge::GspBridge;
+            use crate::vfio::channel::registers::{falcon, pri};
 
             tracing::info!(
                 bdf = %self.bdf,
-                "anchor adopt catalyst: skipping destructive ungating, \
-                 attempting FECS unhalt + channel setup"
+                "anchor catalyst: PRI ungating + nouveau FECS boot"
             );
 
-            let fecs_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
-            let halted = fecs_alias & falcon::CPUCTL_HALTED != 0;
-            let in_hreset = fecs_alias & falcon::CPUCTL_HRESET != 0;
+            let bridge = super::nv_gsp_bridge::NvGspBridge::new(profile.firmware_chip);
 
-            if halted && !in_hreset {
-                let _ = bar0.write_u32(
-                    falcon::FECS_BASE + falcon::CPUCTL_ALIAS,
-                    falcon::CPUCTL_STARTCPU,
+            // Same ungating sequence as open_vfio catalyst path
+            let cg = crate::vfio::sovereign_stages::cg_sweep(&bar0);
+            let _ = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+            let _ = crate::vfio::sovereign_stages::pgob_ungating(&bar0, &bridge);
+            let _ = bar0.write_u32(pri::PRI_RINGMASTER_INTR_STATUS, 0xFFFF_FFFF);
+            let _ = bar0.write_u32(pri::PRI_RINGMASTER_COMMAND, pri::PRI_RINGMASTER_CMD_ENUMERATE);
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let _ = bar0.write_u32(0x0001_2004_usize, 2);
+
+            let fb_mmu = bar0.read_u32(0x100c80).unwrap_or(0);
+            let _ = bar0.write_u32(0x418880, fb_mmu & 0x0001_FFFF);
+            let _ = bar0.write_u32(0x418890, 0);
+            let _ = bar0.write_u32(0x418894, 0);
+            let _ = bar0.write_u32(0x4188b0, bar0.read_u32(0x100cc4).unwrap_or(0));
+            let _ = bar0.write_u32(0x4188b4, bar0.read_u32(0x100cc8).unwrap_or(0));
+            let _ = bar0.write_u32(0x4188b8, bar0.read_u32(0x100ccc).unwrap_or(0));
+            let a4 = bar0.read_u32(0x4188a4).unwrap_or(0);
+            let _ = bar0.write_u32(0x4188a4, a4 | 0x0300_0000);
+            let _ = bridge.apply_gr_bar0_init(&bar0, *profile.sm_range.start());
+            let _ = crate::vfio::sovereign_stages::pri_bus_recover(&bar0);
+
+            if bridge.has_gr_firmware() {
+                let _ = bridge.boot_falcon_hs(
+                    &bar0, "GPCCS", falcon::GPCCS_BASE, &dma_backend,
+                    super::nv_gsp_bridge::GPCCS_FW_CODE_IOVA,
+                    super::nv_gsp_bridge::GPCCS_FW_DATA_IOVA,
                 );
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                if let Ok((ctl, mb0)) = bridge.boot_falcon_hs(
+                    &bar0, "FECS", falcon::FECS_BASE, &dma_backend,
+                    super::nv_gsp_bridge::FECS_FW_CODE_IOVA,
+                    super::nv_gsp_bridge::FECS_FW_DATA_IOVA,
+                ) {
+                    tracing::info!(
+                        bdf = %self.bdf,
+                        fecs_cpuctl = format_args!("{ctl:#010x}"),
+                        fecs_mb0 = format_args!("{mb0:#010x}"),
+                        "anchor catalyst: FECS boot complete"
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    if crate::vfio::channel::fecs::fecs_is_alive(&bar0) {
+                        let _ = Self::fecs_setup_channel(&bar0, &channel);
+                    }
+                }
             }
-
-            let _ = Self::fecs_setup_channel(&bar0, &channel);
         } else if fecs_running && !is_kepler {
             use crate::nv::gsp_bridge::GspBridge;
             use crate::vfio::channel::registers::pri;
