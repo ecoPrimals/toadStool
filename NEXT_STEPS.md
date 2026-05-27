@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S277 (Wave 54: Early Health Responder. 88+ JSON-RPC methods. 9,161+ lib tests.)
+**Updated**: May 2026 — S278 (Deep Debt Evolution Sprint: 7 oversized files split into module dirs, 4 C tools → Rust bins, `nv/registers/` + `nv/rm_abi.rs` added, `NoopGspBridge`, AMD feature-gated, coral-kmod fossilized. 705 cylinder tests. Zero C.)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,161+ lib-only) | **88+ JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Zero external mmap deps (memmap2 removed S276)** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
-**Latest**: S277 — **Wave 54: Early Health Responder**: Health check unresponsive on southGate NUCLEUS fixed. Early health responder responds to health.liveness/health.check immediately on pre-bound socket while executor initializes. BTSP not required for health probes. 9,161+ lib tests.
-**Previous**: S276 — Deep Debt Evolution II. S275 — Wave 49 Ecosystem Tightening. S274 — Glacial Horizon: max_guest_load wired. S273 — Deep Debt Evolution. S268 — Kernel Health Preflight.
+**Latest**: S278 — **Deep Debt Evolution Sprint**: 7 oversized files split into module directories (~12,500L refactored). 4 C tools ported to Rust bins. `nv/registers/` (12 domain submodules) + `nv/rm_abi.rs` (22 repr(C) structs). `StubGspBridge` → `NoopGspBridge`. AMD Vega feature-gated. coral-kmod fossilized. 705 cylinder tests, zero clippy, zero C.
+**Previous**: S277 — Wave 54: Early Health Responder. S276 — Deep Debt Evolution II. S275 — Wave 49 Ecosystem Tightening. S274 — Glacial Horizon. S273 — Deep Debt Evolution. S268 — Kernel Health Preflight.
 
 ---
 

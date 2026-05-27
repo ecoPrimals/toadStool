@@ -521,7 +521,7 @@ mod tests {
     #[test]
     fn kepler_strategy_from_profile() {
         let profile = generation::profile_for_sm(35);
-        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
         let strat = strategy_for_profile(&profile, bridge, 35);
 
         assert_eq!(strat.family_name(), "Kepler");
@@ -536,7 +536,7 @@ mod tests {
     #[test]
     fn volta_strategy_from_profile() {
         let profile = generation::profile_for_sm(70);
-        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
         let strat = strategy_for_profile(&profile, bridge, 70);
 
         assert_eq!(strat.family_name(), "Volta");
@@ -551,7 +551,7 @@ mod tests {
     fn kepler_golden_sequences_wired() {
         use crate::nv::gr_init::{ChipFamily, GrInitSequence, InitSource};
         let profile = generation::profile_for_sm(35);
-        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
         let seq = GrInitSequence::from_bar0_diff(
             ChipFamily::Kepler,
             &[(0x400700, 0)],
@@ -571,7 +571,7 @@ mod tests {
     fn volta_golden_sequences_wired() {
         use crate::nv::gr_init::{ChipFamily, GrInitSequence, InitSource};
         let profile = generation::profile_for_sm(70);
-        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
         let seq = GrInitSequence::from_bar0_diff(
             ChipFamily::Volta,
             &[(0x41A004, 0)],
@@ -590,7 +590,7 @@ mod tests {
     #[test]
     fn empty_golden_sequences_returns_none() {
         let profile = generation::profile_for_sm(70);
-        let bridge = Arc::new(crate::nv::gsp_bridge::StubGspBridge::default());
+        let bridge = Arc::new(crate::nv::gsp_bridge::NoopGspBridge::default());
         let strat = NvAcrStrategy::new(profile.clone(), bridge, 70);
         assert!(strat.engine_ungate_sequences().is_none());
     }

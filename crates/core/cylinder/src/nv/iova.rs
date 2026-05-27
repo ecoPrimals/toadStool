@@ -2,7 +2,7 @@
 //! Unified IOVA (I/O Virtual Address) layout manager for NVIDIA VFIO dispatch.
 //!
 //! Centralizes the IOVA address space layout that was previously scattered
-//! across `registers.rs`, `compute_device.rs`, and `nv_gsp_bridge.rs`.
+//! across `registers.rs`, `compute_device/`, and `nv_gsp_bridge.rs`.
 //! Prevents collisions and documents the full memory map in one place.
 //!
 //! # IOVA Space Layout (4 MiB total)

@@ -10,11 +10,11 @@
 //! coralReef does firmware/compiler. The bridge can be implemented:
 //! - Locally (when vfio_compute modules are fully absorbed into cylinder)
 //! - Via IPC (JSON-RPC call to coralReef's `compute.firmware.*` methods)
-//! - As [`StubGspBridge`] (sentinel for hardware without firmware needs,
+//! - As [`NoopGspBridge`] (null-object for hardware without firmware needs,
 //!   or before coralReef connection is established)
 //!
 //! **hotSpring validation (May 2026):** Warm VFIO open and sovereign init
-//! stages 1-3 work with `StubGspBridge`. FECS compute context init (stage 4)
+//! stages 1-3 work with `NoopGspBridge`. FECS compute context init (stage 4)
 //! requires a real bridge — either warm-handoff or coralReef IPC.
 
 use crate::error::DriverResult;
@@ -148,33 +148,36 @@ pub trait GspBridge: Send + Sync {
     fn pgob_disable(&self, bar0: &MappedBar) -> DriverResult<PgobResult>;
 }
 
-/// Sentinel `GspBridge` — null-object default when no firmware provider
-/// is available.
+/// Capability-guided no-op `GspBridge` — explicit "no firmware provider" state.
 ///
-/// This is **not** a test mock. It is the complete implementation of the
-/// "no firmware provider" state. Non-firmware stages (bar0_probe, pmc_enable,
-/// memory training, warm detection) run normally. Firmware-dependent stages
-/// (ACR boot, FECS/GPCCS PIO upload, GR init via `boot_fecs`) return
-/// [`DriverError::Unsupported`] with guidance to connect a `GspBridge`
-/// implementor.
+/// This is a null-object implementation, not a test mock. Non-firmware
+/// stages (bar0_probe, pmc_enable, memory training, warm detection) run
+/// normally. Firmware-dependent stages return [`DriverError::Unsupported`]
+/// with generation-specific guidance on which bridge implementation to use.
 ///
-/// When constructed with [`StubGspBridge::with_gr_init_sequence`], the stub
-/// can apply captured GR BAR0 init writes — enabling warm-handoff validation
-/// without a full firmware provider.
+/// When constructed with [`NoopGspBridge::with_gr_init_sequence`], the
+/// bridge can apply captured GR BAR0 init writes — enabling warm-handoff
+/// validation without a full firmware provider.
 ///
-/// **Hardware validation note (hotSpring May 2026):** Dispatch readback
-/// fails at FECS compute context init because `StubGspBridge` cannot
-/// upload FECS firmware. The production path is either:
-/// - coralReef provides a real `GspBridge` impl via IPC
-/// - toadStool absorbs `vfio_compute` with a local `NvGspBridge` impl
-/// - Warm-handoff from nouveau/nvidia-470 preserves FECS state
+/// # Capability guidance
+///
+/// Each `Unsupported` error carries a message indicating which GPU
+/// generation needs which bridge type:
+/// - **Kepler (SM 3.x):** unsigned PIO upload — local `NvGspBridge`
+/// - **Volta/Turing (SM 7.x-8.x):** signed ACR chain — `NvGspBridge`
+///   with vendor firmware blobs, or warm-handoff preserving FECS state
+/// - **Ampere+ (SM 8.6+):** GSP-RM via `NvGspBridge` or vendor driver
 #[derive(Debug, Default)]
-pub struct StubGspBridge {
+pub struct NoopGspBridge {
     gr_init_sequence: Option<crate::nv::gr_init::GrInitSequence>,
 }
 
-impl StubGspBridge {
-    /// Create a stub bridge with a captured `GrInitSequence` for BAR0 init.
+/// Backward compatibility alias for code referencing the old name.
+#[deprecated(note = "renamed to NoopGspBridge — use NoopGspBridge instead")]
+pub type StubGspBridge = NoopGspBridge;
+
+impl NoopGspBridge {
+    /// Create a noop bridge with a captured `GrInitSequence` for BAR0 init.
     pub fn with_gr_init_sequence(seq: crate::nv::gr_init::GrInitSequence) -> Self {
         Self {
             gr_init_sequence: Some(seq),
@@ -182,7 +185,7 @@ impl StubGspBridge {
     }
 }
 
-impl GspBridge for StubGspBridge {
+impl GspBridge for NoopGspBridge {
     fn supports_gr_init(&self) -> bool {
         self.gr_init_sequence.is_some()
     }
@@ -195,12 +198,12 @@ impl GspBridge for StubGspBridge {
                         format!("GrInitSequence apply failed: {e}").into(),
                     )
                 })?;
-                tracing::info!(writes = applied, "GspBridge stub: applied GrInitSequence");
+                tracing::info!(writes = applied, "NoopGspBridge: applied GrInitSequence");
                 Ok(())
             }
             None => {
                 tracing::warn!(
-                    "GspBridge stub: apply_gr_bar0_init skipped (no init sequence provided)"
+                    "NoopGspBridge: apply_gr_bar0_init skipped (no init sequence)"
                 );
                 Ok(())
             }
@@ -215,28 +218,35 @@ impl GspBridge for StubGspBridge {
         _dma: Option<crate::vfio::device::DmaBackend>,
     ) -> DriverResult<Vec<AcrBootResult>> {
         Err(crate::DriverError::Unsupported(
-            "ACR boot requires firmware provider (GspBridge)".into(),
+            "ACR boot requires NvGspBridge with signed vendor firmware \
+             (Volta/Turing SM 7.x-8.x) or warm-handoff from nvidia/nouveau"
+                .into(),
         ))
     }
 
     fn boot_gr_falcons(&self, _bar0: &MappedBar, _chip: &str) -> DriverResult<FalconBootResult> {
         Err(crate::DriverError::Unsupported(
-            "falcon boot requires firmware provider (GspBridge)".into(),
+            "falcon boot requires NvGspBridge — Kepler: unsigned PIO, \
+             Volta+: signed ACR chain"
+                .into(),
         ))
     }
 
     fn boot_fecs(&self, _bar0: &MappedBar, _chip: &str) -> DriverResult<FalconBootResult> {
         Err(crate::DriverError::Unsupported(
-            "FECS boot requires firmware provider (GspBridge)".into(),
+            "FECS boot requires NvGspBridge or warm-handoff preserving FECS state"
+                .into(),
         ))
     }
 
     fn pgob_diagnostic(&self, _bar0: &MappedBar, label: &str) {
-        tracing::debug!(label, "GspBridge stub: pgob_diagnostic skipped");
+        tracing::debug!(label, "NoopGspBridge: pgob_diagnostic skipped (no firmware)");
     }
 
     fn pgob_disable(&self, _bar0: &MappedBar) -> DriverResult<PgobResult> {
-        tracing::warn!("GspBridge stub: pgob_disable skipped (no firmware provider)");
+        tracing::warn!(
+            "NoopGspBridge: pgob_disable requires NvGspBridge for GPC ungating firmware"
+        );
         Ok(PgobResult { gpc_alive: 0 })
     }
 }
@@ -246,20 +256,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stub_bridge_gr_init_is_ok() {
-        let bridge = StubGspBridge::default();
-        // SAFETY: MappedBar cannot be created without real hardware,
-        // so we only test the bridge trait object dispatch here.
+    fn noop_bridge_is_trait_object() {
+        let bridge = NoopGspBridge::default();
         let _: Box<dyn GspBridge> = Box::new(bridge);
     }
 
     #[test]
-    fn stub_bridge_capabilities_all_false() {
-        let bridge = StubGspBridge::default();
+    fn noop_bridge_capabilities_all_false() {
+        let bridge = NoopGspBridge::default();
         assert!(!bridge.supports_acr());
         assert!(!bridge.supports_pgob());
         assert!(!bridge.supports_pmu());
         assert!(!bridge.supports_gr_init());
+    }
+
+    #[test]
+    #[expect(deprecated)]
+    fn stub_alias_still_works() {
+        let _bridge = StubGspBridge::default();
     }
 
     #[test]

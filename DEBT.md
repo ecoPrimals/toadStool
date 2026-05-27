@@ -1,12 +1,26 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S277
+**Date**: May 2026 — S278
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S278 (Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption)**:
+Split 7 oversized files (sovereign_handoff 2,860L, module_patch 2,020L,
+compute_device 2,072L, sovereign_stages 1,861L, guarded_sysfs 1,561L,
+channel/mod.rs 1,117L, handler/sovereign 1,004L) into focused module
+directories. Deduplicated gr_ungating (4x→1x) and pbdma discovery (2x→1x)
+in compute_device. Ported all 4 userspace C tools to Rust bins (rm_trigger,
+sovereign_acr_boot, sovereign_pmu_boot, capture_pmu_falcon). Created
+`nv/registers/` (12 domain submodules) consolidating ~200 inline hex
+register constants. Created `nv/rm_abi.rs` — canonical NVIDIA RM ABI types
+absorbed from coral-kmod (22 repr(C) structs, class IDs Volta→Blackwell).
+Evolved `StubGspBridge` → `NoopGspBridge` with capability guidance. Gated
+AMD Vega behind `#[cfg(feature = "amd")]`. Fossilized coral-kmod to
+fossilRecord/. 705 cylinder tests pass. Zero userspace C. Zero clippy.
 
 **S277 (Wave 54: Early Health Responder)**:
 Health check unresponsive on southGate NUCLEUS — pre-bound socket accepted
@@ -15,7 +29,6 @@ Added `spawn_early_health_responder()` that responds to health.liveness/
 health.check/health.readiness immediately on the pre-bound socket while
 executor initializes. BTSP NOT required for health probes (plaintext
 auto-detection). 9,161+ lib tests, 0 clippy.
-
 **S275 (Wave 49: Ecosystem Tightening)**:
 Showcase fossilized (35 files → `fossilRecord/primals/toadStool/showcase_wave49/`).
 36 wateringHole handoffs mirrored to central (8 active, 28 archived). Stale

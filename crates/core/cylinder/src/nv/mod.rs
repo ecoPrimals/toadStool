@@ -9,6 +9,7 @@
 //! remain in coralReef until Phase D or trait boundary.
 
 pub mod bar0;
+pub mod registers;
 pub mod compute_device;
 pub mod driver_probe;
 pub mod falcon_pio;
@@ -16,6 +17,7 @@ pub mod generation;
 pub mod gr_init;
 pub mod pmu_init;
 pub mod pri;
+pub mod rm_abi;
 pub mod gsp_bridge;
 pub mod hardware_guard;
 pub mod identity;

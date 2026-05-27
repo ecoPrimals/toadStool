@@ -5,7 +5,30 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 27, 2026 (Sessions 43-277)
+## [Unreleased] - May 27, 2026 (Sessions 43-278)
+
+### Session S278 (May 27, 2026) — Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption
+
+Systematic deep debt reduction across the primal ecosystem (hotSpring-originated). Split 7 oversized files into module directories, ported all userspace C to Rust, consolidated GPU register maps, evolved production stubs, and absorbed coral-kmod RM ABI.
+
+- REFACTORED: `sovereign_handoff.rs` (2,860L) → `sovereign_handoff/` directory (11 modules: types, config, lock, runtime_probe, rm_trigger, rollback, module_deps, pri_recovery, pipeline, tests, mod). 20/20 tests pass.
+- REFACTORED: `module_patch.rs` (2,020L) → `module_patch/` directory (11 modules: types, apply, identity, elf/{sections,symbols,relocations}, patch_sets/{nouveau,nvidia}, tests, mod). 16/16 tests pass.
+- REFACTORED: `compute_device.rs` (2,072L) → `compute_device/` directory (11 modules) with **deduplication**: `gr_ungating` (eliminated 4x copy), `pbdma` (eliminated 2x copy), `channel_init` (shared helper). 12/12 tests pass.
+- REFACTORED: `sovereign_stages.rs` (1,861L) → `sovereign_stages/` directory (7 modules: pmc, memory, power, devinit, gr, tests, mod)
+- REFACTORED: `guarded_sysfs.rs` (1,561L) → `guarded_sysfs/` directory (5 modules: driver_ops, kmod_build, proc_scan, tests, mod). 15/15 tests pass.
+- REFACTORED: `channel/mod.rs` (1,117L) slimmed → `mod.rs` (~248L) + `pfifo.rs`, `mmu.rs`, `devinit_ops.rs`
+- REFACTORED: `handler/sovereign.rs` (1,004L) → `handler/sovereign/` directory (6 modules: init, handoff, probe, capture, tests, mod)
+- ADDED: `src/bin/rm_trigger.rs` — pure Rust port of `rm_trigger.c` (rustix mknod, libc ioctl, serde_json structured output)
+- ADDED: `src/bin/sovereign_acr_boot.rs` — pure Rust port of C ACR boot tool (volatile MMIO via Bar0 struct)
+- ADDED: `src/bin/sovereign_pmu_boot.rs` — pure Rust port of C PMU DMATRF boot tool
+- ADDED: `src/bin/capture_pmu_falcon.rs` — pure Rust port of C falcon state capture tool
+- REMOVED: `tools/rm_trigger.c`, `infra/agentReagents/tools/titanv-sovereign/sovereign_acr_boot.c`, `sovereign_pmu_boot.c`, `capture_pmu_falcon.c` — all userspace C eliminated
+- ADDED: `nv/registers/` module — 12 domain submodules (pmc, pbus, pramin, ptimer, pgraph, falcon, pmu, pfb, pri, gpc, ce, usermode). Replaced high-traffic inline hex with named constants.
+- ADDED: `nv/rm_abi.rs` — canonical NVIDIA RM ABI type definitions: 22 `#[repr(C)]` structs, ioctl escapes, class IDs (Volta→Blackwell), status codes, control commands. Absorbed from coral-kmod.
+- EVOLVED: `StubGspBridge` → `NoopGspBridge` with capability-guided `Unsupported` errors (generation-specific guidance). `#[deprecated]` type alias preserved for backward compat.
+- EVOLVED: AMD Vega `BootPipeline` gated behind `#[cfg(feature = "amd")]` feature — no unconditional dead code
+- FOSSILIZED: `primals/coralReef/crates/coral-kmod/` → `fossilRecord/primals/coralReef/coral-kmod/` with `FOSSILIZED.md` (orphaned since Sprint 9 diesel engine excision)
+- METRICS: 88 JSON-RPC methods, 705 cylinder tests (all pass), 0 clippy warnings. Zero userspace C in primal codebases.
 
 ### Session S277 (May 27, 2026) — Wave 54: Early Health Responder
 

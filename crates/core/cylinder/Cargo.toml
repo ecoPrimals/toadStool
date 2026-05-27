@@ -11,6 +11,7 @@ categories = ["hardware-support", "os::linux-apis"]
 
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
+libc = "0.2"
 object = { version = "0.39.1", features = ["read", "write"] }
 rustix = { workspace = true, features = ["mm", "time", "process", "net", "event", "runtime", "pipe", "fs", "system"] }
 ruzstd = "0.8"
@@ -20,12 +21,29 @@ thiserror = { workspace = true }
 toadstool-ember = { path = "../ember" }
 tracing = { workspace = true }
 
+[[bin]]
+name = "rm_trigger"
+path = "src/bin/rm_trigger.rs"
+
+[[bin]]
+name = "sovereign_acr_boot"
+path = "src/bin/sovereign_acr_boot.rs"
+
+[[bin]]
+name = "sovereign_pmu_boot"
+path = "src/bin/sovereign_pmu_boot.rs"
+
+[[bin]]
+name = "capture_pmu_falcon"
+path = "src/bin/capture_pmu_falcon.rs"
+
 [dev-dependencies]
 serde_json = { workspace = true }
 
 [features]
 default = ["vfio"]
 vfio = []
+amd = []
 test-utils = []
 
 [lints]

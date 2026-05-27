@@ -132,8 +132,8 @@ impl DispatchHandler {
                 tracing::info!(chip, bdf, "sovereign.init(ember): using NvGspBridge");
                 std::sync::Arc::new(nv)
             } else {
-                tracing::info!(chip, bdf, "sovereign.init(ember): using StubGspBridge");
-                std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::StubGspBridge::default())
+                tracing::info!(chip, bdf, "sovereign.init(ember): using NoopGspBridge");
+                std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::NoopGspBridge::default())
             }
         };
 
@@ -709,7 +709,7 @@ impl DispatchHandler {
             if nv.has_gr_firmware() {
                 std::sync::Arc::new(nv)
             } else {
-                std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::StubGspBridge::default())
+                std::sync::Arc::new(toadstool_cylinder::nv::gsp_bridge::NoopGspBridge::default())
             }
         };
 

@@ -21,11 +21,12 @@ pub fn detect_gpu_metal(vendor: GpuVendor, boot0: u32) -> Option<Box<dyn GpuMeta
                 _ => Some(Box::new(NvVoltaMetal::from_boot0(boot0))),
             }
         }
+        #[cfg(feature = "amd")]
         GpuVendor::Amd => {
-            // EVOLUTION (multi-vendor): AMD path delegates to `amd_metal`; register offsets come
-            // from AMD ISA documentation (GFX906 / Vega 20), not NVIDIA NV/mmio maps.
             Some(Box::new(super::super::amd_metal::AmdVegaMetal::new(boot0)))
         }
+        #[cfg(not(feature = "amd"))]
+        GpuVendor::Amd => None,
         _ => None,
     }
 }

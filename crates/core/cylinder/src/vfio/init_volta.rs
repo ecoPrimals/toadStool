@@ -112,9 +112,9 @@ impl InitPipeline for VoltaInit {
         bar0: &MappedBar,
         probe: &ProbeResult,
     ) -> Result<EngineResult, DriverError> {
-        use crate::nv::gsp_bridge::StubGspBridge;
+        use crate::nv::gsp_bridge::NoopGspBridge;
 
-        let bridge = StubGspBridge::default();
+        let bridge = NoopGspBridge::default();
 
         match sovereign_stages::falcon_boot(
             bar0,

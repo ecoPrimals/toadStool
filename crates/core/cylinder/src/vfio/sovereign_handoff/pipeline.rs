@@ -1,544 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//! Sovereign warm handoff orchestrator — the diesel engine's driver rotation pipeline.
-//!
-//! Composes kernel module management, binary patching, sysfs driver
-//! bind/unbind, and tier classification into a single operation. The
-//! operator makes one RPC call; the daemon handles everything.
-//!
-//! # Pipeline
-//!
-//! ```text
-//! ┌─────────────────────────────────────────────────────────────────────┐
-//! │ 1. Module Preparation                                               │
-//! │    Patched: find stock .ko → binary-patch → insmod                 │
-//! │    System:  verify module loaded (or load it)                       │
-//! ├─────────────────────────────────────────────────────────────────────┤
-//! │ 2. Seeder Bind                                                      │
-//! │    unbind current driver → driver_override → drivers_probe         │
-//! ├─────────────────────────────────────────────────────────────────────┤
-//! │ 3. Settle                                                           │
-//! │    Wait for seeder hardware initialization                          │
-//! ├─────────────────────────────────────────────────────────────────────┤
-//! │ 4. Bridge Pin + FLR Disable                                         │
-//! │    Pin ancestor bridge power, disable FLR for warm swap             │
-//! ├─────────────────────────────────────────────────────────────────────┤
-//! │ 5. Warm Swap                                                        │
-//! │    unbind seeder (teardown NOP'd) → driver_override → bind vfio    │
-//! ├─────────────────────────────────────────────────────────────────────┤
-//! │ 6. Tier Classification                                              │
-//! │    BAR0 register probes → SovereignTier determination               │
-//! ├─────────────────────────────────────────────────────────────────────┤
-//! │ 7. Module Cleanup                                                   │
-//! │    rmmod patched module (if we loaded it), delete /tmp/.ko          │
-//! └─────────────────────────────────────────────────────────────────────┘
-//! ```
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use serde::{Deserialize, Serialize};
-
-use std::collections::HashSet;
 use std::fmt::Write;
-use std::sync::Mutex;
 
+use crate::nv::registers::{falcon, gpc, pmc, pri};
 use crate::vfio::guarded_sysfs;
 use crate::vfio::kernel_health;
 use crate::vfio::kmod;
-use crate::vfio::module_patch::{self, PatchSet, ModulePatchResult};
+use crate::vfio::module_patch::{self, PatchSet};
 use crate::vfio::sovereign_tiers::{TierEvidence, classify_tier};
 use crate::vfio::warm_capture::Bar0Snapshot;
 use toadstool_ember::pri_ring_anchor::{BootServiceEvidence, PriRingAnchor, PriRingHealth};
 
-/// Per-BDF handoff concurrency guard. Only one handoff per device at a time.
-static HANDOFF_LOCKS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
-
-/// RAII guard that releases the per-BDF handoff lock on drop. This ensures
-/// the lock is freed even if the thread panics or the RPC timeout abandons
-/// the blocking thread.
-struct HandoffGuard {
-    bdf: String,
-}
-
-impl HandoffGuard {
-    fn acquire(bdf: &str) -> Result<Self, String> {
-        let mut guard = HANDOFF_LOCKS.lock().map_err(|e| format!("lock poisoned: {e}"))?;
-        let set = guard.get_or_insert_with(HashSet::new);
-        if !set.insert(bdf.to_string()) {
-            return Err(format!("handoff already in progress for {bdf}"));
-        }
-        Ok(Self { bdf: bdf.to_string() })
-    }
-}
-
-impl Drop for HandoffGuard {
-    fn drop(&mut self) {
-        if let Ok(mut guard) = HANDOFF_LOCKS.lock()
-            && let Some(set) = guard.as_mut()
-        {
-            set.remove(&self.bdf);
-        }
-    }
-}
-
-/// Configuration for a sovereign warm handoff.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HandoffConfig {
-    /// Target PCI BDF (e.g., "0000:02:00.0").
-    pub bdf: String,
-
-    /// Seeder driver name for sysfs bind (e.g., "nouveau").
-    pub seeder_driver: String,
-
-    /// Kernel module name (e.g., "nouveau").
-    pub module_name: String,
-
-    /// Module source strategy.
-    pub module_source: ModuleSourceConfig,
-
-    /// How long to wait after seeder binds before warm-swapping.
-    pub settle: Duration,
-
-    /// Final driver target (e.g., "vfio-pci").
-    pub final_driver: String,
-
-    /// Optional JSON-serialized [`PatchSet`] override. When present, the
-    /// pipeline uses this instead of resolving the patch set by name from
-    /// [`ModuleSourceConfig`]. Enables runtime-defined patch sets via RPC.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub patch_set_override: Option<String>,
-
-    /// Whether to skip the preflight health check. Useful for experiments
-    /// that intentionally operate outside normal safety bounds.
-    #[serde(default)]
-    pub skip_preflight: bool,
-}
-
-/// Module source configuration (cylinder-side, no glowplug dependency).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ModuleSourceConfig {
-    /// Module already loaded or loadable via the system.
-    System,
-    /// Binary-patch a stock module before loading.
-    Patched {
-        /// Stock module name for `modinfo -n` lookup.
-        stock_module: String,
-        /// Patch set name (resolved by `PatchSet::by_name`).
-        patch_set: String,
-    },
-    /// Binary-patch a DKMS-built module (specific version) before loading.
-    /// Used when the system's installed module is a different version
-    /// (e.g., nvidia-580-open installed, but we need nvidia-470 proprietary).
-    DkmsPatched {
-        /// Module name in DKMS (e.g., "nvidia").
-        dkms_module: String,
-        /// DKMS version string (e.g., "470.256.02").
-        dkms_version: String,
-        /// Patch set name.
-        patch_set: String,
-    },
-}
-
-/// Result of a sovereign warm handoff.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HandoffResult {
-    /// Target BDF.
-    pub bdf: String,
-    /// Whether the full pipeline succeeded.
-    pub success: bool,
-    /// Which step halted the pipeline (if any).
-    pub halted_at: Option<String>,
-    /// Per-step outcomes.
-    pub steps: Vec<HandoffStep>,
-    /// Module patch result (if patching was used).
-    pub patch_result: Option<ModulePatchResult>,
-    /// Tier classification after handoff (if we got far enough).
-    pub tier: Option<TierEvidence>,
-    /// Whether a module was loaded by this handoff.
-    pub module_loaded: bool,
-    /// Whether the module was successfully unloaded after handoff.
-    pub module_unloaded: bool,
-    /// Catalyst capture: BAR0 snapshot taken while the catalyst driver
-    /// owned the GPU (between settle and warm swap). Present only for
-    /// catalyst strategies. Persisted to disk as JSON.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub catalyst_snapshot_path: Option<String>,
-    /// Catalyst capture: register count in the snapshot.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub catalyst_alive_count: Option<usize>,
-    /// Catalyst capture: tier evidence from the pre-swap snapshot.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub catalyst_tier: Option<TierEvidence>,
-    /// Boot service evidence captured during ExitBootServices (UEFI model).
-    /// Present when a catalyst/boot_services strategy runs and firmware was
-    /// alive during the settle phase.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub boot_service_evidence: Option<BootServiceEvidence>,
-    /// PRI ring anchor created from boot service evidence. Tracks PRI ring
-    /// health across the driver swap.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pri_ring_anchor: Option<PriRingAnchor>,
-    /// Total wall-clock time in milliseconds.
-    pub total_ms: u64,
-}
-
-/// One step in the handoff pipeline.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HandoffStep {
-    pub name: String,
-    pub ok: bool,
-    pub detail: Option<String>,
-    pub duration_ms: u64,
-}
-
-impl HandoffConfig {
-    /// Create a config for Titan V warm handoff via patched nouveau.
-    #[must_use]
-    pub fn nouveau_titanv(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nouveau".into(),
-            module_name: "nouveau".into(),
-            module_source: ModuleSourceConfig::Patched {
-                stock_module: "nouveau".into(),
-                patch_set: "volta_warm_handoff".into(),
-            },
-            settle: Duration::from_secs(5),
-            final_driver: "vfio-pci".into(),
-            patch_set_override: None,
-            skip_preflight: false,
-        }
-    }
-
-    /// Create a config for K80 warm handoff via stock nouveau.
-    #[must_use]
-    pub fn nouveau_k80(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nouveau".into(),
-            module_name: "nouveau".into(),
-            module_source: ModuleSourceConfig::System,
-            settle: Duration::from_secs(5),
-            final_driver: "vfio-pci".into(),
-            patch_set_override: None,
-            skip_preflight: false,
-        }
-    }
-
-    /// Create a config for Titan V warm handoff via nvidia (system module, no patching).
-    ///
-    /// Uses the already-loaded nvidia driver as the seeder. nvidia's legacy RM
-    /// fully initializes Volta (SEC2→ACR→FECS→GR→TPC). On unbind, nvidia's
-    /// `nv_pci_remove` WILL tear down state — this strategy tests what nvidia
-    /// preserves versus nouveau, without requiring module patching.
-    ///
-    /// The nvidia module is already loaded (RTX 5060 display GPU), so this
-    /// uses `ModuleSourceConfig::System`.
-    #[must_use]
-    pub fn nvidia_titanv(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nvidia".into(),
-            module_name: "nvidia".into(),
-            module_source: ModuleSourceConfig::System,
-            settle: Duration::from_secs(10),
-            final_driver: "vfio-pci".into(),
-            patch_set_override: None,
-            skip_preflight: false,
-        }
-    }
-
-    /// Create a config for Titan V warm handoff via patched nvidia-470 (dual-load injection).
-    ///
-    /// Uses the DKMS-built nvidia-470 proprietary `.ko` (which supports Volta
-    /// via legacy RM, unlike nvidia-580-open which requires GSP). Patches
-    /// `nv_pci_remove` and other teardown functions to NOP, and renames the
-    /// module identity from "nvidia" to "nvsov" so it can be loaded alongside
-    /// the running nvidia-580 module.
-    ///
-    /// This is the "agent reagents diesel engine" approach: the patched module
-    /// is injected as a sovereign seeder while the display GPU's nvidia driver
-    /// runs undisturbed.
-    #[must_use]
-    pub fn nvidia_patched_titanv(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nvsov".into(),
-            module_name: "nvsov".into(),
-            module_source: ModuleSourceConfig::DkmsPatched {
-                dkms_module: "nvidia".into(),
-                dkms_version: "470.256.02".into(),
-                patch_set: "nvidia_warm_handoff".into(),
-            },
-            settle: Duration::from_secs(60),
-            final_driver: "vfio-pci".into(),
-            patch_set_override: None,
-            skip_preflight: false,
-        }
-    }
-
-    /// Create a config for Titan V catalyst handoff via selectively un-NOPed nvidia-470.
-    ///
-    /// Uses the catalyst patch set (`nvidia_catalyst_handoff`) which removes
-    /// `nv_cap_init` and `nv_cap_drv_init` from the NOP set, allowing RM to
-    /// fully initialize the compute pipeline (SEC2/ACR/PMU/GPCCS/FECS/TPC).
-    /// The pipeline captures BAR0 state while the catalyst owns the GPU,
-    /// then warm-swaps to vfio-pci and classifies.
-    ///
-    /// Settle time is 60s to ensure RM completes the full init chain on
-    /// GV100 (SEC2→ACR→FECS→GPCCS→TPC PRI station creation).
-    #[must_use]
-    pub fn nvidia_catalyst_titanv(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nvsov".into(),
-            module_name: "nvsov".into(),
-            module_source: ModuleSourceConfig::DkmsPatched {
-                dkms_module: "nvidia".into(),
-                dkms_version: "470.256.02".into(),
-                patch_set: "nvidia_catalyst_handoff".into(),
-            },
-            settle: Duration::from_secs(60),
-            final_driver: "vfio-pci".into(),
-            patch_set_override: None,
-            skip_preflight: false,
-        }
-    }
-
-    /// Create a config for Titan V boot-services handoff — preserves PRI
-    /// ring stations across the swap by NOPing all state-destroying calls
-    /// in nv_pci_remove. This is the ExitBootServices pattern.
-    #[must_use]
-    pub fn nvidia_boot_services_titanv(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nvsov".into(),
-            module_name: "nvsov".into(),
-            module_source: ModuleSourceConfig::DkmsPatched {
-                dkms_module: "nvidia".into(),
-                dkms_version: "470.256.02".into(),
-                patch_set: "nvidia_boot_services".into(),
-            },
-            settle: Duration::from_secs(60),
-            final_driver: "vfio-pci".into(),
-            patch_set_override: None,
-            skip_preflight: false,
-        }
-    }
-
-    /// Resolve a config from a strategy name and BDF.
-    #[must_use]
-    pub fn from_strategy(strategy: &str, bdf: &str) -> Option<Self> {
-        match strategy {
-            "nouveau_titanv" => Some(Self::nouveau_titanv(bdf)),
-            "nouveau_k80" => Some(Self::nouveau_k80(bdf)),
-            "nvidia_titanv" => Some(Self::nvidia_titanv(bdf)),
-            "nvidia_patched_titanv" => Some(Self::nvidia_patched_titanv(bdf)),
-            "nvidia_catalyst_titanv" => Some(Self::nvidia_catalyst_titanv(bdf)),
-            "nvidia_boot_services_titanv" => Some(Self::nvidia_boot_services_titanv(bdf)),
-            "nvidia_runtime_services" => Some(Self::nvidia_runtime_services(bdf)),
-            _ => None,
-        }
-    }
-
-    /// Create a config for nvidia runtime services mode — nvidia stays
-    /// bound as a persistent compute backend. No unbind/swap occurs.
-    ///
-    /// toadStool manages infrastructure (PFIFO, DMA, VRAM, PRI ring)
-    /// while nvidia's FECS/GPCCS context remains live for Tier 2 compute.
-    /// Reagent capture runs in parallel to extract firmware chemical agents.
-    #[must_use]
-    pub fn nvidia_runtime_services(bdf: &str) -> Self {
-        Self {
-            bdf: bdf.into(),
-            seeder_driver: "nvidia".into(),
-            module_name: "nvidia".into(),
-            module_source: ModuleSourceConfig::System,
-            settle: Duration::from_secs(0),
-            final_driver: "nvidia".into(),
-            patch_set_override: None,
-            skip_preflight: true,
-        }
-    }
-
-    /// Whether this config uses runtime services mode (nvidia stays bound).
-    #[must_use]
-    pub fn is_runtime_services(&self) -> bool {
-        self.final_driver == "nvidia" || self.final_driver == self.seeder_driver
-    }
-}
-
-/// Result of probing nvidia's live FECS/GPCCS state for runtime services.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RuntimeServicesProbe {
-    /// PCI BDF probed.
-    pub bdf: String,
-    /// Currently bound driver.
-    pub driver: String,
-    /// Whether nvidia module is loaded.
-    pub nvidia_loaded: bool,
-    /// FECS firmware state (from /proc/driver/nvidia/ or BAR0 probe).
-    pub fecs_state: String,
-    /// TPC station liveness (from nvidia's perspective).
-    pub tpc_alive: bool,
-    /// Number of nvidia GPU channels established (from /proc/driver/nvidia/gpus/).
-    pub nvidia_channels: u32,
-}
-
-/// Probe nvidia's live state for runtime services dispatch.
-///
-/// When nvidia is loaded as a runtime service, toadStool needs to discover
-/// what nvidia has established: FECS context, TPC stations, channel state.
-pub fn probe_runtime_services(bdf: &str) -> RuntimeServicesProbe {
-    let driver_path = crate::linux_paths::sysfs_pci_device_file(bdf, "driver");
-    let driver = std::fs::read_link(&driver_path)
-        .ok()
-        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
-        .unwrap_or_else(|| "unbound".to_owned());
-
-    let nvidia_loaded = std::path::Path::new("/proc/driver/nvidia/version").exists();
-
-    let gpu_dir = format!("/proc/driver/nvidia/gpus/{bdf}");
-    let nvidia_channels = if std::path::Path::new(&gpu_dir).is_dir() {
-        std::fs::read_to_string(format!("{gpu_dir}/information"))
-            .ok()
-            .and_then(|info| {
-                for line in info.lines() {
-                    if line.contains("GPU UUID") || line.contains("Bus Location") {
-                        return Some(1);
-                    }
-                }
-                None
-            })
-            .unwrap_or(0)
-    } else {
-        0
-    };
-
-    let fecs_state = if nvidia_loaded && driver.contains("nvidia") {
-        "running (nvidia owns FECS context)".to_owned()
-    } else if driver == "vfio-pci" {
-        "unknown (vfio-pci bound, no FECS probe without BAR0)".to_owned()
-    } else {
-        format!("unknown (driver={driver})")
-    };
-
-    let tpc_alive = nvidia_loaded && driver.contains("nvidia");
-
-    RuntimeServicesProbe {
-        bdf: bdf.to_owned(),
-        driver,
-        nvidia_loaded,
-        fecs_state,
-        tpc_alive,
-        nvidia_channels,
-    }
-}
-
-/// Execute the full sovereign warm handoff pipeline.
-///
-/// Trigger nvidia RM's GPU initialization by opening its dynamically-assigned chardev.
-///
-/// After the catalyst module loads with `__register_chrdev(0, ...)` (dynamic major),
-/// we read `/proc/devices` to find the assigned major, create a temporary device node,
-/// and open+close it. This triggers `nv_open()` → `nv_start_device()` → full RM init
-/// (SEC2 → ACR → FECS → GPCCS → TPC PRI station creation).
-fn trigger_rm_init(module_name: &str) -> Result<String, String> {
-    let devices = std::fs::read_to_string("/proc/devices")
-        .map_err(|e| format!("failed to read /proc/devices: {e}"))?;
-    let mut majors: Vec<u32> = Vec::new();
-    for line in devices.lines() {
-        let line = line.trim();
-        if line.ends_with("nvidia-frontend") || line.ends_with(module_name) {
-            if let Some(num_str) = line.split_whitespace().next() {
-                if let Ok(n) = num_str.parse::<u32>() {
-                    majors.push(n);
-                }
-            }
-        }
-    }
-    let major = majors.iter()
-        .copied()
-        .max()
-        .ok_or_else(|| format!(
-            "{module_name} chardev not found in /proc/devices — \
-             __register_chrdev may have been NOPed"
-        ))?;
-
-    tracing::info!(module_name, major, "found catalyst chardev major");
-
-    // Use an external C helper (`rm_trigger`) for RM ioctl allocation.
-    // The helper creates chardev nodes, opens them (triggering rm_init_adapter),
-    // then issues NV_ESC_RM_ALLOC ioctls for root → device → subdevice →
-    // GR control, which triggers full GR initialization (GPCCS + TPC).
-    // This avoids raw ioctl ABI issues in Rust inline asm.
-    let rm_trigger_bin = "/usr/local/bin/rm_trigger";
-    if std::path::Path::new(rm_trigger_bin).exists() {
-        tracing::info!(major, "spawning rm_trigger helper for RM ioctl sequence");
-        match std::process::Command::new(rm_trigger_bin)
-            .arg(major.to_string())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .output()
-        {
-            Ok(output) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                tracing::info!(
-                    exit_code = output.status.code(),
-                    stdout = %stdout,
-                    stderr = %stderr,
-                    "rm_trigger helper completed"
-                );
-                // Give RM extra time for async GR init after helper exits
-                std::thread::sleep(Duration::from_millis(3000));
-                return Ok(format!(
-                    "RM triggered via rm_trigger helper (major={major}), exit={}",
-                    output.status.code().unwrap_or(-1)
-                ));
-            }
-            Err(e) => {
-                tracing::warn!(error = %e, "rm_trigger helper spawn failed — falling back to open-only");
-            }
-        }
-    } else {
-        tracing::warn!("rm_trigger binary not found at {rm_trigger_bin} — using open-only fallback");
-    }
-
-    // Fallback: just open the GPU device (minor 0) to trigger rm_init_adapter.
-    let dev_path = format!("/dev/toadstool-{module_name}-ctl");
-    let _ = std::fs::remove_file(&dev_path);
-
-    let dev = rustix::fs::makedev(major, 0);
-    match rustix::fs::mknodat(
-        rustix::fs::CWD,
-        &*dev_path,
-        rustix::fs::FileType::CharacterDevice,
-        rustix::fs::Mode::from_raw_mode(0o666),
-        dev,
-    ) {
-        Ok(()) => {}
-        Err(e) => return Err(format!("mknodat({dev_path}): {e}")),
-    }
-
-    tracing::info!(dev_path, major, "opening catalyst chardev to trigger RM init (fallback)");
-    let fd = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(&dev_path);
-    match fd {
-        Ok(f) => {
-            std::thread::sleep(Duration::from_millis(5000));
-            drop(f);
-            let _ = std::fs::remove_file(&dev_path);
-            Ok(format!("RM triggered via {dev_path} (major={major})"))
-        }
-        Err(e) => {
-            let _ = std::fs::remove_file(&dev_path);
-            Err(format!("failed to open {dev_path}: {e}"))
-        }
-    }
-}
+use super::lock::HandoffGuard;
+use super::module_deps::load_module_dependencies;
+use super::pri_recovery::recover_pri_ring;
+use super::rollback::{deadline_exceeded, halt_result, halt_result_poisoned};
+use super::rm_trigger::trigger_rm_init;
+use super::types::{HandoffConfig, HandoffResult, HandoffStep, ModuleSourceConfig};
 
 /// This is the top-level entry point called from the dispatch handler.
 /// It manages the entire lifecycle: pre-flight → module prep → bind →
@@ -673,7 +154,7 @@ pub fn execute_handoff(
         let pmc_check = crate::vfio::device::MappedBar::from_sysfs_rw(
             &config.bdf, 4096,
         ).map(|bar| {
-            let pmc = bar.read_u32(0x200).unwrap_or(0);
+            let pmc = bar.read_u32(pmc::ENABLE as usize).unwrap_or(0);
             let popcount = pmc.count_ones();
             (pmc, popcount)
         });
@@ -1271,7 +752,7 @@ pub fn execute_handoff(
         // Map full 16MB BAR0 — FECS is at 0x409xxx, TPC at 0x504xxx.
         match crate::vfio::device::MappedBar::from_sysfs_rw(&config.bdf, 16 * 1024 * 1024) {
             Ok(bar0) => {
-                let pmc = bar0.read_u32(0x200).unwrap_or(0);
+                let pmc = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
                 let popcount = pmc.count_ones();
                 if popcount < 10 {
                     tracing::error!(
@@ -1575,14 +1056,24 @@ pub fn execute_handoff(
         if let Ok(diag_bar0) = crate::vfio::device::MappedBar::from_sysfs_rw(
             &config.bdf, 16 * 1024 * 1024,
         ) {
-            let fecs_cpuctl = diag_bar0.read_u32(0x409100).unwrap_or(0xDEAD);
-            let fecs_hw_pc = diag_bar0.read_u32(0x40911c).unwrap_or(0xDEAD);
-            let fecs_ctxsw = diag_bar0.read_u32(0x409624).unwrap_or(0xDEAD);
-            let gpccs_cpuctl = diag_bar0.read_u32(0x41a100).unwrap_or(0xDEAD);
-            let pri_intr = diag_bar0.read_u32(0x120048).unwrap_or(0xDEAD);
-            let pri_status = diag_bar0.read_u32(0x120050).unwrap_or(0xDEAD);
-            let pmc_enable = diag_bar0.read_u32(0x200).unwrap_or(0xDEAD);
-            let tpc0 = diag_bar0.read_u32(0x504000).unwrap_or(0xDEAD);
+            let fecs_cpuctl = diag_bar0
+                .read_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize)
+                .unwrap_or(0xDEAD);
+            let fecs_hw_pc = diag_bar0
+                .read_u32((falcon::FECS_BASE + 0x11C) as usize)
+                .unwrap_or(0xDEAD);
+            let fecs_ctxsw = diag_bar0
+                .read_u32(falcon::FECS_CTXSW_PC as usize)
+                .unwrap_or(0xDEAD);
+            let gpccs_cpuctl = diag_bar0
+                .read_u32((falcon::GPCCS_BASE + falcon::CPUCTL) as usize)
+                .unwrap_or(0xDEAD);
+            let pri_intr = diag_bar0.read_u32(pri::INTR_STATUS as usize).unwrap_or(0xDEAD);
+            let pri_status = diag_bar0.read_u32(pri::STATUS_ENUM as usize).unwrap_or(0xDEAD);
+            let pmc_enable = diag_bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0xDEAD);
+            let tpc0 = diag_bar0
+                .read_u32(gpc::gpc_tpc0(0) as usize)
+                .unwrap_or(0xDEAD);
             tracing::info!(
                 bdf = config.bdf.as_str(),
                 fecs_cpuctl = format_args!("{:#010x}", fecs_cpuctl),
@@ -1823,11 +1314,21 @@ pub fn execute_handoff(
                 // PRI routing RM set up, causing FECS/TPC reads to PRI-fault.
                 // By sending INIT_CTXSW here, FECS is still accessible.
                 let fecs_t = Instant::now();
-                let fecs_pc = post_swap_bar0.read_u32(0x409624).unwrap_or(0);
-                let fecs_cpuctl = post_swap_bar0.read_u32(0x409100).unwrap_or(0);
-                let fecs_os = post_swap_bar0.read_u32(0x409030).unwrap_or(0);
-                let gpccs_cpuctl = post_swap_bar0.read_u32(0x41a100).unwrap_or(0);
-                let gpc_en = post_swap_bar0.read_u32(0x41a004).unwrap_or(0);
+                let fecs_pc = post_swap_bar0
+                    .read_u32(falcon::FECS_CTXSW_PC as usize)
+                    .unwrap_or(0);
+                let fecs_cpuctl = post_swap_bar0
+                    .read_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize)
+                    .unwrap_or(0);
+                let fecs_os = post_swap_bar0
+                    .read_u32((falcon::FECS_BASE + falcon::PC) as usize)
+                    .unwrap_or(0);
+                let gpccs_cpuctl = post_swap_bar0
+                    .read_u32((falcon::GPCCS_BASE + falcon::CPUCTL) as usize)
+                    .unwrap_or(0);
+                let gpc_en = post_swap_bar0
+                    .read_u32(gpc::BCAST_ENABLES as usize)
+                    .unwrap_or(0);
                 tracing::info!(
                     bdf = config.bdf.as_str(),
                     fecs_pc = format_args!("0x{fecs_pc:08x}"),
@@ -1846,10 +1347,17 @@ pub fn execute_handoff(
                         // restart from its current PC. CPUCTL bit 1 = START_CPU.
                         tracing::info!(bdf = config.bdf.as_str(),
                             "FECS halted — attempting unhalt (CPUCTL START_CPU)");
-                        let _ = post_swap_bar0.write_u32(0x409100, 0x2); // START_CPU
+                        let _ = post_swap_bar0.write_u32(
+                            (falcon::FECS_BASE + falcon::CPUCTL) as usize,
+                            0x2,
+                        ); // START_CPU
                         std::thread::sleep(Duration::from_millis(200));
-                        let pc_after = post_swap_bar0.read_u32(0x409624).unwrap_or(0);
-                        let cpuctl_after = post_swap_bar0.read_u32(0x409100).unwrap_or(0);
+                        let pc_after = post_swap_bar0
+                            .read_u32(falcon::FECS_CTXSW_PC as usize)
+                            .unwrap_or(0);
+                        let cpuctl_after = post_swap_bar0
+                            .read_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize)
+                            .unwrap_or(0);
                         tracing::info!(
                             bdf = config.bdf.as_str(),
                             fecs_pc_after = format_args!("0x{pc_after:08x}"),
@@ -1863,9 +1371,15 @@ pub fn execute_handoff(
                     match crate::vfio::channel::fecs::fecs_init_ctxsw(&post_swap_bar0) {
                         Ok(r) => {
                             std::thread::sleep(Duration::from_millis(1000));
-                            let tpc0 = post_swap_bar0.read_u32(0x504100).unwrap_or(0xdead);
-                            let gpc_en_post = post_swap_bar0.read_u32(0x41a004).unwrap_or(0);
-                            let gpccs_post = post_swap_bar0.read_u32(0x41a100).unwrap_or(0);
+                            let tpc0 = post_swap_bar0
+                                .read_u32((gpc::gpc_tpc0(0) + 0x100) as usize)
+                                .unwrap_or(0xdead);
+                            let gpc_en_post = post_swap_bar0
+                                .read_u32(gpc::BCAST_ENABLES as usize)
+                                .unwrap_or(0);
+                            let gpccs_post = post_swap_bar0
+                                .read_u32((falcon::GPCCS_BASE + falcon::CPUCTL) as usize)
+                                .unwrap_or(0);
                             tracing::info!(
                                 bdf = config.bdf.as_str(),
                                 status = r.status,
@@ -2143,11 +1657,15 @@ pub fn execute_handoff(
         let health = if let Ok(bar0) = crate::vfio::device::MappedBar::from_sysfs_rw(
             &config.bdf, 16 * 1024 * 1024,
         ) {
-            let pmc = bar0.read_u32(0x200).unwrap_or(0);
-            let fecs = bar0.read_u32(0x409100).unwrap_or(0xDEAD);
+            let pmc = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
+            let fecs = bar0
+                .read_u32((falcon::FECS_BASE + falcon::CPUCTL) as usize)
+                .unwrap_or(0xDEAD);
             let pgraph_on = pmc & (1 << 12) != 0;
             let fecs_ok = fecs & 0xBADF_0000 != 0xBADF_0000;
-            let tpc0 = bar0.read_u32(0x504000).unwrap_or(0xBADF);
+            let tpc0 = bar0
+                .read_u32(gpc::gpc_tpc0(0) as usize)
+                .unwrap_or(0xBADF);
             let tpc_ok = tpc0 & 0xBADF_0000 != 0xBADF_0000;
             if pgraph_on && fecs_ok && tpc_ok {
                 PriRingHealth::Healthy
@@ -2187,674 +1705,5 @@ pub fn execute_handoff(
         boot_service_evidence: boot_evidence,
         pri_ring_anchor,
         total_ms: overall.elapsed().as_millis() as u64,
-    }
-}
-
-/// Recover the GPU's PRI ring after PCI driver unbind.
-///
-/// The kernel's PCI framework clears PMC_ENABLE during unbind, which disables
-/// PGRAPH and kills PRI ring routing to GPC/TPC/FECS/GPCCS. This function:
-/// 1. Re-enables PGRAPH in PMC_ENABLE (bit 12)
-/// 2. Acknowledges any pending PRI ring interrupts
-/// 3. Enumerates PRI ring stations
-/// 4. Starts the PRI ring
-/// 5. Verifies top-level falcon registers are accessible
-fn recover_pri_ring(bdf: &str) -> Result<String, String> {
-    let bar0 = crate::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
-        .map_err(|e| format!("BAR0 open failed: {e}"))?;
-
-    // Read current PMC_ENABLE
-    let pmc_before = bar0.read_u32(0x200).unwrap_or(0);
-    let pgraph_was_on = pmc_before & (1 << 12) != 0;
-
-    // Enable PGRAPH (bit 12) if not already set
-    if !pgraph_was_on {
-        let new_pmc = pmc_before | (1 << 12);
-        bar0.write_u32(0x200, new_pmc)
-            .map_err(|e| format!("PMC_ENABLE write failed: {e}"))?;
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
-
-    let pmc_after = bar0.read_u32(0x200).unwrap_or(0);
-
-    // Acknowledge pending PRI ring interrupts
-    let pri_intr = bar0.read_u32(0x120048).unwrap_or(0);
-    if pri_intr != 0 {
-        bar0.write_u32(0x12004c, 0x2)
-            .map_err(|e| format!("PRI ring ack failed: {e}"))?;
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
-
-    // Enumerate PRI ring stations
-    bar0.write_u32(0x12004c, 0x4)
-        .map_err(|e| format!("PRI ring enumerate failed: {e}"))?;
-    std::thread::sleep(std::time::Duration::from_millis(50));
-    let status_enum = bar0.read_u32(0x120050).unwrap_or(0xFF);
-
-    // Start PRI ring
-    bar0.write_u32(0x12004c, 0x1)
-        .map_err(|e| format!("PRI ring start failed: {e}"))?;
-    std::thread::sleep(std::time::Duration::from_millis(50));
-    let status_start = bar0.read_u32(0x120050).unwrap_or(0xFF);
-
-    // Verify falcon accessibility
-    let fecs_cpuctl = bar0.read_u32(0x409100).unwrap_or(0xDEAD);
-    let fecs_pc = bar0.read_u32(0x40911c).unwrap_or(0xDEAD);
-    let gpccs_cpuctl = bar0.read_u32(0x41a100).unwrap_or(0xDEAD);
-    let fecs_accessible = fecs_cpuctl & 0xBADF_0000 != 0xBADF_0000;
-    let gpccs_accessible = gpccs_cpuctl & 0xBADF_0000 != 0xBADF_0000;
-
-    tracing::info!(
-        bdf,
-        pmc_before = format_args!("{:#010x}", pmc_before),
-        pmc_after = format_args!("{:#010x}", pmc_after),
-        pgraph_was_on,
-        pri_intr_before = format_args!("{:#010x}", pri_intr),
-        status_after_enum = format_args!("{:#010x}", status_enum),
-        status_after_start = format_args!("{:#010x}", status_start),
-        fecs_cpuctl = format_args!("{:#010x}", fecs_cpuctl),
-        fecs_pc = format_args!("{:#010x}", fecs_pc),
-        gpccs_cpuctl = format_args!("{:#010x}", gpccs_cpuctl),
-        fecs_accessible,
-        gpccs_accessible,
-        "PRI ring recovery complete"
-    );
-
-    // ── Post-recovery IMEM capture ──
-    // Now that PGRAPH is enabled and falcon PIO is unblocked (no RM),
-    // try to read FECS IMEM. If firmware survived unbind, we capture it.
-    let fecs_base = 0x40_9000usize;
-    let imemc_reg = fecs_base + 0x180;
-    let imemd_reg = fecs_base + 0x184;
-    // Set IMEMC: address 0, auto-increment read (bit 25)
-    let _ = bar0.write_u32(imemc_reg, 0x0200_0000);
-    std::thread::sleep(std::time::Duration::from_micros(100));
-    let mut imem_probe = [0u32; 8];
-    for slot in &mut imem_probe {
-        *slot = bar0.read_u32(imemd_reg).unwrap_or(0xDEAD_DEAD);
-    }
-    let imem_nonzero = imem_probe.iter().filter(|&&w| w != 0).count();
-    tracing::info!(
-        bdf,
-        imem_nonzero,
-        w0 = format_args!("{:#010x}", imem_probe[0]),
-        w1 = format_args!("{:#010x}", imem_probe[1]),
-        w2 = format_args!("{:#010x}", imem_probe[2]),
-        w3 = format_args!("{:#010x}", imem_probe[3]),
-        "post-recovery FECS IMEM probe"
-    );
-
-    let imem_status = if imem_nonzero > 0 {
-        // Full FECS + GPCCS IMEM dump
-        let fw_dir = "/var/lib/toadstool/catalysts/firmware";
-        let _ = std::fs::create_dir_all(fw_dir);
-        for (name, eng_base) in [("fecs", 0x40_9000usize), ("gpccs", 0x41_a000usize)] {
-            let ic = eng_base + 0x180;
-            let id = eng_base + 0x184;
-            let imem_size = 32 * 1024usize;
-            let _ = bar0.write_u32(ic, 0x0200_0000);
-            std::thread::sleep(std::time::Duration::from_micros(100));
-            let mut fw_words = Vec::with_capacity(imem_size / 4);
-            for _ in 0..(imem_size / 4) {
-                fw_words.push(bar0.read_u32(id).unwrap_or(0));
-            }
-            let fw_bytes: Vec<u8> = fw_words.iter()
-                .flat_map(|w| w.to_le_bytes()).collect();
-            let nz = fw_bytes.iter().filter(|&&b| b != 0).count();
-            let fw_path = format!("{fw_dir}/{name}_imem_gv100.bin");
-            let _ = std::fs::write(&fw_path, &fw_bytes);
-            tracing::info!(engine = name, path = fw_path.as_str(),
-                size = fw_bytes.len(), nonzero = nz,
-                "{name} IMEM captured post-recovery");
-        }
-        format!(", IMEM={imem_nonzero}/8 words alive")
-    } else {
-        ", IMEM=wiped".into()
-    };
-
-    Ok(format!(
-        "PMC {:#010x}→{:#010x}, PGRAPH={}, ring_status={:#x}, \
-         FECS={} GPCCS={}{}",
-        pmc_before, pmc_after,
-        if pmc_after & (1 << 12) != 0 { "ON" } else { "OFF" },
-        status_start,
-        if fecs_accessible { "accessible" } else { "FAULT" },
-        if gpccs_accessible { "accessible" } else { "FAULT" },
-        imem_status,
-    ))
-}
-
-/// Halt result with rollback. Runs best-effort recovery before returning.
-///
-/// Rollback triggers when any of:
-/// - `module_loaded` is true (need to rmmod)
-/// - `sibling_state` is non-empty (siblings were unbound)
-/// - `needs_device_rollback` is true (device was unbound from its original
-///   driver and needs to be restored to vfio-pci)
-#[allow(clippy::too_many_arguments, reason = "WIP upstream — parameter struct refactor pending")]
-fn halt_result(
-    bdf: &str,
-    halted_at: &str,
-    steps: Vec<HandoffStep>,
-    patch_result: Option<ModulePatchResult>,
-    module_loaded: bool,
-    module_unloaded: bool,
-    start: Instant,
-    sibling_state: &[(String, Option<String>)],
-    module_name: &str,
-    needs_device_rollback: bool,
-) -> HandoffResult {
-    halt_result_inner(bdf, halted_at, steps, patch_result, module_loaded,
-                      module_unloaded, start, sibling_state, module_name,
-                      needs_device_rollback, false)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn halt_result_poisoned(
-    bdf: &str,
-    halted_at: &str,
-    steps: Vec<HandoffStep>,
-    patch_result: Option<ModulePatchResult>,
-    module_loaded: bool,
-    module_unloaded: bool,
-    start: Instant,
-    sibling_state: &[(String, Option<String>)],
-    module_name: &str,
-    needs_device_rollback: bool,
-) -> HandoffResult {
-    halt_result_inner(bdf, halted_at, steps, patch_result, module_loaded,
-                      module_unloaded, start, sibling_state, module_name,
-                      needs_device_rollback, true)
-}
-
-#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-fn halt_result_inner(
-    bdf: &str,
-    halted_at: &str,
-    mut steps: Vec<HandoffStep>,
-    patch_result: Option<ModulePatchResult>,
-    module_loaded: bool,
-    module_unloaded: bool,
-    start: Instant,
-    sibling_state: &[(String, Option<String>)],
-    module_name: &str,
-    needs_device_rollback: bool,
-    device_poisoned: bool,
-) -> HandoffResult {
-    let needs_rollback = module_loaded || !sibling_state.is_empty() || needs_device_rollback;
-    if needs_rollback {
-        let t = Instant::now();
-        let mod_name = if module_loaded { Some(module_name) } else { None };
-        guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state, device_poisoned);
-        let kind = if device_poisoned { "poisoned-abandon" } else { "best-effort recovery" };
-        steps.push(HandoffStep {
-            name: "rollback".into(), ok: !device_poisoned,
-            detail: Some(format!("{kind} (module={}, siblings={}, device={}, poisoned={})",
-                module_loaded, sibling_state.len(), needs_device_rollback, device_poisoned)),
-            duration_ms: t.elapsed().as_millis() as u64,
-        });
-    }
-
-    HandoffResult {
-        bdf: bdf.into(),
-        success: false,
-        halted_at: Some(halted_at.into()),
-        steps,
-        patch_result,
-        tier: None,
-        module_loaded,
-        module_unloaded,
-        catalyst_snapshot_path: None,
-        catalyst_alive_count: None,
-        catalyst_tier: None,
-        boot_service_evidence: None,
-        pri_ring_anchor: None,
-        total_ms: start.elapsed().as_millis() as u64,
-    }
-}
-
-/// Overall deadline exceeded — run rollback and return.
-fn deadline_exceeded(
-    bdf: &str,
-    mut steps: Vec<HandoffStep>,
-    patch_result: Option<ModulePatchResult>,
-    module_loaded: bool,
-    module_name: &str,
-    sibling_state: &[(String, Option<String>)],
-    start: Instant,
-) -> HandoffResult {
-    tracing::error!(bdf, elapsed_ms = start.elapsed().as_millis() as u64,
-                    "handoff deadline exceeded — running rollback");
-    steps.push(HandoffStep {
-        name: "deadline".into(), ok: false,
-        detail: Some(format!("{}ms deadline exceeded at {}ms",
-            guarded_sysfs::HANDOFF_DEADLINE.as_millis(),
-            start.elapsed().as_millis())),
-        duration_ms: 0,
-    });
-
-    let mod_name = if module_loaded { Some(module_name) } else { None };
-    guarded_sysfs::handoff_rollback(bdf, mod_name, sibling_state, false);
-
-    HandoffResult {
-        bdf: bdf.into(),
-        success: false,
-        halted_at: Some("deadline".into()),
-        steps,
-        patch_result,
-        tier: None,
-        module_loaded,
-        module_unloaded: false,
-        catalyst_snapshot_path: None,
-        catalyst_alive_count: None,
-        catalyst_tier: None,
-        boot_service_evidence: None,
-        pri_ring_anchor: None,
-        total_ms: start.elapsed().as_millis() as u64,
-    }
-}
-
-/// Load all dependencies for a kernel module.
-///
-/// Resolves dependencies via `modules.dep` (pure Rust) with fallback to
-/// `modprobe --show-depends`, then loads each in order via `insmod`.
-/// This is necessary because `insmod` (used for patched modules) doesn't
-/// resolve dependencies like `modprobe` does.
-fn load_module_dependencies(module_name: &str) -> Result<(), String> {
-    let deps = kmod::resolve_module_dependencies(module_name)
-        .map_err(|e| format!("dependency resolution failed for {module_name}: {e}"))?;
-
-    let mut loaded = 0;
-
-    for ko_path in &deps {
-        let dep_name = ko_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("")
-            .replace('-', "_");
-
-        if kmod::is_module_loaded(&dep_name) {
-            continue;
-        }
-
-        tracing::debug!(dep = %ko_path.display(), "loading module dependency");
-        if let Err(e) = guarded_sysfs::insmod_guarded(ko_path, guarded_sysfs::INSMOD_TIMEOUT) {
-            tracing::warn!(dep = %ko_path.display(), error = %e, "dependency load failed (continuing)");
-        } else {
-            loaded += 1;
-        }
-    }
-
-    tracing::info!(module = module_name, deps_loaded = loaded, "module dependencies loaded");
-    Ok(())
-}
-
-/// Parse `modprobe --show-depends` output into a list of dependency `.ko` paths,
-/// excluding the target module itself. Kept for test coverage of the fallback
-/// parser in `kmod::resolve_from_modprobe`.
-#[cfg(test)]
-fn parse_modprobe_deps(output: &str, target_module: &str) -> Vec<String> {
-    output
-        .lines()
-        .filter_map(|line| {
-            let ko_path = line.strip_prefix("insmod ")?.trim();
-            if ko_path.contains(&format!("/{target_module}.ko")) {
-                None
-            } else {
-                Some(ko_path.to_string())
-            }
-        })
-        .collect()
-}
-
-impl std::fmt::Display for HandoffResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.success {
-            let tier_str = self
-                .tier
-                .as_ref()
-                .map(|t| format!(" → {}", t.tier))
-                .unwrap_or_default();
-            write!(
-                f,
-                "HANDOFF OK ({}{}, {}ms)",
-                self.bdf, tier_str, self.total_ms
-            )
-        } else {
-            write!(
-                f,
-                "HANDOFF HALTED@{} ({}, {}ms)",
-                self.halted_at.as_deref().unwrap_or("?"),
-                self.bdf,
-                self.total_ms
-            )
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn config_from_strategy_resolves_known() {
-        assert!(HandoffConfig::from_strategy("nouveau_titanv", "0000:02:00.0").is_some());
-        assert!(HandoffConfig::from_strategy("nouveau_k80", "0000:49:00.0").is_some());
-        assert!(HandoffConfig::from_strategy("nvidia_titanv", "0000:02:00.0").is_some());
-        assert!(HandoffConfig::from_strategy("nvidia_patched_titanv", "0000:02:00.0").is_some());
-        assert!(HandoffConfig::from_strategy("unknown", "0000:02:00.0").is_none());
-    }
-
-    #[test]
-    fn titanv_config_uses_patched_source() {
-        let cfg = HandoffConfig::nouveau_titanv("0000:02:00.0");
-        assert!(matches!(cfg.module_source, ModuleSourceConfig::Patched { .. }));
-        assert_eq!(cfg.seeder_driver, "nouveau");
-        assert_eq!(cfg.final_driver, "vfio-pci");
-    }
-
-    #[test]
-    fn k80_config_uses_system_source() {
-        let cfg = HandoffConfig::nouveau_k80("0000:49:00.0");
-        assert!(matches!(cfg.module_source, ModuleSourceConfig::System));
-    }
-
-    #[test]
-    fn nvidia_titanv_config_uses_system_nvidia() {
-        let cfg = HandoffConfig::nvidia_titanv("0000:02:00.0");
-        assert!(matches!(cfg.module_source, ModuleSourceConfig::System));
-        assert_eq!(cfg.seeder_driver, "nvidia");
-        assert_eq!(cfg.module_name, "nvidia");
-        assert_eq!(cfg.final_driver, "vfio-pci");
-        assert_eq!(cfg.settle.as_secs(), 10);
-    }
-
-    #[test]
-    fn nvidia_patched_titanv_uses_renamed_module() {
-        let cfg = HandoffConfig::nvidia_patched_titanv("0000:02:00.0");
-        assert!(matches!(cfg.module_source, ModuleSourceConfig::DkmsPatched { .. }));
-        assert_eq!(cfg.seeder_driver, "nvsov");
-        assert_eq!(cfg.module_name, "nvsov");
-        if let ModuleSourceConfig::DkmsPatched { dkms_module, dkms_version, patch_set } = &cfg.module_source {
-            assert_eq!(dkms_module, "nvidia");
-            assert_eq!(dkms_version, "470.256.02");
-            assert_eq!(patch_set, "nvidia_warm_handoff");
-        }
-    }
-
-    #[test]
-    fn nvidia_catalyst_titanv_uses_catalyst_patch_set() {
-        let cfg = HandoffConfig::nvidia_catalyst_titanv("0000:49:00.0");
-        assert!(matches!(cfg.module_source, ModuleSourceConfig::DkmsPatched { .. }));
-        assert_eq!(cfg.seeder_driver, "nvsov");
-        assert_eq!(cfg.module_name, "nvsov");
-        assert_eq!(cfg.settle.as_secs(), 60);
-        if let ModuleSourceConfig::DkmsPatched { dkms_module, dkms_version, patch_set } = &cfg.module_source {
-            assert_eq!(dkms_module, "nvidia");
-            assert_eq!(dkms_version, "470.256.02");
-            assert_eq!(patch_set, "nvidia_catalyst_handoff");
-        }
-    }
-
-    #[test]
-    fn from_strategy_resolves_catalyst() {
-        assert!(HandoffConfig::from_strategy("nvidia_catalyst_titanv", "0000:02:00.0").is_some());
-    }
-
-    #[test]
-    fn handoff_result_display_success() {
-        let r = HandoffResult {
-            bdf: "0000:02:00.0".into(),
-            success: true,
-            halted_at: None,
-            steps: vec![],
-            patch_result: None,
-            tier: Some(TierEvidence {
-                tier: crate::vfio::sovereign_tiers::SovereignTier::WarmInfrastructure,
-                pmc_enable: 0xFFFF_FFFF,
-                pmc_popcount: 32,
-                pramin_accessible: true,
-                fecs_pc: Some(0),
-                gpc_enables: None,
-                ce_status: None,
-                gr_status: None,
-                pbdma_intr: None,
-                ce_runlist: None,
-                tpc_status: None,
-                tpc_alive: false,
-            }),
-            module_loaded: true,
-            module_unloaded: true,
-            catalyst_snapshot_path: None,
-            catalyst_alive_count: None,
-            catalyst_tier: None,
-            boot_service_evidence: None,
-            pri_ring_anchor: None,
-            total_ms: 6000,
-        };
-        let s = r.to_string();
-        assert!(s.contains("HANDOFF OK"));
-        assert!(s.contains("Tier 1"));
-    }
-
-    #[test]
-    fn handoff_result_display_halted() {
-        let r = HandoffResult {
-            bdf: "0000:02:00.0".into(),
-            success: false,
-            halted_at: Some("seeder_bind".into()),
-            steps: vec![],
-            patch_result: None,
-            tier: None,
-            module_loaded: false,
-            module_unloaded: false,
-            catalyst_snapshot_path: None,
-            catalyst_alive_count: None,
-            catalyst_tier: None,
-            boot_service_evidence: None,
-            pri_ring_anchor: None,
-            total_ms: 100,
-        };
-        let s = r.to_string();
-        assert!(s.contains("HALTED@seeder_bind"));
-    }
-
-    #[test]
-    fn handoff_result_serde_roundtrip() {
-        let r = HandoffResult {
-            bdf: "0000:02:00.0".into(),
-            success: true,
-            halted_at: None,
-            steps: vec![HandoffStep {
-                name: "module_prep".into(),
-                ok: true,
-                detail: Some("patched module loaded".into()),
-                duration_ms: 200,
-            }],
-            patch_result: None,
-            tier: None,
-            module_loaded: true,
-            module_unloaded: true,
-            catalyst_snapshot_path: None,
-            catalyst_alive_count: None,
-            catalyst_tier: None,
-            boot_service_evidence: None,
-            pri_ring_anchor: None,
-            total_ms: 5000,
-        };
-        let json = serde_json::to_string(&r).unwrap();
-        let back: HandoffResult = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.bdf, "0000:02:00.0");
-        assert!(back.success);
-        assert_eq!(back.steps.len(), 1);
-    }
-
-    #[test]
-    fn handoff_guard_acquire_release() {
-        // Use unique BDFs to avoid interference with parallel tests
-        let bdf = "test:aa:00.0";
-        let guard = HandoffGuard::acquire(bdf).unwrap();
-
-        // Double-acquire should fail
-        let second = HandoffGuard::acquire(bdf);
-        assert!(second.is_err());
-
-        // Drop the guard
-        drop(guard);
-
-        // Re-acquire should succeed after drop
-        let guard2 = HandoffGuard::acquire(bdf).unwrap();
-        drop(guard2);
-    }
-
-    #[test]
-    fn handoff_guard_raii_drop() {
-        let bdf = "test:bb:00.0";
-        {
-            let _guard = HandoffGuard::acquire(bdf).unwrap();
-            // guard drops at end of scope
-        }
-        // Should be re-acquirable
-        let _guard = HandoffGuard::acquire(bdf).unwrap();
-    }
-
-    #[test]
-    fn halt_result_rollback_with_needs_device_rollback() {
-        // Even with module_loaded=false and empty sibling_state,
-        // needs_device_rollback=true should trigger rollback step
-        let steps = vec![HandoffStep {
-            name: "test".into(),
-            ok: true,
-            detail: None,
-            duration_ms: 0,
-        }];
-        let result = halt_result(
-            "ffff:ff:ff.f",
-            "test_halt",
-            steps,
-            None,
-            false,
-            false,
-            Instant::now(),
-            &[],
-            "nouveau",
-            true, // needs_device_rollback
-        );
-        assert!(!result.success);
-        assert_eq!(result.halted_at.as_deref(), Some("test_halt"));
-        // Should have 2 steps: original + rollback
-        assert_eq!(result.steps.len(), 2);
-        assert_eq!(result.steps[1].name, "rollback");
-        let detail = result.steps[1].detail.as_ref().unwrap();
-        assert!(detail.contains("device=true"));
-    }
-
-    #[test]
-    fn halt_result_no_rollback_when_nothing_needed() {
-        let steps = vec![HandoffStep {
-            name: "test".into(),
-            ok: false,
-            detail: None,
-            duration_ms: 0,
-        }];
-        let result = halt_result(
-            "ffff:ff:ff.f",
-            "preflight",
-            steps,
-            None,
-            false,
-            false,
-            Instant::now(),
-            &[],
-            "nouveau",
-            false,
-        );
-        // Only 1 step — no rollback triggered
-        assert_eq!(result.steps.len(), 1);
-    }
-
-    #[test]
-    fn halt_result_rollback_with_module_loaded() {
-        let steps = vec![];
-        let result = halt_result(
-            "ffff:ff:ff.f",
-            "warm_swap",
-            steps,
-            None,
-            true,  // module_loaded
-            false,
-            Instant::now(),
-            &[],
-            "nouveau",
-            false,
-        );
-        assert_eq!(result.steps.len(), 1);
-        assert_eq!(result.steps[0].name, "rollback");
-        let detail = result.steps[0].detail.as_ref().unwrap();
-        assert!(detail.contains("module=true"));
-    }
-
-    #[test]
-    fn halt_result_rollback_with_siblings() {
-        let siblings = vec![
-            ("0000:02:00.1".to_string(), Some("snd_hda_intel".to_string())),
-        ];
-        let steps = vec![];
-        let result = halt_result(
-            "ffff:ff:ff.f",
-            "warm_swap",
-            steps,
-            None,
-            false,
-            false,
-            Instant::now(),
-            &siblings,
-            "nouveau",
-            false,
-        );
-        assert_eq!(result.steps.len(), 1);
-        assert_eq!(result.steps[0].name, "rollback");
-        let detail = result.steps[0].detail.as_ref().unwrap();
-        assert!(detail.contains("siblings=1"));
-    }
-
-    #[test]
-    fn parse_modprobe_deps_extracts_paths() {
-        let output = "\
-insmod /lib/modules/6.17.9/kernel/drivers/gpu/drm/drm.ko
-insmod /lib/modules/6.17.9/kernel/drivers/gpu/drm/drm_gpuvm.ko
-insmod /lib/modules/6.17.9/kernel/drivers/gpu/drm/scheduler/gpu-sched.ko
-insmod /lib/modules/6.17.9/kernel/drivers/gpu/drm/nouveau/nouveau.ko
-";
-        let deps = parse_modprobe_deps(output, "nouveau");
-        assert_eq!(deps.len(), 3);
-        assert!(deps[0].ends_with("drm.ko"));
-        assert!(deps[1].ends_with("drm_gpuvm.ko"));
-        assert!(deps[2].ends_with("gpu-sched.ko"));
-    }
-
-    #[test]
-    fn parse_modprobe_deps_handles_install_lines() {
-        let output = "\
-install /sbin/modprobe --ignore-install some-mod
-insmod /lib/modules/6.17.9/dep.ko
-insmod /lib/modules/6.17.9/nouveau.ko
-";
-        let deps = parse_modprobe_deps(output, "nouveau");
-        assert_eq!(deps.len(), 1);
-        assert!(deps[0].ends_with("dep.ko"));
-    }
-
-    #[test]
-    fn parse_modprobe_deps_empty_output() {
-        let deps = parse_modprobe_deps("", "nouveau");
-        assert!(deps.is_empty());
-    }
-
-    #[test]
-    fn parse_modprobe_deps_only_target() {
-        let output = "insmod /lib/modules/6.17.9/nouveau.ko\n";
-        let deps = parse_modprobe_deps(output, "nouveau");
-        assert!(deps.is_empty());
     }
 }

@@ -2,7 +2,7 @@
 //! Local `GspBridge` implementation — loads GR falcon firmware from
 //! `/lib/firmware/nvidia/{chip}/gr/` and uploads via PIO or DMA.
 //!
-//! This replaces `StubGspBridge` for sovereign cold boot on GPUs where
+//! This replaces `NoopGspBridge` for sovereign cold boot on GPUs where
 //! the vendor driver warm-handoff path is unavailable (e.g. Volta on
 //! systems with open nvidia.ko that doesn't support pre-GSP GPUs).
 //!

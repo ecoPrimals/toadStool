@@ -8,6 +8,7 @@
 //! GSP-dependent modules (`bar0`, `probe`, `vfio_compute`) remain in
 //! coralReef until Phase D or until the firmware boundary is resolved.
 
+#[cfg(feature = "amd")]
 pub mod amd_metal;
 pub mod boot_state;
 #[allow(missing_docs, reason = "WIP upstream — docs follow once CE API stabilizes")]
