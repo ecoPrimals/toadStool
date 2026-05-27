@@ -232,6 +232,7 @@ async fn unibin_s172_start_servers_with_fallback_non_platform_unix_error() {
         jsonrpc_socket,
         None,
         &UnibinExecutionConfig::from_env(),
+        None,
     )
     .await;
     assert!(result.is_err());

@@ -215,6 +215,7 @@ async fn s155_start_servers_with_fallback_fails_on_invalid_path() {
         jsonrpc_socket,
         None,
         &UnibinExecutionConfig::from_env(),
+        None,
     )
     .await;
 

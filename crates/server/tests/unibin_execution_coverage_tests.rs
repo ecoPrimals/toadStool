@@ -244,6 +244,7 @@ async fn start_servers_with_fallback_fails_on_non_platform_error() {
         jsonrpc_socket,
         None,
         &UnibinExecutionConfig::from_env(),
+        None,
     )
     .await;
 
@@ -499,6 +500,7 @@ async fn start_servers_platform_constraint_triggers_tcp_fallback() {
         jsonrpc_socket,
         None,
         &UnibinExecutionConfig::from_env(),
+        None,
     )
     .await;
     assert!(result.is_err());

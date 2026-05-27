@@ -357,6 +357,7 @@ fn test_workload_file_clone() {
         },
         resources: None,
         security: None,
+        data_dependencies: None,
     };
 
     let cloned = workload.clone();
@@ -379,6 +380,7 @@ fn test_workload_file_debug() {
         },
         resources: None,
         security: None,
+        data_dependencies: None,
     };
 
     let debug_str = format!("{workload:?}");
