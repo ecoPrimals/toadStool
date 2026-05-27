@@ -45,6 +45,6 @@ mod runtime_probe;
 mod tests;
 mod types;
 
-pub use types::{HandoffConfig, HandoffResult, HandoffStep, ModuleSourceConfig};
+pub use types::{HandoffConfig, HandoffResult, HandoffStep, ModuleSourceConfig, RmChannelEvidence};
 pub use pipeline::execute_handoff;
 pub use runtime_probe::{RuntimeServicesProbe, probe_runtime_services};

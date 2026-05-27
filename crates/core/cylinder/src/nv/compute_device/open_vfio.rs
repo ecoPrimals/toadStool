@@ -8,7 +8,7 @@ use crate::vfio::VfioDevice;
 
 use super::super::generation::{PageTableFormat, GenerationProfile};
 use super::super::nv_gsp_bridge::NvGspBridge;
-use super::channel_init::{alloc_semaphore_buffer, build_dispatch_state, init_channel_buffers};
+use super::channel_init::{self, alloc_semaphore_buffer, build_dispatch_state, init_channel_buffers};
 use super::gr_falcon_boot::{
     boot_gpccs_fecs_catalyst, boot_gpccs_fecs_deferred, fecs_setup_channel, reboot_fecs_after_reset,
 };
@@ -65,7 +65,7 @@ impl NvVfioComputeDevice {
             );
         }
 
-        let init = init_channel_buffers(
+        let mut init = init_channel_buffers(
             &dma_backend,
             &bar0,
             profile,
@@ -116,6 +116,56 @@ impl NvVfioComputeDevice {
                 profile,
                 &self.bdf,
             );
+
+            // Exp 229 Phase A: If sovereign channel is still PENDING after
+            // catalyst path, try adopting the RM channel directly.
+            let pccsr_val = bar0.read_u32(
+                crate::vfio::channel::registers::pccsr::channel(init.channel.id())
+            ).unwrap_or(0);
+            let status = crate::vfio::channel::registers::pccsr::status(pccsr_val);
+            if status < 5 {
+                tracing::info!(
+                    bdf = %self.bdf,
+                    sovereign_channel_id = init.channel.id(),
+                    status,
+                    pccsr = format_args!("{pccsr_val:#010x}"),
+                    "Phase B: sovereign channel still PENDING — attempting Phase A (RM channel adoption)"
+                );
+                match channel_init::adopt_rm_channel(
+                    &dma_backend, &bar0, &profile, &self.bdf,
+                    self.rm_channel_id,
+                ) {
+                    Ok(Some(adopted_init)) => {
+                        tracing::info!(
+                            bdf = %self.bdf,
+                            adopted_channel_id = adopted_init.channel.id(),
+                            "Phase A: RM channel adopted — replacing sovereign channel"
+                        );
+                        init = adopted_init;
+                    }
+                    Ok(None) => {
+                        tracing::info!(
+                            bdf = %self.bdf,
+                            "Phase A: no ACTIVE RM channels found — proceeding with PENDING sovereign channel"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            bdf = %self.bdf,
+                            error = %e,
+                            "Phase A: RM channel adoption failed — proceeding with PENDING sovereign channel"
+                        );
+                    }
+                }
+            } else {
+                tracing::info!(
+                    bdf = %self.bdf,
+                    channel_id = init.channel.id(),
+                    status,
+                    pccsr = format_args!("{pccsr_val:#010x}"),
+                    "Phase B SUCCESS: sovereign channel is ACTIVE after catalyst path"
+                );
+            }
         }
 
         let semaphore = alloc_semaphore_buffer(&dma_backend, profile.completion, &self.bdf, "")?;

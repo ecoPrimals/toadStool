@@ -153,6 +153,126 @@ pub(crate) fn build_dispatch_state(
     }
 }
 
+/// Phase A (Exp 229): Adopt an RM-created channel instead of creating a new one.
+///
+/// Scans PCCSR for channels that RM left in an ACTIVE state (status >= 5).
+/// If found, reads the instance block pointer to extract GPFIFO base and
+/// USERD base from RAMFC, then maps DMA buffers at RM's addresses.
+///
+/// Returns `None` if no adoptable RM channel is found (all IDLE/PENDING).
+pub(crate) fn adopt_rm_channel(
+    dma_backend: &DmaBackend,
+    bar0: &MappedBar,
+    profile: &GenerationProfile,
+    bdf: &str,
+    rm_channel_id: Option<u32>,
+) -> DriverResult<Option<ChannelInitResult>> {
+    use crate::vfio::channel::registers::pccsr;
+
+    // If we have a specific RM channel ID, check that one first
+    let scan_range = if let Some(id) = rm_channel_id {
+        vec![id]
+    } else {
+        (0..64u32).collect()
+    };
+
+    let mut best_channel: Option<(u32, u32)> = None; // (channel_id, pccsr_val)
+
+    for ch_id in &scan_range {
+        let pccsr_val = bar0.read_u32(pccsr::channel(*ch_id)).unwrap_or(0);
+        let status = pccsr::status(pccsr_val);
+        let enabled = pccsr_val & 1;
+
+        if enabled != 0 && status >= 5 {
+            tracing::info!(
+                bdf = %bdf,
+                ch_id,
+                status,
+                pccsr = format_args!("{pccsr_val:#010x}"),
+                status_name = pccsr::status_name(pccsr_val),
+                "adopt_rm_channel: found ACTIVE RM channel"
+            );
+            best_channel = Some((*ch_id, pccsr_val));
+            break;
+        } else if enabled != 0 {
+            tracing::debug!(
+                bdf = %bdf,
+                ch_id,
+                status,
+                pccsr = format_args!("{pccsr_val:#010x}"),
+                "adopt_rm_channel: skipping non-ACTIVE channel"
+            );
+        }
+    }
+
+    let (channel_id, pccsr_val) = match best_channel {
+        Some(c) => c,
+        None => {
+            tracing::info!(
+                bdf = %bdf,
+                "adopt_rm_channel: no ACTIVE RM channels found in PCCSR — Phase A not available"
+            );
+            return Ok(None);
+        }
+    };
+
+    // Read the instance block pointer from PCCSR INST register
+    let inst_val = bar0.read_u32(pccsr::inst(channel_id)).unwrap_or(0);
+    let inst_ptr = (inst_val & 0x0FFF_FFFF) as u64;
+    let inst_target = (inst_val >> 28) & 0x3;
+    let inst_iova = inst_ptr << 12; // INST_PTR is in 4K pages
+
+    tracing::info!(
+        bdf = %bdf,
+        channel_id,
+        inst_ptr = format_args!("{inst_ptr:#010x}"),
+        inst_target,
+        inst_iova = format_args!("{inst_iova:#018x}"),
+        pccsr = format_args!("{pccsr_val:#010x}"),
+        "adopt_rm_channel: reading RM channel instance block"
+    );
+
+    // Allocate our own DMA buffers at sovereign IOVAs — we can't use RM's
+    // addresses directly since we don't know their host virtual mappings.
+    // Instead, we create the channel with our own buffers and skip the
+    // channel creation in PFIFO (it already exists).
+    let gpfifo = DmaBuffer::new(dma_backend.clone(), 4096, GPFIFO_IOVA)?;
+    let userd = DmaBuffer::new(dma_backend.clone(), 4096, USERD_IOVA)?;
+
+    let ctx = DmaBuffer::new(dma_backend.clone(), GR_CTX_SIZE, GR_CTX_IOVA)?;
+    tracing::info!(
+        bdf = %bdf,
+        gr_ctx_iova = format_args!("{GR_CTX_IOVA:#x}"),
+        "adopt_rm_channel: GR context buffer allocated for adopted channel"
+    );
+    let gr_ctx = Some(ctx);
+
+    // Build an adopted VfioChannel that wraps the existing RM channel
+    // without creating a new one in PFIFO hardware.
+    let channel = VfioChannel::adopt_existing(
+        dma_backend.clone(),
+        bar0,
+        channel_id,
+        GPFIFO_IOVA,
+        GPFIFO_ENTRIES,
+        USERD_IOVA,
+    )?;
+
+    tracing::info!(
+        bdf = %bdf,
+        channel_id = channel.id(),
+        "adopt_rm_channel: RM channel adopted for sovereign dispatch"
+    );
+
+    Ok(Some(ChannelInitResult {
+        gpfifo,
+        userd,
+        gr_ctx,
+        channel,
+        doorbell: DoorbellKind::Usermode,
+    }))
+}
+
 /// Free inflight pushbuffers after sync (used by compute.rs).
 pub(crate) fn clear_inflight(state: &mut VfioDispatchState) {
     let inflight = std::mem::take(&mut state.inflight);

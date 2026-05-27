@@ -705,14 +705,20 @@ pub fn execute_handoff(
     // (SEC2 → ACR → FECS → GPCCS → TPC PRI station creation).
     // The chardev name is "nvidia-frontend" (from .rodata), not the renamed
     // module name. trigger_rm_init searches for "nvidia-frontend" entries.
+    let mut rm_channel_evidence = None;
     if is_catalyst && module_loaded {
         let t = Instant::now();
-        match trigger_rm_init(&config.module_name) {
-            Ok(detail) => {
-                tracing::info!(bdf = config.bdf.as_str(), detail, "catalyst RM init triggered");
+        // Exp 229: pass create_channel=true for catalyst strategies to
+        // establish a full RM compute channel before warm swap.
+        match trigger_rm_init(&config.module_name, /* create_channel */ true) {
+            Ok(result) => {
+                tracing::info!(bdf = config.bdf.as_str(), summary = result.summary.as_str(),
+                    channel_evidence = ?result.channel_evidence,
+                    "catalyst RM init triggered");
+                rm_channel_evidence = result.channel_evidence;
                 steps.push(HandoffStep {
                     name: "rm_trigger".into(), ok: true,
-                    detail: Some(detail),
+                    detail: Some(result.summary),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
             }
@@ -928,6 +934,49 @@ pub fn execute_handoff(
                                 "{name} IMEM firmware captured to disk"
                             );
                         }
+                    }
+                }
+
+                // ── PCCSR scan: verify RM channel is ACTIVE (Exp 229) ──
+                if let Some(ref ev) = rm_channel_evidence {
+                    if ev.all_ok {
+                        let pccsr_base = 0x80_0004usize;
+                        let mut active_channels = Vec::new();
+                        let mut pending_channels = Vec::new();
+                        // Scan first 64 channel slots (RM typically uses low IDs)
+                        for ch in 0..64u32 {
+                            let addr = pccsr_base + ch as usize * 8;
+                            if let Ok(val) = catalyst_bar0.read_u32(addr) {
+                                let enabled = val & 1;
+                                let status = (val >> 24) & 0x1F;
+                                if enabled != 0 {
+                                    if status >= 5 {
+                                        active_channels.push((ch, val));
+                                    } else {
+                                        pending_channels.push((ch, val));
+                                    }
+                                }
+                            }
+                        }
+                        for &(ch, val) in &active_channels {
+                            evidence.record(
+                                format!("pccsr_ch{ch}_active"),
+                                format!("{:#010x} (status={})", val, (val >> 24) & 0x1F),
+                            );
+                        }
+                        for &(ch, val) in &pending_channels {
+                            evidence.record(
+                                format!("pccsr_ch{ch}_pending"),
+                                format!("{:#010x} (status={})", val, (val >> 24) & 0x1F),
+                            );
+                        }
+                        tracing::info!(
+                            bdf = config.bdf.as_str(),
+                            active = active_channels.len(),
+                            pending = pending_channels.len(),
+                            rm_channel_id = ?ev.channel_id,
+                            "PCCSR channel scan while catalyst loaded (Exp 229)"
+                        );
                     }
                 }
 
@@ -1702,6 +1751,7 @@ pub fn execute_handoff(
         catalyst_snapshot_path,
         catalyst_alive_count,
         catalyst_tier,
+        rm_channel_evidence,
         boot_service_evidence: boot_evidence,
         pri_ring_anchor,
         total_ms: overall.elapsed().as_millis() as u64,

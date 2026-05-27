@@ -73,6 +73,9 @@ pub struct NvVfioComputeDevice {
     /// When true, `open_vfio` skips destructive PRI ring recovery and
     /// pgraph reset to preserve the catalyst-established hardware state.
     pub(crate) catalyst_warm: bool,
+    /// Exp 229: RM-allocated channel ID (from RmChannelEvidence).
+    /// Used by Phase A fallback to adopt the RM channel if Phase B fails.
+    pub(crate) rm_channel_id: Option<u32>,
     #[cfg(target_os = "linux")]
     pub(crate) vfio_state: Option<VfioDispatchState>,
 }
@@ -91,6 +94,7 @@ impl NvVfioComputeDevice {
             sm: 0,
             fecs_ready: false,
             catalyst_warm: false,
+            rm_channel_id: None,
             #[cfg(target_os = "linux")]
             vfio_state: None,
         }
@@ -107,6 +111,7 @@ impl NvVfioComputeDevice {
             sm,
             fecs_ready: false,
             catalyst_warm: false,
+            rm_channel_id: None,
             #[cfg(target_os = "linux")]
             vfio_state: None,
         }

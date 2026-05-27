@@ -208,6 +208,42 @@ impl VfioChannel {
         )
     }
 
+    /// Exp 229 Phase A: Adopt an existing RM channel from PCCSR.
+    ///
+    /// Uses `create_fecs_alive` to set up DMA infrastructure with the same
+    /// channel_id as the RM-created channel. This creates our own IOVA
+    /// mappings and page tables, then re-binds the channel in PCCSR to
+    /// point at our instance block. The key insight: RM's channel already
+    /// primed FECS, so when we re-bind with our instance block (which has
+    /// our GPFIFO/USERD), FECS should already have valid ctx-switch state.
+    ///
+    /// Only called if Phase B (new sovereign channel) fails.
+    pub fn adopt_existing(
+        container: DmaBackend,
+        bar0: &MappedBar,
+        channel_id: u32,
+        gpfifo_iova: u64,
+        gpfifo_entries: u32,
+        userd_iova: u64,
+    ) -> DriverResult<Self> {
+        tracing::info!(
+            channel_id,
+            "adopt_existing: reusing RM channel ID with sovereign DMA infrastructure"
+        );
+
+        // Use the warm+fecs-alive path — it preserves PFIFO state
+        // (including RM's scheduler configuration) while setting up our
+        // own instance block, page tables, and RAMFC.
+        Self::create_fecs_alive(
+            container,
+            bar0,
+            gpfifo_iova,
+            gpfifo_entries,
+            userd_iova,
+            channel_id,
+        )
+    }
+
     /// Channel ID used for doorbell notification.
     #[must_use]
     pub const fn id(&self) -> u32 {

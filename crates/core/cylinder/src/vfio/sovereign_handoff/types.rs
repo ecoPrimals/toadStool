@@ -101,12 +101,56 @@ pub struct HandoffResult {
     /// alive during the settle phase.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub boot_service_evidence: Option<BootServiceEvidence>,
+    /// RM channel evidence captured during catalyst settle (Exp 229).
+    /// Present when rm_trigger runs with --channel mode and creates a full
+    /// RM compute channel before warm swap.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rm_channel_evidence: Option<RmChannelEvidence>,
     /// PRI ring anchor created from boot service evidence. Tracks PRI ring
     /// health across the driver swap.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pri_ring_anchor: Option<PriRingAnchor>,
     /// Total wall-clock time in milliseconds.
     pub total_ms: u64,
+}
+
+/// Evidence from a full RM compute channel created by rm_trigger --channel (Exp 229).
+///
+/// Captures the RM-allocated channel metadata before warm swap so the
+/// post-swap sovereign path can either:
+/// - Phase B: verify FECS ctx-switch readiness with its own channel
+/// - Phase A: adopt the RM channel's hardware layout for dispatch
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RmChannelEvidence {
+    /// RM-assigned channel ID (from NvChannelAllocParams.cid after alloc).
+    pub channel_id: Option<u32>,
+    /// Doorbell token for USERMODE register writes.
+    pub work_submit_token: Option<u32>,
+    /// Number of RM alloc/control steps that succeeded (out of 15).
+    pub steps_completed: u16,
+    /// Whether the entire channel creation sequence succeeded.
+    pub all_ok: bool,
+}
+
+impl RmChannelEvidence {
+    /// Parse from rm_trigger JSON output.
+    pub fn from_json(json: &serde_json::Value) -> Option<Self> {
+        if !json.get("channel_mode")?.as_bool()? {
+            return None;
+        }
+        let channel_id = json.get("channel_id")?.as_u64().map(|v| v as u32);
+        let work_submit_token = json
+            .get("work_submit_token")
+            .and_then(|v| v.as_str())
+            .and_then(|s| u32::from_str_radix(s.trim_start_matches("0x"), 16).ok());
+        let steps = json.get("steps")?.as_array()?;
+        let steps_completed = steps
+            .iter()
+            .filter(|s| s.get("ok").and_then(|v| v.as_bool()).unwrap_or(false))
+            .count() as u16;
+        let all_ok = json.get("success")?.as_bool().unwrap_or(false);
+        Some(Self { channel_id, work_submit_token, steps_completed, all_ok })
+    }
 }
 
 /// One step in the handoff pipeline.

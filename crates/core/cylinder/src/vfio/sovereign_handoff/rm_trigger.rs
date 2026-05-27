@@ -2,19 +2,28 @@
 
 use std::time::Duration;
 
+use super::types::RmChannelEvidence;
+
+/// Result of triggering RM initialization (and optionally creating a channel).
+pub(crate) struct RmTriggerResult {
+    pub summary: String,
+    /// Present when rm_trigger ran with --channel and produced channel evidence.
+    pub channel_evidence: Option<RmChannelEvidence>,
+}
+
 /// Trigger nvidia RM's GPU initialization by opening its dynamically-assigned chardev.
 ///
 /// After the catalyst module loads with `__register_chrdev(0, ...)` (dynamic major),
 /// we read `/proc/devices` to find the assigned major, create a temporary device node,
 /// and open+close it. This triggers `nv_open()` → `nv_start_device()` → full RM init
 /// (SEC2 → ACR → FECS → GPCCS → TPC PRI station creation).
-/// Trigger nvidia RM's GPU initialization by opening its dynamically-assigned chardev.
 ///
-/// After the catalyst module loads with `__register_chrdev(0, ...)` (dynamic major),
-/// we read `/proc/devices` to find the assigned major, create a temporary device node,
-/// and open+close it. This triggers `nv_open()` → `nv_start_device()` → full RM init
-/// (SEC2 → ACR → FECS → GPCCS → TPC PRI station creation).
-pub(crate) fn trigger_rm_init(module_name: &str) -> Result<String, String> {
+/// When `create_channel` is true, passes `--channel` to rm_trigger to create a
+/// full RM compute channel (Exp 229: Catalyst Channel).
+pub(crate) fn trigger_rm_init(
+    module_name: &str,
+    create_channel: bool,
+) -> Result<RmTriggerResult, String> {
     let devices = std::fs::read_to_string("/proc/devices")
         .map_err(|e| format!("failed to read /proc/devices: {e}"))?;
     let mut majors: Vec<u32> = Vec::new();
@@ -27,30 +36,31 @@ pub(crate) fn trigger_rm_init(module_name: &str) -> Result<String, String> {
             majors.push(n);
         }
     }
-    let major = majors.iter()
+    let major = majors
+        .iter()
         .copied()
         .max()
-        .ok_or_else(|| format!(
-            "{module_name} chardev not found in /proc/devices — \
-             __register_chrdev may have been NOPed"
-        ))?;
+        .ok_or_else(|| {
+            format!(
+                "{module_name} chardev not found in /proc/devices — \
+                 __register_chrdev may have been NOPed"
+            )
+        })?;
 
     tracing::info!(module_name, major, "found catalyst chardev major");
 
-    // Use the rm_trigger Rust binary for RM ioctl allocation.
-    // It creates chardev nodes, opens them (triggering rm_init_adapter),
-    // then issues NV_ESC_RM_ALLOC ioctls for root → device → subdevice →
-    // GR control, which triggers full GR initialization (GPCCS + TPC).
-    // Built from src/bin/rm_trigger.rs in the cylinder crate.
     let rm_trigger_bin = "/usr/local/bin/rm_trigger";
     if std::path::Path::new(rm_trigger_bin).exists() {
-        tracing::info!(major, "spawning rm_trigger helper for RM ioctl sequence");
-        match std::process::Command::new(rm_trigger_bin)
-            .arg(major.to_string())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .output()
-        {
+        tracing::info!(major, create_channel, "spawning rm_trigger helper");
+        let mut cmd = std::process::Command::new(rm_trigger_bin);
+        cmd.arg(major.to_string());
+        if create_channel {
+            cmd.arg("--channel");
+        }
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        match cmd.output() {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
@@ -60,12 +70,40 @@ pub(crate) fn trigger_rm_init(module_name: &str) -> Result<String, String> {
                     stderr = %stderr,
                     "rm_trigger helper completed"
                 );
-                // Give RM extra time for async GR init after helper exits
+
+                let channel_evidence = if create_channel {
+                    match serde_json::from_str::<serde_json::Value>(&stdout) {
+                        Ok(json) => {
+                            let ev = RmChannelEvidence::from_json(&json);
+                            if let Some(ref e) = ev {
+                                tracing::info!(
+                                    channel_id = ?e.channel_id,
+                                    work_submit_token = ?e.work_submit_token,
+                                    steps_completed = e.steps_completed,
+                                    all_ok = e.all_ok,
+                                    "RM channel evidence captured"
+                                );
+                            }
+                            ev
+                        }
+                        Err(e) => {
+                            tracing::warn!(error = %e, "failed to parse rm_trigger JSON output");
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+
                 std::thread::sleep(Duration::from_millis(3000));
-                return Ok(format!(
-                    "RM triggered via rm_trigger helper (major={major}), exit={}",
-                    output.status.code().unwrap_or(-1)
-                ));
+                return Ok(RmTriggerResult {
+                    summary: format!(
+                        "RM triggered via rm_trigger helper (major={major}, channel={}), exit={}",
+                        create_channel,
+                        output.status.code().unwrap_or(-1)
+                    ),
+                    channel_evidence,
+                });
             }
             Err(e) => {
                 tracing::warn!(error = %e, "rm_trigger helper spawn failed — falling back to open-only");
@@ -101,7 +139,10 @@ pub(crate) fn trigger_rm_init(module_name: &str) -> Result<String, String> {
             std::thread::sleep(Duration::from_millis(5000));
             drop(f);
             let _ = std::fs::remove_file(&dev_path);
-            Ok(format!("RM triggered via {dev_path} (major={major})"))
+            Ok(RmTriggerResult {
+                summary: format!("RM triggered via {dev_path} (major={major})"),
+                channel_evidence: None,
+            })
         }
         Err(e) => {
             let _ = std::fs::remove_file(&dev_path);
