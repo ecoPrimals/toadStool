@@ -158,6 +158,10 @@ pub struct NvVfioComputeDevice {
     caps: HardwareCapabilities,
     sm: u32,
     fecs_ready: bool,
+    /// Post-catalyst state: RM firmware booted FECS/TPC, now under VFIO.
+    /// When true, `open_vfio` skips destructive PRI ring recovery and
+    /// pgraph reset to preserve the catalyst-established hardware state.
+    catalyst_warm: bool,
     #[cfg(target_os = "linux")]
     vfio_state: Option<VfioDispatchState>,
 }
@@ -175,6 +179,7 @@ impl NvVfioComputeDevice {
             caps: HardwareCapabilities::UNKNOWN,
             sm: 0,
             fecs_ready: false,
+            catalyst_warm: false,
             #[cfg(target_os = "linux")]
             vfio_state: None,
         }
@@ -190,6 +195,7 @@ impl NvVfioComputeDevice {
             caps: profile.to_capabilities(),
             sm,
             fecs_ready: false,
+            catalyst_warm: false,
             #[cfg(target_os = "linux")]
             vfio_state: None,
         }
@@ -322,12 +328,24 @@ impl NvVfioComputeDevice {
         let preserved_warm = halted && fecs_mb0 != 0;
         let live_warm = running && pmc_enable.count_ones() >= 16;
 
+        // Detect post-catalyst state by FECS PC range. RM firmware PCs live in
+        // the 0x18b3xxxx range; nouveau firmware idles at ~0x6000. When FECS PC
+        // is in the RM range, the catalyst pipeline warmed this GPU and we must
+        // skip destructive PRI operations in open_vfio() to preserve TPC state.
+        //
+        // On Volta HS, CPUCTL_ALIAS may read 0x00000000 (HS security gate zeros
+        // the register), so we cannot rely on the halted flag for detection.
+        let is_catalyst_pc = fecs_pc >= 0x1000_0000 && pmc_enable.count_ones() >= 16;
+
         if preserved_warm {
             tracing::info!(
                 bdf = %self.bdf,
                 "FECS warm-preserved (halted + firmware resident) — compute-ready"
             );
             self.fecs_ready = true;
+            if is_catalyst_pc {
+                self.catalyst_warm = true;
+            }
             return true;
         }
 
@@ -335,9 +353,32 @@ impl NvVfioComputeDevice {
             tracing::info!(
                 bdf = %self.bdf,
                 pmc_popcount = pmc_enable.count_ones(),
+                fecs_pc = format!("{fecs_pc:#010x}"),
+                catalyst = is_catalyst_pc,
                 "FECS live-warm (still running, NOP'd teardown) — compute-ready"
             );
             self.fecs_ready = true;
+            if is_catalyst_pc {
+                self.catalyst_warm = true;
+                tracing::info!(
+                    bdf = %self.bdf,
+                    "catalyst_warm set: FECS PC in RM firmware range, \
+                     open_vfio will skip destructive ungating"
+                );
+            }
+            return true;
+        }
+
+        // Fallback: halted + RM firmware PC (CPUCTL_ALIAS reported halted).
+        if is_catalyst_pc {
+            tracing::info!(
+                bdf = %self.bdf,
+                fecs_pc = format!("{fecs_pc:#010x}"),
+                pmc_popcount = pmc_enable.count_ones(),
+                "FECS catalyst-warm (RM firmware, TPC state preserved) — compute-ready"
+            );
+            self.fecs_ready = true;
+            self.catalyst_warm = true;
             return true;
         }
 
@@ -482,11 +523,25 @@ impl NvVfioComputeDevice {
         let mut fecs_hs_booted = false;
         let mut fecs_bridge: Option<super::nv_gsp_bridge::NvGspBridge> = None;
         let mut pmc_was_cold = false;
+        let catalyst_mode = self.catalyst_warm;
+
+        if catalyst_mode {
+            tracing::info!(
+                bdf = %self.bdf,
+                "catalyst_warm: skipping destructive FECS boot path — \
+                 trusting catalyst-established hardware state"
+            );
+        }
 
         // Probe FECS state and prepare for deferred boot (after channel creation).
         // On nouveau warm handoff, FECS firmware expects PFIFO infrastructure
         // to exist before it can run. We boot FECS AFTER channel setup.
-        if !is_kepler && self.fecs_ready {
+        //
+        // In catalyst mode, skip the entire deferred-boot path: the catalyst
+        // pipeline already booted FECS via RM, and the destructive ungating
+        // sequence (PRI ring enumerate, pgraph reset, sw_nonctx.bin replay)
+        // would destroy the TPC PRI routing that RM established.
+        if !is_kepler && self.fecs_ready && !catalyst_mode {
             use crate::vfio::channel::registers::falcon;
 
             let pmc_before = bar0.read_u32(0x200).unwrap_or(0);
@@ -948,6 +1003,79 @@ impl NvVfioComputeDevice {
             }
         }
 
+        // Catalyst path: FECS was booted by RM and is halted. Try to unhalt
+        // and send channel binding methods. Skip all destructive ungating —
+        // the catalyst pipeline already established the correct PRI routing.
+        if catalyst_mode && !is_kepler && gr_ctx.is_some() {
+            use crate::vfio::channel::registers::falcon;
+
+            let fecs_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+            let fecs_pc = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
+            let halted = fecs_alias & falcon::CPUCTL_HALTED != 0;
+            let in_hreset = fecs_alias & falcon::CPUCTL_HRESET != 0;
+
+            tracing::info!(
+                bdf = %self.bdf,
+                fecs_cpuctl_alias = format_args!("{fecs_alias:#010x}"),
+                fecs_pc = format_args!("{fecs_pc:#010x}"),
+                halted, in_hreset,
+                "catalyst dispatch: FECS state before unhalt attempt"
+            );
+
+            if halted && !in_hreset {
+                // FECS firmware ran to completion and halted. Write the
+                // start bit to CPUCTL_ALIAS to resume the idle loop.
+                tracing::info!(bdf = %self.bdf, "catalyst dispatch: unhalting FECS via CPUCTL_ALIAS start bit");
+                let _ = bar0.write_u32(
+                    falcon::FECS_BASE + falcon::CPUCTL_ALIAS,
+                    falcon::CPUCTL_STARTCPU,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(100));
+
+                let alias_after = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+                let pc_after = bar0.read_u32(falcon::FECS_BASE + falcon::PC).unwrap_or(0xDEAD);
+                let still_halted = alias_after & falcon::CPUCTL_HALTED != 0;
+                tracing::info!(
+                    bdf = %self.bdf,
+                    fecs_cpuctl_alias = format_args!("{alias_after:#010x}"),
+                    fecs_pc = format_args!("{pc_after:#010x}"),
+                    still_halted,
+                    pc_changed = (pc_after != fecs_pc),
+                    "catalyst dispatch: FECS state after unhalt"
+                );
+            }
+
+            // Check if FECS is now alive (not halted, not in hreset).
+            let fecs_alive = crate::vfio::channel::fecs::fecs_is_alive(&bar0);
+            tracing::info!(
+                bdf = %self.bdf,
+                fecs_alive,
+                "catalyst dispatch: FECS liveness after unhalt — attempting channel setup"
+            );
+
+            // Even if fecs_is_alive returns false (HS-locked falcon may report
+            // halted via CPUCTL_ALIAS even when responsive to methods), try
+            // the channel setup — FECS INIT_CTXSW succeeded during catalyst
+            // capture with the same "halted" state.
+            match Self::fecs_setup_channel(&bar0, &channel) {
+                Ok(()) => {
+                    tracing::info!(
+                        bdf = %self.bdf,
+                        "catalyst dispatch: FECS channel setup succeeded"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        bdf = %self.bdf,
+                        error = %e,
+                        fecs_alive,
+                        "catalyst dispatch: FECS channel setup failed — \
+                         dispatch may produce zero readback"
+                    );
+                }
+            }
+        }
+
         // Allocate semaphore buffer for Blackwell+ completion signaling
         let semaphore = if matches!(profile.completion, super::generation::CompletionStrategy::SemaphoreFence) {
             let mut sem = crate::vfio::dma::DmaBuffer::new(
@@ -1094,7 +1222,32 @@ impl NvVfioComputeDevice {
         // handoff, the GR PRI ring is power-gated — FECS method mailbox
         // returns 0xbadf5545. Full sequence: CG sweep + PRI + PGOB + force
         // enumerate + GPC MMU + sw_nonctx.bin replay.
-        if fecs_running && !is_kepler {
+        //
+        // In catalyst mode, skip destructive ungating — catalyst pipeline
+        // already established correct PRI routing via RM.
+        if self.catalyst_warm && !is_kepler && gr_ctx.is_some() {
+            use crate::vfio::channel::registers::falcon;
+
+            tracing::info!(
+                bdf = %self.bdf,
+                "anchor adopt catalyst: skipping destructive ungating, \
+                 attempting FECS unhalt + channel setup"
+            );
+
+            let fecs_alias = bar0.read_u32(falcon::FECS_BASE + falcon::CPUCTL_ALIAS).unwrap_or(0xDEAD);
+            let halted = fecs_alias & falcon::CPUCTL_HALTED != 0;
+            let in_hreset = fecs_alias & falcon::CPUCTL_HRESET != 0;
+
+            if halted && !in_hreset {
+                let _ = bar0.write_u32(
+                    falcon::FECS_BASE + falcon::CPUCTL_ALIAS,
+                    falcon::CPUCTL_STARTCPU,
+                );
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+
+            let _ = Self::fecs_setup_channel(&bar0, &channel);
+        } else if fecs_running && !is_kepler {
             use crate::nv::gsp_bridge::GspBridge;
             use crate::vfio::channel::registers::pri;
 
