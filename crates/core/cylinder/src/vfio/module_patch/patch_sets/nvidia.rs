@@ -193,13 +193,14 @@ impl PatchSet {
                 // Bypass cap validation for RM alloc ioctls.
                 // nv_cap_validate_and_dup_fd normally dereferences the
                 // cap pointer to check cap->minor, which crashes with
-                // our fake cap pointers (value=1). Returning 0 (a valid
-                // fd number) unconditionally makes RM treat the client
-                // as having full capabilities. nv_cap_close_fd must also
-                // be NOPed to prevent closing fd 0 (stdin).
+                // our fake cap pointers (value=1). Returning 1 (a valid
+                // positive fd number) makes RM treat the client as having
+                // full capabilities. RetAtEntry returned 0 (stdin) which
+                // RM rejects as INSUFFICIENT_PERMISSIONS (0x1b).
+                // nv_cap_close_fd is NOPed to prevent closing fd 1.
                 PatchTarget {
                     symbol: "nv_cap_validate_and_dup_fd".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    strategy: PatchStrategy::Ret1AtEntry,
                 },
                 PatchTarget {
                     symbol: "nv_cap_close_fd".into(),

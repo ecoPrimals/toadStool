@@ -45,6 +45,7 @@ pub mod status {
 
 pub mod class {
     // Core objects
+    pub const NV01_ROOT: u32 = 0x0000_0000;
     pub const NV01_ROOT_CLIENT: u32 = 0x0000_0041;
     pub const NV01_DEVICE_0: u32 = 0x0000_0080;
     pub const NV20_SUBDEVICE_0: u32 = 0x0000_2080;
