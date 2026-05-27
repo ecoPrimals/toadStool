@@ -654,3 +654,42 @@ pub fn suppress_bus_reset(bdf: &str) -> Result<(), GuardedSysfsError> {
 pub fn restore_bus_reset() -> Result<(), GuardedSysfsError> {
     KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, NO_BUS_RESET_TMPDIR)
 }
+
+/// Remove a single BDF from the `no_bus_reset` module's suppression list.
+///
+/// Reads the currently-loaded BDF parameter, removes the target, then
+/// reloads the module with the remaining BDFs. If the target was the only
+/// BDF, unloads entirely. This allows SBR for the target while keeping
+/// other GPUs protected.
+pub fn unsuppress_bus_reset_for(bdf: &str) -> Result<(), GuardedSysfsError> {
+    let sys_param = format!("/sys/module/{NO_BUS_RESET_MODULE}/parameters/bdf");
+    let param_path = Path::new(&sys_param);
+    if !param_path.exists() {
+        tracing::info!(bdf, "no_bus_reset module not loaded — SBR already allowed");
+        return Ok(());
+    }
+    let loaded = std::fs::read_to_string(param_path)
+        .map_err(|e| GuardedSysfsError::WriteFailed {
+            path: sys_param.clone(),
+            reason: e.to_string(),
+        })?;
+    let remaining: Vec<&str> = loaded
+        .trim()
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty() && *s != bdf)
+        .collect();
+    tracing::info!(
+        bdf,
+        loaded = loaded.trim(),
+        remaining = remaining.join(",").as_str(),
+        "unsuppressing SBR for target BDF"
+    );
+    KmodBuilder::unload_and_clean(NO_BUS_RESET_MODULE, NO_BUS_RESET_TMPDIR)?;
+    if !remaining.is_empty() {
+        let combined = remaining.join(",");
+        tracing::info!(combined, "reloading no_bus_reset for remaining devices");
+        suppress_bus_reset(&combined)?;
+    }
+    Ok(())
+}

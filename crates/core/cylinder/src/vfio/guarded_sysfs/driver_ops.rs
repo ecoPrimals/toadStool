@@ -6,7 +6,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use super::GuardedSysfsError;
-use super::kmod_build::{rmmod_guarded, suppress_bus_reset};
+use super::kmod_build::{rmmod_guarded, suppress_bus_reset, unsuppress_bus_reset_for};
 use super::{REAP_POLL_CAP, RMMOD_TIMEOUT, UNBIND_TIMEOUT};
 
 pub fn sysfs_write(path: &str, value: &str) -> Result<(), GuardedSysfsError> {
@@ -386,6 +386,10 @@ pub fn prepare_anchor_release(bdf: &str, suppress_sbr: bool) {
     if suppress_sbr {
         if let Err(e) = suppress_bus_reset(bdf) {
             tracing::error!(bdf, error = %e, "failed to suppress bus reset — SBR may destroy warm state");
+        }
+    } else {
+        if let Err(e) = unsuppress_bus_reset_for(bdf) {
+            tracing::error!(bdf, error = %e, "failed to unsuppress bus reset for catalyst SBR");
         }
     }
 }
