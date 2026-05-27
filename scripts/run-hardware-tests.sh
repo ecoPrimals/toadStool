@@ -137,7 +137,7 @@ run_npu_tests() {
 
     if [ ! -e "/dev/akida0" ]; then
         echo -e "${YELLOW}Akida PCIe present but driver not loaded — skipping NPU tests${NC}"
-        echo -e "  Load driver: sudo modprobe akida  OR  ./scripts/setup-akida-vfio.sh"
+        echo -e "  Load driver: sudo modprobe akida  OR  ./scripts/install-akida-driver.sh"
         return 0
     fi
 

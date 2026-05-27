@@ -1,12 +1,19 @@
 # Active Technical Debt Register
 
-**Date**: May 2026 — S278
+**Date**: May 2026 — S279
 **Philosophy**: Math is universal, precision is silicon. Workarounds are
 short-term solutions that increase debt. We aim to solve deep debt over
 iterations, evolving toward vendor-agnostic, capability-based solutions—
 with production stubs surfacing typed configuration errors and capability
 guidance, and auth policy driven by explicit environment configuration
 where applicable.
+
+**S279 (Exp 229: Catalyst Channel — RM Compute Channel Before Warm Swap)**:
+Extended `rm_trigger` to 16-step Volta RM channel recipe (--channel mode).
+`RmChannelEvidence` struct + PCCSR scan in catalyst_capture. Phase A/B
+fallback in `open_vfio.rs` — tries sovereign channel first, falls back to
+RM channel adoption. `VfioChannel::adopt_existing()` + `adopt_rm_channel()`
+added. Pending: hardware validation (GPUs clean post-reboot, awaiting run).
 
 **S278 (Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption)**:
 Split 7 oversized files (sovereign_handoff 2,860L, module_patch 2,020L,

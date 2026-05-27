@@ -5,7 +5,21 @@ All notable changes to ToadStool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - May 27, 2026 (Sessions 43-278)
+## [Unreleased] - May 27, 2026 (Sessions 43-279)
+
+### Session S279 (May 27, 2026) — Exp 229: Catalyst Channel — RM Compute Channel Before Warm Swap
+
+Full RM compute channel creation before warm swap to overcome FECS ACR blocker (Exp 228). 16-step Volta RM channel recipe via `rm_trigger --channel`.
+
+- EXTENDED: `rm_trigger.rs` — 16-step RM channel recipe (--channel mode): root → device → subdevice → GR_GET_INFO → VA space → USERD/GPFIFO/notifier memory → TSG → ctx share → GPFIFO channel → compute → BIND → SCHEDULE → work submit token. Uses `rm_abi` types for class-specific params, 32-byte `Nvos64Parameters` for 470.x ioctl.
+- ADDED: `RmChannelEvidence` struct — captures channel_id, work_submit_token, steps_completed from rm_trigger JSON output. Added to `HandoffResult`.
+- ADDED: PCCSR channel scan in Step 4b (catalyst_capture) — scans 64 channel slots for ACTIVE/PENDING, recorded in `BootServiceEvidence`.
+- ADDED: `trigger_rm_init()` now accepts `create_channel: bool` — passes `--channel` to rm_trigger, parses `RmChannelEvidence`.
+- ADDED: `adopt_rm_channel()` in `channel_init.rs` — Phase A fallback: scans PCCSR for ACTIVE RM channels, builds adopted `VfioChannel`.
+- ADDED: `VfioChannel::adopt_existing()` — creates channel using `create_fecs_alive` with RM's channel ID.
+- ADDED: Phase A/B fallback logic in `open_vfio.rs` — after catalyst path, checks sovereign channel PCCSR; if PENDING, falls back to RM channel adoption.
+- ADDED: `rm_channel_id: Option<u32>` field on `NvVfioComputeDevice` for Phase A targeting.
+- METRICS: 705 cylinder + 864 server tests pass (1,569 lib). Zero clippy. Full workspace builds clean.
 
 ### Session S278 (May 27, 2026) — Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption
 

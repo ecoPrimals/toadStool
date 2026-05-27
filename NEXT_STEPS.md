@@ -1,9 +1,9 @@
 # ToadStool -- Next Steps
 
-**Updated**: May 2026 — S278 (Deep Debt Evolution Sprint: 7 oversized files split into module dirs, 4 C tools → Rust bins, `nv/registers/` + `nv/rm_abi.rs` added, `NoopGspBridge`, AMD feature-gated, coral-kmod fossilized. 705 cylinder tests. Zero C.)
+**Updated**: May 2026 — S279 (Exp 229: Catalyst Channel — full RM compute channel before warm swap. 16-step Volta recipe via `rm_trigger --channel`. PCCSR scan, RmChannelEvidence, Phase A/B fallback. 705+864 tests.)
 **Status**: Production-grade | Rust edition **2024** (MSRV 1.85) | **AGPL-3.0-or-later** | **All quality gates green** | tests verified (23,000+ workspace, 0 failures; 9,156+ lib-only) | **88+ JSON-RPC methods** | Wire Standard L3 (partial) | Zero C FFI deps (ecoBin v3.0) | **Zero production panics/expects** | **Zero production TODO/FIXME/HACK** | **Zero production unreachable!()** | IPC-first | workspace `unsafe_code = "deny"`, **41 crates `forbid`** | **46 unsafe blocks** (all in hw containment, all SAFETY-documented) | **rustix 1.x workspace-wide** | **capability-based primal references (no hardcoded names)** | **`async-trait` DEPRECATED** (banned in `deny.toml`) | **`deny.toml` ring + async-trait + zstd-sys bans active** | **Zero external mmap deps (memmap2 removed S276)** | **Phase D dispatch live** | **E2E sovereign dispatch VALIDATED on Titan V (warm handoff)**
-**Latest**: S278 — **Deep Debt Evolution Sprint**: 7 oversized files split into module directories (~12,500L refactored). 4 C tools ported to Rust bins. `nv/registers/` (12 domain submodules) + `nv/rm_abi.rs` (22 repr(C) structs). `StubGspBridge` → `NoopGspBridge`. AMD Vega feature-gated. coral-kmod fossilized. 705 cylinder tests, zero clippy, zero C.
-**Previous**: S277 — Wave 54: Early Health Responder. S276 — Deep Debt Evolution II. S275 — Wave 49 Ecosystem Tightening. S274 — Glacial Horizon. S273 — Deep Debt Evolution. S268 — Kernel Health Preflight.
+**Latest**: S279 — **Exp 229: Catalyst Channel**: Full RM compute channel before warm swap (FECS ACR blocker). `rm_trigger --channel` 16-step Volta recipe. `RmChannelEvidence` + PCCSR scan. Phase A/B fallback in `open_vfio.rs`. 705+864 tests.
+**Previous**: S278 — Deep Debt Evolution Sprint. S277 — Wave 54: Early Health Responder. S276 — Deep Debt Evolution II. S275 — Wave 49: Ecosystem Tightening. S274 — Glacial Horizon. S273 — Deep Debt Evolution.
 
 ---
 
