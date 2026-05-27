@@ -383,11 +383,29 @@ impl DispatchHandler {
             "sovereign.warm_handoff: starting driver rotation pipeline"
         );
 
+        // Read PMC_ENABLE before releasing anchor to detect cold GPU.
+        // On a cold GPU (popcount < 10), we intentionally allow SBR during
+        // anchor release — the PCIe bus reset gives RM a clean post-reset
+        // state for DEVINIT. On a warm GPU, SBR is suppressed to preserve
+        // the existing engine state. (Exp 229: cold DEVINIT fix)
+        let gpu_warm = {
+            use toadstool_cylinder::vfio::device::MappedBar;
+            if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
+                let pmc = bar.read_u32(0x200).unwrap_or(0);
+                let popcount = pmc.count_ones();
+                tracing::info!(bdf, pmc = format_args!("0x{pmc:08x}"), popcount, "pre-release PMC_ENABLE");
+                popcount >= 10
+            } else {
+                true // can't read BAR0 → conservative, suppress SBR
+            }
+        };
+
         // Suppress FLR BEFORE releasing anchor — dropping the anchor closes
         // the VFIO device fd, which triggers vfio_pci_core_release(). Without
         // FLR suppression, the kernel resets the GPU and destroys VBIOS warm
         // state. Exp 225: PMC_ENABLE dropped from 0x5fecdff1 to 0x40000020.
-        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf);
+        // Exp 229: For cold GPUs, allow SBR so RM gets a clean state for DEVINIT.
+        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf, gpu_warm);
 
         // Release VFIO anchor and cached device. The IOMMU group is locked
         // while we hold VFIO container/group FDs — the seeder driver cannot
@@ -520,8 +538,10 @@ impl DispatchHandler {
             config.settle = std::time::Duration::from_secs(secs);
         }
 
-        // Suppress FLR before releasing anchor (Exp 225 fix)
-        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf);
+        // Suppress FLR before releasing anchor (Exp 225 fix).
+        // catalyst_boot always uses nouveau which doesn't need RM DEVINIT,
+        // so always suppress SBR to preserve any existing warm state.
+        toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf, true);
 
         // Release VFIO resources — FLR already suppressed above
         {

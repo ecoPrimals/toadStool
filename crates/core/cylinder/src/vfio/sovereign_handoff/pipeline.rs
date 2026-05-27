@@ -1004,19 +1004,28 @@ pub fn execute_handoff(
         }
     }
 
-    // ── Step 5: Pin bridges + disable FLR (safety belt) ────────────
+    // ── Step 5: Pin bridges + disable FLR + suppress SBR ───────────
     //
-    // The RPC handler already calls prepare_anchor_release() before
-    // dropping the VfioAnchor. This is a safety belt for callers that
-    // invoke execute_handoff directly. Idempotent — writing the same
-    // sysfs value is harmless.
+    // The RPC handler calls prepare_anchor_release() before dropping the
+    // VfioAnchor. For cold GPUs (Exp 229), SBR was intentionally allowed
+    // during anchor release so RM could cold-boot with a clean PCIe reset.
+    // Now that RM init is complete (seeder_settle finished), we MUST
+    // suppress SBR before the warm swap to preserve the RM-initialized
+    // state. For warm GPUs, SBR was already suppressed — this is idempotent.
 
     let t = Instant::now();
     guarded_sysfs::pin_bridge_hierarchy(&config.bdf);
     guarded_sysfs::disable_flr(&config.bdf);
+    if let Err(e) = guarded_sysfs::suppress_bus_reset(&config.bdf) {
+        tracing::warn!(
+            bdf = config.bdf.as_str(),
+            error = %e,
+            "failed to suppress SBR before warm swap — state may be lost"
+        );
+    }
     steps.push(HandoffStep {
         name: "prepare_warm_swap".into(), ok: true,
-        detail: Some("bridge pinned, FLR disabled".into()),
+        detail: Some("bridge pinned, FLR disabled, SBR suppressed".into()),
         duration_ms: t.elapsed().as_millis() as u64,
     });
 

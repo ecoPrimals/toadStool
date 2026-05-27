@@ -25,13 +25,20 @@ pub const NV_ESC_RM_UNMAP_MEMORY_DMA: u8 = 0x58;
 
 pub mod status {
     pub const NV_OK: u32 = 0x0000_0000;
+    pub const INSUFFICIENT_RESOURCES: u32 = 0x0000_001A;
     pub const INSUFFICIENT_PERMISSIONS: u32 = 0x0000_001B;
     pub const INVALID_ARGUMENT: u32 = 0x0000_001F;
+    pub const INVALID_CLIENT: u32 = 0x0000_0023;
+    pub const INVALID_DEVICE: u32 = 0x0000_0026;
+    pub const INVALID_OBJECT_HANDLE: u32 = 0x0000_0033;
+    pub const INVALID_OBJECT_PARENT: u32 = 0x0000_0036;
+    pub const INVALID_STATE: u32 = 0x0000_0040;
     pub const NO_MEMORY: u32 = 0x0000_0051;
     pub const NOT_SUPPORTED: u32 = 0x0000_0056;
     pub const OBJECT_NOT_FOUND: u32 = 0x0000_0057;
     pub const OPERATING_SYSTEM: u32 = 0x0000_0059;
-    pub const GPU_IN_FULL: u32 = 0x0000_005D;
+    pub const PAGE_TABLE_NOT_AVAIL: u32 = 0x0000_005D;
+    pub const TIMEOUT: u32 = 0x0000_0065;
 }
 
 // ── RM class IDs ────────────────────────────────────────────────────────

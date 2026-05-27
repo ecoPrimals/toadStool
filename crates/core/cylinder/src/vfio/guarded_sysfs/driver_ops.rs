@@ -354,30 +354,39 @@ pub fn restore_flr(bdf: &str) {
     }
 }
 
-/// Prepare a device for VFIO anchor release without triggering a reset.
+/// Prepare a device for VFIO anchor release.
 ///
 /// Must be called BEFORE dropping the `VfioAnchor`. Three layers of defense:
 ///
 /// 1. Pin bridge power hierarchy (prevent D3cold)
 /// 2. Clear `reset_method` to suppress per-device FLR/PM reset (Exp 225)
-/// 3. Load `no_bus_reset.ko` to set `PCI_DEV_FLAGS_NO_BUS_RESET`,
+/// 3. (Conditional) Load `no_bus_reset.ko` to set `PCI_DEV_FLAGS_NO_BUS_RESET`,
 ///    preventing the kernel's dev_set `pci_reset_bus()` SBR (Exp 226)
 ///
 /// Without layers 1+2, `vfio_pci_core_release()` fires per-device FLR.
 /// Without layer 3, `vfio_pci_dev_set_try_reset()` fires bus-level SBR
 /// when all devices in the dev_set have open_count==0.
-pub fn prepare_anchor_release(bdf: &str) {
-    tracing::info!(bdf, "preparing anchor release: pinning bridges + disabling FLR + suppressing SBR");
+///
+/// When `suppress_sbr` is false (cold GPU + catalyst pipeline), SBR is
+/// intentionally allowed so the GPU gets a clean PCIe reset. RM needs a
+/// post-reset state to run DEVINIT on cold hardware. The pipeline then
+/// calls [`suppress_bus_reset`] later, after RM init completes, to
+/// protect the newly-warm state during the warm swap (Exp 229).
+pub fn prepare_anchor_release(bdf: &str, suppress_sbr: bool) {
+    tracing::info!(
+        bdf, suppress_sbr,
+        "preparing anchor release: pinning bridges + disabling FLR{}",
+        if suppress_sbr { " + suppressing SBR" } else { " (SBR allowed for cold DEVINIT)" }
+    );
     pin_bridge_hierarchy(bdf);
     disable_flr(bdf);
     for sib in iommu_group_siblings(bdf) {
         disable_flr(&sib);
     }
-    // Exp 226: FLR suppression alone is insufficient — the kernel also
-    // fires pci_reset_bus() (SBR) when the last dev_set fd closes.
-    // Load a tiny module to set PCI_DEV_FLAGS_NO_BUS_RESET on the device.
-    if let Err(e) = suppress_bus_reset(bdf) {
-        tracing::error!(bdf, error = %e, "failed to suppress bus reset — SBR may destroy warm state");
+    if suppress_sbr {
+        if let Err(e) = suppress_bus_reset(bdf) {
+            tracing::error!(bdf, error = %e, "failed to suppress bus reset — SBR may destroy warm state");
+        }
     }
 }
 
