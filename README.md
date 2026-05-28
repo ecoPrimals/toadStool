@@ -1,6 +1,6 @@
 # ToadStool
 
-**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S279 | v0.2.0
+**Sovereign Compute Hardware** | Pure Rust | ecoBin | May 2026 | S282 | v0.2.0
 
 ---
 
@@ -45,8 +45,8 @@ Nest    = Tower  + Storage            <- storage
 | `cargo test --workspace` | **23,000+ tests, 0 failures** (9,156+ lib-only), **~222** ignored (hardware-gated); full workspace ~7m |
 | Doctests | All passing (common, core, server, cli, testing, display) |
 | Standalone clone test | Pull to any machine, `cargo test` works (GPU-optional, CPU fallback, device-lost resilient) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** (S211+S213) |
-| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` |
+| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S282: 28 gaps closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`; **all lint attrs have `reason =`** |
+| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282: 4 panic paths evolved to Result) |
 | Production stubs / test mocks | Stubs evolved to real implementations (edge USB/BT/IPv6, scheduler queuing, monitoring via sysmon+statvfs); **auth test mocks** (`InMemoryAuthBackend`) isolated under **`#[cfg(any(test, feature = "test-mocks"))]`**; **`test-mocks` removed from default features** (S206 — production builds exclude mock code) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production TODOs / FIXME / HACK | 0 in production code |
@@ -276,15 +276,16 @@ toadStool/
 | Workspace tests | **23,000+**, 0 failures (9,156+ lib-only) |
 | Lib-only line coverage | ~83.6% |
 | Full workspace test time | ~7m (unlimited parallelism, `cfg!(test)` fast timeouts; GPU crates have NVK resilience wrappers) |
-| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented (S204, reconciled S221); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
-| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (confirmed S279) |
+| `unsafe` blocks | **46 actual** (all in hw-safe/GPU/VFIO/display/plugin containment crates); **all SAFETY-documented** (S282: 28 gaps closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]` |
+| Production panics/unwraps | **0** production `unwrap()` / `expect()` / `panic!()` (S282: 4 panic paths evolved to Result) |
 | Production `Box<dyn Error>` | 0 in core crates -- all typed errors (thiserror) |
 | Production stubs | 0 blind stubs; test-only mocks **`#[cfg(test)]`** only |
 | Production `todo!()`/`unimplemented!()`/`dbg!()` | 0 |
 | Production FIXME / HACK | 0 |
 | Dead code removed | ~400+ lines (REST handlers, middleware, dead modules); **~80** justified `#[allow]` remain (conditional compilation, deprecated compat) |
 | Hardcoded localhost/ports/URLs in prod | 0 -- config constants + capability-based discovery |
-| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, `libc`, `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup (linfa/ndarray/mockall/env_logger). S166: `md5`→`md-5`, `bollard` 0.18, `ed25519-dalek` (core+CLI→BearDog RPC), `regex` (→`str::contains`), `parking_lot` (→`std::sync`). S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif` |
+| External deps eliminated | `chrono`, `log`, `instant`, `anyhow` (core), `pollster`, `serde_yaml`, **`libc`** (S281→S282: zero libc, all mmap/ioctl via rustix), `sysinfo`, `caps`, `console`, `indicatif`, `figment`, `handlebars` + 23 phantom deps. S164: dep dedup. S166: `ed25519-dalek`/`regex`/`parking_lot`. S169: `pyo3`, `gbm`, `linfa`, `hmac`, `indicatif` |
+| Env centralization | **~97%** (~410+ env reads via `socket_env::` constants); <10 raw `env::var("...")` remaining (S282) |
 | Default test timeout | 5s (unit: 2s, integration: 30s, chaos: 20s) |
 | Hardware transports | 3 | Display (DRM), Capture (V4L2), Serial (feature-gated) |
 
@@ -302,8 +303,11 @@ toadStool/
 - **NUCLEUS crypto integration** -- compute payloads encrypted via Tower `crypto.encrypt`/`crypto.decrypt` (S205); **self-registration with Songbird** via `DISCOVERY_SOCKET` + `ipc.register` at startup (S207)
 
 ### Recently Completed
-- **S279 (May 27, 2026)**: **Deep Debt Evolution III: Panic Path Elimination + Capability Hardening** — All P0/P1 production panic paths eliminated (sovereign handoff handler, pipeline tier, CE validate, ELF parsing, reagent, signal handlers, network config, module_patch). Legacy capability→primal roundtrip helpers deprecated. Platform status documented as intentional design. SAFETY comments verified complete. **9,156+ lib tests, zero clippy.**
-- **S279 (May 27, 2026)**: **Exp 229: Catalyst Channel** — Full RM compute channel before warm swap (FECS ACR blocker). rm_trigger --channel 16-step Volta recipe. RmChannelEvidence + PCCSR scan. Phase A/B fallback in open_vfio.rs. 705+864 tests.
+- **S282 (May 28, 2026)**: **Deep Debt Evolution V: Complete Unsafe Hardening + Env Centralization + Panic Elimination** — 28 unsafe SAFETY doc gaps closed (12 files). 4 production panic paths evolved to Result. 110 raw env::var sites migrated (+56 new socket_env constants). libc::mmap→rustix::mm. 8 cylinder + 13 server clippy fixes. `PatchStrategy` → idiomatic `impl FromStr`. **178 lib tests, zero clippy, zero libc, ~97% env centralized.**
+- **S281 (May 28, 2026)**: **Deep Debt Evolution IV: libc Elimination + Workspace Consolidation** — libc eliminated from cylinder (last C binding on hardware path). rm_trigger.rs → rustix::ioctl. rustix consolidated to workspace dep across 10 crates. +33 socket_env constants, 47 env::var sites migrated. **Zero libc in workspace.**
+- **S280 (May 28, 2026)**: **Wave 59 Env Centralization + Clippy Allow Evolution** — Deleted orphan env_overrides.rs (342L). +73 socket_env constants. 117 env::var sites migrated across 30 files. Fixed 5 P0 bare #[allow(clippy::)].
+- **S279 (May 27, 2026)**: **Deep Debt Evolution III: Panic Path Elimination + Capability Hardening** — All P0/P1 production panic paths eliminated. Legacy capability→primal roundtrip helpers deprecated. **9,156+ lib tests, zero clippy.**
+- **S279 (May 27, 2026)**: **Exp 229: Catalyst Channel** — Full RM compute channel before warm swap (FECS ACR blocker). rm_trigger --channel 16-step Volta recipe.
 - **S278 (May 27, 2026)**: **Deep Debt Evolution Sprint: Module Extraction + C→Rust + ABI Absorption** — Split 7 oversized files into module directories (sovereign_handoff 2,860L→11 modules, module_patch 2,020L→11, compute_device 2,072L→11 with gr_ungating/pbdma dedup, sovereign_stages 1,861L→7, guarded_sysfs 1,561L→5, channel/mod 1,117L→4, handler/sovereign 1,004L→6). Ported 4 userspace C tools to Rust bins (rm_trigger, sovereign_acr_boot, sovereign_pmu_boot, capture_pmu_falcon). Created `nv/registers/` (12 domain submodules) and `nv/rm_abi.rs` (canonical RM ABI types from coral-kmod). Evolved `StubGspBridge` → `NoopGspBridge` with capability guidance. Gated AMD Vega behind feature. Fossilized coral-kmod. **705 cylinder tests, zero clippy, zero userspace C.**
 - **S276 (May 26, 2026)**: **Deep Debt Evolution II — Unwrap Elimination, Sovereign Split, memmap2 Removal** — Eliminated remaining production unwrap/expect/unreachable: sovereign.rs 2x unwrap, mmio_region.rs expect, dma.rs Drop expect, diagnostic interpreter 6x expect, permissions.rs expect, dispatch unreachable!(). `handler/sovereign.rs` (1,003L, 11 handlers) → module directory (init/snapshot/capture). `memmap2` removed from hw-safe — `safe_mmap.rs` rewritten on rustix. 3 stale primal-name type aliases deprecated. `ipc.register` capability list aligned to Node Atomic set. 13 upstream clippy warnings absorbed. **88+ JSON-RPC methods. 9,158+ lib tests, zero clippy.**
 - **S275 (May 25, 2026)**: **Wave 49: Ecosystem Tightening** — Showcase fossilized (35 files → fossilRecord). wateringHole consolidated (36 handoffs mirrored, archive/ created). Stale deploy patterns fixed (4 files → plasmidBin). Startup latency optimized (deferred wgpu, pre-bound socket). toadstool.toml HTTP-era template fossilized. Docs fossil-tagged.
@@ -397,7 +401,7 @@ See [DEBT.md](DEBT.md) for full register and evolution paths.
 
 ---
 
-**Last Updated**: May 2026 — S279. **23,000+** workspace tests, 0 failures (9,156+ lib-only). ~83.6% lib-only line coverage (target 90%). **88 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. Zero C FFI deps (ecoBin v3.0). Zero userspace C in primal codebases. **46 unsafe blocks** (all in hw-safe/GPU/VFIO/display/plugin containment crates); all SAFETY-documented; workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics/expects**. Zero production TODO/FIXME/HACK. **705 cylinder tests.** `nv/registers/` (12 domain submodules), `nv/rm_abi.rs` (canonical RM ABI). `NoopGspBridge` (was `StubGspBridge`). AMD Vega feature-gated. coral-kmod fossilized. IPC-first JSON-RPC. Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
+**Last Updated**: May 2026 — S282. **23,000+** workspace tests, 0 failures (9,156+ lib-only). ~83.6% lib-only line coverage (target 90%). **88 JSON-RPC methods** (direct) + semantic registry. AGPL-3.0-or-later. **Zero `libc`** (ecoBin v3.0 — all hardware I/O via rustix). Zero userspace C. **46 unsafe blocks** — all SAFETY-documented (S282: 28 gaps closed); workspace `unsafe_code = "deny"`, **41 crates `forbid`** + 5 hw crates with narrow `#[allow(unsafe_code, reason)]`. **Zero production panics** (S282: 4 paths evolved to Result). Zero production TODO/FIXME/HACK. **~97% env centralized** (410+ reads via `socket_env::` constants). Rust 1.85+ (edition 2024). **Phase D dispatch live** (S254–S263). **Capability-based discovery compliant** per `CAPABILITY_BASED_DISCOVERY_STANDARD.md` v1.3.
 
 ---
 

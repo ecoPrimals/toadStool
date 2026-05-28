@@ -1,7 +1,7 @@
 +++
 title = "ToadStool Validation Summary"
-description = "Sovereign compute hardware primal — 9,156+ lib tests, 88+ JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0"
-date = 2026-05-27
+description = "Sovereign compute hardware primal — 9,156+ lib tests, 88+ JSON-RPC methods, 47 crates, VFIO GPU init pipeline, v0.2.0, zero libc, zero unsafe without SAFETY, ~97% env centralized"
+date = 2026-05-28
 
 [taxonomies]
 primals = ["toadstool"]
