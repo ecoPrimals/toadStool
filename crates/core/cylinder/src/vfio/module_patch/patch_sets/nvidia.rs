@@ -115,30 +115,26 @@ impl PatchSet {
             name: "nvidia_catalyst_handoff".into(),
             module_name: "nvidia".into(),
             targets: vec![
-                // Surgical teardown NOPs inside nv_pci_remove — NOP only
-                // GPU-state-destroying calls while letting PCI resource
-                // cleanup (__release_region, pci_disable_device) run
-                // normally. This prevents stale BAR0 claims in the kernel
-                // iomem tree that cause request_mem_region failures on
-                // subsequent catalyst cycles.
-                //
-                // Call offsets verified against nvidia-470.256.02 on
-                // kernel 6.17.9 via objdump + readelf relocation table.
+                // Preserve GPU hardware state through close + unbind.
+                // Both rm_disable_adapter and rm_shutdown_adapter must be
+                // NOP'd:
+                //   rm_disable_adapter: disables PRI ring stations and
+                //     engine interrupts, which trips 0xbadf PRI faults
+                //     and partially cools PMC_ENABLE (popcount 25→10).
+                //   rm_shutdown_adapter: resets GPU hardware, powers down
+                //     engines, unloads FECS/GPCCS firmware.
+                // With both NOP'd, the GPU keeps full warm state (all
+                // engines enabled, FECS firmware loaded, PRI ring live)
+                // through nvidia close AND unbind. The brief window of
+                // unhandled MSI interrupts between free_irq and vfio-pci
+                // bind is acceptable for catalyst.
                 PatchTarget {
-                    symbol: "nv_pci_remove".into(),
-                    strategy: PatchStrategy::NopCallAt(0x374),
+                    symbol: "rm_disable_adapter".into(),
+                    strategy: PatchStrategy::RetAtEntry,
                 },
                 PatchTarget {
-                    symbol: "nv_pci_remove".into(),
-                    strategy: PatchStrategy::NopCallAt(0x3a0),
-                },
-                PatchTarget {
-                    symbol: "nv_pci_remove".into(),
-                    strategy: PatchStrategy::NopCallAt(0x1fe),
-                },
-                PatchTarget {
-                    symbol: "nv_pci_remove".into(),
-                    strategy: PatchStrategy::NopCallAt(0x2a0),
+                    symbol: "rm_shutdown_adapter".into(),
+                    strategy: PatchStrategy::RetAtEntry,
                 },
                 // Co-load isolation NOPs — prevent host conflicts.
                 // nv_cap_init/drv_init are NOPed to Ret1 (return success)
@@ -207,12 +203,17 @@ impl PatchSet {
                     strategy: PatchStrategy::RetAtEntry,
                 },
                 // os_is_administrator calls capable(CAP_SYS_ADMIN) and returns
-                // the raw bool (1=admin). RM expects NV_STATUS where NV_OK=0.
-                // Result: 1 != NV_OK → INSUFFICIENT_PERMISSIONS on every alloc.
-                // RetAtEntry returns 0 (NV_OK) unconditionally.
+                // NvBool (1=admin, 0=not admin). RM checks this to decide
+                // whether to enforce capability-based access control. Must
+                // return 1 (admin) so RM sets pClient->bIsAdmin=true and
+                // bypasses nv_cap_validate_and_dup_fd entirely. Previous
+                // RetAtEntry returned 0 (not admin) which triggered the
+                // cap validation path — that fails with our stubbed cap
+                // system, causing INSUFFICIENT_PERMISSIONS (0x1b) on every
+                // device_alloc with share=0.
                 PatchTarget {
                     symbol: "os_is_administrator".into(),
-                    strategy: PatchStrategy::RetAtEntry,
+                    strategy: PatchStrategy::Ret1AtEntry,
                 },
                 // Change the chardev major from 195 (0xc3) to 0 (dynamic
                 // allocation) so nvsov gets its own chardev that doesn't

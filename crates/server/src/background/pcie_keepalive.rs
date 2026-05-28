@@ -24,6 +24,7 @@
 //!    mode (10ms interval) to saturate the fabric with CfgRd traffic during
 //!    the critical unbind/rebind window. Callers use [`SwapGuard`].
 
+use std::collections::HashSet;
 use std::io::{Read, Seek, SeekFrom};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -42,6 +43,13 @@ const DISCOVERY_RETRY_DELAY: Duration = Duration::from_secs(1);
 
 /// Global swap-guard refcount. When >0, keepalive runs at burst frequency.
 static SWAP_GUARD_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// BDFs excluded from config-space reads during driver transitions.
+/// A config read to a device undergoing SBR can hold the global `pci_lock`
+/// for the entire CRS retry window (~60s), deadlocking ALL PCI operations
+/// system-wide — including the display GPU (Exp 229 lockup root cause).
+static EXCLUDED_BDFS: std::sync::LazyLock<std::sync::Mutex<HashSet<String>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(HashSet::new()));
 
 /// Shared activity tracker — exported so other modules (VFIO ops, config
 /// reads) can call `activity_tracker().record()` to suppress redundant
@@ -76,6 +84,56 @@ impl Drop for SwapGuard {
         let prev = SWAP_GUARD_COUNT.fetch_sub(1, Ordering::SeqCst);
         info!(active_guards = prev - 1, "PCIe keepalive: burst mode OFF");
     }
+}
+
+/// RAII guard that excludes a set of BDFs from keepalive config-space reads.
+///
+/// During driver transitions (unbind/SBR/rebind), config reads to the
+/// target device can enter CRS retry and hold the global `pci_lock`,
+/// deadlocking the entire PCI subsystem. This guard prevents that by
+/// telling the keepalive loop to skip the specified BDFs.
+pub struct HandoffExclusionGuard {
+    bdfs: Vec<String>,
+}
+
+impl HandoffExclusionGuard {
+    /// Exclude `bdfs` from keepalive config reads. Include both the target
+    /// GPU and its IOMMU siblings (e.g. the HD Audio function).
+    pub fn new(bdfs: Vec<String>) -> Self {
+        let mut excl = EXCLUDED_BDFS.lock().unwrap_or_else(|e| e.into_inner());
+        for bdf in &bdfs {
+            excl.insert(bdf.clone());
+        }
+        info!(
+            excluded = ?bdfs,
+            "keepalive: excluding BDFs from config reads during handoff"
+        );
+        Self { bdfs }
+    }
+}
+
+impl Drop for HandoffExclusionGuard {
+    fn drop(&mut self) {
+        let mut excl = EXCLUDED_BDFS.lock().unwrap_or_else(|e| e.into_inner());
+        for bdf in &self.bdfs {
+            excl.remove(bdf);
+        }
+        info!(
+            restored = ?self.bdfs,
+            "keepalive: re-including BDFs in config reads after handoff"
+        );
+    }
+}
+
+/// Check if a BDF is currently excluded from keepalive reads.
+fn is_excluded(bdf: &str) -> bool {
+    EXCLUDED_BDFS.lock().unwrap_or_else(|e| e.into_inner()).contains(bdf)
+}
+
+/// Exclude a single BDF from keepalive reads and return an RAII guard.
+/// Convenience wrapper for `HandoffExclusionGuard::new` with one BDF.
+pub fn exclude_bdf(bdf: &str) -> HandoffExclusionGuard {
+    HandoffExclusionGuard::new(vec![bdf.to_string()])
 }
 
 fn current_interval() -> Duration {
@@ -431,6 +489,9 @@ pub(crate) async fn run() {
         let mut dead = 0usize;
 
         for bdf in &all_targets {
+            if is_excluded(bdf) {
+                continue;
+            }
             match read_config_u16(bdf, 0x04) {
                 Some(cmd) if cmd != 0xFFFF => {
                     alive += 1;

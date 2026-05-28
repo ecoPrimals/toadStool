@@ -14,7 +14,9 @@
 //! - [`cleanup`] — Timed-out execution garbage collection
 //! - [`capability`] — Primal heartbeat (when capability provider enabled)
 //! - [`pcie_keepalive`] — PCIe bridge keepalive + hierarchy pinning (prevents D3cold)
+//! - [`catalyst_watchdog`] — Exp 229 lockup sentinel: monitors handoff liveness, emergency quench + kill
 
+pub(crate) mod catalyst_watchdog;
 mod capability;
 mod cleanup;
 mod health;
@@ -73,6 +75,11 @@ pub async fn start_background_services<E: RuntimeEngine + 'static>(state: Server
     tokio::spawn(async move {
         pcie_keepalive::run().await;
     });
+
+    // Start catalyst handoff watchdog — OS thread (not tokio) that monitors
+    // handoff liveness and performs emergency interrupt quench + process kill
+    // if the pipeline becomes unresponsive (Exp 229 diesel engine safety net)
+    catalyst_watchdog::start_watchdog_thread();
 
     info!("Background services started");
 

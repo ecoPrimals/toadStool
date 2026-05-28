@@ -19,6 +19,7 @@
 
 use std::os::fd::AsRawFd;
 use std::process::ExitCode;
+use std::os::unix::fs::OpenOptionsExt;
 
 use toadstool_cylinder::nv::rm_abi::{
     self,
@@ -189,6 +190,109 @@ fn cleanup(ctl_path: &str, gpu_path: &str) {
     let _ = std::fs::remove_file(gpu_path);
 }
 
+/// Read PMC_ENABLE (offset 0x200) from BAR0 via sysfs resource0 mmap
+fn read_pmc_enable(bdf: &str) -> Option<u32> {
+    let path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+    let f = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_RDONLY)
+        .open(&path).ok()?;
+    let bar0_fd = f.as_raw_fd();
+    let map = unsafe {
+        libc::mmap(
+            std::ptr::null_mut(),
+            0x1000,
+            libc::PROT_READ,
+            libc::MAP_SHARED,
+            bar0_fd,
+            0, // BAR0 start (resource0 is already the BAR0 region)
+        )
+    };
+    if map == libc::MAP_FAILED {
+        return None;
+    }
+    let val = unsafe { std::ptr::read_volatile((map as *const u8).add(0x200) as *const u32) };
+    unsafe { libc::munmap(map, 0x1000); }
+    Some(val)
+}
+
+// Volta (GV100) uses SET/CLEAR register pairs for interrupt enable:
+//   0x140 — NV_PMC_INTR_EN(0): READ-ONLY, shows current enable mask
+//   0x160 — NV_PMC_INTR_EN_SET(0): WRITE-ONLY, writing 1 bits enables
+//   0x180 — NV_PMC_INTR_EN_CLEAR(0): WRITE-ONLY, writing 1 bits disables
+// Writing to 0x140 is a NO-OP (lockup #5 confirmed: 0x7fffffff → 0x7fffffff).
+const NV_PMC_INTR_EN_0: usize = 0x140;
+const NV_PMC_INTR_EN_CLEAR_0: usize = 0x180;
+// Also clear the top-level interrupt pending register to ACK any in-flight IRQs
+const NV_PMC_INTR_0: usize = 0x100;
+
+/// Quench all GPU interrupt generation BEFORE nvidia close tears down MSI/IRQ.
+///
+/// Without this, nvidia_close runs: free_irq → pci_disable_msi. The GPU is still
+/// warm with active engines generating interrupts. With MSI gone and INTx enabled
+/// (pci_cmd bit 10 = 0), level-triggered legacy INTx fires with no handler to ACK
+/// at the GPU level → infinite interrupt storm → system lockup.
+///
+/// Writes 0xFFFFFFFF to NV_PMC_INTR_EN_CLEAR(0) at BAR0+0x180 to disable ALL
+/// interrupt sources at the GPU level. This is the Volta SET/CLEAR register —
+/// writing to 0x140 (the read-only status register) was the bug in lockups #4/#5.
+fn quench_gpu_interrupts(bdf: &str) {
+    let bar0_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
+    if let Ok(f) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&bar0_path)
+    {
+        let bar0_fd = f.as_raw_fd();
+        let map = unsafe {
+            libc::mmap(
+                std::ptr::null_mut(),
+                0x1000,
+                libc::PROT_READ | libc::PROT_WRITE,
+                libc::MAP_SHARED,
+                bar0_fd,
+                0,
+            )
+        };
+        if map != libc::MAP_FAILED {
+            // Read current INTR_EN state (read-only register at 0x140)
+            let old_en = unsafe {
+                std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_EN_0) as *const u32)
+            };
+
+            // CLEAR all interrupt enables by writing 0xFFFFFFFF to INTR_EN_CLEAR (0x180)
+            unsafe {
+                std::ptr::write_volatile(
+                    (map as *mut u8).add(NV_PMC_INTR_EN_CLEAR_0) as *mut u32,
+                    0xFFFF_FFFF,
+                );
+            }
+
+            // Read back INTR_EN to verify the CLEAR took effect
+            let new_en = unsafe {
+                std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_EN_0) as *const u32)
+            };
+
+            // Also read and ACK any pending interrupts (read NV_PMC_INTR clears edge-triggered)
+            let pending = unsafe {
+                std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_0) as *const u32)
+            };
+
+            unsafe { libc::munmap(map, 0x1000); }
+            eprintln!(
+                "[QUENCH] INTR_EN: 0x{old_en:08x} → 0x{new_en:08x} (wrote 0xFFFFFFFF to CLEAR@0x180) pending=0x{pending:08x}"
+            );
+            if new_en != 0 {
+                eprintln!("[QUENCH] WARNING: INTR_EN not zero after CLEAR — GPU may still generate interrupts!");
+            }
+        } else {
+            eprintln!("[QUENCH] BAR0 mmap failed — cannot disable GPU interrupts at source!");
+        }
+    } else {
+        eprintln!("[QUENCH] Cannot open {bar0_path} for write — interrupt quench skipped");
+    }
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -243,19 +347,12 @@ fn main() -> ExitCode {
     let mut channel_id: Option<u32> = None;
     let mut work_submit_token: Option<u32> = None;
 
-    // ── Open GPU (triggers rm_init_adapter) ──────────────────────────────
-    eprintln!("\nOpening GPU device (minor 0) to trigger rm_init_adapter...");
-    let gpu_fd = std::fs::OpenOptions::new().read(true).write(true).open(gpu_path);
-    match &gpu_fd {
-        Ok(f) => eprintln!("  GPU open ok (fd={})", f.as_raw_fd()),
-        Err(e) => {
-            eprintln!("  GPU open failed: {e}");
-            success = false;
-        }
-    }
+    // Read PMC_ENABLE before any driver interaction
+    let pmc_pre = read_pmc_enable("0000:49:00.0");
+    eprintln!("[Diag] PMC_ENABLE before opens: {:?}", pmc_pre.map(|v| format!("0x{v:08x}")));
 
-    // ── Open nvidiactl ──────────────────────────────────────────────────
-    eprintln!("\nOpening nvidiactl (minor 255)...");
+    // Open CTL first so nvidia_ctl_open runs nv_acpi_init before any GPU init.
+    eprintln!("\nOpening nvidiactl (minor 255) [CTL-first]...");
     let ctl_file = match std::fs::OpenOptions::new().read(true).write(true).open(ctl_path) {
         Ok(f) => {
             eprintln!("  ctl open ok (fd={})", f.as_raw_fd());
@@ -271,139 +368,234 @@ fn main() -> ExitCode {
     };
     let fd = ctl_file.as_raw_fd();
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Phase 0: RM dispatch diagnostics — test if RM is alive
-    // ═══════════════════════════════════════════════════════════════════
+    let pmc_post_ctl = read_pmc_enable("0000:49:00.0");
+    eprintln!("[Diag] PMC_ENABLE after CTL open: {:?}", pmc_post_ctl.map(|v| format!("0x{v:08x}")));
 
-    // NV_ESC_REGISTER_FD (201/0xC9) — associates a GPU fd with a ctl fd.
-    // On nvidia-470, this is how the control channel gets linked to a device.
-    // The parameter is nv_ioctl_register_fd_t = { NvS32 ctl_fd; } = 4 bytes.
-    // nvidia uses _IOWR for all escapes, but the NR encodes the size.
-    // Try all possible ioctl encodings to find the right one.
-    if let Ok(ref gpu_f) = gpu_fd {
-        let gpu_raw = gpu_f.as_raw_fd();
-        eprintln!("\n[Diag] NV_ESC_REGISTER_FD: linking GPU fd={gpu_raw} to ctl fd={fd}...");
+    // Open GPU device AFTER ctl — triggers nvidia_open → nv_open_device →
+    // nv_start_device → rm_init_adapter.
+    eprintln!("\nOpening GPU device (minor 0) — triggers rm_init_adapter...");
+    let gpu_fd = std::fs::OpenOptions::new().read(true).write(true).open(gpu_path);
+    match &gpu_fd {
+        Ok(f) => eprintln!("  GPU open ok (fd={})", f.as_raw_fd()),
+        Err(e) => {
+            eprintln!("  GPU open FAILED: {e}");
+            steps.push(step_json("gpu_open", false, serde_json::json!({"error": e.to_string()})));
+        }
+    }
 
-        // The parameter struct for REGISTER_FD on nvidia-470 is:
-        //   struct nv_ioctl_register_fd_t { NvS32 ctl_fd; };
-        // This ioctl is called on the GPU fd (not the ctl fd!).
-        // It tells the GPU fd which ctl fd to use for RM operations.
-        for (label, target_fd, param_fd) in [
-            ("gpu→ctl", gpu_raw, fd),
-            ("ctl→gpu", fd, gpu_raw),
-        ] {
-            let mut reg_fd_buf = [0u8; 4];
-            reg_fd_buf[0..4].copy_from_slice(&(param_fd as u32).to_ne_bytes());
-            const NV_ESC_REGISTER_FD_NR: u8 = 201;
-            let reg_fd_cmd: u64 = iowr(NV_IOCTL_MAGIC, NV_ESC_REGISTER_FD_NR, 4);
-            let rc = unsafe { libc::ioctl(target_fd, reg_fd_cmd, reg_fd_buf.as_mut_ptr()) };
-            let errno = if rc < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(0) } else { 0 };
-            eprintln!("[Diag] REGISTER_FD({label}): rc={rc} errno={errno}");
-            if rc == 0 {
-                steps.push(step_json("register_fd", true, serde_json::json!({
-                    "rc": rc, "direction": label, "target_fd": target_fd, "param_fd": param_fd
-                })));
-                break;
+    let pmc_post_gpu = read_pmc_enable("0000:49:00.0");
+    eprintln!("[Diag] PMC_ENABLE after GPU open: {:?}", pmc_post_gpu.map(|v| format!("0x{v:08x}")));
+    if pmc_pre == pmc_post_gpu {
+        eprintln!("  ⚠ PMC_ENABLE UNCHANGED — rm_init_adapter likely did NOT run DEVINIT");
+    } else {
+        eprintln!("  ✓ PMC_ENABLE CHANGED — rm_init_adapter ran DEVINIT");
+    }
+
+    // Try RM operations on BOTH fds to see if the GPU fd works differently
+    let gpu_raw_fd = gpu_fd.as_ref().map(|f| f.as_raw_fd()).unwrap_or(-1);
+    if gpu_raw_fd >= 0 {
+        eprintln!("\n[Diag] Trying root alloc on GPU fd ({gpu_raw_fd})...");
+        let r_gpu = rm_alloc(gpu_raw_fd, 0, 0, 0xBEEF_0001, class::NV01_ROOT_CLIENT, 0, 0);
+        if r_gpu.status == 0 {
+            let gpu_root = r_gpu.h_object_new;
+            eprintln!("  ✓ Root client on GPU fd: handle=0x{gpu_root:08x}");
+            let mut p_ids = [0u32; 32];
+            let (_, st) = rm_ctrl(gpu_raw_fd, gpu_root, gpu_root, 0x0000_0214,
+                p_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+            let ids: Vec<u32> = p_ids.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
+            eprintln!("  GPU_GET_PROBED_IDS on GPU fd: status=0x{st:x} ids={ids:?}");
+
+            // Try device_alloc on GPU fd
+            let mut dp2 = rm_abi::Nv0080AllocParams::default();
+            dp2.device_id = 0;
+            dp2.h_client_share = gpu_root;
+            let r2 = rm_alloc(gpu_raw_fd, gpu_root, gpu_root, 0xBEEF_0002, class::NV01_DEVICE_0,
+                &dp2 as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32);
+            eprintln!("  device_alloc on GPU fd(device_id=0): status=0x{:x}", r2.status);
+        } else {
+            eprintln!("  ✗ Root client on GPU fd FAILED: status=0x{:x}", r_gpu.status);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Phase 0a: NV_ESC_CARD_INFO — reads nv_pci_probe's device registry
+    // sizeof(nv_ioctl_card_info_t) = 72 on x86_64.
+    // Offsets: valid@0 pci_info{domain@4 bus@8 slot@9 func@10
+    //          vendor@12 device@14} gpu_id@16 irq@20 reg_addr@24
+    //          reg_size@32 fb_addr@40 fb_size@48 minor@56 dev_name@60
+    // ═══════════════════════════════════════════════════════════════════
+    {
+        const CARD_INFO_ENTRY: usize = 72;
+        const MAX_CARDS: usize = 8;
+        let total_size = CARD_INFO_ENTRY * MAX_CARDS;
+        let mut ci_buf = vec![0u8; total_size];
+        let ci_cmd: u64 = iowr(NV_IOCTL_MAGIC, 0xC8, total_size);
+        let rc = unsafe { libc::ioctl(fd, ci_cmd, ci_buf.as_mut_ptr()) };
+        let errno = if rc < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(0) } else { 0 };
+        eprintln!("\n[Diag] NV_ESC_CARD_INFO: rc={rc} errno={errno}");
+        for i in 0..MAX_CARDS {
+            let off = i * CARD_INFO_ENTRY;
+            let valid = ci_buf[off];
+            if valid == 0 { continue; }
+            let domain = u32::from_ne_bytes(ci_buf[off+4..off+8].try_into().unwrap());
+            let bus = ci_buf[off+8];
+            let slot = ci_buf[off+9];
+            let func = ci_buf[off+10];
+            let vendor = u16::from_ne_bytes(ci_buf[off+12..off+14].try_into().unwrap());
+            let devid = u16::from_ne_bytes(ci_buf[off+14..off+16].try_into().unwrap());
+            let gpu_id = u32::from_ne_bytes(ci_buf[off+16..off+20].try_into().unwrap());
+            let irq = u16::from_ne_bytes(ci_buf[off+20..off+22].try_into().unwrap());
+            let reg_addr = u64::from_ne_bytes(ci_buf[off+24..off+32].try_into().unwrap());
+            let reg_size = u64::from_ne_bytes(ci_buf[off+32..off+40].try_into().unwrap());
+            let fb_addr = u64::from_ne_bytes(ci_buf[off+40..off+48].try_into().unwrap());
+            let fb_size = u64::from_ne_bytes(ci_buf[off+48..off+56].try_into().unwrap());
+            let minor = u32::from_ne_bytes(ci_buf[off+56..off+60].try_into().unwrap());
+            eprintln!("  card[{i}]: valid={valid} {domain:04x}:{bus:02x}:{slot:02x}.{func} vendor=0x{vendor:04x} dev=0x{devid:04x} gpu_id=0x{gpu_id:x} irq={irq} minor={minor}");
+            eprintln!("    regs=0x{reg_addr:x}+0x{reg_size:x} fb=0x{fb_addr:x}+0x{fb_size:x}");
+        }
+        steps.push(step_json("card_info", rc == 0, serde_json::json!({"rc": rc, "errno": errno})));
+
+        // Check PCI command register for first valid card — verify BusMaster
+        for i in 0..MAX_CARDS {
+            let off = i * CARD_INFO_ENTRY;
+            let valid = ci_buf[off];
+            if valid == 0 { continue; }
+            let domain = u32::from_ne_bytes(ci_buf[off+4..off+8].try_into().unwrap());
+            let bus = ci_buf[off+8];
+            let slot = ci_buf[off+9];
+            let func = ci_buf[off+10];
+            let bdf = format!("{domain:04x}:{bus:02x}:{slot:02x}.{func}");
+            let cfg_path = format!("/sys/bus/pci/devices/{bdf}/config");
+            match std::fs::read(&cfg_path) {
+                Ok(cfg) if cfg.len() >= 6 => {
+                    let cmd = u16::from_le_bytes([cfg[4], cfg[5]]);
+                    let io_en = cmd & 1;
+                    let mem_en = (cmd >> 1) & 1;
+                    let bus_master = (cmd >> 2) & 1;
+                    eprintln!("[Diag] PCI CMD({bdf}): 0x{cmd:04x} IO={io_en} MEM={mem_en} BusMaster={bus_master}");
+                    if bus_master == 0 {
+                        eprintln!("  WARNING: BusMaster DISABLED — enabling via sysfs...");
+                        let enable_path = format!("/sys/bus/pci/devices/{bdf}/enable");
+                        let _ = std::fs::write(&enable_path, "1");
+                        // Directly set bus master bit via config write
+                        if let Ok(mut f) = std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
+                            use std::io::{Read, Seek, Write};
+                            let mut cmd_bytes = [0u8; 2];
+                            let _ = f.seek(std::io::SeekFrom::Start(4));
+                            let _ = f.read_exact(&mut cmd_bytes);
+                            let new_cmd = u16::from_le_bytes(cmd_bytes) | 0x0004; // set BusMaster bit
+                            let _ = f.seek(std::io::SeekFrom::Start(4));
+                            let _ = f.write_all(&new_cmd.to_le_bytes());
+                            eprintln!("  PCI CMD now: 0x{new_cmd:04x} (BusMaster forced ON)");
+                        }
+                    }
+                }
+                Ok(cfg) => eprintln!("[Diag] PCI config too short ({} bytes)", cfg.len()),
+                Err(e) => eprintln!("[Diag] PCI config read failed ({bdf}): {e}"),
             }
+            break; // only check first card
         }
+    }
 
-        // If both failed, also try the _IOW variant (write-only, not read-write)
-        {
-            let mut reg_fd_buf = [0u8; 4];
-            reg_fd_buf[0..4].copy_from_slice(&(fd as u32).to_ne_bytes());
-            const NV_ESC_REGISTER_FD_NR: u8 = 201;
-            let iow_cmd: u64 = {
-                let dir: u64 = 1; // _IOC_WRITE only
-                (dir << 30) | ((4u64 & 0x3FFF) << 16) | ((NV_IOCTL_MAGIC as u64) << 8) | NV_ESC_REGISTER_FD_NR as u64
-            };
-            let rc = unsafe { libc::ioctl(gpu_raw, iow_cmd, reg_fd_buf.as_mut_ptr()) };
-            let errno = if rc < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(0) } else { 0 };
-            eprintln!("[Diag] REGISTER_FD(_IOW, gpu→ctl): rc={rc} errno={errno}");
-        }
+    // ═══════════════════════════════════════════════════════════════════
+    // Phase 0: Root client — kernel REWRITES h_object_new
+    // ═══════════════════════════════════════════════════════════════════
 
-        // And try with no direction (bare ioctl number)
-        {
-            let mut reg_fd_buf = [0u8; 4];
-            reg_fd_buf[0..4].copy_from_slice(&(fd as u32).to_ne_bytes());
-            const NV_ESC_REGISTER_FD_NR: u8 = 201;
-            let bare_cmd: u64 = ((NV_IOCTL_MAGIC as u64) << 8) | NV_ESC_REGISTER_FD_NR as u64;
-            let rc = unsafe { libc::ioctl(gpu_raw, bare_cmd, reg_fd_buf.as_mut_ptr()) };
-            let errno = if rc < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(0) } else { 0 };
-            eprintln!("[Diag] REGISTER_FD(bare, gpu→ctl): rc={rc} errno={errno}");
-        }
+    // Try NV01_ROOT_CLIENT (0x41) first — nvidia-470 RM may require this
+    eprintln!("\n[Phase 0] Allocating root client (class 0x0041 NV01_ROOT_CLIENT)...");
+    let root_test = rm_alloc(fd, 0, 0, H_ROOT, class::NV01_ROOT_CLIENT, 0, 0);
+    let rm_root = if root_test.status == 0 {
+        root_test.h_object_new
+    } else {
+        eprintln!("  ROOT_CLIENT(0x41) failed, falling back to NV01_ROOT(0x0000)...");
+        let r2 = rm_alloc(fd, 0, 0, H_ROOT, class::NV01_ROOT, 0, 0);
+        r2.h_object_new
+    };
+    eprintln!("  Kernel assigned root handle: 0x{rm_root:08x} (we asked for 0x{H_ROOT:08x})");
 
-        steps.push(step_json("register_fd_probes", true, serde_json::json!({
-            "note": "tried multiple ioctl encodings"
+    let mut gpu_ids = [0u32; 32];
+    let (_, ctrl_st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0201,
+        gpu_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+    let attached: Vec<u32> = gpu_ids.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
+    eprintln!("[Phase 0] GPU_GET_ATTACHED_IDS: status=0x{ctrl_st:x} ids={attached:?}");
+
+    steps.push(step_json("root_client", root_test.status == 0, serde_json::json!({
+        "requested_handle": format!("0x{H_ROOT:08x}"),
+        "kernel_assigned": format!("0x{rm_root:08x}"),
+        "attached_ids": attached,
+    })));
+
+    let gpu_id = attached.first().copied().unwrap_or(0);
+
+    // PMC_ENABLE after root alloc
+    let pmc_post_root = read_pmc_enable("0000:49:00.0");
+    eprintln!("[Diag] PMC_ENABLE after root alloc: {:?}", pmc_post_root.map(|v| format!("0x{v:08x}")));
+
+    // Pre-attach diagnostics
+    {
+        let mut pre_probed = [0u32; 32];
+        let (_, st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0214,
+            pre_probed.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+        let ids: Vec<u32> = pre_probed.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
+        eprintln!("[Diag] PRE-ATTACH GPU_GET_PROBED_IDS: status=0x{st:x} ids={ids:?}");
+        let pmc_now = read_pmc_enable("0000:49:00.0");
+        eprintln!("[Diag] PMC_ENABLE after probed_ids query: {:?}", pmc_now.map(|v| format!("0x{v:08x}")));
+    }
+
+    // GPU_ATTACH_IDS ctrl cmd (0x0280) — manually register GPU with RM's
+    // GPU manager, which is what populates the probed table. This is the
+    // RM-level attach (vs. the kernel-level NV_ESC_ATTACH_GPUS_TO_FD).
+    if gpu_id != 0 {
+        let mut attach_ctrl_ids = [gpu_id, 0u32];
+        let (_, st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0280,
+            attach_ctrl_ids.as_mut_ptr() as u64, size_of::<[u32; 2]>() as u32);
+        eprintln!("[Diag] GPU_ATTACH_IDS(0x{gpu_id:x}): status=0x{st:x}");
+        steps.push(step_json("gpu_attach_ids_ctrl", st == 0, serde_json::json!({
+            "gpu_id": format!("0x{gpu_id:x}"), "status": format!("0x{st:x}"),
         })));
     }
 
-    // NV_ESC_CHECK_VERSION_STR (0x23) — nvidia-470 uses nv_rm_api_version_t
-    // which is { u32 cmd, u32 reply, char version[NV_RM_API_VERSION_STRING_LENGTH] }.
-    // Try both 64-byte and 128-byte string lengths (72 and 136 total).
-    for (label, total_size) in [("72B", 72usize), ("136B", 136), ("64B", 64)] {
-        const NV_ESC_CHECK_VERSION_STR: u8 = 0x23;
-        let check_ver_cmd: u64 = iowr(NV_IOCTL_MAGIC, NV_ESC_CHECK_VERSION_STR, total_size);
-        let mut ver_buf = vec![0u8; total_size];
-        let rc = unsafe { libc::ioctl(fd, check_ver_cmd, ver_buf.as_mut_ptr()) };
-        let errno = if rc < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(0) } else { 0 };
-        let ver_str = if total_size > 8 {
-            std::str::from_utf8(&ver_buf[8..]).unwrap_or("(invalid)")
-                .trim_end_matches('\0')
-        } else {
-            ""
-        };
-        let nonzero = ver_buf.iter().filter(|&&b| b != 0).count();
-        eprintln!("[Diag] CHECK_VERSION({label}): rc={rc} errno={errno} nonzero={nonzero} ver=\"{ver_str}\"");
-        if rc == 0 {
-            steps.push(step_json("check_version", true, serde_json::json!({
-                "rc": rc, "size": total_size, "version": ver_str, "nonzero": nonzero
-            })));
-            break;
-        }
+    // Post-attach-ctrl check
+    {
+        let mut post_probed = [0u32; 32];
+        let (_, st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0214,
+            post_probed.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
+        let ids: Vec<u32> = post_probed.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
+        eprintln!("[Diag] POST-ATTACH-CTRL GPU_GET_PROBED_IDS: status=0x{st:x} ids={ids:?}");
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // Phase 0b: Root client class comparison — NV01_ROOT (0x0) vs NV01_ROOT_CLIENT (0x41)
-    //
-    // nvidia-470 may only support class 0x0000 for root allocation.
-    // Test both and compare: which one creates a REAL object?
+    // Phase 0b: NV_ESC_ATTACH_GPUS_TO_FD (kernel-level GPU attachment)
     // ═══════════════════════════════════════════════════════════════════
 
-    const H_TEST_ROOT_00: u32 = 0xBEEF_0000;
-    const H_TEST_ROOT_41: u32 = 0xBEEF_0041;
-
-    // ═══════════════════════════════════════════════════════════════════
-    // Phase 0b: Root client test — kernel REWRITES h_object_new!
-    //
-    // DISCOVERY: nvidia-470 RM ignores the user-supplied handle and assigns
-    // its own (e.g. 0xc1d00007). We MUST use the kernel-assigned handle.
-    // ═══════════════════════════════════════════════════════════════════
-
-    eprintln!("\n[Phase 0b] Allocating root client (class 0x0000)...");
-    let root_test = rm_alloc(fd, 0, 0, H_ROOT, class::NV01_ROOT, 0, 0);
-    let rm_root = root_test.h_object_new;
-    eprintln!("  Kernel assigned root handle: 0x{rm_root:08x} (we asked for 0x{H_ROOT:08x})");
-
-    // Test RM_CTRL with the KERNEL-assigned handle
-    let mut gpu_ids = [0u32; 32];
-    let (ctrl_rc, ctrl_st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0201,
-        gpu_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
-    let attached: Vec<u32> = gpu_ids.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
-    eprintln!("[Phase 0b] GPU_GET_ATTACHED_IDS(h=0x{rm_root:08x}): status=0x{ctrl_st:x} ids={attached:?}");
-
-    // Also try with our original handle for comparison
-    let mut gpu_ids_orig = [0u32; 32];
-    let (_, ctrl_st_orig) = rm_ctrl(fd, H_ROOT, H_ROOT, 0x0000_0201,
-        gpu_ids_orig.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
-    eprintln!("[Phase 0b] GPU_GET_ATTACHED_IDS(h=0x{H_ROOT:08x}): status=0x{ctrl_st_orig:x} ← WRONG handle for comparison");
-
-    steps.push(step_json("root_handle_discovery", root_test.status == 0, serde_json::json!({
-        "requested_handle": format!("0x{H_ROOT:08x}"),
-        "kernel_assigned": format!("0x{rm_root:08x}"),
-        "ctrl_with_kernel_handle": format!("0x{ctrl_st:x}"),
-        "ctrl_with_user_handle": format!("0x{ctrl_st_orig:x}"),
-        "attached_ids": attached,
-    })));
+    if gpu_id != 0 {
+        eprintln!("\n[Phase 0b] NV_ESC_ATTACH_GPUS_TO_FD: gpu_id=0x{gpu_id:x}...");
+        let mut attach_buf = [gpu_id];
+        let attach_cmd: u64 = iowr(NV_IOCTL_MAGIC, 0xD4, size_of::<[u32; 1]>());
+        let rc = unsafe { libc::ioctl(fd, attach_cmd, attach_buf.as_mut_ptr()) };
+        let errno = if rc < 0 {
+            std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
+        } else {
+            0
+        };
+        eprintln!("  ATTACH_GPUS_TO_FD: rc={rc} errno={errno}");
+        let ok = rc == 0;
+        steps.push(step_json("attach_gpus_to_fd", ok, serde_json::json!({
+            "gpu_id": format!("0x{gpu_id:x}"),
+            "rc": rc,
+            "errno": errno,
+        })));
+        if !ok {
+            eprintln!("  CRITICAL: ATTACH_GPUS_TO_FD failed — rm_init_adapter will not run!");
+            success = false;
+        }
+    } else {
+        eprintln!("\n[Phase 0b] No GPU IDs from GET_ATTACHED_IDS — cannot attach");
+        steps.push(step_json("attach_gpus_to_fd", false, serde_json::json!({
+            "error": "no gpu_ids available"
+        })));
+        success = false;
+    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Phase 1: Core object tree using KERNEL-ASSIGNED handles
@@ -412,98 +604,54 @@ fn main() -> ExitCode {
     let root_ok = root_test.rc == 0 && root_test.status == 0;
     if !root_ok { success = false; }
 
-    // Step 2: device — use rm_root as both h_root and h_parent
-    // device_id is a GPU INSTANCE INDEX (0, 1, ...), NOT the PCI-encoded
-    // GPU ID from GET_ATTACHED_IDS. hClientShare must be the root handle.
+    // Step 2: device alloc — device_id is GPU instance index (0 for first GPU)
     let mut rm_device = 0u32;
-    if root_ok {
+    if root_ok && success {
         eprintln!("\n[Phase 1] Step 2: device alloc (parent=0x{rm_root:08x})...");
-        eprintln!("  sizeof(Nv0080AllocParams) = {}", size_of::<rm_abi::Nv0080AllocParams>());
 
-        // First, get the GPU ID and try to attach it
-        let mut gpu_ids = [0u32; 32];
-        rm_ctrl(fd, rm_root, rm_root, 0x0000_0201,
-            gpu_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
-        let gpu_id = gpu_ids.iter().copied().find(|&id| id != 0 && id != 0xFFFF_FFFF).unwrap_or(0);
-        eprintln!("  GPU ID from GET_ATTACHED_IDS: 0x{gpu_id:x}");
-
-        // Try NV0000_CTRL_CMD_GPU_ATTACH_IDS (0x0280)
-        let mut attach_ids = [0u32; 32];
-        attach_ids[0] = gpu_id;
-        let (_, attach_st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0280,
-            attach_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
-        eprintln!("  GPU_ATTACH_IDS(0x{gpu_id:x}): status=0x{attach_st:x}");
-
-        // Try NV0000_CTRL_CMD_GPU_GET_PROBED_IDS (0x0214)
+        // After ATTACH_GPUS_TO_FD, GPU_GET_PROBED_IDS should return our GPU
         let mut probed_ids = [0u32; 32];
         let (_, probed_st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0214,
             probed_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
         let probed: Vec<u32> = probed_ids.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
         eprintln!("  GPU_GET_PROBED_IDS: status=0x{probed_st:x} ids={probed:?}");
 
-        let mut device_ok = false;
-        for (label, dev_id, share) in [
-            ("id=0,share=root", 0u32, rm_root),
-            ("gpu_id,share=root", gpu_id, rm_root),
-            ("id=0,share=0", 0, 0u32),
-            ("null_params", 0, 0u32),
-        ] {
-            let is_null = label == "null_params";
-            let mut dp = rm_abi::Nv0080AllocParams::default();
-            dp.device_id = dev_id;
-            dp.h_client_share = share;
+        // Try device_id=0 first (first GPU instance), then gpu_id directly
+        let mut dp = rm_abi::Nv0080AllocParams::default();
+        dp.device_id = 0;
+        dp.h_client_share = rm_root;
 
-            let (ptr, sz) = if is_null {
-                (0u64, 0u32)
-            } else {
-                (&dp as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32)
-            };
+        let r = rm_alloc(fd, rm_root, rm_root, H_DEVICE, class::NV01_DEVICE_0,
+            &dp as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32);
+        rm_device = r.h_object_new;
+        let mut device_ok = r.rc == 0 && r.status == 0;
+        eprintln!("  device_alloc(device_id=0): status=0x{:x} handle=0x{:08x}", r.status, r.h_object_new);
 
-            let handle = H_DEVICE + dev_id;
-            let r = rm_alloc(fd, rm_root, rm_root, handle, class::NV01_DEVICE_0, ptr, sz);
-            eprintln!("  device_alloc({label}): status=0x{:x} handle=0x{:08x}", r.status, r.h_object_new);
-
-            if r.rc == 0 && r.status == 0 {
-                rm_device = r.h_object_new;
-                device_ok = true;
-                steps.push(step_json("device_alloc", true, serde_json::json!({
-                    "class": "NV01_DEVICE_0",
-                    "status": "0x0",
-                    "kernel_handle": format!("0x{rm_device:08x}"),
-                    "variant": label,
-                })));
-                break;
-            }
-
-            steps.push(step_json(&format!("device_alloc_{label}"), false, serde_json::json!({
-                "class": "NV01_DEVICE_0",
-                "status": format!("0x{:x}", r.status),
-                "variant": label,
-            })));
+        if !device_ok && gpu_id != 0 {
+            eprintln!("  Retrying with device_id=gpu_id (0x{gpu_id:x})...");
+            dp.device_id = gpu_id;
+            let r2 = rm_alloc(fd, rm_root, rm_root, H_DEVICE, class::NV01_DEVICE_0,
+                &dp as *const _ as u64, size_of::<rm_abi::Nv0080AllocParams>() as u32);
+            rm_device = r2.h_object_new;
+            device_ok = r2.rc == 0 && r2.status == 0;
+            eprintln!("  device_alloc(device_id=0x{gpu_id:x}): status=0x{:x} handle=0x{:08x}", r2.status, r2.h_object_new);
         }
 
-        if !device_ok {
-            // Diagnostic: try NV0000_CTRL_CMD_GPU_GET_ID_INFO to translate GPU ID
-            let mut gpu_ids = [0u32; 32];
-            rm_ctrl(fd, rm_root, rm_root, 0x0000_0201,
-                gpu_ids.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
-            let gpu_id = gpu_ids.iter().copied().find(|&id| id != 0 && id != 0xFFFF_FFFF).unwrap_or(0);
+        steps.push(step_json("device_alloc", device_ok, serde_json::json!({
+            "class": "NV01_DEVICE_0",
+            "status": format!("0x{:x}", r.status),
+            "kernel_handle": format!("0x{rm_device:08x}"),
+            "probed_ids": probed,
+        })));
 
-            // NV0000_CTRL_CMD_GPU_GET_ID_INFO (0x0202) — 24 bytes: { gpuId, gpuFlags, deviceInst, subDeviceInst, boardId, gpuInstance }
+        if !device_ok {
+            // Diagnostic: GPU_GET_ID_INFO to understand GPU state
             let mut id_info = [0u32; 6];
             id_info[0] = gpu_id;
             let (_, st) = rm_ctrl(fd, rm_root, rm_root, 0x0000_0202,
                 id_info.as_mut_ptr() as u64, 24);
-            eprintln!("[Diag] GPU_GET_ID_INFO(gpu_id=0x{gpu_id:x}): status=0x{st:x} devInst={} subDevInst={} gpuInst={}",
+            eprintln!("[Diag] GPU_GET_ID_INFO(0x{gpu_id:x}): status=0x{st:x} devInst={} subDevInst={} gpuInst={}",
                 id_info[2], id_info[3], id_info[5]);
-            steps.push(step_json("gpu_id_info", st == 0, serde_json::json!({
-                "gpu_id": format!("0x{gpu_id:x}"),
-                "device_inst": id_info[2],
-                "sub_device_inst": id_info[3],
-                "gpu_inst": id_info[5],
-                "status": format!("0x{st:x}"),
-            })));
-
             success = false;
         }
     }
@@ -764,8 +912,15 @@ fn main() -> ExitCode {
     let hold_secs = if channel_mode { 3 } else { 5 };
     eprintln!("\nHolding fds open for {hold_secs}s...");
     std::thread::sleep(std::time::Duration::from_secs(hold_secs));
-    eprintln!("Done.");
 
+    // CRITICAL: Quench GPU interrupt generation BEFORE closing nvidia fds.
+    // nvidia_close → nv_stop_device skips rm_disable_adapter (NOP'd) but still
+    // runs free_irq + pci_disable_msi. A warm GPU with active engines will
+    // fire unhandled legacy INTx → interrupt storm → system lockup.
+    eprintln!("\n[SAFETY] Quenching GPU interrupts before fd close...");
+    quench_gpu_interrupts("0000:49:00.0");
+
+    eprintln!("Dropping nvidia fds...");
     drop(ctl_file);
     drop(gpu_fd);
     cleanup(ctl_path, gpu_path);

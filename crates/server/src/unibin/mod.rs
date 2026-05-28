@@ -284,6 +284,11 @@ pub async fn run_server_main(
     // PCIe keepalive — prevents PLX PEX 8747 from D3cold-gating K80 GPUs.
     tokio::spawn(async { crate::background::pcie_keepalive::run().await });
 
+    // Exp 229: catalyst handoff watchdog — monitors handoff liveness and
+    // performs emergency interrupt quench + process kill if the pipeline
+    // becomes unresponsive (diesel engine safety net).
+    crate::background::catalyst_watchdog::start_watchdog_thread();
+
     // PG-62: discovery registration and biomeOS scan run AFTER listeners are
     // spawned so that health.liveness is reachable during initialization.
     // Callers see {"status":"starting"} until ready flag is set below.

@@ -403,12 +403,62 @@ impl DispatchHandler {
         // GPU_GET_PROBED_IDS returns empty, device_alloc fails with 0x22.
         // Non-catalyst strategies preserve warm state (FLR/SBR suppressed).
         let is_catalyst_strategy = strategy.contains("catalyst");
+
+        // Exp 229 safety: detect degraded PRI ring from prior catalyst cycle.
+        // A GPU with PRI faults (0xbadf reads) can lock the PCI subsystem
+        // during no_bus_reset manipulation. If degraded, do an SBR via sysfs
+        // to clean the GPU before proceeding.
+        if is_catalyst_strategy && gpu_warm {
+            use toadstool_cylinder::vfio::device::MappedBar;
+            if let Ok(bar) = MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024) {
+                let pri_intr = bar.read_u32(0x0012_0058).unwrap_or(0);
+                let fecs_cpuctl = bar.read_u32(0x0040_9100).unwrap_or(0);
+                let is_pri_faulted = pri_intr != 0 || (fecs_cpuctl & 0xBADF_0000 == 0xBADF_0000);
+                if is_pri_faulted {
+                    tracing::warn!(
+                        bdf, pri_intr = format_args!("0x{pri_intr:08x}"),
+                        fecs_cpuctl = format_args!("0x{fecs_cpuctl:08x}"),
+                        "catalyst re-entry: GPU degraded from prior cycle, forcing SBR cleanup"
+                    );
+                    let reset_path = format!("/sys/bus/pci/devices/{bdf}/reset");
+                    if let Err(e) = std::fs::write(&reset_path, "1") {
+                        tracing::error!(bdf, error = %e, "SBR cleanup failed — proceeding anyway");
+                    } else {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        tracing::info!(bdf, "SBR cleanup complete — GPU reset to clean state");
+                    }
+                }
+            }
+        }
+
         let suppress_sbr = if is_catalyst_strategy {
             tracing::info!(bdf, gpu_warm, "catalyst strategy: allowing SBR for clean RM probe");
             false
         } else {
             gpu_warm
         };
+
+        // Exp 229 fix: exclude target BDF + IOMMU siblings + entire upstream
+        // bridge hierarchy from keepalive config reads BEFORE any PCI state
+        // changes. During SBR, BOTH the target device AND its upstream bridges
+        // can become momentarily unresponsive. A concurrent keepalive config
+        // read to ANY device in the hierarchy enters kernel CRS retry and
+        // holds the global pci_lock — deadlocking ALL PCI operations
+        // system-wide, including the display GPU.
+        let mut excluded_bdfs = vec![bdf.to_string()];
+        for sib in toadstool_cylinder::vfio::guarded_sysfs::iommu_group_siblings(bdf) {
+            excluded_bdfs.push(sib);
+        }
+        // Walk sysfs ancestry to find all upstream bridges
+        let bridge_chain = toadstool_ember::plx_keepalive::detect_pcie_bridges(bdf);
+        for bridge_bdf in &bridge_chain {
+            if !excluded_bdfs.contains(bridge_bdf) {
+                excluded_bdfs.push(bridge_bdf.clone());
+            }
+        }
+        let _keepalive_exclusion = crate::background::pcie_keepalive::HandoffExclusionGuard::new(
+            excluded_bdfs,
+        );
 
         toadstool_cylinder::vfio::guarded_sysfs::prepare_anchor_release(bdf, suppress_sbr);
 
@@ -452,6 +502,13 @@ impl DispatchHandler {
         // 420s: catalyst teardown on GV100 needs ~160s for nvidia RM
         // shutdown (HBM2 dealloc, falcon halt) + 15s settle + 30s probe
         // + 30s BAR0 capture margin.
+        // Exp 229: activate the catalyst watchdog before entering the blocking
+        // handoff. If the pipeline becomes unresponsive (interrupt storm, pci_lock
+        // deadlock, etc.), the watchdog will emergency-quench GPU interrupts and
+        // kill the ember service to save the system.
+        let watchdog_bdf = bdf.to_string();
+        let _watchdog_guard = crate::background::catalyst_watchdog::activate(&watchdog_bdf);
+
         let rpc_timeout = std::time::Duration::from_secs(420);
         let blocking_future = tokio::task::spawn_blocking(move || {
             execute_handoff(&config, None)
@@ -542,6 +599,20 @@ impl DispatchHandler {
         if let Some(secs) = params.and_then(|p| p.get("settle_secs")).and_then(serde_json::Value::as_u64) {
             config.settle = std::time::Duration::from_secs(secs);
         }
+
+        // Exp 229 fix: exclude target BDF + siblings + upstream bridges from keepalive.
+        let mut excluded_bdfs = vec![bdf.to_string()];
+        for sib in toadstool_cylinder::vfio::guarded_sysfs::iommu_group_siblings(bdf) {
+            excluded_bdfs.push(sib);
+        }
+        for bridge_bdf in &toadstool_ember::plx_keepalive::detect_pcie_bridges(bdf) {
+            if !excluded_bdfs.contains(bridge_bdf) {
+                excluded_bdfs.push(bridge_bdf.clone());
+            }
+        }
+        let _keepalive_exclusion = crate::background::pcie_keepalive::HandoffExclusionGuard::new(
+            excluded_bdfs,
+        );
 
         // Suppress FLR before releasing anchor (Exp 225 fix).
         // catalyst_boot always uses nouveau which doesn't need RM DEVINIT,
