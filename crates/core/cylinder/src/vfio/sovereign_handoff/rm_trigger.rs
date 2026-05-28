@@ -2,6 +2,8 @@
 
 use std::time::Duration;
 
+use crate::nv::registers::pmc::InterruptProfile;
+
 use super::types::RmChannelEvidence;
 
 /// Result of triggering RM initialization (and optionally creating a channel).
@@ -23,6 +25,8 @@ pub(crate) struct RmTriggerResult {
 pub(crate) fn trigger_rm_init(
     module_name: &str,
     create_channel: bool,
+    bdf: &str,
+    interrupt_profile: &InterruptProfile,
 ) -> Result<RmTriggerResult, String> {
     let devices = std::fs::read_to_string("/proc/devices")
         .map_err(|e| format!("failed to read /proc/devices: {e}"))?;
@@ -51,12 +55,13 @@ pub(crate) fn trigger_rm_init(
 
     let rm_trigger_bin = "/usr/local/bin/rm_trigger";
     if std::path::Path::new(rm_trigger_bin).exists() {
-        tracing::info!(major, create_channel, "spawning rm_trigger helper");
+        tracing::info!(major, create_channel, bdf, "spawning rm_trigger helper");
         let mut cmd = std::process::Command::new(rm_trigger_bin);
         cmd.arg(major.to_string());
         if create_channel {
             cmd.arg("--channel");
         }
+        cmd.args(["--bdf", bdf]);
         cmd.stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
 
@@ -94,6 +99,14 @@ pub(crate) fn trigger_rm_init(
                 } else {
                     None
                 };
+
+                // Exp 229 lockup #6: nvidia_close RE-ENABLES INTR_EN after
+                // rm_trigger's pre-exit quench. Quench again from the pipeline
+                // now that nvidia_close has fully completed.
+                crate::nv::registers::pmc::quench_interrupts(
+                    bdf, interrupt_profile, "post-exit (after nvidia_close)",
+                );
+                crate::nv::registers::pmc::intx_disable(bdf, "post-exit");
 
                 std::thread::sleep(Duration::from_millis(3000));
                 return Ok(RmTriggerResult {

@@ -116,18 +116,41 @@ impl PatchSet {
             module_name: "nvidia".into(),
             targets: vec![
                 // Preserve GPU hardware state through close + unbind.
-                // Both rm_disable_adapter and rm_shutdown_adapter must be
-                // NOP'd:
-                //   rm_disable_adapter: disables PRI ring stations and
-                //     engine interrupts, which trips 0xbadf PRI faults
-                //     and partially cools PMC_ENABLE (popcount 25→10).
-                //   rm_shutdown_adapter: resets GPU hardware, powers down
-                //     engines, unloads FECS/GPCCS firmware.
-                // With both NOP'd, the GPU keeps full warm state (all
-                // engines enabled, FECS firmware loaded, PRI ring live)
-                // through nvidia close AND unbind. The brief window of
-                // unhandled MSI interrupts between free_irq and vfio-pci
-                // bind is acceptable for catalyst.
+                //
+                // nv_close_device is the per-device close callback that runs
+                // when the last fd is closed. It decrements usage_count and,
+                // if zero, calls: rm_disable_adapter, rm_shutdown_adapter,
+                // nv_dev_free_stacks, free_irq, pci_disable_msi.
+                //
+                // NOPing just rm_disable/shutdown_adapter (lockups #1-#6)
+                // was insufficient: nv_dev_free_stacks frees kernel thread
+                // stacks while RM threads are still running (use-after-free),
+                // and free_irq + pci_disable_msi remove interrupt handling.
+                // Lockup #7 confirmed: INTR_EN quench worked (0x00000000)
+                // but system froze ~1s later from RM thread stack corruption.
+                //
+                // RetAtEntry on nv_close_device skips ALL per-device
+                // teardown. The outer nvidia_close still calls
+                // rm_free_unused_clients (per-client RM cleanup) safely.
+                // GPU stays fully managed: IRQ handler active, MSI active,
+                // RM threads have valid stacks.
+                PatchTarget {
+                    symbol: "nv_close_device".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // nv_pci_remove is the PCI driver remove callback triggered
+                // by unbind. With nv_close_device NOP'd, the GPU is still
+                // fully active and nv_pci_remove hangs in an os_delay polling
+                // loop waiting for GPU quiescence that never comes.
+                // NOPing it prevents the unbind hang and allows clean rebind
+                // to vfio-pci.
+                PatchTarget {
+                    symbol: "nv_pci_remove".into(),
+                    strategy: PatchStrategy::RetAtEntry,
+                },
+                // Keep rm_disable/shutdown_adapter NOPs as belt-and-suspenders
+                // in case nv_close_device RetAtEntry doesn't apply (symbol
+                // visibility varies across driver builds).
                 PatchTarget {
                     symbol: "rm_disable_adapter".into(),
                     strategy: PatchStrategy::RetAtEntry,

@@ -507,11 +507,22 @@ impl DispatchHandler {
         // deadlock, etc.), the watchdog will emergency-quench GPU interrupts and
         // kill the ember service to save the system.
         let watchdog_bdf = bdf.to_string();
-        let _watchdog_guard = crate::background::catalyst_watchdog::activate(&watchdog_bdf);
+        let watchdog_profile = toadstool_cylinder::nv::registers::pmc::InterruptProfile::for_sm(
+            config.sm_version.unwrap_or(70),
+        );
+        let _watchdog_guard = crate::background::catalyst_watchdog::activate(
+            &watchdog_bdf,
+            watchdog_profile,
+            Some(std::time::Duration::from_secs(450)),
+        );
 
         let rpc_timeout = std::time::Duration::from_secs(420);
         let blocking_future = tokio::task::spawn_blocking(move || {
-            execute_handoff(&config, None)
+            toadstool_cylinder::vfio::sovereign_handoff::execute_handoff_with_heartbeat(
+                &config,
+                None,
+                || crate::background::catalyst_watchdog::heartbeat(),
+            )
         });
 
         let result = match tokio::time::timeout(rpc_timeout, blocking_future).await {

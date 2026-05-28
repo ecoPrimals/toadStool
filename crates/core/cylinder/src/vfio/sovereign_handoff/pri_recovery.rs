@@ -11,7 +11,7 @@ use crate::nv::registers::{falcon, pmc, pri};
 /// 3. Enumerates PRI ring stations
 /// 4. Starts the PRI ring
 /// 5. Verifies top-level falcon registers are accessible
-pub(crate) fn recover_pri_ring(bdf: &str) -> Result<String, String> {
+pub(crate) fn recover_pri_ring(bdf: &str, chip_name: &str) -> Result<String, String> {
     let bar0 = crate::vfio::device::MappedBar::from_sysfs_rw(bdf, 16 * 1024 * 1024)
         .map_err(|e| format!("BAR0 open failed: {e}"))?;
 
@@ -122,7 +122,7 @@ pub(crate) fn recover_pri_ring(bdf: &str) -> Result<String, String> {
             let fw_bytes: Vec<u8> = fw_words.iter()
                 .flat_map(|w| w.to_le_bytes()).collect();
             let nz = fw_bytes.iter().filter(|&&b| b != 0).count();
-            let fw_path = format!("{fw_dir}/{name}_imem_gv100.bin");
+            let fw_path = format!("{fw_dir}/{name}_imem_{chip_name}.bin");
             let _ = std::fs::write(&fw_path, &fw_bytes);
             tracing::info!(engine = name, path = fw_path.as_str(),
                 size = fw_bytes.len(), nonzero = nz,

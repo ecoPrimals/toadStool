@@ -296,7 +296,7 @@ fn quench_gpu_interrupts(bdf: &str) {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: {} <chardev_major> [--channel]", args[0]);
+        eprintln!("Usage: {} <chardev_major> [--channel] [--bdf 0000:XX:YY.Z]", args[0]);
         return ExitCode::from(1);
     }
 
@@ -310,7 +310,12 @@ fn main() -> ExitCode {
 
     let channel_mode = args.iter().any(|a| a == "--channel");
 
-    eprintln!("rm_trigger: major={major}, channel_mode={channel_mode}");
+    let bdf = args.windows(2)
+        .find(|w| w[0] == "--bdf")
+        .map(|w| w[1].as_str())
+        .unwrap_or("0000:49:00.0");
+
+    eprintln!("rm_trigger: major={major}, channel_mode={channel_mode}, bdf={bdf}");
     eprintln!("sizeof(Nvos21Parameters) = {}", size_of::<Nvos21Parameters>());
     eprintln!("sizeof(NvChannelAllocParams) = {}", size_of::<NvChannelAllocParams>());
     eprintln!("RM_ALLOC_CMD = 0x{RM_ALLOC_CMD:x}");
@@ -348,7 +353,7 @@ fn main() -> ExitCode {
     let mut work_submit_token: Option<u32> = None;
 
     // Read PMC_ENABLE before any driver interaction
-    let pmc_pre = read_pmc_enable("0000:49:00.0");
+    let pmc_pre = read_pmc_enable(bdf);
     eprintln!("[Diag] PMC_ENABLE before opens: {:?}", pmc_pre.map(|v| format!("0x{v:08x}")));
 
     // Open CTL first so nvidia_ctl_open runs nv_acpi_init before any GPU init.
@@ -368,7 +373,7 @@ fn main() -> ExitCode {
     };
     let fd = ctl_file.as_raw_fd();
 
-    let pmc_post_ctl = read_pmc_enable("0000:49:00.0");
+    let pmc_post_ctl = read_pmc_enable(bdf);
     eprintln!("[Diag] PMC_ENABLE after CTL open: {:?}", pmc_post_ctl.map(|v| format!("0x{v:08x}")));
 
     // Open GPU device AFTER ctl — triggers nvidia_open → nv_open_device →
@@ -383,7 +388,7 @@ fn main() -> ExitCode {
         }
     }
 
-    let pmc_post_gpu = read_pmc_enable("0000:49:00.0");
+    let pmc_post_gpu = read_pmc_enable(bdf);
     eprintln!("[Diag] PMC_ENABLE after GPU open: {:?}", pmc_post_gpu.map(|v| format!("0x{v:08x}")));
     if pmc_pre == pmc_post_gpu {
         eprintln!("  ⚠ PMC_ENABLE UNCHANGED — rm_init_adapter likely did NOT run DEVINIT");
@@ -528,7 +533,7 @@ fn main() -> ExitCode {
     let gpu_id = attached.first().copied().unwrap_or(0);
 
     // PMC_ENABLE after root alloc
-    let pmc_post_root = read_pmc_enable("0000:49:00.0");
+    let pmc_post_root = read_pmc_enable(bdf);
     eprintln!("[Diag] PMC_ENABLE after root alloc: {:?}", pmc_post_root.map(|v| format!("0x{v:08x}")));
 
     // Pre-attach diagnostics
@@ -538,7 +543,7 @@ fn main() -> ExitCode {
             pre_probed.as_mut_ptr() as u64, size_of::<[u32; 32]>() as u32);
         let ids: Vec<u32> = pre_probed.iter().copied().filter(|&id| id != 0 && id != 0xFFFF_FFFF).collect();
         eprintln!("[Diag] PRE-ATTACH GPU_GET_PROBED_IDS: status=0x{st:x} ids={ids:?}");
-        let pmc_now = read_pmc_enable("0000:49:00.0");
+        let pmc_now = read_pmc_enable(bdf);
         eprintln!("[Diag] PMC_ENABLE after probed_ids query: {:?}", pmc_now.map(|v| format!("0x{v:08x}")));
     }
 
@@ -918,7 +923,7 @@ fn main() -> ExitCode {
     // runs free_irq + pci_disable_msi. A warm GPU with active engines will
     // fire unhandled legacy INTx → interrupt storm → system lockup.
     eprintln!("\n[SAFETY] Quenching GPU interrupts before fd close...");
-    quench_gpu_interrupts("0000:49:00.0");
+    quench_gpu_interrupts(bdf);
 
     eprintln!("Dropping nvidia fds...");
     drop(ctl_file);

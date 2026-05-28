@@ -20,6 +20,7 @@ impl HandoffConfig {
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
+            sm_version: Some(70),
         }
     }
 
@@ -35,6 +36,7 @@ impl HandoffConfig {
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
+            sm_version: Some(35),
         }
     }
 
@@ -58,6 +60,7 @@ impl HandoffConfig {
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
+            sm_version: Some(70),
         }
     }
 
@@ -87,6 +90,7 @@ impl HandoffConfig {
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
+            sm_version: Some(70),
         }
     }
 
@@ -116,6 +120,7 @@ impl HandoffConfig {
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
+            sm_version: Some(70),
         }
     }
 
@@ -137,6 +142,7 @@ impl HandoffConfig {
             final_driver: "vfio-pci".into(),
             patch_set_override: None,
             skip_preflight: false,
+            sm_version: Some(70),
         }
     }
 
@@ -172,6 +178,7 @@ impl HandoffConfig {
             final_driver: "nvidia".into(),
             patch_set_override: None,
             skip_preflight: true,
+            sm_version: None,
         }
     }
 

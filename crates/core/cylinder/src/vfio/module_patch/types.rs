@@ -37,6 +37,59 @@ pub enum PatchStrategy {
     },
 }
 
+impl PatchStrategy {
+    /// Parse from string representation used in catalyst recipe TOML files.
+    /// Formats: "RetAtEntry", "Ret1AtEntry", "RetAfterFtrace",
+    /// "NopCallAt(0x7f)", "PatchByteAt(0x7b, 0xc3, 0x00)".
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        let s = s.trim();
+        if s == "RetAtEntry" {
+            return Ok(Self::RetAtEntry);
+        }
+        if s == "Ret1AtEntry" {
+            return Ok(Self::Ret1AtEntry);
+        }
+        if s == "RetAfterFtrace" {
+            return Ok(Self::RetAfterFtrace);
+        }
+        if let Some(inner) = s.strip_prefix("NopCallAt(").and_then(|s| s.strip_suffix(')')) {
+            let offset = parse_usize_hex_or_dec(inner.trim())
+                .map_err(|e| format!("NopCallAt offset: {e}"))?;
+            return Ok(Self::NopCallAt(offset));
+        }
+        if let Some(inner) = s.strip_prefix("PatchByteAt(").and_then(|s| s.strip_suffix(')')) {
+            let parts: Vec<&str> = inner.split(',').map(|p| p.trim()).collect();
+            if parts.len() != 3 {
+                return Err(format!("PatchByteAt expects 3 args, got {}", parts.len()));
+            }
+            let fn_offset = parse_usize_hex_or_dec(parts[0])
+                .map_err(|e| format!("PatchByteAt fn_offset: {e}"))?;
+            let expected = parse_u8_hex_or_dec(parts[1])
+                .map_err(|e| format!("PatchByteAt expected: {e}"))?;
+            let replacement = parse_u8_hex_or_dec(parts[2])
+                .map_err(|e| format!("PatchByteAt replacement: {e}"))?;
+            return Ok(Self::PatchByteAt { fn_offset, expected, replacement });
+        }
+        Err(format!("unrecognized patch strategy: '{s}'"))
+    }
+}
+
+fn parse_usize_hex_or_dec(s: &str) -> Result<usize, String> {
+    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        usize::from_str_radix(hex, 16).map_err(|e| e.to_string())
+    } else {
+        s.parse().map_err(|e: std::num::ParseIntError| e.to_string())
+    }
+}
+
+fn parse_u8_hex_or_dec(s: &str) -> Result<u8, String> {
+    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        u8::from_str_radix(hex, 16).map_err(|e| e.to_string())
+    } else {
+        s.parse().map_err(|e: std::num::ParseIntError| e.to_string())
+    }
+}
+
 /// A single function to patch in a kernel module.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PatchTarget {

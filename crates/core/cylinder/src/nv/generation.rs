@@ -11,6 +11,8 @@
 
 use std::ops::RangeInclusive;
 
+use crate::nv::registers::pmc::InterruptProfile;
+
 /// QMD (Queue Management Descriptor) version for this generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QmdVersion {
@@ -221,6 +223,8 @@ pub struct GenerationProfile {
     /// CE DMA class for pushbuffer construction.
     /// Kepler: 0xA0B5 (KEPLER_DMA_COPY_A), Volta: 0xC3B5 (VOLTA_DMA_COPY_A).
     pub ce_class: u32,
+    /// Interrupt register semantics (direct-write vs SET/CLEAR pair).
+    pub interrupt_profile: InterruptProfile,
 }
 
 const LOCAL_MEM_WINDOW_LEGACY: u64 = 0xFF00_0000;
@@ -264,6 +268,7 @@ pub const KEPLER: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xA0B5, // KEPLER_DMA_COPY_A
+    interrupt_profile: InterruptProfile::PRE_VOLTA,
 };
 
 /// Maxwell (GM200) — GTX 980 Ti, Titan X (Maxwell).
@@ -295,6 +300,7 @@ pub const MAXWELL: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xB0B5, // MAXWELL_DMA_COPY_A
+    interrupt_profile: InterruptProfile::PRE_VOLTA,
 };
 
 /// Pascal (GP100/GP102) — GTX 1080, Tesla P100.
@@ -329,6 +335,7 @@ pub const PASCAL: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC0B5, // PASCAL_DMA_COPY_A
+    interrupt_profile: InterruptProfile::PRE_VOLTA,
 };
 
 /// Volta (GV100) — Titan V, Tesla V100.
@@ -360,6 +367,7 @@ pub const VOLTA: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC3B5, // VOLTA_DMA_COPY_A
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Turing (TU102/TU104/TU106) — RTX 2080, Tesla T4.
@@ -391,6 +399,7 @@ pub const TURING: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC5B5, // TURING_DMA_COPY_A
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Ampere A (GA100) — A100 datacenter.
@@ -422,6 +431,7 @@ pub const AMPERE_A: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC6B5, // AMPERE_DMA_COPY_A
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Ampere B (GA102/GA104/GA106/GA107) — RTX 3090, RTX 3080, etc.
@@ -453,6 +463,7 @@ pub const AMPERE_B: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC7B5, // AMPERE_DMA_COPY_B
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Ada Lovelace (AD102/AD103/AD104) — RTX 4090, RTX 4080, etc.
@@ -484,6 +495,7 @@ pub const ADA: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC8B5, // ADA_DMA_COPY_A
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Hopper (GH100) — H100, H200 datacenter.
@@ -515,6 +527,7 @@ pub const HOPPER: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC8B5, // HOPPER_DMA_COPY_A (same as Ada in open-gpu-doc)
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Blackwell A (GB100/GB102) — B100, B200 datacenter.
@@ -546,6 +559,7 @@ pub const BLACKWELL_A: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC8B5, // BLACKWELL_DMA_COPY_A (provisional)
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// Blackwell B (GB202/GB203/GB205/GB206/GB207) — RTX 5090, RTX 5080, RTX 5060, etc.
@@ -577,6 +591,7 @@ pub const BLACKWELL_B: GenerationProfile = GenerationProfile {
     ce0_base_offset: CE0_BASE,
     pgraph_status_offset: PGRAPH_STATUS,
     ce_class: 0xC8B5, // BLACKWELL_DMA_COPY_B (provisional)
+    interrupt_profile: InterruptProfile::VOLTA_PLUS,
 };
 
 /// All known generation profiles, ordered by SM range.

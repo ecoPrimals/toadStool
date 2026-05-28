@@ -30,13 +30,36 @@ use super::types::{HandoffConfig, HandoffResult, HandoffStep, ModuleSourceConfig
 /// operation exceeds its deadline, the child is killed and rollback runs.
 ///
 /// The overall pipeline has a 60s wall-clock deadline.
-#[allow(clippy::too_many_lines, reason = "sovereign handoff is a linear hardware init pipeline — splitting would obscure the sequencing")]
 pub fn execute_handoff(
     config: &HandoffConfig,
     bar0: Option<&crate::vfio::device::MappedBar>,
 ) -> HandoffResult {
+    execute_handoff_inner(config, bar0, None)
+}
+
+/// Execute a sovereign handoff with an optional heartbeat callback.
+///
+/// `heartbeat_fn` is called at each major pipeline step boundary to reset
+/// external watchdog timers (diesel engine safety net). The callback is
+/// invoked from the blocking handoff thread context.
+pub fn execute_handoff_with_heartbeat(
+    config: &HandoffConfig,
+    bar0: Option<&crate::vfio::device::MappedBar>,
+    heartbeat_fn: impl Fn() + Send + 'static,
+) -> HandoffResult {
+    execute_handoff_inner(config, bar0, Some(Box::new(heartbeat_fn)))
+}
+
+#[allow(clippy::too_many_lines, reason = "sovereign handoff is a linear hardware init pipeline — splitting would obscure the sequencing")]
+fn execute_handoff_inner(
+    config: &HandoffConfig,
+    bar0: Option<&crate::vfio::device::MappedBar>,
+    heartbeat_fn: Option<Box<dyn Fn() + Send>>,
+) -> HandoffResult {
     let overall = Instant::now();
     let deadline = guarded_sysfs::HANDOFF_DEADLINE;
+    let hw = super::types::HandoffCapabilityProfile::for_sm(config.sm_version.unwrap_or(70));
+    let heartbeat = || { if let Some(ref f) = heartbeat_fn { f(); } };
     let mut steps = Vec::new();
     let mut module_loaded = false;
     let mut patch_result = None;
@@ -46,6 +69,7 @@ pub fn execute_handoff(
     let mut catalyst_tier: Option<TierEvidence> = None;
     let mut boot_evidence: Option<BootServiceEvidence> = None;
 
+    heartbeat();
     // ── Step 0: Pre-flight checks ───────────────────────────────────
 
     let t = Instant::now();
@@ -170,7 +194,7 @@ pub fn execute_handoff(
                     popcount,
                     "anchor release guard: PMC_ENABLE health check"
                 );
-                if popcount < 10 {
+                if popcount < hw.pmc_warm_threshold {
                     tracing::warn!(
                         bdf = config.bdf.as_str(),
                         pmc = format_args!("0x{pmc:08x}"),
@@ -182,7 +206,7 @@ pub fn execute_handoff(
                     name: "anchor_release_guard".into(), ok: true,
                     detail: Some(format!(
                         "PMC_ENABLE=0x{pmc:08x} (popcount={popcount}){}",
-                        if popcount < 10 { " — cold start, catalyst will warm" } else { " — GPU warm" }
+                        if popcount < hw.pmc_warm_threshold { " — cold start, catalyst will warm" } else { " — GPU warm" }
                     )),
                     duration_ms: t.elapsed().as_millis() as u64,
                 });
@@ -197,6 +221,7 @@ pub fn execute_handoff(
         }
     }
 
+    heartbeat();
     // ── Step 1: Module Preparation ──────────────────────────────────
 
     let t = Instant::now();
@@ -499,6 +524,7 @@ pub fn execute_handoff(
                                  &config.module_name, &sibling_state, overall);
     }
 
+    heartbeat();
     // ── Step 2: Unbind current driver + IOMMU group siblings ────────
 
     let t = Instant::now();
@@ -640,6 +666,7 @@ pub fn execute_handoff(
                 }
     }
 
+    heartbeat();
     // ── Step 3: Bind seeder driver (GUARDED) ────────────────────────
 
     let t = Instant::now();
@@ -686,6 +713,7 @@ pub fn execute_handoff(
                            &config.module_name, needs_device_rollback);
     }
 
+    heartbeat();
     // ── Step 3b: Catalyst RM trigger — open chardev to start GPU init ──
     //
     // nvidia RM defers GPU initialization to userspace open. With the
@@ -700,7 +728,7 @@ pub fn execute_handoff(
         let t = Instant::now();
         // Exp 229: pass create_channel=true for catalyst strategies to
         // establish a full RM compute channel before warm swap.
-        match trigger_rm_init(&config.module_name, /* create_channel */ true) {
+        match trigger_rm_init(&config.module_name, /* create_channel */ true, &config.bdf, &hw.interrupt_profile) {
             Ok(result) => {
                 tracing::info!(bdf = config.bdf.as_str(), summary = result.summary.as_str(),
                     channel_evidence = ?result.channel_evidence,
@@ -724,6 +752,7 @@ pub fn execute_handoff(
         }
     }
 
+    heartbeat();
     // ── Step 4: Settle — wait for hardware initialization ───────────
 
     let t = Instant::now();
@@ -750,7 +779,7 @@ pub fn execute_handoff(
             Ok(bar0) => {
                 let pmc = bar0.read_u32(pmc::ENABLE as usize).unwrap_or(0);
                 let popcount = pmc.count_ones();
-                if popcount < 10 {
+                if popcount < hw.pmc_warm_threshold {
                     tracing::error!(
                         bdf = config.bdf.as_str(),
                         pmc = format_args!("0x{pmc:08x}"),
@@ -799,6 +828,7 @@ pub fn execute_handoff(
                                  &config.module_name, &sibling_state, overall);
     }
 
+    heartbeat();
     // ── Step 4b: Catalyst Capture (if catalyst strategy) ──────────
     //
     // While the catalyst driver owns the GPU and has fully initialized
@@ -851,9 +881,9 @@ pub fn execute_handoff(
                 evidence.record("pmu_cpuctl", format!("{:#010x}", sovereign_snap.pmu_cpuctl));
                 evidence.record("pmc_enable", format!("{:#010x}", sovereign_snap.pmc_enable));
                 evidence.record("pgraph_status", format!("{:#010x}", sovereign_snap.pgraph_status));
-                // Probe TPC status across GPCs
-                for gpc in 0..6u32 {
-                    let addr = 0x50_4000usize + gpc as usize * 0x8000;
+                // Probe TPC status across GPCs (generation-aware topology)
+                for gpc in 0..hw.gpc_count {
+                    let addr = hw.tpc_base as usize + gpc as usize * hw.tpc_gpc_stride as usize;
                     if let Ok(tpc_val) = catalyst_bar0.read_u32(addr) {
                         let is_fault = tpc_val & 0xBADF_0000 == 0xBADF_0000;
                         evidence.record(
@@ -866,7 +896,7 @@ pub fn execute_handoff(
                 // ── FECS IMEM capture attempt (while nvidia still loaded) ──
                 // Falcon PIO: set IMEMC once with auto-increment read
                 // (bit 25), then read IMEMD sequentially.
-                let fecs_base = 0x40_9000usize;
+                let fecs_base = hw.fecs_base as usize;
                 let imemc = fecs_base + 0x180;
                 let imemd = fecs_base + 0x184;
                 // Set IMEMC: start at address 0, auto-increment read (bit 25)
@@ -912,7 +942,7 @@ pub fn execute_handoff(
                         let fw_bytes: Vec<u8> = fw_data.iter()
                             .flat_map(|w| w.to_le_bytes()).collect();
                         let nonzero_bytes = fw_bytes.iter().filter(|&&b| b != 0).count();
-                        let fw_path = format!("{fw_dir}/{name}_imem_gv100.bin");
+                        let fw_path = format!("{fw_dir}/{name}_imem_{}.bin", hw.chip_name);
                         if std::fs::write(&fw_path, &fw_bytes).is_ok() {
                             evidence.record(
                                 format!("{name}_imem_captured"),
@@ -931,11 +961,10 @@ pub fn execute_handoff(
                 if let Some(ref ev) = rm_channel_evidence
                     && ev.all_ok
                 {
-                        let pccsr_base = 0x80_0004usize;
+                        let pccsr_base = hw.pccsr_base as usize;
                         let mut active_channels = Vec::new();
                         let mut pending_channels = Vec::new();
-                        // Scan first 64 channel slots (RM typically uses low IDs)
-                        for ch in 0..64u32 {
+                        for ch in 0..hw.pccsr_channel_count {
                             let addr = pccsr_base + ch as usize * 8;
                             if let Ok(val) = catalyst_bar0.read_u32(addr) {
                                 let enabled = val & 1;
@@ -1004,6 +1033,7 @@ pub fn execute_handoff(
         }
     }
 
+    heartbeat();
     // ── Step 5: Pin bridges + disable FLR + suppress SBR ───────────
     //
     // The RPC handler calls prepare_anchor_release() before dropping the
@@ -1029,6 +1059,7 @@ pub fn execute_handoff(
         duration_ms: t.elapsed().as_millis() as u64,
     });
 
+    heartbeat();
     // ── Step 6: Warm swap — seeder → final driver (GUARDED) ─────────
 
     let t = Instant::now();
@@ -1254,6 +1285,7 @@ pub fn execute_handoff(
         }
     }
 
+    heartbeat();
     // ── Step 7a: Deferred catalyst full capture (BEFORE sibling rebind) ──
     //
     // For catalyst: capture BAR0 immediately after warm_swap while the
@@ -1280,7 +1312,7 @@ pub fn execute_handoff(
                 );
 
                 let cap_start = Instant::now();
-                let domains = &crate::nv::pri::VOLTA_BAR0_DOMAINS;
+                let domains = hw.bar0_domains;
                 let full_snapshot = Bar0Snapshot::capture_domains(
                     &post_swap_bar0, &config.bdf, "catalyst-post-swap", domains,
                 );
@@ -1312,10 +1344,11 @@ pub fn execute_handoff(
                     }
                 }
 
+                let chip_family = crate::nv::gr_init::ChipFamily::from_sm(hw.sm);
                 let replay = full_snapshot.to_catalyst_replay(
-                    crate::nv::gr_init::ChipFamily::Volta,
+                    chip_family,
                     "470.256.02",
-                    crate::nv::pri::VOLTA_BAR0_DOMAINS,
+                    hw.bar0_domains,
                 );
                 let replay_path = format!(
                     "/tmp/toadstool-catalyst-replay-{}.json",
@@ -1531,7 +1564,7 @@ pub fn execute_handoff(
 
     if is_catalyst {
         let t = Instant::now();
-        match recover_pri_ring(&config.bdf) {
+        match recover_pri_ring(&config.bdf, hw.chip_name) {
             Ok(detail) => {
                 steps.push(HandoffStep {
                     name: "pri_ring_recovery".into(), ok: true,
@@ -1551,6 +1584,7 @@ pub fn execute_handoff(
         }
     }
 
+    heartbeat();
     // ── Step 7: Tier Classification ─────────────────────────────────
 
     let mut tier = if is_catalyst {
@@ -1662,6 +1696,7 @@ pub fn execute_handoff(
             }
     }
 
+    heartbeat();
     // ── Step 8: Module Cleanup (GUARDED) ────────────────────────────
 
     let mut module_unloaded = false;

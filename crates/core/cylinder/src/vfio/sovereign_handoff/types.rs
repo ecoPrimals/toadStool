@@ -39,6 +39,98 @@ pub struct HandoffConfig {
     /// that intentionally operate outside normal safety bounds.
     #[serde(default)]
     pub skip_preflight: bool,
+
+    /// GPU SM architecture version (e.g. 35 for Kepler, 70 for Volta, 120 for
+    /// Blackwell). Drives generation-aware behavior: interrupt quench register
+    /// selection, GPC topology, catalyst capture offsets, tier classification.
+    /// When `None`, the pipeline detects SM from BOOT0 or defaults to 70 (Volta).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sm_version: Option<u32>,
+}
+
+/// Generation-aware hardware profile for catalyst handoff.
+///
+/// Captures the register topology and thresholds that vary across GPU
+/// generations, so the pipeline can perform catalyst capture, settle
+/// diagnostics, PRI recovery, and tier classification without hardcoded
+/// offsets. Built from `GenerationProfile` or auto-detected from BOOT0.
+#[derive(Debug, Clone)]
+pub struct HandoffCapabilityProfile {
+    /// SM architecture version (e.g. 35, 70, 120).
+    pub sm: u32,
+    /// Number of GPCs on this chip (6 for GV100, 8 for GA100, etc.).
+    pub gpc_count: u32,
+    /// BAR0 base offset for TPC register probes (GPC0).
+    pub tpc_base: u32,
+    /// Stride between GPC instances in BAR0 address space.
+    pub tpc_gpc_stride: u32,
+    /// BAR0 base for PCCSR channel status scan.
+    pub pccsr_base: u32,
+    /// Number of PCCSR channel slots to scan.
+    pub pccsr_channel_count: u32,
+    /// FECS falcon base in BAR0.
+    pub fecs_base: u32,
+    /// GPCCS falcon base in BAR0.
+    pub gpccs_base: u32,
+    /// PMU falcon base in BAR0.
+    pub pmu_base: u32,
+    /// PMC_ENABLE popcount threshold for "warm GPU" heuristic.
+    pub pmc_warm_threshold: u32,
+    /// BAR0 domain map for catalyst capture (name, start, end).
+    pub bar0_domains: &'static [(&'static str, usize, usize)],
+    /// Interrupt register semantics for this generation.
+    pub interrupt_profile: crate::nv::registers::pmc::InterruptProfile,
+    /// Chip codename for firmware artifact naming (e.g. "gv100", "gk210").
+    pub chip_name: &'static str,
+}
+
+impl HandoffCapabilityProfile {
+    /// Build from SM version using `GenerationProfile` and register constants.
+    #[must_use]
+    pub fn for_sm(sm: u32) -> Self {
+        use crate::nv::registers::falcon;
+
+        let profile = crate::nv::generation::profile_for_sm(sm);
+        let (gpc_count, chip_name) = Self::gpc_topology_for_sm(sm);
+
+        Self {
+            sm,
+            gpc_count,
+            tpc_base: 0x50_4000,
+            tpc_gpc_stride: 0x8000,
+            pccsr_base: 0x80_0004,
+            pccsr_channel_count: 64,
+            fecs_base: falcon::FECS_BASE,
+            gpccs_base: falcon::GPCCS_BASE,
+            pmu_base: falcon::PMU_BASE,
+            pmc_warm_threshold: 10,
+            bar0_domains: Self::domains_for_sm(sm),
+            interrupt_profile: profile.interrupt_profile,
+            chip_name,
+        }
+    }
+
+    fn gpc_topology_for_sm(sm: u32) -> (u32, &'static str) {
+        match sm {
+            35..=37 => (2, "gk210"),    // K80: 2 GPCs per die (GK210)
+            50..=52 => (4, "gm200"),    // GM200: 4 GPCs
+            60..=62 => (6, "gp100"),    // GP100: 6 GPCs
+            70..=74 => (6, "gv100"),    // GV100: 6 GPCs
+            75..=79 => (6, "tu102"),    // TU102: 6 GPCs
+            80..=87 => (8, "ga100"),    // GA100: 8 GPCs
+            89      => (12, "ad102"),   // AD102: 12 GPCs
+            90..=99 => (8, "gh100"),    // GH100: 8 GPCs (estimated)
+            100..=120 => (12, "gb100"), // GB100: 12 GPCs (estimated)
+            _ => (6, "gv100"),          // fallback
+        }
+    }
+
+    fn domains_for_sm(_sm: u32) -> &'static [(&'static str, usize, usize)] {
+        // All NVIDIA GPUs share the same major domain layout in BAR0.
+        // The Volta domain map is the most comprehensive and works as a
+        // superset for other generations (unmapped regions just read 0/fault).
+        &crate::nv::pri::VOLTA_BAR0_DOMAINS
+    }
 }
 
 /// Module source configuration (cylinder-side, no glowplug dependency).

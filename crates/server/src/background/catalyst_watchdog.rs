@@ -25,34 +25,30 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
+use toadstool_cylinder::nv::registers::pmc::InterruptProfile;
 use tracing::{error, info, warn};
 
-// 120s: covers the 60s settle period + generous margin for module load, rm_trigger,
-// etc. The primary lockup defense is the interrupt quench in rm_trigger. This
-// watchdog catches sustained lockups (pci_lock deadlocks) that persist beyond
-// the settle window.
-const WATCHDOG_TIMEOUT: Duration = Duration::from_secs(120);
+const DEFAULT_WATCHDOG_TIMEOUT: Duration = Duration::from_secs(120);
 const WATCHDOG_CHECK_INTERVAL: Duration = Duration::from_millis(500);
-
-/// NV_PMC_INTR_EN(0) at 0x140 is READ-ONLY on Volta (shows current state).
-/// NV_PMC_INTR_EN_CLEAR(0) at 0x180 is WRITE-ONLY (writing 1 bits disables).
-const NV_PMC_INTR_EN_0: usize = 0x140;
-const NV_PMC_INTR_EN_CLEAR_0: usize = 0x180;
 
 /// Shared state between the handoff pipeline and the watchdog thread.
 struct WatchdogState {
     active: AtomicBool,
     last_heartbeat_ms: AtomicU64,
+    timeout_ms: AtomicU64,
     bdf: std::sync::Mutex<String>,
+    interrupt_profile: std::sync::Mutex<InterruptProfile>,
 }
 
 static WATCHDOG: std::sync::LazyLock<Arc<WatchdogState>> = std::sync::LazyLock::new(|| {
     Arc::new(WatchdogState {
         active: AtomicBool::new(false),
         last_heartbeat_ms: AtomicU64::new(0),
+        timeout_ms: AtomicU64::new(DEFAULT_WATCHDOG_TIMEOUT.as_millis() as u64),
         bdf: std::sync::Mutex::new(String::new()),
+        interrupt_profile: std::sync::Mutex::new(InterruptProfile::VOLTA_PLUS),
     })
 });
 
@@ -63,68 +59,12 @@ fn epoch_ms() -> u64 {
         .as_millis() as u64
 }
 
-/// Emergency interrupt quench — write 0 to NV_PMC_INTR_EN_0 via BAR0 mmap
-/// and set PCI command register bit 10 (INTx disable).
-fn emergency_quench(bdf: &str) {
+/// Emergency interrupt quench — uses generation-aware register writes via
+/// `InterruptProfile`, plus PCI INTx disable as belt-and-suspenders.
+fn emergency_quench(bdf: &str, profile: &InterruptProfile) {
     warn!(bdf, "WATCHDOG: performing emergency interrupt quench");
-
-    // Layer 1: Disable GPU interrupt generation via BAR0 (direct MMIO)
-    let bar0_path = format!("/sys/bus/pci/devices/{bdf}/resource0");
-    if let Ok(f) = std::fs::OpenOptions::new().read(true).write(true).open(&bar0_path) {
-        use std::os::fd::AsFd;
-        match unsafe {
-            rustix::mm::mmap(
-                std::ptr::null_mut(),
-                0x1000,
-                rustix::mm::ProtFlags::READ | rustix::mm::ProtFlags::WRITE,
-                rustix::mm::MapFlags::SHARED,
-                f.as_fd(),
-                0,
-            )
-        } {
-            Ok(map) => {
-                let old = unsafe {
-                    std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_EN_0) as *const u32)
-                };
-                // Write to CLEAR register (0x180), not the read-only 0x140
-                unsafe {
-                    std::ptr::write_volatile(
-                        (map as *mut u8).add(NV_PMC_INTR_EN_CLEAR_0) as *mut u32,
-                        0xFFFF_FFFF,
-                    );
-                }
-                let verify = unsafe {
-                    std::ptr::read_volatile((map as *const u8).add(NV_PMC_INTR_EN_0) as *const u32)
-                };
-                let _ = unsafe { rustix::mm::munmap(map, 0x1000) };
-                warn!(bdf,
-                      old = format_args!("0x{old:08x}"),
-                      verify = format_args!("0x{verify:08x}"),
-                      "WATCHDOG: INTR_EN_CLEAR@0x180 written (GPU interrupts disabled)");
-            }
-            Err(e) => {
-                warn!(bdf, error = %e, "WATCHDOG: BAR0 mmap failed");
-            }
-        }
-    }
-
-    // Layer 2: Set PCI Interrupt Disable bit via config space
-    let cfg_path = format!("/sys/bus/pci/devices/{bdf}/config");
-    if let Ok(mut f) = std::fs::OpenOptions::new().read(true).write(true).open(&cfg_path) {
-        use std::io::{Read, Seek, Write};
-        let mut cmd_bytes = [0u8; 2];
-        if f.seek(std::io::SeekFrom::Start(4)).is_ok()
-            && f.read_exact(&mut cmd_bytes).is_ok()
-        {
-            let old_cmd = u16::from_le_bytes(cmd_bytes);
-            let new_cmd = old_cmd | 0x0400;
-            let _ = f.seek(std::io::SeekFrom::Start(4));
-            let _ = f.write_all(&new_cmd.to_le_bytes());
-            warn!(bdf, old_cmd = format_args!("0x{old_cmd:04x}"),
-                  new_cmd = format_args!("0x{new_cmd:04x}"),
-                  "WATCHDOG: PCI INTx disabled");
-        }
-    }
+    toadstool_cylinder::nv::registers::pmc::quench_interrupts(bdf, profile, "watchdog-emergency");
+    toadstool_cylinder::nv::registers::pmc::intx_disable(bdf, "watchdog-emergency");
 }
 
 /// RAII guard for a catalyst handoff. The watchdog thread monitors heartbeats
@@ -160,18 +100,34 @@ pub fn heartbeat() {
 
 /// Activate the catalyst watchdog for a handoff on the given BDF.
 ///
+/// `profile` determines the correct interrupt disable register semantics
+/// (Volta+ SET/CLEAR vs pre-Volta direct write).
+///
+/// `timeout` overrides the default 120s watchdog timeout. Set to match or
+/// exceed the pipeline deadline to avoid false-positive kills.
+///
 /// Returns an RAII guard. The handoff pipeline must call `guard.heartbeat()`
-/// periodically. If heartbeats stop for `WATCHDOG_TIMEOUT`, the watchdog
+/// periodically. If heartbeats stop for longer than `timeout`, the watchdog
 /// performs emergency interrupt quench and kills the process.
-pub fn activate(bdf: &str) -> CatalystWatchdogGuard {
+pub fn activate(
+    bdf: &str,
+    profile: InterruptProfile,
+    timeout: Option<Duration>,
+) -> CatalystWatchdogGuard {
     {
         let mut locked_bdf = WATCHDOG.bdf.lock().unwrap_or_else(|e| e.into_inner());
         *locked_bdf = bdf.to_string();
     }
+    {
+        let mut locked_profile = WATCHDOG.interrupt_profile.lock().unwrap_or_else(|e| e.into_inner());
+        *locked_profile = profile;
+    }
+    let timeout = timeout.unwrap_or(DEFAULT_WATCHDOG_TIMEOUT);
+    WATCHDOG.timeout_ms.store(timeout.as_millis() as u64, Ordering::Release);
     WATCHDOG.last_heartbeat_ms.store(epoch_ms(), Ordering::Release);
     WATCHDOG.active.store(true, Ordering::Release);
 
-    info!(bdf, timeout_ms = WATCHDOG_TIMEOUT.as_millis() as u64,
+    info!(bdf, timeout_ms = timeout.as_millis() as u64,
           "catalyst watchdog: activated for handoff");
 
     CatalystWatchdogGuard { _private: () }
@@ -192,23 +148,27 @@ pub fn start_watchdog_thread() {
                 }
 
                 let last_hb = WATCHDOG.last_heartbeat_ms.load(Ordering::Acquire);
+                let timeout_ms = WATCHDOG.timeout_ms.load(Ordering::Acquire);
                 let now = epoch_ms();
                 let elapsed_ms = now.saturating_sub(last_hb);
 
-                if elapsed_ms > WATCHDOG_TIMEOUT.as_millis() as u64 {
+                if elapsed_ms > timeout_ms {
                     let bdf = WATCHDOG.bdf.lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .clone();
+                    let profile = WATCHDOG.interrupt_profile.lock()
                         .unwrap_or_else(|e| e.into_inner())
                         .clone();
 
                     error!(
                         bdf,
                         elapsed_ms,
-                        timeout_ms = WATCHDOG_TIMEOUT.as_millis() as u64,
+                        timeout_ms,
                         "CATALYST WATCHDOG TRIGGERED — handoff pipeline unresponsive!"
                     );
 
-                    // Emergency quench
-                    emergency_quench(&bdf);
+                    // Emergency quench using generation-aware profile
+                    emergency_quench(&bdf, &profile);
 
                     // Deactivate to avoid repeated triggers
                     WATCHDOG.active.store(false, Ordering::Release);
